@@ -1,0 +1,98 @@
+ETAPES A SUIVRE POUR FAIRE FONCTIONNER LE BOT
+============================================
+
+1) EXTRAIRE LE ZIP
+- Dézippe l'archive dans un dossier.
+
+2) INSTALLER NODE.JS
+- Vérifie que Node.js est installé.
+- Teste avec :
+  node -v
+  npm -v
+
+3) INSTALLER MARIADB
+- Vérifie que MariaDB tourne.
+- Assure-toi d'avoir un utilisateur et un mot de passe valides.
+
+4) CREER LE BOT DISCORD
+- Va sur le portail développeur Discord.
+- Crée une application puis un bot.
+- Copie le token.
+- Invite le bot sur ton serveur avec les permissions nécessaires.
+
+5) ACTIVER LES INTENTS NECESSAIRES
+- Dans le portail développeur Discord, active au minimum :
+  - Message Content Intent
+
+6) PREPARER LE SERVEUR DISCORD
+- Crée une catégorie pour les tickets.
+- Crée les rôles :
+  - Support
+  - Chef Support
+- Crée les salons logs souhaités :
+  - log fermeture
+  - log claim
+  - log move
+  - log adduser
+  - log removeuser
+
+7) RECUPERER LES IDS DISCORD
+- Active le mode développeur dans Discord.
+- Copie les IDs suivants :
+  - serveur
+  - application / client du bot
+  - catégorie tickets
+  - rôle support
+  - rôle chef support
+  - salons logs
+
+8) CONFIGURER LE FICHIER config.json
+- Copie config.example.json en config.json
+- Remplis tous les champs.
+
+9) INSTALLER LES DEPENDANCES
+Dans le dossier du projet, lance :
+  npm install
+
+10) DEMARRER LE BOT
+Toujours dans le dossier du projet, lance :
+  npm start
+
+Le script va automatiquement :
+- vérifier le fichier de config
+- vérifier les dépendances
+- vérifier la base MariaDB
+- créer la base si elle n'existe pas
+- créer les tables si elles n'existent pas
+- vérifier les colonnes attendues
+- vérifier le serveur Discord, les rôles, la catégorie et les salons logs
+- déployer les commandes slash
+- lancer le bot
+
+11) TESTER
+- Envoie un MP au bot avec un autre compte.
+- Vérifie qu'un ticket se crée.
+- Teste les commandes staff.
+- Teste les boutons Transcript et Fermer et enregistrer le transcript.
+
+COMMANDES IMPORTANTES
+---------------------
+- /reply
+- /areply
+- /adduser
+- /removeuser
+- /rename
+- /claim
+- /unclaim
+- /moveticket
+- /oldtickets
+- /gettranscript
+- /staffstats (chef support uniquement)
+
+SI CA NE FONCTIONNE PAS
+-----------------------
+- Vérifie le token du bot
+- Vérifie que le bot est bien dans le serveur
+- Vérifie les IDs dans config.json
+- Vérifie que MariaDB accepte la connexion
+- Vérifie que npm install a bien été fait

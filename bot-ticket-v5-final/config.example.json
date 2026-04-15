@@ -1,0 +1,22 @@
+{
+  "token": "TON_TOKEN",
+  "clientId": "ID_APPLICATION",
+  "guildId": "ID_SERVEUR",
+  "ticketCategoryId": "ID_CATEGORIE_TICKETS",
+  "supportRoleId": "ID_ROLE_SUPPORT",
+  "chiefSupportRoleId": "ID_ROLE_CHEF_SUPPORT",
+  "closeLogChannelId": "ID_SALON_LOG_FERMETURE",
+  "claimLogChannelId": "ID_SALON_LOG_CLAIM",
+  "moveLogChannelId": "ID_SALON_LOG_MOVE",
+  "addUserLogChannelId": "ID_SALON_LOG_ADDUSER",
+  "removeUserLogChannelId": "ID_SALON_LOG_REMOVEUSER",
+  "ticketPrefix": "ticket",
+  "dmWelcomeMessage": "Bonjour, ton ticket a bien été créé. Le staff va te répondre ici dès que possible.",
+  "database": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "user": "root",
+    "password": "MOT_DE_PASSE",
+    "database": "discord_tickets"
+  }
+}

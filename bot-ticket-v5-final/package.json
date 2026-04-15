@@ -1,0 +1,15 @@
+{
+  "name": "bot-ticket-v5-final",
+  "version": "1.0.0",
+  "description": "Bot Discord de tickets DM -> salons avec transcripts HTML et statistiques staff",
+  "main": "index.js",
+  "scripts": {
+    "start": "node bootstrap.js",
+    "bot": "node index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0",
+    "mysql2": "^3.11.3"
+  }
+}
