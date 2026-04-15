@@ -39,13 +39,20 @@ ETAPES A SUIVRE POUR FAIRE FONCTIONNER LE BOT
 7) RECUPERER LES IDS DISCORD
 - Active le mode développeur dans Discord.
 - Copie les IDs suivants :
-  - serveur
-  - application / client du bot
-  - catégorie tickets
-  - rôle support
-  - rôle chef support
-  - salons logs
-
+  - serveur : 1475851126015528970
+  - application / client du bot :
+  - catégorie tickets :
+      in  1493998695463780495
+      attente 1493998913689227284
+      en cours 1493998996224741557
+  - rôle support : 1493999861287358652
+  - rôle chef support : 1493999918958907462
+  - salons logs : 
+        - log fermeture : 1493999150281523391
+        - log claim : 1493999194309132461
+        - log move : 1493999238357713109
+        - log adduser : 1493999283350016150
+        - log removeuser : 1493999327419306147
 8) CONFIGURER LE FICHIER config.json
 - Copie config.example.json en config.json
 - Remplis tous les champs.
