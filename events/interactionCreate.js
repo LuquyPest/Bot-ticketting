@@ -30,8 +30,12 @@ module.exports = {
           const currentPage = Number(parts[3]) || 0;
 
           const tickets = await getOldTicketsByUserId(userId);
+
           if (!tickets.length) {
-            await interaction.reply({ content: '❌ Aucun ticket trouvé.', ephemeral: true });
+            await interaction.reply({
+              content: 'Aucun ticket trouve.',
+              ephemeral: true
+            });
             return;
           }
 
@@ -40,6 +44,7 @@ module.exports = {
           if (action === 'next') newPage += 1;
 
           const { embed, totalPages, safePage } = buildOldTicketsPageEmbed(userId, tickets, newPage, 5);
+
           await interaction.update({
             embeds: [embed],
             components: [oldTicketsPaginationButtons(userId, safePage, totalPages)]
@@ -50,7 +55,7 @@ module.exports = {
         const ticket = await getOpenTicketByChannelId(interaction.channelId);
         if (!ticket) {
           await interaction.reply({
-            content: '❌ Ce salon n’est pas un ticket ouvert.',
+            content: 'Ce salon n est pas un ticket ouvert.',
             ephemeral: true
           });
           return;
@@ -58,17 +63,22 @@ module.exports = {
 
         if (interaction.customId === 'ticket_transcript') {
           const saved = await saveTranscriptSnapshot(interaction.channel, interaction.user);
+
           if (!saved) {
-            await interaction.reply({ content: '❌ Impossible de générer le transcript.', ephemeral: true });
+            await interaction.reply({
+              content: 'Impossible de generer le transcript.',
+              ephemeral: true
+            });
             return;
           }
 
-          const htmlFile = new AttachmentBuilder(Buffer.from(saved.html, 'utf8'), {
-            name: `transcript-${saved.transcriptId}.html`
-          });
+          const htmlFile = new AttachmentBuilder(
+            Buffer.from(saved.html, 'utf8'),
+            { name: `transcript-${saved.transcriptId}.html` }
+          );
 
           await interaction.reply({
-            content: `📝 Transcript enregistré.\nID du transcript : **${saved.transcriptId}**`,
+            content: `Transcript enregistre.\nID du transcript : ${saved.transcriptId}`,
             files: [htmlFile],
             ephemeral: true
           });
@@ -86,7 +96,7 @@ module.exports = {
 
         if (interaction.customId === 'ticket_close_with_transcript_confirm') {
           await interaction.update({
-            content: '🔒 Fermeture du ticket et génération du transcript...',
+            content: 'Fermeture du ticket et generation du transcript...',
             embeds: [],
             components: []
           });
@@ -97,7 +107,7 @@ module.exports = {
 
         if (interaction.customId === 'ticket_close_with_transcript_cancel') {
           await interaction.update({
-            content: '✅ Fermeture annulée.',
+            content: 'Fermeture annulee.',
             embeds: [],
             components: []
           });
@@ -115,9 +125,15 @@ module.exports = {
       console.error('Erreur interactionCreate:', error);
 
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: '❌ Une erreur est survenue.', ephemeral: true }).catch(() => null);
+        await interaction.followUp({
+          content: 'Une erreur est survenue.',
+          ephemeral: true
+        }).catch(() => null);
       } else {
-        await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true }).catch(() => null);
+        await interaction.reply({
+          content: 'Une erreur est survenue.',
+          ephemeral: true
+        }).catch(() => null);
       }
     }
   }

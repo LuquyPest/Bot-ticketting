@@ -9,35 +9,44 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('removeuser')
-    .setDescription('Retire un utilisateur du ticket')
-    .addStringOption(option =>
-      option.setName('userid').setDescription('ID Discord').setRequired(true)
+    .setDescription('Retire un utilisateur des participants DM lies au ticket')
+    .addUserOption(option =>
+      option
+        .setName('utilisateur')
+        .setDescription('Utilisateur a retirer')
+        .setRequired(true)
     ),
 
   async execute(client, interaction) {
-    const allowed = await ensureSupport(interaction, client);
-    if (!allowed) return;
+    if (!(await ensureSupport(interaction, client))) return;
 
     const ticket = await getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      await interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
-      return;
-    }
-
-    const userId = interaction.options.getString('userid', true);
-
-    if (ticket.owner_id === userId) {
-      await interaction.reply({
-        content: '❌ Impossible de retirer le propriétaire du ticket.',
+      return interaction.reply({
+        content: 'Pas un ticket valide.',
         ephemeral: true
       });
-      return;
     }
 
-    await interaction.channel.permissionOverwrites.delete(userId).catch(() => null);
-    await removeParticipant(ticket.id, userId);
-    await logRemoveUser(client, ticket.id, userId, interaction.user);
+    const user = interaction.options.getUser('utilisateur');
 
-    await interaction.reply(`✅ <@${userId}> a été retiré du ticket.`);
+    if (ticket.owner_id === user.id) {
+      return interaction.reply({
+        content: 'Impossible de retirer le proprietaire principal du ticket.',
+        ephemeral: true
+      });
+    }
+
+    await removeParticipant(ticket.id, user.id);
+    await logRemoveUser(client, ticket.id, user.id, interaction.user);
+
+    await interaction.reply({
+      content: `Utilisateur retire des participants DM lies : ${user.tag}`,
+      ephemeral: true
+    });
+
+    await interaction.channel.send(
+      `--- ${interaction.user.username} : a retire ${user.tag} des participants DM lies du ticket`
+    );
   }
 };

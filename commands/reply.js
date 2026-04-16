@@ -1,63 +1,68 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
-const { getOpenTicketByChannelId } = require('../utils/ticketManager');
-const { staffReplyEmbed } = require('../utils/embeds');
+const {
+  getOpenTicketByChannelId,
+  getAllLinkedUserIds
+} = require('../utils/ticketManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('reply')
-    .setDescription('Répond au membre avec ton pseudo')
+    .setDescription('Repond au membre')
     .addStringOption(option =>
-      option.setName('message').setDescription('Message à envoyer').setRequired(false)
+      option
+        .setName('message')
+        .setDescription('Message a envoyer')
+        .setRequired(false)
     )
     .addAttachmentOption(option =>
-      option.setName('fichier').setDescription('Fichier à envoyer').setRequired(false)
+      option
+        .setName('fichier')
+        .setDescription('Fichier a envoyer')
+        .setRequired(false)
     ),
 
   async execute(client, interaction) {
-    const allowed = await ensureSupport(interaction, client);
-    if (!allowed) return;
+    if (!(await ensureSupport(interaction, client))) return;
 
     const ticket = await getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      await interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
-      return;
+      return interaction.reply({
+        content: 'Pas un ticket',
+        ephemeral: true
+      });
     }
 
     const content = interaction.options.getString('message') || '';
     const file = interaction.options.getAttachment('fichier');
 
     if (!content && !file) {
-      await interaction.reply({
-        content: '❌ Tu dois envoyer un message, un fichier, ou les deux.',
+      return interaction.reply({
+        content: 'Tu dois fournir un message, un fichier ou les deux.',
         ephemeral: true
       });
-      return;
     }
 
-    const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
-    if (!owner) {
-      await interaction.reply({ content: '❌ Impossible de trouver le membre.', ephemeral: true });
-      return;
-    }
+    const linkedUserIds = await getAllLinkedUserIds(ticket.id);
 
-    const payload = {
-      embeds: [staffReplyEmbed(interaction.user.username, content, false)]
-    };
+    let msg = `--- ${interaction.user.username} : ${content || ''}`.trim();
 
     if (file) {
-      payload.files = [file.url];
+      msg += `\nFichier : ${file.url}`;
     }
 
-    await owner.send(payload);
+    for (const userId of linkedUserIds) {
+      const user = await client.users.fetch(userId).catch(() => null);
+      if (user) {
+        await user.send(msg).catch(() => null);
+      }
+    }
 
     await interaction.reply({
-      content: `✅ Réponse envoyée à ${owner.tag}.`,
+      content: 'Envoye',
       ephemeral: true
     });
 
-    await interaction.channel.send(
-      `👤 **${interaction.user.username}** a répondu au membre.${file ? `\n📎 ${file.name}` : ''}${content ? `\n${content}` : ''}`
-    );
+    await interaction.channel.send(msg);
   }
 };
