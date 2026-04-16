@@ -1,5 +1,3 @@
-# Bot Ticket Discord - version finale
-
 Bot Discord de ticketing avec ce fonctionnement :
 
 - l'utilisateur ouvre son ticket en **message privé** au bot
