@@ -1,39 +1,35 @@
-const { Events, ChannelType } = require('discord.js');
-const {
-  relayDmToTicket,
-  sendWelcomeDm,
-  getOpenTicketByChannelId
-} = require('../utils/ticketManager');
+const { relayDmToTicket, sendWelcomeDm } = require('../utils/ticketManager');
 
 module.exports = {
-  name: Events.MessageCreate,
-  async execute(client, message) {
+  name: 'raw',
+  async execute(client, packet) {
     try {
-      if (message.author.bot) return;
+      if (packet.t !== 'MESSAGE_CREATE') return;
 
-      if (message.channel.type === ChannelType.DM) {
-        const content = message.content?.trim() || '';
-        const attachments = [...message.attachments.values()];
+      const data = packet.d;
 
-        if (!content && attachments.length === 0) {
-          await message.author.send('❌ Envoie un texte ou une pièce jointe.').catch(() => null);
-          return;
-        }
+      // Ignore les bots
+      if (data.author?.bot) return;
 
-        const result = await relayDmToTicket(client, message.author, content, attachments);
-        await sendWelcomeDm(client, message.author, result.created);
+      // Ignore les messages venant d'un serveur
+      if (data.guild_id) return;
+
+      console.log('?? DM RAW RECU:', data.content);
+
+      const user = await client.users.fetch(data.author.id).catch(() => null);
+      if (!user) return;
+
+      const content = data.content?.trim() || '';
+
+      if (!content) {
+        await user.send('? Envoie un message valide.').catch(() => null);
         return;
       }
 
-      if (!message.guild) return;
-
-      const ticket = await getOpenTicketByChannelId(message.channel.id);
-      if (!ticket) return;
-
-      // Les messages normaux du staff restent dans le salon.
-      // Ils ne sont jamais envoyés au membre.
+      const result = await relayDmToTicket(client, user, content, []);
+      await sendWelcomeDm(client, user, result.created);
     } catch (error) {
-      console.error('Erreur messageCreate:', error);
+      console.error('Erreur RAW handler:', error);
     }
   }
 };
