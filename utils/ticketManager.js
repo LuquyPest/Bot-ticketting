@@ -396,6 +396,43 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
   return transcript;
 }
 
+async function getLastClosedTicketByOwnerId(userId) {
+  const rows = await query(
+    `SELECT * FROM tickets WHERE owner_id = ? AND status = 'closed'
+     ORDER BY closed_at DESC LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+async function reopenTicket(client, ticket, reopenedByUser) {
+  const channel = await createTicketChannel(client, {
+    id: ticket.owner_id,
+    username: ticket.owner_tag,
+    tag: ticket.owner_tag
+  });
+
+  await query(
+    `UPDATE tickets SET status = 'open', channel_id = ?, closed_at = NULL,
+     closed_by_tag = NULL, warned_inactive = 0, last_message_at = NOW()
+     WHERE id = ?`,
+    [channel.id, ticket.id]
+  );
+
+  const subjectLine = ticket.subject ? `\nSujet : ${ticket.subject}` : '';
+  await channel.send({
+    content: `Ticket #${ticket.id} réouvert par ${reopenedByUser.tag}\nUtilisateur : ${ticket.owner_tag}\nID : ${ticket.owner_id}${subjectLine}`,
+    components: [ticketButtons()]
+  });
+
+  const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
+  if (owner) {
+    await owner.send('Ton ticket a été réouvert par le support. Tu peux continuer à répondre ici en DM.').catch(() => null);
+  }
+
+  return channel;
+}
+
 async function isBlacklisted(userId) {
   const rows = await query('SELECT 1 FROM blacklist WHERE user_id = ? LIMIT 1', [userId]);
   return rows.length > 0;
@@ -539,5 +576,7 @@ module.exports = {
   isBlacklisted,
   addToBlacklist,
   removeFromBlacklist,
-  getBlacklist
+  getBlacklist,
+  getLastClosedTicketByOwnerId,
+  reopenTicket
 };
