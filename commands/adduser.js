@@ -49,7 +49,7 @@ module.exports = {
 
     if (existingOpenTicket) {
       return interaction.reply({
-        content: `Impossible d ajouter ${user.tag} car il a deja un ticket ouvert.`,
+        content: `Impossible d'ajouter ${user.tag} : il a deja un ticket ouvert (ticket #${existingOpenTicket.id}). Ferme ce ticket d'abord, ou utilise /removeuser sur son ticket actuel.`,
         ephemeral: true
       });
     }
