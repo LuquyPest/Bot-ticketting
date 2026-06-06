@@ -7,6 +7,8 @@ const {
   updateLastMessage
 } = require('../utils/ticketManager');
 
+const lastReply = new Map();
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('areply')
@@ -26,6 +28,18 @@ module.exports = {
 
   async execute(client, interaction) {
     if (!(await ensureSupport(interaction, client))) return;
+
+    // Rate limiting
+    const cooldown = (client.config.replyRateLimitSeconds ?? 3) * 1000;
+    const last = lastReply.get(interaction.user.id) || 0;
+    const remaining = Math.ceil((cooldown - (Date.now() - last)) / 1000);
+    if (Date.now() - last < cooldown) {
+      return interaction.reply({
+        content: `Attends encore ${remaining}s avant de renvoyer une réponse.`,
+        ephemeral: true
+      });
+    }
+    lastReply.set(interaction.user.id, Date.now());
 
     const ticket = await getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
