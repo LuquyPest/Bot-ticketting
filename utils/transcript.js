@@ -70,12 +70,13 @@ function buildHtmlTranscript(channel, messages, ticketInfo = {}) {
   const rows = messages.map(msg => {
     const date = new Date(msg.createdTimestamp).toLocaleString('fr-FR');
     const content = escapeHtml(msg.content || '[aucun texte]').replace(/\n/g, '<br>');
-    const avatar = `https://cdn.discordapp.com/embed/avatars/${Number(msg.author.discriminator || 0) % 5}.png`;
+    const avatarUrl = msg.author.displayAvatarURL({ size: 64, extension: 'png' });
+    const avatar = avatarUrl || `https://cdn.discordapp.com/embed/avatars/0.png`;
 
     return `
       <article class="message-card">
         <div class="avatar">
-          <img src="${avatar}" alt="avatar">
+          <img src="${escapeHtml(avatar)}" alt="avatar">
         </div>
         <div class="message-body">
           <div class="message-top">
