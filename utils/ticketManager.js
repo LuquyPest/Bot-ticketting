@@ -396,6 +396,10 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
   return transcript;
 }
 
+async function setPriority(ticketId, priority) {
+  await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+}
+
 async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
   await query(
     `INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating)
@@ -478,5 +482,6 @@ module.exports = {
   logMoveTicket,
   logAddUser,
   logRemoveUser,
-  saveRating
+  saveRating,
+  setPriority
 };
