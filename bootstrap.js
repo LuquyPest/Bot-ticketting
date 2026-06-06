@@ -132,6 +132,11 @@ async function ensureTables(config) {
       owner_tag VARCHAR(100) NOT NULL,
       claimed_by VARCHAR(32) DEFAULT NULL,
       status ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+      subject VARCHAR(100) DEFAULT NULL,
+      priority ENUM('low','normal','urgent') NOT NULL DEFAULT 'normal',
+      last_message_at DATETIME DEFAULT NULL,
+      first_response_at DATETIME DEFAULT NULL,
+      warned_inactive TINYINT(1) NOT NULL DEFAULT 0,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       closed_at DATETIME DEFAULT NULL,
       closed_by_tag VARCHAR(100) DEFAULT NULL
@@ -168,11 +173,52 @@ async function ensureTables(config) {
       admin_tag VARCHAR(100) NOT NULL,
       tickets_claimed INT NOT NULL DEFAULT 0,
       tickets_closed INT NOT NULL DEFAULT 0,
+      total_ratings INT NOT NULL DEFAULT 0,
+      total_rating_score INT NOT NULL DEFAULT 0,
+      total_response_count INT NOT NULL DEFAULT 0,
+      total_response_seconds BIGINT NOT NULL DEFAULT 0,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS blacklist (
+      user_id VARCHAR(32) PRIMARY KEY,
+      user_tag VARCHAR(100) NOT NULL,
+      reason TEXT DEFAULT NULL,
+      added_by_id VARCHAR(32) NOT NULL,
+      added_by_tag VARCHAR(100) NOT NULL,
+      added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_ratings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      ticket_id INT NOT NULL,
+      owner_id VARCHAR(32) NOT NULL,
+      closed_by_id VARCHAR(32) NOT NULL,
+      rating TINYINT NOT NULL,
+      rated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_rating_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
     );
   `;
 
   await connection.query(sql);
+
+  // Migration : ajout des nouvelles colonnes sur tables existantes
+  const migrations = [
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS subject VARCHAR(100) DEFAULT NULL`,
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority ENUM('low','normal','urgent') NOT NULL DEFAULT 'normal'`,
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS last_message_at DATETIME DEFAULT NULL`,
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS first_response_at DATETIME DEFAULT NULL`,
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS warned_inactive TINYINT(1) NOT NULL DEFAULT 0`,
+    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_ratings INT NOT NULL DEFAULT 0`,
+    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_rating_score INT NOT NULL DEFAULT 0`,
+    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_count INT NOT NULL DEFAULT 0`,
+    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`
+  ];
+
+  for (const migration of migrations) {
+    await connection.query(migration).catch(() => null);
+  }
+
   ok('Tables créées ou déjà présentes.');
 
   await verifySchema(connection);
@@ -188,7 +234,8 @@ async function verifySchema(connection) {
   const expected = {
     tickets: [
       'id', 'channel_id', 'owner_id', 'owner_tag', 'claimed_by',
-      'status', 'created_at', 'closed_at', 'closed_by_tag'
+      'status', 'subject', 'priority', 'last_message_at', 'first_response_at',
+      'warned_inactive', 'created_at', 'closed_at', 'closed_by_tag'
     ],
     ticket_participants: ['id', 'ticket_id', 'user_id', 'added_at'],
     transcript_snapshots: [
@@ -196,8 +243,12 @@ async function verifySchema(connection) {
       'created_by_tag', 'created_at', 'message_count', 'html', 'txt'
     ],
     admin_stats: [
-      'admin_id', 'admin_tag', 'tickets_claimed', 'tickets_closed', 'updated_at'
-    ]
+      'admin_id', 'admin_tag', 'tickets_claimed', 'tickets_closed',
+      'total_ratings', 'total_rating_score', 'total_response_count',
+      'total_response_seconds', 'updated_at'
+    ],
+    blacklist: ['user_id', 'user_tag', 'reason', 'added_by_id', 'added_by_tag', 'added_at'],
+    ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at']
   };
 
   for (const [table, columns] of Object.entries(expected)) {
