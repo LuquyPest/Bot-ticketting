@@ -12,6 +12,7 @@ import Blacklist from './pages/Blacklist';
 import Transcripts from './pages/Transcripts';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
+import Patchnotes from './pages/Patchnotes';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -79,6 +80,9 @@ export default function App() {
                   } />
                   <Route path="users" element={
                     <RequireRole role="fondateur"><Users /></RequireRole>
+                  } />
+                  <Route path="patchnotes" element={
+                    <RequireRole role="fondateur"><Patchnotes /></RequireRole>
                   } />
                 </Routes>
               </main>
