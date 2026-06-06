@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const config = require('./config.json');
+const { startTranscriptServer } = require('./utils/transcriptServer');
 
 // ?? Client Discord (FULL FIX)
 const client = new Client({
@@ -67,6 +68,7 @@ function loadEvents() {
 // ?? Init
 loadCommands();
 loadEvents();
+startTranscriptServer(config.webServerPort || 3000);
 
 // ?? Connexion
 client.login(config.token);
