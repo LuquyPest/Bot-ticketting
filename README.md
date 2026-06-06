@@ -15,7 +15,6 @@ Bot Discord de support par tickets avec **interface web d'administration**. L'ut
 - [Dashboard web](#dashboard-web)
 - [Commandes](#commandes)
 - [Boutons ticket](#boutons-ticket)
-- [Transcripts web](#transcripts-web)
 - [Base de données](#base-de-données)
 - [Logs](#logs)
 - [Structure des fichiers](#structure-des-fichiers)
@@ -46,7 +45,7 @@ Bot Discord de support par tickets avec **interface web d'administration**. L'ut
 - **Node.js** v18 ou supérieur
 - **MariaDB** (ou MySQL) accessible
 - Un **bot Discord** avec les permissions nécessaires
-- Un **serveur accessible depuis internet** pour le serveur web (transcripts + dashboard)
+- Un **serveur accessible depuis internet** pour le serveur web (transcripts + dashboard sur le même port)
 
 ---
 
@@ -60,14 +59,14 @@ cd Bot-ticketting
 # 2. Installer les dépendances du bot
 npm install
 
-# 3. Builder le dashboard (optionnel mais recommandé)
+# 3. Builder le dashboard
 cd dashboard && npm install && npm run build && cd ..
 
 # 4. Créer la configuration
 cp config.example.json config.json
 # Éditer config.json avec tes valeurs
 
-# 5. Lancer le bot (+ dashboard si config.dashboard est présent)
+# 5. Lancer
 npm start
 ```
 
@@ -117,32 +116,30 @@ npm start
 | `addUserLogChannelId` | *(désactivé)* | Salon de log des ajouts d'utilisateur |
 | `removeUserLogChannelId` | *(désactivé)* | Salon de log des retraits d'utilisateur |
 
-### Configuration dashboard (optionnel)
+### Configuration du serveur web et dashboard
 
-Ajouter ce bloc dans `config.json` pour activer l'interface web d'administration :
+Le serveur web (transcripts + dashboard) est activé via `webEnabled`. Tous les services tournent sur le même port (`webServerPort`).
 
 ```json
+"webEnabled": true,
+"webServerPort": 3000,
+"webServerBaseUrl": "http://ton-domaine.com:3000",
+"webFounderId": "TON_DISCORD_USER_ID",
+
 "dashboard": {
-  "port": 3001,
   "sessionSecret": "STRING_ALEATOIRE_LONGUE",
-  "authMethods": ["discord", "password"],
-  "allowedRoleId": "ID_ROLE_AUTORISE",
-  "password": "ton_mot_de_passe_ou_hash_bcrypt",
-  "discordClientId": "MEME_QUE_clientId",
-  "discordClientSecret": "SECRET_OAUTH_APP",
-  "discordCallbackUrl": "http://ton-domaine.com:3001/api/auth/discord/callback"
+  "discordClientSecret": "SECRET_OAUTH_APP_DISCORD",
+  "discordCallbackUrl": "http://ton-domaine.com:3000/api/auth/discord/callback"
 }
 ```
 
 | Champ | Description |
 |-------|-------------|
-| `port` | Port d'écoute du dashboard (défaut: `3001`) |
-| `sessionSecret` | Clé secrète pour les sessions — change-la ! |
-| `authMethods` | Méthodes autorisées : `"discord"` et/ou `"password"` |
-| `allowedRoleId` | ID du rôle Discord donnant accès au dashboard via OAuth |
-| `password` | Mot de passe admin en clair ou hash bcrypt (`$2b$...`) |
-| `discordClientSecret` | Secret OAuth2 de l'application Discord (onglet OAuth2 du portail) |
-| `discordCallbackUrl` | URL de callback OAuth — doit être ajoutée dans le portail Discord |
+| `webEnabled` | `true` pour activer le serveur web, `false` pour tout désactiver |
+| `webFounderId` | ID Discord du compte fondateur — accès automatique complet à la connexion |
+| `dashboard.sessionSecret` | Clé secrète pour les sessions — génère une chaîne aléatoire longue |
+| `dashboard.discordClientSecret` | Secret OAuth2 de l'application Discord (portail développeur → OAuth2) |
+| `dashboard.discordCallbackUrl` | URL de callback OAuth — doit correspondre exactement à ce qui est configuré dans le portail Discord |
 
 ---
 
@@ -159,16 +156,16 @@ Clic droit sur n'importe quel élément pour copier son ID.
 
 ### 3. Configurer OAuth2 (pour le dashboard)
 Dans le portail développeur → **OAuth2** :
-- Ajouter l'URL de callback : `http://ton-domaine.com:3001/api/auth/discord/callback`
+- Ajouter l'URL de callback : `http://ton-domaine.com:3000/api/auth/discord/callback`
 - Copier le **Client Secret** → le mettre dans `config.dashboard.discordClientSecret`
 
 ### 4. Inviter le bot
 **OAuth2 → URL Generator** : scopes `bot` + `applications.commands`, permissions :  
 `Manage Channels`, `Send Messages`, `Read Message History`, `Embed Links`, `Attach Files`, `View Channel`
 
-### 5. Ouvrir les ports
-- **Port transcripts** (`webServerPort`, ex: `3000`) — pour les liens de transcript temporaires
-- **Port dashboard** (`dashboard.port`, ex: `3001`) — pour l'interface web d'administration
+### 5. Ouvrir le port
+Un seul port à ouvrir : `webServerPort` (ex: `3000`).  
+Il sert à la fois les transcripts temporaires (`/t/...`) et le dashboard web (`/`).
 
 ---
 
@@ -184,31 +181,47 @@ Le script vérifie automatiquement :
 3. Connexion MariaDB + création des tables
 4. Vérification des IDs Discord
 5. Déploiement des commandes slash
-6. Lancement du bot + serveur transcripts + dashboard (si configuré)
+6. Lancement du bot + serveur web (si `webEnabled: true`)
 
 ---
 
 ## Dashboard web
 
-Interface web d'administration accessible sur `http://ton-ip:3001` (ou le port configuré).
+Interface web d'administration accessible sur `http://ton-ip:PORT`.
 
-### Fonctionnalités
+### Système de rôles
 
-| Page | Description |
-|------|-------------|
-| **Dashboard** | Stats globales (tickets ouverts/fermés, temps de réponse moyen, note moyenne), graphique d'activité sur 7/14/30 jours |
-| **Tickets** | Liste complète avec filtres (statut, priorité, sujet), vue détaillée par ticket |
-| **Staff** | Statistiques par agent (fermetures, claims, temps de réponse moyen, note moyenne) |
-| **Blacklist** | Gestion des utilisateurs bannis (ajouter, retirer, consulter) |
-| **Transcripts** | Consultation et téléchargement de tous les transcripts archivés |
-| **Paramètres** | Modification de `config.json` via interface graphique |
+Tous les accès au dashboard sont gérés par un système de rôles stocké en base de données.
+
+| Rôle | Accès |
+|------|-------|
+| `nouveau` | Connexion bloquée — page d'attente, aucun accès |
+| `support` | Dashboard (stats générales) · Tickets (lecture) · Ses propres stats staff |
+| `fondateur` | Accès complet : tout ce que support voit + Blacklist · Transcripts · Paramètres · Gestion des utilisateurs |
+
+### Attribution des rôles
+
+- **Fondateur** : l'ID Discord défini dans `webFounderId` reçoit automatiquement le rôle `fondateur` à chaque connexion.
+- **Autres utilisateurs** : reçoivent le rôle `nouveau` à leur première connexion, quel que soit leur rôle Discord. Le fondateur leur attribue ensuite le rôle approprié depuis la page **Utilisateurs**.
+- **Suggestion** : si un utilisateur possède le rôle Support ou Chef Support Discord, un badge 💡 **Suggéré** apparaît dans la page Utilisateurs pour guider le fondateur — l'attribution reste manuelle.
 
 ### Authentification
 
-Deux méthodes disponibles (configurables via `authMethods`) :
+Uniquement via **Discord OAuth**. Le bot utilise le même `clientId` que l'application Discord.
 
-- **Discord OAuth** : connexion avec compte Discord — accès accordé si l'utilisateur a le rôle `allowedRoleId`
-- **Mot de passe** : mot de passe défini dans `config.dashboard.password` (clair ou hash bcrypt)
+L'utilisateur doit être membre du serveur Discord configuré dans `guildId`. S'il ne l'est pas, la connexion est refusée.
+
+### Pages disponibles
+
+| Page | Rôles | Description |
+|------|-------|-------------|
+| **Dashboard** | support, fondateur | Stats globales, graphique d'activité 7/14/30 jours, tickets récents |
+| **Tickets** | support, fondateur | Liste filtrée, vue détaillée, changement de priorité (fondateur) |
+| **Staff** | support, fondateur | Support : ses propres stats · Fondateur : tous les agents |
+| **Blacklist** | fondateur | Ajouter, retirer, consulter les utilisateurs bannis |
+| **Transcripts** | fondateur | Consulter et télécharger tous les transcripts archivés |
+| **Utilisateurs** | fondateur | Gérer les rôles dashboard, voir les suggestions de promotion |
+| **Paramètres** | fondateur | Modifier `config.json` via interface graphique |
 
 ### Builder le dashboard
 
@@ -218,15 +231,15 @@ npm install
 npm run build
 ```
 
-Le dashboard est buildé dans `dashboard/dist/` et servi automatiquement par le backend.
+Le dashboard est buildé dans `dashboard/dist/` et servi automatiquement par le backend Express.
 
-**Mode développement** (avec hot reload) :
+**Mode développement** (hot reload) :
 ```bash
 # Terminal 1 — bot
 npm start
 
-# Terminal 2 — dashboard dev
-cd dashboard && npm run dev
+# Terminal 2 — frontend
+cd dashboard && npm run dev   # accessible sur localhost:5173
 ```
 
 ---
@@ -258,7 +271,7 @@ Envoie une réponse **anonyme** (affiché comme "Support").
 ---
 
 ### `/priority`
-Change la priorité du ticket. **Support et Chef Support.**
+Change la priorité du ticket.
 
 | Option | Valeurs |
 |--------|---------|
@@ -271,7 +284,7 @@ Gestion de la liste noire. **Chef Support uniquement.**
 
 | Sous-commande | Description |
 |---------------|-------------|
-| `add` | Bannit un utilisateur (plus aucun ticket possible) |
+| `add` | Bannit un utilisateur |
 | `remove` | Retire un utilisateur de la blacklist |
 | `list` | Affiche la liste actuelle |
 
@@ -287,7 +300,7 @@ Réouvre le dernier ticket fermé d'un utilisateur.
 ---
 
 ### `/adduser`
-Ajoute un utilisateur comme **participant DM lié** au ticket.
+Ajoute un utilisateur comme participant DM lié au ticket.
 
 | Option | Type | Requis |
 |--------|------|--------|
@@ -338,7 +351,7 @@ Statistiques par agent : claims, fermetures, temps de réponse moyen, note moyen
 ## Boutons ticket
 
 ### `Transcript`
-Génère une page web temporaire (10 min) avec tous les messages du salon à cet instant.
+Génère une page web temporaire (10 min) avec tous les messages du salon.
 
 ### `Fermer et enregistrer le transcript`
 1. Demande confirmation
@@ -350,35 +363,19 @@ Génère une page web temporaire (10 min) avec tous les messages du salon à cet
 
 ---
 
-## Transcripts web
-
-Les transcripts sont hébergés temporairement par le bot sur `webServerPort`.
-
-### Fonctionnement
-1. Snapshot HTML/TXT stocké en base de données à la fermeture
-2. Les liens temporaires (bouton ou `/gettranscript`) durent **10 minutes**
-3. Les snapshots archivés sont consultables en permanence via le dashboard
-
-### Configuration requise
-```json
-"webServerPort": 3000,
-"webServerBaseUrl": "http://TON_IP:3000"
-```
-
----
-
 ## Base de données
 
 Tables créées automatiquement au démarrage.
 
 | Table | Description |
 |-------|-------------|
-| `tickets` | Tous les tickets (ouverts et fermés) avec subject, priority, timestamps |
+| `tickets` | Tous les tickets avec subject, priority, timestamps |
 | `ticket_participants` | Utilisateurs ajoutés via `/adduser` |
 | `transcript_snapshots` | Transcripts HTML + TXT archivés |
 | `admin_stats` | Statistiques par agent (claims, fermetures, notes, temps de réponse) |
 | `blacklist` | Utilisateurs bannis |
-| `ticket_ratings` | Notes de satisfaction (1–5 étoiles) laissées après fermeture |
+| `ticket_ratings` | Notes de satisfaction (1–5 étoiles) |
+| `dashboard_users` | Comptes du dashboard avec leurs rôles (`nouveau`, `support`, `fondateur`) |
 
 ---
 
@@ -402,7 +399,7 @@ Bot-ticketting/
 ├── index.js                  # Client Discord + chargement events/commandes
 ├── deploy-commands.js        # Enregistrement des slash commands
 ├── config.json               # Configuration (à créer, non versionné)
-├── config.example.json       # Exemple de configuration
+├── config.example.json       # Exemple de configuration complet
 │
 ├── commands/
 │   ├── reply.js              # Réponse avec pseudo (+ rate limit)
@@ -415,10 +412,10 @@ Bot-ticketting/
 │   ├── moveticket.js
 │   ├── oldtickets.js
 │   ├── gettranscript.js
-│   ├── priority.js           # Changer la priorité d'un ticket
-│   ├── blacklist.js          # Gestion de la blacklist
+│   ├── priority.js           # Priorité d'un ticket
+│   ├── blacklist.js          # Gestion blacklist
 │   ├── reopen.js             # Réouverture d'un ticket fermé
-│   └── staffstats.js         # Statistiques staff avec notes et temps de réponse
+│   └── staffstats.js         # Stats staff (notes + temps de réponse)
 │
 ├── events/
 │   ├── messageCreate.js      # Réception DMs, menu sujet, anti-spam
@@ -428,30 +425,46 @@ Bot-ticketting/
 │   ├── db.js                 # Pool de connexions MariaDB
 │   ├── ticketManager.js      # Logique principale des tickets
 │   ├── transcript.js         # Génération HTML/TXT
-│   ├── transcriptServer.js   # Serveur HTTP transcripts temporaires
-│   ├── inactiveTicketChecker.js  # Fermeture automatique des tickets inactifs
+│   ├── transcriptServer.js   # Pages temporaires (Map token → html)
+│   ├── inactiveTicketChecker.js  # Fermeture auto tickets inactifs
 │   ├── permissions.js        # Vérification des rôles staff
 │   ├── embeds.js             # Embeds Discord
 │   └── components.js         # Boutons Discord (sujet, notation)
 │
-└── web/                      # Backend dashboard (Express)
-│   ├── server.js             # Point d'entrée Express
+├── web/                      # Serveur web unifié (Express)
+│   ├── server.js             # Transcripts (/t/:token) + API + dashboard
 │   ├── middleware/
-│   │   └── auth.js           # Vérification de session
+│   │   ├── auth.js           # Vérification de session
+│   │   └── role.js           # Contrôle d'accès par rôle
 │   └── routes/
-│       ├── auth.js           # Login, logout, OAuth Discord
-│       ├── dashboard.js      # Stats et activité
-│       ├── tickets.js        # CRUD tickets
-│       ├── staff.js          # Statistiques staff
+│       ├── auth.js           # OAuth Discord, session, logout
+│       ├── dashboard.js      # Stats et graphique d'activité
+│       ├── tickets.js        # Lecture/modification tickets
+│       ├── staff.js          # Stats staff (filtrées par rôle)
 │       ├── blacklist.js      # Gestion blacklist
-│       ├── transcripts.js    # Consultation transcripts
-│       └── config.js         # Lecture/écriture config.json
+│       ├── transcripts.js    # Consultation transcripts archivés
+│       ├── config.js         # Lecture/écriture config.json
+│       └── users.js          # Gestion des rôles dashboard
 │
 └── dashboard/                # Frontend React + Vite + Tailwind
     ├── src/
-    │   ├── pages/            # Login, Dashboard, Tickets, Staff, Blacklist...
-    │   └── components/       # Sidebar, StatCard, Badge, Pagination
-    └── dist/                 # Build de production (généré par npm run build)
+    │   ├── pages/
+    │   │   ├── Login.jsx     # Connexion Discord OAuth
+    │   │   ├── Pending.jsx   # Page d'attente (rôle nouveau)
+    │   │   ├── Dashboard.jsx # Stats + graphique
+    │   │   ├── Tickets.jsx   # Liste + filtres
+    │   │   ├── TicketDetail.jsx
+    │   │   ├── Staff.jsx
+    │   │   ├── Blacklist.jsx
+    │   │   ├── Transcripts.jsx
+    │   │   ├── Users.jsx     # Gestion des rôles (fondateur)
+    │   │   └── Settings.jsx
+    │   └── components/
+    │       ├── Sidebar.jsx   # Navigation filtrée par rôle
+    │       ├── StatCard.jsx
+    │       ├── Badge.jsx
+    │       └── Pagination.jsx
+    └── dist/                 # Build de production (npm run build)
 ```
 
 ---
@@ -471,13 +484,16 @@ Bot-ticketting/
 → Vérifie que `webServerPort` est ouvert dans le firewall et que `webServerBaseUrl` est correct.
 
 **Le dashboard est inaccessible**  
-→ Vérifie que `config.dashboard` est présent dans `config.json` et que le port `dashboard.port` est ouvert.
+→ Vérifie que `webEnabled: true` est dans `config.json` et que `webServerPort` est ouvert.
 
-**Erreur OAuth Discord "not_in_guild"**  
+**Connexion Discord refusée — "not_in_guild"**  
 → L'utilisateur doit être membre du serveur configuré dans `guildId`.
 
-**Erreur OAuth Discord "no_permission"**  
-→ L'utilisateur n'a pas le rôle `allowedRoleId`. Assigne-lui le rôle ou change `allowedRoleId`.
+**Je suis bloqué sur la page d'attente**  
+→ Le fondateur doit te donner un rôle depuis la page **Utilisateurs** du dashboard.
+
+**Le fondateur ne peut pas se connecter**  
+→ Vérifie que `webFounderId` contient bien ton ID Discord (et non un nom d'utilisateur).
 
 **"Impossible de trouver la catégorie" dans /moveticket**  
 → Le nom doit correspondre **exactement** (casse incluse) au nom de la catégorie Discord.
