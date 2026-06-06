@@ -20,13 +20,16 @@ module.exports = {
       if (!user) return;
 
       const content = data.content?.trim() || '';
+      const attachments = Array.isArray(data.attachments)
+        ? data.attachments.map(a => ({ url: a.url, name: a.filename }))
+        : [];
 
-      if (!content) {
-        await user.send('? Envoie un message valide.').catch(() => null);
+      if (!content && attachments.length === 0) {
+        await user.send('Envoie un message ou un fichier.').catch(() => null);
         return;
       }
 
-      const result = await relayDmToTicket(client, user, content, []);
+      const result = await relayDmToTicket(client, user, content, attachments);
       await sendWelcomeDm(client, user, result.created);
     } catch (error) {
       console.error('Erreur RAW handler:', error);
