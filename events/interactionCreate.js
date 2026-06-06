@@ -1,4 +1,5 @@
-const { Events, AttachmentBuilder } = require('discord.js');
+const { Events } = require('discord.js');
+const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { ensureSupport } = require('../utils/permissions');
 const {
   getOpenTicketByChannelId,
@@ -71,14 +72,11 @@ module.exports = {
             return;
           }
 
-          const htmlFile = new AttachmentBuilder(
-            Buffer.from(saved.html, 'utf8'),
-            { name: `transcript-${saved.transcriptId}.html` }
-          );
+          const token = hostTranscript(saved.html);
+          const url = buildUrl(interaction.client.config.webServerBaseUrl, token);
 
           await interaction.editReply({
-            content: `Transcript enregistre.\nID du transcript : ${saved.transcriptId}`,
-            files: [htmlFile]
+            content: `Transcript enregistré (ID : ${saved.transcriptId})\nLien valable 10 minutes : ${url}`
           });
           return;
         }
