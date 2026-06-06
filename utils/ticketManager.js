@@ -145,6 +145,12 @@ async function createTicket(client, user, firstMessage, attachments = []) {
     if (existingChannel) {
       return { channel: existingChannel, ticket: existing, created: false };
     }
+    // Canal supprimé manuellement : fermeture du ticket orphelin avant d'en créer un nouveau
+    await query(
+      `UPDATE tickets SET status = 'closed', closed_at = NOW(), closed_by_tag = 'system'
+       WHERE id = ?`,
+      [existing.id]
+    );
   }
 
   const channel = await createTicketChannel(client, user);
