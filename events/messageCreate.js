@@ -2,7 +2,8 @@ const {
   relayDmToTicket,
   sendWelcomeDm,
   getAnyOpenTicketForUser,
-  isBlacklisted
+  isBlacklisted,
+  getDailyTicketCount
 } = require('../utils/ticketManager');
 const { subjectButtons } = require('../utils/components');
 
@@ -41,6 +42,14 @@ module.exports = {
       const openTicket = await getAnyOpenTicketForUser(user.id);
 
       if (!openTicket) {
+        // Anti-spam : limite quotidienne de tickets
+        const maxPerDay = client.config.maxTicketsPerDay ?? 3;
+        const dailyCount = await getDailyTicketCount(user.id);
+        if (dailyCount >= maxPerDay) {
+          await user.send(`Tu as déjà ouvert ${maxPerDay} ticket(s) aujourd'hui. Réessaie demain.`).catch(() => null);
+          return;
+        }
+
         // Menu de sujet si configuré
         const subjects = client.config.ticketSubjects;
         if (Array.isArray(subjects) && subjects.length > 0) {

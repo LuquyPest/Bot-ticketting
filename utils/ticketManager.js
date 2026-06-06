@@ -505,6 +505,15 @@ async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
   );
 }
 
+async function getDailyTicketCount(userId) {
+  const rows = await query(
+    `SELECT COUNT(*) AS cnt FROM tickets
+     WHERE owner_id = ? AND created_at >= CURDATE()`,
+    [userId]
+  );
+  return rows[0]?.cnt || 0;
+}
+
 async function updateLastMessage(ticketId) {
   await query('UPDATE tickets SET last_message_at = NOW(), warned_inactive = 0 WHERE id = ?', [ticketId]);
 }
@@ -610,5 +619,6 @@ module.exports = {
   getLastClosedTicketByOwnerId,
   reopenTicket,
   updateLastMessage,
-  recordStaffResponse
+  recordStaffResponse,
+  getDailyTicketCount
 };
