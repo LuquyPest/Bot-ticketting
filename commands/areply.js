@@ -2,7 +2,9 @@ const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
 const {
   getOpenTicketByChannelId,
-  getAllLinkedUserIds
+  getAllLinkedUserIds,
+  recordStaffResponse,
+  updateLastMessage
 } = require('../utils/ticketManager');
 
 module.exports = {
@@ -58,11 +60,10 @@ module.exports = {
       }
     }
 
-    await interaction.reply({
-      content: 'Envoye',
-      ephemeral: true
-    });
+    await recordStaffResponse(ticket.id, interaction.user);
+    await updateLastMessage(ticket.id);
 
+    await interaction.reply({ content: 'Envoye', ephemeral: true });
     await interaction.channel.send(msg);
   }
 };
