@@ -1,11 +1,12 @@
-const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
 const { getTranscriptById } = require('../utils/ticketManager');
+const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('gettranscript')
-    .setDescription('Récupère un transcript HTML par son ID')
+    .setDescription('Récupère un transcript par son ID et génère un lien temporaire')
     .addIntegerOption(option =>
       option.setName('transcriptid').setDescription('ID du transcript').setRequired(true)
     ),
@@ -14,22 +15,21 @@ module.exports = {
     const allowed = await ensureSupport(interaction, client);
     if (!allowed) return;
 
+    await interaction.deferReply({ ephemeral: true });
+
     const transcriptId = interaction.options.getInteger('transcriptid', true);
     const transcript = await getTranscriptById(transcriptId);
 
     if (!transcript) {
-      await interaction.reply({ content: '❌ Transcript introuvable.', ephemeral: true });
+      await interaction.editReply({ content: 'Transcript introuvable.' });
       return;
     }
 
-    const file = new AttachmentBuilder(Buffer.from(transcript.html, 'utf8'), {
-      name: `transcript-${transcript.id}.html`
-    });
+    const token = hostTranscript(transcript.html);
+    const url = buildUrl(client.config.webServerBaseUrl, token);
 
-    await interaction.reply({
-      content: `📝 Transcript #${transcript.id} du ticket #${transcript.ticket_id}`,
-      files: [file],
-      ephemeral: true
+    await interaction.editReply({
+      content: `Transcript #${transcript.id} (ticket #${transcript.ticket_id})\nLien valable 10 minutes : ${url}`
     });
   }
 };
