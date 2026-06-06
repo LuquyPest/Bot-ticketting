@@ -5,7 +5,9 @@ const {
   getOpenTicketByChannelId,
   saveTranscriptSnapshot,
   closeTicketWithTranscript,
-  getOldTicketsByUserId
+  getOldTicketsByUserId,
+  relayDmToTicket,
+  sendWelcomeDm
 } = require('../utils/ticketManager');
 const {
   closeConfirmationButtons,
@@ -21,6 +23,29 @@ module.exports = {
   async execute(client, interaction) {
     try {
       if (interaction.isButton()) {
+
+        // ── Boutons DM : sélection de sujet (pas de guild requis) ──
+        if (interaction.customId.startsWith('subject_')) {
+          const subject = interaction.customId.slice('subject_'.length);
+          const { pendingSubject } = require('./messageCreate');
+          const pending = pendingSubject.get(interaction.user.id);
+
+          await interaction.update({
+            content: `Sujet sélectionné : **${subject}**\nTon ticket est en cours de création...`,
+            components: []
+          });
+
+          const { content, attachments } = pending || { content: '', attachments: [] };
+          pendingSubject.delete(interaction.user.id);
+
+          const result = await relayDmToTicket(client, interaction.user, content, attachments, subject);
+          await sendWelcomeDm(client, interaction.user, result.created);
+          return;
+        }
+
+        // ── Boutons serveur : vérification staff ──
+        if (!interaction.guild) return;
+
         const allowed = await ensureSupport(interaction, client);
         if (!allowed) return;
 
