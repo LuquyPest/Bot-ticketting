@@ -69,9 +69,23 @@ function subjectButtons(subjects) {
   return rows;
 }
 
+function ratingButtons(ticketId, closedById) {
+  const stars = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'];
+  const styles = [ButtonStyle.Danger, ButtonStyle.Danger, ButtonStyle.Secondary, ButtonStyle.Success, ButtonStyle.Success];
+  return new ActionRowBuilder().addComponents(
+    stars.map((label, i) =>
+      new ButtonBuilder()
+        .setCustomId(`rating_${i + 1}_${ticketId}_${closedById}`)
+        .setLabel(label)
+        .setStyle(styles[i])
+    )
+  );
+}
+
 module.exports = {
   ticketButtons,
   closeConfirmationButtons,
   oldTicketsPaginationButtons,
-  subjectButtons
+  subjectButtons,
+  ratingButtons
 };
