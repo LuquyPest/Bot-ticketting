@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
-  FileText, Settings, LogOut, Bot, UserCog
+  FileText, Settings, LogOut, Bot, UserCog, ScrollText
 } from 'lucide-react';
 import { useAuth } from '../App';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ const ALL_NAV = [
   { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
   { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'] },
   { to: '/users',       label: 'Utilisateurs', icon: UserCog,         roles: ['fondateur'] },
+  { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] }
 ];
 
