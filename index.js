@@ -32,7 +32,7 @@ function loadCommands() {
     const command = require(path.join(commandsPath, file));
 
     if (!command?.data?.name || typeof command.execute !== 'function') {
-      console.warn(`Commande ignorée: ${file}`);
+      console.warn(`Commande ignorï¿½e: ${file}`);
       continue;
     }
 
@@ -45,14 +45,14 @@ function loadEvents() {
   const eventsPath = path.join(__dirname, 'events');
   const files = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
-  console.log('Events trouvés:', files);
+  console.log('Events trouvï¿½s:', files);
 
   for (const file of files) {
     const event = require(path.join(eventsPath, file));
-    console.log('Event chargé:', event?.name, 'depuis', file);
+    console.log('Event chargï¿½:', event?.name, 'depuis', file);
 
     if (!event?.name || typeof event.execute !== 'function') {
-      console.warn(`Événement ignoré: ${file}`);
+      console.warn(`ï¿½vï¿½nement ignorï¿½: ${file}`);
       continue;
     }
 
@@ -64,13 +64,6 @@ function loadEvents() {
   }
 }
 
-// ?? DEBUG RAW (ULTRA IMPORTANT)
-client.on('raw', (packet) => {
-  if (packet.t === 'MESSAGE_CREATE') {
-    console.log('?? RAW MESSAGE DETECTED:', packet.d.content);
-  }
-});
-
 // ?? Init
 loadCommands();
 loadEvents();
@@ -80,5 +73,5 @@ client.login(config.token);
 
 // ? Ready
 client.once('ready', () => {
-  console.log(`? Connecté en tant que ${client.user.tag}`);
+  console.log(`? Connectï¿½ en tant que ${client.user.tag}`);
 });
