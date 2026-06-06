@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users as UsersIcon, RefreshCw } from 'lucide-react';
+import { RefreshCw, Lightbulb } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -43,14 +43,19 @@ export default function Users() {
     }
   };
 
-  const config = require('../../config.json');
+  const pendingCount = users.filter(u => u.role === 'nouveau').length;
+  const suggestedCount = users.filter(u => u.role === 'nouveau' && u.discord_has_support).length;
 
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-100">Gestion des utilisateurs</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{users.length} utilisateur(s) connecté(s) au dashboard</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {users.length} utilisateur(s)
+            {pendingCount > 0 && <span className="ml-2 text-amber-400">· {pendingCount} en attente</span>}
+            {suggestedCount > 0 && <span className="ml-2 text-indigo-400">· {suggestedCount} suggestion(s)</span>}
+          </p>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors" title="Rafraîchir">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -62,7 +67,7 @@ export default function Users() {
           <thead>
             <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
-              <th className="text-left px-4 py-3 font-medium">Rôle actuel</th>
+              <th className="text-left px-4 py-3 font-medium">Rôle dashboard</th>
               <th className="text-left px-4 py-3 font-medium">Première connexion</th>
               <th className="text-left px-4 py-3 font-medium">Dernière connexion</th>
               <th className="text-left px-4 py-3 font-medium">Changer le rôle</th>
@@ -75,12 +80,16 @@ export default function Users() {
               <tr><td colSpan={5} className="text-center py-10 text-slate-600">Aucun utilisateur</td></tr>
             ) : users.map(u => {
               const isMe = u.user_id === me?.id;
+              const isSuggested = u.role === 'nouveau' && u.discord_has_support;
               const avatarUrl = u.avatar
                 ? `https://cdn.discordapp.com/avatars/${u.user_id}/${u.avatar}.webp?size=32`
                 : null;
 
               return (
-                <tr key={u.user_id} className="border-b border-slate-800/50 last:border-0 hover:bg-slate-800/30 transition-colors">
+                <tr
+                  key={u.user_id}
+                  className={`border-b border-slate-800/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-slate-800/30'}`}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       {avatarUrl
@@ -88,7 +97,15 @@ export default function Users() {
                         : <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">{u.username?.[0]?.toUpperCase()}</div>
                       }
                       <div>
-                        <p className="text-slate-200 font-medium">{u.username}{isMe && <span className="ml-1.5 text-xs text-slate-500">(moi)</span>}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-slate-200 font-medium">{u.username}</p>
+                          {isMe && <span className="text-xs text-slate-500">(moi)</span>}
+                          {isSuggested && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 text-xs">
+                              <Lightbulb size={10} /> Suggéré
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-600 font-mono">{u.user_id}</p>
                       </div>
                     </div>
@@ -104,16 +121,27 @@ export default function Users() {
                     {isMe ? (
                       <span className="text-xs text-slate-600 italic">—</span>
                     ) : (
-                      <select
-                        value={u.role}
-                        disabled={updating === u.user_id}
-                        onChange={e => changeRole(u.user_id, e.target.value)}
-                        className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-50"
-                      >
-                        <option value="nouveau">Nouveau</option>
-                        <option value="support">Support</option>
-                        <option value="fondateur">Fondateur</option>
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={u.role}
+                          disabled={updating === u.user_id}
+                          onChange={e => changeRole(u.user_id, e.target.value)}
+                          className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                        >
+                          <option value="nouveau">Nouveau</option>
+                          <option value="support">Support</option>
+                          <option value="fondateur">Fondateur</option>
+                        </select>
+                        {isSuggested && (
+                          <button
+                            onClick={() => changeRole(u.user_id, 'support')}
+                            disabled={updating === u.user_id}
+                            className="px-2 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 text-xs hover:bg-indigo-600/30 transition-colors disabled:opacity-50 whitespace-nowrap"
+                          >
+                            → Support
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -123,11 +151,14 @@ export default function Users() {
         </table>
       </div>
 
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 space-y-1.5">
         <p className="text-xs text-slate-500 leading-relaxed">
           <span className="text-amber-400 font-medium">Nouveau</span> — Accès refusé, en attente de validation. ·{' '}
-          <span className="text-emerald-400 font-medium">Support</span> — Peut voir les stats générales et ses propres statistiques. ·{' '}
-          <span className="text-indigo-400 font-medium">Fondateur</span> — Accès complet : paramètres, blacklist, transcripts, gestion des utilisateurs.
+          <span className="text-emerald-400 font-medium">Support</span> — Stats générales + ses propres statistiques. ·{' '}
+          <span className="text-indigo-400 font-medium">Fondateur</span> — Accès complet.
+        </p>
+        <p className="text-xs text-slate-600">
+          <span className="text-indigo-400">💡 Suggéré</span> — Cet utilisateur possède le rôle Support sur Discord. C'est une suggestion, pas une attribution automatique.
         </p>
       </div>
     </div>

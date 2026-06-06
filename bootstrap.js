@@ -204,6 +204,7 @@ async function ensureTables(config) {
       username VARCHAR(100) NOT NULL,
       avatar VARCHAR(64) DEFAULT NULL,
       role ENUM('nouveau', 'support', 'fondateur') NOT NULL DEFAULT 'nouveau',
+      discord_has_support TINYINT(1) NOT NULL DEFAULT 0,
       first_login DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       last_login DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -221,7 +222,8 @@ async function ensureTables(config) {
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_ratings INT NOT NULL DEFAULT 0`,
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_rating_score INT NOT NULL DEFAULT 0`,
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_count INT NOT NULL DEFAULT 0`,
-    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`
+    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`,
+    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`
   ];
 
   for (const migration of migrations) {
@@ -258,7 +260,7 @@ async function verifySchema(connection) {
     ],
     blacklist: ['user_id', 'user_tag', 'reason', 'added_by_id', 'added_by_tag', 'added_at'],
     ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at'],
-    dashboard_users: ['user_id', 'username', 'avatar', 'role', 'first_login', 'last_login']
+    dashboard_users: ['user_id', 'username', 'avatar', 'role', 'discord_has_support', 'first_login', 'last_login']
   };
 
   for (const [table, columns] of Object.entries(expected)) {

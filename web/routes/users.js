@@ -5,7 +5,7 @@ const { query } = require('../../utils/db');
 router.get('/', async (req, res) => {
   try {
     const users = await query(
-      'SELECT user_id, username, avatar, role, first_login, last_login FROM dashboard_users ORDER BY last_login DESC'
+      'SELECT user_id, username, avatar, role, discord_has_support, first_login, last_login FROM dashboard_users ORDER BY last_login DESC'
     );
     res.json(users);
   } catch (err) {
