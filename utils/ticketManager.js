@@ -505,10 +505,40 @@ async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
   );
 }
 
+async function updateLastMessage(ticketId) {
+  await query('UPDATE tickets SET last_message_at = NOW(), warned_inactive = 0 WHERE id = ?', [ticketId]);
+}
+
+async function recordStaffResponse(ticketId, staffUser) {
+  const rows = await query(
+    'SELECT created_at, first_response_at FROM tickets WHERE id = ? LIMIT 1',
+    [ticketId]
+  );
+  if (!rows.length || rows[0].first_response_at) return;
+
+  const createdAt = new Date(rows[0].created_at).getTime();
+  const responseSeconds = Math.floor((Date.now() - createdAt) / 1000);
+
+  await query(
+    'UPDATE tickets SET first_response_at = NOW() WHERE id = ?',
+    [ticketId]
+  );
+
+  await query(
+    `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed, total_response_count, total_response_seconds)
+     VALUES (?, ?, 0, 0, 1, ?)
+     ON DUPLICATE KEY UPDATE
+       admin_tag = VALUES(admin_tag),
+       total_response_count = total_response_count + 1,
+       total_response_seconds = total_response_seconds + VALUES(total_response_seconds)`,
+    [staffUser.id, staffUser.tag, responseSeconds]
+  );
+}
+
 async function getAdminStats() {
   return query(
     `SELECT admin_id, admin_tag, tickets_claimed, tickets_closed,
-            total_ratings, total_rating_score,
+            total_ratings, total_rating_score, total_response_count, total_response_seconds,
             updated_at
      FROM admin_stats
      ORDER BY tickets_closed DESC, tickets_claimed DESC, admin_tag ASC`
@@ -578,5 +608,7 @@ module.exports = {
   removeFromBlacklist,
   getBlacklist,
   getLastClosedTicketByOwnerId,
-  reopenTicket
+  reopenTicket,
+  updateLastMessage,
+  recordStaffResponse
 };
