@@ -223,7 +223,9 @@ async function ensureTables(config) {
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_rating_score INT NOT NULL DEFAULT 0`,
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_count INT NOT NULL DEFAULT 0`,
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`,
-    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`
+    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`,
+    // Fix #6 : contrainte d'unicité pour empêcher les doubles notations
+    `CREATE UNIQUE INDEX IF NOT EXISTS uniq_rating_owner ON ticket_ratings (ticket_id, owner_id)`
   ];
 
   for (const migration of migrations) {

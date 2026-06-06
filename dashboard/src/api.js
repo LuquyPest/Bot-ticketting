@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api', withCredentials: true });
+// Fix #4 : header custom pour la protection CSRF côté serveur
+const api = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+  headers: { 'X-Requested-With': 'XMLHttpRequest' }
+});
 
 api.interceptors.response.use(
   r => r,

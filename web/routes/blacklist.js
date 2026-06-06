@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
 
+// Fix #10 : format snowflake Discord (17-20 chiffres)
+const SNOWFLAKE_RE = /^\d{17,20}$/;
+
 router.get('/', async (req, res) => {
   try {
     const list = await query('SELECT * FROM blacklist ORDER BY added_at DESC');
@@ -17,8 +20,15 @@ router.post('/', async (req, res) => {
     const { userId, userTag, reason } = req.body;
     if (!userId || !userTag) return res.status(400).json({ error: 'userId et userTag requis' });
 
+    // Fix #10 : validation stricte des entrées
+    if (!SNOWFLAKE_RE.test(userId)) return res.status(400).json({ error: 'userId invalide' });
+    if (typeof userTag !== 'string' || userTag.length > 100) return res.status(400).json({ error: 'userTag invalide' });
+    if (reason !== undefined && reason !== null && (typeof reason !== 'string' || reason.length > 500)) {
+      return res.status(400).json({ error: 'La raison ne peut pas dépasser 500 caractères' });
+    }
+
     const adminTag = req.session.user.username;
-    const adminId = req.session.user.id || 'dashboard';
+    const adminId = req.session.user.id;
 
     await query(
       `INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag)
@@ -35,6 +45,10 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/:userId', async (req, res) => {
+  // Fix #10 : valider le paramètre d'URL
+  if (!SNOWFLAKE_RE.test(req.params.userId)) {
+    return res.status(400).json({ error: 'userId invalide' });
+  }
   try {
     await query('DELETE FROM blacklist WHERE user_id = ?', [req.params.userId]);
     res.json({ ok: true });
