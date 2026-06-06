@@ -3,6 +3,7 @@ const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const config = require('./config.json');
 const { startTranscriptServer } = require('./utils/transcriptServer');
+const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
 
 // ?? Client Discord (FULL FIX)
 const client = new Client({
@@ -33,7 +34,7 @@ function loadCommands() {
     const command = require(path.join(commandsPath, file));
 
     if (!command?.data?.name || typeof command.execute !== 'function') {
-      console.warn(`Commande ignor�e: ${file}`);
+      console.warn(`Commande ignorée: ${file}`);
       continue;
     }
 
@@ -46,14 +47,14 @@ function loadEvents() {
   const eventsPath = path.join(__dirname, 'events');
   const files = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
-  console.log('Events trouv�s:', files);
+  console.log('Events trouvés:', files);
 
   for (const file of files) {
     const event = require(path.join(eventsPath, file));
-    console.log('Event charg�:', event?.name, 'depuis', file);
+    console.log('Event chargé:', event?.name, 'depuis', file);
 
     if (!event?.name || typeof event.execute !== 'function') {
-      console.warn(`�v�nement ignor�: ${file}`);
+      console.warn(`Événement ignoré: ${file}`);
       continue;
     }
 
@@ -75,5 +76,6 @@ client.login(config.token);
 
 // ? Ready
 client.once('ready', () => {
-  console.log(`? Connect� en tant que ${client.user.tag}`);
+  console.log(`? Connecté en tant que ${client.user.tag}`);
+  startInactiveChecker(client);
 });

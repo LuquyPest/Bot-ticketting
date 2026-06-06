@@ -396,6 +396,32 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
   return transcript;
 }
 
+async function getInactiveTickets(warningHours, closeHours) {
+  const toWarn = await query(
+    `SELECT * FROM tickets
+     WHERE status = 'open'
+       AND last_message_at IS NOT NULL
+       AND last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
+       AND last_message_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+       AND warned_inactive = 0`,
+    [warningHours, closeHours]
+  );
+
+  const toClose = await query(
+    `SELECT * FROM tickets
+     WHERE status = 'open'
+       AND last_message_at IS NOT NULL
+       AND last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)`,
+    [closeHours]
+  );
+
+  return { toWarn, toClose };
+}
+
+async function markWarnedInactive(ticketId) {
+  await query('UPDATE tickets SET warned_inactive = 1 WHERE id = ?', [ticketId]);
+}
+
 async function setPriority(ticketId, priority) {
   await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
 }
@@ -483,5 +509,7 @@ module.exports = {
   logAddUser,
   logRemoveUser,
   saveRating,
-  setPriority
+  setPriority,
+  getInactiveTickets,
+  markWarnedInactive
 };
