@@ -28,7 +28,8 @@ module.exports = {
 
     const inputName = interaction.options.getString('categorie', true).trim().toLowerCase();
 
-    const categories = interaction.guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory);
+    const allChannels = await interaction.guild.channels.fetch();
+    const categories = allChannels.filter(c => c.type === ChannelType.GuildCategory);
     const matches = categories.filter(cat => cat.name.toLowerCase() === inputName);
 
     if (matches.size === 0) {
