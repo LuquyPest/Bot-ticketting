@@ -1,0 +1,41 @@
+{
+  "token": "TON_BOT_TOKEN_ICI",
+  "clientId": "ID_APPLICATION_DU_BOT",
+  "guildId": "ID_DE_TON_SERVEUR",
+
+  "ticketCategoryId": "ID_DE_LA_CATEGORIE_TICKETS",
+  "supportRoleId": "ID_DU_ROLE_SUPPORT",
+  "chiefSupportRoleId": "ID_DU_ROLE_CHEF_SUPPORT",
+  "ticketPrefix": "ticket",
+
+  "closeLogChannelId": "ID_SALON_LOG_FERMETURES",
+  "claimLogChannelId": "ID_SALON_LOG_CLAIMS",
+  "moveLogChannelId": "ID_SALON_LOG_DEPLACEMENTS",
+  "addUserLogChannelId": "ID_SALON_LOG_AJOUT_USER",
+  "removeUserLogChannelId": "ID_SALON_LOG_RETRAIT_USER",
+
+  "webServerPort": 3000,
+  "webServerBaseUrl": "http://ton-domaine.com:3000",
+
+  "welcomeMessage": "Bonjour ! Ton ticket a bien été créé. Le staff va te répondre ici dès que possible.",
+
+  "ticketSubjects": [
+    "Problème technique",
+    "Question générale",
+    "Signalement",
+    "Autre"
+  ],
+
+  "maxTicketsPerDay": 3,
+  "inactiveWarningHours": 24,
+  "inactiveHours": 48,
+  "replyRateLimitSeconds": 3,
+
+  "database": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "user": "ton_user_db",
+    "password": "ton_mot_de_passe_db",
+    "database": "discord_tickets"
+  }
+}
