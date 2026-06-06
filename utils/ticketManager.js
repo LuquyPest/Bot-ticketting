@@ -137,7 +137,19 @@ async function createTicketChannel(client, user) {
   });
 }
 
+const creatingTicketFor = new Set();
+
 async function createTicket(client, user, firstMessage, attachments = []) {
+  if (creatingTicketFor.has(user.id)) {
+    const existing = await getOpenTicketByOwnerId(user.id);
+    if (existing) {
+      const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
+      if (ch) return { channel: ch, ticket: existing, created: false };
+    }
+  }
+  creatingTicketFor.add(user.id);
+
+  try {
   const existing = await getOpenTicketByOwnerId(user.id);
 
   if (existing) {
@@ -172,6 +184,9 @@ async function createTicket(client, user, firstMessage, attachments = []) {
   }
 
   return { channel, ticket, created: true };
+  } finally {
+    creatingTicketFor.delete(user.id);
+  }
 }
 
 async function relayDmToTicket(client, user, content, attachments = []) {
