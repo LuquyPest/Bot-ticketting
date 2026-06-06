@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js'
 const config = require('./config.json');
 const { startTranscriptServer } = require('./utils/transcriptServer');
 const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
+const { startDashboard } = require('./web/server');
 
 // ?? Client Discord (FULL FIX)
 const client = new Client({
@@ -70,6 +71,7 @@ function loadEvents() {
 loadCommands();
 loadEvents();
 startTranscriptServer(config.webServerPort || 3000);
+if (config.dashboard) startDashboard();
 
 // ?? Connexion
 client.login(config.token);
