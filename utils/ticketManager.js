@@ -396,6 +396,30 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
   return transcript;
 }
 
+async function isBlacklisted(userId) {
+  const rows = await query('SELECT 1 FROM blacklist WHERE user_id = ? LIMIT 1', [userId]);
+  return rows.length > 0;
+}
+
+async function addToBlacklist(userId, userTag, reason, addedByUser) {
+  await query(
+    `INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE user_tag = VALUES(user_tag), reason = VALUES(reason),
+       added_by_id = VALUES(added_by_id), added_by_tag = VALUES(added_by_tag)`,
+    [userId, userTag, reason || null, addedByUser.id, addedByUser.tag]
+  );
+}
+
+async function removeFromBlacklist(userId) {
+  const result = await query('DELETE FROM blacklist WHERE user_id = ?', [userId]);
+  return result.affectedRows > 0;
+}
+
+async function getBlacklist() {
+  return query('SELECT * FROM blacklist ORDER BY added_at DESC');
+}
+
 async function getInactiveTickets(warningHours, closeHours) {
   const toWarn = await query(
     `SELECT * FROM tickets
@@ -511,5 +535,9 @@ module.exports = {
   saveRating,
   setPriority,
   getInactiveTickets,
-  markWarnedInactive
+  markWarnedInactive,
+  isBlacklisted,
+  addToBlacklist,
+  removeFromBlacklist,
+  getBlacklist
 };
