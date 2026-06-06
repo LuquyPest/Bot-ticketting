@@ -47,6 +47,8 @@ function validateConfig(config) {
     'supportRoleId',
     'chiefSupportRoleId',
     'ticketPrefix',
+    'webServerPort',
+    'webServerBaseUrl',
     'database'
   ];
 
@@ -225,7 +227,7 @@ async function verifyDiscordConfig(config) {
   try {
     const guild = await client.guilds.fetch(config.guildId).catch(() => null);
     if (!guild) fail(`Serveur Discord introuvable avec guildId=${config.guildId}`);
-    ok(`Serveur trouvé: ${guild.name || guild.id}`);
+    ok(`Serveur trouvï¿½: ${guild.name || guild.id}`);
 
     const channels = await guild.channels.fetch();
     const roles = await guild.roles.fetch();
