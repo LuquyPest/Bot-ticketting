@@ -244,6 +244,17 @@ async function setClaim(client, ticketId, adminUser) {
     [adminUser ? adminUser.id : null, ticketId]
   );
 
+  if (adminUser) {
+    await query(
+      `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed)
+       VALUES (?, ?, 1, 0)
+       ON DUPLICATE KEY UPDATE
+         admin_tag = VALUES(admin_tag),
+         tickets_claimed = tickets_claimed + 1`,
+      [adminUser.id, adminUser.tag]
+    );
+  }
+
   if (adminUser && client.config.claimLogChannelId) {
     const logChannel = await client.channels.fetch(client.config.claimLogChannelId).catch(() => null);
     if (logChannel && logChannel.isTextBased()) {
@@ -307,6 +318,15 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
          closed_by_tag = ?
      WHERE id = ?`,
     [closedByUser.tag, ticket.id]
+  );
+
+  await query(
+    `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed)
+     VALUES (?, ?, 0, 1)
+     ON DUPLICATE KEY UPDATE
+       admin_tag = VALUES(admin_tag),
+       tickets_closed = tickets_closed + 1`,
+    [closedByUser.id, closedByUser.tag]
   );
 
   const updatedTicket = await getTicketByChannelId(channel.id);
