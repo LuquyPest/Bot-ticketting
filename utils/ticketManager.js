@@ -366,6 +366,16 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
     }
   }
 
+  // Notation de satisfaction envoyée uniquement au propriétaire
+  const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
+  if (owner) {
+    const { ratingButtons } = require('./components');
+    await owner.send({
+      content: 'Comment évalues-tu la qualité du support sur ce ticket ?',
+      components: [ratingButtons(ticket.id, closedByUser.id)]
+    }).catch(() => null);
+  }
+
   if (client.config.closeLogChannelId) {
     const logChannel = await client.channels.fetch(client.config.closeLogChannelId).catch(() => null);
     if (logChannel && logChannel.isTextBased()) {
@@ -386,9 +396,29 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
   return transcript;
 }
 
+async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
+  await query(
+    `INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating)
+     VALUES (?, ?, ?, ?)`,
+    [ticketId, ownerId, closedById, rating]
+  );
+
+  await query(
+    `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score)
+     VALUES (?, ?, 0, 0, 1, ?)
+     ON DUPLICATE KEY UPDATE
+       admin_tag = VALUES(admin_tag),
+       total_ratings = total_ratings + 1,
+       total_rating_score = total_rating_score + VALUES(total_rating_score)`,
+    [closedById, closedByTag, rating]
+  );
+}
+
 async function getAdminStats() {
   return query(
-    `SELECT admin_id, admin_tag, tickets_claimed, tickets_closed, updated_at
+    `SELECT admin_id, admin_tag, tickets_claimed, tickets_closed,
+            total_ratings, total_rating_score,
+            updated_at
      FROM admin_stats
      ORDER BY tickets_closed DESC, tickets_claimed DESC, admin_tag ASC`
   );
@@ -447,5 +477,6 @@ module.exports = {
   getAdminStats,
   logMoveTicket,
   logAddUser,
-  logRemoveUser
+  logRemoveUser,
+  saveRating
 };

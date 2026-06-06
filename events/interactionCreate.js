@@ -7,7 +7,8 @@ const {
   closeTicketWithTranscript,
   getOldTicketsByUserId,
   relayDmToTicket,
-  sendWelcomeDm
+  sendWelcomeDm,
+  saveRating
 } = require('../utils/ticketManager');
 const {
   closeConfirmationButtons,
@@ -40,6 +41,26 @@ module.exports = {
 
           const result = await relayDmToTicket(client, interaction.user, content, attachments, subject);
           await sendWelcomeDm(client, interaction.user, result.created);
+          return;
+        }
+
+        // ── Boutons DM : notation de satisfaction ──
+        if (interaction.customId.startsWith('rating_')) {
+          const parts = interaction.customId.split('_');
+          const rating = parseInt(parts[1]);
+          const ticketId = parseInt(parts[2]);
+          const closedById = parts[3];
+
+          const closedByUser = await client.users.fetch(closedById).catch(() => null);
+          const closedByTag = closedByUser?.tag || closedById;
+
+          await saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);
+
+          const stars = '⭐'.repeat(rating);
+          await interaction.update({
+            content: `Merci pour ton avis ! Tu as mis ${stars} (${rating}/5).`,
+            components: []
+          });
           return;
         }
 
