@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const crypto = require('crypto');
 const { query } = require('../../utils/db');
 
 function cfg() {
@@ -15,18 +16,28 @@ router.get('/me', (req, res) => {
 
 router.get('/discord', (req, res) => {
   const config = cfg();
+  // Fix #8 : state aléatoire pour protéger contre le CSRF OAuth
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
   const url = new URL('https://discord.com/oauth2/authorize');
   url.searchParams.set('client_id', config.clientId);
   url.searchParams.set('redirect_uri', config.dashboard.discordCallbackUrl);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', 'identify guilds.members.read');
+  url.searchParams.set('state', state);
   res.redirect(url.toString());
 });
 
 router.get('/discord/callback', async (req, res) => {
   const config = cfg();
-  const { code } = req.query;
+  const { code, state } = req.query;
   if (!code) return res.redirect('/login?error=no_code');
+
+  // Fix #8 : valider le state OAuth pour bloquer le CSRF
+  if (!state || state !== req.session.oauthState) {
+    return res.redirect('/login?error=invalid_state');
+  }
+  delete req.session.oauthState;
 
   try {
     const { data: token } = await axios.post(

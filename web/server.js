@@ -9,25 +9,51 @@ const EXPIRED_HTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"
 h1{color:#edf2ff;font-size:24px;margin:0}p{margin:0;font-size:15px}</style></head>
 <body><h1>Transcript expiré</h1><p>Cette page n'est disponible que 10 minutes après sa génération.</p></body></html>`;
 
+const config = require('../config.json');
+
+// Fix #2 / #7 : secret obligatoire — jamais de fallback faible
+if (!config.dashboard?.sessionSecret) {
+  throw new Error('FATAL: dashboard.sessionSecret doit être défini dans config.json');
+}
+
 const app = express();
+
+// Fix #1 : headers de sécurité globaux
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  next();
+});
+
+// Fix #3 : session initialisée une seule fois (plus de new MemoryStore par requête)
+app.use(session({
+  secret: config.dashboard.sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' }
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Fix #4 : protection CSRF via header custom sur toutes les requêtes mutantes
 app.use((req, res, next) => {
-  const config = require('../config.json');
-  session({
-    secret: config.dashboard?.sessionSecret || 'please-change-this-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' }
-  })(req, res, next);
+  if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
+    if (req.headers['x-requested-with'] !== 'XMLHttpRequest') {
+      return res.status(403).json({ error: 'Requête non autorisée' });
+    }
+  }
+  next();
 });
 
-// Transcripts temporaires
+// Transcripts temporaires (public) — Fix #1 : CSP stricte sur cette page
 app.get('/t/:token', (req, res) => {
   const page = pages.get(req.params.token);
   if (!page) return res.status(410).type('html').send(EXPIRED_HTML);
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'none'; style-src 'unsafe-inline'; img-src https://cdn.discordapp.com data:; media-src https://cdn.discordapp.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;"
+  );
   res.type('html').send(page.html);
 });
 
@@ -56,7 +82,6 @@ if (fs.existsSync(distPath)) {
 }
 
 function startWebServer() {
-  const config = require('../config.json');
   const port = config.webServerPort || 3000;
   app.listen(port, () => console.log(`Serveur web démarré → http://localhost:${port}`));
 }

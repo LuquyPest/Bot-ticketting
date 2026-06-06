@@ -1,6 +1,7 @@
 const { Events } = require('discord.js');
 const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { ensureSupport } = require('../utils/permissions');
+const { query } = require('../utils/db');
 const {
   getOpenTicketByChannelId,
   saveTranscriptSnapshot,
@@ -49,10 +50,37 @@ module.exports = {
           const parts = interaction.customId.split('_');
           const rating = parseInt(parts[1]);
           const ticketId = parseInt(parts[2]);
-          const closedById = parts[3];
 
+          // Fix #6 : valider que rating et ticketId sont bien des nombres
+          if (isNaN(rating) || rating < 1 || rating > 5 || isNaN(ticketId)) {
+            await interaction.reply({ content: 'Interaction invalide.', ephemeral: true });
+            return;
+          }
+
+          // Fix #6 : vérifier en base que ce ticket appartient bien à cet utilisateur
+          const [ticket] = await query(
+            'SELECT id, claimed_by, closed_by_tag FROM tickets WHERE id = ? AND owner_id = ? AND status = "closed"',
+            [ticketId, interaction.user.id]
+          );
+          if (!ticket) {
+            await interaction.reply({ content: 'Tu ne peux pas noter ce ticket.', ephemeral: true });
+            return;
+          }
+
+          // Fix #6 : empêcher les doubles notations
+          const [existing] = await query(
+            'SELECT id FROM ticket_ratings WHERE ticket_id = ? AND owner_id = ?',
+            [ticketId, interaction.user.id]
+          );
+          if (existing) {
+            await interaction.update({ content: 'Tu as déjà noté ce ticket.', components: [] });
+            return;
+          }
+
+          // Fix #6 : récupérer closedById depuis la base, pas depuis le customId forgeable
+          const closedById = ticket.claimed_by;
           const closedByUser = await client.users.fetch(closedById).catch(() => null);
-          const closedByTag = closedByUser?.tag || closedById;
+          const closedByTag = closedByUser?.tag || ticket.closed_by_tag || closedById;
 
           await saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);
 

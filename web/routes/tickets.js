@@ -7,9 +7,17 @@ router.get('/', async (req, res) => {
     const { status, priority, subject, page = 1 } = req.query;
     const limit = 20;
     const offset = (parseInt(page) - 1) * limit;
+    const isSupport = req.session.user.role === 'support';
 
     const where = [];
     const params = [];
+
+    // Fix #5 (IDOR) : support ne voit que ses propres tickets
+    if (isSupport) {
+      where.push('claimed_by = ?');
+      params.push(req.session.user.id);
+    }
+
     if (status) { where.push('status = ?'); params.push(status); }
     if (priority) { where.push('priority = ?'); params.push(priority); }
     if (subject) { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
@@ -34,6 +42,11 @@ router.get('/:id', async (req, res) => {
   try {
     const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+
+    // Fix #5 (IDOR) : support ne peut accéder qu'aux tickets qu'il a pris en charge
+    if (req.session.user.role === 'support' && ticket.claimed_by !== req.session.user.id) {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
 
     const [participants, transcript, rating] = await Promise.all([
       query('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),

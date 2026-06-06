@@ -5,26 +5,43 @@ const path = require('path');
 
 const CONFIG_PATH = path.join(__dirname, '../../config.json');
 
+// Fix #9 : allowlist stricte — uniquement les champs configurables, pas les secrets ni IDs sensibles
 const SAFE_FIELDS = [
   'ticketPrefix', 'welcomeMessage', 'ticketSubjects',
   'maxTicketsPerDay', 'inactiveWarningHours', 'inactiveHours',
   'replyRateLimitSeconds', 'closeLogChannelId', 'claimLogChannelId',
-  'moveLogChannelId', 'addUserLogChannelId', 'removeUserLogChannelId'
+  'moveLogChannelId', 'addUserLogChannelId', 'removeUserLogChannelId',
+  'webEnabled', 'webServerPort', 'webServerBaseUrl'
 ];
-const SAFE_DASH_FIELDS = ['port', 'authMethods', 'allowedRoleId'];
+
+// Fix #10 : validateurs par champ pour le PATCH
+const VALIDATORS = {
+  ticketPrefix:           v => typeof v === 'string' && v.length >= 1 && v.length <= 20,
+  welcomeMessage:         v => typeof v === 'string' && v.length <= 2000,
+  ticketSubjects:         v => Array.isArray(v) && v.length <= 25 && v.every(s => typeof s === 'string' && s.length <= 100),
+  maxTicketsPerDay:       v => Number.isInteger(v) && v >= 1 && v <= 100,
+  inactiveWarningHours:   v => Number.isInteger(v) && v >= 1 && v <= 720,
+  inactiveHours:          v => Number.isInteger(v) && v >= 1 && v <= 720,
+  replyRateLimitSeconds:  v => Number.isInteger(v) && v >= 0 && v <= 300,
+  closeLogChannelId:      v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
+  claimLogChannelId:      v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
+  moveLogChannelId:       v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
+  addUserLogChannelId:    v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
+  removeUserLogChannelId: v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
+  webEnabled:             v => typeof v === 'boolean',
+  webServerPort:          v => Number.isInteger(v) && v >= 1 && v <= 65535,
+  webServerBaseUrl:       v => typeof v === 'string' && v.length <= 200,
+};
 
 router.get('/', (req, res) => {
   try {
     const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    // Mask secrets
-    if (cfg.token) cfg.token = '***';
-    if (cfg.database?.password) cfg.database.password = '***';
-    if (cfg.dashboard) {
-      if (cfg.dashboard.discordClientSecret) cfg.dashboard.discordClientSecret = '***';
-      if (cfg.dashboard.sessionSecret) cfg.dashboard.sessionSecret = '***';
-      if (cfg.dashboard.password) cfg.dashboard.password = '***';
+    // Approche allowlist : uniquement les champs configurables, aucun secret ni ID Discord interne
+    const safe = {};
+    for (const field of SAFE_FIELDS) {
+      if (field in cfg) safe[field] = cfg[field];
     }
-    res.json(cfg);
+    res.json(safe);
   } catch (err) {
     res.status(500).json({ error: 'Impossible de lire config.json' });
   }
@@ -36,14 +53,12 @@ router.patch('/', (req, res) => {
     const updates = req.body;
 
     for (const field of SAFE_FIELDS) {
-      if (field in updates) cfg[field] = updates[field];
-    }
-
-    if (updates.dashboard && typeof updates.dashboard === 'object') {
-      cfg.dashboard = cfg.dashboard || {};
-      for (const field of SAFE_DASH_FIELDS) {
-        if (field in updates.dashboard) cfg.dashboard[field] = updates.dashboard[field];
+      if (!(field in updates)) continue;
+      const validator = VALIDATORS[field];
+      if (validator && !validator(updates[field])) {
+        return res.status(400).json({ error: `Valeur invalide pour le champ "${field}"` });
       }
+      cfg[field] = updates[field];
     }
 
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
