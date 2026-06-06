@@ -68,17 +68,18 @@ async function getAllLinkedUserIds(ticketId) {
   return [...new Set(ids)];
 }
 
-async function createTicketDb(channelId, user) {
+async function createTicketDb(channelId, user, subject = null) {
   const result = await query(
-    'INSERT INTO tickets (channel_id, owner_id, owner_tag) VALUES (?, ?, ?)',
-    [channelId, user.id, user.tag]
+    'INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, last_message_at) VALUES (?, ?, ?, ?, NOW())',
+    [channelId, user.id, user.tag, subject]
   );
 
   return {
     id: result.insertId,
     channel_id: channelId,
     owner_id: user.id,
-    owner_tag: user.tag
+    owner_tag: user.tag,
+    subject
   };
 }
 
@@ -139,7 +140,7 @@ async function createTicketChannel(client, user) {
 
 const creatingTicketFor = new Set();
 
-async function createTicket(client, user, firstMessage, attachments = []) {
+async function createTicket(client, user, firstMessage, attachments = [], subject = null) {
   if (creatingTicketFor.has(user.id)) {
     const existing = await getOpenTicketByOwnerId(user.id);
     if (existing) {
@@ -166,10 +167,11 @@ async function createTicket(client, user, firstMessage, attachments = []) {
   }
 
   const channel = await createTicketChannel(client, user);
-  const ticket = await createTicketDb(channel.id, user);
+  const ticket = await createTicketDb(channel.id, user, subject);
 
+  const subjectLine = ticket.subject ? `\nSujet : ${ticket.subject}` : '';
   await channel.send({
-    content: `Nouveau ticket\nUtilisateur : ${user.tag}\nID : ${user.id}`,
+    content: `Nouveau ticket\nUtilisateur : ${user.tag}\nID : ${user.id}${subjectLine}`,
     components: [ticketButtons()]
   });
 
@@ -189,7 +191,7 @@ async function createTicket(client, user, firstMessage, attachments = []) {
   }
 }
 
-async function relayDmToTicket(client, user, content, attachments = []) {
+async function relayDmToTicket(client, user, content, attachments = [], subject = null) {
   let ticket = await getOpenTicketByOwnerId(user.id);
 
   if (!ticket) {
@@ -197,13 +199,13 @@ async function relayDmToTicket(client, user, content, attachments = []) {
   }
 
   if (!ticket) {
-    return createTicket(client, user, content, attachments);
+    return createTicket(client, user, content, attachments, subject);
   }
 
   const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
 
   if (!channel) {
-    return createTicket(client, user, content, attachments);
+    return createTicket(client, user, content, attachments, subject);
   }
 
   let msg = `--- ${user.tag} : ${content || '[aucun texte]'}`;
@@ -213,6 +215,7 @@ async function relayDmToTicket(client, user, content, attachments = []) {
   }
 
   await channel.send({ content: msg });
+  await query('UPDATE tickets SET last_message_at = NOW() WHERE id = ?', [ticket.id]);
 
   return { channel, ticket, created: false };
 }
