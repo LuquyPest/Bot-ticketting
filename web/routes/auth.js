@@ -61,20 +61,21 @@ router.get('/discord/callback', async (req, res) => {
         [discordUser.id, discordUser.username, discordUser.avatar || null]
       );
     } else {
+      const discordRoles = memberRes.data.roles || [];
+      const hasSupport = discordRoles.includes(config.supportRoleId) || discordRoles.includes(config.chiefSupportRoleId) ? 1 : 0;
+
       const [existing] = await query('SELECT role FROM dashboard_users WHERE user_id = ?', [discordUser.id]);
       if (existing) {
         role = existing.role;
         await query(
-          'UPDATE dashboard_users SET username = ?, avatar = ?, last_login = NOW() WHERE user_id = ?',
-          [discordUser.username, discordUser.avatar || null, discordUser.id]
+          'UPDATE dashboard_users SET username = ?, avatar = ?, discord_has_support = ?, last_login = NOW() WHERE user_id = ?',
+          [discordUser.username, discordUser.avatar || null, hasSupport, discordUser.id]
         );
       } else {
-        const discordRoles = memberRes.data.roles || [];
-        const hasSupport = discordRoles.includes(config.supportRoleId) || discordRoles.includes(config.chiefSupportRoleId);
-        role = hasSupport ? 'support' : 'nouveau';
+        role = 'nouveau';
         await query(
-          'INSERT INTO dashboard_users (user_id, username, avatar, role) VALUES (?, ?, ?, ?)',
-          [discordUser.id, discordUser.username, discordUser.avatar || null, role]
+          'INSERT INTO dashboard_users (user_id, username, avatar, role, discord_has_support) VALUES (?, ?, ?, \'nouveau\', ?)',
+          [discordUser.id, discordUser.username, discordUser.avatar || null, hasSupport]
         );
       }
     }
