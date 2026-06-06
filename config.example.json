@@ -37,5 +37,16 @@
     "user": "ton_user_db",
     "password": "ton_mot_de_passe_db",
     "database": "discord_tickets"
+  },
+
+  "dashboard": {
+    "port": 3001,
+    "sessionSecret": "CHANGE_MOI_STRING_ALEATOIRE_LONGUE",
+    "authMethods": ["discord", "password"],
+    "allowedRoleId": "ID_ROLE_AUTORISE_AU_DASHBOARD",
+    "password": "mot_de_passe_admin_ou_hash_bcrypt",
+    "discordClientId": "MEME_QUE_clientId",
+    "discordClientSecret": "SECRET_OAUTH_APP_DISCORD",
+    "discordCallbackUrl": "http://ton-domaine.com:3001/api/auth/discord/callback"
   }
 }
