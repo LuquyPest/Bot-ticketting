@@ -1,7 +1,8 @@
 const {
   relayDmToTicket,
   sendWelcomeDm,
-  getAnyOpenTicketForUser
+  getAnyOpenTicketForUser,
+  isBlacklisted
 } = require('../utils/ticketManager');
 const { subjectButtons } = require('../utils/components');
 
@@ -28,6 +29,12 @@ module.exports = {
 
       if (!content && attachments.length === 0) {
         await user.send('Envoie un message ou un fichier.').catch(() => null);
+        return;
+      }
+
+      // Blacklist
+      if (await isBlacklisted(user.id)) {
+        await user.send('Tu ne peux pas ouvrir de ticket.').catch(() => null);
         return;
       }
 
