@@ -17,6 +17,16 @@ module.exports = {
       return;
     }
 
+    if (ticket.claimed_by && ticket.claimed_by !== interaction.user.id) {
+      const previousClaimer = await interaction.guild.members.fetch(ticket.claimed_by).catch(() => null);
+      const name = previousClaimer?.user?.username ?? ticket.claimed_by;
+      await interaction.reply({
+        content: `Ce ticket est deja pris en charge par **${name}**. Utilise /unclaim d'abord si tu veux le reprendre.`,
+        ephemeral: true
+      });
+      return;
+    }
+
     await setClaim(client, ticket.id, interaction.user);
     await interaction.reply(`✅ Ticket pris en charge par **${interaction.user.username}**.`);
   }
