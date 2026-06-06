@@ -62,13 +62,12 @@ module.exports = {
         }
 
         if (interaction.customId === 'ticket_transcript') {
+          await interaction.deferReply({ ephemeral: true });
+
           const saved = await saveTranscriptSnapshot(interaction.channel, interaction.user);
 
           if (!saved) {
-            await interaction.reply({
-              content: 'Impossible de generer le transcript.',
-              ephemeral: true
-            });
+            await interaction.editReply({ content: 'Impossible de generer le transcript.' });
             return;
           }
 
@@ -77,10 +76,9 @@ module.exports = {
             { name: `transcript-${saved.transcriptId}.html` }
           );
 
-          await interaction.reply({
+          await interaction.editReply({
             content: `Transcript enregistre.\nID du transcript : ${saved.transcriptId}`,
-            files: [htmlFile],
-            ephemeral: true
+            files: [htmlFile]
           });
           return;
         }
