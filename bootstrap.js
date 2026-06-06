@@ -198,6 +198,15 @@ async function ensureTables(config) {
       rated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_rating_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS dashboard_users (
+      user_id VARCHAR(32) PRIMARY KEY,
+      username VARCHAR(100) NOT NULL,
+      avatar VARCHAR(64) DEFAULT NULL,
+      role ENUM('nouveau', 'support', 'fondateur') NOT NULL DEFAULT 'nouveau',
+      first_login DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
   `;
 
   await connection.query(sql);
@@ -248,7 +257,8 @@ async function verifySchema(connection) {
       'total_response_seconds', 'updated_at'
     ],
     blacklist: ['user_id', 'user_tag', 'reason', 'added_by_id', 'added_by_tag', 'added_at'],
-    ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at']
+    ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at'],
+    dashboard_users: ['user_id', 'username', 'avatar', 'role', 'first_login', 'last_login']
   };
 
   for (const [table, columns] of Object.entries(expected)) {

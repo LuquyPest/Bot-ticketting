@@ -54,6 +54,9 @@ router.get('/:id', async (req, res) => {
 });
 
 router.patch('/:id/priority', async (req, res) => {
+  if (req.session.user.role !== 'fondateur') {
+    return res.status(403).json({ error: 'Réservé au fondateur' });
+  }
   try {
     const { priority } = req.body;
     if (!['low', 'normal', 'urgent'].includes(priority)) {

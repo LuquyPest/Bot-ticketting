@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const { query } = require('../../utils/db');
 
 function cfg() {
   delete require.cache[require.resolve('../../config.json')];
@@ -13,93 +13,83 @@ router.get('/me', (req, res) => {
   res.json(req.session.user);
 });
 
-router.post('/login', async (req, res) => {
-  const config = cfg();
-  const dash = config.dashboard || {};
-
-  if (!dash.authMethods?.includes('password')) {
-    return res.status(400).json({ error: 'Authentification par mot de passe désactivée' });
-  }
-
-  const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'Mot de passe requis' });
-
-  const stored = dash.password;
-  if (!stored) return res.status(500).json({ error: 'Aucun mot de passe configuré' });
-
-  const valid = (stored.startsWith('$2b$') || stored.startsWith('$2a$'))
-    ? await bcrypt.compare(password, stored)
-    : password === stored;
-
-  if (!valid) return res.status(401).json({ error: 'Mot de passe incorrect' });
-
-  req.session.user = { id: 'local', username: 'Admin', avatar: null, method: 'password' };
-  res.json({ ok: true, user: req.session.user });
-});
-
 router.get('/discord', (req, res) => {
   const config = cfg();
-  const dash = config.dashboard || {};
-
-  if (!dash.authMethods?.includes('discord')) {
-    return res.status(400).json({ error: 'Authentification Discord désactivée' });
-  }
-
-  const clientId = dash.discordClientId || config.clientId;
-  const redirectUri = dash.discordCallbackUrl;
   const url = new URL('https://discord.com/oauth2/authorize');
-  url.searchParams.set('client_id', clientId);
-  url.searchParams.set('redirect_uri', redirectUri);
+  url.searchParams.set('client_id', config.clientId);
+  url.searchParams.set('redirect_uri', config.dashboard.discordCallbackUrl);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', 'identify guilds.members.read');
-
   res.redirect(url.toString());
 });
 
 router.get('/discord/callback', async (req, res) => {
   const config = cfg();
-  const dash = config.dashboard || {};
   const { code } = req.query;
-  if (!code) return res.redirect('/?error=no_code');
+  if (!code) return res.redirect('/login?error=no_code');
 
   try {
-    const clientId = dash.discordClientId || config.clientId;
     const { data: token } = await axios.post(
       'https://discord.com/api/oauth2/token',
       new URLSearchParams({
-        client_id: clientId,
-        client_secret: dash.discordClientSecret,
+        client_id: config.clientId,
+        client_secret: config.dashboard.discordClientSecret,
         grant_type: 'authorization_code',
         code,
-        redirect_uri: dash.discordCallbackUrl
+        redirect_uri: config.dashboard.discordCallbackUrl
       }),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
     const headers = { Authorization: `Bearer ${token.access_token}` };
-    const [{ data: user }, memberRes] = await Promise.all([
+    const [{ data: discordUser }, memberRes] = await Promise.all([
       axios.get('https://discord.com/api/users/@me', { headers }),
       axios.get(`https://discord.com/api/users/@me/guilds/${config.guildId}/member`, { headers }).catch(() => null)
     ]);
 
-    if (!memberRes) return res.redirect('/?error=not_in_guild');
+    if (!memberRes) return res.redirect('/login?error=not_in_guild');
 
-    const allowedRoleId = dash.allowedRoleId || config.chiefSupportRoleId;
-    if (!memberRes.data.roles?.includes(allowedRoleId)) {
-      return res.redirect('/?error=no_permission');
+    const isFounder = discordUser.id === config.webFounderId;
+    let role;
+
+    if (isFounder) {
+      role = 'fondateur';
+      await query(
+        `INSERT INTO dashboard_users (user_id, username, avatar, role)
+         VALUES (?, ?, ?, 'fondateur')
+         ON DUPLICATE KEY UPDATE username = VALUES(username), avatar = VALUES(avatar), role = 'fondateur', last_login = NOW()`,
+        [discordUser.id, discordUser.username, discordUser.avatar || null]
+      );
+    } else {
+      const [existing] = await query('SELECT role FROM dashboard_users WHERE user_id = ?', [discordUser.id]);
+      if (existing) {
+        role = existing.role;
+        await query(
+          'UPDATE dashboard_users SET username = ?, avatar = ?, last_login = NOW() WHERE user_id = ?',
+          [discordUser.username, discordUser.avatar || null, discordUser.id]
+        );
+      } else {
+        const discordRoles = memberRes.data.roles || [];
+        const hasSupport = discordRoles.includes(config.supportRoleId) || discordRoles.includes(config.chiefSupportRoleId);
+        role = hasSupport ? 'support' : 'nouveau';
+        await query(
+          'INSERT INTO dashboard_users (user_id, username, avatar, role) VALUES (?, ?, ?, ?)',
+          [discordUser.id, discordUser.username, discordUser.avatar || null, role]
+        );
+      }
     }
 
     req.session.user = {
-      id: user.id,
-      username: user.username,
-      avatar: user.avatar,
-      method: 'discord'
+      id: discordUser.id,
+      username: discordUser.username,
+      avatar: discordUser.avatar || null,
+      role
     };
 
-    res.redirect('/');
+    res.redirect(role === 'nouveau' ? '/pending' : '/');
   } catch (err) {
     console.error('OAuth error:', err.response?.data || err.message);
-    res.redirect('/?error=oauth_failed');
+    res.redirect('/login?error=oauth_failed');
   }
 });
 

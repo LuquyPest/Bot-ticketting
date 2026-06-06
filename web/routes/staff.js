@@ -4,9 +4,12 @@ const { query } = require('../../utils/db');
 
 router.get('/', async (req, res) => {
   try {
-    const stats = await query(
-      'SELECT admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score, total_response_count, total_response_seconds, updated_at FROM admin_stats ORDER BY tickets_closed DESC'
-    );
+    const user = req.session.user;
+    const sql = 'SELECT admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score, total_response_count, total_response_seconds, updated_at FROM admin_stats';
+
+    const stats = user.role === 'support'
+      ? await query(`${sql} WHERE admin_id = ?`, [user.id])
+      : await query(`${sql} ORDER BY tickets_closed DESC`);
 
     res.json(stats.map(row => ({
       ...row,
