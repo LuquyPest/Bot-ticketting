@@ -219,7 +219,8 @@ async function relayDmToTicket(client, user, content, attachments = []) {
 
 async function sendWelcomeDm(client, user, created) {
   if (!created) return;
-  await user.send('Ton ticket a été crée, le support va te répondre.').catch(() => null);
+  const msg = client.config.welcomeMessage || 'Ton ticket a été créé. Le support va te répondre bientôt.';
+  await user.send(msg).catch(() => null);
 }
 
 async function getOldTicketsByUserId(userId) {
