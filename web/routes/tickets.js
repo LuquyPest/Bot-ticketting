@@ -2,11 +2,22 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
 
+// Fix #7 : allowlists pour les filtres query string
+const VALID_STATUS   = new Set(['open', 'closed']);
+const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
+
 router.get('/', async (req, res) => {
   try {
-    const { status, priority, subject, page = 1 } = req.query;
+    const { status, priority, subject } = req.query;
+
+    // Fix #7 : validation des paramètres de filtre
+    if (status   && !VALID_STATUS.has(status))   return res.status(400).json({ error: 'Statut invalide' });
+    if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
+
+    // Fix #12 : offset toujours positif
+    const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 20;
-    const offset = (parseInt(page) - 1) * limit;
+    const offset = (page - 1) * limit;
     const isSupport = req.session.user.role === 'support';
 
     const where = [];
@@ -18,9 +29,10 @@ router.get('/', async (req, res) => {
       params.push(req.session.user.id);
     }
 
-    if (status) { where.push('status = ?'); params.push(status); }
-    if (priority) { where.push('priority = ?'); params.push(priority); }
-    if (subject) { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
+    if (status)   { where.push('status = ?');       params.push(status); }
+    if (priority) { where.push('priority = ?');      params.push(priority); }
+    if (subject)  { where.push('subject LIKE ?');    params.push(`%${subject}%`); }
+
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [tickets, [{ total }]] = await Promise.all([
@@ -31,7 +43,7 @@ router.get('/', async (req, res) => {
       query(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
     ]);
 
-    res.json({ tickets, total, page: parseInt(page), pages: Math.ceil(total / limit) });
+    res.json({ tickets, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -72,7 +84,7 @@ router.patch('/:id/priority', async (req, res) => {
   }
   try {
     const { priority } = req.body;
-    if (!['low', 'normal', 'urgent'].includes(priority)) {
+    if (!VALID_PRIORITY.has(priority)) {
       return res.status(400).json({ error: 'Priorité invalide' });
     }
     await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, req.params.id]);
