@@ -4,6 +4,10 @@
 
 * { box-sizing: border-box; }
 
+body {
+  font-feature-settings: "cv02","cv03","cv04","cv11";
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
