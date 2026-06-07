@@ -2,11 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
 
+const TRANSCRIPT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https://cdn.discordapp.com data:; media-src https://cdn.discordapp.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;";
+
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, ticketId, search } = req.query;
+    const { ticketId, search } = req.query;
+
+    // Fix #12 : page toujours >= 1
+    const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 20;
-    const offset = (parseInt(page) - 1) * limit;
+    const offset = (page - 1) * limit;
 
     const where = [];
     const params = [];
@@ -27,7 +32,7 @@ router.get('/', async (req, res) => {
       )
     ]);
 
-    res.json({ snapshots, total, page: parseInt(page), pages: Math.ceil(total / limit) });
+    res.json({ snapshots, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -38,6 +43,8 @@ router.get('/:id/html', async (req, res) => {
   try {
     const [snap] = await query('SELECT html FROM transcript_snapshots WHERE id = ?', [req.params.id]);
     if (!snap) return res.status(404).send('Introuvable');
+    // Fix #14 : CSP stricte sur le HTML servi (même protection que /t/:token)
+    res.setHeader('Content-Security-Policy', TRANSCRIPT_CSP);
     res.type('html').send(snap.html);
   } catch (err) {
     console.error(err);
