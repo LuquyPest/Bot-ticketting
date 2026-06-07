@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle, UserCircle
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle,
+  UserCircle, ChevronDown
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
+import Select from '../components/Select';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
@@ -22,57 +24,56 @@ const PRIORITY_ACTIVE = {
 
 function SectionTitle({ children }) {
   return (
-    <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-2">{children}</p>
+    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2.5">{children}</p>
   );
 }
 
 function InfoRow({ icon: Icon, label, value }) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-2 py-1">
-      <Icon size={12} className="text-slate-600 mt-0.5 flex-shrink-0" />
+    <div className="flex items-start gap-2.5 py-1.5 border-b border-slate-800/40 last:border-0">
+      <div className="w-6 h-6 rounded-lg bg-slate-800/60 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Icon size={11} className="text-slate-500" />
+      </div>
       <div className="min-w-0">
-        <p className="text-[10px] text-slate-600 leading-tight">{label}</p>
+        <p className="text-[10px] text-slate-600 leading-tight font-medium">{label}</p>
         <p className="text-xs text-slate-300 mt-0.5 break-all">{value}</p>
       </div>
     </div>
   );
 }
 
-const NOTE_STYLES = {
-  discord: {
-    border: 'border-l-indigo-500/60',
-    icon: MessageSquare,
-    iconCls: 'text-indigo-400',
-    authorCls: 'text-indigo-300',
-    badge: 'bg-indigo-600/15 text-indigo-400',
-    label: 'Discord'
-  },
-  reply: {
-    border: 'border-l-emerald-500/60',
-    icon: Reply,
-    iconCls: 'text-emerald-400',
-    authorCls: 'text-emerald-300',
-    badge: 'bg-emerald-600/15 text-emerald-400',
-    label: 'Réponse'
-  },
-  web: {
-    border: 'border-l-slate-700',
-    icon: Lock,
-    iconCls: 'text-slate-500',
-    authorCls: 'text-slate-300',
-    badge: 'bg-slate-700/60 text-slate-500',
-    label: 'Note'
-  },
-  user: {
-    border: 'border-l-violet-500/60',
-    icon: UserCircle,
-    iconCls: 'text-violet-400',
-    authorCls: 'text-violet-300',
-    badge: 'bg-violet-600/15 text-violet-400',
-    label: 'Utilisateur'
+// Determine if a message is from a user (left) or staff (right)
+function getBubbleAlign(source) {
+  if (source === 'user') return 'left';
+  if (source === 'web') return 'center';
+  return 'right'; // discord, reply
+}
+
+function getBubbleStyle(source) {
+  if (source === 'user') {
+    return {
+      bubble: 'bg-slate-800 text-slate-200 border border-slate-700/50',
+      avatar: 'bg-gradient-to-br from-violet-500 to-violet-700',
+      label: null
+    };
   }
-};
+  if (source === 'reply') {
+    return {
+      bubble: 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-900/30',
+      avatar: 'bg-gradient-to-br from-indigo-500 to-indigo-700',
+      label: 'Réponse'
+    };
+  }
+  if (source === 'discord') {
+    return {
+      bubble: 'bg-slate-700 text-slate-200 border border-slate-600/50',
+      avatar: 'bg-gradient-to-br from-slate-500 to-slate-700',
+      label: 'Discord'
+    };
+  }
+  return null;
+}
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -96,19 +97,19 @@ export default function TicketDetail() {
   const [movingTicket, setMovingTicket] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
-  const [composeMode, setComposeMode] = useState('note');
+  const [composeMode, setComposeMode] = useState('reply');
 
-  // Subject editing
   const [editingSubject, setEditingSubject] = useState(false);
   const [subjectInput, setSubjectInput] = useState('');
   const [savingSubject, setSavingSubject] = useState(false);
 
-  // Templates
   const [templates, setTemplates] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const templatesRef = useRef(null);
+  const bottomRef = useRef(null);
+  const chatRef = useRef(null);
 
   const ticketId = parseInt(id);
 
@@ -130,18 +131,19 @@ export default function TicketDetail() {
     loadNotes();
     api.get('/discord/categories').then(r => setCategories(r.data)).catch(() => {});
     api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
-
-    // Mark ticket as seen
     localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
   }, [loadTicket, loadNotes, id]);
 
-  // SSE real-time updates
+  // Auto-scroll to bottom when notes change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [notes]);
+
   useSSE({
     note: (data) => {
       if (data.ticketId !== ticketId) return;
       setNotes(prev => {
         if (prev.some(n => n.id === data.note.id)) return prev;
-        // Mark ticket as still being seen (no unread dot)
         localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
         return [...prev, data.note];
       });
@@ -153,7 +155,6 @@ export default function TicketDetail() {
     }
   });
 
-  // Close templates dropdown on outside click
   useEffect(() => {
     if (!showTemplates) return;
     function handleClick(e) {
@@ -340,7 +341,16 @@ export default function TicketDetail() {
     }
   };
 
-  if (loading) return <div className="flex-1 p-6 text-slate-500 text-sm">Chargement...</div>;
+  const canDeleteNote = (note) => user?.role === 'fondateur' || note.author_id === user?.id;
+
+  if (loading) return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700/60 animate-pulse" />
+        <p className="text-sm text-slate-600">Chargement...</p>
+      </div>
+    </div>
+  );
   if (!ticket) return <div className="flex-1 p-6 text-red-400 text-sm">Ticket introuvable.</div>;
 
   const myClaim = ticket.claimed_by === user?.id;
@@ -357,108 +367,153 @@ export default function TicketDetail() {
   const composeSending = composeMode === 'note' ? savingNote : sendingReply;
   const handleSend = composeMode === 'note' ? addNote : sendReply;
 
+  const categoryOptions = [
+    { value: '', label: 'Choisir une catégorie...' },
+    ...categories.map(c => ({ value: c.id, label: c.name }))
+  ];
+
   return (
     <div className="flex flex-1 min-h-screen overflow-hidden">
 
-      {/* ── Left column: timeline + compose ── */}
-      <div className="flex flex-col flex-1 min-w-0 min-h-screen overflow-y-auto">
+      {/* ── Left column: chat ── */}
+      <div className="flex flex-col flex-1 min-w-0 min-h-screen overflow-hidden">
 
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm border-b border-slate-800/60 px-5 py-3 flex items-center gap-3">
+        <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/60 px-5 py-3 flex items-center gap-3 flex-shrink-0">
           <button
             onClick={() => navigate('/tickets')}
             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0"
           >
             <ArrowLeft size={16} />
           </button>
-          <span className="text-slate-700">·</span>
-          <span className="text-sm font-semibold text-slate-200">Ticket #{ticket.id}</span>
-          <span className="text-slate-700">·</span>
+          <div className="h-4 w-px bg-slate-800 flex-shrink-0" />
+          <span className="text-sm font-bold text-slate-200">Ticket #{ticket.id}</span>
           <Badge label={ticket.status} variant={ticket.status} />
           <Badge label={PRIORITY_LABELS[ticket.priority] || ticket.priority} variant={ticket.priority} />
           {ticket.owner_tag && (
-            <>
-              <span className="text-slate-700">·</span>
-              <span className="text-xs text-slate-500">{ticket.owner_tag}</span>
-            </>
+            <span className="text-xs text-slate-500 ml-1">{ticket.owner_tag}</span>
+          )}
+          {ticket.subject && (
+            <span className="text-xs text-slate-600 truncate max-w-xs">· {ticket.subject}</span>
           )}
           {ticket.created_at && (
-            <>
-              <span className="text-slate-700">·</span>
-              <span className="text-xs text-slate-600">{fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-            </>
+            <span className="text-xs text-slate-700 ml-auto flex-shrink-0">
+              {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            </span>
           )}
         </div>
 
-        {/* Timeline */}
-        <div className="flex-1 px-5 py-5 space-y-3">
+        {/* Chat area */}
+        <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
           {notes.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-              <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                <MessageSquare size={20} className="text-slate-600" />
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
+              <div className="w-14 h-14 rounded-2xl bg-slate-800/60 border border-slate-700/40 flex items-center justify-center">
+                <MessageSquare size={22} className="text-slate-600" />
               </div>
-              <p className="text-sm text-slate-600 font-medium">Aucune note pour l'instant</p>
-              <p className="text-xs text-slate-700">Les messages Discord, réponses et notes internes apparaîtront ici.</p>
+              <p className="text-sm font-semibold text-slate-500">Aucun message</p>
+              <p className="text-xs text-slate-700">Les messages de l'utilisateur et du staff apparaîtront ici.</p>
             </div>
           )}
 
           {notes.map(note => {
-            const style = NOTE_STYLES[note.source] || NOTE_STYLES.web;
-            const NoteIcon = style.icon;
-            const canDelete = user?.role === 'fondateur' || note.author_id === user?.id;
+            const align = getBubbleAlign(note.source);
+
+            // Internal note — centered
+            if (align === 'center') {
+              return (
+                <div key={note.id} className="flex justify-center group">
+                  <div className="flex items-start gap-2 max-w-md px-3.5 py-2 rounded-xl bg-slate-800/40 border border-dashed border-slate-700/50">
+                    <Lock size={10} className="text-slate-600 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap break-words">{note.content}</p>
+                      <p className="text-[10px] text-slate-700 mt-1">{note.author_tag} · {fmtDate(note.created_at)}</p>
+                    </div>
+                    {canDeleteNote(note) && (
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="opacity-0 group-hover:opacity-100 text-slate-700 hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
+                      >
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            const style = getBubbleStyle(note.source);
+            const isLeft = align === 'left';
+
             return (
               <div
                 key={note.id}
-                className={`border-l-2 pl-4 py-2 group ${style.border}`}
+                className={`flex items-end gap-2.5 group ${isLeft ? 'mr-16' : 'ml-16 flex-row-reverse'}`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <NoteIcon size={12} className={style.iconCls} />
-                  <span className={`text-xs font-medium ${style.authorCls}`}>{note.author_tag}</span>
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${style.badge}`}>
-                    {style.label}
-                  </span>
-                  <span className="text-[10px] text-slate-700 ml-auto">{fmtDate(note.created_at)}</span>
-                  {canDelete && (
-                    <button
-                      onClick={() => deleteNote(note.id)}
-                      className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 ml-1"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
+                {/* Avatar */}
+                <div className={`w-8 h-8 rounded-full ${style.avatar} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mb-1 shadow-md`}>
+                  {note.author_tag?.[0]?.toUpperCase() || '?'}
                 </div>
-                <p className="text-sm text-slate-400 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+
+                {/* Bubble + meta */}
+                <div className={`flex flex-col gap-1 min-w-0 ${isLeft ? 'items-start' : 'items-end'}`}>
+                  <div className={`flex items-center gap-1.5 px-0.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
+                    <span className="text-[10px] text-slate-500 font-medium">{note.author_tag}</span>
+                    {style.label && (
+                      <span className="text-[9px] text-slate-700 font-semibold uppercase tracking-wide">· {style.label}</span>
+                    )}
+                  </div>
+
+                  <div className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words max-w-sm ${style.bubble} ${
+                    isLeft ? 'rounded-tl-md' : 'rounded-tr-md'
+                  }`}>
+                    {note.content}
+                  </div>
+
+                  <div className={`flex items-center gap-2 px-0.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
+                    <span className="text-[10px] text-slate-700">{fmtDate(note.created_at)}</span>
+                    {canDeleteNote(note) && (
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="opacity-0 group-hover:opacity-100 text-slate-700 hover:text-red-400 transition-all"
+                      >
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })}
+
+          <div ref={bottomRef} />
         </div>
 
         {/* Compose box */}
         {ticket.status === 'open' && (
-          <div className="border-t border-slate-800/60 bg-slate-900/50 px-5 py-4">
+          <div className="border-t border-slate-800/60 bg-slate-900/70 backdrop-blur-sm px-5 py-4 flex-shrink-0">
             {/* Mode toggle */}
-            <div className="flex gap-1 mb-3 bg-slate-800/60 rounded-lg p-0.5 w-fit">
-              <button
-                onClick={() => setComposeMode('note')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  composeMode === 'note'
-                    ? 'bg-slate-700 text-slate-100'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                <Lock size={11} />
-                Note interne
-              </button>
+            <div className="flex gap-1 mb-3 bg-slate-800/60 rounded-xl p-1 w-fit">
               <button
                 onClick={() => setComposeMode('reply')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   composeMode === 'reply'
-                    ? 'bg-slate-700 text-slate-100'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 <Reply size={11} />
                 Répondre
+              </button>
+              <button
+                onClick={() => setComposeMode('note')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  composeMode === 'note'
+                    ? 'bg-slate-700 text-slate-100 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Lock size={11} />
+                Note interne
               </button>
             </div>
 
@@ -468,21 +523,21 @@ export default function TicketDetail() {
               onChange={e => setComposeText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
               placeholder={
-                composeMode === 'note'
-                  ? 'Ajouter une note interne... (Ctrl+Entrée pour envoyer)'
-                  : 'Votre réponse à l\'utilisateur... (Ctrl+Entrée pour envoyer)'
+                composeMode === 'reply'
+                  ? 'Répondre à l\'utilisateur... (Ctrl+Entrée)'
+                  : 'Note interne (non visible par l\'utilisateur)...'
               }
               rows={3}
               maxLength={2000}
-              className={`w-full bg-slate-800/50 border text-slate-300 placeholder-slate-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none resize-none transition-colors ${
-                composeMode === 'note'
-                  ? 'border-slate-700/60 focus:border-indigo-500/60'
-                  : 'border-slate-700/60 focus:border-emerald-500/60'
+              className={`w-full bg-slate-800/60 border text-slate-200 placeholder-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none resize-none transition-all ${
+                composeMode === 'reply'
+                  ? 'border-indigo-500/30 focus:border-indigo-500/60'
+                  : 'border-slate-700/60 focus:border-slate-600'
               }`}
             />
 
             {/* Footer */}
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between mt-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-700">{composeText.length}/2000</span>
 
@@ -490,30 +545,31 @@ export default function TicketDetail() {
                 <div className="relative" ref={templatesRef}>
                   <button
                     onClick={() => setShowTemplates(t => !t)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border bg-slate-800 text-slate-500 border-slate-700/60 hover:text-slate-300 transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300 hover:border-slate-600 transition-colors"
                   >
                     <Layers size={11} />
                     Templates
+                    <ChevronDown size={10} className={`transition-transform ${showTemplates ? 'rotate-180' : ''}`} />
                   </button>
                   {showTemplates && (
-                    <div className="absolute bottom-full mb-1.5 left-0 z-20 w-72 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden">
-                      <div className="max-h-48 overflow-y-auto">
+                    <div className="absolute bottom-full mb-2 left-0 z-20 w-72 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+                      <div className="max-h-52 overflow-y-auto">
                         {templates.length === 0 ? (
-                          <p className="text-xs text-slate-600 p-3 text-center">Aucun template</p>
+                          <p className="text-xs text-slate-600 p-4 text-center">Aucun template sauvegardé</p>
                         ) : templates.map(tpl => (
                           <div
                             key={tpl.id}
-                            className="group flex items-start gap-2 px-3 py-2 hover:bg-slate-800 border-b border-slate-800/60 last:border-0 transition-colors cursor-pointer"
+                            className="group/tpl flex items-start gap-2 px-3.5 py-2.5 hover:bg-slate-800/70 border-b border-slate-800/60 last:border-0 transition-colors cursor-pointer"
                             onClick={() => { setComposeText(tpl.content); setShowTemplates(false); }}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-slate-200 truncate">{tpl.name}</p>
+                              <p className="text-xs font-semibold text-slate-200 truncate">{tpl.name}</p>
                               <p className="text-[10px] text-slate-500 truncate mt-0.5">{tpl.content}</p>
                             </div>
                             {(user?.role === 'fondateur' || tpl.created_by_id === user?.id) && (
                               <button
                                 onClick={(e) => deleteTemplate(tpl.id, e)}
-                                className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+                                className="opacity-0 group-hover/tpl:opacity-100 text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
                               >
                                 <X size={11} />
                               </button>
@@ -522,18 +578,18 @@ export default function TicketDetail() {
                         ))}
                       </div>
                       {user?.role === 'fondateur' && (
-                        <div className="border-t border-slate-700/60 px-3 py-2 space-y-1.5">
+                        <div className="border-t border-slate-700/60 px-3.5 py-2.5 space-y-2 bg-slate-800/30">
                           <input
                             type="text"
                             placeholder="Nom du template..."
                             value={newTemplateName}
                             onChange={e => setNewTemplateName(e.target.value)}
-                            className="w-full bg-slate-800/60 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60"
+                            className="w-full bg-slate-800/80 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500/60 transition-colors"
                           />
                           <button
                             onClick={saveTemplate}
                             disabled={!composeText.trim() || !newTemplateName.trim() || savingTemplate}
-                            className="w-full py-1.5 text-xs rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-600/25 hover:bg-indigo-600/30 disabled:opacity-40 transition-colors font-medium"
+                            className="w-full py-2 text-xs rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-600/30 hover:bg-indigo-600/30 disabled:opacity-40 transition-colors font-semibold"
                           >
                             {savingTemplate ? 'Sauvegarde...' : 'Sauvegarder ce texte'}
                           </button>
@@ -546,10 +602,10 @@ export default function TicketDetail() {
                 {composeMode === 'reply' && (
                   <button
                     onClick={() => setAnonymous(a => !a)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
                       anonymous
-                        ? 'bg-indigo-600/15 text-indigo-400 border-indigo-600/25'
-                        : 'bg-slate-800 text-slate-500 border-slate-700/60 hover:text-slate-300'
+                        ? 'bg-indigo-600/15 text-indigo-400 border-indigo-600/30'
+                        : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:text-slate-300 hover:border-slate-600'
                     }`}
                   >
                     {anonymous ? <EyeOff size={11} /> : <Eye size={11} />}
@@ -557,17 +613,18 @@ export default function TicketDetail() {
                   </button>
                 )}
               </div>
+
               <button
                 onClick={handleSend}
                 disabled={!composeText.trim() || composeSending}
-                className={`flex items-center gap-1.5 py-1.5 px-3 text-xs rounded-lg text-white font-medium transition-colors disabled:opacity-50 ${
-                  composeMode === 'note'
-                    ? 'bg-indigo-600 hover:bg-indigo-500'
-                    : 'bg-emerald-600 hover:bg-emerald-500'
+                className={`flex items-center gap-2 py-2 px-4 text-xs rounded-xl text-white font-semibold transition-all disabled:opacity-40 ${
+                  composeMode === 'reply'
+                    ? 'bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/30'
+                    : 'bg-slate-700 hover:bg-slate-600'
                 }`}
               >
-                <Send size={11} />
-                {composeSending ? 'Envoi...' : composeMode === 'note' ? 'Ajouter' : 'Envoyer'}
+                <Send size={12} />
+                {composeSending ? 'Envoi...' : composeMode === 'reply' ? 'Envoyer' : 'Ajouter'}
               </button>
             </div>
           </div>
@@ -575,283 +632,280 @@ export default function TicketDetail() {
       </div>
 
       {/* ── Right column: sidebar ── */}
-      <div className="w-72 flex-shrink-0 sticky top-0 h-screen overflow-y-auto border-l border-slate-800/60 p-5 space-y-5">
+      <div className="w-72 flex-shrink-0 sticky top-0 h-screen overflow-y-auto border-l border-slate-800/60 bg-slate-900/50">
+        <div className="p-5 space-y-5">
 
-        {/* INFORMATIONS */}
-        <div>
-          <SectionTitle>Informations</SectionTitle>
-          <div className="space-y-0.5">
-            <InfoRow icon={User} label="Propriétaire" value={ticket.owner_tag} />
-            <InfoRow icon={Clock} label="Créé le" value={fmtDate(ticket.created_at, { dateStyle: 'medium', timeStyle: 'short' })} />
-            {ticket.closed_at && (
-              <InfoRow icon={CheckCircle2} label="Fermé le" value={fmtDate(ticket.closed_at, { dateStyle: 'medium', timeStyle: 'short' })} />
-            )}
-            {ticket.closed_by_tag && (
-              <InfoRow icon={User} label="Fermé par" value={ticket.closed_by_tag} />
-            )}
-            <InfoRow icon={User} label="Pris en charge par" value={ticket.claimed_by || null} />
+          {/* INFORMATIONS */}
+          <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+            <SectionTitle>Informations</SectionTitle>
+            <div className="space-y-0">
+              <InfoRow icon={User} label="Propriétaire" value={ticket.owner_tag} />
+              <InfoRow icon={Clock} label="Créé le" value={fmtDate(ticket.created_at, { dateStyle: 'medium', timeStyle: 'short' })} />
+              {ticket.closed_at && (
+                <InfoRow icon={CheckCircle2} label="Fermé le" value={fmtDate(ticket.closed_at, { dateStyle: 'medium', timeStyle: 'short' })} />
+              )}
+              {ticket.closed_by_tag && (
+                <InfoRow icon={User} label="Fermé par" value={ticket.closed_by_tag} />
+              )}
+              {ticket.claimed_by && (
+                <InfoRow icon={User} label="Pris en charge" value={ticket.claimed_by} />
+              )}
 
-            {/* Subject with inline edit */}
-            <div className="flex items-start gap-2 py-1">
-              <FileText size={12} className="text-slate-600 mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] text-slate-600 leading-tight">Sujet</p>
-                {editingSubject ? (
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <input
-                      type="text"
-                      value={subjectInput}
-                      onChange={e => setSubjectInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') saveSubject();
-                        if (e.key === 'Escape') setEditingSubject(false);
-                      }}
-                      maxLength={100}
-                      placeholder="Sujet du ticket..."
-                      autoFocus
-                      className="flex-1 min-w-0 bg-slate-800/60 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500/60"
-                    />
+              {/* Subject with inline edit */}
+              <div className="flex items-start gap-2.5 py-1.5">
+                <div className="w-6 h-6 rounded-lg bg-slate-800/60 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FileText size={11} className="text-slate-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] text-slate-600 leading-tight font-medium">Sujet</p>
+                  {editingSubject ? (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <input
+                        type="text"
+                        value={subjectInput}
+                        onChange={e => setSubjectInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveSubject();
+                          if (e.key === 'Escape') setEditingSubject(false);
+                        }}
+                        maxLength={100}
+                        placeholder="Sujet du ticket..."
+                        autoFocus
+                        className="flex-1 min-w-0 bg-slate-800/80 border border-indigo-500/40 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none transition-colors"
+                      />
+                      <button onClick={saveSubject} disabled={savingSubject} className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50 flex-shrink-0">
+                        <Check size={13} />
+                      </button>
+                      <button onClick={() => setEditingSubject(false)} className="text-slate-600 hover:text-slate-300 flex-shrink-0">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 mt-0.5 group/subject">
+                      <p className="text-xs text-slate-300 break-all">
+                        {ticket.subject || <span className="italic text-slate-700">—</span>}
+                      </p>
+                      <button
+                        onClick={startEditSubject}
+                        className="opacity-0 group-hover/subject:opacity-100 text-slate-600 hover:text-slate-300 transition-all flex-shrink-0"
+                      >
+                        <Pencil size={10} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ACTIONS */}
+          {(ticket.status === 'open' || (ticket.status === 'closed' && user?.role === 'fondateur')) && (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+              <SectionTitle>Actions</SectionTitle>
+              <div className="space-y-2">
+                {ticket.status === 'open' && (
+                  <>
                     <button
-                      onClick={saveSubject}
-                      disabled={savingSubject}
-                      className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+                      onClick={toggleClaim}
+                      disabled={claimLoading || !canClaim}
+                      className={`w-full py-2 px-3 text-xs rounded-lg font-semibold transition-all disabled:opacity-50 border ${
+                        myClaim || (anyClaim && user?.role === 'fondateur')
+                          ? 'bg-amber-600/15 text-amber-400 border-amber-600/25 hover:bg-amber-600/25'
+                          : 'bg-emerald-600/15 text-emerald-400 border-emerald-600/25 hover:bg-emerald-600/25'
+                      }`}
                     >
-                      <Check size={12} />
+                      {claimLoading ? 'En cours...' : claimLabel}
                     </button>
-                    <button
-                      onClick={() => setEditingSubject(false)}
-                      className="text-slate-600 hover:text-slate-300"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 mt-0.5 group/subject">
-                    <p className="text-xs text-slate-300 break-all">
-                      {ticket.subject || <span className="italic text-slate-700">—</span>}
-                    </p>
-                    <button
-                      onClick={startEditSubject}
-                      className="opacity-0 group-hover/subject:opacity-100 text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0"
-                    >
-                      <Pencil size={10} />
-                    </button>
-                  </div>
+                    {user?.role === 'fondateur' && (
+                      <button
+                        onClick={() => changeStatus('closed')}
+                        disabled={actionLoading}
+                        className="w-full py-2 px-3 text-xs rounded-lg font-semibold transition-all disabled:opacity-50 border bg-red-600/15 text-red-400 border-red-600/25 hover:bg-red-600/25"
+                      >
+                        {actionLoading ? 'En cours...' : 'Fermer le ticket'}
+                      </button>
+                    )}
+                  </>
+                )}
+                {ticket.status === 'closed' && user?.role === 'fondateur' && (
+                  <button
+                    onClick={() => changeStatus('open')}
+                    disabled={actionLoading}
+                    className="w-full py-2 px-3 text-xs rounded-lg font-semibold transition-all disabled:opacity-50 border bg-emerald-600/15 text-emerald-400 border-emerald-600/25 hover:bg-emerald-600/25"
+                  >
+                    {actionLoading ? 'En cours...' : 'Réouvrir le ticket'}
+                  </button>
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* ACTIONS */}
-        {(ticket.status === 'open' || (ticket.status === 'closed' && user?.role === 'fondateur')) && (
-          <div>
-            <SectionTitle>Actions</SectionTitle>
-            <div className="space-y-2">
-              {ticket.status === 'open' && (
-                <>
-                  <button
-                    onClick={toggleClaim}
-                    disabled={claimLoading || !canClaim}
-                    className={`w-full py-1.5 px-3 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 border ${
-                      myClaim || (anyClaim && user?.role === 'fondateur')
-                        ? 'bg-amber-600/15 text-amber-400 border-amber-600/25 hover:bg-amber-600/25'
-                        : 'bg-emerald-600/15 text-emerald-400 border-emerald-600/25 hover:bg-emerald-600/25'
-                    }`}
-                  >
-                    {claimLoading ? 'En cours...' : claimLabel}
-                  </button>
-                  {user?.role === 'fondateur' && (
-                    <button
-                      onClick={() => changeStatus('closed')}
-                      disabled={actionLoading}
-                      className="w-full py-1.5 px-3 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 border bg-red-600/15 text-red-400 border-red-600/25 hover:bg-red-600/25"
-                    >
-                      {actionLoading ? 'En cours...' : 'Fermer le ticket'}
-                    </button>
-                  )}
-                </>
-              )}
-              {ticket.status === 'closed' && user?.role === 'fondateur' && (
+          {/* PRIORITÉ */}
+          <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+            <SectionTitle>Priorité</SectionTitle>
+            <div className="flex gap-1.5">
+              {['low', 'normal', 'urgent'].map(p => (
                 <button
-                  onClick={() => changeStatus('open')}
-                  disabled={actionLoading}
-                  className="w-full py-1.5 px-3 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 border bg-emerald-600/15 text-emerald-400 border-emerald-600/25 hover:bg-emerald-600/25"
+                  key={p}
+                  onClick={() => changePriority(p)}
+                  disabled={saving || ticket.priority === p}
+                  className={`flex-1 py-2 px-2 text-xs rounded-lg font-semibold transition-all disabled:cursor-not-allowed border ${
+                    ticket.priority === p
+                      ? PRIORITY_ACTIVE[p]
+                      : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:bg-slate-800 hover:text-slate-300 hover:border-slate-600'
+                  }`}
                 >
-                  {actionLoading ? 'En cours...' : 'Réouvrir le ticket'}
+                  {PRIORITY_LABELS[p]}
                 </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* PRIORITÉ */}
-        <div>
-          <SectionTitle>Priorité</SectionTitle>
-          <div className="flex gap-1.5">
-            {['low', 'normal', 'urgent'].map(p => (
-              <button
-                key={p}
-                onClick={() => changePriority(p)}
-                disabled={saving || ticket.priority === p}
-                className={`flex-1 py-1.5 px-2 text-xs rounded-lg font-medium transition-colors disabled:cursor-not-allowed border ${
-                  ticket.priority === p
-                    ? PRIORITY_ACTIVE[p]
-                    : 'bg-slate-800/60 text-slate-500 border-slate-700/60 hover:bg-slate-800 hover:text-slate-300'
-                }`}
-              >
-                {PRIORITY_LABELS[p]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* PARTICIPANTS */}
-        <div>
-          <SectionTitle>Participants ({ticket.participants?.length || 0})</SectionTitle>
-          {ticket.participants?.length > 0 ? (
-            <div className="space-y-1 mb-2">
-              {ticket.participants.map(p => (
-                <div key={p.id} className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-800/40 border border-slate-800/60 hover:border-slate-700/60 transition-colors">
-                  <div className="min-w-0">
-                    <p className="text-xs text-slate-300 font-medium truncate">{p.tag}</p>
-                    <p className="text-[10px] text-slate-600 font-mono">{p.id}</p>
-                  </div>
-                  {ticket.status === 'open' && (
-                    <button
-                      onClick={() => removeParticipant(p.id)}
-                      className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 ml-2 flex-shrink-0"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
               ))}
             </div>
-          ) : (
-            <p className="text-xs text-slate-700 italic mb-2">Aucun participant.</p>
-          )}
-          {ticket.status === 'open' && (
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                value={newParticipantId}
-                onChange={e => setNewParticipantId(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addParticipant(); }}
-                placeholder="Discord ID..."
-                className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60 font-mono transition-colors"
-              />
-              <button
-                onClick={addParticipant}
-                disabled={!newParticipantId.trim() || addingParticipant}
-                className="p-1.5 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
-                title="Ajouter"
-              >
-                <UserPlus size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* RENOMMER */}
-        {ticket.status === 'open' && (
-          <div>
-            <SectionTitle>Renommer</SectionTitle>
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                value={renameValue}
-                onChange={e => setRenameValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') renameTicket(); }}
-                placeholder="Nouveau nom..."
-                maxLength={40}
-                className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60 transition-colors"
-              />
-              <button
-                onClick={renameTicket}
-                disabled={!renameValue.trim() || renaming}
-                className="p-1.5 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
-                title="Renommer"
-              >
-                <Pencil size={14} />
-              </button>
-            </div>
           </div>
-        )}
 
-        {/* DÉPLACER */}
-        {ticket.status === 'open' && categories.length > 0 && (
-          <div>
-            <SectionTitle>Déplacer</SectionTitle>
-            <div className="flex gap-1.5">
-              <select
-                value={selectedCategory}
-                onChange={e => setSelectedCategory(e.target.value)}
-                className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700/60 text-slate-400 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60 transition-colors"
-              >
-                <option value="">Catégorie...</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <button
-                onClick={moveTicket}
-                disabled={!selectedCategory || movingTicket}
-                className="p-1.5 rounded-lg bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-slate-100 hover:bg-slate-700 transition-colors disabled:opacity-50 flex-shrink-0"
-                title="Déplacer"
-              >
-                <FolderOpen size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* SATISFACTION */}
-        {ticket.rating && (
-          <div>
-            <SectionTitle>Satisfaction</SectionTitle>
-            <div className="flex items-center gap-2">
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(i => (
-                  <Star
-                    key={i}
-                    size={16}
-                    fill={i <= ticket.rating.rating ? '#f59e0b' : 'none'}
-                    className={i <= ticket.rating.rating ? 'text-amber-400' : 'text-slate-700'}
-                  />
+          {/* PARTICIPANTS */}
+          <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+            <SectionTitle>Participants ({ticket.participants?.length || 0})</SectionTitle>
+            {ticket.participants?.length > 0 ? (
+              <div className="space-y-1.5 mb-3">
+                {ticket.participants.map(p => (
+                  <div key={p.id} className="group flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/40 hover:border-slate-600/60 transition-colors">
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-200 font-semibold truncate">{p.tag}</p>
+                      <p className="text-[10px] text-slate-600 font-mono">{p.id}</p>
+                    </div>
+                    {ticket.status === 'open' && (
+                      <button
+                        onClick={() => removeParticipant(p.id)}
+                        className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 ml-2 flex-shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
-              <span className="text-xs text-slate-400 font-medium">{ticket.rating.rating}/5</span>
-            </div>
-            <p className="text-[10px] text-slate-700 mt-1">{fmtDate(ticket.rating.rated_at, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+            ) : (
+              <p className="text-xs text-slate-700 italic mb-3">Aucun participant.</p>
+            )}
+            {ticket.status === 'open' && (
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={newParticipantId}
+                  onChange={e => setNewParticipantId(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addParticipant(); }}
+                  placeholder="Discord ID..."
+                  className="flex-1 min-w-0 bg-slate-800/60 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:border-indigo-500/60 font-mono transition-colors"
+                />
+                <button
+                  onClick={addParticipant}
+                  disabled={!newParticipantId.trim() || addingParticipant}
+                  className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-slate-100 hover:bg-slate-700 hover:border-slate-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                  title="Ajouter"
+                >
+                  <UserPlus size={14} />
+                </button>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* TRANSCRIPT */}
-        {ticket.transcript && (
-          <div>
-            <SectionTitle>Transcript</SectionTitle>
-            <p className="text-[10px] text-slate-600 mb-2">
-              {ticket.transcript.message_count} messages · {ticket.transcript.created_by_tag}
-            </p>
-            <div className="flex flex-col gap-1.5">
-              <a
-                href={`/api/transcripts/${ticket.transcript.id}/html`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 py-1.5 px-3 text-xs rounded-lg bg-indigo-600/15 text-indigo-400 border border-indigo-600/25 hover:bg-indigo-600/25 transition-colors font-medium"
-              >
-                <FileText size={12} /> Voir HTML
-              </a>
-              <a
-                href={`/api/transcripts/${ticket.transcript.id}/txt`}
-                className="flex items-center gap-1.5 py-1.5 px-3 text-xs rounded-lg bg-slate-800/60 text-slate-400 border border-slate-700/60 hover:bg-slate-800 transition-colors font-medium"
-              >
-                Télécharger .txt
-              </a>
+          {/* RENOMMER */}
+          {ticket.status === 'open' && (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+              <SectionTitle>Renommer</SectionTitle>
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') renameTicket(); }}
+                  placeholder="Nouveau nom..."
+                  maxLength={40}
+                  className="flex-1 min-w-0 bg-slate-800/60 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:border-indigo-500/60 transition-colors"
+                />
+                <button
+                  onClick={renameTicket}
+                  disabled={!renameValue.trim() || renaming}
+                  className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-slate-100 hover:bg-slate-700 hover:border-slate-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                  title="Renommer"
+                >
+                  <Pencil size={14} />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* DÉPLACER */}
+          {ticket.status === 'open' && categories.length > 0 && (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+              <SectionTitle>Déplacer</SectionTitle>
+              <div className="flex gap-1.5">
+                <Select
+                  className="flex-1 min-w-0"
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  placeholder="Catégorie..."
+                  options={categoryOptions}
+                />
+                <button
+                  onClick={moveTicket}
+                  disabled={!selectedCategory || movingTicket}
+                  className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-slate-100 hover:bg-slate-700 hover:border-slate-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                  title="Déplacer"
+                >
+                  <FolderOpen size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SATISFACTION */}
+          {ticket.rating && (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+              <SectionTitle>Satisfaction</SectionTitle>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5">
+                  {[1,2,3,4,5].map(i => (
+                    <Star
+                      key={i}
+                      size={16}
+                      fill={i <= ticket.rating.rating ? '#f59e0b' : 'none'}
+                      className={i <= ticket.rating.rating ? 'text-amber-400' : 'text-slate-700'}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-slate-300 font-bold">{ticket.rating.rating}/5</span>
+              </div>
+              <p className="text-[10px] text-slate-700 mt-1.5">{fmtDate(ticket.rating.rated_at, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+            </div>
+          )}
+
+          {/* TRANSCRIPT */}
+          {ticket.transcript && (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+              <SectionTitle>Transcript</SectionTitle>
+              <p className="text-[10px] text-slate-600 mb-3">
+                {ticket.transcript.message_count} messages · {ticket.transcript.created_by_tag}
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <a
+                  href={`/api/transcripts/${ticket.transcript.id}/html`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 py-2 px-3 text-xs rounded-lg bg-indigo-600/15 text-indigo-400 border border-indigo-600/25 hover:bg-indigo-600/25 transition-colors font-semibold"
+                >
+                  <FileText size={12} /> Voir HTML
+                </a>
+                <a
+                  href={`/api/transcripts/${ticket.transcript.id}/txt`}
+                  className="flex items-center gap-2 py-2 px-3 text-xs rounded-lg bg-slate-800/60 text-slate-400 border border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 transition-colors font-semibold"
+                >
+                  Télécharger .txt
+                </a>
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );

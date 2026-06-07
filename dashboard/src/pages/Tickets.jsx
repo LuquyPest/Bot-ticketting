@@ -4,6 +4,7 @@ import { Search, Download, Inbox } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
+import Select from '../components/Select';
 import { fmtDate } from '../utils/format';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAuth } from '../App';
@@ -96,34 +97,38 @@ export default function Tickets() {
       {/* Filters */}
       <div className="flex flex-wrap gap-2.5">
         <div className="relative flex-1 min-w-48">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
           <input
             type="text"
             placeholder="Rechercher par sujet..."
             value={filters.subject}
             onChange={e => setFilter('subject', e.target.value)}
-            className="w-full bg-slate-800/50 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
+            className="w-full bg-slate-800/50 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 hover:border-slate-500/60 transition-colors"
           />
         </div>
-        <select
+        <Select
+          className="w-40"
           value={filters.status}
-          onChange={e => setFilter('status', e.target.value)}
-          className="bg-slate-800/50 border border-slate-700/60 text-slate-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
-        >
-          <option value="">Tous statuts</option>
-          <option value="open">Ouvert</option>
-          <option value="closed">Fermé</option>
-        </select>
-        <select
+          onChange={v => setFilter('status', v)}
+          placeholder="Tous statuts"
+          options={[
+            { value: '', label: 'Tous statuts' },
+            { value: 'open', label: 'Ouvert' },
+            { value: 'closed', label: 'Fermé' }
+          ]}
+        />
+        <Select
+          className="w-44"
           value={filters.priority}
-          onChange={e => setFilter('priority', e.target.value)}
-          className="bg-slate-800/50 border border-slate-700/60 text-slate-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
-        >
-          <option value="">Toutes priorités</option>
-          <option value="low">Faible</option>
-          <option value="normal">Normal</option>
-          <option value="urgent">Urgent</option>
-        </select>
+          onChange={v => setFilter('priority', v)}
+          placeholder="Toutes priorités"
+          options={[
+            { value: '', label: 'Toutes priorités' },
+            { value: 'low', label: 'Faible' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'urgent', label: 'Urgent' }
+          ]}
+        />
       </div>
 
       {/* Table */}
