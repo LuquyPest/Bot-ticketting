@@ -65,6 +65,22 @@ function validateConfig(config) {
     }
   }
 
+  // Fix #2 : validation des champs web obligatoires
+  if (config.webEnabled !== false) {
+    if (!config.webFounderId) {
+      fail('Champ manquant dans config.json: webFounderId (requis si webEnabled est true)');
+    }
+    if (!config.dashboard?.sessionSecret) {
+      fail('Champ manquant dans config.json.dashboard: sessionSecret');
+    }
+    if (!config.dashboard?.discordClientSecret) {
+      fail('Champ manquant dans config.json.dashboard: discordClientSecret');
+    }
+    if (!config.dashboard?.discordCallbackUrl) {
+      fail('Champ manquant dans config.json.dashboard: discordCallbackUrl');
+    }
+  }
+
   ok('config.json valide.');
 }
 
@@ -94,6 +110,8 @@ function ensureDependenciesInstalled() {
 async function ensureDatabase(config) {
   const { host, port, user, password, database } = config.database;
 
+  // Fix #9 : multipleStatements=true UNIQUEMENT ici pour le bootstrap (CREATE DATABASE),
+  // jamais dans le pool de production (utils/db.js)
   const connection = await mysql.createConnection({
     host,
     port,
@@ -115,6 +133,8 @@ async function ensureDatabase(config) {
 async function ensureTables(config) {
   const { host, port, user, password, database } = config.database;
 
+  // Fix #9 : multipleStatements=true UNIQUEMENT ici pour les migrations SQL,
+  // jamais dans le pool de production (utils/db.js)
   const connection = await mysql.createConnection({
     host,
     port,
