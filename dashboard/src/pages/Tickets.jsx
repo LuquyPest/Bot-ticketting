@@ -7,6 +7,7 @@ import Pagination from '../components/Pagination';
 import { fmtDate } from '../utils/format';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAuth } from '../App';
+import { useSSE } from '../hooks/useSSE';
 
 const PRIORITY_DOT = {
   low:    'bg-sky-400',
@@ -15,6 +16,24 @@ const PRIORITY_DOT = {
 };
 
 const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
+
+function ticketAge(lastMessageAt, createdAt) {
+  const base = lastMessageAt || createdAt;
+  if (!base) return null;
+  const diffMs = Date.now() - new Date(base).getTime();
+  const hours = diffMs / 3600000;
+  if (hours < 1) return null;
+  if (hours < 24) return { label: `${Math.floor(hours)}h`, cls: 'text-amber-500' };
+  const days = Math.floor(hours / 24);
+  return { label: `${days}j`, cls: days >= 3 ? 'text-red-500' : 'text-amber-500' };
+}
+
+function isUnread(ticketId, lastMessageAt) {
+  if (!lastMessageAt) return false;
+  const seen = localStorage.getItem(`ticket_seen_${ticketId}`);
+  if (!seen) return true;
+  return new Date(lastMessageAt).getTime() > parseInt(seen, 10);
+}
 
 export default function Tickets() {
   const navigate = useNavigate();
@@ -37,6 +56,22 @@ export default function Tickets() {
 
   useEffect(() => { load(); }, [load]);
   useAutoRefresh(load);
+
+  // SSE: update ticket in list on changes, or reload on new_ticket
+  useSSE({
+    ticket: (d) => {
+      setData(prev => ({
+        ...prev,
+        tickets: prev.tickets.map(t => t.id === d.id ? { ...t, ...d } : t)
+      }));
+    },
+    new_ticket: () => {
+      // Only auto-reload page 1 with no filters to avoid jarring reloads
+      if (page === 1 && !filters.status && !filters.priority && !filters.subject) {
+        load();
+      }
+    }
+  });
 
   const setFilter = (key, val) => { setFilters(f => ({ ...f, [key]: val })); setPage(1); };
 
@@ -96,6 +131,7 @@ export default function Tickets() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-800/60">
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-8"></th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">ID</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Utilisateur</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Sujet</th>
@@ -108,11 +144,11 @@ export default function Tickets() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-slate-600 text-sm">Chargement...</td>
+                <td colSpan={8} className="text-center py-12 text-slate-600 text-sm">Chargement...</td>
               </tr>
             ) : !data.tickets.length ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
                       <Inbox size={22} className="text-slate-600" />
@@ -122,34 +158,49 @@ export default function Tickets() {
                   </div>
                 </td>
               </tr>
-            ) : data.tickets.map(t => (
-              <tr
-                key={t.id}
-                onClick={() => navigate(`/tickets/${t.id}`)}
-                className={`border-b border-slate-800/40 hover:bg-slate-800/60 cursor-pointer transition-colors last:border-0 ${
-                  t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''
-                }`}
-              >
-                <td className="px-4 py-3 text-slate-600 font-mono text-xs">#{t.id}</td>
-                <td className="px-4 py-3 text-slate-200 font-medium">{t.owner_tag}</td>
-                <td className="px-4 py-3 text-slate-400 max-w-xs truncate">
-                  {t.subject || <span className="italic text-slate-700">—</span>}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge label={t.status} variant={t.status} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-slate-600'}`} />
-                    {PRIORITY_LABELS[t.priority] || t.priority}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                  {fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </td>
-                <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-xs">{t.closed_by_tag || '—'}</td>
-              </tr>
-            ))}
+            ) : data.tickets.map(t => {
+              const age = t.status === 'open' ? ticketAge(t.last_message_at, t.created_at) : null;
+              const unread = t.status === 'open' && isUnread(t.id, t.last_message_at);
+              return (
+                <tr
+                  key={t.id}
+                  onClick={() => navigate(`/tickets/${t.id}`)}
+                  className={`border-b border-slate-800/40 hover:bg-slate-800/60 cursor-pointer transition-colors last:border-0 ${
+                    t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''
+                  }`}
+                >
+                  {/* Unread indicator */}
+                  <td className="px-3 py-3">
+                    {unread && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 block mx-auto" title="Nouveau message" />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 font-mono text-xs">#{t.id}</td>
+                  <td className="px-4 py-3 text-slate-200 font-medium">{t.owner_tag}</td>
+                  <td className="px-4 py-3 text-slate-400 max-w-xs">
+                    <div className="truncate">{t.subject || <span className="italic text-slate-700">—</span>}</div>
+                    {age && (
+                      <div className={`text-[10px] mt-0.5 font-medium ${age.cls}`} title="Dernier message">
+                        {age.label} sans réponse
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge label={t.status} variant={t.status} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-slate-600'}`} />
+                      {PRIORITY_LABELS[t.priority] || t.priority}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                    {fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-xs">{t.closed_by_tag || '—'}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

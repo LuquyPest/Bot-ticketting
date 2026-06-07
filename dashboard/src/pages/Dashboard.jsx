@@ -7,6 +7,7 @@ import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import { fmtDuration } from '../utils/format';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import { useSSE } from '../hooks/useSSE';
 
 function fmtChartDate(d) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
@@ -55,6 +56,26 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
   useAutoRefresh(loadData);
+
+  // Request notification permission once
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // SSE: reload stats on new ticket, show browser notification
+  useSSE({
+    new_ticket: (data) => {
+      loadData();
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Nouveau ticket', {
+          body: `${data.ownerTag}${data.subject ? ` — ${data.subject}` : ''}`,
+          icon: '/favicon.ico'
+        });
+      }
+    }
+  });
 
   useEffect(() => {
     api.get(`/dashboard/activity?days=${days}`).then(r => {

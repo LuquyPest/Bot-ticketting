@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
-const { getOpenTicketByChannelId, setPriority } = require('../utils/ticketManager');
+const { getOpenTicketByChannelId, setPriority, updateChannelTopic } = require('../utils/ticketManager');
 
 const LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 const EMOJI  = { low: '🟢', normal: '🔵', urgent: '🔴' };
@@ -31,6 +31,7 @@ module.exports = {
 
     const priority = interaction.options.getString('niveau', true);
     await setPriority(ticket.id, priority);
+    await updateChannelTopic(client, ticket.id).catch(() => null);
 
     const label = LABELS[priority];
     const emoji = EMOJI[priority];
