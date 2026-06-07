@@ -372,7 +372,7 @@ async function closeTicketWithTranscript(client, channel, closedByUser) {
     const { ratingButtons } = require('./components');
     await owner.send({
       content: 'Comment évalues-tu la qualité du support sur ce ticket ?',
-      components: [ratingButtons(ticket.id, closedByUser.id)]
+      components: [ratingButtons(ticket.id)]
     }).catch(() => null);
   }
 
