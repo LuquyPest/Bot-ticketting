@@ -177,7 +177,7 @@ router.get('/:id/notes', async (req, res) => {
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
     const notes = await query(
-      'SELECT id, author_id, author_tag, content, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
+      'SELECT id, author_id, author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
       [ticket.id]
     );
     res.json(notes);
@@ -201,15 +201,29 @@ router.post('/:id/notes', async (req, res) => {
       return res.status(400).json({ error: 'Contenu trop long (max 2000 caractères)' });
     }
 
+    const trimmed = content.trim();
     const result = await query(
-      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content) VALUES (?, ?, ?, ?)',
-      [ticket.id, req.session.user.id, req.session.user.username, content.trim()]
+      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "web")',
+      [ticket.id, req.session.user.id, req.session.user.username, trimmed]
     );
+
+    // Relayer la note dans le salon Discord du ticket
+    const client = req.app.locals.client;
+    if (client && ticket.channel_id && ticket.status === 'open') {
+      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+      if (channel) {
+        await channel.send(
+          `📌 **Note dashboard** · ${req.session.user.username}\n${trimmed}`
+        ).catch(() => null);
+      }
+    }
+
     res.json({
       id: result.insertId,
       author_id: req.session.user.id,
       author_tag: req.session.user.username,
-      content: content.trim(),
+      content: trimmed,
+      source: 'web',
       created_at: new Date()
     });
   } catch (err) {

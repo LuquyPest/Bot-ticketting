@@ -2,10 +2,12 @@ const {
   relayDmToTicket,
   sendWelcomeDm,
   getAnyOpenTicketForUser,
+  getOpenTicketByChannelId,
   isBlacklisted,
   getDailyTicketCount
 } = require('../utils/ticketManager');
 const { subjectButtons } = require('../utils/components');
+const { query } = require('../utils/db');
 
 // userId -> { content, attachments } — en attente de sélection de sujet
 const pendingSubject = new Map();
@@ -18,8 +20,29 @@ module.exports = {
 
       const data = packet.d;
       if (data.author?.bot) return;
-      if (data.guild_id) return;
 
+      // ── Message dans un salon de ticket (staff → note web) ──────────────
+      if (data.guild_id) {
+        const ticket = await getOpenTicketByChannelId(data.channel_id);
+        if (!ticket) return;
+
+        const content = data.content?.trim() || '';
+        const attachments = Array.isArray(data.attachments) && data.attachments.length > 0
+          ? data.attachments.map(a => a.url).join('\n')
+          : '';
+        const noteContent = [content, attachments].filter(Boolean).join('\n');
+        if (!noteContent) return;
+
+        const authorTag = data.member?.nick || data.author.username;
+
+        await query(
+          'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "discord")',
+          [ticket.id, data.author.id, authorTag, noteContent]
+        );
+        return;
+      }
+
+      // ── Message privé (utilisateur → relay ticket) ───────────────────────
       const user = await client.users.fetch(data.author.id).catch(() => null);
       if (!user) return;
 
@@ -33,7 +56,6 @@ module.exports = {
         return;
       }
 
-      // Blacklist
       if (await isBlacklisted(user.id)) {
         await user.send('Tu ne peux pas ouvrir de ticket.').catch(() => null);
         return;
@@ -42,7 +64,6 @@ module.exports = {
       const openTicket = await getAnyOpenTicketForUser(user.id);
 
       if (!openTicket) {
-        // Anti-spam : limite quotidienne de tickets
         const maxPerDay = client.config.maxTicketsPerDay ?? 3;
         const dailyCount = await getDailyTicketCount(user.id);
         if (dailyCount >= maxPerDay) {
@@ -50,7 +71,6 @@ module.exports = {
           return;
         }
 
-        // Menu de sujet si configuré
         const subjects = client.config.ticketSubjects;
         if (Array.isArray(subjects) && subjects.length > 0) {
           pendingSubject.set(user.id, { content, attachments });
@@ -71,6 +91,5 @@ module.exports = {
     }
   },
 
-  // Exporté pour que interactionCreate puisse accéder au Map
   pendingSubject
 };
