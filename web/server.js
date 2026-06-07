@@ -1,8 +1,12 @@
 const express = require('express');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const { pages } = require('../utils/transcriptServer');
+const { pool } = require('../utils/db');
 
 const EXPIRED_HTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Expiré</title>
 <style>body{background:#0b0f16;color:#9aa8c7;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px}
@@ -11,32 +15,69 @@ h1{color:#edf2ff;font-size:24px;margin:0}p{margin:0;font-size:15px}</style></hea
 
 const config = require('../config.json');
 
-// Fix #2 / #7 : secret obligatoire — jamais de fallback faible
+// Fix #2/7 : secret obligatoire
 if (!config.dashboard?.sessionSecret) {
   throw new Error('FATAL: dashboard.sessionSecret doit être défini dans config.json');
 }
 
 const app = express();
 
-// Fix #1 : headers de sécurité globaux
+// Fix #13 : headers de sécurité via helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Géré manuellement par route
+  crossOriginResourcePolicy: { policy: 'same-origin' }
+}));
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
 
-// Fix #3 : session initialisée une seule fois (plus de new MemoryStore par requête)
+// Fix #20 : audit log de toutes les actions mutantes
+app.use((req, res, next) => {
+  if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      method: req.method,
+      path: req.path,
+      user: req.session?.user?.id || null,
+      role: req.session?.user?.role || null,
+      ip: req.ip
+    }));
+  }
+  next();
+});
+
+// Fix #11 : session persistée en MySQL (plus de perte au redémarrage)
+const sessionStore = new MySQLStore({
+  createDatabaseTable: true,
+  schema: { tableName: 'web_sessions' }
+}, pool);
+
+// Fix #3/9 : session initialisée une seule fois + cookie secure conditionnel
+const isHttps = config.webServerBaseUrl?.startsWith('https://');
 app.use(session({
   secret: config.dashboard.sessionSecret,
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' }
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isHttps  // Fix #16 : secure uniquement si HTTPS
+  }
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Fix #4 : protection CSRF via header custom sur toutes les requêtes mutantes
+// Fix #13 : Cache-Control sur toutes les réponses API
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
+// Fix #4 : protection CSRF via header custom
 app.use((req, res, next) => {
   if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
     if (req.headers['x-requested-with'] !== 'XMLHttpRequest') {
@@ -46,7 +87,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// Transcripts temporaires (public) — Fix #1 : CSP stricte sur cette page
+// Fix #10 : rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives, réessaye dans 15 minutes' }
+});
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes' }
+});
+
+app.use('/api/auth', authLimiter);
+app.use('/api', apiLimiter);
+
+// Transcripts temporaires — Fix #1 : CSP stricte
 app.get('/t/:token', (req, res) => {
   const page = pages.get(req.params.token);
   if (!page) return res.status(410).type('html').send(EXPIRED_HTML);
@@ -83,7 +143,7 @@ if (fs.existsSync(distPath)) {
 
 function startWebServer() {
   const port = config.webServerPort || 3000;
-  app.listen(port, () => console.log(`Serveur web démarré → http://localhost:${port}`));
+  app.listen(port, () => console.log(`Serveur web démarré → ${isHttps ? 'https' : 'http'}://localhost:${port}`));
 }
 
 module.exports = { startWebServer };
