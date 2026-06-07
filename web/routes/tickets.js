@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
 
-// Fix #7 : allowlists pour les filtres query string
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
 
@@ -10,11 +9,9 @@ router.get('/', async (req, res) => {
   try {
     const { status, priority, subject } = req.query;
 
-    // Fix #7 : validation des paramètres de filtre
     if (status   && !VALID_STATUS.has(status))   return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
 
-    // Fix #12 : offset toujours positif
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 20;
     const offset = (page - 1) * limit;
@@ -23,7 +20,6 @@ router.get('/', async (req, res) => {
     const where = [];
     const params = [];
 
-    // Fix #5 (IDOR) : support ne voit que ses propres tickets
     if (isSupport) {
       where.push('claimed_by = ?');
       params.push(req.session.user.id);
@@ -55,7 +51,6 @@ router.get('/:id', async (req, res) => {
     const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
 
-    // Fix #5 (IDOR) : support ne peut accéder qu'aux tickets qu'il a pris en charge
     if (req.session.user.role === 'support' && ticket.claimed_by !== req.session.user.id) {
       return res.status(403).json({ error: 'Accès refusé' });
     }

@@ -5,16 +5,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import api from '../api';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
+import { fmtDuration } from '../utils/format';
 
-function fmtDate(d) {
+function fmtChartDate(d) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-}
-
-function fmtDuration(s) {
-  if (!s) return '—';
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.round(s / 60)}min`;
-  return `${(s / 3600).toFixed(1)}h`;
 }
 
 function buildChart(opened, closed, days) {
@@ -24,7 +18,7 @@ function buildChart(opened, closed, days) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    map[key] = { date: fmtDate(d), opened: 0, closed: 0 };
+    map[key] = { date: fmtChartDate(d), opened: 0, closed: 0 };
   }
   opened.forEach(r => { if (map[r.date]) map[r.date].opened = r.count; });
   closed.forEach(r => { if (map[r.date]) map[r.date].closed = r.count; });

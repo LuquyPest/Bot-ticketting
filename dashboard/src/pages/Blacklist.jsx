@@ -2,10 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ShieldBan, Plus, Trash2, X } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
-
-function fmtDate(d) {
-  return new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-}
+import { fmtDate } from '../utils/format';
 
 function AddModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ userId: '', userTag: '', reason: '' });

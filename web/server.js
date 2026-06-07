@@ -15,16 +15,14 @@ h1{color:#edf2ff;font-size:24px;margin:0}p{margin:0;font-size:15px}</style></hea
 
 const config = require('../config.json');
 
-// Fix #2/7 : secret obligatoire
 if (!config.dashboard?.sessionSecret) {
   throw new Error('FATAL: dashboard.sessionSecret doit être défini dans config.json');
 }
 
 const app = express();
 
-// Fix #13 : headers de sécurité via helmet
 app.use(helmet({
-  contentSecurityPolicy: false, // Géré manuellement par route
+  contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: 'same-origin' }
 }));
 app.use((req, res, next) => {
@@ -32,7 +30,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Fix #20 : audit log de toutes les actions mutantes
 app.use((req, res, next) => {
   if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
     console.log(JSON.stringify({
@@ -47,13 +44,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Fix #11 : session persistée en MySQL (plus de perte au redémarrage)
 const sessionStore = new MySQLStore({
   createDatabaseTable: true,
   schema: { tableName: 'web_sessions' }
 }, pool);
 
-// Fix #3/9 : session initialisée une seule fois + cookie secure conditionnel
 const isHttps = config.webServerBaseUrl?.startsWith('https://');
 app.use(session({
   secret: config.dashboard.sessionSecret,
@@ -64,20 +59,18 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
-    secure: isHttps  // Fix #16 : secure uniquement si HTTPS
+    secure: isHttps
   }
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Fix #13 : Cache-Control sur toutes les réponses API
 app.use('/api', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
 });
 
-// Fix #4 : protection CSRF via header custom
 app.use((req, res, next) => {
   if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
     if (req.headers['x-requested-with'] !== 'XMLHttpRequest') {
@@ -87,7 +80,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Fix #10 : rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -106,7 +98,6 @@ const apiLimiter = rateLimit({
 app.use('/api/auth', authLimiter);
 app.use('/api', apiLimiter);
 
-// Transcripts temporaires — Fix #1 : CSP stricte
 app.get('/t/:token', (req, res) => {
   const page = pages.get(req.params.token);
   if (!page) return res.status(410).type('html').send(EXPIRED_HTML);
@@ -117,10 +108,8 @@ app.get('/t/:token', (req, res) => {
   res.type('html').send(page.html);
 });
 
-// Routes publiques
 app.use('/api/auth', require('./routes/auth'));
 
-// Routes protégées par rôle
 const requireRole = require('./middleware/role');
 app.use('/api/dashboard',   requireRole('support', 'fondateur'), require('./routes/dashboard'));
 app.use('/api/tickets',     requireRole('support', 'fondateur'), require('./routes/tickets'));
@@ -130,7 +119,6 @@ app.use('/api/transcripts', requireRole('fondateur'),            require('./rout
 app.use('/api/config',      requireRole('fondateur'),            require('./routes/config'));
 app.use('/api/users',       requireRole('fondateur'),            require('./routes/users'));
 
-// Frontend React
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

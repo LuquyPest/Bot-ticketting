@@ -8,7 +8,6 @@ router.get('/', async (req, res) => {
   try {
     const { ticketId, search } = req.query;
 
-    // Fix #12 : page toujours >= 1
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 20;
     const offset = (page - 1) * limit;
@@ -43,7 +42,6 @@ router.get('/:id/html', async (req, res) => {
   try {
     const [snap] = await query('SELECT html FROM transcript_snapshots WHERE id = ?', [req.params.id]);
     if (!snap) return res.status(404).send('Introuvable');
-    // Fix #14 : CSP stricte sur le HTML servi (même protection que /t/:token)
     res.setHeader('Content-Security-Policy', TRANSCRIPT_CSP);
     res.type('html').send(snap.html);
   } catch (err) {

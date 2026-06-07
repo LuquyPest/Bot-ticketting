@@ -1,17 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Star, Clock, Ticket } from 'lucide-react';
 import api from '../api';
-
-function fmtDuration(s) {
-  if (!s) return '—';
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.round(s / 60)}min`;
-  return `${(s / 3600).toFixed(1)}h`;
-}
-
-function fmtDate(d) {
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-}
+import { fmtDate, fmtDuration } from '../utils/format';
 
 function StarRating({ value }) {
   if (!value) return <span className="text-slate-600">—</span>;
@@ -100,7 +90,7 @@ export default function Staff() {
                   </div>
                 </td>
                 <td className="px-4 py-3"><StarRating value={s.avgRating} /></td>
-                <td className="px-4 py-3 text-slate-500 text-xs">{fmtDate(s.updated_at)}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs">{fmtDate(s.updated_at, { day: '2-digit', month: '2-digit', year: '2-digit' })}</td>
               </tr>
             ))}
           </tbody>

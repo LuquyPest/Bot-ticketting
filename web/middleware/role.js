@@ -1,6 +1,5 @@
 const { query } = require('../../utils/db');
 
-// Fix #3 : le rôle est relu en base à chaque requête — révocation immédiate sans attendre l'expiration du cookie
 module.exports = function requireRole(...roles) {
   return async (req, res, next) => {
     if (!req.session?.user) {

@@ -30,7 +30,6 @@ module.exports = {
         if (interaction.customId.startsWith('subject_')) {
           const subject = interaction.customId.slice('subject_'.length);
 
-          // Fix #8 : valider que le sujet appartient bien à la liste configurée
           const validSubjects = client.config.ticketSubjects || [];
           if (validSubjects.length > 0 && !validSubjects.includes(subject)) {
             await interaction.reply({ content: 'Sujet invalide.', ephemeral: true });
@@ -59,13 +58,11 @@ module.exports = {
           const rating = parseInt(parts[1]);
           const ticketId = parseInt(parts[2]);
 
-          // Fix #6 : valider que rating et ticketId sont bien des nombres
           if (isNaN(rating) || rating < 1 || rating > 5 || isNaN(ticketId)) {
             await interaction.reply({ content: 'Interaction invalide.', ephemeral: true });
             return;
           }
 
-          // Fix #6 : vérifier en base que ce ticket appartient bien à cet utilisateur
           const [ticket] = await query(
             'SELECT id, claimed_by, closed_by_tag FROM tickets WHERE id = ? AND owner_id = ? AND status = "closed"',
             [ticketId, interaction.user.id]
@@ -75,7 +72,6 @@ module.exports = {
             return;
           }
 
-          // Fix #6 : empêcher les doubles notations
           const [existing] = await query(
             'SELECT id FROM ticket_ratings WHERE ticket_id = ? AND owner_id = ?',
             [ticketId, interaction.user.id]
@@ -85,7 +81,6 @@ module.exports = {
             return;
           }
 
-          // Fix #6 : récupérer closedById depuis la base, pas depuis le customId forgeable
           const closedById = ticket.claimed_by;
           const closedByUser = await client.users.fetch(closedById).catch(() => null);
           const closedByTag = closedByUser?.tag || ticket.closed_by_tag || closedById;

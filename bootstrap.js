@@ -65,7 +65,6 @@ function validateConfig(config) {
     }
   }
 
-  // Fix #2 : validation des champs web obligatoires
   if (config.webEnabled !== false) {
     if (!config.webFounderId) {
       fail('Champ manquant dans config.json: webFounderId (requis si webEnabled est true)');
@@ -110,8 +109,6 @@ function ensureDependenciesInstalled() {
 async function ensureDatabase(config) {
   const { host, port, user, password, database } = config.database;
 
-  // Fix #9 : multipleStatements=true UNIQUEMENT ici pour le bootstrap (CREATE DATABASE),
-  // jamais dans le pool de production (utils/db.js)
   const connection = await mysql.createConnection({
     host,
     port,
@@ -133,8 +130,6 @@ async function ensureDatabase(config) {
 async function ensureTables(config) {
   const { host, port, user, password, database } = config.database;
 
-  // Fix #9 : multipleStatements=true UNIQUEMENT ici pour les migrations SQL,
-  // jamais dans le pool de production (utils/db.js)
   const connection = await mysql.createConnection({
     host,
     port,
@@ -244,7 +239,6 @@ async function ensureTables(config) {
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_count INT NOT NULL DEFAULT 0`,
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`,
     `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`,
-    // Fix #6 : contrainte d'unicité pour empêcher les doubles notations
     `CREATE UNIQUE INDEX IF NOT EXISTS uniq_rating_owner ON ticket_ratings (ticket_id, owner_id)`
   ];
 

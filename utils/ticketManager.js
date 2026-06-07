@@ -2,6 +2,7 @@ const { ChannelType, PermissionsBitField } = require('discord.js');
 const { query } = require('./db');
 const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
+const { sanitizeChannelName } = require('./sanitize');
 
 async function getOpenTicketByOwnerId(userId) {
   const rows = await query(
@@ -83,22 +84,12 @@ async function createTicketDb(channelId, user, subject = null) {
   };
 }
 
-function sanitizeChannelName(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 25) || 'ticket';
-}
 
 async function createTicketChannel(client, user) {
   const guild = await client.guilds.fetch(client.config.guildId);
 
   return guild.channels.create({
-    name: `${client.config.ticketPrefix}-${sanitizeChannelName(user.username)}`,
+    name: `${client.config.ticketPrefix}-${sanitizeChannelName(user.username, 25) || 'ticket'}`,
     type: ChannelType.GuildText,
     parent: client.config.ticketCategoryId,
     permissionOverwrites: [

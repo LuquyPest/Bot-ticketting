@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Fix #4 : header custom pour la protection CSRF côté serveur
 const api = axios.create({
   baseURL: '/api',
   withCredentials: true,

@@ -2,10 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Search, FileText, Download } from 'lucide-react';
 import api from '../api';
 import Pagination from '../components/Pagination';
-
-function fmtDate(d) {
-  return new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-}
+import { fmtDate } from '../utils/format';
 
 export default function Transcripts() {
   const [data, setData] = useState({ snapshots: [], total: 0, pages: 1 });

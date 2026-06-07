@@ -4,11 +4,7 @@ import { Search, Filter } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
-
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-}
+import { fmtDate } from '../utils/format';
 
 export default function Tickets() {
   const navigate = useNavigate();
@@ -102,7 +98,7 @@ export default function Tickets() {
                 <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{t.subject || <span className="italic text-slate-600">—</span>}</td>
                 <td className="px-4 py-3"><Badge label={t.status} variant={t.status} /></td>
                 <td className="px-4 py-3"><Badge label={t.priority} variant={t.priority} /></td>
-                <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(t.created_at)}</td>
+                <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="px-4 py-3 text-slate-500 truncate max-w-xs">{t.closed_by_tag || '—'}</td>
               </tr>
             ))}

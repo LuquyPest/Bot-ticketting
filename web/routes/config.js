@@ -5,7 +5,6 @@ const path = require('path');
 
 const CONFIG_PATH = path.join(__dirname, '../../config.json');
 
-// Fix #9 : allowlist stricte — uniquement les champs configurables, pas les secrets ni IDs sensibles
 const SAFE_FIELDS = [
   'ticketPrefix', 'welcomeMessage', 'ticketSubjects',
   'maxTicketsPerDay', 'inactiveWarningHours', 'inactiveHours',
@@ -14,7 +13,6 @@ const SAFE_FIELDS = [
   'webEnabled', 'webServerPort', 'webServerBaseUrl'
 ];
 
-// Fix #10 : validateurs par champ pour le PATCH
 const VALIDATORS = {
   ticketPrefix:           v => typeof v === 'string' && v.length >= 1 && v.length <= 20,
   welcomeMessage:         v => typeof v === 'string' && v.length <= 2000,
@@ -36,7 +34,6 @@ const VALIDATORS = {
 router.get('/', (req, res) => {
   try {
     const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    // Approche allowlist : uniquement les champs configurables, aucun secret ni ID Discord interne
     const safe = {};
     for (const field of SAFE_FIELDS) {
       if (field in cfg) safe[field] = cfg[field];

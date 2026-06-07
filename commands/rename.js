@@ -1,17 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
 const { getOpenTicketByChannelId } = require('../utils/ticketManager');
-
-function sanitizeName(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-}
+const { sanitizeChannelName } = require('../utils/sanitize');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,7 +21,7 @@ module.exports = {
       return;
     }
 
-    const newName = sanitizeName(interaction.options.getString('name', true));
+    const newName = sanitizeChannelName(interaction.options.getString('name', true));
     if (!newName) {
       await interaction.reply({ content: '❌ Nom invalide.', ephemeral: true });
       return;

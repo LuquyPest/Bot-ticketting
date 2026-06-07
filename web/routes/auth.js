@@ -16,7 +16,6 @@ router.get('/me', (req, res) => {
 
 router.get('/discord', (req, res) => {
   const config = cfg();
-  // Fix #8 : state aléatoire pour protéger contre le CSRF OAuth
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
   const url = new URL('https://discord.com/oauth2/authorize');
@@ -33,7 +32,6 @@ router.get('/discord/callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code) return res.redirect('/login?error=no_code');
 
-  // Fix #8 : valider le state OAuth pour bloquer le CSRF
   if (!state || state !== req.session.oauthState) {
     return res.redirect('/login?error=invalid_state');
   }
@@ -91,7 +89,6 @@ router.get('/discord/callback', async (req, res) => {
       }
     }
 
-    // Fix #17 : régénérer l'ID de session au login pour prévenir la fixation de session
     req.session.regenerate((err) => {
       if (err) return res.redirect('/login?error=oauth_failed');
       req.session.user = {
