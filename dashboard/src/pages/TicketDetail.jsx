@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send } from 'lucide-react';
+import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send, MessageSquare, Globe } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 function InfoRow({ label, value, icon: Icon }) {
   return (
@@ -52,6 +53,8 @@ export default function TicketDetail() {
     loadTicket();
     loadNotes();
   }, [loadTicket, loadNotes]);
+
+  useAutoRefresh(loadNotes, 15000);
 
   const changePriority = async (priority) => {
     setSaving(true);
@@ -244,9 +247,31 @@ export default function TicketDetail() {
 
         <div className="space-y-3">
           {notes.map(note => (
-            <div key={note.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
+            <div
+              key={note.id}
+              className={`border rounded-lg p-3 ${
+                note.source === 'discord'
+                  ? 'bg-indigo-600/5 border-indigo-600/20'
+                  : 'bg-slate-800/50 border-slate-700/50'
+              }`}
+            >
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-slate-300">{note.author_tag}</span>
+                <div className="flex items-center gap-1.5">
+                  {note.source === 'discord'
+                    ? <MessageSquare size={11} className="text-indigo-400" />
+                    : <Globe size={11} className="text-slate-500" />
+                  }
+                  <span className={`text-xs font-medium ${note.source === 'discord' ? 'text-indigo-300' : 'text-slate-300'}`}>
+                    {note.author_tag}
+                  </span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    note.source === 'discord'
+                      ? 'bg-indigo-600/20 text-indigo-400'
+                      : 'bg-slate-700 text-slate-500'
+                  }`}>
+                    {note.source === 'discord' ? 'Discord' : 'Dashboard'}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-600">{fmtDate(note.created_at)}</span>
                   {(user?.role === 'fondateur' || note.author_id === user?.id) && (
