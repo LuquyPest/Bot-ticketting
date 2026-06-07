@@ -40,10 +40,10 @@
   },
 
   "database": {
-    "host": "127.0.0.1",
+    "host": "db",
     "port": 3306,
-    "user": "ton_user_db",
-    "password": "ton_mot_de_passe_db",
+    "user": "botuser",
+    "password": "MEME_VALEUR_QUE_DB_PASSWORD_DANS_ENV",
     "database": "discord_tickets"
   }
 }
