@@ -29,6 +29,14 @@ module.exports = {
         // ── Boutons DM : sélection de sujet (pas de guild requis) ──
         if (interaction.customId.startsWith('subject_')) {
           const subject = interaction.customId.slice('subject_'.length);
+
+          // Fix #8 : valider que le sujet appartient bien à la liste configurée
+          const validSubjects = client.config.ticketSubjects || [];
+          if (validSubjects.length > 0 && !validSubjects.includes(subject)) {
+            await interaction.reply({ content: 'Sujet invalide.', ephemeral: true });
+            return;
+          }
+
           const { pendingSubject } = require('./messageCreate');
           const pending = pendingSubject.get(interaction.user.id);
 
