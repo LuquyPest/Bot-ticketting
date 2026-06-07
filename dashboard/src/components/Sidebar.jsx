@@ -2,8 +2,8 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
-  FileText, Settings, LogOut, Bot, UserCog, ScrollText, Shield, ClipboardList,
-  Kanban, CalendarClock
+  FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
+  Kanban, Tag, BarChart2
 } from 'lucide-react';
 import { useAuth } from '../App';
 import toast from 'react-hot-toast';
@@ -13,11 +13,10 @@ const ALL_NAV = [
   { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true, roles: ['support', 'fondateur'] },
   { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support', 'fondateur'] },
   { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support', 'fondateur'] },
-  { to: '/messages',    label: 'Messages prog.', icon: CalendarClock, roles: ['support', 'fondateur'] },
-  { to: '/staff',       label: 'Mes stats',    icon: Users,           roles: ['support'] },
-  { to: '/staff',       label: 'Staff',        icon: Users,           roles: ['fondateur'] },
+  { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
+  { to: '/equipe',      label: 'Équipe',       icon: Users,           roles: ['fondateur'] },
   { to: '/grades',      label: 'Grades',       icon: Shield,          roles: ['fondateur'], perm: 'manage_grades' },
-  { to: '/users',       label: 'Utilisateurs', icon: UserCog,         roles: ['fondateur'], perm: 'manage_users' },
+  { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
   { to: '/audit',       label: 'Audit',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
   { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
   { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'] },
