@@ -3,8 +3,12 @@ const router = express.Router();
 const { query } = require('../../utils/db');
 const {
   closeTicketWithTranscript, reopenTicket,
-  setClaim, getAllLinkedUserIds, recordStaffResponse, updateLastMessage
+  setClaim, getAllLinkedUserIds, recordStaffResponse, updateLastMessage,
+  addParticipant, removeParticipant, getAnyOpenTicketForUser,
+  logAddUser, logRemoveUser, logMoveTicket
 } = require('../../utils/ticketManager');
+const { sanitizeChannelName } = require('../../utils/sanitize');
+const { ChannelType } = require('discord.js');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
@@ -101,15 +105,23 @@ router.get('/:id', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
-    const [participants, transcript, rating] = await Promise.all([
+    const [participantRows, transcript, rating] = await Promise.all([
       query('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
       query('SELECT id, created_by_tag, created_at, message_count FROM transcript_snapshots WHERE ticket_id = ? ORDER BY created_at DESC LIMIT 1', [ticket.id]),
       query('SELECT rating, rated_at FROM ticket_ratings WHERE ticket_id = ? LIMIT 1', [ticket.id])
     ]);
 
+    const client = req.app.locals.client;
+    const participants = await Promise.all(
+      participantRows.map(async p => {
+        const u = await client?.users.fetch(p.user_id).catch(() => null);
+        return { id: p.user_id, tag: u?.username || p.user_id };
+      })
+    );
+
     res.json({
       ...ticket,
-      participants: participants.map(p => p.user_id),
+      participants,
       transcript: transcript[0] || null,
       rating: rating[0] || null
     });
@@ -241,12 +253,12 @@ router.post('/:id/reply', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
-    const { content, file_url } = req.body;
+    const { content, file_url, anonymous } = req.body;
     if (!content && !file_url) return res.status(400).json({ error: 'Contenu requis' });
     if (content && typeof content !== 'string') return res.status(400).json({ error: 'Contenu invalide' });
     if (content && content.length > 2000) return res.status(400).json({ error: 'Contenu trop long (max 2000)' });
 
-    const sender = req.session.user.username;
+    const sender = anonymous ? 'Support' : req.session.user.username;
     let msg = `--- ${sender} : ${content || ''}`.trim();
     if (file_url) msg += `\nFichier : ${file_url}`;
 
@@ -263,20 +275,21 @@ router.post('/:id/reply', async (req, res) => {
       if (channel) await channel.send(msg).catch(() => null);
     }
 
-    const staffUser = { id: req.session.user.id, tag: sender, username: sender };
+    const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
     await recordStaffResponse(ticket.id, staffUser);
     await updateLastMessage(ticket.id);
 
+    const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
     const noteContent = [content, file_url].filter(Boolean).join('\n');
     const result = await query(
       'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
-      [ticket.id, req.session.user.id, sender, noteContent]
+      [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
     );
 
     res.json({
       id: result.insertId,
       author_id: req.session.user.id,
-      author_tag: sender,
+      author_tag: noteAuthorTag,
       content: noteContent,
       source: 'reply',
       created_at: new Date()
@@ -331,6 +344,150 @@ router.patch('/:id/claim', async (req, res) => {
     }
 
     res.json({ ok: true, claimed_by: action === 'claim' ? userId : null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.post('/:id/participants', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+
+    const { discord_id } = req.body;
+    if (!discord_id || !/^\d{17,20}$/.test(String(discord_id))) {
+      return res.status(400).json({ error: 'Discord ID invalide (17-20 chiffres)' });
+    }
+    if (discord_id === ticket.owner_id) {
+      return res.status(400).json({ error: 'Cet utilisateur est déjà le propriétaire du ticket' });
+    }
+
+    const client = req.app.locals.client;
+    const discordUser = await client?.users.fetch(discord_id).catch(() => null);
+    if (!discordUser) return res.status(400).json({ error: 'Utilisateur Discord introuvable' });
+    if (discordUser.bot) return res.status(400).json({ error: 'Impossible d\'ajouter un bot' });
+
+    const existingTicket = await getAnyOpenTicketForUser(discord_id);
+    if (existingTicket && existingTicket.id !== ticket.id) {
+      return res.status(400).json({ error: `Cet utilisateur a déjà un ticket ouvert (#${existingTicket.id})` });
+    }
+
+    await addParticipant(ticket.id, discord_id);
+
+    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
+    if (client) await logAddUser(client, ticket.id, discord_id, staffUser);
+
+    await discordUser.send(
+      `Tu as été ajouté au ticket #${ticket.id}.\nSi tu réponds à ce bot en message privé, ton message ira dans ce ticket.`
+    ).catch(() => null);
+
+    if (client && ticket.channel_id) {
+      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+      if (channel) await channel.send(
+        `--- ${req.session.user.username} : a ajouté ${discordUser.username} comme participant DM lié au ticket`
+      ).catch(() => null);
+    }
+
+    res.json({ id: discord_id, tag: discordUser.username });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.delete('/:id/participants/:userId', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+
+    const { userId } = req.params;
+    if (userId === ticket.owner_id) {
+      return res.status(400).json({ error: 'Impossible de retirer le propriétaire principal' });
+    }
+
+    await removeParticipant(ticket.id, userId);
+
+    const client = req.app.locals.client;
+    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
+    if (client) await logRemoveUser(client, ticket.id, userId, staffUser);
+
+    if (client && ticket.channel_id) {
+      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+      if (channel) await channel.send(
+        `--- ${req.session.user.username} : a retiré l'utilisateur ${userId} des participants DM liés au ticket`
+      ).catch(() => null);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/:id/move', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+
+    const { category_id } = req.body;
+    if (!category_id || !/^\d{17,20}$/.test(String(category_id))) {
+      return res.status(400).json({ error: 'ID catégorie invalide' });
+    }
+
+    const client = req.app.locals.client;
+    if (!client || !ticket.channel_id) return res.status(503).json({ error: 'Bot Discord non disponible' });
+
+    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
+
+    const category = await client.channels.fetch(category_id).catch(() => null);
+    if (!category || category.type !== ChannelType.GuildCategory) {
+      return res.status(400).json({ error: 'Catégorie Discord introuvable' });
+    }
+
+    await channel.setParent(category_id, { lockPermissions: false });
+    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
+    await logMoveTicket(client, ticket.id, category.name, staffUser);
+    await channel.send(
+      `📂 Ticket déplacé dans **${category.name}** par **${req.session.user.username}** (dashboard).`
+    ).catch(() => null);
+
+    res.json({ ok: true, category_name: category.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/:id/rename', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+
+    const { name } = req.body;
+    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Nom requis' });
+
+    const newName = sanitizeChannelName(name.trim());
+    if (!newName) return res.status(400).json({ error: 'Nom invalide' });
+
+    const client = req.app.locals.client;
+    if (!client || !ticket.channel_id) return res.status(503).json({ error: 'Bot Discord non disponible' });
+
+    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
+
+    await channel.setName(newName);
+    await channel.send(
+      `✏️ Ticket renommé en **${newName}** par **${req.session.user.username}** (dashboard).`
+    ).catch(() => null);
+
+    res.json({ ok: true, name: newName });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
