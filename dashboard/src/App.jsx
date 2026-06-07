@@ -11,12 +11,12 @@ import Staff from './pages/Staff';
 import Blacklist from './pages/Blacklist';
 import Transcripts from './pages/Transcripts';
 import Settings from './pages/Settings';
-import Users from './pages/Users';
 import Patchnotes from './pages/Patchnotes';
 import Grades from './pages/Grades';
 import Audit from './pages/Audit';
 import Kanban from './pages/Kanban';
-import Messages from './pages/Messages';
+import Equipe from './pages/Equipe';
+import Tags from './pages/Tags';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -84,8 +84,11 @@ export default function App() {
                   <Route path="settings" element={
                     <RequireRole role="fondateur"><Settings /></RequireRole>
                   } />
-                  <Route path="users" element={
-                    <RequireRole role="fondateur" perm="manage_users"><Users /></RequireRole>
+                  <Route path="equipe" element={
+                    <RequireRole role="fondateur"><Equipe /></RequireRole>
+                  } />
+                  <Route path="tags" element={
+                    <RequireRole role="fondateur"><Tags /></RequireRole>
                   } />
                   <Route path="grades" element={
                     <RequireRole role="fondateur" perm="manage_grades"><Grades /></RequireRole>
@@ -93,8 +96,7 @@ export default function App() {
                   <Route path="audit" element={
                     <RequireRole role="fondateur" perm="view_audit"><Audit /></RequireRole>
                   } />
-                  <Route path="kanban"   element={<Kanban />} />
-                  <Route path="messages" element={<Messages />} />
+                  <Route path="kanban" element={<Kanban />} />
                   <Route path="patchnotes" element={
                     <RequireRole role="fondateur"><Patchnotes /></RequireRole>
                   } />

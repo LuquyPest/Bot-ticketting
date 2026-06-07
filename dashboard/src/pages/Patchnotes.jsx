@@ -10,6 +10,40 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.2',
+    date: '7 juin 2026',
+    title: 'Correctifs & UX',
+    changes: [
+      { type: 'fix',  text: 'Fusion des pages "Staff" et "Utilisateurs" en une seule page "Équipe" avec deux onglets : Gestion et Statistiques' },
+      { type: 'fix',  text: 'Messages programmés retirés de l\'interface (fonctionnalité interne uniquement)' },
+      { type: 'fix',  text: 'Chargement des grades rendu tolérant aux pannes : les utilisateurs restent accessibles même si la route /grades échoue' },
+      { type: 'fix',  text: 'Tags : ajout d\'une page de gestion dédiée (fondateur) pour créer, modifier et supprimer les tags avant de les assigner aux tickets' },
+      { type: 'impr', text: 'Sidebar fondateur nettoyée : navigation plus concise, entrées dupliquées supprimées' },
+    ]
+  },
+  {
+    version: 'v2.1',
+    date: '7 juin 2026',
+    title: 'Système de grades, kanban, tags et nouvelles fonctionnalités',
+    changes: [
+      { type: 'new',  text: 'Système de grades hiérarchiques : création, modification, suppression avec héritage de permissions' },
+      { type: 'new',  text: '10 permissions granulaires par grade : voir tickets, claim, répondre, fermer, gérer participants, transcripts, utilisateurs, grades, paramètres, audit' },
+      { type: 'new',  text: 'Page Audit : journal complet de toutes les actions effectuées sur les grades et permissions' },
+      { type: 'new',  text: 'Vue Kanban : 3 colonnes (Non claim / En cours / Fermés) avec mise à jour en temps réel via SSE' },
+      { type: 'new',  text: 'Tags colorés libres sur les tickets : assignation et retrait depuis la vue détaillée du ticket' },
+      { type: 'new',  text: 'Rapport hebdomadaire automatique : embed Discord chaque lundi à 9h avec les stats de la semaine' },
+      { type: 'new',  text: 'Blacklist temporaire : durées sélectionnables (1j / 7j / 30j / permanent) avec expiration automatique' },
+      { type: 'new',  text: 'Mode vacances par agent : désactive les assignations automatiques pendant l\'absence' },
+      { type: 'new',  text: 'Historique des tickets par utilisateur : consulter tous les tickets passés d\'un membre depuis la vue ticket' },
+      { type: 'new',  text: 'Réouverture avec motif : un champ raison est demandé avant de rouvrir un ticket fermé' },
+      { type: 'new',  text: 'Alerte anti-spam : le fondateur est notifié sur Discord quand un utilisateur atteint la limite quotidienne de tickets' },
+      { type: 'impr', text: 'Dashboard enrichi : taux de claim, heatmap 24h, top 3 staff, section tickets stale, filtre par statut sur les récents, donut de priorité' },
+      { type: 'impr', text: 'Graphique d\'activité : 3ème courbe "Non claimés" ajoutée en plus de Ouverts/Fermés' },
+      { type: 'tech', text: 'Nouvelles tables : grades, grade_permissions, user_grades, audit_log, ticket_tags, ticket_tag_assignments' },
+      { type: 'tech', text: 'Migrations : expires_at sur blacklist, vacation_mode sur dashboard_users, visibility_grade_id sur tickets' },
+    ]
+  },
+  {
     version: 'v2.0',
     date: '7 juin 2026',
     title: 'Temps réel, templates, aging et topic Discord',
