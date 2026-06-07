@@ -602,4 +602,106 @@ router.delete('/:id/notes/:noteId', async (req, res) => {
   }
 });
 
+// Bulk actions on multiple tickets
+router.post('/bulk', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
+  const { ids, action, value } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'IDs requis' });
+  if (ids.length > 100) return res.status(400).json({ error: 'Maximum 100 tickets' });
+  const cleanIds = ids.map(Number).filter(n => Number.isInteger(n) && n > 0);
+  if (!cleanIds.length) return res.status(400).json({ error: 'IDs invalides' });
+
+  try {
+    if (action === 'priority') {
+      if (!VALID_PRIORITY.has(value)) return res.status(400).json({ error: 'Priorité invalide' });
+      await query('UPDATE tickets SET priority = ? WHERE id IN (?)', [value, cleanIds]);
+      cleanIds.forEach(id => broadcast('ticket', { id, priority: value }));
+      return res.json({ ok: true, affected: cleanIds.length });
+    }
+    if (action === 'close') {
+      const tickets = await query("SELECT id, channel_id, status FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
+      if (!tickets.length) return res.json({ ok: true, affected: 0 });
+      const client = req.app.locals.client;
+      const staffTag = req.session.user.username;
+      for (const ticket of tickets) {
+        const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+        if (channel) {
+          await channel.send(`🔒 Ticket fermé en masse par ${staffTag}.`).catch(() => null);
+          await closeTicketWithTranscript(client, channel, { id: req.session.user.id, tag: staffTag, username: staffTag }).catch(() => null);
+        } else {
+          await query("UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=? WHERE id=?", [staffTag, ticket.id]);
+          broadcast('ticket', { id: ticket.id, status: 'closed' });
+        }
+      }
+      return res.json({ ok: true, affected: tickets.length });
+    }
+    return res.status(400).json({ error: 'Action invalide' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// PDF export (HTML printable)
+router.get('/:id/pdf', async (req, res) => {
+  try {
+    const { ticket, denied } = await checkAccess(req, req.params.id);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+
+    const notes = await query(
+      'SELECT author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
+      [ticket.id]
+    );
+
+    const SOURCE_LABEL = { reply: 'Réponse Staff', user: 'Utilisateur', discord: 'Discord', web: 'Note interne' };
+    const SOURCE_COLOR = { reply: '#4f46e5', user: '#7c3aed', discord: '#1e3a5f', web: '#374151' };
+
+    const notesHtml = notes.map(n => `
+      <div class="message" style="border-left:3px solid ${SOURCE_COLOR[n.source] || '#374151'};padding:10px 14px;margin:10px 0;background:#f9fafb;border-radius:4px">
+        <div class="meta" style="font-size:11px;color:#6b7280;margin-bottom:4px">
+          <strong>${n.author_tag}</strong> · ${SOURCE_LABEL[n.source] || n.source} · ${new Date(n.created_at).toLocaleString('fr-FR')}
+        </div>
+        <div style="font-size:13px;white-space:pre-wrap;word-break:break-word">${n.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>Ticket #${ticket.id} — ${(ticket.subject || 'Sans sujet').replace(/</g,'&lt;')}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,sans-serif;color:#111827;background:#fff;max-width:800px;margin:0 auto;padding:24px}
+  h1{font-size:20px;margin:0 0 4px}
+  .meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#f3f4f6;padding:14px;border-radius:8px;margin:16px 0}
+  .meta-cell{font-size:12px;color:#6b7280}.meta-cell strong{display:block;font-size:13px;color:#111827;margin-top:2px}
+  hr{border:0;border-top:1px solid #e5e7eb;margin:20px 0}
+  @media print{body{padding:0}button{display:none}}
+</style></head><body>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+  <h1>Ticket #${ticket.id} — ${(ticket.subject || 'Sans sujet').replace(/</g,'&lt;')}</h1>
+  <button onclick="window.print()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Imprimer / PDF</button>
+</div>
+<div class="meta-grid">
+  <div class="meta-cell">Utilisateur<strong>${ticket.owner_tag || '—'}</strong></div>
+  <div class="meta-cell">Statut<strong>${ticket.status === 'open' ? 'Ouvert' : 'Fermé'}</strong></div>
+  <div class="meta-cell">Priorité<strong>${ticket.priority}</strong></div>
+  <div class="meta-cell">Pris en charge<strong>${ticket.claimed_by || '—'}</strong></div>
+  <div class="meta-cell">Créé le<strong>${ticket.created_at ? new Date(ticket.created_at).toLocaleString('fr-FR') : '—'}</strong></div>
+  <div class="meta-cell">Fermé le<strong>${ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('fr-FR') : '—'}</strong></div>
+</div>
+<hr>
+<h2 style="font-size:14px;color:#374151;margin:0 0 12px">Historique des messages (${notes.length})</h2>
+${notesHtml || '<p style="color:#6b7280;font-size:13px;text-align:center;padding:20px">Aucun message</p>'}
+<div style="margin-top:24px;font-size:11px;color:#9ca3af;text-align:center">
+  Exporté le ${new Date().toLocaleString('fr-FR')} — Ticket Bot Dashboard
+</div>
+</body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

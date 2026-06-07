@@ -8,40 +8,57 @@ async function sendWeeklyReport(client) {
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel || !channel.isTextBased()) return;
 
-  const [[opened], [closed], [unclaimed], [avgResp], [avgRes], [topStaff]] = await Promise.all([
+  const [[opened], [closed], [unclaimed], [avgResp], [avgRes], leaderboard] = await Promise.all([
     query("SELECT COUNT(*) as c FROM tickets WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
     query("SELECT COUNT(*) as c FROM tickets WHERE closed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status = 'closed'"),
     query("SELECT COUNT(*) as c FROM tickets WHERE status = 'open' AND claimed_by IS NULL"),
     query("SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at)) as v FROM tickets WHERE first_response_at IS NOT NULL AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
     query("SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, closed_at)) as v FROM tickets WHERE status = 'closed' AND closed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
-    query("SELECT admin_tag, tickets_closed FROM admin_stats WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY tickets_closed DESC LIMIT 3")
+    query(`SELECT admin_id, admin_tag, tickets_closed, tickets_claimed,
+             CASE WHEN total_response_count > 0 THEN FLOOR(total_response_seconds / total_response_count) ELSE NULL END as avg_resp,
+             CASE WHEN total_ratings > 0 THEN ROUND(total_rating_score / total_ratings, 1) ELSE NULL END as avg_rating
+           FROM admin_stats WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+           ORDER BY tickets_closed DESC LIMIT 10`)
   ]);
 
   function fmt(seconds) {
     if (!seconds) return 'N/A';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
+    const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
-  const topStr = topStaff.map((s, i) => `${['🥇','🥈','🥉'][i]} **${s.admin_tag}** — ${s.tickets_closed} fermés`).join('\n') || 'Aucune donnée';
+  const MEDALS = ['🥇', '🥈', '🥉'];
+  const leaderboardStr = leaderboard.length > 0
+    ? leaderboard.map((s, i) => {
+        const medal = MEDALS[i] || `**${i + 1}.**`;
+        const rating = s.avg_rating ? ` · ⭐ ${s.avg_rating}` : '';
+        const resp = s.avg_resp ? ` · ⏱ ${fmt(s.avg_resp)}` : '';
+        return `${medal} **${s.admin_tag}** — ${s.tickets_closed} fermés · ${s.tickets_claimed} claims${resp}${rating}`;
+      }).join('\n')
+    : '_Aucune activité cette semaine_';
 
-  const embed = new EmbedBuilder()
+  const statsEmbed = new EmbedBuilder()
     .setColor(0x6366f1)
     .setTitle('📊 Rapport hebdomadaire — Support')
     .setDescription(`Semaine du ${new Date(Date.now() - 7 * 86400000).toLocaleDateString('fr-FR')} au ${new Date().toLocaleDateString('fr-FR')}`)
     .addFields(
-      { name: 'Tickets ouverts', value: String(opened.c), inline: true },
-      { name: 'Tickets fermés', value: String(closed.c), inline: true },
-      { name: 'En attente (non claim)', value: String(unclaimed.c), inline: true },
-      { name: 'Temps de réponse moyen', value: fmt(avgResp.v), inline: true },
-      { name: 'Temps de résolution moyen', value: fmt(avgRes.v), inline: true },
-      { name: '​', value: '​', inline: true },
-      { name: 'Top Staff cette semaine', value: topStr }
+      { name: '🎫 Ouverts', value: String(opened.c), inline: true },
+      { name: '✅ Fermés', value: String(closed.c), inline: true },
+      { name: '⏳ Non claim', value: String(unclaimed.c), inline: true },
+      { name: '⚡ Tps réponse moy.', value: fmt(avgResp.v), inline: true },
+      { name: '🏁 Tps résolution moy.', value: fmt(avgRes.v), inline: true },
+      { name: '​', value: '​', inline: true }
     )
     .setTimestamp();
 
-  await channel.send({ embeds: [embed] }).catch(console.error);
+  const leaderboardEmbed = new EmbedBuilder()
+    .setColor(0x22c55e)
+    .setTitle('🏆 Classement staff — 7 derniers jours')
+    .setDescription(leaderboardStr)
+    .setFooter({ text: 'Classement basé sur les tickets fermés' })
+    .setTimestamp();
+
+  await channel.send({ embeds: [statsEmbed, leaderboardEmbed] }).catch(console.error);
 }
 
 function startWeeklyReport(client) {

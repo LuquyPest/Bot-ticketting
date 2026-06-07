@@ -115,6 +115,7 @@ export default function TicketDetail() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [newTemplateSubject, setNewTemplateSubject] = useState('');
   const templatesRef = useRef(null);
   const bottomRef = useRef(null);
   const chatRef = useRef(null);
@@ -144,6 +145,12 @@ export default function TicketDetail() {
     api.get(`/tags/ticket/${id}`).then(r => setTicketTags(r.data)).catch(() => {});
     localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
   }, [loadTicket, loadNotes, id]);
+
+  // Reload templates filtered by subject once ticket is known
+  useEffect(() => {
+    if (!ticket?.subject) return;
+    api.get('/templates', { params: { subject: ticket.subject } }).then(r => setTemplates(r.data)).catch(() => {});
+  }, [ticket?.subject]);
 
   // Auto-scroll to bottom when notes change
   useEffect(() => {
@@ -346,9 +353,10 @@ export default function TicketDetail() {
     if (!composeText.trim() || !newTemplateName.trim()) return;
     setSavingTemplate(true);
     try {
-      const { data } = await api.post('/templates', { name: newTemplateName.trim(), content: composeText.trim() });
+      const { data } = await api.post('/templates', { name: newTemplateName.trim(), content: composeText.trim(), subject: ticket?.subject || null });
       setTemplates(t => [...t, data].sort((a, b) => a.name.localeCompare(b.name)));
       setNewTemplateName('');
+      setNewTemplateSubject('');
       toast.success('Template sauvegardé');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur');
@@ -540,6 +548,11 @@ export default function TicketDetail() {
               title="Historique de l'utilisateur">
               <History size={13} /> Historique
             </button>
+            <a href={`/api/tickets/${id}/pdf`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-100 hover:bg-slate-800 border border-slate-800 transition-colors"
+              title="Exporter en PDF">
+              <FileText size={13} /> PDF
+            </a>
             {ticket.created_at && (
               <span className="text-xs text-slate-700">
                 {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}

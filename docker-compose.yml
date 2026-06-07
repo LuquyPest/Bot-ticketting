@@ -3,10 +3,10 @@ services:
     image: mariadb:11
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Définir DB_ROOT_PASSWORD dans .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MARIADB_DATABASE: discord_tickets
       MARIADB_USER: botuser
-      MARIADB_PASSWORD: ${DB_PASSWORD:?Définir DB_PASSWORD dans .env}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/mariadb-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -27,6 +27,21 @@ services:
       - ./config.json:/app/config.json:ro
     expose:
       - "3000"
+    networks:
+      - proxy
+      - default
+
+    labels:
+      - "traefik.enable=true"
+
+      # Domaine
+      - "traefik.http.routers.ticket.rule=Host(`ticket.sunset-fa.fr`)"
+      - "traefik.http.routers.ticket.entrypoints=websecure"
+      - "traefik.http.routers.ticket.tls.certresolver=letsencrypt"
+
+      # Service interne
+      - "traefik.http.services.ticket.loadbalancer.server.port=3000"
+
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
@@ -36,3 +51,7 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  proxy:
+    external: true
