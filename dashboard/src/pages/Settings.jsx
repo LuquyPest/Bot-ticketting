@@ -43,6 +43,7 @@ export default function Settings() {
   const save = async () => {
     setSaving(true);
     try {
+      const snowflake = v => (v === '' ? null : v || null);
       const payload = {
         ticketPrefix: cfg.ticketPrefix,
         welcomeMessage: cfg.welcomeMessage,
@@ -51,11 +52,16 @@ export default function Settings() {
         inactiveWarningHours: cfg.inactiveWarningHours,
         inactiveHours: cfg.inactiveHours,
         replyRateLimitSeconds: cfg.replyRateLimitSeconds,
-        closeLogChannelId: cfg.closeLogChannelId,
-        claimLogChannelId: cfg.claimLogChannelId,
-        moveLogChannelId: cfg.moveLogChannelId,
-        addUserLogChannelId: cfg.addUserLogChannelId,
-        removeUserLogChannelId: cfg.removeUserLogChannelId,
+        closeLogChannelId:        snowflake(cfg.closeLogChannelId),
+        claimLogChannelId:        snowflake(cfg.claimLogChannelId),
+        moveLogChannelId:         snowflake(cfg.moveLogChannelId),
+        addUserLogChannelId:      snowflake(cfg.addUserLogChannelId),
+        removeUserLogChannelId:   snowflake(cfg.removeUserLogChannelId),
+        weeklyReportChannelId:    snowflake(cfg.weeklyReportChannelId),
+        spamAlertChannelId:       snowflake(cfg.spamAlertChannelId),
+        escalationAlertChannelId: snowflake(cfg.escalationAlertChannelId),
+        escalationAlertHours:     cfg.escalationAlertHours,
+        escalationCloseHours:     cfg.escalationCloseHours,
       };
       await api.patch('/config', payload);
       toast.success('Configuration sauvegardée ! Redémarre le bot pour appliquer les changements.');
@@ -160,17 +166,50 @@ export default function Settings() {
       <Section title="Salons de logs (IDs Discord)">
         <div className="space-y-3">
           {[
-            ['closeLogChannelId', 'Fermeture de ticket'],
-            ['claimLogChannelId', 'Claim'],
-            ['moveLogChannelId', 'Déplacement'],
-            ['addUserLogChannelId', 'Ajout d\'utilisateur'],
-            ['removeUserLogChannelId', 'Retrait d\'utilisateur']
+            ['closeLogChannelId',      'Fermeture de ticket'],
+            ['claimLogChannelId',      'Claim'],
+            ['moveLogChannelId',       'Déplacement'],
+            ['addUserLogChannelId',    "Ajout d'utilisateur"],
+            ['removeUserLogChannelId', "Retrait d'utilisateur"]
           ].map(([key, label]) => (
             <Field key={key} label={label}>
               <input type="text" value={cfg[key] || ''} onChange={e => set(key, e.target.value)}
                 placeholder="ID du salon Discord" className={INPUT} />
             </Field>
           ))}
+        </div>
+      </Section>
+
+      {/* Automation channels */}
+      <Section title="Salons d'automatisation (IDs Discord)">
+        <div className="space-y-3">
+          <Field label="Rapport hebdomadaire" hint="Salon où envoyer le rapport + leaderboard staff chaque lundi à 9h">
+            <input type="text" value={cfg.weeklyReportChannelId || ''} onChange={e => set('weeklyReportChannelId', e.target.value)}
+              placeholder="ID du salon Discord" className={INPUT} />
+          </Field>
+          <Field label="Alertes anti-spam" hint="Salon notifié quand un utilisateur dépasse la limite quotidienne de tickets">
+            <input type="text" value={cfg.spamAlertChannelId || ''} onChange={e => set('spamAlertChannelId', e.target.value)}
+              placeholder="ID du salon Discord (défaut : salon fermeture)" className={INPUT} />
+          </Field>
+          <Field label="Alertes d'escalade" hint="Salon notifié quand un ticket urgent n'a pas de réponse staff depuis le délai configuré">
+            <input type="text" value={cfg.escalationAlertChannelId || ''} onChange={e => set('escalationAlertChannelId', e.target.value)}
+              placeholder="ID du salon Discord (défaut : salon fermeture)" className={INPUT} />
+          </Field>
+        </div>
+      </Section>
+
+      {/* Escalation */}
+      <Section title="Escalade automatique (tickets urgents)">
+        <p className="text-xs text-slate-600 -mt-1">Un ticket urgent claim sans réponse staff déclenche une alerte puis une fermeture automatique.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Délai d'alerte (h)" hint="Heures sans réponse avant alerte Discord">
+            <input type="number" min={1} max={48} value={cfg.escalationAlertHours ?? 2}
+              onChange={e => set('escalationAlertHours', parseInt(e.target.value))} className={NUM_INPUT} />
+          </Field>
+          <Field label="Délai de fermeture (h)" hint="Heures sans réponse avant fermeture auto (doit être > délai alerte)">
+            <input type="number" min={1} max={168} value={cfg.escalationCloseHours ?? 4}
+              onChange={e => set('escalationCloseHours', parseInt(e.target.value))} className={NUM_INPUT} />
+          </Field>
         </div>
       </Section>
 
