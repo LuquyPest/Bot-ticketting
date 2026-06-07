@@ -1,14 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
+const { closeTicketWithTranscript, reopenTicket } = require('../../utils/ticketManager');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
 
+function csvEscape(val) {
+  if (val == null) return '';
+  const str = String(val);
+  return str.includes(',') || str.includes('"') || str.includes('\n')
+    ? '"' + str.replace(/"/g, '""') + '"'
+    : str;
+}
+
+async function checkAccess(req, ticketId) {
+  const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+  if (!ticket) return { ticket: null, denied: false };
+  if (req.session.user.role === 'support' && ticket.claimed_by !== req.session.user.id) {
+    return { ticket, denied: true };
+  }
+  return { ticket, denied: false };
+}
+
 router.get('/', async (req, res) => {
   try {
     const { status, priority, subject } = req.query;
-
     if (status   && !VALID_STATUS.has(status))   return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
 
@@ -24,10 +41,9 @@ router.get('/', async (req, res) => {
       where.push('claimed_by = ?');
       params.push(req.session.user.id);
     }
-
-    if (status)   { where.push('status = ?');       params.push(status); }
-    if (priority) { where.push('priority = ?');      params.push(priority); }
-    if (subject)  { where.push('subject LIKE ?');    params.push(`%${subject}%`); }
+    if (status)   { where.push('status = ?');    params.push(status); }
+    if (priority) { where.push('priority = ?');  params.push(priority); }
+    if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
@@ -46,14 +62,41 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/export', async (req, res) => {
+  if (req.session.user.role !== 'fondateur') {
+    return res.status(403).json({ error: 'Réservé au fondateur' });
+  }
+  try {
+    const tickets = await query(
+      'SELECT id, owner_tag, subject, status, priority, claimed_by, created_at, closed_at, closed_by_tag FROM tickets ORDER BY id DESC'
+    );
+    const header = 'ID,Utilisateur,Sujet,Statut,Priorité,Pris en charge,Créé le,Fermé le,Fermé par\n';
+    const rows = tickets.map(t => [
+      t.id,
+      csvEscape(t.owner_tag),
+      csvEscape(t.subject),
+      t.status,
+      t.priority,
+      csvEscape(t.claimed_by),
+      t.created_at ? new Date(t.created_at).toISOString() : '',
+      t.closed_at  ? new Date(t.closed_at).toISOString()  : '',
+      csvEscape(t.closed_by_tag),
+    ].join(',')).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="tickets.csv"');
+    res.send('﻿' + header + rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const { ticket, denied } = await checkAccess(req, req.params.id);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-
-    if (req.session.user.role === 'support' && ticket.claimed_by !== req.session.user.id) {
-      return res.status(403).json({ error: 'Accès refusé' });
-    }
+    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
     const [participants, transcript, rating] = await Promise.all([
       query('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
@@ -79,10 +122,113 @@ router.patch('/:id/priority', async (req, res) => {
   }
   try {
     const { priority } = req.body;
-    if (!VALID_PRIORITY.has(priority)) {
-      return res.status(400).json({ error: 'Priorité invalide' });
-    }
+    if (!VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
     await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/:id/status', async (req, res) => {
+  if (req.session.user.role !== 'fondateur') {
+    return res.status(403).json({ error: 'Réservé au fondateur' });
+  }
+  const { status } = req.body;
+  if (!VALID_STATUS.has(status)) return res.status(400).json({ error: 'Statut invalide' });
+
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status === status) return res.json({ ok: true });
+
+    const staffUser = {
+      id: req.session.user.id,
+      tag: req.session.user.username,
+      username: req.session.user.username,
+    };
+    const client = req.app.locals.client;
+
+    if (status === 'closed') {
+      const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+      if (channel) {
+        await closeTicketWithTranscript(client, channel, staffUser);
+      } else {
+        await query(
+          'UPDATE tickets SET status = "closed", closed_at = NOW(), closed_by_tag = ? WHERE id = ?',
+          [staffUser.tag, ticket.id]
+        );
+      }
+    } else {
+      await reopenTicket(client, ticket, staffUser);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.get('/:id/notes', async (req, res) => {
+  try {
+    const { ticket, denied } = await checkAccess(req, req.params.id);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+
+    const notes = await query(
+      'SELECT id, author_id, author_tag, content, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
+      [ticket.id]
+    );
+    res.json(notes);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.post('/:id/notes', async (req, res) => {
+  try {
+    const { ticket, denied } = await checkAccess(req, req.params.id);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+
+    const { content } = req.body;
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Contenu requis' });
+    }
+    if (content.length > 2000) {
+      return res.status(400).json({ error: 'Contenu trop long (max 2000 caractères)' });
+    }
+
+    const result = await query(
+      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content) VALUES (?, ?, ?, ?)',
+      [ticket.id, req.session.user.id, req.session.user.username, content.trim()]
+    );
+    res.json({
+      id: result.insertId,
+      author_id: req.session.user.id,
+      author_tag: req.session.user.username,
+      content: content.trim(),
+      created_at: new Date()
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.delete('/:id/notes/:noteId', async (req, res) => {
+  try {
+    const [note] = await query('SELECT * FROM ticket_notes WHERE id = ?', [req.params.noteId]);
+    if (!note) return res.status(404).json({ error: 'Note introuvable' });
+    if (note.ticket_id !== parseInt(req.params.id)) {
+      return res.status(400).json({ error: 'Note invalide' });
+    }
+    if (req.session.user.role !== 'fondateur' && note.author_id !== req.session.user.id) {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
+    await query('DELETE FROM ticket_notes WHERE id = ?', [note.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
