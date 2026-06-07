@@ -152,6 +152,21 @@ export default function TicketDetail() {
       if (data.id !== ticketId) return;
       setTicket(prev => prev ? { ...prev, ...data } : prev);
       if (data.subject !== undefined) setSubjectInput(data.subject || '');
+    },
+    participant_add: (data) => {
+      if (data.ticketId !== ticketId) return;
+      setTicket(prev => {
+        if (!prev) return prev;
+        if (prev.participants?.some(p => p.id === data.userId)) return prev;
+        return { ...prev, participants: [...(prev.participants || []), { id: data.userId, tag: data.tag }] };
+      });
+    },
+    participant_remove: (data) => {
+      if (data.ticketId !== ticketId) return;
+      setTicket(prev => prev ? {
+        ...prev,
+        participants: (prev.participants || []).filter(p => p.id !== data.userId)
+      } : prev);
     }
   });
 

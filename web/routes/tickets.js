@@ -390,6 +390,7 @@ router.post('/:id/participants', async (req, res) => {
 
     const staffUser = { id: req.session.user.id, tag: req.session.user.username };
     if (client) await logAddUser(client, ticket.id, discord_id, staffUser);
+    broadcast('participant_add', { ticketId: ticket.id, userId: discord_id, tag: discordUser.username });
 
     await discordUser.send(
       `Tu as été ajouté au ticket #${ticket.id}.\nSi tu réponds à ce bot en message privé, ton message ira dans ce ticket.`
@@ -425,6 +426,7 @@ router.delete('/:id/participants/:userId', async (req, res) => {
     const client = req.app.locals.client;
     const staffUser = { id: req.session.user.id, tag: req.session.user.username };
     if (client) await logRemoveUser(client, ticket.id, userId, staffUser);
+    broadcast('participant_remove', { ticketId: ticket.id, userId });
 
     if (client && ticket.channel_id) {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);

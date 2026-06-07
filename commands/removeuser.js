@@ -5,6 +5,7 @@ const {
   removeParticipant,
   logRemoveUser
 } = require('../utils/ticketManager');
+const { broadcast } = require('../utils/sse');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -39,6 +40,7 @@ module.exports = {
 
     await removeParticipant(ticket.id, user.id);
     await logRemoveUser(client, ticket.id, user.id, interaction.user);
+    broadcast('participant_remove', { ticketId: ticket.id, userId: user.id });
 
     await interaction.reply({
       content: `Utilisateur retire des participants DM lies : ${user.tag}`,
