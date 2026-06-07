@@ -230,7 +230,7 @@ async function ensureTables(config) {
       author_id VARCHAR(32) NOT NULL,
       author_tag VARCHAR(100) NOT NULL,
       content TEXT NOT NULL,
-      source ENUM('web', 'discord') NOT NULL DEFAULT 'web',
+      source ENUM('web', 'discord', 'reply') NOT NULL DEFAULT 'web',
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_note_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
     );
@@ -251,7 +251,8 @@ async function ensureTables(config) {
     `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`,
     `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uniq_rating_owner ON ticket_ratings (ticket_id, owner_id)`,
-    `ALTER TABLE ticket_notes ADD COLUMN IF NOT EXISTS source ENUM('web', 'discord') NOT NULL DEFAULT 'web'`
+    `ALTER TABLE ticket_notes ADD COLUMN IF NOT EXISTS source ENUM('web', 'discord', 'reply') NOT NULL DEFAULT 'web'`,
+    `ALTER TABLE ticket_notes MODIFY COLUMN source ENUM('web', 'discord', 'reply') NOT NULL DEFAULT 'web'`
   ];
 
   for (const migration of migrations) {

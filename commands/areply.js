@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
 const { getOpenTicketByChannelId, getAllLinkedUserIds, recordStaffResponse, updateLastMessage } = require('../utils/ticketManager');
 const { checkRateLimit } = require('../utils/rateLimit');
+const { query } = require('../utils/db');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -43,5 +44,11 @@ module.exports = {
     await updateLastMessage(ticket.id);
     await interaction.reply({ content: 'Envoye', ephemeral: true });
     await interaction.channel.send(msg);
+
+    const noteContent = [content, file?.url].filter(Boolean).join('\n');
+    await query(
+      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
+      [ticket.id, interaction.user.id, `${interaction.user.username} (anonyme)`, noteContent]
+    ).catch(() => null);
   }
 };
