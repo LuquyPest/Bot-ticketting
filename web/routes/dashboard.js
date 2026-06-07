@@ -52,7 +52,6 @@ router.get('/activity', async (req, res) => {
 router.get('/recent', async (req, res) => {
   try {
     const isSupport = req.session.user.role === 'support';
-    // Fix #4 (IDOR) : support voit uniquement ses propres tickets récents
     const tickets = isSupport
       ? await query(
           'SELECT id, owner_tag, subject, status, priority, created_at FROM tickets WHERE claimed_by = ? ORDER BY created_at DESC LIMIT 10',

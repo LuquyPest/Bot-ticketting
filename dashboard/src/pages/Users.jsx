@@ -3,11 +3,7 @@ import { RefreshCw, Lightbulb } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
-
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-}
+import { fmtDate } from '../utils/format';
 
 const ROLE_STYLES = {
   fondateur: 'bg-indigo-600/20 text-indigo-400 border-indigo-600/30',

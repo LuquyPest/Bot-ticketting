@@ -4,11 +4,7 @@ import { ArrowLeft, Star, FileText, User, Clock, Tag, AlertTriangle } from 'luci
 import api from '../api';
 import Badge from '../components/Badge';
 import toast from 'react-hot-toast';
-
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
-}
+import { fmtDate } from '../utils/format';
 
 function InfoRow({ label, value, icon: Icon }) {
   return (
@@ -79,8 +75,8 @@ export default function TicketDetail() {
           <h2 className="text-sm font-semibold text-slate-300">Informations</h2>
           <InfoRow label="Propriétaire" value={ticket.owner_tag} icon={User} />
           <InfoRow label="Sujet" value={ticket.subject} icon={Tag} />
-          <InfoRow label="Créé le" value={fmtDate(ticket.created_at)} icon={Clock} />
-          <InfoRow label="Fermé le" value={fmtDate(ticket.closed_at)} icon={Clock} />
+          <InfoRow label="Créé le" value={fmtDate(ticket.created_at, { dateStyle: "medium", timeStyle: "short" })} icon={Clock} />
+          <InfoRow label="Fermé le" value={fmtDate(ticket.closed_at, { dateStyle: "medium", timeStyle: "short" })} icon={Clock} />
           <InfoRow label="Fermé par" value={ticket.closed_by_tag} icon={User} />
           <InfoRow label="Claim par" value={ticket.claimed_by || 'Non réclamé'} icon={User} />
         </div>
@@ -122,7 +118,7 @@ export default function TicketDetail() {
                 </div>
                 <span className="text-sm text-slate-400">{ticket.rating.rating}/5</span>
               </div>
-              <p className="text-xs text-slate-600 mt-1">{fmtDate(ticket.rating.rated_at)}</p>
+              <p className="text-xs text-slate-600 mt-1">{fmtDate(ticket.rating.rated_at, { dateStyle: "medium", timeStyle: "short" })}</p>
             </div>
           )}
 
@@ -132,7 +128,7 @@ export default function TicketDetail() {
               <h2 className="text-sm font-semibold text-slate-300 mb-3">Transcript</h2>
               <div className="text-xs text-slate-500 mb-3">
                 <p>{ticket.transcript.message_count} messages · par {ticket.transcript.created_by_tag}</p>
-                <p>{fmtDate(ticket.transcript.created_at)}</p>
+                <p>{fmtDate(ticket.transcript.created_at, { dateStyle: "medium", timeStyle: "short" })}</p>
               </div>
               <div className="flex gap-2">
                 <a

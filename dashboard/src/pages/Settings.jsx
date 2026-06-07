@@ -39,7 +39,6 @@ export default function Settings() {
   useEffect(() => { load(); }, []);
 
   const set = (key, val) => setCfg(c => ({ ...c, [key]: val }));
-  const setDash = (key, val) => setCfg(c => ({ ...c, dashboard: { ...c.dashboard, [key]: val } }));
 
   const save = async () => {
     setSaving(true);
@@ -57,11 +56,6 @@ export default function Settings() {
         moveLogChannelId: cfg.moveLogChannelId,
         addUserLogChannelId: cfg.addUserLogChannelId,
         removeUserLogChannelId: cfg.removeUserLogChannelId,
-        dashboard: {
-          port: cfg.dashboard?.port,
-          authMethods: cfg.dashboard?.authMethods,
-          allowedRoleId: cfg.dashboard?.allowedRoleId
-        }
       };
       await api.patch('/config', payload);
       toast.success('Configuration sauvegardée ! Redémarre le bot pour appliquer les changements.');
@@ -180,37 +174,6 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* Dashboard config */}
-      <Section title="Dashboard">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Port" hint="Port d'écoute du dashboard">
-            <input type="number" value={cfg.dashboard?.port ?? 3001} onChange={e => setDash('port', parseInt(e.target.value))} className={NUM_INPUT} />
-          </Field>
-          <Field label="Rôle autorisé" hint="ID du rôle Discord pour accéder via OAuth">
-            <input type="text" value={cfg.dashboard?.allowedRoleId || ''} onChange={e => setDash('allowedRoleId', e.target.value)}
-              placeholder="ID du rôle" className={INPUT} />
-          </Field>
-        </div>
-        <Field label="Méthodes d'authentification">
-          <div className="flex gap-3">
-            {['discord', 'password'].map(method => (
-              <label key={method} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={cfg.dashboard?.authMethods?.includes(method) ?? true}
-                  onChange={e => {
-                    const methods = cfg.dashboard?.authMethods || ['discord', 'password'];
-                    if (e.target.checked) setDash('authMethods', [...new Set([...methods, method])]);
-                    else setDash('authMethods', methods.filter(m => m !== method));
-                  }}
-                  className="w-4 h-4 accent-indigo-600"
-                />
-                <span className="text-sm text-slate-300 capitalize">{method}</span>
-              </label>
-            ))}
-          </div>
-        </Field>
-      </Section>
     </div>
   );
 }

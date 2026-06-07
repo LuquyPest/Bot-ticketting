@@ -69,7 +69,6 @@ function subjectButtons(subjects) {
   return rows;
 }
 
-// Fix #6 : closedById retiré du customId — lu depuis la base dans interactionCreate
 function ratingButtons(ticketId) {
   const stars = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'];
   const styles = [ButtonStyle.Danger, ButtonStyle.Danger, ButtonStyle.Secondary, ButtonStyle.Success, ButtonStyle.Success];

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
 
-// Fix #10 : format snowflake Discord (17-20 chiffres)
 const SNOWFLAKE_RE = /^\d{17,20}$/;
 
 router.get('/', async (req, res) => {
@@ -20,7 +19,6 @@ router.post('/', async (req, res) => {
     const { userId, userTag, reason } = req.body;
     if (!userId || !userTag) return res.status(400).json({ error: 'userId et userTag requis' });
 
-    // Fix #10 : validation stricte des entrées
     if (!SNOWFLAKE_RE.test(userId)) return res.status(400).json({ error: 'userId invalide' });
     if (typeof userTag !== 'string' || userTag.length > 100) return res.status(400).json({ error: 'userTag invalide' });
     if (reason !== undefined && reason !== null && (typeof reason !== 'string' || reason.length > 500)) {
@@ -45,7 +43,6 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/:userId', async (req, res) => {
-  // Fix #10 : valider le paramètre d'URL
   if (!SNOWFLAKE_RE.test(req.params.userId)) {
     return res.status(400).json({ error: 'userId invalide' });
   }
