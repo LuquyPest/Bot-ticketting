@@ -8,27 +8,37 @@ const CONFIG_PATH = path.join(__dirname, '../../config.json');
 const SAFE_FIELDS = [
   'ticketPrefix', 'welcomeMessage', 'ticketSubjects',
   'maxTicketsPerDay', 'inactiveWarningHours', 'inactiveHours',
-  'replyRateLimitSeconds', 'closeLogChannelId', 'claimLogChannelId',
-  'moveLogChannelId', 'addUserLogChannelId', 'removeUserLogChannelId',
+  'replyRateLimitSeconds',
+  'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId',
+  'addUserLogChannelId', 'removeUserLogChannelId',
+  'weeklyReportChannelId', 'spamAlertChannelId',
+  'escalationAlertChannelId', 'escalationAlertHours', 'escalationCloseHours',
   'webEnabled', 'webServerPort', 'webServerBaseUrl'
 ];
 
+const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
+
 const VALIDATORS = {
-  ticketPrefix:           v => typeof v === 'string' && v.length >= 1 && v.length <= 20,
-  welcomeMessage:         v => typeof v === 'string' && v.length <= 2000,
-  ticketSubjects:         v => Array.isArray(v) && v.length <= 25 && v.every(s => typeof s === 'string' && s.length <= 100),
-  maxTicketsPerDay:       v => Number.isInteger(v) && v >= 1 && v <= 100,
-  inactiveWarningHours:   v => Number.isInteger(v) && v >= 1 && v <= 720,
-  inactiveHours:          v => Number.isInteger(v) && v >= 1 && v <= 720,
-  replyRateLimitSeconds:  v => Number.isInteger(v) && v >= 0 && v <= 300,
-  closeLogChannelId:      v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
-  claimLogChannelId:      v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
-  moveLogChannelId:       v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
-  addUserLogChannelId:    v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
-  removeUserLogChannelId: v => v === null || (typeof v === 'string' && /^\d{17,20}$/.test(v)),
-  webEnabled:             v => typeof v === 'boolean',
-  webServerPort:          v => Number.isInteger(v) && v >= 1 && v <= 65535,
-  webServerBaseUrl:       v => typeof v === 'string' && v.length <= 200,
+  ticketPrefix:             v => typeof v === 'string' && v.length >= 1 && v.length <= 20,
+  welcomeMessage:           v => typeof v === 'string' && v.length <= 2000,
+  ticketSubjects:           v => Array.isArray(v) && v.length <= 25 && v.every(s => typeof s === 'string' && s.length <= 100),
+  maxTicketsPerDay:         v => Number.isInteger(v) && v >= 1 && v <= 100,
+  inactiveWarningHours:     v => Number.isInteger(v) && v >= 1 && v <= 720,
+  inactiveHours:            v => Number.isInteger(v) && v >= 1 && v <= 720,
+  replyRateLimitSeconds:    v => Number.isInteger(v) && v >= 0 && v <= 300,
+  closeLogChannelId:        SNOWFLAKE,
+  claimLogChannelId:        SNOWFLAKE,
+  moveLogChannelId:         SNOWFLAKE,
+  addUserLogChannelId:      SNOWFLAKE,
+  removeUserLogChannelId:   SNOWFLAKE,
+  weeklyReportChannelId:    SNOWFLAKE,
+  spamAlertChannelId:       SNOWFLAKE,
+  escalationAlertChannelId: SNOWFLAKE,
+  escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,
+  escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
+  webEnabled:               v => typeof v === 'boolean',
+  webServerPort:            v => Number.isInteger(v) && v >= 1 && v <= 65535,
+  webServerBaseUrl:         v => typeof v === 'string' && v.length <= 200,
 };
 
 router.get('/', (req, res) => {
