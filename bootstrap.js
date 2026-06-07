@@ -331,7 +331,9 @@ async function ensureTables(config) {
     `ALTER TABLE ticket_notes MODIFY COLUMN source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web'`,
     `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS visibility_grade_id INT DEFAULT NULL`,
     `ALTER TABLE blacklist ADD COLUMN IF NOT EXISTS expires_at DATETIME DEFAULT NULL`,
-    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS vacation_mode TINYINT(1) NOT NULL DEFAULT 0`
+    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS vacation_mode TINYINT(1) NOT NULL DEFAULT 0`,
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS escalation_alerted TINYINT(1) NOT NULL DEFAULT 0`,
+    `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS subject VARCHAR(100) DEFAULT NULL`
   ];
 
   for (const migration of migrations) {

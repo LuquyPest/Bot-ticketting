@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Star, Clock, Ticket, AlertCircle } from 'lucide-react';
+import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Star, Clock, Ticket, AlertCircle, ExternalLink } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -251,6 +252,103 @@ function GestionTab({ me }) {
   );
 }
 
+// ─── Staff Detail Modal ────────────────────────────────────────────
+function StaffDetailModal({ adminId, onClose }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get(`/staff/${adminId}`).then(r => setDetail(r.data)).catch(() => setDetail(null)).finally(() => setLoading(false));
+  }, [adminId]);
+
+  function fmtSec(s) {
+    if (!s) return 'N/A';
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-100">{loading ? '...' : detail?.admin_tag || 'Membre'}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Statistiques détaillées</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors"><X size={16} /></button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-16 text-slate-600 text-sm">Chargement...</div>
+        ) : !detail ? (
+          <div className="text-center py-16 text-red-400 text-sm">Impossible de charger les données</div>
+        ) : (
+          <div className="p-6 space-y-6">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Tickets fermés', value: detail.tickets_closed, color: 'text-emerald-400' },
+                { label: 'Claims', value: detail.tickets_claimed, color: 'text-indigo-400' },
+                { label: 'Tps réponse moy.', value: fmtSec(detail.avgResponseSeconds), color: 'text-amber-400' },
+                { label: 'Note moy.', value: detail.avgRating ? `${parseFloat(detail.avgRating).toFixed(1)} ⭐` : 'N/A', color: 'text-yellow-400' }
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-slate-800 rounded-xl p-3 text-center border border-slate-700/50">
+                  <p className={`text-xl font-bold ${color}`}>{value}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Activity chart */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Activité — 30 derniers jours</p>
+              {detail.activity.length === 0 ? (
+                <div className="bg-slate-800/50 rounded-xl p-6 text-center text-slate-600 text-sm">Aucune activité sur cette période</div>
+              ) : (
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={detail.activity} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={d => d.slice(5)} />
+                      <YAxis tick={{ fontSize: 9, fill: '#64748b' }} allowDecimals={false} />
+                      <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
+                        labelStyle={{ color: '#94a3b8' }} itemStyle={{ color: '#a5f3fc' }}
+                        formatter={v => [v, 'tickets fermés']} />
+                      <Bar dataKey="count" fill="#4f46e5" radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* Recent tickets */}
+            {detail.recentTickets.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Derniers tickets fermés</p>
+                <div className="space-y-1">
+                  {detail.recentTickets.map(t => (
+                    <a key={t.id} href={`/tickets/${t.id}`}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors group">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs text-slate-600 font-mono flex-shrink-0">#{t.id}</span>
+                        <span className="text-sm text-slate-400 truncate">{t.subject || 'Sans sujet'}</span>
+                        <span className="text-xs text-slate-600 truncate flex-shrink-0">{t.owner_tag}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[10px] text-slate-600">{t.closed_at ? new Date(t.closed_at).toLocaleDateString('fr-FR') : '—'}</span>
+                        <ExternalLink size={10} className="text-slate-700 group-hover:text-slate-400 transition-colors" />
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Stats tab ─────────────────────────────────────────────────────
 function StarRating({ value }) {
   if (!value) return <span className="text-slate-700">—</span>;
@@ -272,6 +370,7 @@ function StatsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sort, setSort] = useState('tickets_closed');
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -297,6 +396,7 @@ function StatsTab() {
 
   return (
     <div className="space-y-4">
+      {selectedStaffId && <StaffDetailModal adminId={selectedStaffId} onClose={() => setSelectedStaffId(null)} />}
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{staff.length} membre(s) actif(s)</p>
         <div className="flex items-center gap-2">
@@ -348,7 +448,8 @@ function StatsTab() {
                 </div>
               </td></tr>
             ) : sorted.map((s, i) => (
-              <tr key={s.admin_id} className="border-b border-slate-800/40 last:border-0 hover:bg-slate-800/40 transition-colors">
+              <tr key={s.admin_id} onClick={() => setSelectedStaffId(s.admin_id)}
+                className="border-b border-slate-800/40 last:border-0 hover:bg-slate-800/40 transition-colors cursor-pointer">
                 <td className="px-4 py-3 text-slate-700 font-mono text-xs">{i + 1}</td>
                 <td className="px-4 py-3">
                   <div>
