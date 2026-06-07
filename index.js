@@ -4,6 +4,8 @@ const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js'
 const config = require('./config.json');
 const logger = require('./utils/logger');
 const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
+const { startWeeklyReport } = require('./utils/weeklyReport');
+const { startScheduledMessages } = require('./utils/scheduledMessages');
 const { startWebServer } = require('./web/server');
 
 const client = new Client({
@@ -68,6 +70,8 @@ client.login(config.token);
 client.once('ready', () => {
   logger.info('Bot connecté', { tag: client.user.tag });
   startInactiveChecker(client);
+  startWeeklyReport(client);
+  startScheduledMessages(client);
 });
 
 async function shutdown(signal) {

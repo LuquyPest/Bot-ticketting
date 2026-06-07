@@ -4,7 +4,7 @@ import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
   Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle,
-  UserCircle, ChevronDown
+  UserCircle, ChevronDown, Tag, History
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -98,6 +98,14 @@ export default function TicketDetail() {
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [composeMode, setComposeMode] = useState('reply');
+  const [grades, setGrades] = useState([]);
+  const [savingVisibility, setSavingVisibility] = useState(false);
+  const [ticketTags, setTicketTags] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  const [userHistory, setUserHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
 
   const [editingSubject, setEditingSubject] = useState(false);
   const [subjectInput, setSubjectInput] = useState('');
@@ -131,6 +139,9 @@ export default function TicketDetail() {
     loadNotes();
     api.get('/discord/categories').then(r => setCategories(r.data)).catch(() => {});
     api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
+    api.get('/grades').then(r => setGrades(r.data)).catch(() => {});
+    api.get('/tags').then(r => setAllTags(r.data)).catch(() => {});
+    api.get(`/tags/ticket/${id}`).then(r => setTicketTags(r.data)).catch(() => {});
     localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
   }, [loadTicket, loadNotes, id]);
 
@@ -356,6 +367,44 @@ export default function TicketDetail() {
     }
   };
 
+  const loadUserHistory = async () => {
+    try {
+      const { data } = await api.get(`/tickets/${id}/history`);
+      setUserHistory(data);
+      setShowHistory(true);
+    } catch { toast.error('Erreur'); }
+  };
+
+  const addTagToTicket = async (tagId) => {
+    try {
+      await api.post(`/tags/ticket/${id}`, { tag_id: tagId });
+      const tag = allTags.find(t => t.id === tagId);
+      if (tag && !ticketTags.find(t => t.id === tagId)) {
+        setTicketTags(prev => [...prev, tag]);
+      }
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  const removeTagFromTicket = async (tagId) => {
+    try {
+      await api.delete(`/tags/ticket/${id}/${tagId}`);
+      setTicketTags(prev => prev.filter(t => t.id !== tagId));
+    } catch { toast.error('Erreur'); }
+  };
+
+  const changeVisibility = async (gradeId) => {
+    setSavingVisibility(true);
+    try {
+      await api.patch(`/tickets/${id}/visibility`, { visibility_grade_id: gradeId ? parseInt(gradeId) : null });
+      setTicket(t => ({ ...t, visibility_grade_id: gradeId ? parseInt(gradeId) : null }));
+      toast.success('Visibilité mise à jour');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingVisibility(false);
+    }
+  };
+
   const canDeleteNote = (note) => user?.role === 'fondateur' || note.author_id === user?.id;
 
   if (loading) return (
@@ -390,6 +439,80 @@ export default function TicketDetail() {
   return (
     <div className="flex flex-1 min-h-screen overflow-hidden">
 
+      {/* Reopen with reason modal */}
+      {showReopenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-100">Réouvrir le ticket</h2>
+              <button onClick={() => setShowReopenModal(false)} className="text-slate-500 hover:text-slate-300"><X size={16} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Raison (optionnel)</label>
+                <textarea rows={3} value={reopenReason} onChange={e => setReopenReason(e.target.value)}
+                  placeholder="Raison de la réouverture..."
+                  className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 resize-none" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowReopenModal(false)}
+                  className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-sm hover:bg-slate-700 transition-colors">Annuler</button>
+                <button
+                  onClick={async () => {
+                    setShowReopenModal(false);
+                    setActionLoading(true);
+                    try {
+                      await api.patch(`/tickets/${id}/status`, { status: 'open' });
+                      if (reopenReason.trim()) {
+                        await api.post(`/tickets/${id}/notes`, { content: `Réouverture : ${reopenReason.trim()}` });
+                      }
+                      setTicket(t => ({ ...t, status: 'open' }));
+                      setReopenReason('');
+                      toast.success('Ticket réouvert');
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Erreur');
+                    } finally { setActionLoading(false); }
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 transition-colors disabled:opacity-50">
+                  Réouvrir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User history modal */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-100">Historique de {ticket.owner_tag}</h2>
+              <button onClick={() => setShowHistory(false)} className="text-slate-500 hover:text-slate-300"><X size={16} /></button>
+            </div>
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
+              {userHistory.map(t => (
+                <button key={t.id} onClick={() => { setShowHistory(false); navigate(`/tickets/${t.id}`); }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-800 text-left transition-colors">
+                  <div className="min-w-0">
+                    <span className="text-xs text-slate-600 font-mono mr-2">#{t.id}</span>
+                    <span className="text-sm text-slate-300">{t.subject || 'Sans sujet'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.status === 'open' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                      {t.status === 'open' ? 'ouvert' : 'fermé'}
+                    </span>
+                    <span className="text-[10px] text-slate-600">{fmtDate(t.created_at)}</span>
+                  </div>
+                </button>
+              ))}
+              {userHistory.length === 0 && <p className="text-sm text-slate-600 text-center py-4">Aucun ticket trouvé</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Left column: chat ── */}
       <div className="flex flex-col flex-1 min-w-0 min-h-screen overflow-hidden">
 
@@ -411,11 +534,18 @@ export default function TicketDetail() {
           {ticket.subject && (
             <span className="text-xs text-slate-600 truncate max-w-xs">· {ticket.subject}</span>
           )}
-          {ticket.created_at && (
-            <span className="text-xs text-slate-700 ml-auto flex-shrink-0">
-              {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            <button onClick={loadUserHistory}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-100 hover:bg-slate-800 border border-slate-800 transition-colors"
+              title="Historique de l'utilisateur">
+              <History size={13} /> Historique
+            </button>
+            {ticket.created_at && (
+              <span className="text-xs text-slate-700">
+                {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Chat area */}
@@ -744,7 +874,7 @@ export default function TicketDetail() {
                 )}
                 {ticket.status === 'closed' && user?.role === 'fondateur' && (
                   <button
-                    onClick={() => changeStatus('open')}
+                    onClick={() => setShowReopenModal(true)}
                     disabled={actionLoading}
                     className="w-full py-2 px-3 text-xs rounded-lg font-semibold transition-all disabled:opacity-50 border bg-emerald-600/15 text-emerald-400 border-emerald-600/25 hover:bg-emerald-600/25"
                   >
@@ -880,6 +1010,58 @@ export default function TicketDetail() {
               </div>
             </div>
           )}
+
+          {/* VISIBILITÉ */}
+          {grades.length > 0 && (
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+              <SectionTitle>Visibilité</SectionTitle>
+              <select
+                value={ticket.visibility_grade_id || ''}
+                onChange={e => changeVisibility(e.target.value || null)}
+                disabled={savingVisibility}
+                className="w-full bg-slate-800/60 border border-slate-700/60 text-slate-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:border-indigo-500/60 transition-colors disabled:opacity-50"
+              >
+                <option value="">Tous les membres du staff</option>
+                {grades.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} et supérieurs</option>
+                ))}
+              </select>
+              {ticket.visibility_grade_id && (
+                <p className="text-[10px] text-amber-400/80 mt-1.5">
+                  Ticket restreint — visible uniquement par certains grades.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* TAGS */}
+          <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
+            <SectionTitle>Tags</SectionTitle>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {ticketTags.map(tag => (
+                <span key={tag.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border"
+                  style={{ backgroundColor: `${tag.color}20`, color: tag.color, borderColor: `${tag.color}40` }}>
+                  {tag.name}
+                  <button onClick={() => removeTagFromTicket(tag.id)} className="ml-0.5 hover:opacity-70">
+                    <X size={9} />
+                  </button>
+                </span>
+              ))}
+              {ticketTags.length === 0 && <span className="text-xs text-slate-600 italic">Aucun tag</span>}
+            </div>
+            {allTags.filter(t => !ticketTags.find(tt => tt.id === t.id)).length > 0 && (
+              <select
+                defaultValue=""
+                onChange={e => { if (e.target.value) { addTagToTicket(parseInt(e.target.value)); e.target.value = ''; } }}
+                className="w-full bg-slate-800/60 border border-slate-700/60 text-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60 transition-colors">
+                <option value="">+ Ajouter un tag...</option>
+                {allTags.filter(t => !ticketTags.find(tt => tt.id === t.id)).map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
 
           {/* SATISFACTION */}
           {ticket.rating && (

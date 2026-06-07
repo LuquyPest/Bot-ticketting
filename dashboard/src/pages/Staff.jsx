@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Clock, Ticket, Users } from 'lucide-react';
+import { Star, Clock, Ticket, Users, AlertCircle } from 'lucide-react';
 import api from '../api';
+import toast from 'react-hot-toast';
+import { useAuth } from '../App';
 import { fmtDate, fmtDuration } from '../utils/format';
 
 function StarRating({ value }) {
@@ -19,13 +21,21 @@ function StarRating({ value }) {
 }
 
 export default function Staff() {
+  const { user } = useAuth();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [sort, setSort] = useState('tickets_closed');
+  const isSupport = user?.role === 'support';
 
   useEffect(() => {
     api.get('/staff')
       .then(r => setStaff(r.data))
+      .catch(err => {
+        const msg = err.response?.data?.error || 'Erreur de chargement';
+        setError(msg);
+        toast.error(msg);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -75,6 +85,17 @@ export default function Staff() {
           <tbody>
             {loading ? (
               <tr><td colSpan={7} className="text-center py-12 text-slate-600 text-sm">Chargement...</td></tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={7}>
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="w-12 h-12 rounded-full bg-red-600/10 flex items-center justify-center">
+                      <AlertCircle size={22} className="text-red-400" />
+                    </div>
+                    <p className="text-sm text-red-400 font-medium">{error}</p>
+                  </div>
+                </td>
+              </tr>
             ) : !sorted.length ? (
               <tr>
                 <td colSpan={7}>
@@ -82,7 +103,14 @@ export default function Staff() {
                     <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
                       <Users size={22} className="text-slate-600" />
                     </div>
-                    <p className="text-sm text-slate-600 font-medium">Aucune statistique disponible</p>
+                    <p className="text-sm text-slate-600 font-medium">
+                      {isSupport ? 'Aucune statistique pour ton compte' : 'Aucune statistique disponible'}
+                    </p>
+                    {isSupport && (
+                      <p className="text-xs text-slate-700 text-center max-w-xs">
+                        Les stats se mettent à jour quand tu claim ou fermes des tickets (via Discord ou le dashboard).
+                      </p>
+                    )}
                   </div>
                 </td>
               </tr>

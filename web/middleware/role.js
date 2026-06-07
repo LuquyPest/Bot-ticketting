@@ -1,6 +1,9 @@
 const { query } = require('../../utils/db');
+const { getUserPermissions } = require('../../utils/gradePermissions');
 
 module.exports = function requireRole(...roles) {
+  const fondateurOnly = roles.length === 1 && roles[0] === 'fondateur';
+
   return async (req, res, next) => {
     if (!req.session?.user) {
       return res.status(401).json({ error: 'Non authentifié' });
@@ -14,11 +17,26 @@ module.exports = function requireRole(...roles) {
         req.session.destroy(() => {});
         return res.status(401).json({ error: 'Utilisateur introuvable' });
       }
-      // Synchronise la session si le rôle a changé en base
+
       req.session.user.role = dbUser.role;
-      if (!roles.includes(dbUser.role)) {
-        return res.status(403).json({ error: 'Accès refusé — rôle insuffisant' });
+      const role = dbUser.role;
+
+      if (role === 'fondateur') {
+        req.userIsFondateur = true;
+        req.userPermissions = new Set(require('../../utils/gradePermissions').PERMISSIONS);
+        return next();
       }
+
+      if (fondateurOnly) {
+        return res.status(403).json({ error: 'Accès réservé au fondateur' });
+      }
+
+      if (role === 'nouveau') {
+        return res.status(403).json({ error: 'Accès refusé — compte en attente de validation' });
+      }
+
+      req.userIsFondateur = false;
+      req.userPermissions = await getUserPermissions(req.session.user.id);
       next();
     } catch (err) {
       console.error('requireRole error:', err);

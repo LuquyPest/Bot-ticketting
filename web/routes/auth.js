@@ -9,9 +9,18 @@ function cfg() {
   return require('../../config.json');
 }
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
-  res.json(req.session.user);
+  const user = req.session.user;
+  if (user.role === 'fondateur') {
+    return res.json({ ...user, permissions: require('../../utils/gradePermissions').PERMISSIONS });
+  }
+  try {
+    const perms = await require('../../utils/gradePermissions').getUserPermissions(user.id);
+    res.json({ ...user, permissions: [...perms] });
+  } catch {
+    res.json({ ...user, permissions: [] });
+  }
 });
 
 router.get('/discord', (req, res) => {

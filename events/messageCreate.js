@@ -81,6 +81,17 @@ module.exports = {
         const dailyCount = await getDailyTicketCount(user.id);
         if (dailyCount >= maxPerDay) {
           await user.send(`Tu as déjà ouvert ${maxPerDay} ticket(s) aujourd'hui. Réessaie demain.`).catch(() => null);
+
+          // Alert fondateur/logs channel about spam
+          const alertChannelId = client.config.spamAlertChannelId || client.config.closeLogChannelId;
+          if (alertChannelId) {
+            const alertCh = await client.channels.fetch(alertChannelId).catch(() => null);
+            if (alertCh?.isTextBased()) {
+              await alertCh.send(
+                `⚠️ **Anti-spam** : \`${user.tag}\` (${user.id}) a tenté d'ouvrir un ${dailyCount + 1}e ticket aujourd'hui (limite : ${maxPerDay}).`
+              ).catch(() => null);
+            }
+          }
           return;
         }
 

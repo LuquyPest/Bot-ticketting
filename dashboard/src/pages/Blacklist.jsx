@@ -4,8 +4,15 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 
+const DURATIONS = [
+  { value: '1d',        label: '1 jour' },
+  { value: '7d',        label: '7 jours' },
+  { value: '30d',       label: '30 jours' },
+  { value: 'permanent', label: 'Permanent' }
+];
+
 function AddModal({ onClose, onAdded }) {
-  const [form, setForm] = useState({ userId: '', userTag: '', reason: '' });
+  const [form, setForm] = useState({ userId: '', userTag: '', reason: '', duration: 'permanent' });
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
@@ -46,6 +53,23 @@ function AddModal({ onClose, onAdded }) {
             <label className="text-xs text-slate-500 mb-1 block">Raison (optionnel)</label>
             <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Spam, abus..."
               className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Durée</label>
+            <div className="grid grid-cols-4 gap-1">
+              {DURATIONS.map(d => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, duration: d.value }))}
+                  className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${form.duration === d.value
+                    ? 'bg-red-600/20 border-red-600/50 text-red-400'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-sm hover:bg-slate-700 transition-colors">Annuler</button>
@@ -107,14 +131,15 @@ export default function Blacklist() {
               <th className="text-left px-4 py-3 font-medium">Raison</th>
               <th className="text-left px-4 py-3 font-medium">Banni par</th>
               <th className="text-left px-4 py-3 font-medium">Date</th>
+              <th className="text-left px-4 py-3 font-medium">Expire</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-10 text-slate-600">Chargement...</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Chargement...</td></tr>
             ) : !list.length ? (
-              <tr><td colSpan={5} className="text-center py-10 text-slate-600">Blacklist vide</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Blacklist vide</td></tr>
             ) : list.map(u => (
               <tr key={u.user_id} className="border-b border-slate-800/50 last:border-0 hover:bg-slate-800/30 transition-colors">
                 <td className="px-4 py-3">
@@ -124,6 +149,11 @@ export default function Blacklist() {
                 <td className="px-4 py-3 text-slate-400 max-w-xs">{u.reason || <span className="italic text-slate-600">—</span>}</td>
                 <td className="px-4 py-3 text-slate-400">{u.added_by_tag}</td>
                 <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{fmtDate(u.added_at)}</td>
+                <td className="px-4 py-3 text-xs whitespace-nowrap">
+                  {u.expires_at
+                    ? <span className="text-amber-400">{fmtDate(u.expires_at)}</span>
+                    : <span className="text-slate-600 italic">Permanent</span>}
+                </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => remove(u.user_id, u.user_tag)}
