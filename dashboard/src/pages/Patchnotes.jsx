@@ -10,6 +10,94 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.0',
+    date: '7 juin 2026',
+    title: 'Temps réel, templates, aging et topic Discord',
+    changes: [
+      { type: 'new',  text: 'SSE (Server-Sent Events) : notes et réponses apparaissent instantanément sans recharger la page' },
+      { type: 'new',  text: 'Templates de réponse : création, suppression et insertion en un clic depuis la boîte de composition' },
+      { type: 'new',  text: 'Édition du sujet du ticket en ligne depuis la sidebar du dashboard (crayon au survol)' },
+      { type: 'new',  text: 'Indicateurs de messages non-lus : point bleu sur les tickets avec activité non consultée' },
+      { type: 'new',  text: 'Aging coloré : durée depuis le dernier message (ex. "3j sans réponse") en ambre/rouge' },
+      { type: 'new',  text: 'Notifications navigateur à la création d\'un nouveau ticket' },
+      { type: 'impr', text: 'Topic de salon Discord mis à jour automatiquement après claim, unclaim, changement de priorité ou de sujet' },
+      { type: 'impr', text: 'Embed EmbedBuilder pour le message de bienvenue à la création du ticket (couleurs, champs structurés)' },
+      { type: 'impr', text: 'Mise à jour SSE en temps réel sur la liste des tickets (priorité, claim, statut)' },
+      { type: 'new',  text: 'Route PATCH /api/tickets/:id/subject et API /api/templates (GET, POST, DELETE)' },
+      { type: 'tech', text: 'Table reply_templates ajoutée en base de données' },
+      { type: 'tech', text: 'utils/sse.js : singleton de diffusion SSE partagé entre toutes les routes et les events Discord' },
+    ]
+  },
+  {
+    version: 'v1.9',
+    date: '7 juin 2026',
+    title: 'Refonte complète du dashboard — design SaaS professionnel',
+    changes: [
+      { type: 'impr', text: 'Refonte totale de l\'interface : palette dark slate/indigo, typographie serrée, espacement cohérent' },
+      { type: 'impr', text: 'TicketDetail : layout 2 colonnes — timeline à gauche, sidebar sticky à droite' },
+      { type: 'impr', text: 'Timeline colorée par source : indigo (Discord), vert (réponse), gris (note interne)' },
+      { type: 'impr', text: 'Boîte de composition avec onglets Note interne / Répondre et toggle Anonyme/Identifié' },
+      { type: 'impr', text: 'Liste des tickets : dot de priorité inline, bordure rouge sur les tickets urgents' },
+      { type: 'impr', text: 'Badges arrondis avec dot coloré pour statut et priorité' },
+      { type: 'impr', text: 'Sidebar navigation : accent left-border sur l\'onglet actif, largeur réduite et compacte' },
+      { type: 'impr', text: 'Toutes les actions ticket dans la sidebar (claim, priorité, participants, renommer, déplacer)' },
+    ]
+  },
+  {
+    version: 'v1.8',
+    date: '7 juin 2026',
+    title: 'Parité complète Discord ↔ Dashboard',
+    changes: [
+      { type: 'new',  text: 'Claim / unclaim depuis le dashboard — message envoyé dans le salon Discord' },
+      { type: 'new',  text: 'Réponse au membre (Reply) depuis le dashboard avec option anonyme' },
+      { type: 'new',  text: 'Ajout et retrait de participants DM depuis le dashboard' },
+      { type: 'new',  text: 'Déplacement de ticket dans une catégorie Discord depuis le dashboard' },
+      { type: 'new',  text: 'Renommage du salon Discord depuis le dashboard' },
+      { type: 'impr', text: 'Résolution des noms d\'utilisateur Discord pour les participants dans la vue ticket' },
+      { type: 'impr', text: 'Synchronisation complète : toutes les actions Discord disponibles sur le dashboard et vice-versa' },
+      { type: 'tech', text: 'Route /api/discord/categories pour lister les catégories Discord disponibles' },
+    ]
+  },
+  {
+    version: 'v1.7',
+    date: '6 juin 2026',
+    title: 'Infrastructure Docker & fonctionnalités backend',
+    changes: [
+      { type: 'new',  text: 'Docker Compose : stack complète bot + MariaDB 11 avec healthcheck' },
+      { type: 'new',  text: 'Dockerfile multi-stage : build du dashboard React inclus dans l\'image de production' },
+      { type: 'new',  text: 'Accès uniquement via reverse proxy — port interne non exposé publiquement' },
+      { type: 'new',  text: 'Graceful shutdown : fermeture propre du bot et du serveur web sur SIGTERM/SIGINT' },
+      { type: 'new',  text: 'Logs JSON structurés (logger.js) pour l\'audit des requêtes mutantes' },
+      { type: 'new',  text: 'Endpoint GET /api/health avec vérification de la connexion base de données' },
+      { type: 'new',  text: 'Notes internes staff : visibles uniquement sur le dashboard, relayées dans le salon Discord' },
+      { type: 'new',  text: 'Synchronisation bidirectionnelle : messages Discord enregistrés comme notes dans le dashboard' },
+      { type: 'new',  text: 'Export CSV des tickets (fondateur) avec tous les champs' },
+      { type: 'impr', text: 'Auto-refresh du dashboard toutes les 15–30 secondes sur les pages tickets et dashboard' },
+      { type: 'impr', text: 'Tri configurable dans la page Staff (fermetures, claims, note, temps de réponse)' },
+      { type: 'tech', text: 'Refactoring général : nettoyage des imports, séparation des responsabilités' },
+    ]
+  },
+  {
+    version: 'v1.6',
+    date: '6 juin 2026',
+    title: 'Correctifs de sécurité (pentest)',
+    changes: [
+      { type: 'fix',  text: 'CSRF : protection via header X-Requested-With sur toutes les requêtes mutantes (POST, PATCH, DELETE)' },
+      { type: 'fix',  text: 'Session : secret obligatoire (erreur fatale si absent), session.regenerate() au login, cookie HttpOnly + SameSite + Secure' },
+      { type: 'fix',  text: 'Sessions persistées en MySQL (express-mysql-session) — suppression du MemoryStore' },
+      { type: 'fix',  text: 'Rôle rechargé depuis la base à chaque requête — révocation immédiate sans déconnexion' },
+      { type: 'fix',  text: 'IDOR : support limité à ses propres tickets (claimed_by = session.user.id) sur toutes les routes' },
+      { type: 'fix',  text: 'IDOR : dashboard/recent filtré par claimed_by pour les membres support' },
+      { type: 'fix',  text: 'Notation Discord : ownership vérifié en base, closedById non lu depuis le customId, double notation bloquée (index UNIQUE)' },
+      { type: 'fix',  text: 'OAuth : state aléatoire ajouté pour protéger le callback contre le CSRF' },
+      { type: 'fix',  text: 'CSP stricte sur les pages transcript + headers Helmet (X-Content-Type-Options, X-Frame-Options, etc.)' },
+      { type: 'fix',  text: 'GET /api/config en allowlist stricte — token, DB credentials et guildId non exposés' },
+      { type: 'fix',  text: 'Validation des entrées : regex snowflake sur userId, longueurs max, types par champ' },
+      { type: 'fix',  text: 'Validation du sujet Discord contre la liste ticketSubjects configurée' },
+      { type: 'tech', text: 'Ajout de helmet et express-rate-limit (20 req/15min sur /auth, 200 req/min sur /api)' },
+    ]
+  },
+  {
     version: 'v1.5',
     date: '6 juin 2026',
     title: 'Système de rôles dashboard & fusion des serveurs web',
