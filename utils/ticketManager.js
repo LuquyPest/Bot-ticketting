@@ -3,6 +3,7 @@ const { query } = require('./db');
 const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
 const { sanitizeChannelName } = require('./sanitize');
+const { broadcast } = require('./sse');
 
 async function getOpenTicketByOwnerId(userId) {
   const rows = await query(
@@ -184,6 +185,24 @@ async function createTicket(client, user, firstMessage, attachments = [], subjec
     }
 
     await channel.send({ content: msg });
+
+    const noteContent = [firstMessage, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
+    const noteResult = await query(
+      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "user")',
+      [ticket.id, user.id, user.tag, noteContent]
+    );
+    broadcast('note', {
+      ticketId: ticket.id,
+      note: {
+        id: noteResult.insertId,
+        ticket_id: ticket.id,
+        author_id: user.id,
+        author_tag: user.tag,
+        content: noteContent,
+        source: 'user',
+        created_at: new Date()
+      }
+    });
   }
 
   return { channel, ticket, created: true };
@@ -217,6 +236,24 @@ async function relayDmToTicket(client, user, content, attachments = [], subject 
 
   await channel.send({ content: msg });
   await query('UPDATE tickets SET last_message_at = NOW() WHERE id = ?', [ticket.id]);
+
+  const noteContent = [content, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
+  const noteResult = await query(
+    'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "user")',
+    [ticket.id, user.id, user.tag, noteContent]
+  );
+  broadcast('note', {
+    ticketId: ticket.id,
+    note: {
+      id: noteResult.insertId,
+      ticket_id: ticket.id,
+      author_id: user.id,
+      author_tag: user.tag,
+      content: noteContent,
+      source: 'user',
+      created_at: new Date()
+    }
+  });
 
   return { channel, ticket, created: false };
 }
