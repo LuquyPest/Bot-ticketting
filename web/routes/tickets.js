@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../../utils/db');
-const { closeTicketWithTranscript, reopenTicket } = require('../../utils/ticketManager');
+const {
+  closeTicketWithTranscript, reopenTicket,
+  setClaim, getAllLinkedUserIds, recordStaffResponse, updateLastMessage
+} = require('../../utils/ticketManager');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
@@ -226,6 +229,108 @@ router.post('/:id/notes', async (req, res) => {
       source: 'web',
       created_at: new Date()
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.post('/:id/reply', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+
+    const { content, file_url } = req.body;
+    if (!content && !file_url) return res.status(400).json({ error: 'Contenu requis' });
+    if (content && typeof content !== 'string') return res.status(400).json({ error: 'Contenu invalide' });
+    if (content && content.length > 2000) return res.status(400).json({ error: 'Contenu trop long (max 2000)' });
+
+    const sender = req.session.user.username;
+    let msg = `--- ${sender} : ${content || ''}`.trim();
+    if (file_url) msg += `\nFichier : ${file_url}`;
+
+    const client = req.app.locals.client;
+    const linkedUserIds = await getAllLinkedUserIds(ticket.id);
+
+    for (const userId of linkedUserIds) {
+      const user = await client?.users.fetch(userId).catch(() => null);
+      if (user) await user.send(msg).catch(() => null);
+    }
+
+    if (client && ticket.channel_id) {
+      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+      if (channel) await channel.send(msg).catch(() => null);
+    }
+
+    const staffUser = { id: req.session.user.id, tag: sender, username: sender };
+    await recordStaffResponse(ticket.id, staffUser);
+    await updateLastMessage(ticket.id);
+
+    const noteContent = [content, file_url].filter(Boolean).join('\n');
+    const result = await query(
+      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
+      [ticket.id, req.session.user.id, sender, noteContent]
+    );
+
+    res.json({
+      id: result.insertId,
+      author_id: req.session.user.id,
+      author_tag: sender,
+      content: noteContent,
+      source: 'reply',
+      created_at: new Date()
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/:id/claim', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+
+    const { action } = req.body;
+    if (action !== 'claim' && action !== 'unclaim') {
+      return res.status(400).json({ error: 'Action invalide (claim | unclaim)' });
+    }
+
+    const { id: userId, username, role } = req.session.user;
+    const isFondateur = role === 'fondateur';
+
+    if (action === 'claim') {
+      if (ticket.claimed_by && ticket.claimed_by !== userId && !isFondateur) {
+        return res.status(403).json({ error: 'Déjà pris en charge par quelqu\'un d\'autre' });
+      }
+    } else {
+      if (ticket.claimed_by !== userId && !isFondateur) {
+        return res.status(403).json({ error: 'Tu ne peux pas unclaim le ticket d\'un autre' });
+      }
+    }
+
+    const client = req.app.locals.client;
+    const staffUser = { id: userId, tag: username, username };
+
+    if (action === 'claim') {
+      await setClaim(client, ticket.id, staffUser);
+    } else {
+      await query('UPDATE tickets SET claimed_by = NULL WHERE id = ?', [ticket.id]);
+    }
+
+    if (client && ticket.channel_id) {
+      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+      if (channel) {
+        const msg = action === 'claim'
+          ? `✅ Ticket pris en charge par **${username}** (dashboard).`
+          : `🔓 Ticket libéré par **${username}** (dashboard).`;
+        await channel.send(msg).catch(() => null);
+      }
+    }
+
+    res.json({ ok: true, claimed_by: action === 'claim' ? userId : null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

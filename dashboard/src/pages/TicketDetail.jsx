@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send, MessageSquare, Globe } from 'lucide-react';
+import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send, MessageSquare, Globe, Reply } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import toast from 'react-hot-toast';
@@ -35,6 +35,9 @@ export default function TicketDetail() {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
 
   const loadTicket = useCallback(() => {
     api.get(`/tickets/${id}`)
@@ -96,6 +99,37 @@ export default function TicketDetail() {
     }
   };
 
+  const sendReply = async () => {
+    if (!replyText.trim()) return;
+    setSendingReply(true);
+    try {
+      const { data } = await api.post(`/tickets/${id}/reply`, { content: replyText.trim() });
+      setNotes(n => [...n, data]);
+      setReplyText('');
+      toast.success('Réponse envoyée');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const toggleClaim = async () => {
+    const isClaimed = ticket.claimed_by === user?.id;
+    const isFondateur = user?.role === 'fondateur';
+    const action = (isClaimed || (isFondateur && ticket.claimed_by)) ? 'unclaim' : 'claim';
+    setClaimLoading(true);
+    try {
+      const { data } = await api.patch(`/tickets/${id}/claim`, { action });
+      setTicket(t => ({ ...t, claimed_by: data.claimed_by }));
+      toast.success(action === 'claim' ? 'Ticket réclamé' : 'Ticket libéré');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
   const deleteNote = async (noteId) => {
     try {
       await api.delete(`/tickets/${id}/notes/${noteId}`);
@@ -139,20 +173,53 @@ export default function TicketDetail() {
 
         {/* Actions */}
         <div className="space-y-4">
-          {/* Status (fondateur only) */}
-          {user?.role === 'fondateur' && (
+          {/* Actions */}
+          {ticket.status === 'open' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-slate-300 mb-3">Actions</h2>
+              <div className="space-y-2">
+                {/* Claim / Unclaim */}
+                {(() => {
+                  const myClaim = ticket.claimed_by === user?.id;
+                  const anyClaim = !!ticket.claimed_by;
+                  const canClaim = !anyClaim || myClaim || user?.role === 'fondateur';
+                  const label = myClaim ? 'Libérer le ticket' : anyClaim && user?.role === 'fondateur' ? 'Libérer (override)' : 'Prendre en charge';
+                  return (
+                    <button
+                      onClick={toggleClaim}
+                      disabled={claimLoading || (!canClaim)}
+                      className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 border ${
+                        myClaim || (anyClaim && user?.role === 'fondateur')
+                          ? 'bg-amber-600/20 text-amber-400 border-amber-600/30 hover:bg-amber-600/30'
+                          : 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30'
+                      }`}
+                    >
+                      {claimLoading ? 'En cours...' : label}
+                    </button>
+                  );
+                })()}
+                {/* Close (fondateur only) */}
+                {user?.role === 'fondateur' && (
+                  <button
+                    onClick={() => changeStatus('closed')}
+                    disabled={actionLoading}
+                    className="w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 border bg-red-600/20 text-red-400 border-red-600/30 hover:bg-red-600/30"
+                  >
+                    {actionLoading ? 'En cours...' : 'Fermer le ticket'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {ticket.status === 'closed' && user?.role === 'fondateur' && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-slate-300 mb-3">Actions</h2>
               <button
-                onClick={() => changeStatus(ticket.status === 'open' ? 'closed' : 'open')}
+                onClick={() => changeStatus('open')}
                 disabled={actionLoading}
-                className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 border ${
-                  ticket.status === 'open'
-                    ? 'bg-red-600/20 text-red-400 border-red-600/30 hover:bg-red-600/30'
-                    : 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30'
-                }`}
+                className="w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 border bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30"
               >
-                {actionLoading ? 'En cours...' : ticket.status === 'open' ? 'Fermer le ticket' : 'Réouvrir le ticket'}
+                {actionLoading ? 'En cours...' : 'Réouvrir le ticket'}
               </button>
             </div>
           )}
@@ -252,6 +319,8 @@ export default function TicketDetail() {
               className={`border rounded-lg p-3 ${
                 note.source === 'discord'
                   ? 'bg-indigo-600/5 border-indigo-600/20'
+                  : note.source === 'reply'
+                  ? 'bg-emerald-600/5 border-emerald-600/20'
                   : 'bg-slate-800/50 border-slate-700/50'
               }`}
             >
@@ -259,17 +328,25 @@ export default function TicketDetail() {
                 <div className="flex items-center gap-1.5">
                   {note.source === 'discord'
                     ? <MessageSquare size={11} className="text-indigo-400" />
+                    : note.source === 'reply'
+                    ? <Reply size={11} className="text-emerald-400" />
                     : <Globe size={11} className="text-slate-500" />
                   }
-                  <span className={`text-xs font-medium ${note.source === 'discord' ? 'text-indigo-300' : 'text-slate-300'}`}>
+                  <span className={`text-xs font-medium ${
+                    note.source === 'discord' ? 'text-indigo-300'
+                    : note.source === 'reply' ? 'text-emerald-300'
+                    : 'text-slate-300'
+                  }`}>
                     {note.author_tag}
                   </span>
                   <span className={`text-xs px-1.5 py-0.5 rounded ${
                     note.source === 'discord'
                       ? 'bg-indigo-600/20 text-indigo-400'
+                      : note.source === 'reply'
+                      ? 'bg-emerald-600/20 text-emerald-400'
                       : 'bg-slate-700 text-slate-500'
                   }`}>
-                    {note.source === 'discord' ? 'Discord' : 'Dashboard'}
+                    {note.source === 'discord' ? 'Discord' : note.source === 'reply' ? 'Réponse' : 'Dashboard'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -311,6 +388,33 @@ export default function TicketDetail() {
           </div>
         </div>
       </div>
+
+      {/* Répondre à l'utilisateur */}
+      {ticket.status === 'open' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-300">Répondre à l'utilisateur</h2>
+          <p className="text-xs text-slate-500">Le message sera envoyé en DM à l'utilisateur et affiché dans le salon Discord.</p>
+          <textarea
+            value={replyText}
+            onChange={e => setReplyText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) sendReply(); }}
+            placeholder="Votre réponse... (Ctrl+Entrée pour envoyer)"
+            rows={3}
+            maxLength={2000}
+            className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-600">{replyText.length}/2000</span>
+            <button
+              onClick={sendReply}
+              disabled={!replyText.trim() || sendingReply}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500 transition-colors disabled:opacity-50"
+            >
+              <Send size={12} /> Envoyer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
