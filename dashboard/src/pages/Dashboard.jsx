@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ticket, CheckCircle, Clock, Star, TrendingUp, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -6,6 +6,7 @@ import api from '../api';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import { fmtDuration } from '../utils/format';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 function fmtChartDate(d) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
@@ -44,10 +45,13 @@ export default function Dashboard() {
   const [days, setDays] = useState(7);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     api.get('/dashboard/stats').then(r => setStats(r.data)).catch(() => {});
     api.get('/dashboard/recent').then(r => setRecent(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+  useAutoRefresh(loadData);
 
   useEffect(() => {
     api.get(`/dashboard/activity?days=${days}`).then(r => {

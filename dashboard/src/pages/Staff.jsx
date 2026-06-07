@@ -29,7 +29,14 @@ export default function Staff() {
       .finally(() => setLoading(false));
   }, []);
 
-  const sorted = [...staff].sort((a, b) => (b[sort] ?? 0) - (a[sort] ?? 0));
+  const sorted = [...staff].sort((a, b) => {
+    if (sort === 'avgResponseSeconds') {
+      const aVal = a.avgResponseSeconds ?? Infinity;
+      const bVal = b.avgResponseSeconds ?? Infinity;
+      return aVal - bVal;
+    }
+    return (b[sort] ?? 0) - (a[sort] ?? 0);
+  });
 
   return (
     <div className="p-6 space-y-5">
@@ -46,6 +53,7 @@ export default function Staff() {
           <option value="tickets_closed">Trier par fermetures</option>
           <option value="tickets_claimed">Trier par claims</option>
           <option value="avgRating">Trier par note</option>
+          <option value="avgResponseSeconds">Trier par temps de réponse</option>
         </select>
       </div>
 

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, FileText, User, Clock, Tag, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
+import { useAuth } from '../App';
 
 function InfoRow({ label, value, icon: Icon }) {
   return (
@@ -25,16 +26,32 @@ const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
-  useEffect(() => {
+  const loadTicket = useCallback(() => {
     api.get(`/tickets/${id}`)
       .then(r => setTicket(r.data))
       .catch(() => toast.error('Ticket introuvable'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const loadNotes = useCallback(() => {
+    api.get(`/tickets/${id}/notes`)
+      .then(r => setNotes(r.data))
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    loadTicket();
+    loadNotes();
+  }, [loadTicket, loadNotes]);
 
   const changePriority = async (priority) => {
     setSaving(true);
@@ -46,6 +63,42 @@ export default function TicketDetail() {
       toast.error('Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const changeStatus = async (status) => {
+    setActionLoading(true);
+    try {
+      await api.patch(`/tickets/${id}/status`, { status });
+      setTicket(t => ({ ...t, status }));
+      toast.success(status === 'closed' ? 'Ticket fermé' : 'Ticket réouvert');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const addNote = async () => {
+    if (!newNote.trim()) return;
+    setSavingNote(true);
+    try {
+      const { data } = await api.post(`/tickets/${id}/notes`, { content: newNote.trim() });
+      setNotes(n => [...n, data]);
+      setNewNote('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const deleteNote = async (noteId) => {
+    try {
+      await api.delete(`/tickets/${id}/notes/${noteId}`);
+      setNotes(n => n.filter(x => x.id !== noteId));
+    } catch {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -83,6 +136,24 @@ export default function TicketDetail() {
 
         {/* Actions */}
         <div className="space-y-4">
+          {/* Status (fondateur only) */}
+          {user?.role === 'fondateur' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-slate-300 mb-3">Actions</h2>
+              <button
+                onClick={() => changeStatus(ticket.status === 'open' ? 'closed' : 'open')}
+                disabled={actionLoading}
+                className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 border ${
+                  ticket.status === 'open'
+                    ? 'bg-red-600/20 text-red-400 border-red-600/30 hover:bg-red-600/30'
+                    : 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30'
+                }`}
+              >
+                {actionLoading ? 'En cours...' : ticket.status === 'open' ? 'Fermer le ticket' : 'Réouvrir le ticket'}
+              </button>
+            </div>
+          )}
+
           {/* Priority */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <h2 className="text-sm font-semibold text-slate-300 mb-3">Changer la priorité</h2>
@@ -160,6 +231,59 @@ export default function TicketDetail() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Notes internes */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-slate-300">Notes internes</h2>
+
+        {notes.length === 0 && (
+          <p className="text-xs text-slate-600 italic">Aucune note pour l'instant.</p>
+        )}
+
+        <div className="space-y-3">
+          {notes.map(note => (
+            <div key={note.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-slate-300">{note.author_tag}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600">{fmtDate(note.created_at)}</span>
+                  {(user?.role === 'fondateur' || note.author_id === user?.id) && (
+                    <button
+                      onClick={() => deleteNote(note.id)}
+                      className="text-slate-600 hover:text-red-400 transition-colors"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-slate-400 whitespace-pre-wrap">{note.content}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2 pt-1">
+          <textarea
+            value={newNote}
+            onChange={e => setNewNote(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) addNote(); }}
+            placeholder="Ajouter une note interne... (Ctrl+Entrée pour envoyer)"
+            rows={2}
+            maxLength={2000}
+            className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-600">{newNote.length}/2000</span>
+            <button
+              onClick={addNote}
+              disabled={!newNote.trim() || savingNote}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 transition-colors disabled:opacity-50"
+            >
+              <Send size={12} /> Ajouter
+            </button>
+          </div>
         </div>
       </div>
     </div>

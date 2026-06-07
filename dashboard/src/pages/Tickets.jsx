@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
 import { fmtDate } from '../utils/format';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import { useAuth } from '../App';
 
 export default function Tickets() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [data, setData] = useState({ tickets: [], total: 0, pages: 1 });
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ status: '', priority: '', subject: '' });
@@ -25,14 +28,25 @@ export default function Tickets() {
   }, [page, filters]);
 
   useEffect(() => { load(); }, [load]);
+  useAutoRefresh(load);
 
   const setFilter = (key, val) => { setFilters(f => ({ ...f, [key]: val })); setPage(1); };
 
   return (
     <div className="p-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-slate-100">Tickets</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{data.total} ticket(s) trouvé(s)</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-100">Tickets</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{data.total} ticket(s) trouvé(s)</p>
+        </div>
+        {user?.role === 'fondateur' && (
+          <a
+            href="/api/tickets/export"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-100 text-sm transition-colors"
+          >
+            <Download size={14} /> Export CSV
+          </a>
+        )}
       </div>
 
       {/* Filters */}

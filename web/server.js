@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { pages } = require('../utils/transcriptServer');
 const { pool } = require('../utils/db');
+const logger = require('../utils/logger');
 
 const EXPIRED_HTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Expiré</title>
 <style>body{background:#0b0f16;color:#9aa8c7;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px}
@@ -32,14 +33,13 @@ app.use((req, res, next) => {
 
 app.use((req, res, next) => {
   if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(),
+    logger.info('audit', {
       method: req.method,
       path: req.path,
       user: req.session?.user?.id || null,
       role: req.session?.user?.role || null,
       ip: req.ip
-    }));
+    });
   }
   next();
 });
@@ -78,6 +78,15 @@ app.use((req, res, next) => {
     }
   }
   next();
+});
+
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', uptime: Math.floor(process.uptime()) });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'unreachable' });
+  }
 });
 
 const authLimiter = rateLimit({
@@ -129,9 +138,13 @@ if (fs.existsSync(distPath)) {
   );
 }
 
-function startWebServer() {
+function startWebServer(client) {
+  app.locals.client = client;
   const port = config.webServerPort || 3000;
-  app.listen(port, () => console.log(`Serveur web démarré → ${isHttps ? 'https' : 'http'}://localhost:${port}`));
+  const server = app.listen(port, () =>
+    logger.info('Serveur web démarré', { port, https: isHttps })
+  );
+  return server;
 }
 
 module.exports = { startWebServer };
