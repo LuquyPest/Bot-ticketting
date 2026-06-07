@@ -778,29 +778,37 @@ export default function TicketDetail() {
 
           {/* PARTICIPANTS */}
           <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4">
-            <SectionTitle>Participants ({ticket.participants?.length || 0})</SectionTitle>
-            {ticket.participants?.length > 0 ? (
-              <div className="space-y-1.5 mb-3">
-                {ticket.participants.map(p => (
-                  <div key={p.id} className="group flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/40 hover:border-slate-600/60 transition-colors">
-                    <div className="min-w-0">
-                      <p className="text-xs text-slate-200 font-semibold truncate">{p.tag}</p>
-                      <p className="text-[10px] text-slate-600 font-mono">{p.id}</p>
-                    </div>
-                    {ticket.status === 'open' && (
-                      <button
-                        onClick={() => removeParticipant(p.id)}
-                        className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 ml-2 flex-shrink-0"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+            <SectionTitle>Participants ({1 + (ticket.participants?.length || 0)})</SectionTitle>
+            <div className="space-y-1.5 mb-3">
+              {/* Propriétaire — toujours affiché en premier */}
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-indigo-600/10 border border-indigo-600/20">
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-200 font-semibold truncate">{ticket.owner_tag}</p>
+                  <p className="text-[10px] text-slate-600 font-mono">{ticket.owner_id}</p>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-wide text-indigo-400 bg-indigo-600/15 px-1.5 py-0.5 rounded-md flex-shrink-0 ml-2">
+                  Auteur
+                </span>
               </div>
-            ) : (
-              <p className="text-xs text-slate-700 italic mb-3">Aucun participant.</p>
-            )}
+
+              {/* Participants ajoutés */}
+              {ticket.participants?.map(p => (
+                <div key={p.id} className="group flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/40 hover:border-slate-600/60 transition-colors">
+                  <div className="min-w-0">
+                    <p className="text-xs text-slate-200 font-semibold truncate">{p.tag}</p>
+                    <p className="text-[10px] text-slate-600 font-mono">{p.id}</p>
+                  </div>
+                  {ticket.status === 'open' && (
+                    <button
+                      onClick={() => removeParticipant(p.id)}
+                      className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 ml-2 flex-shrink-0"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
             {ticket.status === 'open' && (
               <div className="flex gap-1.5">
                 <input
