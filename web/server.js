@@ -22,6 +22,8 @@ if (!config.dashboard?.sessionSecret) {
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: 'same-origin' }
@@ -129,7 +131,11 @@ app.use('/api/templates',   requireRole('support', 'fondateur'), require('./rout
 app.use('/api/blacklist',   requireRole('fondateur'),            require('./routes/blacklist'));
 app.use('/api/transcripts', requireRole('fondateur'),            require('./routes/transcripts'));
 app.use('/api/config',      requireRole('fondateur'),            require('./routes/config'));
-app.use('/api/users',       requireRole('fondateur'),            require('./routes/users'));
+app.use('/api/users',       requireRole('support', 'fondateur'), require('./routes/users'));
+app.use('/api/grades',      requireRole('support', 'fondateur'), require('./routes/grades'));
+app.use('/api/audit',       requireRole('support', 'fondateur'), require('./routes/audit'));
+app.use('/api/tags',        requireRole('support', 'fondateur'), require('./routes/tags'));
+app.use('/api/messages',    requireRole('support', 'fondateur'), require('./routes/messages'));
 
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {

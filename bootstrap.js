@@ -243,6 +243,73 @@ async function ensureTables(config) {
       created_by_tag VARCHAR(100) NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS grades (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(80) NOT NULL,
+      color VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+      parent_id INT DEFAULT NULL,
+      position INT NOT NULL DEFAULT 0,
+      is_default TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_grade_parent FOREIGN KEY (parent_id) REFERENCES grades(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS grade_permissions (
+      grade_id INT NOT NULL,
+      permission VARCHAR(50) NOT NULL,
+      PRIMARY KEY (grade_id, permission),
+      CONSTRAINT fk_grade_perm FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS user_grades (
+      user_id VARCHAR(32) NOT NULL,
+      grade_id INT NOT NULL,
+      assigned_by_id VARCHAR(32) NOT NULL,
+      assigned_by_tag VARCHAR(100) NOT NULL,
+      assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, grade_id),
+      CONSTRAINT fk_user_grade FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      actor_id VARCHAR(32) NOT NULL,
+      actor_tag VARCHAR(100) NOT NULL,
+      action VARCHAR(100) NOT NULL,
+      target_type VARCHAR(50) DEFAULT NULL,
+      target_id VARCHAR(50) DEFAULT NULL,
+      details JSON DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_tags (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(50) NOT NULL UNIQUE,
+      color VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_tag_assignments (
+      ticket_id INT NOT NULL,
+      tag_id INT NOT NULL,
+      PRIMARY KEY (ticket_id, tag_id),
+      CONSTRAINT fk_tta_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+      CONSTRAINT fk_tta_tag FOREIGN KEY (tag_id) REFERENCES ticket_tags(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      ticket_id INT NOT NULL,
+      sender_id VARCHAR(32) NOT NULL,
+      sender_tag VARCHAR(100) NOT NULL,
+      content TEXT NOT NULL,
+      send_at DATETIME NOT NULL,
+      sent TINYINT(1) NOT NULL DEFAULT 0,
+      sent_at DATETIME DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_sched_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+    );
   `;
 
   await connection.query(sql);
@@ -261,7 +328,10 @@ async function ensureTables(config) {
     `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uniq_rating_owner ON ticket_ratings (ticket_id, owner_id)`,
     `ALTER TABLE ticket_notes ADD COLUMN IF NOT EXISTS source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web'`,
-    `ALTER TABLE ticket_notes MODIFY COLUMN source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web'`
+    `ALTER TABLE ticket_notes MODIFY COLUMN source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web'`,
+    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS visibility_grade_id INT DEFAULT NULL`,
+    `ALTER TABLE blacklist ADD COLUMN IF NOT EXISTS expires_at DATETIME DEFAULT NULL`,
+    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS vacation_mode TINYINT(1) NOT NULL DEFAULT 0`
   ];
 
   for (const migration of migrations) {
@@ -284,7 +354,7 @@ async function verifySchema(connection) {
     tickets: [
       'id', 'channel_id', 'owner_id', 'owner_tag', 'claimed_by',
       'status', 'subject', 'priority', 'last_message_at', 'first_response_at',
-      'warned_inactive', 'created_at', 'closed_at', 'closed_by_tag'
+      'warned_inactive', 'created_at', 'closed_at', 'closed_by_tag', 'visibility_grade_id'
     ],
     ticket_participants: ['id', 'ticket_id', 'user_id', 'added_at'],
     transcript_snapshots: [
@@ -300,7 +370,14 @@ async function verifySchema(connection) {
     ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at'],
     dashboard_users: ['user_id', 'username', 'avatar', 'role', 'discord_has_support', 'first_login', 'last_login'],
     ticket_notes: ['id', 'ticket_id', 'author_id', 'author_tag', 'content', 'source', 'created_at'],
-    reply_templates: ['id', 'name', 'content', 'created_by_id', 'created_by_tag', 'created_at']
+    reply_templates: ['id', 'name', 'content', 'created_by_id', 'created_by_tag', 'created_at'],
+    grades: ['id', 'name', 'color', 'parent_id', 'position', 'is_default', 'created_at'],
+    grade_permissions: ['grade_id', 'permission'],
+    user_grades: ['user_id', 'grade_id', 'assigned_by_id', 'assigned_by_tag', 'assigned_at'],
+    audit_log: ['id', 'actor_id', 'actor_tag', 'action', 'target_type', 'target_id', 'details', 'created_at'],
+    ticket_tags: ['id', 'name', 'color', 'created_at'],
+    ticket_tag_assignments: ['ticket_id', 'tag_id'],
+    scheduled_messages: ['id', 'ticket_id', 'sender_id', 'sender_tag', 'content', 'send_at', 'sent', 'sent_at', 'created_at']
   };
 
   for (const [table, columns] of Object.entries(expected)) {

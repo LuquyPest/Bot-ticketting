@@ -10,6 +10,7 @@ const {
 const { sanitizeChannelName } = require('../../utils/sanitize');
 const { ChannelType } = require('discord.js');
 const { broadcast } = require('../../utils/sse');
+const { getVisibleGradeIds, logAudit } = require('../../utils/gradePermissions');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
@@ -25,8 +26,12 @@ function csvEscape(val) {
 async function checkAccess(req, ticketId) {
   const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [ticketId]);
   if (!ticket) return { ticket: null, denied: false };
-  if (req.session.user.role === 'support' && ticket.claimed_by !== req.session.user.id) {
-    return { ticket, denied: true };
+  if (req.userIsFondateur) return { ticket, denied: false };
+  if (ticket.visibility_grade_id) {
+    const visibleIds = await getVisibleGradeIds(req.session.user.id);
+    if (!visibleIds.includes(ticket.visibility_grade_id)) {
+      return { ticket, denied: true };
+    }
   }
   return { ticket, denied: false };
 }
@@ -40,14 +45,14 @@ router.get('/', async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 20;
     const offset = (page - 1) * limit;
-    const isSupport = req.session.user.role === 'support';
 
     const where = [];
     const params = [];
 
-    if (isSupport) {
-      where.push('claimed_by = ?');
-      params.push(req.session.user.id);
+    if (!req.userIsFondateur) {
+      const visibleIds = await getVisibleGradeIds(req.session.user.id);
+      where.push('(visibility_grade_id IS NULL OR visibility_grade_id IN (?))');
+      params.push(visibleIds.length > 0 ? visibleIds : [0]);
     }
     if (status)   { where.push('status = ?');    params.push(status); }
     if (priority) { where.push('priority = ?');  params.push(priority); }
@@ -528,6 +533,51 @@ router.patch('/:id/subject', async (req, res) => {
     broadcast('ticket', { id: ticket.id, subject: trimmed });
 
     res.json({ ok: true, subject: trimmed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/:id/visibility', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT id FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+
+    const { visibility_grade_id } = req.body;
+    const gradeId = visibility_grade_id ? parseInt(visibility_grade_id) : null;
+
+    if (gradeId) {
+      const [grade] = await query('SELECT id FROM grades WHERE id = ?', [gradeId]);
+      if (!grade) return res.status(400).json({ error: 'Grade introuvable' });
+    }
+
+    await query('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [gradeId, ticket.id]);
+    await logAudit(
+      req.session.user.id, req.session.user.username,
+      'ticket_visibility_change', 'ticket', ticket.id,
+      { visibility_grade_id: gradeId }
+    );
+    broadcast('ticket', { id: ticket.id, visibility_grade_id: gradeId });
+    res.json({ ok: true, visibility_grade_id: gradeId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.get('/:id/history', async (req, res) => {
+  try {
+    const { ticket, denied } = await checkAccess(req, req.params.id);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+
+    const history = await query(
+      `SELECT id, status, subject, priority, claimed_by, created_at, closed_at, closed_by_tag
+       FROM tickets WHERE owner_id = ? ORDER BY created_at DESC`,
+      [ticket.owner_id]
+    );
+    res.json(history);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

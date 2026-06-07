@@ -4,24 +4,39 @@ const { query } = require('../../utils/db');
 
 router.get('/stats', async (req, res) => {
   try {
-    const [[open], [closed], [openedToday], [closedToday], [avgResp], [avgRat]] =
+    const [[open], [closed], [unclaimed], [openedToday], [closedToday], [avgResp], [avgResolution], [avgRat], [claimRate], priorities] =
       await Promise.all([
         query('SELECT COUNT(*) as c FROM tickets WHERE status = "open"'),
         query('SELECT COUNT(*) as c FROM tickets WHERE status = "closed"'),
+        query('SELECT COUNT(*) as c FROM tickets WHERE status = "open" AND claimed_by IS NULL'),
         query('SELECT COUNT(*) as c FROM tickets WHERE DATE(created_at) = CURDATE()'),
         query('SELECT COUNT(*) as c FROM tickets WHERE DATE(closed_at) = CURDATE()'),
         query('SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at)) as v FROM tickets WHERE first_response_at IS NOT NULL'),
-        query('SELECT AVG(rating) as v, COUNT(*) as c FROM ticket_ratings')
+        query('SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, closed_at)) as v FROM tickets WHERE status = "closed" AND closed_at IS NOT NULL'),
+        query('SELECT AVG(rating) as v, COUNT(*) as c FROM ticket_ratings'),
+        query('SELECT COUNT(*) as total, SUM(CASE WHEN claimed_by IS NOT NULL THEN 1 ELSE 0 END) as claimed FROM tickets WHERE status = "open"'),
+        query('SELECT priority, COUNT(*) as count FROM tickets GROUP BY priority')
       ]);
+
+    const priorityMap = { low: 0, normal: 0, urgent: 0 };
+    priorities.forEach(p => { priorityMap[p.priority] = p.count; });
+
+    const claimRatePct = claimRate.total > 0
+      ? Math.round((claimRate.claimed / claimRate.total) * 100)
+      : 0;
 
     res.json({
       openTickets: open.c,
       closedTickets: closed.c,
+      unclaimedTickets: unclaimed.c,
       openedToday: openedToday.c,
       closedToday: closedToday.c,
       avgResponseSeconds: Math.floor(avgResp.v || 0),
+      avgResolutionSeconds: Math.floor(avgResolution.v || 0),
       avgRating: avgRat.v ? parseFloat(avgRat.v).toFixed(1) : null,
-      totalRatings: avgRat.c
+      totalRatings: avgRat.c,
+      claimRate: claimRatePct,
+      priorityBreakdown: priorityMap
     });
   } catch (err) {
     console.error(err);
@@ -32,17 +47,76 @@ router.get('/stats', async (req, res) => {
 router.get('/activity', async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days) || 7, 90);
-    const [opened, closed] = await Promise.all([
+    const [opened, closed, unclaimed] = await Promise.all([
       query(
-        'SELECT DATE(created_at) as date, COUNT(*) as count FROM tickets WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY DATE(created_at) ORDER BY date ASC',
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count FROM tickets WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY DATE(created_at) ORDER BY date ASC",
         [days]
       ),
       query(
-        'SELECT DATE(closed_at) as date, COUNT(*) as count FROM tickets WHERE closed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY DATE(closed_at) ORDER BY date ASC',
+        "SELECT DATE_FORMAT(closed_at, '%Y-%m-%d') as date, COUNT(*) as count FROM tickets WHERE closed_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY DATE(closed_at) ORDER BY date ASC",
+        [days]
+      ),
+      query(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count FROM tickets WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND claimed_by IS NULL AND status = 'open' GROUP BY DATE(created_at) ORDER BY date ASC",
         [days]
       )
     ]);
-    res.json({ opened, closed });
+    res.json({ opened, closed, unclaimed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.get('/heatmap', async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 30, 90);
+    const rows = await query(
+      "SELECT HOUR(created_at) as hour, COUNT(*) as count FROM tickets WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY HOUR(created_at) ORDER BY hour ASC",
+      [days]
+    );
+    const map = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
+    rows.forEach(r => { map[r.hour].count = r.count; });
+    res.json(map);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.get('/top-staff', async (req, res) => {
+  try {
+    const rows = await query(
+      `SELECT admin_id, admin_tag, tickets_closed, tickets_claimed,
+              total_ratings, total_rating_score, updated_at
+       FROM admin_stats
+       WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+       ORDER BY tickets_closed DESC LIMIT 3`
+    );
+    res.json(rows.map(r => ({
+      ...r,
+      avgRating: r.total_ratings > 0 ? (r.total_rating_score / r.total_ratings).toFixed(1) : null
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.get('/pending', async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const hours = parseInt(req.query.hours) || 4;
+    const tickets = await query(
+      `SELECT id, owner_tag, subject, priority, last_message_at, created_at
+       FROM tickets
+       WHERE status = 'open'
+         AND claimed_by = ?
+         AND (last_message_at IS NULL OR last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR))
+       ORDER BY COALESCE(last_message_at, created_at) ASC`,
+      [userId, hours]
+    );
+    res.json(tickets);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -51,15 +125,29 @@ router.get('/activity', async (req, res) => {
 
 router.get('/recent', async (req, res) => {
   try {
-    const isSupport = req.session.user.role === 'support';
-    const tickets = isSupport
-      ? await query(
-          'SELECT id, owner_tag, subject, status, priority, created_at FROM tickets WHERE claimed_by = ? ORDER BY created_at DESC LIMIT 10',
-          [req.session.user.id]
-        )
-      : await query(
-          'SELECT id, owner_tag, subject, status, priority, created_at FROM tickets ORDER BY created_at DESC LIMIT 10'
-        );
+    const { status } = req.query;
+    const validStatus = new Set(['open', 'closed']);
+    const user = req.session.user;
+
+    let where = '';
+    const params = [];
+
+    if (user.role === 'support') {
+      where = 'WHERE claimed_by = ?';
+      params.push(user.id);
+      if (status && validStatus.has(status)) {
+        where += ' AND status = ?';
+        params.push(status);
+      }
+    } else if (status && validStatus.has(status)) {
+      where = 'WHERE status = ?';
+      params.push(status);
+    }
+
+    const tickets = await query(
+      `SELECT id, owner_tag, subject, status, priority, created_at FROM tickets ${where} ORDER BY created_at DESC LIMIT 10`,
+      params
+    );
     res.json(tickets);
   } catch (err) {
     console.error(err);

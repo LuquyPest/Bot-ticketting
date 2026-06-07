@@ -2,19 +2,25 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
-  FileText, Settings, LogOut, Bot, UserCog, ScrollText
+  FileText, Settings, LogOut, Bot, UserCog, ScrollText, Shield, ClipboardList,
+  Kanban, CalendarClock
 } from 'lucide-react';
 import { useAuth } from '../App';
 import toast from 'react-hot-toast';
 
+// nav items: roles = required role OR perm = required permission (fondateur bypasses all)
 const ALL_NAV = [
   { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true, roles: ['support', 'fondateur'] },
   { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support', 'fondateur'] },
+  { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support', 'fondateur'] },
+  { to: '/messages',    label: 'Messages prog.', icon: CalendarClock, roles: ['support', 'fondateur'] },
   { to: '/staff',       label: 'Mes stats',    icon: Users,           roles: ['support'] },
   { to: '/staff',       label: 'Staff',        icon: Users,           roles: ['fondateur'] },
+  { to: '/grades',      label: 'Grades',       icon: Shield,          roles: ['fondateur'], perm: 'manage_grades' },
+  { to: '/users',       label: 'Utilisateurs', icon: UserCog,         roles: ['fondateur'], perm: 'manage_users' },
+  { to: '/audit',       label: 'Audit',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
   { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
   { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'] },
-  { to: '/users',       label: 'Utilisateurs', icon: UserCog,         roles: ['fondateur'] },
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] }
 ];
@@ -47,7 +53,13 @@ export default function Sidebar() {
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=64`
     : null;
 
-  const nav = ALL_NAV.filter(item => item.roles.includes(user?.role));
+  const nav = ALL_NAV.filter(item => {
+    const role = user?.role;
+    // Items with a `perm`: visible to fondateur OR to users with that specific permission
+    if (item.perm) return role === 'fondateur' || user?.permissions?.includes(item.perm);
+    // Role-based items: strict match (fondateur sees fondateur items, support sees support items)
+    return item.roles.includes(role);
+  });
 
   return (
     <aside className="w-56 flex-shrink-0 flex flex-col bg-slate-900/80 border-r border-slate-800/60 backdrop-blur-sm">

@@ -13,6 +13,10 @@ import Transcripts from './pages/Transcripts';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
 import Patchnotes from './pages/Patchnotes';
+import Grades from './pages/Grades';
+import Audit from './pages/Audit';
+import Kanban from './pages/Kanban';
+import Messages from './pages/Messages';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -32,8 +36,10 @@ function RequireAuth({ children }) {
   return children;
 }
 
-function RequireRole({ role, children }) {
+function RequireRole({ role, perm, children }) {
   const { user } = useAuth();
+  if (user?.role === 'fondateur') return children;
+  if (perm && user?.permissions?.includes(perm)) return children;
   const roles = Array.isArray(role) ? role : [role];
   if (!roles.includes(user?.role)) return <Navigate to="/" replace />;
   return children;
@@ -79,8 +85,16 @@ export default function App() {
                     <RequireRole role="fondateur"><Settings /></RequireRole>
                   } />
                   <Route path="users" element={
-                    <RequireRole role="fondateur"><Users /></RequireRole>
+                    <RequireRole role="fondateur" perm="manage_users"><Users /></RequireRole>
                   } />
+                  <Route path="grades" element={
+                    <RequireRole role="fondateur" perm="manage_grades"><Grades /></RequireRole>
+                  } />
+                  <Route path="audit" element={
+                    <RequireRole role="fondateur" perm="view_audit"><Audit /></RequireRole>
+                  } />
+                  <Route path="kanban"   element={<Kanban />} />
+                  <Route path="messages" element={<Messages />} />
                   <Route path="patchnotes" element={
                     <RequireRole role="fondateur"><Patchnotes /></RequireRole>
                   } />
