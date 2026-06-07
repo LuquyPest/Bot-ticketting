@@ -91,14 +91,17 @@ router.get('/discord/callback', async (req, res) => {
       }
     }
 
-    req.session.user = {
-      id: discordUser.id,
-      username: discordUser.username,
-      avatar: discordUser.avatar || null,
-      role
-    };
-
-    res.redirect(role === 'nouveau' ? '/pending' : '/');
+    // Fix #17 : régénérer l'ID de session au login pour prévenir la fixation de session
+    req.session.regenerate((err) => {
+      if (err) return res.redirect('/login?error=oauth_failed');
+      req.session.user = {
+        id: discordUser.id,
+        username: discordUser.username,
+        avatar: discordUser.avatar || null,
+        role
+      };
+      res.redirect(role === 'nouveau' ? '/pending' : '/');
+    });
   } catch (err) {
     console.error('OAuth error:', err.response?.data || err.message);
     res.redirect('/login?error=oauth_failed');
