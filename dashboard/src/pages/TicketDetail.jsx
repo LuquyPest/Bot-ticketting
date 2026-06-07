@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle, UserCircle
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -63,6 +63,14 @@ const NOTE_STYLES = {
     authorCls: 'text-slate-300',
     badge: 'bg-slate-700/60 text-slate-500',
     label: 'Note'
+  },
+  user: {
+    border: 'border-l-violet-500/60',
+    icon: UserCircle,
+    iconCls: 'text-violet-400',
+    authorCls: 'text-violet-300',
+    badge: 'bg-violet-600/15 text-violet-400',
+    label: 'Utilisateur'
   }
 };
 
