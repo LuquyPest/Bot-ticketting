@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send, MessageSquare, Globe, Reply } from 'lucide-react';
+import { ArrowLeft, Star, FileText, User, Clock, Tag, X, Send, MessageSquare, Globe, Reply, UserPlus, FolderOpen, Pencil } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import toast from 'react-hot-toast';
@@ -37,7 +37,15 @@ export default function TicketDetail() {
   const [savingNote, setSavingNote] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
   const [claimLoading, setClaimLoading] = useState(false);
+  const [newParticipantId, setNewParticipantId] = useState('');
+  const [addingParticipant, setAddingParticipant] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [movingTicket, setMovingTicket] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
 
   const loadTicket = useCallback(() => {
     api.get(`/tickets/${id}`)
@@ -55,6 +63,9 @@ export default function TicketDetail() {
   useEffect(() => {
     loadTicket();
     loadNotes();
+    api.get('/discord/categories')
+      .then(r => setCategories(r.data))
+      .catch(() => {});
   }, [loadTicket, loadNotes]);
 
   useAutoRefresh(loadNotes, 15000);
@@ -103,7 +114,7 @@ export default function TicketDetail() {
     if (!replyText.trim()) return;
     setSendingReply(true);
     try {
-      const { data } = await api.post(`/tickets/${id}/reply`, { content: replyText.trim() });
+      const { data } = await api.post(`/tickets/${id}/reply`, { content: replyText.trim(), anonymous });
       setNotes(n => [...n, data]);
       setReplyText('');
       toast.success('Réponse envoyée');
@@ -127,6 +138,59 @@ export default function TicketDetail() {
       toast.error(err.response?.data?.error || 'Erreur');
     } finally {
       setClaimLoading(false);
+    }
+  };
+
+  const addParticipant = async () => {
+    if (!newParticipantId.trim()) return;
+    setAddingParticipant(true);
+    try {
+      const { data } = await api.post(`/tickets/${id}/participants`, { discord_id: newParticipantId.trim() });
+      setTicket(t => ({ ...t, participants: [...(t.participants || []), data] }));
+      setNewParticipantId('');
+      toast.success(`${data.tag} ajouté`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setAddingParticipant(false);
+    }
+  };
+
+  const removeParticipant = async (userId) => {
+    try {
+      await api.delete(`/tickets/${id}/participants/${userId}`);
+      setTicket(t => ({ ...t, participants: t.participants.filter(p => p.id !== userId) }));
+      toast.success('Participant retiré');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    }
+  };
+
+  const moveTicket = async () => {
+    if (!selectedCategory) return;
+    setMovingTicket(true);
+    try {
+      const { data } = await api.patch(`/tickets/${id}/move`, { category_id: selectedCategory });
+      toast.success(`Déplacé dans ${data.category_name}`);
+      setSelectedCategory('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setMovingTicket(false);
+    }
+  };
+
+  const renameTicket = async () => {
+    if (!renameValue.trim()) return;
+    setRenaming(true);
+    try {
+      const { data } = await api.patch(`/tickets/${id}/rename`, { name: renameValue.trim() });
+      toast.success(`Renommé en ${data.name}`);
+      setRenameValue('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -173,7 +237,6 @@ export default function TicketDetail() {
 
         {/* Actions */}
         <div className="space-y-4">
-          {/* Actions */}
           {ticket.status === 'open' && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <h2 className="text-sm font-semibold text-slate-300 mb-3">Actions</h2>
@@ -187,7 +250,7 @@ export default function TicketDetail() {
                   return (
                     <button
                       onClick={toggleClaim}
-                      disabled={claimLoading || (!canClaim)}
+                      disabled={claimLoading || !canClaim}
                       className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 border ${
                         myClaim || (anyClaim && user?.role === 'fondateur')
                           ? 'bg-amber-600/20 text-amber-400 border-amber-600/30 hover:bg-amber-600/30'
@@ -247,6 +310,61 @@ export default function TicketDetail() {
             </div>
           </div>
 
+          {/* Rename (ticket open) */}
+          {ticket.status === 'open' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-1.5">
+                <Pencil size={13} className="text-slate-500" /> Renommer le salon
+              </h2>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') renameTicket(); }}
+                  placeholder="Nouveau nom..."
+                  maxLength={40}
+                  className="flex-1 bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-slate-500"
+                />
+                <button
+                  onClick={renameTicket}
+                  disabled={!renameValue.trim() || renaming}
+                  className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-medium hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  {renaming ? '...' : 'Renommer'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Move (ticket open, categories available) */}
+          {ticket.status === 'open' && categories.length > 0 && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-1.5">
+                <FolderOpen size={13} className="text-slate-500" /> Déplacer le ticket
+              </h2>
+              <div className="flex gap-2">
+                <select
+                  value={selectedCategory}
+                  onChange={e => setSelectedCategory(e.target.value)}
+                  className="flex-1 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-slate-500"
+                >
+                  <option value="">Choisir une catégorie...</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={moveTicket}
+                  disabled={!selectedCategory || movingTicket}
+                  className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-medium hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  {movingTicket ? '...' : 'Déplacer'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Rating */}
           {ticket.rating && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -291,16 +409,52 @@ export default function TicketDetail() {
           )}
 
           {/* Participants */}
-          {ticket.participants?.length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-              <h2 className="text-sm font-semibold text-slate-300 mb-3">Participants ({ticket.participants.length})</h2>
-              <div className="flex flex-wrap gap-2">
-                {ticket.participants.map(uid => (
-                  <span key={uid} className="px-2 py-1 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-400 font-mono">{uid}</span>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-1.5">
+              <UserPlus size={13} className="text-slate-500" /> Participants ({ticket.participants?.length || 0})
+            </h2>
+            {ticket.participants?.length > 0 ? (
+              <div className="space-y-1.5 mb-3">
+                {ticket.participants.map(p => (
+                  <div key={p.id} className="flex items-center justify-between px-2 py-1 rounded-md bg-slate-800 border border-slate-700">
+                    <div>
+                      <span className="text-xs text-slate-300 font-medium">{p.tag}</span>
+                      <span className="text-xs text-slate-600 ml-1.5 font-mono">{p.id}</span>
+                    </div>
+                    {ticket.status === 'open' && (
+                      <button
+                        onClick={() => removeParticipant(p.id)}
+                        className="text-slate-600 hover:text-red-400 transition-colors ml-2"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-xs text-slate-600 italic mb-3">Aucun participant.</p>
+            )}
+            {ticket.status === 'open' && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newParticipantId}
+                  onChange={e => setNewParticipantId(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addParticipant(); }}
+                  placeholder="Discord ID (ex: 123456789012345678)"
+                  className="flex-1 bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-slate-500 font-mono"
+                />
+                <button
+                  onClick={addParticipant}
+                  disabled={!newParticipantId.trim() || addingParticipant}
+                  className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-200 text-xs font-medium hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  {addingParticipant ? '...' : 'Ajouter'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -392,8 +546,23 @@ export default function TicketDetail() {
       {/* Répondre à l'utilisateur */}
       {ticket.status === 'open' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-slate-300">Répondre à l'utilisateur</h2>
-          <p className="text-xs text-slate-500">Le message sera envoyé en DM à l'utilisateur et affiché dans le salon Discord.</p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-300">Répondre à l'utilisateur</h2>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-xs text-slate-500">Anonyme</span>
+              <div
+                onClick={() => setAnonymous(a => !a)}
+                className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${anonymous ? 'bg-indigo-600' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${anonymous ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+            </label>
+          </div>
+          <p className="text-xs text-slate-500">
+            {anonymous
+              ? 'Le message sera envoyé comme "--- Support : …" (sans ton nom).'
+              : 'Le message sera envoyé en DM à l\'utilisateur et affiché dans le salon Discord.'}
+          </p>
           <textarea
             value={replyText}
             onChange={e => setReplyText(e.target.value)}
