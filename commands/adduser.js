@@ -6,6 +6,7 @@ const {
   addParticipant,
   logAddUser
 } = require('../utils/ticketManager');
+const { broadcast } = require('../utils/sse');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -56,6 +57,7 @@ module.exports = {
 
     await addParticipant(ticket.id, user.id);
     await logAddUser(client, ticket.id, user.id, interaction.user);
+    broadcast('participant_add', { ticketId: ticket.id, userId: user.id, tag: user.username });
 
     await user.send(
       `Tu as ete ajoute au ticket #${ticket.id}.\n` +
