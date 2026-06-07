@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, AlertTriangle
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
-import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import { useSSE } from '../hooks/useSSE';
 
 const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 
@@ -88,9 +88,21 @@ export default function TicketDetail() {
   const [movingTicket, setMovingTicket] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
-
-  // compose mode: 'note' | 'reply'
   const [composeMode, setComposeMode] = useState('note');
+
+  // Subject editing
+  const [editingSubject, setEditingSubject] = useState(false);
+  const [subjectInput, setSubjectInput] = useState('');
+  const [savingSubject, setSavingSubject] = useState(false);
+
+  // Templates
+  const [templates, setTemplates] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const templatesRef = useRef(null);
+
+  const ticketId = parseInt(id);
 
   const loadTicket = useCallback(() => {
     api.get(`/tickets/${id}`)
@@ -108,12 +120,42 @@ export default function TicketDetail() {
   useEffect(() => {
     loadTicket();
     loadNotes();
-    api.get('/discord/categories')
-      .then(r => setCategories(r.data))
-      .catch(() => {});
-  }, [loadTicket, loadNotes]);
+    api.get('/discord/categories').then(r => setCategories(r.data)).catch(() => {});
+    api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
 
-  useAutoRefresh(loadNotes, 15000);
+    // Mark ticket as seen
+    localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
+  }, [loadTicket, loadNotes, id]);
+
+  // SSE real-time updates
+  useSSE({
+    note: (data) => {
+      if (data.ticketId !== ticketId) return;
+      setNotes(prev => {
+        if (prev.some(n => n.id === data.note.id)) return prev;
+        // Mark ticket as still being seen (no unread dot)
+        localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
+        return [...prev, data.note];
+      });
+    },
+    ticket: (data) => {
+      if (data.id !== ticketId) return;
+      setTicket(prev => prev ? { ...prev, ...data } : prev);
+      if (data.subject !== undefined) setSubjectInput(data.subject || '');
+    }
+  });
+
+  // Close templates dropdown on outside click
+  useEffect(() => {
+    if (!showTemplates) return;
+    function handleClick(e) {
+      if (templatesRef.current && !templatesRef.current.contains(e.target)) {
+        setShowTemplates(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showTemplates]);
 
   const changePriority = async (priority) => {
     setSaving(true);
@@ -145,8 +187,7 @@ export default function TicketDetail() {
     if (!newNote.trim()) return;
     setSavingNote(true);
     try {
-      const { data } = await api.post(`/tickets/${id}/notes`, { content: newNote.trim() });
-      setNotes(n => [...n, data]);
+      await api.post(`/tickets/${id}/notes`, { content: newNote.trim() });
       setNewNote('');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur');
@@ -159,8 +200,7 @@ export default function TicketDetail() {
     if (!replyText.trim()) return;
     setSendingReply(true);
     try {
-      const { data } = await api.post(`/tickets/${id}/reply`, { content: replyText.trim(), anonymous });
-      setNotes(n => [...n, data]);
+      await api.post(`/tickets/${id}/reply`, { content: replyText.trim(), anonymous });
       setReplyText('');
       toast.success('Réponse envoyée');
     } catch (err) {
@@ -239,12 +279,56 @@ export default function TicketDetail() {
     }
   };
 
+  const saveSubject = async () => {
+    setSavingSubject(true);
+    try {
+      const { data } = await api.patch(`/tickets/${id}/subject`, { subject: subjectInput.trim() || null });
+      setTicket(t => ({ ...t, subject: data.subject }));
+      setEditingSubject(false);
+      toast.success('Sujet mis à jour');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingSubject(false);
+    }
+  };
+
+  const startEditSubject = () => {
+    setSubjectInput(ticket.subject || '');
+    setEditingSubject(true);
+  };
+
   const deleteNote = async (noteId) => {
     try {
       await api.delete(`/tickets/${id}/notes/${noteId}`);
       setNotes(n => n.filter(x => x.id !== noteId));
     } catch {
       toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const saveTemplate = async () => {
+    if (!composeText.trim() || !newTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const { data } = await api.post('/templates', { name: newTemplateName.trim(), content: composeText.trim() });
+      setTemplates(t => [...t, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewTemplateName('');
+      toast.success('Template sauvegardé');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const deleteTemplate = async (tplId, e) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/templates/${tplId}`);
+      setTemplates(t => t.filter(x => x.id !== tplId));
+    } catch {
+      toast.error('Erreur');
     }
   };
 
@@ -391,8 +475,66 @@ export default function TicketDetail() {
 
             {/* Footer */}
             <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-700">{composeText.length}/2000</span>
+
+                {/* Templates dropdown */}
+                <div className="relative" ref={templatesRef}>
+                  <button
+                    onClick={() => setShowTemplates(t => !t)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border bg-slate-800 text-slate-500 border-slate-700/60 hover:text-slate-300 transition-colors"
+                  >
+                    <Layers size={11} />
+                    Templates
+                  </button>
+                  {showTemplates && (
+                    <div className="absolute bottom-full mb-1.5 left-0 z-20 w-72 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden">
+                      <div className="max-h-48 overflow-y-auto">
+                        {templates.length === 0 ? (
+                          <p className="text-xs text-slate-600 p-3 text-center">Aucun template</p>
+                        ) : templates.map(tpl => (
+                          <div
+                            key={tpl.id}
+                            className="group flex items-start gap-2 px-3 py-2 hover:bg-slate-800 border-b border-slate-800/60 last:border-0 transition-colors cursor-pointer"
+                            onClick={() => { setComposeText(tpl.content); setShowTemplates(false); }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-slate-200 truncate">{tpl.name}</p>
+                              <p className="text-[10px] text-slate-500 truncate mt-0.5">{tpl.content}</p>
+                            </div>
+                            {(user?.role === 'fondateur' || tpl.created_by_id === user?.id) && (
+                              <button
+                                onClick={(e) => deleteTemplate(tpl.id, e)}
+                                className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+                              >
+                                <X size={11} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {user?.role === 'fondateur' && (
+                        <div className="border-t border-slate-700/60 px-3 py-2 space-y-1.5">
+                          <input
+                            type="text"
+                            placeholder="Nom du template..."
+                            value={newTemplateName}
+                            onChange={e => setNewTemplateName(e.target.value)}
+                            className="w-full bg-slate-800/60 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60"
+                          />
+                          <button
+                            onClick={saveTemplate}
+                            disabled={!composeText.trim() || !newTemplateName.trim() || savingTemplate}
+                            className="w-full py-1.5 text-xs rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-600/25 hover:bg-indigo-600/30 disabled:opacity-40 transition-colors font-medium"
+                          >
+                            {savingTemplate ? 'Sauvegarde...' : 'Sauvegarder ce texte'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {composeMode === 'reply' && (
                   <button
                     onClick={() => setAnonymous(a => !a)}
@@ -401,7 +543,6 @@ export default function TicketDetail() {
                         ? 'bg-indigo-600/15 text-indigo-400 border-indigo-600/25'
                         : 'bg-slate-800 text-slate-500 border-slate-700/60 hover:text-slate-300'
                     }`}
-                    title={anonymous ? 'Anonyme activé' : 'Envoyer avec nom'}
                   >
                     {anonymous ? <EyeOff size={11} /> : <Eye size={11} />}
                     {anonymous ? 'Anonyme' : 'Identifié'}
@@ -441,9 +582,56 @@ export default function TicketDetail() {
               <InfoRow icon={User} label="Fermé par" value={ticket.closed_by_tag} />
             )}
             <InfoRow icon={User} label="Pris en charge par" value={ticket.claimed_by || null} />
-            {ticket.subject && (
-              <InfoRow icon={FileText} label="Sujet" value={ticket.subject} />
-            )}
+
+            {/* Subject with inline edit */}
+            <div className="flex items-start gap-2 py-1">
+              <FileText size={12} className="text-slate-600 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] text-slate-600 leading-tight">Sujet</p>
+                {editingSubject ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <input
+                      type="text"
+                      value={subjectInput}
+                      onChange={e => setSubjectInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveSubject();
+                        if (e.key === 'Escape') setEditingSubject(false);
+                      }}
+                      maxLength={100}
+                      placeholder="Sujet du ticket..."
+                      autoFocus
+                      className="flex-1 min-w-0 bg-slate-800/60 border border-slate-700/60 text-slate-300 placeholder-slate-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500/60"
+                    />
+                    <button
+                      onClick={saveSubject}
+                      disabled={savingSubject}
+                      className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+                    >
+                      <Check size={12} />
+                    </button>
+                    <button
+                      onClick={() => setEditingSubject(false)}
+                      className="text-slate-600 hover:text-slate-300"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 mt-0.5 group/subject">
+                    <p className="text-xs text-slate-300 break-all">
+                      {ticket.subject || <span className="italic text-slate-700">—</span>}
+                    </p>
+                    <button
+                      onClick={startEditSubject}
+                      className="opacity-0 group-hover/subject:opacity-100 text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0"
+                    >
+                      <Pencil size={10} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

@@ -8,6 +8,7 @@ const {
 } = require('../utils/ticketManager');
 const { subjectButtons } = require('../utils/components');
 const { query } = require('../utils/db');
+const { broadcast } = require('../utils/sse');
 
 // userId -> { content, attachments } — en attente de sélection de sujet
 const pendingSubject = new Map();
@@ -35,10 +36,22 @@ module.exports = {
 
         const authorTag = data.member?.nick || data.author.username;
 
-        await query(
+        const noteResult = await query(
           'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "discord")',
           [ticket.id, data.author.id, authorTag, noteContent]
         );
+        broadcast('note', {
+          ticketId: ticket.id,
+          note: {
+            id: noteResult.insertId,
+            ticket_id: ticket.id,
+            author_id: data.author.id,
+            author_tag: authorTag,
+            content: noteContent,
+            source: 'discord',
+            created_at: new Date()
+          }
+        });
         return;
       }
 
@@ -86,6 +99,13 @@ module.exports = {
 
       const result = await relayDmToTicket(client, user, content, attachments);
       await sendWelcomeDm(client, user, result.created);
+      if (result.created) {
+        broadcast('new_ticket', {
+          id: result.ticket.id,
+          ownerTag: user.username,
+          subject: result.ticket.subject
+        });
+      }
     } catch (error) {
       console.error('Erreur RAW handler:', error);
     }

@@ -5,10 +5,11 @@ const {
   closeTicketWithTranscript, reopenTicket,
   setClaim, getAllLinkedUserIds, recordStaffResponse, updateLastMessage,
   addParticipant, removeParticipant, getAnyOpenTicketForUser,
-  logAddUser, logRemoveUser, logMoveTicket
+  logAddUser, logRemoveUser, logMoveTicket, updateChannelTopic
 } = require('../../utils/ticketManager');
 const { sanitizeChannelName } = require('../../utils/sanitize');
 const { ChannelType } = require('discord.js');
+const { broadcast } = require('../../utils/sse');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
@@ -56,7 +57,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       query(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, subject, priority, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       query(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -138,7 +139,11 @@ router.patch('/:id/priority', async (req, res) => {
   try {
     const { priority } = req.body;
     if (!VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
-    await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, req.params.id]);
+    const ticketId = parseInt(req.params.id);
+    await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+    const client = req.app.locals.client;
+    if (client) await updateChannelTopic(client, ticketId).catch(() => null);
+    broadcast('ticket', { id: ticketId, priority });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -178,6 +183,7 @@ router.patch('/:id/status', async (req, res) => {
     } else {
       await reopenTicket(client, ticket, staffUser);
     }
+    broadcast('ticket', { id: ticket.id, status });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -233,14 +239,16 @@ router.post('/:id/notes', async (req, res) => {
       }
     }
 
-    res.json({
+    const note = {
       id: result.insertId,
       author_id: req.session.user.id,
       author_tag: req.session.user.username,
       content: trimmed,
       source: 'web',
       created_at: new Date()
-    });
+    };
+    broadcast('note', { ticketId: ticket.id, note });
+    res.json(note);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -286,14 +294,16 @@ router.post('/:id/reply', async (req, res) => {
       [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
     );
 
-    res.json({
+    const replyNote = {
       id: result.insertId,
       author_id: req.session.user.id,
       author_tag: noteAuthorTag,
       content: noteContent,
       source: 'reply',
       created_at: new Date()
-    });
+    };
+    broadcast('note', { ticketId: ticket.id, note: replyNote });
+    res.json(replyNote);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -343,6 +353,8 @@ router.patch('/:id/claim', async (req, res) => {
       }
     }
 
+    if (client) await updateChannelTopic(client, ticket.id).catch(() => null);
+    broadcast('ticket', { id: ticket.id, claimed_by: action === 'claim' ? userId : null });
     res.json({ ok: true, claimed_by: action === 'claim' ? userId : null });
   } catch (err) {
     console.error(err);
@@ -488,6 +500,32 @@ router.patch('/:id/rename', async (req, res) => {
     ).catch(() => null);
 
     res.json({ ok: true, name: newName });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.patch('/:id/subject', async (req, res) => {
+  try {
+    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+
+    const { subject } = req.body;
+    if (subject !== undefined && subject !== null && typeof subject !== 'string') {
+      return res.status(400).json({ error: 'Sujet invalide' });
+    }
+    const trimmed = subject ? subject.trim().slice(0, 100) : null;
+
+    await query('UPDATE tickets SET subject = ? WHERE id = ?', [trimmed, ticket.id]);
+
+    const client = req.app.locals.client;
+    if (client && ticket.status === 'open') {
+      await updateChannelTopic(client, ticket.id).catch(() => null);
+    }
+    broadcast('ticket', { id: ticket.id, subject: trimmed });
+
+    res.json({ ok: true, subject: trimmed });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

@@ -1,4 +1,4 @@
-const { ChannelType, PermissionsBitField } = require('discord.js');
+const { ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { query } = require('./db');
 const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
@@ -160,11 +160,21 @@ async function createTicket(client, user, firstMessage, attachments = [], subjec
   const channel = await createTicketChannel(client, user);
   const ticket = await createTicketDb(channel.id, user, subject);
 
-  const subjectLine = ticket.subject ? `\nSujet : ${ticket.subject}` : '';
-  await channel.send({
-    content: `Nouveau ticket\nUtilisateur : ${user.tag}\nID : ${user.id}${subjectLine}`,
-    components: [ticketButtons()]
-  });
+  const welcomeEmbed = new EmbedBuilder()
+    .setColor(0x6366f1)
+    .setTitle(`🎫 Ticket #${ticket.id}`)
+    .setDescription('Un ticket a été ouvert. Le staff va vous répondre bientôt.')
+    .addFields(
+      { name: 'Utilisateur', value: `<@${user.id}> (${user.tag})`, inline: true },
+      { name: 'Priorité', value: '🔵 Normal', inline: true }
+    )
+    .setTimestamp();
+  if (ticket.subject) welcomeEmbed.addFields({ name: 'Sujet', value: ticket.subject });
+
+  await channel.send({ embeds: [welcomeEmbed], components: [ticketButtons()] });
+
+  const topicSubject = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
+  await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSubject}`).catch(() => null);
 
   if (firstMessage || attachments.length > 0) {
     let msg = `--- ${user.tag} : ${firstMessage || '[aucun texte]'}`;
@@ -410,11 +420,20 @@ async function reopenTicket(client, ticket, reopenedByUser) {
     [channel.id, ticket.id]
   );
 
-  const subjectLine = ticket.subject ? `\nSujet : ${ticket.subject}` : '';
-  await channel.send({
-    content: `Ticket #${ticket.id} réouvert par ${reopenedByUser.tag}\nUtilisateur : ${ticket.owner_tag}\nID : ${ticket.owner_id}${subjectLine}`,
-    components: [ticketButtons()]
-  });
+  const reopenEmbed = new EmbedBuilder()
+    .setColor(0x10b981)
+    .setTitle(`🔄 Ticket #${ticket.id} — Réouvert`)
+    .addFields(
+      { name: 'Utilisateur', value: `<@${ticket.owner_id}> (${ticket.owner_tag})`, inline: true },
+      { name: 'Priorité', value: '🔵 Normal', inline: true }
+    )
+    .setTimestamp();
+  if (ticket.subject) reopenEmbed.addFields({ name: 'Sujet', value: ticket.subject });
+
+  await channel.send({ embeds: [reopenEmbed], components: [ticketButtons()] });
+
+  const topicSubject = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
+  await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSubject}`).catch(() => null);
 
   const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
   if (owner) {
@@ -494,6 +513,27 @@ async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
        total_rating_score = total_rating_score + VALUES(total_rating_score)`,
     [closedById, closedByTag, rating]
   );
+}
+
+const PRIO_TOPIC = { low: '🟢 Faible', normal: '🔵 Normal', urgent: '🔴 Urgente' };
+
+async function updateChannelTopic(client, ticketId) {
+  const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+  if (!ticket || !ticket.channel_id) return;
+  if (ticket.status !== 'open') return;
+  const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+  if (!channel) return;
+
+  let claimerName = 'Libre';
+  if (ticket.claimed_by) {
+    const u = await client.users.fetch(ticket.claimed_by).catch(() => null);
+    claimerName = u?.username || ticket.claimed_by;
+  }
+
+  const prio = PRIO_TOPIC[ticket.priority] || ticket.priority;
+  const subjectPart = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
+  const topic = `#${ticket.id} · ${ticket.owner_tag} · ${prio} · ${claimerName}${subjectPart}`;
+  await channel.setTopic(topic).catch(() => null);
 }
 
 async function getDailyTicketCount(userId) {
@@ -611,5 +651,6 @@ module.exports = {
   reopenTicket,
   updateLastMessage,
   recordStaffResponse,
-  getDailyTicketCount
+  getDailyTicketCount,
+  updateChannelTopic
 };

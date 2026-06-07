@@ -124,6 +124,8 @@ app.use('/api/dashboard',   requireRole('support', 'fondateur'), require('./rout
 app.use('/api/tickets',     requireRole('support', 'fondateur'), require('./routes/tickets'));
 app.use('/api/staff',       requireRole('support', 'fondateur'), require('./routes/staff'));
 app.use('/api/discord',     requireRole('support', 'fondateur'), require('./routes/discord'));
+app.use('/api/events',      requireRole('support', 'fondateur'), require('./routes/events'));
+app.use('/api/templates',   requireRole('support', 'fondateur'), require('./routes/templates'));
 app.use('/api/blacklist',   requireRole('fondateur'),            require('./routes/blacklist'));
 app.use('/api/transcripts', requireRole('fondateur'),            require('./routes/transcripts'));
 app.use('/api/config',      requireRole('fondateur'),            require('./routes/config'));

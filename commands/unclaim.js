@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { ensureSupport } = require('../utils/permissions');
-const { getOpenTicketByChannelId, setClaim } = require('../utils/ticketManager');
+const { getOpenTicketByChannelId, setClaim, updateChannelTopic } = require('../utils/ticketManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,6 +18,7 @@ module.exports = {
     }
 
     await setClaim(client, ticket.id, null);
+    await updateChannelTopic(client, ticket.id).catch(() => null);
     await interaction.reply('✅ Ticket désattribué.');
   }
 };

@@ -234,6 +234,15 @@ async function ensureTables(config) {
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_note_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS reply_templates (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      content TEXT NOT NULL,
+      created_by_id VARCHAR(32) NOT NULL,
+      created_by_tag VARCHAR(100) NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   await connection.query(sql);
@@ -290,7 +299,8 @@ async function verifySchema(connection) {
     blacklist: ['user_id', 'user_tag', 'reason', 'added_by_id', 'added_by_tag', 'added_at'],
     ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at'],
     dashboard_users: ['user_id', 'username', 'avatar', 'role', 'discord_has_support', 'first_login', 'last_login'],
-    ticket_notes: ['id', 'ticket_id', 'author_id', 'author_tag', 'content', 'source', 'created_at']
+    ticket_notes: ['id', 'ticket_id', 'author_id', 'author_tag', 'content', 'source', 'created_at'],
+    reply_templates: ['id', 'name', 'content', 'created_by_id', 'created_by_tag', 'created_at']
   };
 
   for (const [table, columns] of Object.entries(expected)) {
