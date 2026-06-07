@@ -69,13 +69,14 @@ function subjectButtons(subjects) {
   return rows;
 }
 
-function ratingButtons(ticketId, closedById) {
+// Fix #6 : closedById retiré du customId — lu depuis la base dans interactionCreate
+function ratingButtons(ticketId) {
   const stars = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'];
   const styles = [ButtonStyle.Danger, ButtonStyle.Danger, ButtonStyle.Secondary, ButtonStyle.Success, ButtonStyle.Success];
   return new ActionRowBuilder().addComponents(
     stars.map((label, i) =>
       new ButtonBuilder()
-        .setCustomId(`rating_${i + 1}_${ticketId}_${closedById}`)
+        .setCustomId(`rating_${i + 1}_${ticketId}`)
         .setLabel(label)
         .setStyle(styles[i])
     )
