@@ -11,6 +11,7 @@ import {
 import api from '../api';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
+import { SkeletonCard } from '../components/Skeleton';
 import { fmtDuration } from '../utils/format';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useSSE } from '../hooks/useSSE';
@@ -134,23 +135,35 @@ export default function Dashboard() {
 
       {/* Stat grid — row 1 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard label="Tickets ouverts"    value={stats?.openTickets}      icon={Ticket}        color="indigo" />
-        <StatCard label="Tickets fermés"     value={stats?.closedTickets}    icon={CheckCircle}   color="emerald" />
-        <StatCard label="Non claim"          value={stats?.unclaimedTickets} icon={AlertTriangle} color="amber"
-          sub={stats?.unclaimedTickets > 0 ? 'en attente' : null} />
-        <StatCard label="Note moyenne"
-          value={stats?.avgRating ? `${stats.avgRating}/5` : '—'}
-          icon={Star} color="violet"
-          sub={stats?.totalRatings ? `${stats.totalRatings} avis` : null} />
+        {!stats ? (
+          Array.from({ length: 4 }, (_, i) => <SkeletonCard key={i} />)
+        ) : (
+          <>
+            <StatCard label="Tickets ouverts"    value={stats.openTickets}      icon={Ticket}        color="indigo" />
+            <StatCard label="Tickets fermés"     value={stats.closedTickets}    icon={CheckCircle}   color="emerald" />
+            <StatCard label="Non claim"          value={stats.unclaimedTickets} icon={AlertTriangle} color="amber"
+              sub={stats.unclaimedTickets > 0 ? 'en attente' : null} />
+            <StatCard label="Note moyenne"
+              value={stats.avgRating ? `${stats.avgRating}/5` : '—'}
+              icon={Star} color="violet"
+              sub={stats.totalRatings ? `${stats.totalRatings} avis` : null} />
+          </>
+        )}
       </div>
 
       {/* Stat grid — row 2 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard label="Tps de réponse moy."    value={fmtDuration(stats?.avgResponseSeconds)}  icon={Clock}     color="sky" />
-        <StatCard label="Tps de résolution moy."  value={fmtDuration(stats?.avgResolutionSeconds)} icon={Target}   color="teal" />
-        <StatCard label="Taux de claim"          value={stats?.claimRate != null ? `${stats.claimRate}%` : '—'} icon={BarChart2} color="indigo" />
-        <StatCard label="Ouverts aujourd'hui"    value={stats?.openedToday}   icon={TrendingUp}   color="emerald"
-          sub={stats?.closedToday ? `${stats.closedToday} fermés` : null} />
+        {!stats ? (
+          Array.from({ length: 4 }, (_, i) => <SkeletonCard key={i} />)
+        ) : (
+          <>
+            <StatCard label="Tps de réponse moy."   value={fmtDuration(stats.avgResponseSeconds)}  icon={Clock}    color="sky" />
+            <StatCard label="Tps de résolution moy." value={fmtDuration(stats.avgResolutionSeconds)} icon={Target}  color="teal" />
+            <StatCard label="Taux de claim"         value={stats.claimRate != null ? `${stats.claimRate}%` : '—'} icon={BarChart2} color="indigo" />
+            <StatCard label="Ouverts aujourd'hui"   value={stats.openedToday}   icon={TrendingUp}   color="emerald"
+              sub={stats.closedToday ? `${stats.closedToday} fermés` : null} />
+          </>
+        )}
       </div>
 
       {/* Pending support alert */}

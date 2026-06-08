@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Clock, Ticket, Users, AlertCircle } from 'lucide-react';
+import { Star, Clock, Ticket, Users, AlertCircle, TrendingUp, Award, Target } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 import { fmtDate, fmtDuration } from '../utils/format';
+import { SkeletonTableRows, SkeletonCard } from '../components/Skeleton';
 
 function StarRating({ value }) {
   if (!value) return <span className="text-ink-4">—</span>;
@@ -12,10 +13,35 @@ function StarRating({ value }) {
     <div className="flex items-center gap-1.5">
       <div className="flex gap-0.5">
         {[1,2,3,4,5].map(i => (
-          <Star key={i} size={11} fill={i <= Math.round(num) ? '#f59e0b' : 'none'} className={i <= Math.round(num) ? 'text-amber-400' : 'text-ink-4'} />
+          <Star key={i} size={11}
+            fill={i <= Math.round(num) ? '#f59e0b' : 'none'}
+            className={i <= Math.round(num) ? 'text-amber-400' : 'text-ink-4'} />
         ))}
       </div>
       <span className="text-xs text-ink-2 font-medium">{num.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function PersonalKPI({ label, value, icon: Icon, color }) {
+  const colors = {
+    emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+    amber:   { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/20'   },
+    violet:  { bg: 'bg-primary/10',     text: 'text-primary-light', border: 'border-primary/20'   },
+    sky:     { bg: 'bg-sky-500/10',     text: 'text-sky-400',     border: 'border-sky-500/20'     },
+  };
+  const c = colors[color] || colors.violet;
+  return (
+    <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 shadow-card
+                    hover:border-white/[0.1] transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-[10px] text-ink-4 uppercase tracking-wider font-semibold">{label}</p>
+        <div className={`w-8 h-8 rounded-xl ${c.bg} border ${c.border}
+                         flex items-center justify-center`}>
+          <Icon size={15} className={c.text} />
+        </div>
+      </div>
+      <p className="text-2xl font-bold text-ink-1 tabular-nums leading-none">{value ?? '—'}</p>
     </div>
   );
 }
@@ -48,23 +74,105 @@ export default function Staff() {
     return (b[sort] ?? 0) - (a[sort] ?? 0);
   });
 
+  /* Find the current user's own stats row */
+  const myStats = isSupport ? staff.find(s => s.admin_id === user?.id) : null;
+
   return (
     <div className="p-6 space-y-5">
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="page-header">
-          <h1>Staff</h1>
-          <p>{staff.length} membre(s) actif(s)</p>
+          <h1>{isSupport ? 'Mes stats' : 'Staff'}</h1>
+          <p>{isSupport ? 'Vos performances personnelles' : `${staff.length} membre(s) actif(s)`}</p>
         </div>
-        <select value={sort} onChange={e => setSort(e.target.value)}
-          className="bg-surface border border-white/[0.07] text-ink-2 rounded-xl px-3 py-1.5 text-xs
-                     focus:outline-none focus:border-primary/50 transition-all hover:border-white/[0.12]">
-          <option value="tickets_closed">Trier par fermetures</option>
-          <option value="tickets_claimed">Trier par claims</option>
-          <option value="avgRating">Trier par note</option>
-          <option value="avgResponseSeconds">Trier par temps de réponse</option>
-        </select>
+        {!isSupport && (
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+            className="bg-surface border border-white/[0.07] text-ink-2 rounded-xl px-3 py-1.5 text-xs
+                       focus:outline-none focus:border-primary/50 transition-all hover:border-white/[0.12]"
+          >
+            <option value="tickets_closed">Trier par fermetures</option>
+            <option value="tickets_claimed">Trier par claims</option>
+            <option value="avgRating">Trier par note</option>
+            <option value="avgResponseSeconds">Trier par temps de réponse</option>
+          </select>
+        )}
       </div>
+
+      {/* Personal KPI cards (support view) */}
+      {isSupport && (
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          {loading ? (
+            Array.from({ length: 4 }, (_, i) => <SkeletonCard key={i} />)
+          ) : (
+            <>
+              <PersonalKPI
+                label="Tickets fermés"
+                value={myStats?.tickets_closed}
+                icon={Ticket}
+                color="emerald"
+              />
+              <PersonalKPI
+                label="Tickets claim"
+                value={myStats?.tickets_claimed}
+                icon={TrendingUp}
+                color="sky"
+              />
+              <PersonalKPI
+                label="Tps réponse moy."
+                value={myStats?.avgResponseSeconds ? fmtDuration(myStats.avgResponseSeconds) : '—'}
+                icon={Clock}
+                color="amber"
+              />
+              <PersonalKPI
+                label="Note moyenne"
+                value={myStats?.avgRating ? `${parseFloat(myStats.avgRating).toFixed(1)}/5` : '—'}
+                icon={Star}
+                color="violet"
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Progress bar (support: rank in team) */}
+      {isSupport && !loading && myStats && sorted.length > 1 && (() => {
+        const rank = sorted.findIndex(s => s.admin_id === user?.id) + 1;
+        const pct  = Math.round(((sorted.length - rank) / (sorted.length - 1)) * 100);
+        return (
+          <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 shadow-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Award size={14} className="text-primary-light" />
+                <span className="text-sm font-semibold text-ink-1">Classement équipe</span>
+              </div>
+              <span className="text-sm font-bold text-ink-1 tabular-nums">
+                #{rank} / {sorted.length}
+              </span>
+            </div>
+            <div className="h-2 bg-surface rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-ink-4 mt-1.5">
+              {rank === 1 ? '🥇 Meilleur performer de l\'équipe !' : `Dans le top ${100 - pct}% de l'équipe`}
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* Section divider label for fondateur */}
+      {!isSupport && (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-white/[0.04]" />
+          <span className="text-[10px] text-ink-4 uppercase tracking-wider font-semibold">Classement complet</span>
+          <div className="flex-1 h-px bg-white/[0.04]" />
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden shadow-card">
@@ -82,19 +190,13 @@ export default function Staff() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-12 text-ink-4 text-sm">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
-                    Chargement...
-                  </div>
-                </td>
-              </tr>
+              <SkeletonTableRows rows={6} cols={7} />
             ) : error ? (
               <tr>
                 <td colSpan={7}>
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20
+                                    flex items-center justify-center">
                       <AlertCircle size={20} className="text-red-400" />
                     </div>
                     <p className="text-sm text-red-400 font-medium">{error}</p>
@@ -105,7 +207,8 @@ export default function Staff() {
               <tr>
                 <td colSpan={7}>
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-surface border border-white/[0.06] flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-surface border border-white/[0.06]
+                                    flex items-center justify-center">
                       <Users size={20} className="text-ink-4" />
                     </div>
                     <p className="text-sm text-ink-3 font-medium">
@@ -113,41 +216,56 @@ export default function Staff() {
                     </p>
                     {isSupport && (
                       <p className="text-xs text-ink-4 text-center max-w-xs">
-                        Les stats se mettent à jour quand tu claim ou fermes des tickets (via Discord ou le dashboard).
+                        Les stats se mettent à jour quand tu claim ou fermes des tickets.
                       </p>
                     )}
                   </div>
                 </td>
               </tr>
-            ) : sorted.map((s, i) => (
-              <tr key={s.admin_id}
-                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.025] transition-colors">
-                <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">{i + 1}</td>
-                <td className="px-4 py-3.5">
-                  <div>
-                    <p className="text-ink-1 font-semibold text-sm">{s.admin_tag}</p>
-                    <p className="text-[10px] text-ink-4 font-mono mt-0.5">{s.admin_id}</p>
-                  </div>
-                </td>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-1.5">
-                    <Ticket size={12} className="text-emerald-400" />
-                    <span className="text-ink-1 font-semibold text-sm tabular-nums">{s.tickets_closed}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3.5 text-ink-2 text-sm tabular-nums">{s.tickets_claimed}</td>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-1.5">
-                    <Clock size={12} className="text-amber-400" />
-                    <span className="text-ink-2 text-sm">{fmtDuration(s.avgResponseSeconds)}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3.5"><StarRating value={s.avgRating} /></td>
-                <td className="px-4 py-3.5 text-ink-4 text-xs tabular-nums">
-                  {fmtDate(s.updated_at, { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                </td>
-              </tr>
-            ))}
+            ) : sorted.map((s, i) => {
+              const isMe = s.admin_id === user?.id;
+              return (
+                <tr key={s.admin_id}
+                  className={`border-b border-white/[0.04] last:border-0 transition-colors
+                              ${isMe ? 'bg-primary/5 hover:bg-primary/8' : 'hover:bg-white/[0.025]'}`}>
+                  <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">
+                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="text-ink-1 font-semibold text-sm">{s.admin_tag}</p>
+                        <p className="text-[10px] text-ink-4 font-mono mt-0.5">{s.admin_id}</p>
+                      </div>
+                      {isMe && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide
+                                         bg-primary/10 text-primary-light border border-primary/20
+                                         px-1.5 py-0.5 rounded-md ml-1">
+                          Vous
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <Ticket size={12} className="text-emerald-400" />
+                      <span className="text-ink-1 font-semibold text-sm tabular-nums">{s.tickets_closed}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5 text-ink-2 text-sm tabular-nums">{s.tickets_claimed}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={12} className="text-amber-400" />
+                      <span className="text-ink-2 text-sm">{fmtDuration(s.avgResponseSeconds)}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5"><StarRating value={s.avgRating} /></td>
+                  <td className="px-4 py-3.5 text-ink-4 text-xs tabular-nums">
+                    {fmtDate(s.updated_at, { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
