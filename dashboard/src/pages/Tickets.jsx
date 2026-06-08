@@ -1,11 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Inbox, CheckSquare, Square, X, Lock, ChevronDown } from 'lucide-react';
+import {
+  Search, Download, Inbox, CheckSquare, Square, X, Lock,
+  ChevronDown, Calendar, AlertTriangle,
+} from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
 import Select from '../components/Select';
+import { SkeletonTableRows } from '../components/Skeleton';
 import { fmtDate } from '../utils/format';
+import { confirmToast } from '../utils/confirmToast';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
@@ -18,14 +23,19 @@ const PRIORITY_DOT = {
 };
 const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 
-function ticketAge(lastMessageAt, createdAt) {
+function slaInfo(lastMessageAt, createdAt, status) {
+  if (status !== 'open') return null;
   const base = lastMessageAt || createdAt;
   if (!base) return null;
   const hours = (Date.now() - new Date(base).getTime()) / 3600000;
-  if (hours < 1) return null;
-  if (hours < 24) return { label: `${Math.floor(hours)}h`, cls: 'text-amber-400' };
+  if (hours < 4)  return null;
+  if (hours < 24) return { label: `${Math.floor(hours)}h`, cls: 'text-amber-400', icon: true };
   const days = Math.floor(hours / 24);
-  return { label: `${days}j`, cls: days >= 3 ? 'text-red-400' : 'text-amber-400' };
+  return {
+    label: `${days}j`,
+    cls: days >= 3 ? 'text-red-400' : 'text-amber-400',
+    urgent: days >= 3,
+  };
 }
 
 function isUnread(ticketId, lastMessageAt) {
@@ -38,18 +48,31 @@ function isUnread(ticketId, lastMessageAt) {
 export default function Tickets() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [data, setData] = useState({ tickets: [], total: 0, pages: 1 });
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ status: '', priority: '', subject: '' });
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(new Set());
+
+  const [data, setData]   = useState({ tickets: [], total: 0, pages: 1 });
+  const [page, setPage]   = useState(1);
+  const [filters, setFilters] = useState({ status: '', priority: '', subject: '', dateFrom: '', dateTo: '' });
+  const [loading,     setLoading]     = useState(true);
+  const [selected,    setSelected]    = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showBulkPriority, setShowBulkPriority] = useState(false);
+  const [showBulkStaff,    setShowBulkStaff]    = useState(false);
+  const [showBulkTag,      setShowBulkTag]       = useState(false);
+  const [showDateFilter,   setShowDateFilter]   = useState(false);
+  const [staffList,  setStaffList]  = useState([]);
+  const [tagList,    setTagList]    = useState([]);
+  const [focusedRow, setFocusedRow] = useState(-1);
+
+  const searchRef  = useRef(null);
+  const tableRef   = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) };
+      const params = {
+        page,
+        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      };
       const { data: res } = await api.get('/tickets', { params });
       setData(res);
     } finally {
@@ -58,21 +81,34 @@ export default function Tickets() {
   }, [page, filters]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setSelected(new Set()); }, [page, filters]);
+  useEffect(() => { setSelected(new Set()); setFocusedRow(-1); }, [page, filters]);
   useAutoRefresh(load);
+
+  /* Load staff + tags for bulk menus (fondateur only) */
+  useEffect(() => {
+    if (user?.role !== 'fondateur') return;
+    api.get('/staff').then(r => setStaffList(r.data)).catch(() => {});
+    api.get('/tags').then(r => setTagList(r.data)).catch(() => {});
+  }, [user?.role]);
 
   useSSE({
     ticket: (d) => {
-      setData(prev => ({ ...prev, tickets: prev.tickets.map(t => t.id === d.id ? { ...t, ...d } : t) }));
+      setData(prev => ({
+        ...prev,
+        tickets: prev.tickets.map(t => t.id === d.id ? { ...t, ...d } : t),
+      }));
     },
     new_ticket: () => {
       if (page === 1 && !filters.status && !filters.priority && !filters.subject) load();
-    }
+    },
   });
 
-  const setFilter = (key, val) => { setFilters(f => ({ ...f, [key]: val })); setPage(1); };
+  const setFilter = (key, val) => {
+    setFilters(f => ({ ...f, [key]: val }));
+    setPage(1);
+  };
 
-  const allIds = data.tickets.map(t => t.id);
+  const allIds      = data.tickets.map(t => t.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
   const someSelected = selected.size > 0;
 
@@ -106,7 +142,46 @@ export default function Tickets() {
     }
   };
 
+  /* ── keyboard navigation ──────────────────────────────────── */
+  useEffect(() => {
+    function handler(e) {
+      // Don't capture when typing in an input
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+
+      if (e.key === '/' || e.key === 's') {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedRow(r => Math.min(r + 1, data.tickets.length - 1));
+        return;
+      }
+      if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedRow(r => Math.max(r - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter' && focusedRow >= 0) {
+        e.preventDefault();
+        const t = data.tickets[focusedRow];
+        if (t) navigate(`/tickets/${t.id}`);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setFocusedRow(-1);
+        setSelected(new Set());
+        return;
+      }
+    }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [data.tickets, focusedRow, navigate]);
+
   const colCount = user?.role === 'fondateur' ? 9 : 8;
+
+  const hasDateFilter = filters.dateFrom || filters.dateTo;
 
   return (
     <div className="p-6 space-y-5 pb-24">
@@ -118,20 +193,42 @@ export default function Tickets() {
           <p>{data.total} ticket(s) trouvé(s)</p>
         </div>
         {user?.role === 'fondateur' && (
-          <a href="/api/tickets/export"
+          <a
+            href="/api/tickets/export"
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.07]
                        text-ink-3 hover:text-ink-1 hover:border-white/[0.12] text-xs font-medium
-                       transition-all duration-150">
+                       transition-all duration-150"
+          >
             <Download size={13} /> Export CSV
           </a>
         )}
       </div>
 
-      {/* Filters */}
+      {/* Keyboard hint */}
+      <div className="flex items-center gap-3 text-[10px] text-ink-4">
+        <span className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">J/K</kbd>
+          <span>naviguer</span>
+        </span>
+        <span className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">↵</kbd>
+          <span>ouvrir</span>
+        </span>
+        <span className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">/</kbd>
+          <span>rechercher</span>
+        </span>
+      </div>
+
+      {/* Filters row 1 */}
       <div className="flex flex-wrap gap-2.5">
         <div className="relative flex-1 min-w-48">
           <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-4 pointer-events-none" />
-          <input type="text" placeholder="Rechercher par sujet..." value={filters.subject}
+          <input
+            ref={searchRef}
+            type="text"
+            placeholder="Rechercher par sujet... (/)"
+            value={filters.subject}
             onChange={e => setFilter('subject', e.target.value)}
             className="w-full bg-surface border border-white/[0.07] text-ink-1 placeholder-ink-4
                        rounded-xl pl-9 pr-3.5 py-2 text-sm
@@ -139,25 +236,87 @@ export default function Tickets() {
                        hover:border-white/[0.12] transition-all duration-150"
           />
         </div>
-        <Select className="w-40" value={filters.status} onChange={v => setFilter('status', v)}
+        <Select
+          className="w-40"
+          value={filters.status}
+          onChange={v => setFilter('status', v)}
           placeholder="Tous statuts"
           options={[
             { value: '', label: 'Tous statuts' },
             { value: 'open',   label: 'Ouvert' },
             { value: 'closed', label: 'Fermé' },
-          ]} />
-        <Select className="w-44" value={filters.priority} onChange={v => setFilter('priority', v)}
+          ]}
+        />
+        <Select
+          className="w-44"
+          value={filters.priority}
+          onChange={v => setFilter('priority', v)}
           placeholder="Toutes priorités"
           options={[
             { value: '',       label: 'Toutes priorités' },
             { value: 'low',    label: 'Faible' },
             { value: 'normal', label: 'Normal' },
             { value: 'urgent', label: 'Urgent' },
-          ]} />
+          ]}
+        />
+        {/* Date filter toggle */}
+        <button
+          onClick={() => setShowDateFilter(o => !o)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium
+                      border transition-all duration-150
+                      ${(showDateFilter || hasDateFilter)
+                        ? 'bg-primary/10 text-primary-light border-primary/30'
+                        : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
+        >
+          <Calendar size={13} />
+          Date
+          {hasDateFilter && (
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-light ml-0.5" />
+          )}
+        </button>
       </div>
 
+      {/* Date range row */}
+      {showDateFilter && (
+        <div className="flex items-center gap-3 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-ink-3 flex-shrink-0">Du</label>
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={e => setFilter('dateFrom', e.target.value)}
+              className="bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-3 py-2 text-xs
+                         focus:outline-none focus:border-primary/50 transition-all
+                         [color-scheme:dark]"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-ink-3 flex-shrink-0">Au</label>
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={e => setFilter('dateTo', e.target.value)}
+              className="bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-3 py-2 text-xs
+                         focus:outline-none focus:border-primary/50 transition-all
+                         [color-scheme:dark]"
+            />
+          </div>
+          {hasDateFilter && (
+            <button
+              onClick={() => { setFilter('dateFrom', ''); setFilter('dateTo', ''); }}
+              className="flex items-center gap-1 text-xs text-ink-4 hover:text-ink-2 transition-colors"
+            >
+              <X size={12} /> Effacer
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Table */}
-      <div className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden shadow-card">
+      <div
+        ref={tableRef}
+        className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden shadow-card"
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06]">
@@ -182,14 +341,7 @@ export default function Tickets() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={colCount} className="text-center py-12 text-ink-4 text-sm">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
-                    Chargement...
-                  </div>
-                </td>
-              </tr>
+              <SkeletonTableRows rows={8} cols={colCount} />
             ) : !data.tickets.length ? (
               <tr>
                 <td colSpan={colCount}>
@@ -203,17 +355,23 @@ export default function Tickets() {
                   </div>
                 </td>
               </tr>
-            ) : data.tickets.map(t => {
-              const age = t.status === 'open' ? ticketAge(t.last_message_at, t.created_at) : null;
-              const unread = t.status === 'open' && isUnread(t.id, t.last_message_at);
+            ) : data.tickets.map((t, rowIdx) => {
+              const sla       = slaInfo(t.last_message_at, t.created_at, t.status);
+              const unread    = t.status === 'open' && isUnread(t.id, t.last_message_at);
               const isSelected = selected.has(t.id);
+              const isFocused  = focusedRow === rowIdx;
+
               return (
-                <tr key={t.id}
+                <tr
+                  key={t.id}
                   onClick={() => navigate(`/tickets/${t.id}`)}
+                  onMouseEnter={() => setFocusedRow(rowIdx)}
                   className={`
                     border-b border-white/[0.04] last:border-0 cursor-pointer transition-colors
                     ${t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''}
-                    ${isSelected ? 'bg-primary/5' : 'hover:bg-white/[0.025]'}
+                    ${isSelected  ? 'bg-primary/5' : ''}
+                    ${isFocused && !isSelected ? 'bg-white/[0.025]' : ''}
+                    ${!isFocused && !isSelected ? 'hover:bg-white/[0.015]' : ''}
                   `}
                 >
                   {user?.role === 'fondateur' && (
@@ -235,9 +393,11 @@ export default function Tickets() {
                   <td className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>
                   <td className="px-4 py-3.5 text-ink-2 max-w-xs">
                     <div className="truncate">{t.subject || <span className="italic text-ink-4">—</span>}</div>
-                    {age && (
-                      <div className={`text-[10px] mt-0.5 font-semibold ${age.cls}`}>
-                        {age.label} sans réponse
+                    {/* SLA indicator */}
+                    {sla && (
+                      <div className={`flex items-center gap-1 text-[10px] mt-0.5 font-semibold ${sla.cls}`}>
+                        {sla.urgent && <AlertTriangle size={9} />}
+                        {sla.label} sans réponse
                       </div>
                     )}
                   </td>
@@ -271,21 +431,28 @@ export default function Tickets() {
           </span>
           <div className="w-px h-4 bg-white/[0.08]" />
 
-          {/* Priority change */}
+          {/* Priority */}
           <div className="relative">
-            <button onClick={() => setShowBulkPriority(p => !p)} disabled={bulkLoading}
+            <button
+              onClick={() => { setShowBulkPriority(p => !p); setShowBulkStaff(false); setShowBulkTag(false); }}
+              disabled={bulkLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
                          text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
-                         transition-all disabled:opacity-50">
-              Changer priorité <ChevronDown size={11} className={showBulkPriority ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                         transition-all disabled:opacity-50"
+            >
+              Priorité
+              <ChevronDown size={11} className={showBulkPriority ? 'rotate-180 transition-transform' : 'transition-transform'} />
             </button>
             {showBulkPriority && (
               <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
                               rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-36 animate-in">
                 {[['low','Faible','text-sky-400'],['normal','Normal','text-amber-400'],['urgent','Urgent','text-red-400']].map(([val, label, cls]) => (
-                  <button key={val} onClick={() => bulkAction('priority', val)}
-                    className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-xs hover:bg-white/[0.05]
-                                transition-colors ${cls}`}>
+                  <button
+                    key={val}
+                    onClick={() => { bulkAction('priority', val); setShowBulkPriority(false); }}
+                    className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-xs
+                                hover:bg-white/[0.05] transition-colors ${cls}`}
+                  >
                     {label}
                   </button>
                 ))}
@@ -293,18 +460,92 @@ export default function Tickets() {
             )}
           </div>
 
+          {/* Assign staff */}
+          {staffList.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowBulkStaff(p => !p); setShowBulkPriority(false); setShowBulkTag(false); }}
+                disabled={bulkLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+                           text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
+                           transition-all disabled:opacity-50"
+              >
+                Assigner
+                <ChevronDown size={11} className={showBulkStaff ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              {showBulkStaff && (
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+                                rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-44
+                                max-h-48 overflow-y-auto animate-in">
+                  {staffList.map(s => (
+                    <button
+                      key={s.admin_id}
+                      onClick={() => { bulkAction('assign', s.admin_id); setShowBulkStaff(false); }}
+                      className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-ink-2
+                                 hover:bg-white/[0.05] hover:text-ink-1 transition-colors"
+                    >
+                      {s.admin_tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Add tag */}
+          {tagList.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowBulkTag(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); }}
+                disabled={bulkLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+                           text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
+                           transition-all disabled:opacity-50"
+              >
+                Tag
+                <ChevronDown size={11} className={showBulkTag ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              {showBulkTag && (
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+                                rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-40
+                                max-h-48 overflow-y-auto animate-in">
+                  {tagList.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { bulkAction('add_tag', t.id); setShowBulkTag(false); }}
+                      className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs hover:bg-white/[0.05] transition-colors"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: t.color || '#7c6ef3' }}
+                      />
+                      <span className="text-ink-2 hover:text-ink-1">{t.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+
           {/* Close */}
           <button
-            onClick={() => { if (confirm(`Fermer ${selected.size} ticket(s) ?`)) bulkAction('close'); }}
+            onClick={async () => {
+              const ok = await confirmToast(`Fermer ${selected.size} ticket(s) ?`);
+              if (ok) bulkAction('close');
+            }}
             disabled={bulkLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20
-                       text-red-400 text-xs font-medium hover:bg-red-500/20 transition-all disabled:opacity-50">
+                       text-red-400 text-xs font-medium hover:bg-red-500/20 transition-all disabled:opacity-50"
+          >
             <Lock size={11} /> Fermer
           </button>
 
           {/* Clear */}
-          <button onClick={() => { setSelected(new Set()); setShowBulkPriority(false); }}
-            className="text-ink-4 hover:text-ink-2 transition-colors p-1">
+          <button
+            onClick={() => { setSelected(new Set()); setShowBulkPriority(false); }}
+            className="text-ink-4 hover:text-ink-2 transition-colors p-1"
+          >
             <X size={14} />
           </button>
         </div>
