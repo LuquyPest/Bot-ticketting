@@ -10,6 +10,29 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.3',
+    date: '8 juin 2026',
+    title: 'UX avancée — Command palette, notifications, raccourcis clavier',
+    changes: [
+      { type: 'new',  text: 'Command palette ⌘K / Ctrl+K : recherche globale des pages avec navigation clavier (flèches, Entrée, Esc), filtrage par rôle' },
+      { type: 'new',  text: 'Notifications in-app : cloche dans la sidebar avec badge animé, dropdown horodaté et navigation directe vers le ticket (via SSE)' },
+      { type: 'new',  text: 'Indicateur de statut SSE : dot vert/orange/rouge sur le logo de la sidebar selon l\'état de la connexion temps réel' },
+      { type: 'new',  text: 'Raccourcis clavier Tickets : J/K ou flèches pour naviguer, Entrée pour ouvrir, / pour la recherche, Esc pour reset' },
+      { type: 'new',  text: 'Raccourcis clavier TicketDetail : R = focus réponse, N = focus note interne, Esc = retour à /tickets' },
+      { type: 'new',  text: 'Filtre date range sur la page Tickets (Du/Au) avec indicateur actif et effacement rapide' },
+      { type: 'new',  text: 'Badges SLA sur les tickets ouverts : durée sans réponse (ambre ≥4h, rouge ≥3j) avec icône alerte' },
+      { type: 'new',  text: 'Bulk actions étendues : Assigner staff + Ajouter tag en plus du changement de priorité' },
+      { type: 'new',  text: 'Dashboard support personnalisé : cartes KPI (fermetures, claims, tps réponse, note) et barre de progression dans le classement équipe' },
+      { type: 'new',  text: 'Avatars Discord réels dans le chat TicketDetail si l\'image de profil est disponible' },
+      { type: 'new',  text: 'Sidebar responsive mobile : bouton hamburger, slide-in/out, overlay de fermeture' },
+      { type: 'impr', text: 'Skeleton loaders (shimmer) sur Dashboard, Tickets et Staff au lieu du spinner plein écran' },
+      { type: 'impr', text: 'Confirmation des actions destructives via toast interactif (non-bloquant) au lieu de window.confirm()' },
+      { type: 'tech', text: 'Architecture SSE refactorisée : une seule connexion EventSource partagée via SSEContext + bus EventTarget' },
+      { type: 'tech', text: 'Lazy loading React.lazy() + Suspense sur toutes les routes pour un chargement initial plus rapide' },
+      { type: 'tech', text: 'ErrorBoundary par page : capture les erreurs sans planter toute l\'interface' },
+    ]
+  },
+  {
     version: 'v2.2',
     date: '7 juin 2026',
     title: 'Correctifs & UX',
