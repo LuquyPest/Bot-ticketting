@@ -5,8 +5,8 @@ import toast from 'react-hot-toast';
 
 function Section({ title, children }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-      <h2 className="text-sm font-semibold text-slate-300 border-b border-slate-800 pb-3">{title}</h2>
+    <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 space-y-4">
+      <h2 className="text-sm font-semibold text-ink-2 border-b border-white/[0.06] pb-3">{title}</h2>
       {children}
     </div>
   );
@@ -15,14 +15,14 @@ function Section({ title, children }) {
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="text-sm text-slate-300 font-medium block mb-1">{label}</label>
-      {hint && <p className="text-xs text-slate-600 mb-2">{hint}</p>}
+      <label className="text-sm text-ink-2 font-medium block mb-1">{label}</label>
+      {hint && <p className="text-xs text-ink-4 mb-2">{hint}</p>}
       {children}
     </div>
   );
 }
 
-const INPUT = "w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors";
+const INPUT = "w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors";
 const NUM_INPUT = INPUT + " w-32";
 
 export default function Settings() {
@@ -82,18 +82,18 @@ export default function Settings() {
     set('ticketSubjects', cfg.ticketSubjects.filter((_, idx) => idx !== i));
   };
 
-  if (loading) return <div className="p-6 text-slate-500">Chargement...</div>;
+  if (loading) return <div className="p-6 text-ink-3">Chargement...</div>;
   if (!cfg) return <div className="p-6 text-red-400">Impossible de charger la configuration.</div>;
 
   return (
     <div className="p-6 space-y-5 max-w-2xl">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Paramètres</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Modification de config.json — redémarre le bot après sauvegarde</p>
+          <h1 className="text-xl font-bold text-ink-1">Paramètres</h1>
+          <p className="text-sm text-ink-3 mt-0.5">Modification de config.json — redémarre le bot après sauvegarde</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={load} className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors" title="Recharger">
+          <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors" title="Recharger">
             <RefreshCw size={16} />
           </button>
           <button onClick={save} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50">
@@ -119,8 +119,8 @@ export default function Settings() {
           <div className="space-y-2">
             {(cfg.ticketSubjects || []).map((s, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300">{s}</span>
-                <button onClick={() => removeSubject(i)} className="p-1.5 text-slate-600 hover:text-red-400 transition-colors"><X size={14} /></button>
+                <span className="flex-1 bg-surface border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-ink-2">{s}</span>
+                <button onClick={() => removeSubject(i)} className="p-1.5 text-ink-4 hover:text-red-400 transition-colors"><X size={14} /></button>
               </div>
             ))}
             <div className="flex gap-2">
@@ -132,7 +132,7 @@ export default function Settings() {
                 placeholder="Ajouter un sujet..."
                 className={INPUT + " flex-1"}
               />
-              <button onClick={addSubject} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-100 transition-colors">
+              <button onClick={addSubject} className="px-3 py-2 rounded-lg bg-surface border border-white/[0.08] text-ink-2 hover:text-ink-1 transition-colors">
                 <Plus size={15} />
               </button>
             </div>
@@ -200,7 +200,7 @@ export default function Settings() {
 
       {/* Escalation */}
       <Section title="Escalade automatique (tickets urgents)">
-        <p className="text-xs text-slate-600 -mt-1">Un ticket urgent claim sans réponse staff déclenche une alerte puis une fermeture automatique.</p>
+        <p className="text-xs text-ink-4 -mt-1">Un ticket urgent claim sans réponse staff déclenche une alerte puis une fermeture automatique.</p>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Délai d'alerte (h)" hint="Heures sans réponse avant alerte Discord">
             <input type="number" min={1} max={48} value={cfg.escalationAlertHours ?? 2}

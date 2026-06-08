@@ -62,27 +62,27 @@ function GradeModal({ grade, grades, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-          <h2 className="font-bold text-slate-100">{grade ? 'Modifier le grade' : 'Nouveau grade'}</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800 transition-colors">
+      <div className="bg-surface-card border border-white/[0.08] rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <h2 className="font-bold text-ink-1">{grade ? 'Modifier le grade' : 'Nouveau grade'}</h2>
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-2 p-1 rounded-lg hover:bg-surface transition-colors">
             <X size={16} />
           </button>
         </div>
 
         <div className="p-5 space-y-5">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Nom du grade</label>
+            <label className="block text-xs font-medium text-ink-2 mb-1.5">Nom du grade</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex : Chef Support"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-surface border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-none focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Couleur</label>
+            <label className="block text-xs font-medium text-ink-2 mb-1.5">Couleur</label>
             <div className="flex items-center gap-2 flex-wrap">
               {PRESET_COLORS.map(c => (
                 <button
@@ -99,16 +99,16 @@ function GradeModal({ grade, grades, onClose, onSave }) {
                 className="w-7 h-7 rounded-full cursor-pointer bg-transparent border-0 p-0"
                 title="Couleur personnalisée"
               />
-              <span className="text-xs text-slate-500 font-mono">{color}</span>
+              <span className="text-xs text-ink-3 font-mono">{color}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Grade parent (optionnel)</label>
+            <label className="block text-xs font-medium text-ink-2 mb-1.5">Grade parent (optionnel)</label>
             <select
               value={parentId}
               onChange={e => setParentId(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-surface border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-ink-2 focus:outline-none focus:border-primary"
             >
               <option value="">— Aucun parent (grade racine)</option>
               {available.map(g => (
@@ -116,26 +116,26 @@ function GradeModal({ grade, grades, onClose, onSave }) {
               ))}
             </select>
             {parentId && (
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-ink-4 mt-1">
                 Les membres avec ce grade pourront voir les tickets visibles par "{available.find(g => g.id === parseInt(parentId))?.name}" et en dessous.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">Permissions</label>
+            <label className="block text-xs font-medium text-ink-2 mb-2">Permissions</label>
             <div className="grid grid-cols-1 gap-1.5">
               {ALL_PERMISSIONS.map(p => (
                 <label
                   key={p.id}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors border ${
                     perms.has(p.id)
-                      ? 'bg-indigo-600/15 border-indigo-600/30 text-slate-200'
-                      : 'bg-slate-800/50 border-slate-700/30 text-slate-500 hover:text-slate-300 hover:bg-slate-800'
+                      ? 'bg-primary/15 border-primary/30 text-ink-1'
+                      : 'bg-surface/50 border-white/[0.05] text-ink-3 hover:text-ink-2 hover:bg-surface'
                   }`}
                 >
                   <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                    perms.has(p.id) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-600'
+                    perms.has(p.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/[0.1]'
                   }`}>
                     {perms.has(p.id) && <Check size={10} className="text-white" />}
                   </div>
@@ -152,10 +152,10 @@ function GradeModal({ grade, grades, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/[0.06]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm text-ink-2 hover:text-ink-1 hover:bg-surface transition-colors"
           >
             Annuler
           </button>
@@ -176,13 +176,13 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
   const parentGrade = grade.parent_id ? grades.find(g => g.id === grade.parent_id) : null;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 hover:border-slate-700 transition-colors">
+    <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3 hover:border-white/[0.08] transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: grade.color }} />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold text-slate-100 truncate">{grade.name}</p>
+              <p className="text-sm font-bold text-ink-1 truncate">{grade.name}</p>
               {grade.is_default === 1 && (
                 <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-600/20 border border-amber-600/30 text-amber-400 flex-shrink-0">
                   <Star size={8} fill="currentColor" /> Défaut
@@ -193,8 +193,8 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
               {parentGrade && (
                 <>
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: parentGrade.color }} />
-                  <p className="text-xs text-slate-600">{parentGrade.name}</p>
-                  <ChevronRight size={10} className="text-slate-700" />
+                  <p className="text-xs text-ink-4">{parentGrade.name}</p>
+                  <ChevronRight size={10} className="text-ink-4" />
                 </>
               )}
               <p className="text-xs" style={{ color: grade.color }}>{grade.name}</p>
@@ -205,19 +205,19 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
           <button
             onClick={() => onToggleDefault(grade)}
             title={grade.is_default ? 'Retirer le grade par défaut' : 'Définir comme grade par défaut'}
-            className={`p-1.5 rounded-lg transition-colors ${grade.is_default ? 'text-amber-400 bg-amber-600/15' : 'text-slate-600 hover:text-amber-400 hover:bg-amber-600/10'}`}
+            className={`p-1.5 rounded-lg transition-colors ${grade.is_default ? 'text-amber-400 bg-amber-600/15' : 'text-ink-4 hover:text-amber-400 hover:bg-amber-600/10'}`}
           >
             <Star size={13} fill={grade.is_default ? 'currentColor' : 'none'} />
           </button>
           <button
             onClick={() => onEdit(grade)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-ink-4 hover:text-ink-2 hover:bg-surface transition-colors"
           >
             <Pencil size={13} />
           </button>
           <button
             onClick={() => onDelete(grade)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            className="p-1.5 rounded-lg text-ink-4 hover:text-red-400 hover:bg-red-400/10 transition-colors"
           >
             <Trash2 size={13} />
           </button>
@@ -226,18 +226,18 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
 
       <div className="flex flex-wrap gap-1">
         {grade.permissions.length === 0 ? (
-          <span className="text-xs text-slate-700 italic">Aucune permission</span>
+          <span className="text-xs text-ink-4 italic">Aucune permission</span>
         ) : grade.permissions.map(p => {
           const def = ALL_PERMISSIONS.find(x => x.id === p);
           return (
-            <span key={p} className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-indigo-600/10 text-indigo-400 border border-indigo-600/20">
+            <span key={p} className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-primary/10 text-primary-light border border-indigo-600/20">
               {def?.label || p}
             </span>
           );
         })}
       </div>
 
-      <div className="flex items-center justify-between text-xs text-slate-600">
+      <div className="flex items-center justify-between text-xs text-ink-4">
         <span className="flex items-center gap-1">
           <Shield size={10} />
           {grade.user_count} membre{grade.user_count !== 1 ? 's' : ''}
@@ -306,15 +306,15 @@ export default function Grades() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Gestion des grades</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl font-bold text-ink-1">Gestion des grades</h1>
+          <p className="text-sm text-ink-3 mt-0.5">
             {grades.length} grade{grades.length !== 1 ? 's' : ''} configuré{grades.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={load}
-            className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -330,11 +330,11 @@ export default function Grades() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-slate-600">Chargement...</div>
+        <div className="text-center py-16 text-ink-4">Chargement...</div>
       ) : grades.length === 0 ? (
         <div className="text-center py-16 space-y-3">
-          <Shield size={36} className="text-slate-700 mx-auto" />
-          <p className="text-slate-500">Aucun grade configuré</p>
+          <Shield size={36} className="text-ink-4 mx-auto" />
+          <p className="text-ink-3">Aucun grade configuré</p>
           {canManage && (
             <button
               onClick={() => setModal({ mode: 'create' })}
@@ -359,12 +359,12 @@ export default function Grades() {
         </div>
       )}
 
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 space-y-1.5">
-        <p className="text-xs text-slate-500 leading-relaxed">
-          <span className="text-indigo-400 font-medium">Hiérarchie</span> — Un grade peut avoir un parent.
+      <div className="bg-surface-card/50 border border-white/[0.06] rounded-2xl p-4 space-y-1.5">
+        <p className="text-xs text-ink-3 leading-relaxed">
+          <span className="text-primary-light font-medium">Hiérarchie</span> — Un grade peut avoir un parent.
           Les membres d'un grade parent voient les tickets visibles par ses grades enfants.
         </p>
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-ink-4">
           <span className="text-amber-400">★ Grade par défaut</span> — Attribué automatiquement lors de la première approbation d'un utilisateur.
         </p>
       </div>

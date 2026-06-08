@@ -26,22 +26,22 @@ function TagModal({ tag, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+      <div className="bg-surface-card border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-semibold text-slate-100">{tag ? 'Modifier le tag' : 'Nouveau tag'}</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={16} /></button>
+          <h2 className="text-sm font-semibold text-ink-1">{tag ? 'Modifier le tag' : 'Nouveau tag'}</h2>
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={16} /></button>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-slate-500 mb-1.5 block">Nom</label>
+            <label className="text-xs text-ink-3 mb-1.5 block">Nom</label>
             <input
               value={name} onChange={e => setName(e.target.value)}
               placeholder="Ex : Bug, Facturation..."
-              className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1.5 block">Couleur</label>
+            <label className="text-xs text-ink-3 mb-1.5 block">Couleur</label>
             <div className="flex items-center gap-2 flex-wrap">
               {PRESET_COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
@@ -60,7 +60,7 @@ function TagModal({ tag, onClose, onSave }) {
             </div>
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-sm hover:bg-slate-700 transition-colors">Annuler</button>
+            <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-surface text-ink-2 text-sm hover:bg-surface-hover transition-colors">Annuler</button>
             <button onClick={submit} disabled={saving || !name.trim()}
               className="flex-1 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors disabled:opacity-50">
               {saving ? 'Enregistrement...' : (tag ? 'Modifier' : 'Créer')}
@@ -116,10 +116,10 @@ export default function Tags() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <Tag size={20} className="text-indigo-400" />
+          <Tag size={20} className="text-primary-light" />
           <div>
-            <h1 className="text-xl font-bold text-slate-100">Tags</h1>
-            <p className="text-sm text-slate-500">{tags.length} tag(s) — assignables aux tickets</p>
+            <h1 className="text-xl font-bold text-ink-1">Tags</h1>
+            <p className="text-sm text-ink-3">{tags.length} tag(s) — assignables aux tickets</p>
           </div>
         </div>
         <button onClick={() => setModal({ mode: 'create' })}
@@ -129,12 +129,12 @@ export default function Tags() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-slate-600 text-sm">Chargement...</div>
+        <div className="text-center py-16 text-ink-4 text-sm">Chargement...</div>
       ) : tags.length === 0 ? (
         <div className="text-center py-16 space-y-3">
-          <Tag size={36} className="text-slate-700 mx-auto" />
-          <p className="text-slate-500 text-sm">Aucun tag créé</p>
-          <p className="text-slate-700 text-xs">Créez des tags pour les assigner aux tickets et filtrer plus facilement.</p>
+          <Tag size={36} className="text-ink-4 mx-auto" />
+          <p className="text-ink-3 text-sm">Aucun tag créé</p>
+          <p className="text-ink-4 text-xs">Créez des tags pour les assigner aux tickets et filtrer plus facilement.</p>
           <button onClick={() => setModal({ mode: 'create' })}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
             <Plus size={14} /> Créer le premier tag
@@ -144,7 +144,7 @@ export default function Tags() {
         <div className="flex flex-wrap gap-3">
           {tags.map(tag => (
             <div key={tag.id}
-              className="group flex items-center gap-3 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl px-4 py-3 transition-colors">
+              className="group flex items-center gap-3 bg-surface-card border border-white/[0.06] hover:border-white/[0.08] rounded-xl px-4 py-3 transition-colors">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
                 style={{ backgroundColor: `${tag.color}20`, color: tag.color, borderColor: `${tag.color}40` }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
@@ -152,11 +152,11 @@ export default function Tags() {
               </span>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => setModal({ mode: 'edit', tag })}
-                  className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-colors">
+                  className="p-1 rounded text-ink-4 hover:text-ink-2 hover:bg-surface transition-colors">
                   <Pencil size={12} />
                 </button>
                 <button onClick={() => remove(tag)}
-                  className="p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                  className="p-1 rounded text-ink-4 hover:text-red-400 hover:bg-red-400/10 transition-colors">
                   <Trash2 size={12} />
                 </button>
               </div>
@@ -165,8 +165,8 @@ export default function Tags() {
         </div>
       )}
 
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-        <p className="text-xs text-slate-500 leading-relaxed">
+      <div className="bg-surface-card/50 border border-white/[0.06] rounded-2xl p-4">
+        <p className="text-xs text-ink-3 leading-relaxed">
           Les tags peuvent être assignés à n'importe quel ticket depuis la page de détail du ticket.
           Ils permettent de catégoriser les tickets librement (ex : Bug, Facturation, Urgent, VIP...).
         </p>

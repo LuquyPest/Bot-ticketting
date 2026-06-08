@@ -19,7 +19,7 @@ const ACTION_COLORS = {
   grade_create:             'bg-emerald-600/15 text-emerald-400 border-emerald-600/30',
   grade_update:             'bg-blue-600/15 text-blue-400 border-blue-600/30',
   grade_delete:             'bg-red-600/15 text-red-400 border-red-600/30',
-  grade_permissions_update: 'bg-indigo-600/15 text-indigo-400 border-indigo-600/30',
+  grade_permissions_update: 'bg-primary/15 text-primary-light border-primary/30',
   grade_assign:             'bg-violet-600/15 text-violet-400 border-violet-600/30',
   grade_remove:             'bg-orange-600/15 text-orange-400 border-orange-600/30',
   user_role_change:         'bg-amber-600/15 text-amber-400 border-amber-600/30',
@@ -62,10 +62,10 @@ export default function Audit() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Journal d'audit</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{data.total} entrée{data.total !== 1 ? 's' : ''}</p>
+          <h1 className="text-xl font-bold text-ink-1">Journal d'audit</h1>
+          <p className="text-sm text-ink-3 mt-0.5">{data.total} entrée{data.total !== 1 ? 's' : ''}</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors">
+        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
@@ -74,7 +74,7 @@ export default function Audit() {
         <select
           value={filterAction}
           onChange={e => { setFilterAction(e.target.value); setPage(1); }}
-          className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          className="bg-surface border border-white/[0.08] text-ink-2 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
         >
           <option value="">Toutes les actions</option>
           {Object.entries(ACTION_LABELS).map(([k, v]) => (
@@ -85,14 +85,14 @@ export default function Audit() {
           value={filterActor}
           onChange={e => { setFilterActor(e.target.value); setPage(1); }}
           placeholder="Filtrer par auteur..."
-          className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 w-48"
+          className="bg-surface border border-white/[0.08] text-ink-2 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary w-48"
         />
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-white/[0.06] text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Date</th>
               <th className="text-left px-4 py-3 font-medium">Auteur</th>
               <th className="text-left px-4 py-3 font-medium">Action</th>
@@ -102,26 +102,26 @@ export default function Audit() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-10 text-slate-600">Chargement...</td></tr>
+              <tr><td colSpan={5} className="text-center py-10 text-ink-4">Chargement...</td></tr>
             ) : !data.rows.length ? (
-              <tr><td colSpan={5} className="text-center py-10 text-slate-600">Aucune entrée</td></tr>
+              <tr><td colSpan={5} className="text-center py-10 text-ink-4">Aucune entrée</td></tr>
             ) : data.rows.map(row => (
-              <tr key={row.id} className="border-b border-slate-800/50 last:border-0 hover:bg-slate-800/20 transition-colors">
-                <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{fmtDate(row.created_at)}</td>
+              <tr key={row.id} className="border-b border-white/[0.06]/50 last:border-0 hover:bg-surface/20 transition-colors">
+                <td className="px-4 py-3 text-xs text-ink-3 whitespace-nowrap">{fmtDate(row.created_at)}</td>
                 <td className="px-4 py-3">
-                  <p className="text-xs text-slate-300 font-medium">{row.actor_tag}</p>
-                  <p className="text-[10px] text-slate-600 font-mono">{row.actor_id}</p>
+                  <p className="text-xs text-ink-2 font-medium">{row.actor_tag}</p>
+                  <p className="text-[10px] text-ink-4 font-mono">{row.actor_id}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${ACTION_COLORS[row.action] || 'bg-slate-700 text-slate-400 border-slate-600'}`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${ACTION_COLORS[row.action] || 'bg-surface-hover text-ink-2 border-white/[0.1]'}`}>
                     {ACTION_LABELS[row.action] || row.action}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-500">
-                  {row.target_type && <span className="text-slate-600">{row.target_type}/</span>}
+                <td className="px-4 py-3 text-xs text-ink-3">
+                  {row.target_type && <span className="text-ink-4">{row.target_type}/</span>}
                   {row.target_id}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-600 max-w-xs truncate" title={formatDetails(row)}>
+                <td className="px-4 py-3 text-xs text-ink-4 max-w-xs truncate" title={formatDetails(row)}>
                   {formatDetails(row)}
                 </td>
               </tr>
@@ -132,19 +132,19 @@ export default function Audit() {
 
       {data.pages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-600">Page {data.page} / {data.pages}</p>
+          <p className="text-xs text-ink-4">Page {data.page} / {data.pages}</p>
           <div className="flex items-center gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => p - 1)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg text-ink-3 hover:text-ink-2 hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft size={15} />
             </button>
             <button
               disabled={page >= data.pages}
               onClick={() => setPage(p => p + 1)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-lg text-ink-3 hover:text-ink-2 hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight size={15} />
             </button>

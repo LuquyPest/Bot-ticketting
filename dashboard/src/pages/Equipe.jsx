@@ -21,7 +21,7 @@ function GradeTag({ grade, onRemove, canManage }) {
 }
 
 const ROLE_STYLES = {
-  fondateur: 'bg-indigo-600/20 text-indigo-400 border-indigo-600/30',
+  fondateur: 'bg-indigo-600/20 text-primary-light border-primary/30',
   support:   'bg-emerald-600/20 text-emerald-400 border-emerald-600/30',
   nouveau:   'bg-amber-600/20 text-amber-400 border-amber-600/30'
 };
@@ -108,19 +108,19 @@ function GestionTab({ me }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink-3">
           {users.length} utilisateur(s)
           {pendingCount > 0 && <span className="ml-2 text-amber-400">· {pendingCount} en attente</span>}
         </p>
-        <button onClick={load} className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors">
+        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-white/[0.06] text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
               <th className="text-left px-4 py-3 font-medium">Statut</th>
               <th className="text-left px-4 py-3 font-medium">Grades</th>
@@ -131,9 +131,9 @@ function GestionTab({ me }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Chargement...</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-ink-4">Chargement...</td></tr>
             ) : !users.length ? (
-              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Aucun utilisateur</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-ink-4">Aucun utilisateur</td></tr>
             ) : users.map(u => {
               const isMe = u.user_id === me?.id;
               const isSuggested = u.role === 'nouveau' && u.discord_has_support;
@@ -143,7 +143,7 @@ function GestionTab({ me }) {
               const availableGrades = grades.filter(g => !userGrades.find(ug => ug.id === g.id));
               return (
                 <tr key={u.user_id}
-                  className={`border-b border-slate-800/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-slate-800/20'} ${updating === u.user_id ? 'opacity-60' : ''}`}>
+                  className={`border-b border-white/[0.06]/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-primary/10' : 'hover:bg-surface/20'} ${updating === u.user_id ? 'opacity-60' : ''}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       {avatarUrl
@@ -152,15 +152,15 @@ function GestionTab({ me }) {
                       }
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-slate-200 font-medium">{u.username}</p>
-                          {isMe && <span className="text-xs text-slate-500">(moi)</span>}
+                          <p className="text-ink-1 font-medium">{u.username}</p>
+                          {isMe && <span className="text-xs text-ink-3">(moi)</span>}
                           {isSuggested && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 text-xs">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-600/20 border border-primary/30 text-primary-light text-xs">
                               <Lightbulb size={10} /> Suggéré
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 font-mono">{u.user_id}</p>
+                        <p className="text-xs text-ink-4 font-mono">{u.user_id}</p>
                       </div>
                     </div>
                   </td>
@@ -171,7 +171,7 @@ function GestionTab({ me }) {
                   </td>
                   <td className="px-4 py-3">
                     {u.role === 'fondateur' ? (
-                      <span className="text-xs text-indigo-400 italic">Accès total</span>
+                      <span className="text-xs text-primary-light italic">Accès total</span>
                     ) : (
                       <div className="flex flex-wrap items-center gap-1">
                         {userGrades.map(g => (
@@ -180,14 +180,14 @@ function GestionTab({ me }) {
                         {canManage && !isMe && !isAssigning && (
                           <button onClick={() => { setAssigningTo(u.user_id); setSelectedGrade(''); }}
                             disabled={availableGrades.length === 0}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-slate-600 text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-white/[0.1] text-ink-3 hover:border-indigo-500 hover:text-primary-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                             <Plus size={9} /> Attribuer
                           </button>
                         )}
                         {canManage && isAssigning && (
                           <div className="flex items-center gap-1.5">
                             <select value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}
-                              className="bg-slate-800 border border-slate-700 text-slate-300 rounded-md px-2 py-0.5 text-xs focus:outline-none focus:border-indigo-500" autoFocus>
+                              className="bg-surface border border-white/[0.08] text-ink-2 rounded-md px-2 py-0.5 text-xs focus:outline-none focus:border-primary" autoFocus>
                               <option value="">— Choisir...</option>
                               {availableGrades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
@@ -196,7 +196,7 @@ function GestionTab({ me }) {
                               <Shield size={12} />
                             </button>
                             <button onClick={() => { setAssigningTo(null); setSelectedGrade(''); }}
-                              className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors">
+                              className="p-1 rounded text-ink-3 hover:text-ink-2 hover:bg-surface-hover transition-colors">
                               <X size={12} />
                             </button>
                           </div>
@@ -208,25 +208,25 @@ function GestionTab({ me }) {
                     {u.role !== 'fondateur' && canManage && !isMe ? (
                       <button onClick={() => toggleVacation(u.user_id, u.vacation_mode)} disabled={updating === u.user_id}
                         title={u.vacation_mode ? 'Désactiver les vacances' : 'Activer les vacances'}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${u.vacation_mode ? 'bg-sky-500/20 border-sky-500/40 text-sky-400 hover:bg-sky-500/30' : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500'}`}>
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${u.vacation_mode ? 'bg-sky-500/20 border-sky-500/40 text-sky-400 hover:bg-sky-500/30' : 'bg-surface border-white/[0.08] text-ink-3 hover:border-white/[0.12]'}`}>
                         <PlaneTakeoff size={11} />
                         {u.vacation_mode ? 'Actif' : 'Non'}
                       </button>
-                    ) : <span className="text-slate-700 text-xs">—</span>}
+                    ) : <span className="text-ink-4 text-xs">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.last_login)}</td>
+                  <td className="px-4 py-3 text-ink-3 text-xs">{fmtDate(u.last_login)}</td>
                   <td className="px-4 py-3">
-                    {isMe ? <span className="text-xs text-slate-600 italic">—</span> : (
+                    {isMe ? <span className="text-xs text-ink-4 italic">—</span> : (
                       <div className="flex items-center gap-2">
                         <select value={u.role} disabled={updating === u.user_id} onChange={e => changeRole(u.user_id, e.target.value)}
-                          className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-50">
+                          className="bg-surface border border-white/[0.08] text-ink-2 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary disabled:opacity-50">
                           <option value="nouveau">Nouveau</option>
                           <option value="support">Support</option>
                           <option value="fondateur">Fondateur</option>
                         </select>
                         {isSuggested && (
                           <button onClick={() => changeRole(u.user_id, 'support')} disabled={updating === u.user_id}
-                            className="px-2 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 text-xs hover:bg-indigo-600/30 transition-colors disabled:opacity-50 whitespace-nowrap">
+                            className="px-2 py-1.5 rounded-lg bg-indigo-600/20 border border-primary/30 text-primary-light text-xs hover:bg-indigo-600/30 transition-colors disabled:opacity-50 whitespace-nowrap">
                             → Support
                           </button>
                         )}
@@ -240,13 +240,13 @@ function GestionTab({ me }) {
         </table>
       </div>
 
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 space-y-1.5">
-        <p className="text-xs text-slate-500 leading-relaxed">
+      <div className="bg-surface-card/50 border border-white/[0.06] rounded-2xl p-4 space-y-1.5">
+        <p className="text-xs text-ink-3 leading-relaxed">
           <span className="text-amber-400 font-medium">Nouveau</span> — Accès refusé. Attribuez un grade pour donner l'accès. ·{' '}
           <span className="text-emerald-400 font-medium">Support</span> — Accès selon les permissions de ses grades. ·{' '}
-          <span className="text-indigo-400 font-medium">Fondateur</span> — Accès complet sans restriction.
+          <span className="text-primary-light font-medium">Fondateur</span> — Accès complet sans restriction.
         </p>
-        <p className="text-xs text-slate-600">Attribuer un grade à un utilisateur "Nouveau" le fait automatiquement passer en "Support".</p>
+        <p className="text-xs text-ink-4">Attribuer un grade à un utilisateur "Nouveau" le fait automatiquement passer en "Support".</p>
       </div>
     </div>
   );
@@ -269,17 +269,17 @@ function StaffDetailModal({ adminId, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+      <div className="bg-surface-card border border-white/[0.08] rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] sticky top-0 bg-surface-card z-10">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">{loading ? '...' : detail?.admin_tag || 'Membre'}</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Statistiques détaillées</p>
+            <h2 className="text-sm font-semibold text-ink-1">{loading ? '...' : detail?.admin_tag || 'Membre'}</h2>
+            <p className="text-xs text-ink-3 mt-0.5">Statistiques détaillées</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors"><X size={16} /></button>
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-2 transition-colors"><X size={16} /></button>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-600 text-sm">Chargement...</div>
+          <div className="text-center py-16 text-ink-4 text-sm">Chargement...</div>
         ) : !detail ? (
           <div className="text-center py-16 text-red-400 text-sm">Impossible de charger les données</div>
         ) : (
@@ -288,22 +288,22 @@ function StaffDetailModal({ adminId, onClose }) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: 'Tickets fermés', value: detail.tickets_closed, color: 'text-emerald-400' },
-                { label: 'Claims', value: detail.tickets_claimed, color: 'text-indigo-400' },
+                { label: 'Claims', value: detail.tickets_claimed, color: 'text-primary-light' },
                 { label: 'Tps réponse moy.', value: fmtSec(detail.avgResponseSeconds), color: 'text-amber-400' },
                 { label: 'Note moy.', value: detail.avgRating ? `${parseFloat(detail.avgRating).toFixed(1)} ⭐` : 'N/A', color: 'text-yellow-400' }
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-slate-800 rounded-xl p-3 text-center border border-slate-700/50">
+                <div key={label} className="bg-surface rounded-xl p-3 text-center border border-white/[0.08]/50">
                   <p className={`text-xl font-bold ${color}`}>{value}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{label}</p>
+                  <p className="text-[11px] text-ink-3 mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
 
             {/* Activity chart */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Activité — 30 derniers jours</p>
+              <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-3">Activité — 30 derniers jours</p>
               {detail.activity.length === 0 ? (
-                <div className="bg-slate-800/50 rounded-xl p-6 text-center text-slate-600 text-sm">Aucune activité sur cette période</div>
+                <div className="bg-surface/50 rounded-2xl p-6 text-center text-ink-4 text-sm">Aucune activité sur cette période</div>
               ) : (
                 <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
@@ -323,19 +323,19 @@ function StaffDetailModal({ adminId, onClose }) {
             {/* Recent tickets */}
             {detail.recentTickets.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Derniers tickets fermés</p>
+                <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-3">Derniers tickets fermés</p>
                 <div className="space-y-1">
                   {detail.recentTickets.map(t => (
                     <a key={t.id} href={`/tickets/${t.id}`}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors group">
+                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface transition-colors group">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xs text-slate-600 font-mono flex-shrink-0">#{t.id}</span>
-                        <span className="text-sm text-slate-400 truncate">{t.subject || 'Sans sujet'}</span>
-                        <span className="text-xs text-slate-600 truncate flex-shrink-0">{t.owner_tag}</span>
+                        <span className="text-xs text-ink-4 font-mono flex-shrink-0">#{t.id}</span>
+                        <span className="text-sm text-ink-2 truncate">{t.subject || 'Sans sujet'}</span>
+                        <span className="text-xs text-ink-4 truncate flex-shrink-0">{t.owner_tag}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] text-slate-600">{t.closed_at ? new Date(t.closed_at).toLocaleDateString('fr-FR') : '—'}</span>
-                        <ExternalLink size={10} className="text-slate-700 group-hover:text-slate-400 transition-colors" />
+                        <span className="text-[10px] text-ink-4">{t.closed_at ? new Date(t.closed_at).toLocaleDateString('fr-FR') : '—'}</span>
+                        <ExternalLink size={10} className="text-ink-4 group-hover:text-ink-2 transition-colors" />
                       </div>
                     </a>
                   ))}
@@ -351,16 +351,16 @@ function StaffDetailModal({ adminId, onClose }) {
 
 // ─── Stats tab ─────────────────────────────────────────────────────
 function StarRating({ value }) {
-  if (!value) return <span className="text-slate-700">—</span>;
+  if (!value) return <span className="text-ink-4">—</span>;
   const num = parseFloat(value);
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex gap-0.5">
         {[1,2,3,4,5].map(i => (
-          <Star key={i} size={11} fill={i <= Math.round(num) ? '#f59e0b' : 'none'} className={i <= Math.round(num) ? 'text-amber-400' : 'text-slate-700'} />
+          <Star key={i} size={11} fill={i <= Math.round(num) ? '#f59e0b' : 'none'} className={i <= Math.round(num) ? 'text-amber-400' : 'text-ink-4'} />
         ))}
       </div>
-      <span className="text-xs text-slate-400 font-medium">{num.toFixed(1)}</span>
+      <span className="text-xs text-ink-2 font-medium">{num.toFixed(1)}</span>
     </div>
   );
 }
@@ -398,37 +398,37 @@ function StatsTab() {
     <div className="space-y-4">
       {selectedStaffId && <StaffDetailModal adminId={selectedStaffId} onClose={() => setSelectedStaffId(null)} />}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{staff.length} membre(s) actif(s)</p>
+        <p className="text-sm text-ink-3">{staff.length} membre(s) actif(s)</p>
         <div className="flex items-center gap-2">
           <select value={sort} onChange={e => setSort(e.target.value)}
-            className="bg-slate-800/50 border border-slate-700/60 text-slate-400 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500/60">
+            className="bg-surface/50 border border-white/[0.07] text-ink-2 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary/60">
             <option value="tickets_closed">Trier par fermetures</option>
             <option value="tickets_claimed">Trier par claims</option>
             <option value="avgRating">Trier par note</option>
             <option value="avgResponseSeconds">Trier par temps de réponse</option>
           </select>
-          <button onClick={load} className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors">
+          <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800/60 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800/60">
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">#</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Membre</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Fermetures</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Claims</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Tps réponse moy.</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Note moy.</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Dernière activité</th>
+            <tr className="border-b border-white/[0.06]">
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">#</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Membre</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermetures</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Claims</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Tps réponse moy.</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Note moy.</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Dernière activité</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-12 text-slate-600 text-sm">Chargement...</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-ink-4 text-sm">Chargement...</td></tr>
             ) : error ? (
               <tr><td colSpan={7}>
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -441,37 +441,37 @@ function StatsTab() {
             ) : !sorted.length ? (
               <tr><td colSpan={7}>
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
-                    <Users size={22} className="text-slate-600" />
+                  <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center">
+                    <Users size={22} className="text-ink-4" />
                   </div>
-                  <p className="text-sm text-slate-600 font-medium">Aucune statistique disponible</p>
+                  <p className="text-sm text-ink-4 font-medium">Aucune statistique disponible</p>
                 </div>
               </td></tr>
             ) : sorted.map((s, i) => (
               <tr key={s.admin_id} onClick={() => setSelectedStaffId(s.admin_id)}
-                className="border-b border-slate-800/40 last:border-0 hover:bg-slate-800/40 transition-colors cursor-pointer">
-                <td className="px-4 py-3 text-slate-700 font-mono text-xs">{i + 1}</td>
+                className="border-b border-white/[0.04] last:border-0 hover:bg-surface/40 transition-colors cursor-pointer">
+                <td className="px-4 py-3 text-ink-4 font-mono text-xs">{i + 1}</td>
                 <td className="px-4 py-3">
                   <div>
-                    <p className="text-slate-200 font-medium text-sm">{s.admin_tag}</p>
-                    <p className="text-[10px] text-slate-600 font-mono mt-0.5">{s.admin_id}</p>
+                    <p className="text-ink-1 font-medium text-sm">{s.admin_tag}</p>
+                    <p className="text-[10px] text-ink-4 font-mono mt-0.5">{s.admin_id}</p>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Ticket size={12} className="text-emerald-500" />
-                    <span className="text-slate-200 font-semibold text-sm">{s.tickets_closed}</span>
+                    <span className="text-ink-1 font-semibold text-sm">{s.tickets_closed}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-slate-400 text-sm">{s.tickets_claimed}</td>
+                <td className="px-4 py-3 text-ink-2 text-sm">{s.tickets_claimed}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Clock size={12} className="text-amber-500" />
-                    <span className="text-slate-400 text-sm">{fmtDuration(s.avgResponseSeconds)}</span>
+                    <span className="text-ink-2 text-sm">{fmtDuration(s.avgResponseSeconds)}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3"><StarRating value={s.avgRating} /></td>
-                <td className="px-4 py-3 text-slate-600 text-xs">
+                <td className="px-4 py-3 text-ink-4 text-xs">
                   {fmtDate(s.updated_at, { day: '2-digit', month: '2-digit', year: '2-digit' })}
                 </td>
               </tr>
@@ -496,20 +496,20 @@ export default function Equipe() {
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-indigo-600/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-primary/15 text-primary-light flex items-center justify-center flex-shrink-0">
           <Users size={20} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Équipe</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Gestion des membres et statistiques</p>
+          <h1 className="text-xl font-bold text-ink-1">Équipe</h1>
+          <p className="text-sm text-ink-3 mt-0.5">Gestion des membres et statistiques</p>
         </div>
       </div>
 
-      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-surface-card border border-white/[0.06] rounded-xl p-1 w-fit">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-indigo-600/20 text-slate-100 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
-            <Icon size={14} className={tab === key ? 'text-indigo-400' : 'text-slate-600'} />
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-indigo-600/20 text-ink-1 shadow-sm' : 'text-ink-3 hover:text-ink-2'}`}>
+            <Icon size={14} className={tab === key ? 'text-primary-light' : 'text-ink-4'} />
             {label}
           </button>
         ))}
