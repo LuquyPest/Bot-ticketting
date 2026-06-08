@@ -1,27 +1,28 @@
 import { useEffect, useRef } from 'react';
+import { useSSECtx } from '../context/SSEContext';
 
 export function useSSE(handlers) {
+  const ctx = useSSECtx();
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
 
   useEffect(() => {
-    const es = new EventSource('/api/events');
-
+    if (!ctx?.bus) return;
+    const bus = ctx.bus.current;
     const listeners = {};
-    for (const type of Object.keys(handlers)) {
+
+    for (const type of Object.keys(handlersRef.current)) {
       listeners[type] = (e) => {
         const handler = handlersRef.current[type];
-        if (!handler) return;
-        try { handler(JSON.parse(e.data)); } catch {}
+        if (handler) handler(e.detail);
       };
-      es.addEventListener(type, listeners[type]);
+      bus.addEventListener(type, listeners[type]);
     }
 
     return () => {
       for (const [type, fn] of Object.entries(listeners)) {
-        es.removeEventListener(type, fn);
+        bus.removeEventListener(type, fn);
       }
-      es.close();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
