@@ -25,8 +25,8 @@ function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-slate-950">
-      <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+    <div className="flex h-screen items-center justify-center bg-base">
+      <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
     </div>
   );
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
@@ -67,7 +67,7 @@ export default function App() {
         } />
         <Route path="/*" element={
           <RequireAuth>
-            <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+            <div className="flex h-screen bg-base text-ink-1 overflow-hidden">
               <Sidebar />
               <main className="flex-1 overflow-y-auto">
                 <Routes>
