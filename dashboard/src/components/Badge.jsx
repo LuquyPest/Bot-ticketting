@@ -1,20 +1,21 @@
 import React from 'react';
 
-const variants = {
-  open:    { pill: 'bg-emerald-600/15 text-emerald-400 border-emerald-600/25', dot: 'bg-emerald-400' },
-  closed:  { pill: 'bg-slate-600/20  text-slate-400  border-slate-600/30',  dot: 'bg-slate-400' },
-  low:     { pill: 'bg-sky-600/15    text-sky-400    border-sky-600/25',    dot: 'bg-sky-400' },
-  normal:  { pill: 'bg-amber-600/15  text-amber-400  border-amber-600/25',  dot: 'bg-amber-400' },
-  urgent:  { pill: 'bg-red-600/15    text-red-400    border-red-600/25',    dot: 'bg-red-400' },
-  default: { pill: 'bg-slate-700/40  text-slate-400  border-slate-700/60',  dot: 'bg-slate-500' }
+const VARIANTS = {
+  open:    { cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400', label: 'Ouvert' },
+  closed:  { cls: 'bg-white/[0.05] text-ink-2 border-white/[0.08]',          dot: 'bg-ink-3',      label: 'Fermé' },
+  low:     { cls: 'bg-sky-500/10 text-sky-400 border-sky-500/20',             dot: 'bg-sky-400',    label: 'Faible' },
+  normal:  { cls: 'bg-amber-500/10 text-amber-400 border-amber-500/20',       dot: 'bg-amber-400',  label: 'Normal' },
+  urgent:  { cls: 'bg-red-500/10 text-red-400 border-red-500/20',             dot: 'bg-red-400',    label: 'Urgent' },
+  default: { cls: 'bg-white/[0.05] text-ink-2 border-white/[0.08]',          dot: 'bg-ink-3',      label: null },
 };
 
 export default function Badge({ label, variant }) {
-  const { pill, dot } = variants[variant] || variants.default;
+  const v = VARIANTS[variant] || VARIANTS.default;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${pill}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
-      {label}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full
+                      text-xs font-medium border ${v.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${v.dot}`} />
+      {label || v.label || variant}
     </span>
   );
 }
