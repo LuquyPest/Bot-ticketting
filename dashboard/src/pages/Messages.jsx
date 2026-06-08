@@ -3,6 +3,7 @@ import { CalendarClock, Trash2, RefreshCw, Plus, X } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
+import { confirmToast } from '../utils/confirmToast';
 
 function AddModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ ticket_id: '', content: '', send_at: '' });
@@ -92,7 +93,7 @@ export default function Messages() {
   useEffect(() => { load(); }, [load]);
 
   const cancel = async (id) => {
-    if (!confirm('Annuler ce message programmé ?')) return;
+    if (!await confirmToast('Annuler ce message programmé ?')) return;
     try {
       await api.delete(`/messages/${id}`);
       setMessages(m => m.filter(x => x.id !== id));
