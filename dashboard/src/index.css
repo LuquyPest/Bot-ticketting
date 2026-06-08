@@ -2,35 +2,221 @@
 @tailwind components;
 @tailwind utilities;
 
-* { box-sizing: border-box; }
-
-body {
-  font-feature-settings: "cv02","cv03","cv04","cv11";
+/* ─── Design Tokens ──────────────────────────────────────────────── */
+:root {
+  --bg:           #09090f;
+  --surface-1:    #0e0e18;
+  --surface-2:    #13131f;
+  --surface-3:    #1a1a2c;
+  --border:       rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(124, 110, 243, 0.5);
+  --primary:      #7c6ef3;
+  --primary-light:#a78bfa;
+  --text-1:       #f1f0ff;
+  --text-2:       #a0a0b8;
+  --text-3:       #54546a;
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    16px;
+  --radius-xl:    20px;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+/* ─── Base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
-/* Dropdown animation */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-feature-settings: "cv02","cv03","cv04","cv11","ss01";
+  font-variation-settings: "opsz" 32;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar              { width: 4px; height: 4px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(255,255,255,0.08); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(255,255,255,0.14); }
+
+/* ─── Selection ──────────────────────────────────────────────────── */
+::selection { background: rgba(124,110,243,0.3); color: #f1f0ff; }
+
+/* ─── Focus ring ─────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(124,110,243,0.6);
+  outline-offset: 2px;
+}
+
+/* ─── Utilities: Glass ───────────────────────────────────────────── */
+@layer utilities {
+  .glass {
+    background: rgba(14, 14, 24, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .glass-dark {
+    background: rgba(9, 9, 15, 0.85);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
+
+  .glass-card {
+    background: rgba(19, 19, 31, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Noise texture overlay for premium feel */
+  .noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.4;
+  }
+
+  /* Glow top border */
+  .glow-top {
+    position: relative;
+  }
+  .glow-top::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 16px; right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,110,243,0.5), transparent);
+    border-radius: 99px;
+  }
+
+  /* Shimmer for loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.03) 0%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+  }
+
+  /* Input base style */
+  .input-base {
+    @apply w-full bg-surface border border-white/[0.07] text-ink-1 placeholder-ink-3
+           rounded-xl px-3.5 py-2.5 text-sm
+           focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20
+           hover:border-white/[0.12]
+           transition-all duration-150;
+  }
+
+  /* Card base */
+  .card {
+    @apply bg-surface-card border border-white/[0.06] rounded-2xl shadow-card;
+  }
+
+  /* Table styles */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table thead tr {
+    @apply border-b border-white/[0.06];
+  }
+  .data-table th {
+    @apply text-left px-4 py-3 text-[10px] font-semibold text-ink-3 uppercase tracking-wider;
+  }
+  .data-table tbody tr {
+    @apply border-b border-white/[0.04] last:border-0 hover:bg-white/[0.025] transition-colors cursor-pointer;
+  }
+  .data-table td {
+    @apply px-4 py-3;
+  }
+
+  /* Page header */
+  .page-header h1 {
+    @apply text-xl font-bold text-ink-1 tracking-tight;
+  }
+  .page-header p {
+    @apply text-sm text-ink-3 mt-0.5;
+  }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────── */
 @keyframes dropdownIn {
   from { opacity: 0; transform: translateY(-6px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-
-.animate-in {
-  animation: dropdownIn 0.12s ease-out;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-/* Chat bubble pop-in */
-@keyframes bubbleIn {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.65; }
+}
+@keyframes meshDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-4%, -4%) scale(1.08); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes orb-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -20px) scale(1.05); }
+  66%       { transform: translate(-15px, 25px) scale(0.97); }
+}
+@keyframes orb-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-25px, 20px) scale(1.04); }
+  70%       { transform: translate(20px, -15px) scale(0.98); }
+}
+@keyframes orb-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30%       { transform: translate(15px, 30px) scale(1.03); }
+  60%       { transform: translate(-30px, -10px) scale(0.97); }
+}
+
+.animate-in          { animation: dropdownIn 0.13s ease-out; }
+.animate-fade-in     { animation: fadeIn 0.18s ease-out; }
+.animate-slide-up    { animation: slideUp 0.2s ease-out; }
+.animate-scale-in    { animation: scaleIn 0.15s ease-out; }
+.animate-bubble-in   { animation: bubbleIn 0.16s ease-out; }
+.animate-orb-1       { animation: orb-1 12s ease-in-out infinite; }
+.animate-orb-2       { animation: orb-2 16s ease-in-out infinite; }
+.animate-orb-3       { animation: orb-3 20s ease-in-out infinite; }
+.animate-glow-pulse  { animation: glowPulse 4s ease-in-out infinite; }
+.animate-mesh-drift  { animation: meshDrift 14s ease-in-out infinite alternate; }
 
 /* Smooth scrolling for chat */
-[data-chat] {
-  scroll-behavior: smooth;
+[data-chat] { scroll-behavior: smooth; }
+
+/* ─── Toast overrides ────────────────────────────────────────────── */
+.react-hot-toast > div {
+  background: var(--surface-2) !important;
+  color: var(--text-1) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
 }
