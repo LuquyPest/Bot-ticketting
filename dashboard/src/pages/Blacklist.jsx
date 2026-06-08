@@ -33,29 +33,29 @@ function AddModal({ onClose, onAdded }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div className="bg-surface-card border border-white/[0.08] rounded-2xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-slate-100">Ajouter à la blacklist</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={18} /></button>
+          <h2 className="text-base font-semibold text-ink-1">Ajouter à la blacklist</h2>
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
         </div>
         <form onSubmit={submit} className="space-y-3">
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">User ID Discord *</label>
+            <label className="text-xs text-ink-3 mb-1 block">User ID Discord *</label>
             <input type="text" value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} placeholder="123456789012345678"
-              className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Username *</label>
+            <label className="text-xs text-ink-3 mb-1 block">Username *</label>
             <input type="text" value={form.userTag} onChange={e => setForm(f => ({ ...f, userTag: e.target.value }))} placeholder="user#0000"
-              className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Raison (optionnel)</label>
+            <label className="text-xs text-ink-3 mb-1 block">Raison (optionnel)</label>
             <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Spam, abus..."
-              className="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Durée</label>
+            <label className="text-xs text-ink-3 mb-1 block">Durée</label>
             <div className="grid grid-cols-4 gap-1">
               {DURATIONS.map(d => (
                 <button
@@ -64,7 +64,7 @@ function AddModal({ onClose, onAdded }) {
                   onClick={() => setForm(f => ({ ...f, duration: d.value }))}
                   className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${form.duration === d.value
                     ? 'bg-red-600/20 border-red-600/50 text-red-400'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                    : 'bg-surface border-white/[0.08] text-ink-2 hover:border-white/[0.12]'}`}
                 >
                   {d.label}
                 </button>
@@ -72,7 +72,7 @@ function AddModal({ onClose, onAdded }) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-sm hover:bg-slate-700 transition-colors">Annuler</button>
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg bg-surface text-ink-2 text-sm hover:bg-surface-hover transition-colors">Annuler</button>
             <button type="submit" disabled={loading} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-500 transition-colors disabled:opacity-50">
               {loading ? 'Ajout...' : 'Bannir'}
             </button>
@@ -112,8 +112,8 @@ export default function Blacklist() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Blacklist</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{list.length} utilisateur(s) banni(s)</p>
+          <h1 className="text-xl font-bold text-ink-1">Blacklist</h1>
+          <p className="text-sm text-ink-3 mt-0.5">{list.length} utilisateur(s) banni(s)</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -123,10 +123,10 @@ export default function Blacklist() {
         </button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-white/[0.06] text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
               <th className="text-left px-4 py-3 font-medium">Raison</th>
               <th className="text-left px-4 py-3 font-medium">Banni par</th>
@@ -137,27 +137,27 @@ export default function Blacklist() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Chargement...</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-ink-4">Chargement...</td></tr>
             ) : !list.length ? (
-              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Blacklist vide</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-ink-4">Blacklist vide</td></tr>
             ) : list.map(u => (
-              <tr key={u.user_id} className="border-b border-slate-800/50 last:border-0 hover:bg-slate-800/30 transition-colors">
+              <tr key={u.user_id} className="border-b border-white/[0.06]/50 last:border-0 hover:bg-surface/30 transition-colors">
                 <td className="px-4 py-3">
-                  <p className="text-slate-200 font-medium">{u.user_tag}</p>
-                  <p className="text-xs text-slate-600 font-mono">{u.user_id}</p>
+                  <p className="text-ink-1 font-medium">{u.user_tag}</p>
+                  <p className="text-xs text-ink-4 font-mono">{u.user_id}</p>
                 </td>
-                <td className="px-4 py-3 text-slate-400 max-w-xs">{u.reason || <span className="italic text-slate-600">—</span>}</td>
-                <td className="px-4 py-3 text-slate-400">{u.added_by_tag}</td>
-                <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{fmtDate(u.added_at)}</td>
+                <td className="px-4 py-3 text-ink-2 max-w-xs">{u.reason || <span className="italic text-ink-4">—</span>}</td>
+                <td className="px-4 py-3 text-ink-2">{u.added_by_tag}</td>
+                <td className="px-4 py-3 text-ink-3 text-xs whitespace-nowrap">{fmtDate(u.added_at)}</td>
                 <td className="px-4 py-3 text-xs whitespace-nowrap">
                   {u.expires_at
                     ? <span className="text-amber-400">{fmtDate(u.expires_at)}</span>
-                    : <span className="text-slate-600 italic">Permanent</span>}
+                    : <span className="text-ink-4 italic">Permanent</span>}
                 </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => remove(u.user_id, u.user_tag)}
-                    className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-600/10 transition-colors"
+                    className="p-1.5 rounded-lg text-ink-4 hover:text-red-400 hover:bg-red-600/10 transition-colors"
                   >
                     <Trash2 size={15} />
                   </button>

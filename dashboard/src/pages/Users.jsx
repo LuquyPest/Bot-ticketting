@@ -6,7 +6,7 @@ import { useAuth } from '../App';
 import { fmtDate } from '../utils/format';
 
 const ROLE_STYLES = {
-  fondateur: 'bg-indigo-600/20 text-indigo-400 border-indigo-600/30',
+  fondateur: 'bg-indigo-600/20 text-primary-light border-indigo-600/30',
   support:   'bg-emerald-600/20 text-emerald-400 border-emerald-600/30',
   nouveau:   'bg-amber-600/20 text-amber-400 border-amber-600/30'
 };
@@ -125,22 +125,22 @@ export default function Users() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Gestion des utilisateurs</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl font-bold text-ink-1">Gestion des utilisateurs</h1>
+          <p className="text-sm text-ink-3 mt-0.5">
             {users.length} utilisateur(s)
             {pendingCount > 0 && <span className="ml-2 text-amber-400">· {pendingCount} en attente</span>}
-            {suggestedCount > 0 && <span className="ml-2 text-indigo-400">· {suggestedCount} suggestion(s)</span>}
+            {suggestedCount > 0 && <span className="ml-2 text-primary-light">· {suggestedCount} suggestion(s)</span>}
           </p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-800 transition-colors" title="Rafraîchir">
+        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors" title="Rafraîchir">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-white/[0.06] text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
               <th className="text-left px-4 py-3 font-medium">Statut</th>
               <th className="text-left px-4 py-3 font-medium">Grades</th>
@@ -151,9 +151,9 @@ export default function Users() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Chargement...</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-ink-4">Chargement...</td></tr>
             ) : !users.length ? (
-              <tr><td colSpan={6} className="text-center py-10 text-slate-600">Aucun utilisateur</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-ink-4">Aucun utilisateur</td></tr>
             ) : users.map(u => {
               const isMe = u.user_id === me?.id;
               const isSuggested = u.role === 'nouveau' && u.discord_has_support;
@@ -167,7 +167,7 @@ export default function Users() {
               return (
                 <tr
                   key={u.user_id}
-                  className={`border-b border-slate-800/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-slate-800/20'} ${updating === u.user_id ? 'opacity-60' : ''}`}
+                  className={`border-b border-white/[0.06]/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-surface/20'} ${updating === u.user_id ? 'opacity-60' : ''}`}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -177,15 +177,15 @@ export default function Users() {
                       }
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-slate-200 font-medium">{u.username}</p>
-                          {isMe && <span className="text-xs text-slate-500">(moi)</span>}
+                          <p className="text-ink-1 font-medium">{u.username}</p>
+                          {isMe && <span className="text-xs text-ink-3">(moi)</span>}
                           {isSuggested && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 text-xs">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-600/20 border border-indigo-600/30 text-primary-light text-xs">
                               <Lightbulb size={10} /> Suggéré
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 font-mono">{u.user_id}</p>
+                        <p className="text-xs text-ink-4 font-mono">{u.user_id}</p>
                       </div>
                     </div>
                   </td>
@@ -196,7 +196,7 @@ export default function Users() {
                   </td>
                   <td className="px-4 py-3">
                     {u.role === 'fondateur' ? (
-                      <span className="text-xs text-indigo-400 italic">Accès total</span>
+                      <span className="text-xs text-primary-light italic">Accès total</span>
                     ) : (
                       <div className="flex flex-wrap items-center gap-1">
                         {userGrades.map(g => (
@@ -211,7 +211,7 @@ export default function Users() {
                           <button
                             onClick={() => { setAssigningTo(u.user_id); setSelectedGrade(''); }}
                             disabled={availableGrades.length === 0}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-slate-600 text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-white/[0.1] text-ink-3 hover:border-indigo-500 hover:text-primary-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             <Plus size={9} /> Attribuer
                           </button>
@@ -221,7 +221,7 @@ export default function Users() {
                             <select
                               value={selectedGrade}
                               onChange={e => setSelectedGrade(e.target.value)}
-                              className="bg-slate-800 border border-slate-700 text-slate-300 rounded-md px-2 py-0.5 text-xs focus:outline-none focus:border-indigo-500"
+                              className="bg-surface border border-white/[0.08] text-ink-2 rounded-md px-2 py-0.5 text-xs focus:outline-none focus:border-primary"
                               autoFocus
                             >
                               <option value="">— Choisir...</option>
@@ -238,7 +238,7 @@ export default function Users() {
                             </button>
                             <button
                               onClick={() => { setAssigningTo(null); setSelectedGrade(''); }}
-                              className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors"
+                              className="p-1 rounded text-ink-3 hover:text-ink-2 hover:bg-surface-hover transition-colors"
                             >
                               <X size={12} />
                             </button>
@@ -256,28 +256,28 @@ export default function Users() {
                         className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${
                           u.vacation_mode
                             ? 'bg-sky-500/20 border-sky-500/40 text-sky-400 hover:bg-sky-500/30'
-                            : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500'
+                            : 'bg-surface border-white/[0.08] text-ink-3 hover:border-white/[0.12]'
                         }`}
                       >
                         <PlaneTakeoff size={11} />
                         {u.vacation_mode ? 'Actif' : 'Non'}
                       </button>
                     ) : (
-                      <span className="text-slate-700 text-xs">—</span>
+                      <span className="text-ink-4 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.last_login)}</td>
+                  <td className="px-4 py-3 text-ink-3 text-xs">{fmtDate(u.last_login)}</td>
                   {me?.role === 'fondateur' && (
                     <td className="px-4 py-3">
                       {isMe ? (
-                        <span className="text-xs text-slate-600 italic">—</span>
+                        <span className="text-xs text-ink-4 italic">—</span>
                       ) : (
                         <div className="flex items-center gap-2">
                           <select
                             value={u.role}
                             disabled={updating === u.user_id}
                             onChange={e => changeRole(u.user_id, e.target.value)}
-                            className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                            className="bg-surface border border-white/[0.08] text-ink-2 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary disabled:opacity-50"
                           >
                             <option value="nouveau">Nouveau</option>
                             <option value="support">Support</option>
@@ -287,7 +287,7 @@ export default function Users() {
                             <button
                               onClick={() => changeRole(u.user_id, 'support')}
                               disabled={updating === u.user_id}
-                              className="px-2 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-600/30 text-indigo-400 text-xs hover:bg-indigo-600/30 transition-colors disabled:opacity-50 whitespace-nowrap"
+                              className="px-2 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-600/30 text-primary-light text-xs hover:bg-indigo-600/30 transition-colors disabled:opacity-50 whitespace-nowrap"
                             >
                               → Support
                             </button>
@@ -303,13 +303,13 @@ export default function Users() {
         </table>
       </div>
 
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 space-y-1.5">
-        <p className="text-xs text-slate-500 leading-relaxed">
+      <div className="bg-surface-card/50 border border-white/[0.06] rounded-xl p-4 space-y-1.5">
+        <p className="text-xs text-ink-3 leading-relaxed">
           <span className="text-amber-400 font-medium">Nouveau</span> — Accès refusé. Attribuez un grade pour donner l'accès. ·{' '}
           <span className="text-emerald-400 font-medium">Support</span> — Accès selon les permissions de ses grades. ·{' '}
-          <span className="text-indigo-400 font-medium">Fondateur</span> — Accès complet sans restriction.
+          <span className="text-primary-light font-medium">Fondateur</span> — Accès complet sans restriction.
         </p>
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-ink-4">
           Attribuer un grade à un utilisateur "Nouveau" le fait automatiquement passer en "Support".
         </p>
       </div>
