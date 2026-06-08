@@ -69,6 +69,30 @@ function getBubbleStyle(source) {
   return null;
 }
 
+function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
+  const avatarUrl = authorId && authorAvatar
+    ? `https://cdn.discordapp.com/avatars/${authorId}/${authorAvatar}.webp?size=64`
+    : null;
+
+  const base = 'w-8 h-8 rounded-full shadow-md flex-shrink-0 mb-1';
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={authorTag || ''}
+        className={`${base} object-cover`}
+      />
+    );
+  }
+  return (
+    <div className={`${base} bg-gradient-to-br ${gradient}
+                     flex items-center justify-center text-xs font-bold text-white`}>
+      {authorTag?.[0]?.toUpperCase() || '?'}
+    </div>
+  );
+}
+
 /* ─── Main component ─────────────────────────────────────────── */
 export default function TicketDetail() {
   const { id } = useParams();
@@ -184,6 +208,29 @@ export default function TicketDetail() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showTemplates]);
+
+  /* ── keyboard shortcuts ─────────────────────────────────────── */
+  const replyRef = useRef(null);
+  useEffect(() => {
+    function handler(e) {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      if (e.key === 'Escape') { navigate('/tickets'); return; }
+      if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setComposeMode('reply');
+        setTimeout(() => replyRef.current?.focus(), 30);
+        return;
+      }
+      if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setComposeMode('note');
+        setTimeout(() => replyRef.current?.focus(), 30);
+        return;
+      }
+    }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [navigate]);
 
   /* ─── Actions ──────────────────────────────────────────────── */
   const changePriority = async (priority) => {
@@ -583,12 +630,13 @@ export default function TicketDetail() {
               <div key={note.id}
                 className={`flex items-end gap-2.5 group animate-fade-in
                             ${isLeft ? 'mr-16' : 'ml-16 flex-row-reverse'}`}>
-                {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${style.avatar}
-                                 flex items-center justify-center text-xs font-bold text-white
-                                 flex-shrink-0 mb-1 shadow-md`}>
-                  {note.author_tag?.[0]?.toUpperCase() || '?'}
-                </div>
+                {/* Avatar — Discord avatar when available */}
+                <DiscordAvatar
+                  authorId={note.author_id}
+                  authorAvatar={note.author_avatar}
+                  authorTag={note.author_tag}
+                  gradient={style.avatar}
+                />
 
                 {/* Bubble */}
                 <div className={`flex flex-col gap-1 min-w-0 ${isLeft ? 'items-start' : 'items-end'}`}>
@@ -649,6 +697,7 @@ export default function TicketDetail() {
 
             {/* Textarea */}
             <textarea
+              ref={replyRef}
               value={composeText}
               onChange={e => setComposeText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
@@ -668,6 +717,11 @@ export default function TicketDetail() {
             <div className="flex items-center justify-between mt-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-ink-4 tabular-nums">{composeText.length}/2000</span>
+                <span className="text-[10px] text-ink-4 hidden sm:block">
+                  <kbd className="px-1 py-0.5 rounded bg-surface border border-white/[0.07] font-mono text-[9px]">R</kbd> répondre ·{' '}
+                  <kbd className="px-1 py-0.5 rounded bg-surface border border-white/[0.07] font-mono text-[9px]">N</kbd> note ·{' '}
+                  <kbd className="px-1 py-0.5 rounded bg-surface border border-white/[0.07] font-mono text-[9px]">ESC</kbd> retour
+                </span>
 
                 {/* Templates */}
                 <div className="relative" ref={templatesRef}>
