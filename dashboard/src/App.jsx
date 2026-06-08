@@ -1,22 +1,34 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import api from './api';
 import Sidebar from './components/Sidebar';
-import Login from './pages/Login';
-import Pending from './pages/Pending';
-import Dashboard from './pages/Dashboard';
-import Tickets from './pages/Tickets';
-import TicketDetail from './pages/TicketDetail';
-import Staff from './pages/Staff';
-import Blacklist from './pages/Blacklist';
-import Transcripts from './pages/Transcripts';
-import Settings from './pages/Settings';
-import Patchnotes from './pages/Patchnotes';
-import Grades from './pages/Grades';
-import Audit from './pages/Audit';
-import Kanban from './pages/Kanban';
-import Equipe from './pages/Equipe';
-import Tags from './pages/Tags';
+import ErrorBoundary from './components/ErrorBoundary';
+import { SSEProvider } from './context/SSEContext';
+import { NotificationProvider } from './context/NotificationContext';
+
+const Login       = lazy(() => import('./pages/Login'));
+const Pending     = lazy(() => import('./pages/Pending'));
+const Dashboard   = lazy(() => import('./pages/Dashboard'));
+const Tickets     = lazy(() => import('./pages/Tickets'));
+const TicketDetail = lazy(() => import('./pages/TicketDetail'));
+const Staff       = lazy(() => import('./pages/Staff'));
+const Blacklist   = lazy(() => import('./pages/Blacklist'));
+const Transcripts = lazy(() => import('./pages/Transcripts'));
+const Settings    = lazy(() => import('./pages/Settings'));
+const Patchnotes  = lazy(() => import('./pages/Patchnotes'));
+const Grades      = lazy(() => import('./pages/Grades'));
+const Audit       = lazy(() => import('./pages/Audit'));
+const Kanban      = lazy(() => import('./pages/Kanban'));
+const Equipe      = lazy(() => import('./pages/Equipe'));
+const Tags        = lazy(() => import('./pages/Tags'));
+
+function PageLoader() {
+  return (
+    <div className="flex h-full min-h-[200px] items-center justify-center p-12">
+      <div className="animate-spin w-7 h-7 border-2 border-primary/40 border-t-primary rounded-full" />
+    </div>
+  );
+}
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -46,11 +58,15 @@ function RequireRole({ role, perm, children }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,        setUser]        = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    api.get('/auth/me').then(r => setUser(r.data)).catch(() => {}).finally(() => setLoading(false));
+    api.get('/auth/me')
+      .then(r => setUser(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const logout = async () => {
@@ -59,53 +75,73 @@ export default function App() {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, setUser, loading, logout }}>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/pending" element={
-          <RequireAuth><Pending /></RequireAuth>
-        } />
-        <Route path="/*" element={
-          <RequireAuth>
-            <div className="flex h-screen bg-base text-ink-1 overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto">
-                <Routes>
-                  <Route index element={<Dashboard />} />
-                  <Route path="tickets" element={<Tickets />} />
-                  <Route path="tickets/:id" element={<TicketDetail />} />
-                  <Route path="staff" element={<Staff />} />
-                  <Route path="blacklist" element={
-                    <RequireRole role="fondateur"><Blacklist /></RequireRole>
-                  } />
-                  <Route path="transcripts" element={
-                    <RequireRole role="fondateur"><Transcripts /></RequireRole>
-                  } />
-                  <Route path="settings" element={
-                    <RequireRole role="fondateur"><Settings /></RequireRole>
-                  } />
-                  <Route path="equipe" element={
-                    <RequireRole role="fondateur"><Equipe /></RequireRole>
-                  } />
-                  <Route path="tags" element={
-                    <RequireRole role="fondateur"><Tags /></RequireRole>
-                  } />
-                  <Route path="grades" element={
-                    <RequireRole role="fondateur" perm="manage_grades"><Grades /></RequireRole>
-                  } />
-                  <Route path="audit" element={
-                    <RequireRole role="fondateur" perm="view_audit"><Audit /></RequireRole>
-                  } />
-                  <Route path="kanban" element={<Kanban />} />
-                  <Route path="patchnotes" element={
-                    <RequireRole role="fondateur"><Patchnotes /></RequireRole>
-                  } />
-                </Routes>
-              </main>
-            </div>
-          </RequireAuth>
-        } />
-      </Routes>
+    <AuthCtx.Provider value={{ user, setUser, loading, logout, sidebarOpen, setSidebarOpen }}>
+      <SSEProvider>
+        <NotificationProvider>
+          <Routes>
+            <Route path="/login" element={
+              <Suspense fallback={<PageLoader />}>
+                <ErrorBoundary><Login /></ErrorBoundary>
+              </Suspense>
+            } />
+            <Route path="/pending" element={
+              <RequireAuth>
+                <Suspense fallback={<PageLoader />}>
+                  <ErrorBoundary><Pending /></ErrorBoundary>
+                </Suspense>
+              </RequireAuth>
+            } />
+            <Route path="/*" element={
+              <RequireAuth>
+                <div className="flex h-screen bg-base text-ink-1 overflow-hidden">
+                  <Sidebar />
+                  {sidebarOpen && (
+                    <div
+                      className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+                      onClick={() => setSidebarOpen(false)}
+                    />
+                  )}
+                  <main className="flex-1 overflow-y-auto min-w-0 pt-10 lg:pt-0">
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
+                        <Route index element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+                        <Route path="tickets"    element={<ErrorBoundary><Tickets /></ErrorBoundary>} />
+                        <Route path="tickets/:id" element={<ErrorBoundary><TicketDetail /></ErrorBoundary>} />
+                        <Route path="staff"      element={<ErrorBoundary><Staff /></ErrorBoundary>} />
+                        <Route path="blacklist"  element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Blacklist /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="transcripts" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Transcripts /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="settings"   element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Settings /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="equipe"     element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Equipe /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="tags"       element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Tags /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="grades"     element={
+                          <RequireRole role="fondateur" perm="manage_grades"><ErrorBoundary><Grades /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="audit"      element={
+                          <RequireRole role="fondateur" perm="view_audit"><ErrorBoundary><Audit /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="kanban"     element={<ErrorBoundary><Kanban /></ErrorBoundary>} />
+                        <Route path="patchnotes" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Patchnotes /></ErrorBoundary></RequireRole>
+                        } />
+                      </Routes>
+                    </Suspense>
+                  </main>
+                </div>
+              </RequireAuth>
+            } />
+          </Routes>
+        </NotificationProvider>
+      </SSEProvider>
     </AuthCtx.Provider>
   );
 }
