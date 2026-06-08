@@ -3,6 +3,7 @@ import { ShieldBan, Plus, Trash2, X } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
+import { confirmToast } from '../utils/confirmToast';
 
 const DURATIONS = [
   { value: '1d',        label: '1 jour' },
@@ -96,7 +97,7 @@ export default function Blacklist() {
   useEffect(() => { load(); }, []);
 
   const remove = async (userId, tag) => {
-    if (!confirm(`Retirer ${tag} de la blacklist ?`)) return;
+    if (!await confirmToast(`Retirer ${tag} de la blacklist ?`)) return;
     try {
       await api.delete(`/blacklist/${userId}`);
       setList(l => l.filter(u => u.user_id !== userId));

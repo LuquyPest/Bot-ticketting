@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirmToast';
 import { useAuth } from '../App';
 
 const ALL_PERMISSIONS = [
@@ -280,7 +281,7 @@ export default function Grades() {
   };
 
   const handleDelete = async (grade) => {
-    if (!confirm(`Supprimer le grade "${grade.name}" ? Cette action est irréversible.`)) return;
+    if (!await confirmToast(`Supprimer le grade "${grade.name}" ?`)) return;
     try {
       await api.delete(`/grades/${grade.id}`);
       setGrades(prev => prev.filter(g => g.id !== grade.id));

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, X, Check, Tag } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../utils/confirmToast';
 
 const PRESET_COLORS = [
   '#6366f1','#8b5cf6','#ec4899','#ef4444','#f97316',
@@ -97,7 +98,7 @@ export default function Tags() {
   };
 
   const remove = async (tag) => {
-    if (!confirm(`Supprimer le tag "${tag.name}" ? Il sera retiré de tous les tickets.`)) return;
+    if (!await confirmToast(`Supprimer le tag "${tag.name}" ?`)) return;
     try {
       await api.delete(`/tags/${tag.id}`);
       setTags(prev => prev.filter(t => t.id !== tag.id));
