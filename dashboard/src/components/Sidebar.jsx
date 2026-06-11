@@ -11,6 +11,7 @@ import { useSSE } from '../hooks/useSSE';
 import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
 import CommandPalette from './CommandPalette';
+import GuildSwitcher from './GuildSwitcher';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -180,8 +181,13 @@ export default function Sidebar() {
           ))}
         </nav>
 
+        {/* Guild switcher */}
+        <div className="px-2 pb-1 border-t border-white/[0.06] pt-2">
+          <GuildSwitcher />
+        </div>
+
         {/* User footer */}
-        <div className="px-2 pb-3 pt-2 border-t border-white/[0.06]">
+        <div className="px-2 pb-3 pt-2">
           <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl
                           bg-white/[0.03] border border-white/[0.05]">
             {/* Avatar */}
