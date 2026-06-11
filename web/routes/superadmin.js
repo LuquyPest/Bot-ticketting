@@ -35,20 +35,14 @@ router.post('/auth/login', async (req, res) => {
 
     req.session.saPendingLogin = { id: account.id, username: account.username, type: accountType };
 
-    if (!account.totp_secret) {
-      // First login — generate TOTP secret and show QR
+    if (!account.totp_secret || !account.totp_enabled) {
+      // First login OR setup started but never confirmed — always generate a fresh secret.
+      // Never return an existing DB secret in an API response.
       const secret = authenticator.generateSecret();
       req.session.saPendingLogin.tempSecret = secret;
       const otpUri = authenticator.keyuri(account.username, 'TicketBot SA', secret);
       const qrDataUrl = await QRCode.toDataURL(otpUri);
       return res.json({ needs_totp_setup: true, qrDataUrl, secret });
-    }
-
-    if (!account.totp_enabled) {
-      // Setup started but TOTP not confirmed yet — re-show QR
-      const otpUri = authenticator.keyuri(account.username, 'TicketBot SA', account.totp_secret);
-      const qrDataUrl = await QRCode.toDataURL(otpUri);
-      return res.json({ needs_totp_setup: true, qrDataUrl, secret: account.totp_secret });
     }
 
     // Normal login — ask for TOTP code
