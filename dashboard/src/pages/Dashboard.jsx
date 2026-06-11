@@ -58,13 +58,16 @@ const PRIO_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [stats,    setStats]    = useState(null);
-  const [activity, setActivity] = useState([]);
-  const [recent,   setRecent]   = useState([]);
-  const [heatmap,  setHeatmap]  = useState([]);
-  const [topStaff, setTopStaff] = useState([]);
-  const [pending,  setPending]  = useState([]);
-  const [days,     setDays]     = useState(7);
+  const [stats,       setStats]       = useState(null);
+  const [activity,    setActivity]    = useState([]);
+  const [recent,      setRecent]      = useState([]);
+  const [heatmap,     setHeatmap]     = useState([]);
+  const [topStaff,    setTopStaff]    = useState([]);
+  const [pending,     setPending]     = useState([]);
+  const [leaderboard, setLeaderboard] = useState(null);
+  const [lbPeriod,    setLbPeriod]    = useState('month');
+  const [myGoal,      setMyGoal]      = useState(null);
+  const [days,        setDays]        = useState(7);
   const [statusFilter, setStatusFilter] = useState('');
   const navigate = useNavigate();
 
@@ -82,6 +85,7 @@ export default function Dashboard() {
     loadRecent();
     api.get('/dashboard/heatmap').then(r => setHeatmap(r.data)).catch(() => {});
     api.get('/dashboard/top-staff').then(r => setTopStaff(r.data)).catch(() => {});
+    api.get('/goals').then(r => setMyGoal(r.data)).catch(() => {});
     if (user?.role === 'support') {
       api.get('/dashboard/pending').then(r => setPending(r.data)).catch(() => {});
     }
@@ -114,6 +118,10 @@ export default function Dashboard() {
       setActivity(buildChart(r.data.opened, r.data.closed, r.data.unclaimed || [], days));
     }).catch(() => {});
   }, [days]);
+
+  useEffect(() => {
+    api.get(`/dashboard/leaderboard?period=${lbPeriod}`).then(r => setLeaderboard(r.data)).catch(() => {});
+  }, [lbPeriod]);
 
   const donutData = stats?.priorityBreakdown
     ? Object.entries(stats.priorityBreakdown).map(([k, v]) => ({ name: PRIO_LABELS[k], value: v, key: k }))
@@ -429,6 +437,84 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Leaderboard + Goal widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        {/* Leaderboard */}
+        {leaderboard?.enabled !== false && (
+          <div className={`${card} p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target size={14} className="text-amber-400" />
+                <h3 className="text-sm font-semibold text-ink-2">Leaderboard</h3>
+              </div>
+              <div className="flex gap-1">
+                {[['week','Semaine'],['month','Mois']].map(([k, l]) => (
+                  <button key={k} onClick={() => setLbPeriod(k)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all
+                               ${lbPeriod === k ? 'bg-primary/20 text-primary-light' : 'text-ink-4 hover:text-ink-2'}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {!leaderboard?.staff?.length ? (
+              <p className="text-xs text-ink-4 text-center py-4">Pas encore de données</p>
+            ) : (
+              <div className="space-y-1.5">
+                {leaderboard.staff.slice(0, 5).map((s, i) => (
+                  <div key={s.userId} className="flex items-center gap-3">
+                    <span className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0
+                                     ${i === 0 ? 'bg-amber-500/20 text-amber-300' :
+                                       i === 1 ? 'bg-slate-400/20 text-slate-300' :
+                                       i === 2 ? 'bg-orange-600/20 text-orange-400' :
+                                       'bg-white/[0.04] text-ink-4'}`}>
+                      {i + 1}
+                    </span>
+                    <p className="text-xs text-ink-2 truncate flex-1">{s.username}</p>
+                    <span className="text-xs font-bold tabular-nums text-ink-3">{s.ticketsHandled}</span>
+                    {s.avgRating && (
+                      <span className="text-[10px] text-amber-300">★{parseFloat(s.avgRating).toFixed(1)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Monthly goal progress */}
+        {myGoal?.enabled && (
+          <div className={`${card} p-5 space-y-3`}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} className="text-violet-400" />
+              <h3 className="text-sm font-semibold text-ink-2">Objectif du mois</h3>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-end justify-between">
+                <p className="text-2xl font-bold text-ink-1 tabular-nums">{myGoal.achieved}</p>
+                <p className="text-xs text-ink-4">/ {myGoal.target} tickets</p>
+              </div>
+              <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, Math.round((myGoal.achieved / myGoal.target) * 100))}%`,
+                    background: myGoal.achieved >= myGoal.target
+                      ? 'linear-gradient(90deg, #10b981, #34d399)'
+                      : 'linear-gradient(90deg, #7c6ef3, #a78bfa)',
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-ink-4 text-right">
+                {Math.min(100, Math.round((myGoal.achieved / myGoal.target) * 100))}% atteint
+                {myGoal.achieved >= myGoal.target ? ' ✓' : ''}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
     </div>

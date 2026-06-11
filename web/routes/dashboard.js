@@ -153,4 +153,31 @@ router.get('/recent', async (req, res) => {
   }
 });
 
+// Leaderboard — respects leaderboard_enabled flag
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const cfg = await req.guildDb('SELECT leaderboard_enabled FROM guild_config LIMIT 1');
+    if (!cfg[0]?.leaderboard_enabled) return res.json({ enabled: false, staff: [] });
+
+    const period = req.query.period === 'week' ? '7 DAY' : 'MONTH';
+    const staff = await req.guildDb(
+      `SELECT n.author_id as userId, n.author_tag as username,
+              COUNT(DISTINCT n.ticket_id) as ticketsHandled,
+              ROUND(AVG(tr.rating), 1) as avgRating
+       FROM ticket_notes n
+       LEFT JOIN ticket_ratings tr ON tr.closed_by_id = n.author_id
+         AND tr.rated_at >= DATE_SUB(NOW(), INTERVAL 1 ${period})
+       WHERE n.source NOT IN ('user','scheduled')
+         AND n.created_at >= DATE_SUB(NOW(), INTERVAL 1 ${period})
+       GROUP BY n.author_id, n.author_tag
+       ORDER BY ticketsHandled DESC
+       LIMIT 10`
+    );
+    res.json({ enabled: true, staff });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

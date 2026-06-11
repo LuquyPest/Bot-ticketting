@@ -146,6 +146,8 @@ app.use('/api/tags',        withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
 app.use('/api/staff-roles', withGuild(['fondateur']),            require('./routes/staffRoles'));
 app.use('/api/analytics',   withGuild(['support', 'fondateur']), require('./routes/analytics'));
+app.use('/api/badges',      withGuild(['support', 'fondateur']), require('./routes/badges'));
+app.use('/api/goals',       withGuild(['support', 'fondateur']), require('./routes/goals'));
 
 app.use('/api/sa', require('./routes/superadmin'));
 
