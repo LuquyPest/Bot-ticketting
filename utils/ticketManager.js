@@ -235,6 +235,15 @@ function createManager(db, client, guildId) {
       }
     }
     await channel.delete('Ticket fermé avec transcript').catch(() => null);
+
+    // Check badge unlocks for the staff member who closed the ticket
+    if (ticket.claimed_by) {
+      try {
+        const { checkAndAwardBadges } = require('../web/routes/badges');
+        await checkAndAwardBadges(db, ticket.claimed_by, closedByUser.tag);
+      } catch {}
+    }
+
     return transcript;
   }
 
