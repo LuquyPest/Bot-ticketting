@@ -14,8 +14,10 @@ const TENANT_TABLES_SQL = `
     priority            ENUM('low','normal','urgent') NOT NULL DEFAULT 'normal',
     last_message_at     DATETIME DEFAULT NULL,
     first_response_at   DATETIME DEFAULT NULL,
-    warned_inactive     TINYINT(1) NOT NULL DEFAULT 0,
-    escalation_alerted  TINYINT(1) NOT NULL DEFAULT 0,
+    warned_inactive          TINYINT(1) NOT NULL DEFAULT 0,
+    user_warned_inactive     TINYINT(1) NOT NULL DEFAULT 0,
+    escalation_alerted       TINYINT(1) NOT NULL DEFAULT 0,
+    staff_reminder_sent_at   DATETIME DEFAULT NULL,
     visibility_grade_id INT DEFAULT NULL,
     created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     closed_at           DATETIME DEFAULT NULL,
@@ -342,6 +344,9 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT NULL`,
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS banner_color VARCHAR(7) NOT NULL DEFAULT '#6366f1'`,
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS profile_picture_url VARCHAR(512) DEFAULT NULL`,
+      // Phase 2 — new ticket tracking columns
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS staff_reminder_sent_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS user_warned_inactive TINYINT(1) NOT NULL DEFAULT 0`,
       // Phase 1 — feature flags in guild_config
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS faq_enabled TINYINT(1) NOT NULL DEFAULT 0`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS intake_form_enabled TINYINT(1) NOT NULL DEFAULT 0`,

@@ -9,6 +9,87 @@ const { broadcast } = require('../utils/sse');
 const pendingSubject = new Map();
 // userId → { content, attachments, guilds: [{guildId, discordGuild, db, tm, config}] }
 const pendingGuildSelect = new Map();
+// userId → { content, attachments, guildEntry, subject, questions: [], step: 0, answers: [] }
+const pendingIntakeForm = new Map();
+// userId → { content, attachments, guildEntry, subject }
+const pendingFaqTicket = new Map();
+
+// Returns true if a FAQ rule matched and the user was shown a reply (ticket creation paused)
+async function checkFaq(user, content, guildEntry, client) {
+  const { guildId, db, config } = guildEntry;
+  if (!config.faq_enabled) return false;
+
+  let rules;
+  try {
+    rules = await db('SELECT * FROM faq_rules WHERE active = 1');
+  } catch { return false; }
+  if (!rules.length) return false;
+
+  const lower = content.toLowerCase();
+  for (const rule of rules) {
+    let keywords = [];
+    try { keywords = Array.isArray(rule.keywords) ? rule.keywords : JSON.parse(rule.keywords || '[]'); } catch {}
+    if (!keywords.length) continue;
+    const matched = keywords.some(kw => lower.includes(String(kw).toLowerCase()));
+    if (!matched) continue;
+
+    const row = [];
+    if (rule.allow_ticket) {
+      row.push(
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`faq_open_${guildId}`)
+            .setLabel('Ouvrir un ticket quand même')
+            .setStyle(ButtonStyle.Secondary)
+        )
+      );
+      pendingFaqTicket.set(user.id, { guildId, db, tm: guildEntry.tm, config });
+      setTimeout(() => pendingFaqTicket.delete(user.id), 10 * 60 * 1000);
+    }
+
+    const msg = rule.allow_ticket
+      ? { content: `📚 **Réponse automatique :**\n${rule.response}\n\n*Cette réponse répond-elle à ta question ? Sinon tu peux ouvrir un ticket.*`, components: row }
+      : { content: `📚 **Réponse automatique :**\n${rule.response}` };
+
+    await user.send(msg).catch(() => null);
+    return true;
+  }
+  return false;
+}
+
+// Starts intake form questioning sequence, returns true if form was triggered
+async function checkIntakeForm(user, content, attachments, guildEntry, client, subject) {
+  const { db, config } = guildEntry;
+  if (!config.intake_form_enabled) return false;
+
+  let forms;
+  try {
+    forms = await db(
+      'SELECT * FROM intake_forms WHERE active = 1 AND (subject = ? OR subject IS NULL) ORDER BY subject IS NULL ASC LIMIT 1',
+      [subject || null]
+    );
+  } catch { return false; }
+  if (!forms.length) return false;
+
+  const form = forms[0];
+  let questions;
+  try {
+    questions = await db(
+      'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC',
+      [form.id]
+    );
+  } catch { return false; }
+  if (!questions.length) return false;
+
+  pendingIntakeForm.set(user.id, {
+    content, attachments, guildEntry, subject,
+    questions, step: 0, answers: []
+  });
+  setTimeout(() => pendingIntakeForm.delete(user.id), 15 * 60 * 1000);
+
+  await user.send(`📋 **Quelques questions avant d'ouvrir ton ticket** (${questions.length} question${questions.length > 1 ? 's' : ''}) :\n\n**${questions[0].label}**`).catch(() => null);
+  return true;
+}
 
 async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null) {
   const { guildId, db, tm, config } = guildEntry;
@@ -29,6 +110,10 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   }
 
   if (subject === null) {
+    // FAQ check before anything (only on first message without existing ticket)
+    const faqHandled = await checkFaq(user, content, { guildId, db, tm, config }, client);
+    if (faqHandled) return;
+
     let subjects = [];
     try {
       subjects = Array.isArray(config.ticket_subjects)
@@ -44,6 +129,10 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
       return;
     }
   }
+
+  // Intake form check before creating the ticket
+  const intakeHandled = await checkIntakeForm(user, content, attachments, { guildId, db, tm, config }, client, subject);
+  if (intakeHandled) return;
 
   const result = await tm.relayDmToTicket(user, content, attachments, subject);
   await tm.sendWelcomeDm(user, result.created);
@@ -115,6 +204,24 @@ module.exports = {
         return;
       }
 
+      // Intake form — step-by-step question reply
+      if (pendingIntakeForm.has(user.id)) {
+        const state = pendingIntakeForm.get(user.id);
+        state.answers.push(content);
+        state.step += 1;
+
+        if (state.step < state.questions.length) {
+          await user.send(`**${state.questions[state.step].label}**`).catch(() => null);
+        } else {
+          // All questions answered — build intake summary and open ticket
+          pendingIntakeForm.delete(user.id);
+          const summary = state.questions.map((q, i) => `**${q.label}** : ${state.answers[i] || '—'}`).join('\n');
+          const enrichedContent = `${state.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
+          await openTicketForGuild(user, enrichedContent, state.attachments, state.guildEntry, client, state.subject);
+        }
+        return;
+      }
+
       // Si l'utilisateur a déjà un ticket ouvert, on relay
       const found = await findUserOpenTicket(user.id, client);
       if (found) {
@@ -166,5 +273,7 @@ module.exports = {
 
   pendingSubject,
   pendingGuildSelect,
+  pendingIntakeForm,
+  pendingFaqTicket,
   openTicketForGuild
 };

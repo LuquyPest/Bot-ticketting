@@ -159,7 +159,7 @@ function createManager(db, client, guildId) {
     let msg = `--- ${user.tag} : ${content || '[aucun texte]'}`;
     if (attachments.length) msg += '\n\nFichiers :\n' + attachments.map(f => f.url).join('\n');
     await channel.send({ content: msg });
-    await db('UPDATE tickets SET last_message_at = NOW() WHERE id = ?', [ticket.id]);
+    await db('UPDATE tickets SET last_message_at = NOW(), user_warned_inactive = 0 WHERE id = ?', [ticket.id]);
 
     const noteContent = [content, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
     const nr = await db(
@@ -284,7 +284,7 @@ function createManager(db, client, guildId) {
   }
 
   async function updateLastMessage(ticketId) {
-    await db('UPDATE tickets SET last_message_at=NOW(), warned_inactive=0 WHERE id=?', [ticketId]);
+    await db('UPDATE tickets SET last_message_at=NOW(), warned_inactive=0, staff_reminder_sent_at=NULL WHERE id=?', [ticketId]);
   }
 
   async function recordStaffResponse(ticketId, staffUser) {
@@ -431,6 +431,64 @@ function createManager(db, client, guildId) {
     );
   }
 
+  // Returns open tickets where the last real note is from user and no staff
+  // response for at least `hours` hours, with anti-spam (no reminder in last 24h)
+  async function getTicketsForStaffReminder(hours) {
+    return db(`
+      SELECT t.* FROM tickets t
+      INNER JOIN (
+        SELECT ticket_id, MAX(id) AS last_id
+        FROM ticket_notes WHERE source NOT IN ('scheduled')
+        GROUP BY ticket_id
+      ) latest ON latest.ticket_id = t.id
+      INNER JOIN ticket_notes ln ON ln.id = latest.last_id AND ln.source = 'user'
+      WHERE t.status = 'open'
+        AND t.claimed_by IS NOT NULL
+        AND t.last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
+        AND (t.staff_reminder_sent_at IS NULL OR t.staff_reminder_sent_at < DATE_SUB(NOW(), INTERVAL 24 HOUR))
+    `, [hours]);
+  }
+
+  async function markStaffReminderSent(ticketId) {
+    await db('UPDATE tickets SET staff_reminder_sent_at = NOW() WHERE id = ?', [ticketId]);
+  }
+
+  // Returns open tickets where the last note is from staff and user hasn't responded
+  async function getTicketsForUserInactive(warnHours, closeHours) {
+    const toWarn = await db(`
+      SELECT t.* FROM tickets t
+      INNER JOIN (
+        SELECT ticket_id, MAX(id) AS last_id
+        FROM ticket_notes WHERE source NOT IN ('scheduled')
+        GROUP BY ticket_id
+      ) latest ON latest.ticket_id = t.id
+      INNER JOIN ticket_notes ln ON ln.id = latest.last_id AND ln.source NOT IN ('user', 'scheduled')
+      WHERE t.status = 'open'
+        AND t.user_warned_inactive = 0
+        AND t.last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
+        AND t.last_message_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+    `, [warnHours, closeHours]);
+
+    const toClose = await db(`
+      SELECT t.* FROM tickets t
+      INNER JOIN (
+        SELECT ticket_id, MAX(id) AS last_id
+        FROM ticket_notes WHERE source NOT IN ('scheduled')
+        GROUP BY ticket_id
+      ) latest ON latest.ticket_id = t.id
+      INNER JOIN ticket_notes ln ON ln.id = latest.last_id AND ln.source NOT IN ('user', 'scheduled')
+      WHERE t.status = 'open'
+        AND t.user_warned_inactive = 1
+        AND t.last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
+    `, [closeHours]);
+
+    return { toWarn, toClose };
+  }
+
+  async function markUserWarnedInactive(ticketId) {
+    await db('UPDATE tickets SET user_warned_inactive = 1 WHERE id = ?', [ticketId]);
+  }
+
   return {
     getGuildConfig,
     getOpenTicketByOwnerId,
@@ -466,7 +524,11 @@ function createManager(db, client, guildId) {
     getBlacklist,
     getTranscriptById,
     setPriority,
-    getAdminStats
+    getAdminStats,
+    getTicketsForStaffReminder,
+    markStaffReminderSent,
+    getTicketsForUserInactive,
+    markUserWarnedInactive,
   };
 }
 
