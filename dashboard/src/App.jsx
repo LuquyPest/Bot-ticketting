@@ -24,6 +24,7 @@ const Audit       = lazy(() => import('./pages/Audit'));
 const Kanban      = lazy(() => import('./pages/Kanban'));
 const Equipe      = lazy(() => import('./pages/Equipe'));
 const Tags        = lazy(() => import('./pages/Tags'));
+const StaffRoles  = lazy(() => import('./pages/StaffRoles'));
 
 function PageLoader() {
   return (
@@ -148,6 +149,9 @@ export default function App() {
                         } />
                         <Route path="settings"   element={
                           <RequireRole role="fondateur"><ErrorBoundary><Settings /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="staff-roles" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><StaffRoles /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="equipe"     element={
                           <RequireRole role="fondateur"><ErrorBoundary><Equipe /></ErrorBoundary></RequireRole>
