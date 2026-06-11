@@ -255,6 +255,16 @@ router.post('/:id/reply', async (req, res) => {
     if (!content && !file_url) return res.status(400).json({ error: 'Contenu requis' });
     if (content && typeof content !== 'string') return res.status(400).json({ error: 'Contenu invalide' });
     if (content && content.length > 2000) return res.status(400).json({ error: 'Contenu trop long (max 2000)' });
+    if (file_url !== undefined && file_url !== null) {
+      if (typeof file_url !== 'string') return res.status(400).json({ error: 'file_url invalide' });
+      let parsedUrl;
+      try { parsedUrl = new URL(file_url); } catch { return res.status(400).json({ error: 'file_url invalide' }); }
+      if (parsedUrl.protocol !== 'https:') return res.status(400).json({ error: 'file_url doit être HTTPS' });
+      const ALLOWED_HOSTS = ['cdn.discordapp.com', 'media.discordapp.net', 'images-ext-1.discordapp.net', 'images-ext-2.discordapp.net'];
+      if (!ALLOWED_HOSTS.includes(parsedUrl.hostname)) {
+        return res.status(400).json({ error: 'file_url : hôte non autorisé (Discord CDN uniquement)' });
+      }
+    }
 
     const sender = anonymous ? 'Support' : req.session.user.username;
     let msg = `--- ${sender} : ${content || ''}`.trim();
