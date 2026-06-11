@@ -140,9 +140,13 @@ function createManager(db, client, guildId) {
       fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
 
       if (firstMessage || attachments.length) {
-        let msg = `--- ${user.tag} : ${firstMessage || '[aucun texte]'}`;
-        if (attachments.length) msg += '\n\nFichiers :\n' + attachments.map(f => f.url).join('\n');
-        await channel.send({ content: msg });
+        const dmEmbed = new EmbedBuilder()
+          .setColor(0x4e5058)
+          .setAuthor({ name: `${user.tag} · utilisateur` })
+          .setDescription(firstMessage || '*[aucun texte]*')
+          .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
+        if (attachments.length) dmEmbed.addFields({ name: '📎 Fichiers', value: attachments.map(f => f.url).join('\n') });
+        await channel.send({ embeds: [dmEmbed] });
         const noteContent = [firstMessage, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
         const nr = await db(
           'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "user")',
@@ -163,9 +167,13 @@ function createManager(db, client, guildId) {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return createTicket(user, content, attachments, subject);
 
-    let msg = `--- ${user.tag} : ${content || '[aucun texte]'}`;
-    if (attachments.length) msg += '\n\nFichiers :\n' + attachments.map(f => f.url).join('\n');
-    await channel.send({ content: msg });
+    const relayEmbed = new EmbedBuilder()
+      .setColor(0x4e5058)
+      .setAuthor({ name: `${user.tag} · utilisateur` })
+      .setDescription(content || '*[aucun texte]*')
+      .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
+    if (attachments.length) relayEmbed.addFields({ name: '📎 Fichiers', value: attachments.map(f => f.url).join('\n') });
+    await channel.send({ embeds: [relayEmbed] });
     await db('UPDATE tickets SET last_message_at = NOW(), user_warned_inactive = 0 WHERE id = ?', [ticket.id]);
 
     const noteContent = [content, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
