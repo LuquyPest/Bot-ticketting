@@ -24,7 +24,6 @@ function _getPool(guildId) {
   return pool;
 }
 
-// Returns an async query function bound to this guild's DB
 function getTenantDb(guildId) {
   return async function tenantQuery(sql, params = []) {
     const [result] = await _getPool(guildId).query(sql, params);

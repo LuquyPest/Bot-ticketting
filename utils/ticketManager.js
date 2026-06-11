@@ -5,7 +5,6 @@ const { sanitizeChannelName } = require('./sanitize');
 const { broadcast } = require('./sse');
 const { fireTicketWebhook } = require('./webhookEmitter');
 
-// Returns the guild_config row from the per-guild DB (or defaults).
 async function getGuildConfig(db) {
   const rows = await db('SELECT * FROM guild_config LIMIT 1');
   return rows[0] || {};
@@ -241,7 +240,6 @@ function createManager(db, client, guildId) {
 
     fireTicketWebhook(db, 'ticket_close', { ticketId: ticket.id, ownerTag: ticket.owner_tag, closedBy: closedByUser.tag }).catch(() => null);
 
-    // Check badge unlocks for the staff member who closed the ticket
     if (ticket.claimed_by) {
       try {
         const { checkAndAwardBadges } = require('../web/routes/badges');
