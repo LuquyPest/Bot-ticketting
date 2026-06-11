@@ -133,10 +133,12 @@ router.post('/auth/logout', (req, res) => {
 
 // ─── GUILDS ──────────────────────────────────────────────────────────────────
 
-// Managers can only see and act on their assigned guilds
-function canAccessGuild(req, guildId) {
+// Managers can only see and act on their assigned guilds.
+// Always re-fetches from DB — assignedGuilds is not stored in the session.
+async function canAccessGuild(req, guildId) {
   if (req.saUser.type === 'superadmin') return true;
-  const assigned = req.saUser.assignedGuilds || [];
+  const [mgr] = await globalQuery('SELECT assigned_guilds FROM managers WHERE id = ?', [req.saUser.id]);
+  const assigned = mgr?.assigned_guilds ? JSON.parse(mgr.assigned_guilds) : [];
   return assigned.includes(guildId);
 }
 
@@ -164,7 +166,7 @@ router.get('/guilds/:guildId', requireSuperAdmin, async (req, res) => {
   try {
     const [guild] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [req.params.guildId]);
     if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
-    if (!canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
 
     let stats = null;
     if (guild.status === 'active') {
@@ -273,7 +275,10 @@ router.patch('/guilds/:guildId/maintenance', requireSuperAdmin, async (req, res)
   const { enabled } = req.body;
   if (typeof enabled !== 'boolean') return res.status(400).json({ error: '`enabled` boolean requis' });
   try {
-    await globalQuery('UPDATE guilds SET maintenance_mode = ? WHERE guild_id = ?', [enabled ? 1 : 0, req.params.guildId]);
+    const [guild] = await globalQuery('SELECT guild_id FROM guilds WHERE guild_id = ?', [req.params.guildId]);
+    if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
+    if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
+    await globalQuery('UPDATE guilds SET maintenance_mode = ? WHERE guild_id = ?', [enabled ? 1 : 0, guild.guild_id]);
     res.json({ ok: true, maintenance_mode: enabled ? 1 : 0 });
   } catch (err) {
     console.error(err);
