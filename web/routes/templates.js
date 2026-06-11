@@ -1,18 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../../utils/db');
 
 router.get('/', async (req, res) => {
   try {
     const { subject } = req.query;
     let templates;
     if (subject) {
-      templates = await query(
+      templates = await req.guildDb(
         'SELECT id, name, content, subject, created_by_id, created_by_tag, created_at FROM reply_templates WHERE subject IS NULL OR subject = ? ORDER BY subject ASC, name ASC',
         [subject]
       );
     } else {
-      templates = await query(
+      templates = await req.guildDb(
         'SELECT id, name, content, subject, created_by_id, created_by_tag, created_at FROM reply_templates ORDER BY subject ASC, name ASC'
       );
     }
@@ -36,7 +35,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Contenu trop long (max 2000)' });
     const cleanSubject = subject && typeof subject === 'string' ? subject.trim().slice(0, 100) || null : null;
 
-    const result = await query(
+    const result = await req.guildDb(
       'INSERT INTO reply_templates (name, content, subject, created_by_id, created_by_tag) VALUES (?, ?, ?, ?, ?)',
       [name.trim(), content.trim(), cleanSubject, req.session.user.id, req.session.user.username]
     );
@@ -58,11 +57,11 @@ router.post('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const [template] = await query('SELECT * FROM reply_templates WHERE id = ?', [req.params.id]);
+    const [template] = await req.guildDb('SELECT * FROM reply_templates WHERE id = ?', [req.params.id]);
     if (!template) return res.status(404).json({ error: 'Template introuvable' });
     if (req.session.user.role !== 'fondateur' && template.created_by_id !== req.session.user.id)
       return res.status(403).json({ error: 'Accès refusé' });
-    await query('DELETE FROM reply_templates WHERE id = ?', [template.id]);
+    await req.guildDb('DELETE FROM reply_templates WHERE id = ?', [template.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

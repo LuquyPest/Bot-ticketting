@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../../utils/db');
 const { logAudit } = require('../../utils/gradePermissions');
 
 function canManageUsers(req) {
@@ -10,13 +9,13 @@ function canManageUsers(req) {
 router.get('/', async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const users = await query(
-      'SELECT user_id, username, avatar, role, discord_has_support, vacation_mode, first_login, last_login FROM dashboard_users ORDER BY last_login DESC'
+    const users = await req.guildDb(
+      'SELECT user_id, username, avatar, role, discord_has_role, vacation_mode, first_login, last_login FROM dashboard_users ORDER BY last_login DESC'
     );
     if (!users.length) return res.json([]);
 
     const userIds = users.map(u => u.user_id);
-    const gradeRows = await query(
+    const gradeRows = await req.guildDb(
       `SELECT ug.user_id, g.id, g.name, g.color
        FROM user_grades ug
        JOIN grades g ON g.id = ug.grade_id
@@ -46,16 +45,16 @@ router.patch('/:id/role', async (req, res) => {
     if (req.params.id === req.session.user.id) {
       return res.status(400).json({ error: 'Impossible de modifier son propre rôle' });
     }
-    const config = require('../../config.json');
-    if (req.params.id === config.webFounderId) {
-      return res.status(400).json({ error: 'Impossible de modifier le rôle du fondateur principal' });
+    // Protect the guild owner (founder set at approval time)
+    if (req.guild?.owner_discord_id && req.params.id === req.guild.owner_discord_id) {
+      return res.status(400).json({ error: 'Impossible de modifier le rôle du fondateur du serveur' });
     }
-    await query('UPDATE dashboard_users SET role = ? WHERE user_id = ?', [role, req.params.id]);
+    await req.guildDb('UPDATE dashboard_users SET role = ? WHERE user_id = ?', [role, req.params.id]);
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'user_role_change', 'user', req.params.id,
-      { role }
+      { role }, req.guildDb
     );
 
     res.json({ ok: true });
@@ -65,11 +64,10 @@ router.patch('/:id/role', async (req, res) => {
   }
 });
 
-// Get grades for a user
 router.get('/:id/grades', async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const grades = await query(
+    const grades = await req.guildDb(
       `SELECT g.id, g.name, g.color, ug.assigned_by_tag, ug.assigned_at
        FROM user_grades ug
        JOIN grades g ON g.id = ug.grade_id
@@ -83,33 +81,31 @@ router.get('/:id/grades', async (req, res) => {
   }
 });
 
-// Assign grade to user
 router.post('/:id/grades', async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const { grade_id } = req.body;
     if (!grade_id) return res.status(400).json({ error: 'grade_id requis' });
 
-    const [grade] = await query('SELECT * FROM grades WHERE id = ?', [parseInt(grade_id)]);
+    const [grade] = await req.guildDb('SELECT * FROM grades WHERE id = ?', [parseInt(grade_id)]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
-    const [targetUser] = await query('SELECT user_id, role FROM dashboard_users WHERE user_id = ?', [req.params.id]);
+    const [targetUser] = await req.guildDb('SELECT user_id, role FROM dashboard_users WHERE user_id = ?', [req.params.id]);
     if (!targetUser) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
-    await query(
+    await req.guildDb(
       'INSERT IGNORE INTO user_grades (user_id, grade_id, assigned_by_id, assigned_by_tag) VALUES (?, ?, ?, ?)',
       [req.params.id, grade.id, req.session.user.id, req.session.user.username]
     );
 
-    // Auto-upgrade from nouveau to support when first grade is assigned
     if (targetUser.role === 'nouveau') {
-      await query('UPDATE dashboard_users SET role = "support" WHERE user_id = ?', [req.params.id]);
+      await req.guildDb('UPDATE dashboard_users SET role = "support" WHERE user_id = ?', [req.params.id]);
     }
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'grade_assign', 'user', req.params.id,
-      { grade_id: grade.id, grade_name: grade.name }
+      { grade_id: grade.id, grade_name: grade.name }, req.guildDb
     );
 
     res.json({ ok: true, grade: { id: grade.id, name: grade.name, color: grade.color } });
@@ -119,12 +115,11 @@ router.post('/:id/grades', async (req, res) => {
   }
 });
 
-// Remove grade from user
 router.delete('/:id/grades/:gradeId', async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const [grade] = await query('SELECT name FROM grades WHERE id = ?', [parseInt(req.params.gradeId)]);
-    await query(
+    const [grade] = await req.guildDb('SELECT name FROM grades WHERE id = ?', [parseInt(req.params.gradeId)]);
+    await req.guildDb(
       'DELETE FROM user_grades WHERE user_id = ? AND grade_id = ?',
       [req.params.id, req.params.gradeId]
     );
@@ -132,7 +127,7 @@ router.delete('/:id/grades/:gradeId', async (req, res) => {
     await logAudit(
       req.session.user.id, req.session.user.username,
       'grade_remove', 'user', req.params.id,
-      { grade_id: parseInt(req.params.gradeId), grade_name: grade?.name }
+      { grade_id: parseInt(req.params.gradeId), grade_name: grade?.name }, req.guildDb
     );
 
     res.json({ ok: true });
@@ -142,13 +137,11 @@ router.delete('/:id/grades/:gradeId', async (req, res) => {
   }
 });
 
-// Toggle vacation mode
 router.patch('/:id/vacation', async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const { vacation_mode } = req.body;
-    const mode = vacation_mode ? 1 : 0;
-    await query('UPDATE dashboard_users SET vacation_mode = ? WHERE user_id = ?', [mode, req.params.id]);
+    const mode = req.body.vacation_mode ? 1 : 0;
+    await req.guildDb('UPDATE dashboard_users SET vacation_mode = ? WHERE user_id = ?', [mode, req.params.id]);
     res.json({ ok: true, vacation_mode: mode });
   } catch (err) {
     console.error(err);

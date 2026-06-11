@@ -1,12 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../../utils/db');
-const {
-  closeTicketWithTranscript, reopenTicket,
-  setClaim, getAllLinkedUserIds, recordStaffResponse, updateLastMessage,
-  addParticipant, removeParticipant, getAnyOpenTicketForUser,
-  logAddUser, logRemoveUser, logMoveTicket, updateChannelTopic
-} = require('../../utils/ticketManager');
+const { createManager } = require('../../utils/ticketManager');
 const { sanitizeChannelName } = require('../../utils/sanitize');
 const { ChannelType } = require('discord.js');
 const { broadcast } = require('../../utils/sse');
@@ -24,11 +18,11 @@ function csvEscape(val) {
 }
 
 async function checkAccess(req, ticketId) {
-  const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+  const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticketId]);
   if (!ticket) return { ticket: null, denied: false };
   if (req.userIsFondateur) return { ticket, denied: false };
   if (ticket.visibility_grade_id) {
-    const visibleIds = await getVisibleGradeIds(req.session.user.id);
+    const visibleIds = await getVisibleGradeIds(req.session.user.id, req.guildDb);
     if (!visibleIds.includes(ticket.visibility_grade_id)) {
       return { ticket, denied: true };
     }
@@ -36,10 +30,14 @@ async function checkAccess(req, ticketId) {
   return { ticket, denied: false };
 }
 
+function getManager(req) {
+  return createManager(req.guildDb, req.app.locals.client, req.guildId);
+}
+
 router.get('/', async (req, res) => {
   try {
     const { status, priority, subject } = req.query;
-    if (status   && !VALID_STATUS.has(status))   return res.status(400).json({ error: 'Statut invalide' });
+    if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
 
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -50,22 +48,22 @@ router.get('/', async (req, res) => {
     const params = [];
 
     if (!req.userIsFondateur) {
-      const visibleIds = await getVisibleGradeIds(req.session.user.id);
+      const visibleIds = await getVisibleGradeIds(req.session.user.id, req.guildDb);
       where.push('(visibility_grade_id IS NULL OR visibility_grade_id IN (?))');
       params.push(visibleIds.length > 0 ? visibleIds : [0]);
     }
-    if (status)   { where.push('status = ?');    params.push(status); }
-    if (priority) { where.push('priority = ?');  params.push(priority); }
+    if (status)   { where.push('status = ?');     params.push(status); }
+    if (priority) { where.push('priority = ?');   params.push(priority); }
     if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [tickets, [{ total }]] = await Promise.all([
-      query(
+      req.guildDb(
         `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
-      query(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
+      req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
     ]);
 
     res.json({ tickets, total, page, pages: Math.ceil(total / limit) });
@@ -76,11 +74,9 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/export', async (req, res) => {
-  if (req.session.user.role !== 'fondateur') {
-    return res.status(403).json({ error: 'Réservé au fondateur' });
-  }
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   try {
-    const tickets = await query(
+    const tickets = await req.guildDb(
       'SELECT id, owner_tag, subject, status, priority, claimed_by, created_at, closed_at, closed_by_tag FROM tickets ORDER BY id DESC'
     );
     const header = 'ID,Utilisateur,Sujet,Statut,Priorité,Pris en charge,Créé le,Fermé le,Fermé par\n';
@@ -112,9 +108,9 @@ router.get('/:id', async (req, res) => {
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
     const [participantRows, transcript, rating] = await Promise.all([
-      query('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
-      query('SELECT id, created_by_tag, created_at, message_count FROM transcript_snapshots WHERE ticket_id = ? ORDER BY created_at DESC LIMIT 1', [ticket.id]),
-      query('SELECT rating, rated_at FROM ticket_ratings WHERE ticket_id = ? LIMIT 1', [ticket.id])
+      req.guildDb('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
+      req.guildDb('SELECT id, created_by_tag, created_at, message_count FROM transcript_snapshots WHERE ticket_id = ? ORDER BY created_at DESC LIMIT 1', [ticket.id]),
+      req.guildDb('SELECT rating, rated_at FROM ticket_ratings WHERE ticket_id = ? LIMIT 1', [ticket.id])
     ]);
 
     const client = req.app.locals.client;
@@ -138,17 +134,14 @@ router.get('/:id', async (req, res) => {
 });
 
 router.patch('/:id/priority', async (req, res) => {
-  if (req.session.user.role !== 'fondateur') {
-    return res.status(403).json({ error: 'Réservé au fondateur' });
-  }
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   try {
     const { priority } = req.body;
     if (!VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
     const ticketId = parseInt(req.params.id);
-    await query('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
-    const client = req.app.locals.client;
-    if (client) await updateChannelTopic(client, ticketId).catch(() => null);
-    broadcast('ticket', { id: ticketId, priority });
+    await req.guildDb('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+    await getManager(req).updateChannelTopic(ticketId).catch(() => null);
+    broadcast('ticket', { id: ticketId, priority }, req.guildId);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -157,38 +150,33 @@ router.patch('/:id/priority', async (req, res) => {
 });
 
 router.patch('/:id/status', async (req, res) => {
-  if (req.session.user.role !== 'fondateur') {
-    return res.status(403).json({ error: 'Réservé au fondateur' });
-  }
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const { status } = req.body;
   if (!VALID_STATUS.has(status)) return res.status(400).json({ error: 'Statut invalide' });
 
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status === status) return res.json({ ok: true });
 
-    const staffUser = {
-      id: req.session.user.id,
-      tag: req.session.user.username,
-      username: req.session.user.username,
-    };
+    const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+    const tm = getManager(req);
     const client = req.app.locals.client;
 
     if (status === 'closed') {
       const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
       if (channel) {
-        await closeTicketWithTranscript(client, channel, staffUser);
+        await tm.closeTicketWithTranscript(channel, staffUser);
       } else {
-        await query(
+        await req.guildDb(
           'UPDATE tickets SET status = "closed", closed_at = NOW(), closed_by_tag = ? WHERE id = ?',
           [staffUser.tag, ticket.id]
         );
       }
     } else {
-      await reopenTicket(client, ticket, staffUser);
+      await tm.reopenTicket(ticket, staffUser);
     }
-    broadcast('ticket', { id: ticket.id, status });
+    broadcast('ticket', { id: ticket.id, status }, req.guildId);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -202,7 +190,7 @@ router.get('/:id/notes', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
-    const notes = await query(
+    const notes = await req.guildDb(
       'SELECT id, author_id, author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
       [ticket.id]
     );
@@ -220,7 +208,7 @@ router.post('/:id/notes', async (req, res) => {
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
     const { content } = req.body;
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    if (!content || typeof content !== 'string' || !content.trim()) {
       return res.status(400).json({ error: 'Contenu requis' });
     }
     if (content.length > 2000) {
@@ -228,19 +216,16 @@ router.post('/:id/notes', async (req, res) => {
     }
 
     const trimmed = content.trim();
-    const result = await query(
+    const result = await req.guildDb(
       'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "web")',
       [ticket.id, req.session.user.id, req.session.user.username, trimmed]
     );
 
-    // Relayer la note dans le salon Discord du ticket
     const client = req.app.locals.client;
     if (client && ticket.channel_id && ticket.status === 'open') {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
       if (channel) {
-        await channel.send(
-          `📌 **Note dashboard** · ${req.session.user.username}\n${trimmed}`
-        ).catch(() => null);
+        await channel.send(`📌 **Note dashboard** · ${req.session.user.username}\n${trimmed}`).catch(() => null);
       }
     }
 
@@ -252,7 +237,7 @@ router.post('/:id/notes', async (req, res) => {
       source: 'web',
       created_at: new Date()
     };
-    broadcast('note', { ticketId: ticket.id, note });
+    broadcast('note', { ticketId: ticket.id, note }, req.guildId);
     res.json(note);
   } catch (err) {
     console.error(err);
@@ -262,7 +247,7 @@ router.post('/:id/notes', async (req, res) => {
 
 router.post('/:id/reply', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
@@ -275,8 +260,9 @@ router.post('/:id/reply', async (req, res) => {
     let msg = `--- ${sender} : ${content || ''}`.trim();
     if (file_url) msg += `\nFichier : ${file_url}`;
 
+    const tm = getManager(req);
     const client = req.app.locals.client;
-    const linkedUserIds = await getAllLinkedUserIds(ticket.id);
+    const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
 
     for (const userId of linkedUserIds) {
       const user = await client?.users.fetch(userId).catch(() => null);
@@ -289,12 +275,12 @@ router.post('/:id/reply', async (req, res) => {
     }
 
     const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
-    await recordStaffResponse(ticket.id, staffUser);
-    await updateLastMessage(ticket.id);
+    await tm.recordStaffResponse(ticket.id, staffUser);
+    await tm.updateLastMessage(ticket.id);
 
     const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
     const noteContent = [content, file_url].filter(Boolean).join('\n');
-    const result = await query(
+    const result = await req.guildDb(
       'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
       [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
     );
@@ -307,7 +293,7 @@ router.post('/:id/reply', async (req, res) => {
       source: 'reply',
       created_at: new Date()
     };
-    broadcast('note', { ticketId: ticket.id, note: replyNote });
+    broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
     res.json(replyNote);
   } catch (err) {
     console.error(err);
@@ -317,7 +303,7 @@ router.post('/:id/reply', async (req, res) => {
 
 router.patch('/:id/claim', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
@@ -326,26 +312,26 @@ router.patch('/:id/claim', async (req, res) => {
       return res.status(400).json({ error: 'Action invalide (claim | unclaim)' });
     }
 
-    const { id: userId, username, role } = req.session.user;
-    const isFondateur = role === 'fondateur';
+    const { id: userId, username } = req.session.user;
 
     if (action === 'claim') {
-      if (ticket.claimed_by && ticket.claimed_by !== userId && !isFondateur) {
+      if (ticket.claimed_by && ticket.claimed_by !== userId && !req.userIsFondateur) {
         return res.status(403).json({ error: 'Déjà pris en charge par quelqu\'un d\'autre' });
       }
     } else {
-      if (ticket.claimed_by !== userId && !isFondateur) {
+      if (ticket.claimed_by !== userId && !req.userIsFondateur) {
         return res.status(403).json({ error: 'Tu ne peux pas unclaim le ticket d\'un autre' });
       }
     }
 
-    const client = req.app.locals.client;
+    const tm = getManager(req);
     const staffUser = { id: userId, tag: username, username };
+    const client = req.app.locals.client;
 
     if (action === 'claim') {
-      await setClaim(client, ticket.id, staffUser);
+      await tm.setClaim(ticket.id, staffUser);
     } else {
-      await query('UPDATE tickets SET claimed_by = NULL WHERE id = ?', [ticket.id]);
+      await req.guildDb('UPDATE tickets SET claimed_by = NULL WHERE id = ?', [ticket.id]);
     }
 
     if (client && ticket.channel_id) {
@@ -358,8 +344,8 @@ router.patch('/:id/claim', async (req, res) => {
       }
     }
 
-    if (client) await updateChannelTopic(client, ticket.id).catch(() => null);
-    broadcast('ticket', { id: ticket.id, claimed_by: action === 'claim' ? userId : null });
+    await tm.updateChannelTopic(ticket.id).catch(() => null);
+    broadcast('ticket', { id: ticket.id, claimed_by: action === 'claim' ? userId : null }, req.guildId);
     res.json({ ok: true, claimed_by: action === 'claim' ? userId : null });
   } catch (err) {
     console.error(err);
@@ -369,7 +355,7 @@ router.patch('/:id/claim', async (req, res) => {
 
 router.post('/:id/participants', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
@@ -386,16 +372,17 @@ router.post('/:id/participants', async (req, res) => {
     if (!discordUser) return res.status(400).json({ error: 'Utilisateur Discord introuvable' });
     if (discordUser.bot) return res.status(400).json({ error: 'Impossible d\'ajouter un bot' });
 
-    const existingTicket = await getAnyOpenTicketForUser(discord_id);
+    const tm = getManager(req);
+    const existingTicket = await tm.getAnyOpenTicketForUser(discord_id);
     if (existingTicket && existingTicket.id !== ticket.id) {
       return res.status(400).json({ error: `Cet utilisateur a déjà un ticket ouvert (#${existingTicket.id})` });
     }
 
-    await addParticipant(ticket.id, discord_id);
+    await tm.addParticipant(ticket.id, discord_id);
 
     const staffUser = { id: req.session.user.id, tag: req.session.user.username };
-    if (client) await logAddUser(client, ticket.id, discord_id, staffUser);
-    broadcast('participant_add', { ticketId: ticket.id, userId: discord_id, tag: discordUser.username });
+    await tm.logAddUser(ticket.id, discord_id, staffUser);
+    broadcast('participant_add', { ticketId: ticket.id, userId: discord_id, tag: discordUser.username }, req.guildId);
 
     await discordUser.send(
       `Tu as été ajouté au ticket #${ticket.id}.\nSi tu réponds à ce bot en message privé, ton message ira dans ce ticket.`
@@ -417,7 +404,7 @@ router.post('/:id/participants', async (req, res) => {
 
 router.delete('/:id/participants/:userId', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
@@ -426,13 +413,14 @@ router.delete('/:id/participants/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Impossible de retirer le propriétaire principal' });
     }
 
-    await removeParticipant(ticket.id, userId);
+    const tm = getManager(req);
+    await tm.removeParticipant(ticket.id, userId);
+
+    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
+    await tm.logRemoveUser(ticket.id, userId, staffUser);
+    broadcast('participant_remove', { ticketId: ticket.id, userId }, req.guildId);
 
     const client = req.app.locals.client;
-    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
-    if (client) await logRemoveUser(client, ticket.id, userId, staffUser);
-    broadcast('participant_remove', { ticketId: ticket.id, userId });
-
     if (client && ticket.channel_id) {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
       if (channel) await channel.send(
@@ -449,7 +437,7 @@ router.delete('/:id/participants/:userId', async (req, res) => {
 
 router.patch('/:id/move', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
@@ -471,7 +459,7 @@ router.patch('/:id/move', async (req, res) => {
 
     await channel.setParent(category_id, { lockPermissions: false });
     const staffUser = { id: req.session.user.id, tag: req.session.user.username };
-    await logMoveTicket(client, ticket.id, category.name, staffUser);
+    await getManager(req).logMoveTicket(ticket.id, category.name, staffUser);
     await channel.send(
       `📂 Ticket déplacé dans **${category.name}** par **${req.session.user.username}** (dashboard).`
     ).catch(() => null);
@@ -485,7 +473,7 @@ router.patch('/:id/move', async (req, res) => {
 
 router.patch('/:id/rename', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
@@ -502,9 +490,7 @@ router.patch('/:id/rename', async (req, res) => {
     if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
 
     await channel.setName(newName);
-    await channel.send(
-      `✏️ Ticket renommé en **${newName}** par **${req.session.user.username}** (dashboard).`
-    ).catch(() => null);
+    await channel.send(`✏️ Ticket renommé en **${newName}** par **${req.session.user.username}** (dashboard).`).catch(() => null);
 
     res.json({ ok: true, name: newName });
   } catch (err) {
@@ -515,7 +501,7 @@ router.patch('/:id/rename', async (req, res) => {
 
 router.patch('/:id/subject', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
 
     const { subject } = req.body;
@@ -524,13 +510,12 @@ router.patch('/:id/subject', async (req, res) => {
     }
     const trimmed = subject ? subject.trim().slice(0, 100) : null;
 
-    await query('UPDATE tickets SET subject = ? WHERE id = ?', [trimmed, ticket.id]);
+    await req.guildDb('UPDATE tickets SET subject = ? WHERE id = ?', [trimmed, ticket.id]);
 
-    const client = req.app.locals.client;
-    if (client && ticket.status === 'open') {
-      await updateChannelTopic(client, ticket.id).catch(() => null);
+    if (ticket.status === 'open') {
+      await getManager(req).updateChannelTopic(ticket.id).catch(() => null);
     }
-    broadcast('ticket', { id: ticket.id, subject: trimmed });
+    broadcast('ticket', { id: ticket.id, subject: trimmed }, req.guildId);
 
     res.json({ ok: true, subject: trimmed });
   } catch (err) {
@@ -541,24 +526,24 @@ router.patch('/:id/subject', async (req, res) => {
 
 router.patch('/:id/visibility', async (req, res) => {
   try {
-    const [ticket] = await query('SELECT id FROM tickets WHERE id = ?', [req.params.id]);
+    const [ticket] = await req.guildDb('SELECT id FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
 
     const { visibility_grade_id } = req.body;
     const gradeId = visibility_grade_id ? parseInt(visibility_grade_id) : null;
 
     if (gradeId) {
-      const [grade] = await query('SELECT id FROM grades WHERE id = ?', [gradeId]);
+      const [grade] = await req.guildDb('SELECT id FROM grades WHERE id = ?', [gradeId]);
       if (!grade) return res.status(400).json({ error: 'Grade introuvable' });
     }
 
-    await query('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [gradeId, ticket.id]);
+    await req.guildDb('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [gradeId, ticket.id]);
     await logAudit(
       req.session.user.id, req.session.user.username,
       'ticket_visibility_change', 'ticket', ticket.id,
-      { visibility_grade_id: gradeId }
+      { visibility_grade_id: gradeId }, req.guildDb
     );
-    broadcast('ticket', { id: ticket.id, visibility_grade_id: gradeId });
+    broadcast('ticket', { id: ticket.id, visibility_grade_id: gradeId }, req.guildId);
     res.json({ ok: true, visibility_grade_id: gradeId });
   } catch (err) {
     console.error(err);
@@ -572,7 +557,7 @@ router.get('/:id/history', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
-    const history = await query(
+    const history = await req.guildDb(
       `SELECT id, status, subject, priority, claimed_by, created_at, closed_at, closed_by_tag
        FROM tickets WHERE owner_id = ? ORDER BY created_at DESC`,
       [ticket.owner_id]
@@ -586,15 +571,15 @@ router.get('/:id/history', async (req, res) => {
 
 router.delete('/:id/notes/:noteId', async (req, res) => {
   try {
-    const [note] = await query('SELECT * FROM ticket_notes WHERE id = ?', [req.params.noteId]);
+    const [note] = await req.guildDb('SELECT * FROM ticket_notes WHERE id = ?', [req.params.noteId]);
     if (!note) return res.status(404).json({ error: 'Note introuvable' });
     if (note.ticket_id !== parseInt(req.params.id)) {
       return res.status(400).json({ error: 'Note invalide' });
     }
-    if (req.session.user.role !== 'fondateur' && note.author_id !== req.session.user.id) {
+    if (!req.userIsFondateur && note.author_id !== req.session.user.id) {
       return res.status(403).json({ error: 'Accès refusé' });
     }
-    await query('DELETE FROM ticket_notes WHERE id = ?', [note.id]);
+    await req.guildDb('DELETE FROM ticket_notes WHERE id = ?', [note.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -602,7 +587,6 @@ router.delete('/:id/notes/:noteId', async (req, res) => {
   }
 });
 
-// Bulk actions on multiple tickets
 router.post('/bulk', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const { ids, action, value } = req.body;
@@ -614,23 +598,24 @@ router.post('/bulk', async (req, res) => {
   try {
     if (action === 'priority') {
       if (!VALID_PRIORITY.has(value)) return res.status(400).json({ error: 'Priorité invalide' });
-      await query('UPDATE tickets SET priority = ? WHERE id IN (?)', [value, cleanIds]);
-      cleanIds.forEach(id => broadcast('ticket', { id, priority: value }));
+      await req.guildDb('UPDATE tickets SET priority = ? WHERE id IN (?)', [value, cleanIds]);
+      cleanIds.forEach(id => broadcast('ticket', { id, priority: value }, req.guildId));
       return res.json({ ok: true, affected: cleanIds.length });
     }
     if (action === 'close') {
-      const tickets = await query("SELECT id, channel_id, status FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
+      const tickets = await req.guildDb("SELECT id, channel_id, status FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
       if (!tickets.length) return res.json({ ok: true, affected: 0 });
+      const tm = getManager(req);
       const client = req.app.locals.client;
-      const staffTag = req.session.user.username;
+      const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
       for (const ticket of tickets) {
         const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
         if (channel) {
-          await channel.send(`🔒 Ticket fermé en masse par ${staffTag}.`).catch(() => null);
-          await closeTicketWithTranscript(client, channel, { id: req.session.user.id, tag: staffTag, username: staffTag }).catch(() => null);
+          await channel.send(`🔒 Ticket fermé en masse par ${staffUser.tag}.`).catch(() => null);
+          await tm.closeTicketWithTranscript(channel, staffUser).catch(() => null);
         } else {
-          await query("UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=? WHERE id=?", [staffTag, ticket.id]);
-          broadcast('ticket', { id: ticket.id, status: 'closed' });
+          await req.guildDb("UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=? WHERE id=?", [staffUser.tag, ticket.id]);
+          broadcast('ticket', { id: ticket.id, status: 'closed' }, req.guildId);
         }
       }
       return res.json({ ok: true, affected: tickets.length });
@@ -642,14 +627,13 @@ router.post('/bulk', async (req, res) => {
   }
 });
 
-// PDF export (HTML printable)
 router.get('/:id/pdf', async (req, res) => {
   try {
     const { ticket, denied } = await checkAccess(req, req.params.id);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (denied)  return res.status(403).json({ error: 'Accès refusé' });
 
-    const notes = await query(
+    const notes = await req.guildDb(
       'SELECT author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
       [ticket.id]
     );
@@ -662,11 +646,12 @@ router.get('/:id/pdf', async (req, res) => {
         <div class="meta" style="font-size:11px;color:#6b7280;margin-bottom:4px">
           <strong>${n.author_tag}</strong> · ${SOURCE_LABEL[n.source] || n.source} · ${new Date(n.created_at).toLocaleString('fr-FR')}
         </div>
-        <div style="font-size:13px;white-space:pre-wrap;word-break:break-word">${n.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <div style="font-size:13px;white-space:pre-wrap;word-break:break-word">${n.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
       </div>`).join('');
 
+    const esc = s => (s || '').replace(/</g, '&lt;');
     const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-<title>Ticket #${ticket.id} — ${(ticket.subject || 'Sans sujet').replace(/</g,'&lt;')}</title>
+<title>Ticket #${ticket.id} — ${esc(ticket.subject || 'Sans sujet')}</title>
 <style>
   *{box-sizing:border-box}
   body{font-family:system-ui,-apple-system,sans-serif;color:#111827;background:#fff;max-width:800px;margin:0 auto;padding:24px}
@@ -677,14 +662,14 @@ router.get('/:id/pdf', async (req, res) => {
   @media print{body{padding:0}button{display:none}}
 </style></head><body>
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-  <h1>Ticket #${ticket.id} — ${(ticket.subject || 'Sans sujet').replace(/</g,'&lt;')}</h1>
-  <button onclick="window.print()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Imprimer / PDF</button>
+  <h1>Ticket #${ticket.id} — ${esc(ticket.subject || 'Sans sujet')}</h1>
+  <button onclick="window.print()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px">Imprimer / PDF</button>
 </div>
 <div class="meta-grid">
-  <div class="meta-cell">Utilisateur<strong>${ticket.owner_tag || '—'}</strong></div>
+  <div class="meta-cell">Utilisateur<strong>${esc(ticket.owner_tag) || '—'}</strong></div>
   <div class="meta-cell">Statut<strong>${ticket.status === 'open' ? 'Ouvert' : 'Fermé'}</strong></div>
   <div class="meta-cell">Priorité<strong>${ticket.priority}</strong></div>
-  <div class="meta-cell">Pris en charge<strong>${ticket.claimed_by || '—'}</strong></div>
+  <div class="meta-cell">Pris en charge<strong>${esc(ticket.claimed_by) || '—'}</strong></div>
   <div class="meta-cell">Créé le<strong>${ticket.created_at ? new Date(ticket.created_at).toLocaleString('fr-FR') : '—'}</strong></div>
   <div class="meta-cell">Fermé le<strong>${ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('fr-FR') : '—'}</strong></div>
 </div>

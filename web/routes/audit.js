@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../../utils/db');
 
 router.get('/', async (req, res) => {
   if (!req.userIsFondateur && !req.userPermissions.has('view_audit')) {
@@ -21,13 +20,13 @@ router.get('/', async (req, res) => {
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [rows, [{ total }]] = await Promise.all([
-      query(
+      req.guildDb(
         `SELECT id, actor_id, actor_tag, action, target_type, target_id, details, created_at
          FROM audit_log ${whereClause}
          ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
-      query(`SELECT COUNT(*) as total FROM audit_log ${whereClause}`, params)
+      req.guildDb(`SELECT COUNT(*) as total FROM audit_log ${whereClause}`, params)
     ]);
 
     res.json({ rows, total, page, pages: Math.ceil(total / limit) });

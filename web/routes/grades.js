@@ -1,35 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../../utils/db');
 const { PERMISSIONS, logAudit } = require('../../utils/gradePermissions');
 
 function canManageGrades(req) {
   return req.userIsFondateur || req.userPermissions.has('manage_grades');
 }
 
-// List all grades with their permissions and parent info
 router.get('/', async (req, res) => {
   try {
-    const grades = await query(
+    const grades = await req.guildDb(
       'SELECT id, name, color, parent_id, position, is_default, created_at FROM grades ORDER BY position ASC, id ASC'
     );
     if (!grades.length) return res.json([]);
 
     const gradeIds = grades.map(g => g.id);
-    const perms = await query(
-      'SELECT grade_id, permission FROM grade_permissions WHERE grade_id IN (?)',
-      [gradeIds]
-    );
+    const [perms, userCounts] = await Promise.all([
+      req.guildDb('SELECT grade_id, permission FROM grade_permissions WHERE grade_id IN (?)', [gradeIds]),
+      req.guildDb('SELECT grade_id, COUNT(*) as cnt FROM user_grades WHERE grade_id IN (?) GROUP BY grade_id', [gradeIds])
+    ]);
+
     const permMap = {};
     for (const p of perms) {
       if (!permMap[p.grade_id]) permMap[p.grade_id] = [];
       permMap[p.grade_id].push(p.permission);
     }
-
-    const userCounts = await query(
-      'SELECT grade_id, COUNT(*) as cnt FROM user_grades WHERE grade_id IN (?) GROUP BY grade_id',
-      [gradeIds]
-    );
     const countMap = {};
     for (const r of userCounts) countMap[r.grade_id] = Number(r.cnt);
 
@@ -44,7 +38,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Create grade
 router.post('/', async (req, res) => {
   if (!canManageGrades(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
@@ -58,22 +51,21 @@ router.post('/', async (req, res) => {
     const cleanPos = Number.isInteger(position) ? position : 0;
     const validPerms = (Array.isArray(perms) ? perms : []).filter(p => PERMISSIONS.includes(p));
 
-    const result = await query(
+    const result = await req.guildDb(
       'INSERT INTO grades (name, color, parent_id, position) VALUES (?, ?, ?, ?)',
       [cleanName, cleanColor, cleanParent, cleanPos]
     );
     const gradeId = result.insertId;
 
-    if (validPerms.length) {
-      for (const p of validPerms) {
-        await query('INSERT IGNORE INTO grade_permissions (grade_id, permission) VALUES (?, ?)', [gradeId, p]);
-      }
+    for (const p of validPerms) {
+      await req.guildDb('INSERT IGNORE INTO grade_permissions (grade_id, permission) VALUES (?, ?)', [gradeId, p]);
     }
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'grade_create', 'grade', gradeId,
-      { name: cleanName, color: cleanColor, permissions: validPerms }
+      { name: cleanName, color: cleanColor, permissions: validPerms },
+      req.guildDb
     );
 
     res.json({ id: gradeId, name: cleanName, color: cleanColor, parent_id: cleanParent, position: cleanPos, is_default: 0, permissions: validPerms, user_count: 0 });
@@ -83,16 +75,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update grade metadata
 router.patch('/:id', async (req, res) => {
   if (!canManageGrades(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const gradeId = parseInt(req.params.id);
-    const [grade] = await query('SELECT * FROM grades WHERE id = ?', [gradeId]);
+    const [grade] = await req.guildDb('SELECT * FROM grades WHERE id = ?', [gradeId]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
     const { name, color, parent_id, position, is_default } = req.body;
-
     const updates = [];
     const params = [];
 
@@ -114,22 +104,18 @@ router.patch('/:id', async (req, res) => {
       updates.push('position = ?'); params.push(parseInt(position) || 0);
     }
     if (is_default !== undefined) {
-      if (is_default) {
-        // Clear previous default
-        await query('UPDATE grades SET is_default = 0 WHERE is_default = 1');
-      }
+      if (is_default) await req.guildDb('UPDATE grades SET is_default = 0 WHERE is_default = 1');
       updates.push('is_default = ?'); params.push(is_default ? 1 : 0);
     }
 
     if (!updates.length) return res.json({ ok: true });
-
     params.push(gradeId);
-    await query(`UPDATE grades SET ${updates.join(', ')} WHERE id = ?`, params);
+    await req.guildDb(`UPDATE grades SET ${updates.join(', ')} WHERE id = ?`, params);
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'grade_update', 'grade', gradeId,
-      req.body
+      req.body, req.guildDb
     );
 
     res.json({ ok: true });
@@ -139,26 +125,25 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Set permissions for a grade (replaces all permissions)
 router.put('/:id/permissions', async (req, res) => {
   if (!canManageGrades(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const gradeId = parseInt(req.params.id);
-    const [grade] = await query('SELECT id FROM grades WHERE id = ?', [gradeId]);
+    const [grade] = await req.guildDb('SELECT id FROM grades WHERE id = ?', [gradeId]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
     const { permissions: perms = [] } = req.body;
     const validPerms = (Array.isArray(perms) ? perms : []).filter(p => PERMISSIONS.includes(p));
 
-    await query('DELETE FROM grade_permissions WHERE grade_id = ?', [gradeId]);
+    await req.guildDb('DELETE FROM grade_permissions WHERE grade_id = ?', [gradeId]);
     for (const p of validPerms) {
-      await query('INSERT IGNORE INTO grade_permissions (grade_id, permission) VALUES (?, ?)', [gradeId, p]);
+      await req.guildDb('INSERT IGNORE INTO grade_permissions (grade_id, permission) VALUES (?, ?)', [gradeId, p]);
     }
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'grade_permissions_update', 'grade', gradeId,
-      { permissions: validPerms }
+      { permissions: validPerms }, req.guildDb
     );
 
     res.json({ ok: true, permissions: validPerms });
@@ -168,24 +153,21 @@ router.put('/:id/permissions', async (req, res) => {
   }
 });
 
-// Delete grade
 router.delete('/:id', async (req, res) => {
   if (!canManageGrades(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const gradeId = parseInt(req.params.id);
-    const [grade] = await query('SELECT * FROM grades WHERE id = ?', [gradeId]);
+    const [grade] = await req.guildDb('SELECT * FROM grades WHERE id = ?', [gradeId]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
-    // Update children to have no parent
-    await query('UPDATE grades SET parent_id = ? WHERE parent_id = ?', [grade.parent_id, gradeId]);
-    // Remove visibility tags on tickets
-    await query('UPDATE tickets SET visibility_grade_id = NULL WHERE visibility_grade_id = ?', [gradeId]);
-    await query('DELETE FROM grades WHERE id = ?', [gradeId]);
+    await req.guildDb('UPDATE grades SET parent_id = ? WHERE parent_id = ?', [grade.parent_id, gradeId]);
+    await req.guildDb('UPDATE tickets SET visibility_grade_id = NULL WHERE visibility_grade_id = ?', [gradeId]);
+    await req.guildDb('DELETE FROM grades WHERE id = ?', [gradeId]);
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'grade_delete', 'grade', gradeId,
-      { name: grade.name }
+      { name: grade.name }, req.guildDb
     );
 
     res.json({ ok: true });

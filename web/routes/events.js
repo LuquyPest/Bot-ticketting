@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  const remove = addClient(res, req.session?.user?.id);
+  const remove = addClient(res, req.session?.user?.id, req.guildId);
   res.write('event: connected\ndata: {}\n\n');
 
   const keepAlive = setInterval(() => {
