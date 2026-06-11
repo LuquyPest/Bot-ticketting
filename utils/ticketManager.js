@@ -122,11 +122,16 @@ function createManager(db, client, guildId) {
 
       const embed = new EmbedBuilder()
         .setColor(0x6366f1)
-        .setTitle(`🎫 Ticket #${ticket.id}`)
-        .setDescription('Un ticket a été ouvert. Le staff va vous répondre bientôt.')
-        .addFields({ name: 'Utilisateur', value: `<@${user.id}> (${user.tag})`, inline: true }, { name: 'Priorité', value: '🔵 Normal', inline: true })
+        .setAuthor({ name: 'Nouveau ticket' })
+        .setTitle(`Ticket #${ticket.id}`)
+        .setDescription(`Bienvenue <@${user.id}> ! Notre équipe va traiter ta demande dans les plus brefs délais.`)
+        .addFields(
+          { name: '👤 Utilisateur', value: `<@${user.id}>`, inline: true },
+          { name: '📂 Sujet', value: ticket.subject || 'Non défini', inline: true },
+          { name: '🔵 Priorité', value: 'Normale', inline: true }
+        )
+        .setFooter({ text: 'Ticket ouvert' })
         .setTimestamp();
-      if (ticket.subject) embed.addFields({ name: 'Sujet', value: ticket.subject });
 
       await channel.send({ embeds: [embed], components: [ticketButtons()] });
       const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
