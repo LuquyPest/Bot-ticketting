@@ -6,6 +6,15 @@ const { authenticator } = require('otplib');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 
+function logLogin(req, userId, username, status) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const ua = (req.headers['user-agent'] || '').slice(0, 500);
+  globalQuery(
+    'INSERT INTO login_logs (user_id, username, ip, user_agent, status) VALUES (?, ?, ?, ?, ?)',
+    [userId, username, ip, ua, status]
+  ).catch(() => null);
+}
+
 function cfg() {
   delete require.cache[require.resolve('../../config.json')];
   return require('../../config.json');
@@ -176,6 +185,7 @@ router.get('/discord/callback', async (req, res) => {
 
     if (totpRow) {
       // 2FA required — store pending state, don't establish full session yet
+      logLogin(req, discordUser.id, discordUser.username, '2fa_required');
       req.session.regenerate(err => {
         if (err) return res.redirect('/login?error=oauth_failed');
         req.session.pendingTotp = {
@@ -190,6 +200,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     // No 2FA — establish session normally
+    logLogin(req, discordUser.id, discordUser.username, 'success');
     req.session.regenerate(err => {
       if (err) return res.redirect('/login?error=oauth_failed');
       req.session.user = {
@@ -235,6 +246,7 @@ router.post('/totp-verify-login', async (req, res) => {
     const { userGuilds } = pending;
     delete req.session.pendingTotp;
 
+    logLogin(req, pending.userId, pending.username, 'success');
     req.session.user = {
       id:       pending.userId,
       username: pending.username,

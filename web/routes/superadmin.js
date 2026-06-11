@@ -262,6 +262,19 @@ router.delete('/guilds/:guildId', requireSuperAdmin, async (req, res) => {
   }
 });
 
+// PATCH /api/sa/guilds/:guildId/maintenance — toggle maintenance mode
+router.patch('/guilds/:guildId/maintenance', requireSuperAdmin, async (req, res) => {
+  const { enabled } = req.body;
+  if (typeof enabled !== 'boolean') return res.status(400).json({ error: '`enabled` boolean requis' });
+  try {
+    await globalQuery('UPDATE guilds SET maintenance_mode = ? WHERE guild_id = ?', [enabled ? 1 : 0, req.params.guildId]);
+    res.json({ ok: true, maintenance_mode: enabled ? 1 : 0 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ─── MANAGERS ────────────────────────────────────────────────────────────────
 
 // GET /api/sa/managers

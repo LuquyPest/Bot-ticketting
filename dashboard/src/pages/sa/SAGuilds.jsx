@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Building2, CheckCircle, Clock, XCircle, RefreshCw,
-  Trash2, Play, Pause, Search, Loader2, AlertTriangle
+  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon
 } from 'lucide-react';
 import api from '../../api';
 import { useSA } from './SAApp';
@@ -106,6 +106,12 @@ export default function SAGuilds() {
       } else if (action === 'delete') {
         await api.delete(`/sa/guilds/${guild.guild_id}`);
         toast.success(`${guild.guild_name} supprimé`);
+      } else if (action === 'maintenance_on') {
+        await api.patch(`/sa/guilds/${guild.guild_id}/maintenance`, { enabled: true });
+        toast.success(`Mode maintenance activé pour ${guild.guild_name}`);
+      } else if (action === 'maintenance_off') {
+        await api.patch(`/sa/guilds/${guild.guild_id}/maintenance`, { enabled: false });
+        toast.success(`Mode maintenance désactivé pour ${guild.guild_name}`);
       }
       load();
     } catch (err) {
@@ -213,11 +219,21 @@ export default function SAGuilds() {
                         <p className="text-[10px] text-ink-4 font-mono">{guild.owner_discord_id}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold
-                                         px-2 py-1 rounded-full border ${st.cls}`}>
-                          <Icon size={11} />
-                          {st.label}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold
+                                           px-2 py-1 rounded-full border ${st.cls}`}>
+                            <Icon size={11} />
+                            {st.label}
+                          </span>
+                          {!!guild.maintenance_mode && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold
+                                             px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/25
+                                             text-orange-300">
+                              <WrenchIcon size={9} />
+                              Maintenance
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-ink-3 tabular-nums">
                         {guild.member_count?.toLocaleString() ?? '—'}
@@ -253,6 +269,12 @@ export default function SAGuilds() {
                                     onClick={() => askConfirm('reactivate', guild)}
                                   />
                                 )}
+                                <ActionBtn
+                                  icon={WrenchIcon}
+                                  label={guild.maintenance_mode ? 'Désactiver maintenance' : 'Mode maintenance'}
+                                  cls={guild.maintenance_mode ? 'text-orange-400 hover:bg-orange-400/10 ring-1 ring-orange-400/30' : 'text-ink-3 hover:bg-amber-400/10 hover:text-amber-400'}
+                                  onClick={() => doAction(guild.maintenance_mode ? 'maintenance_off' : 'maintenance_on', guild)}
+                                />
                                 <ActionBtn
                                   icon={Trash2} label="Supprimer"
                                   cls="text-red-400 hover:bg-red-400/10"
