@@ -641,15 +641,20 @@ router.get('/:id/pdf', async (req, res) => {
     const SOURCE_LABEL = { reply: 'Réponse Staff', user: 'Utilisateur', discord: 'Discord', web: 'Note interne' };
     const SOURCE_COLOR = { reply: '#4f46e5', user: '#7c3aed', discord: '#1e3a5f', web: '#374151' };
 
+    const esc = s => (s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
     const notesHtml = notes.map(n => `
       <div class="message" style="border-left:3px solid ${SOURCE_COLOR[n.source] || '#374151'};padding:10px 14px;margin:10px 0;background:#f9fafb;border-radius:4px">
         <div class="meta" style="font-size:11px;color:#6b7280;margin-bottom:4px">
-          <strong>${n.author_tag}</strong> · ${SOURCE_LABEL[n.source] || n.source} · ${new Date(n.created_at).toLocaleString('fr-FR')}
+          <strong>${esc(n.author_tag)}</strong> · ${esc(SOURCE_LABEL[n.source] || n.source)} · ${new Date(n.created_at).toLocaleString('fr-FR')}
         </div>
-        <div style="font-size:13px;white-space:pre-wrap;word-break:break-word">${n.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div style="font-size:13px;white-space:pre-wrap;word-break:break-word">${esc(n.content)}</div>
       </div>`).join('');
-
-    const esc = s => (s || '').replace(/</g, '&lt;');
     const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Ticket #${ticket.id} — ${esc(ticket.subject || 'Sans sujet')}</title>
 <style>
