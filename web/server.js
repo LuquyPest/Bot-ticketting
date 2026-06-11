@@ -107,6 +107,7 @@ const apiLimiter = rateLimit({
 });
 
 app.use('/api/auth', authLimiter);
+app.use('/api/sa/auth', authLimiter);
 app.use('/api', apiLimiter);
 
 app.get('/t/:token', (req, res) => {
@@ -142,6 +143,8 @@ app.use('/api/grades',      withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/audit',       withGuild(['support', 'fondateur']), require('./routes/audit'));
 app.use('/api/tags',        withGuild(['support', 'fondateur']), require('./routes/tags'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
+
+app.use('/api/sa', require('./routes/superadmin'));
 
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {
