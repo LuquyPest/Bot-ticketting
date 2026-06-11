@@ -19,6 +19,9 @@ const config = require('../config.json');
 if (!config.dashboard?.sessionSecret) {
   throw new Error('FATAL: dashboard.sessionSecret doit être défini dans config.json');
 }
+if (config.dashboard.sessionSecret.length < 32) {
+  throw new Error('FATAL: dashboard.sessionSecret doit faire au moins 32 caractères (entropie insuffisante)');
+}
 
 const app = express();
 
