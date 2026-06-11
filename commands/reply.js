@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -32,18 +32,22 @@ module.exports = {
     if (!content && !file) return interaction.reply({ content: 'Message ou fichier requis.', ephemeral: true });
 
     const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
-    let msg = `--- ${interaction.user.username} : ${content || ''}`.trim();
-    if (file) msg += `\nFichier : ${file.url}`;
+    const replyEmbed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setAuthor({ name: `${interaction.user.username} · Staff` })
+      .setDescription(content || '​')
+      .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
+    if (file) replyEmbed.addFields({ name: '📎 Fichier', value: file.url });
 
     for (const userId of linkedUserIds) {
       const user = await client.users.fetch(userId).catch(() => null);
-      if (user) await user.send(msg).catch(() => null);
+      if (user) await user.send({ embeds: [replyEmbed] }).catch(() => null);
     }
 
     await tm.recordStaffResponse(ticket.id, interaction.user);
     await tm.updateLastMessage(ticket.id);
     await interaction.reply({ content: 'Envoyé.', ephemeral: true });
-    await interaction.channel.send(msg);
+    await interaction.channel.send({ embeds: [replyEmbed] });
 
     const noteContent = [content, file?.url].filter(Boolean).join('\n');
     const result = await db(
