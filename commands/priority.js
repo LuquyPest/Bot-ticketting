@@ -1,10 +1,11 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager, getGuildConfig } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 
-const LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
-const EMOJI  = { low: '🟢', normal: '🔵', urgent: '🔴' };
+const LABELS  = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
+const EMOJI   = { low: '🟢', normal: '🔵', urgent: '🔴' };
+const COLORS  = { low: 0x3ba55c, normal: 0x5865f2, urgent: 0xed4245 };
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -39,7 +40,15 @@ module.exports = {
     const label = LABELS[priority];
     const emoji = EMOJI[priority];
 
-    const msg = await interaction.channel.send(`${emoji} Priorité définie sur **${label}** par ${interaction.user.username}`);
+    const prioEmbed = new EmbedBuilder()
+      .setColor(COLORS[priority])
+      .setTitle(`${emoji} Priorité mise à jour`)
+      .addFields(
+        { name: 'Priorité', value: `${emoji} ${label}`, inline: true },
+        { name: 'Modifié par', value: `<@${interaction.user.id}>`, inline: true },
+        { name: 'Heure', value: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), inline: true }
+      );
+    const msg = await interaction.channel.send({ embeds: [prioEmbed] });
     await msg.pin().catch(() => null);
 
     // Mention support roles when escalated to urgent
