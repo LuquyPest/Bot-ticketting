@@ -81,10 +81,17 @@ router.post('/auth/totp-setup', async (req, res) => {
   }
 });
 
+const SA_TOTP_MAX_ATTEMPTS = 5;
+
 // POST /api/sa/auth/totp-verify — second factor on normal login
 router.post('/auth/totp-verify', async (req, res) => {
   const pending = req.session.saPendingLogin;
   if (!pending) return res.status(401).json({ error: 'Session expirée, reconnectez-vous' });
+
+  if ((pending.totpAttempts || 0) >= SA_TOTP_MAX_ATTEMPTS) {
+    delete req.session.saPendingLogin;
+    return res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi' });
+  }
 
   const { code } = req.body;
   if (!code || typeof code !== 'string') return res.status(400).json({ error: 'Code TOTP requis' });
@@ -95,7 +102,11 @@ router.post('/auth/totp-verify', async (req, res) => {
     if (!account?.totp_secret) return res.status(401).json({ error: 'Compte invalide' });
 
     if (!authenticator.verify({ token: code.replace(/\s/g, ''), secret: account.totp_secret })) {
-      return res.status(400).json({ error: 'Code invalide' });
+      req.session.saPendingLogin.totpAttempts = (pending.totpAttempts || 0) + 1;
+      const remaining = SA_TOTP_MAX_ATTEMPTS - req.session.saPendingLogin.totpAttempts;
+      return res.status(400).json({
+        error: `Code invalide — ${remaining} tentative${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
+      });
     }
 
     delete req.session.saPendingLogin;
