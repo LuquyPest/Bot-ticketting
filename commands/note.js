@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager, getGuildConfig } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -32,8 +32,11 @@ module.exports = {
       [ticket.id, interaction.user.id, interaction.user.username, content]
     );
 
-    await interaction.reply({
-      content: `${NOTE_PREFIX} **${interaction.user.username}** : ${content}`,
-    });
+    const noteEmbed = new EmbedBuilder()
+      .setColor(0xfee75c)
+      .setAuthor({ name: '🔒 Note interne — visible staff uniquement' })
+      .setDescription(content)
+      .setFooter({ text: `${interaction.user.username} · ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` });
+    await interaction.reply({ embeds: [noteEmbed] });
   }
 };
