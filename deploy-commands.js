@@ -19,10 +19,10 @@ async function deployCommands() {
 
   console.log('Enregistrement des commandes...');
   await rest.put(
-    Routes.applicationGuildCommands(config.clientId, config.guildId),
+    Routes.applicationCommands(config.clientId),
     { body: commands }
   );
-  console.log('Commandes enregistrées.');
+  console.log(`${commands.length} commandes enregistrées globalement.`);
 }
 
 deployCommands().catch(console.error);

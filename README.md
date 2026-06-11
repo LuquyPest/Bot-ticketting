@@ -165,7 +165,6 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 {
   "token": "TON_TOKEN_BOT_DISCORD",
   "clientId": "ID_APPLICATION_BOT",
-  "guildId": "ID_SERVEUR_POUR_SLASH_COMMANDS",
 
   "webEnabled": true,
   "webServerPort": 3000,
@@ -189,9 +188,8 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 
 | Champ | Description |
 |-------|-------------|
-| `token` | Token du bot Discord |
-| `clientId` | ID de l'application Discord (pour OAuth et slash commands) |
-| `guildId` | Serveur sur lequel les commandes slash sont déployées |
+| `token` | Token du bot Discord — identité unique du bot, commun à tous les serveurs |
+| `clientId` | ID de l'application Discord — nécessaire pour OAuth2 et le déploiement global des commandes slash |
 | `webEnabled` | `true` pour activer le dashboard et l'API |
 | `webServerPort` | Port interne du serveur Express (3000 par défaut) |
 | `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |

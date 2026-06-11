@@ -1,7 +1,6 @@
 {
   "token": "TON_TOKEN_BOT_DISCORD",
   "clientId": "ID_APPLICATION_BOT",
-  "guildId": "ID_SERVEUR_POUR_SLASH_COMMANDS",
 
   "webEnabled": true,
   "webServerPort": 3000,
