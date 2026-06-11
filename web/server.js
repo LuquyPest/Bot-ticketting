@@ -67,7 +67,13 @@ const sessionStore = new MySQLStore({
   schema: { tableName: 'web_sessions' }
 }, pool);
 
-const isHttps = config.webServerBaseUrl?.startsWith('https://');
+// Detect HTTPS from either the public base URL or the Discord callback URL.
+// When TLS is terminated by a reverse proxy (Traefik), webServerBaseUrl may
+// be set to http:// pointing at the internal port while the public URL is HTTPS.
+// Using the OAuth callback URL (always set to the public domain) as a fallback
+// prevents the session cookie from losing its Secure flag in that scenario.
+const isHttps = config.webServerBaseUrl?.startsWith('https://')
+             || config.dashboard?.discordCallbackUrl?.startsWith('https://');
 app.use(session({
   secret: config.dashboard.sessionSecret,
   store: sessionStore,

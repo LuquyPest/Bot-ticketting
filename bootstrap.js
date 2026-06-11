@@ -32,8 +32,16 @@ function validateConfig(config) {
   }
   if (config.webEnabled !== false) {
     if (!config.dashboard?.sessionSecret)        fail('Champ manquant: dashboard.sessionSecret');
+    if (config.dashboard.sessionSecret.length < 32)
+      fail('dashboard.sessionSecret trop court (min 32 caractères) — génère-en un avec: openssl rand -hex 32');
     if (!config.dashboard?.discordClientSecret)  fail('Champ manquant: dashboard.discordClientSecret');
     if (!config.dashboard?.discordCallbackUrl)   fail('Champ manquant: dashboard.discordCallbackUrl');
+    if (config.webServerBaseUrl && !config.webServerBaseUrl.startsWith('https://') &&
+        config.dashboard.discordCallbackUrl?.startsWith('https://')) {
+      console.warn('⚠️  webServerBaseUrl utilise http:// mais discordCallbackUrl utilise https://.');
+      console.warn('   Le cookie de session sera Secure grâce à discordCallbackUrl.');
+      console.warn('   Mets webServerBaseUrl à https:// pour supprimer ce message.');
+    }
   }
   ok('config.json valide.');
 }

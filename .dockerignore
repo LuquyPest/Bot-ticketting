@@ -2,5 +2,9 @@ node_modules
 dashboard/node_modules
 dashboard/dist
 .git
+.gitignore
 config.json
 .env
+*.md
+LICENSE
+docker/
