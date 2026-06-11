@@ -7,6 +7,7 @@ import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 
+const SAApp       = lazy(() => import('./pages/sa/SAApp'));
 const Login       = lazy(() => import('./pages/Login'));
 const Pending     = lazy(() => import('./pages/Pending'));
 const GuildSelect = lazy(() => import('./pages/GuildSelect'));
@@ -98,6 +99,11 @@ export default function App() {
       <SSEProvider>
         <NotificationProvider>
           <Routes>
+            <Route path="/sa/*" element={
+              <Suspense fallback={<PageLoader />}>
+                <ErrorBoundary><SAApp /></ErrorBoundary>
+              </Suspense>
+            } />
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>
                 <ErrorBoundary><Login /></ErrorBoundary>
