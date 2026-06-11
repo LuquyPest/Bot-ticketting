@@ -118,19 +118,16 @@ router.get('/sla', async (req, res) => {
 // ── Staff comparison table ────────────────────────────────────────────────────
 router.get('/staff-compare', async (req, res) => {
   try {
-    const period = req.query.period || 'month';
-    const intervalMap = { today: 'DAY', week: '7 DAY', month: 'MONTH', all: null };
-    const interval = period in intervalMap ? intervalMap[period] : 'MONTH';
+    // INTERVAL unit must be a SQL keyword — cannot be parameterized.
+    // The frozen map is the authoritative allowlist; any value not present falls back to 'month'.
+    // Never interpolate req.query.period directly.
+    const PERIOD_MAP = Object.freeze({ today: 'DAY', week: '7 DAY', month: 'MONTH', all: null });
+    const period = Object.prototype.hasOwnProperty.call(PERIOD_MAP, req.query.period) ? req.query.period : 'month';
+    const interval = PERIOD_MAP[period];
 
-    const whereDate = interval
-      ? `AND n.created_at >= DATE_SUB(NOW(), INTERVAL 1 ${interval})`
-      : '';
-    const whereRating = interval
-      ? `AND tr.rated_at >= DATE_SUB(NOW(), INTERVAL 1 ${interval})`
-      : '';
-    const whereClose = interval
-      ? `AND t.closed_at >= DATE_SUB(NOW(), INTERVAL 1 ${interval})`
-      : '';
+    const whereDate   = interval ? `AND n.created_at >= DATE_SUB(NOW(), INTERVAL 1 ${interval})` : '';
+    const whereRating = interval ? `AND tr.rated_at   >= DATE_SUB(NOW(), INTERVAL 1 ${interval})` : '';
+    const whereClose  = interval ? `AND t.closed_at   >= DATE_SUB(NOW(), INTERVAL 1 ${interval})` : '';
 
     const [notes, ratings, closures] = await Promise.all([
       req.guildDb(`
