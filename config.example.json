@@ -2,6 +2,12 @@
   "token": "TON_TOKEN_BOT_DISCORD",
   "clientId": "ID_APPLICATION_BOT",
 
+  "vapid": {
+    "publicKey":  "GENERE_AVEC_node_-e_require('web-push').generateVAPIDKeys()",
+    "privateKey": "GENERE_AVEC_node_-e_require('web-push').generateVAPIDKeys()",
+    "contact":    "admin@ton-domaine.com"
+  },
+
   "webEnabled": true,
   "webServerPort": 3000,
   "webServerBaseUrl": "https://ton-domaine.com",

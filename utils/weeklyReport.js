@@ -69,11 +69,18 @@ async function sendWeeklyReportForGuild(client, guildId) {
 
 async function sendWeeklyReport(client) {
   const guilds = await getActiveGuilds();
+  let { enqueue } = (() => { try { return require('./jobQueue'); } catch { return { enqueue: null }; } })();
+
   for (const { guild_id } of guilds) {
-    try {
-      await sendWeeklyReportForGuild(client, guild_id);
-    } catch (err) {
-      console.error(`weeklyReport error [${guild_id}]:`, err);
+    if (enqueue) {
+      await enqueue('weekly-report', { guildId: guild_id }).catch(() => null);
+    } else {
+      try {
+        await sendWeeklyReportForGuild(client, guild_id);
+      } catch (err) {
+        console.error(`weeklyReport error [${guild_id}]:`, err);
+        try { require('../web/server').logError(guild_id, 'weeklyReport', err); } catch {}
+      }
     }
   }
 }
@@ -93,4 +100,4 @@ function startWeeklyReport(client) {
   scheduleNext();
 }
 
-module.exports = { startWeeklyReport };
+module.exports = { startWeeklyReport, sendWeeklyReportForGuild };

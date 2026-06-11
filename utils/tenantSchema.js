@@ -364,6 +364,9 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhook_events JSON NOT NULL DEFAULT ('["ticket_open","ticket_close","ticket_claim"]')`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS api_keys_enabled TINYINT(1) NOT NULL DEFAULT 0`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhook_secret VARCHAR(255) DEFAULT NULL`,
+      // Phase 3 — per-subject welcome messages + ip allowlist
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS subject_welcome_messages JSON NOT NULL DEFAULT ('{}')`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ip_allowlist JSON NOT NULL DEFAULT ('[]')`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

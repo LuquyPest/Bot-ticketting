@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
-const { createManager } = require('../utils/ticketManager');
+const { createManager, getGuildConfig } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 
 const LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
@@ -41,6 +41,18 @@ module.exports = {
 
     const msg = await interaction.channel.send(`${emoji} Priorité définie sur **${label}** par ${interaction.user.username}`);
     await msg.pin().catch(() => null);
+
+    // Mention support roles when escalated to urgent
+    if (priority === 'urgent') {
+      const cfg = await getGuildConfig(db);
+      const roleIds = Array.isArray(cfg.support_role_ids)
+        ? cfg.support_role_ids
+        : JSON.parse(cfg.support_role_ids || '[]');
+      if (roleIds.length) {
+        const mentions = roleIds.map(id => `<@&${id}>`).join(' ');
+        await interaction.channel.send(`🚨 **Ticket urgent** — ${mentions}`).catch(() => null);
+      }
+    }
 
     await interaction.reply({ content: `Priorité mise à jour : ${emoji} **${label}**`, ephemeral: true });
   }

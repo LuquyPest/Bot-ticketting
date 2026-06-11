@@ -228,4 +228,57 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// GET /api/analytics/export/csv — daily volume + staff stats combined
+router.get('/export/csv', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
+  try {
+    const [volume, staffStats, ratings] = await Promise.all([
+      req.guildDb(
+        `SELECT DATE_FORMAT(created_at,'%Y-%m-%d') as date,
+                COUNT(*) as opened,
+                SUM(status='closed') as closed
+         FROM tickets
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+         GROUP BY date ORDER BY date ASC`
+      ),
+      req.guildDb(
+        `SELECT admin_tag, tickets_closed,
+                ROUND(total_rating_score / NULLIF(total_ratings,0), 2) as avg_rating,
+                ROUND(total_response_seconds / NULLIF(total_response_count,0)) as avg_response_sec
+         FROM admin_stats ORDER BY tickets_closed DESC`
+      ),
+      req.guildDb(
+        `SELECT DATE_FORMAT(created_at,'%Y-%m-%d') as date, rating, COUNT(*) as count
+         FROM ticket_ratings
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+         GROUP BY date, rating ORDER BY date ASC`
+      ),
+    ]);
+
+    // Three sheets as separate CSV blocks separated by blank lines
+    const toCSV = (headers, rows) => [
+      headers.join(','),
+      ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))
+    ].join('\n');
+
+    const csv = [
+      '# Volume quotidien (90 jours)',
+      toCSV(['date', 'opened', 'closed'], volume),
+      '',
+      '# Stats staff',
+      toCSV(['admin_tag', 'tickets_closed', 'avg_rating', 'avg_response_sec'], staffStats),
+      '',
+      '# Notes de satisfaction',
+      toCSV(['date', 'rating', 'count'], ratings),
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="analytics.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

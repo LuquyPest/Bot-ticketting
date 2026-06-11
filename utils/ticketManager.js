@@ -172,10 +172,18 @@ function createManager(db, client, guildId) {
     return { channel, ticket, created: false };
   }
 
-  async function sendWelcomeDm(user, created) {
+  async function sendWelcomeDm(user, created, subject = null) {
     if (!created) return;
     const cfg = await getGuildConfig(db);
-    const msg = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
+    let msg = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
+    if (subject) {
+      try {
+        const subjectMsgs = typeof cfg.subject_welcome_messages === 'string'
+          ? JSON.parse(cfg.subject_welcome_messages)
+          : (cfg.subject_welcome_messages || {});
+        if (subjectMsgs[subject]) msg = subjectMsgs[subject];
+      } catch {}
+    }
     await user.send(msg).catch(() => null);
   }
 

@@ -164,6 +164,40 @@ async function ensureGlobalTables(config) {
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_sal_created (created_at),
         INDEX idx_sal_username (username)
+      )`,
+      `CREATE TABLE IF NOT EXISTS user_sessions (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        user_id      VARCHAR(32) NOT NULL,
+        session_id   VARCHAR(128) NOT NULL UNIQUE,
+        ip           VARCHAR(45) NOT NULL,
+        user_agent   VARCHAR(500) DEFAULT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_us_user (user_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS error_logs (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id   VARCHAR(32) DEFAULT NULL,
+        context    VARCHAR(100) NOT NULL,
+        message    TEXT NOT NULL,
+        stack      TEXT DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_el_guild (guild_id),
+        INDEX idx_el_created (created_at)
+      )`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS max_tickets INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS max_agents INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS transcript_retention_days INT NOT NULL DEFAULT 0`,
+      `CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        user_id     VARCHAR(32) NOT NULL,
+        guild_id    VARCHAR(32) NOT NULL,
+        endpoint    TEXT NOT NULL,
+        p256dh      TEXT NOT NULL,
+        auth_key    TEXT NOT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY idx_sub_endpoint (user_id, guild_id, endpoint(200)),
+        INDEX idx_sub_guild (guild_id)
       )`
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);

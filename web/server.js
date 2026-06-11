@@ -1,13 +1,21 @@
 const express = require('express');
 const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
-const helmet = require('helmet');
+const helmet  = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const { pages } = require('../utils/transcriptServer');
 const { pool } = require('../utils/db');
+const { globalQuery } = require('../utils/globalDb');
 const logger = require('../utils/logger');
+
+// Centralized error logger — writes to error_logs global table
+function logError(guildId, context, err) {
+  globalQuery(
+    'INSERT INTO error_logs (guild_id, context, message, stack) VALUES (?, ?, ?, ?)',
+    [guildId || null, context || 'unknown', String(err?.message || err).slice(0, 2000), (err?.stack || '').slice(0, 5000)]
+  ).catch(() => null);
+}
 
 const EXPIRED_HTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Expiré</title>
 <style>body{background:#0b0f16;color:#9aa8c7;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px}
@@ -62,10 +70,19 @@ app.use((req, res, next) => {
   next();
 });
 
-const sessionStore = new MySQLStore({
-  createDatabaseTable: true,
-  schema: { tableName: 'web_sessions' }
-}, pool);
+// Session store: Redis with MySQL fallback if Redis is unreachable
+function buildSessionStore() {
+  try {
+    const RedisStore = require('connect-redis').default;
+    const { getRedis } = require('../utils/redis');
+    return new RedisStore({ client: getRedis(), prefix: 'sess:', ttl: 86400 });
+  } catch {
+    const MySQLStore = require('express-mysql-session')(session);
+    return new MySQLStore({ createDatabaseTable: true, schema: { tableName: 'web_sessions' } }, pool);
+  }
+}
+
+const sessionStore = buildSessionStore();
 
 // Detect HTTPS from either the public base URL or the Discord callback URL.
 // When TLS is terminated by a reverse proxy (Traefik), webServerBaseUrl may
@@ -142,8 +159,10 @@ app.get('/t/:token', (req, res) => {
   res.type('html').send(page.html);
 });
 
-app.use('/api/auth',    require('./routes/auth'));
-app.use('/api/profile', require('./routes/profile'));
+app.use('/api/auth',     require('./routes/auth'));
+app.use('/api/sessions', require('./routes/sessions'));
+app.use('/api/push',     require('./routes/push'));
+app.use('/api/profile',  require('./routes/profile'));
 
 const requireRole    = require('./middleware/role');
 const guildMiddleware = require('./middleware/guild');
@@ -196,4 +215,4 @@ function startWebServer(client) {
   return server;
 }
 
-module.exports = { startWebServer };
+module.exports = { startWebServer, logError };

@@ -5,6 +5,7 @@ const { sanitizeChannelName } = require('../../utils/sanitize');
 const { ChannelType } = require('discord.js');
 const { broadcast } = require('../../utils/sse');
 const { getVisibleGradeIds, logAudit } = require('../../utils/gradePermissions');
+const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
@@ -139,9 +140,30 @@ router.patch('/:id/priority', async (req, res) => {
     const { priority } = req.body;
     if (!VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
     const ticketId = parseInt(req.params.id);
+
+    const [ticket] = await req.guildDb('SELECT id, channel_id FROM tickets WHERE id = ?', [ticketId]);
+    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+
     await req.guildDb('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
     await getManager(req).updateChannelTopic(ticketId).catch(() => null);
     broadcast('ticket', { id: ticketId, priority }, req.guildId);
+
+    // Mention support roles when escalated to urgent
+    if (priority === 'urgent') {
+      const client = req.app.locals.client;
+      if (client && ticket.channel_id) {
+        const [cfg] = await req.guildDb('SELECT support_role_ids FROM guild_config WHERE id = 1');
+        const roleIds = JSON.parse(cfg?.support_role_ids || '[]');
+        if (roleIds.length) {
+          const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+          if (channel) {
+            const mentions = roleIds.map(id => `<@&${id}>`).join(' ');
+            await channel.send(`🚨 **Ticket passé en priorité Urgente** — ${mentions}`).catch(() => null);
+          }
+        }
+      }
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -304,6 +326,13 @@ router.post('/:id/reply', async (req, res) => {
       created_at: new Date()
     };
     broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
+    // Push notification to all subscribers of this guild when staff replies
+    sendPushToGuild(req.guildId, {
+      type: 'reply',
+      title: `Réponse #${ticket.id}`,
+      body: `${anonymous ? 'Support' : req.session.user.username} : ${content.slice(0, 100)}`,
+      ticketId: ticket.id,
+    }).catch(() => null);
     res.json(replyNote);
   } catch (err) {
     console.error(err);
@@ -698,6 +727,29 @@ ${notesHtml || '<p style="color:#6b7280;font-size:13px;text-align:center;padding
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/tickets/export/csv — download all tickets as CSV
+router.get('/export/csv', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
+  try {
+    const tickets = await req.guildDb(
+      `SELECT id, owner_id, owner_tag, subject, priority, status, claimed_by,
+              created_at, closed_at, closed_by_tag
+       FROM tickets ORDER BY id DESC LIMIT 10000`
+    );
+    const headers = ['id', 'owner_id', 'owner_tag', 'subject', 'priority', 'status', 'claimed_by', 'created_at', 'closed_at', 'closed_by_tag'];
+    const csv = [
+      headers.join(','),
+      ...tickets.map(r => headers.map(h => JSON.stringify(r[h] != null ? String(r[h]) : '')).join(','))
+    ].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="tickets.csv"');
+    res.send(csv);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

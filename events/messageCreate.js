@@ -4,6 +4,7 @@ const { createManager } = require('../utils/ticketManager');
 const { findUserOpenTicket, isUserBlacklisted, findGuildsForUser } = require('../utils/guildScan');
 const { subjectButtons } = require('../utils/components');
 const { broadcast } = require('../utils/sse');
+const { globalQuery } = require('../utils/globalDb');
 
 // userId → { content, attachments, guildId, db, tm, config }
 const pendingSubject = new Map();
@@ -94,6 +95,16 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
 async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null) {
   const { guildId, db, tm, config } = guildEntry;
 
+  // Check guild-wide concurrent ticket limit set by superadmin
+  const [guildLimits] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]).catch(() => [{}]);
+  if (guildLimits?.max_tickets > 0) {
+    const [[{ openCount }]] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [[{ openCount: 0 }]]);
+    if (openCount >= guildLimits.max_tickets) {
+      await user.send('Le serveur a atteint sa limite de tickets simultanés. Réessaie plus tard.').catch(() => null);
+      return;
+    }
+  }
+
   const maxPerDay = config.max_tickets_per_day ?? 3;
   const dailyCount = await tm.getDailyTicketCount(user.id);
   if (dailyCount >= maxPerDay) {
@@ -135,7 +146,7 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   if (intakeHandled) return;
 
   const result = await tm.relayDmToTicket(user, content, attachments, subject);
-  await tm.sendWelcomeDm(user, result.created);
+  await tm.sendWelcomeDm(user, result.created, subject);
   if (result.created) {
     broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
   }

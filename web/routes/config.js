@@ -44,6 +44,9 @@ const FIELD_MAP = {
   webhooksEnabled:          'webhooks_enabled',
   webhookEvents:            'webhook_events',
   apiKeysEnabled:           'api_keys_enabled',
+  // Phase 3
+  subjectWelcomeMessages:   'subject_welcome_messages',
+  ipAllowlist:              'ip_allowlist',
 };
 
 const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
@@ -90,10 +93,19 @@ const VALIDATORS = {
   webhooksEnabled:          v => v === 0 || v === 1 || v === true || v === false,
   webhookEvents:            v => Array.isArray(v) && v.every(e => typeof e === 'string' && e.length <= 50),
   apiKeysEnabled:           v => v === 0 || v === 1 || v === true || v === false,
+  // Phase 3
+  subjectWelcomeMessages:   v => typeof v === 'object' && v !== null && !Array.isArray(v) &&
+                                 Object.entries(v).every(([k, msg]) =>
+                                   typeof k === 'string' && k.length <= 100 &&
+                                   (msg === null || (typeof msg === 'string' && msg.length <= 2000))
+                                 ),
+  ipAllowlist:              v => Array.isArray(v) && v.length <= 50 && v.every(cidr =>
+                                   typeof cidr === 'string' && cidr.length <= 50
+                                 ),
 };
 
 // Fields stored as JSON in the DB
-const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events']);
+const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist']);
 
 function dbRow2Api(row) {
   const out = {};
