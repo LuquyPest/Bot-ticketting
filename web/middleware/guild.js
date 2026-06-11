@@ -7,7 +7,7 @@ const { getTenantDb }  = require('../../utils/tenantDb');
 //   req.guild     — row from ticketbot_global.guilds
 //   req.guildConfig — row from guild_config (lazy-loaded on first use via getter)
 module.exports = async function guildMiddleware(req, res, next) {
-  const guildId = req.session?.currentGuildId || req.headers['x-guild-id'];
+  const guildId = req.session?.currentGuildId;
 
   if (!guildId) {
     return res.status(400).json({ error: 'Aucun serveur sélectionné' });
