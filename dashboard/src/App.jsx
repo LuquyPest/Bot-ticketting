@@ -9,6 +9,7 @@ import { ThemeProvider } from './context/ThemeContext';
 
 const Login       = lazy(() => import('./pages/Login'));
 const Pending     = lazy(() => import('./pages/Pending'));
+const GuildSelect = lazy(() => import('./pages/GuildSelect'));
 const Dashboard   = lazy(() => import('./pages/Dashboard'));
 const Tickets     = lazy(() => import('./pages/Tickets'));
 const TicketDetail = lazy(() => import('./pages/TicketDetail'));
@@ -37,15 +38,25 @@ export const useAuth = () => useContext(AuthCtx);
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
+
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-base">
       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
     </div>
   );
+
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  // No guild selected yet (multiple guilds, needs to pick one)
+  if (!user.guildId && location.pathname !== '/select-guild' && location.pathname !== '/pending') {
+    return <Navigate to="/select-guild" replace />;
+  }
+
+  // Guild selected but user is pending approval
   if (user.role === 'nouveau' && location.pathname !== '/pending') {
     return <Navigate to="/pending" replace />;
   }
+
   return children;
 }
 
@@ -75,9 +86,15 @@ export default function App() {
     setUser(null);
   };
 
+  const selectGuild = async (guildId) => {
+    await api.post('/auth/select-guild', { guildId });
+    // Full reload — clears all guild-specific cached state
+    window.location.href = '/';
+  };
+
   return (
     <ThemeProvider>
-    <AuthCtx.Provider value={{ user, setUser, loading, logout, sidebarOpen, setSidebarOpen }}>
+    <AuthCtx.Provider value={{ user, setUser, loading, logout, selectGuild, sidebarOpen, setSidebarOpen }}>
       <SSEProvider>
         <NotificationProvider>
           <Routes>
@@ -90,6 +107,13 @@ export default function App() {
               <RequireAuth>
                 <Suspense fallback={<PageLoader />}>
                   <ErrorBoundary><Pending /></ErrorBoundary>
+                </Suspense>
+              </RequireAuth>
+            } />
+            <Route path="/select-guild" element={
+              <RequireAuth>
+                <Suspense fallback={<PageLoader />}>
+                  <ErrorBoundary><GuildSelect /></ErrorBoundary>
                 </Suspense>
               </RequireAuth>
             } />
