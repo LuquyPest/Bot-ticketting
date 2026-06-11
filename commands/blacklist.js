@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { getTenantDb } = require('../utils/tenantDb');
+const { createManager } = require('../utils/ticketManager');
 const { ensureChiefSupport } = require('../utils/permissions');
-const { addToBlacklist, removeFromBlacklist, getBlacklist } = require('../utils/ticketManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,7 +24,9 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
-    if (!(await ensureChiefSupport(interaction, client))) return;
+    const db = getTenantDb(interaction.guildId);
+    const tm = createManager(db, client, interaction.guildId);
+    if (!(await ensureChiefSupport(interaction, client, db))) return;
 
     const sub = interaction.options.getSubcommand();
 
@@ -35,10 +38,10 @@ module.exports = {
         return interaction.reply({ content: 'Impossible de blacklister un bot.', ephemeral: true });
       }
 
-      await addToBlacklist(user.id, user.tag, raison, interaction.user);
+      await tm.addToBlacklist(user.id, user.username, raison, interaction.user);
 
       await interaction.reply({
-        content: `${user.tag} a été ajouté à la blacklist.${raison ? `\nRaison : ${raison}` : ''}`,
+        content: `${user.username} a été ajouté à la blacklist.${raison ? `\nRaison : ${raison}` : ''}`,
         ephemeral: true
       });
 
@@ -50,19 +53,19 @@ module.exports = {
 
     if (sub === 'remove') {
       const user = interaction.options.getUser('utilisateur', true);
-      const removed = await removeFromBlacklist(user.id);
+      const removed = await tm.removeFromBlacklist(user.id);
 
       if (!removed) {
-        return interaction.reply({ content: `${user.tag} n'est pas dans la blacklist.`, ephemeral: true });
+        return interaction.reply({ content: `${user.username} n'est pas dans la blacklist.`, ephemeral: true });
       }
 
-      await interaction.reply({ content: `${user.tag} a été retiré de la blacklist.`, ephemeral: true });
+      await interaction.reply({ content: `${user.username} a été retiré de la blacklist.`, ephemeral: true });
       await user.send('Tu as été retiré de la blacklist et peux à nouveau ouvrir des tickets.').catch(() => null);
       return;
     }
 
     if (sub === 'list') {
-      const list = await getBlacklist();
+      const list = await tm.getBlacklist();
 
       if (!list.length) {
         return interaction.reply({ content: 'La blacklist est vide.', ephemeral: true });

@@ -1,24 +1,26 @@
 const { Events } = require('discord.js');
-const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
+const { getTenantDb } = require('../utils/tenantDb');
+const { createManager } = require('../utils/ticketManager');
+const { getActiveGuilds } = require('../utils/guildScan');
 const { ensureSupport } = require('../utils/permissions');
-const { query } = require('../utils/db');
-const {
-  getOpenTicketByChannelId,
-  saveTranscriptSnapshot,
-  closeTicketWithTranscript,
-  getOldTicketsByUserId,
-  relayDmToTicket,
-  sendWelcomeDm,
-  saveRating
-} = require('../utils/ticketManager');
-const {
-  closeConfirmationButtons,
-  oldTicketsPaginationButtons
-} = require('../utils/components');
-const {
-  closeConfirmationEmbed,
-  buildOldTicketsPageEmbed
-} = require('../utils/embeds');
+const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
+const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../utils/components');
+const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/embeds');
+
+async function findGuildForClosedTicket(ticketId, ownerId) {
+  const guilds = await getActiveGuilds();
+  for (const { guild_id } of guilds) {
+    try {
+      const db = getTenantDb(guild_id);
+      const [ticket] = await db(
+        'SELECT id, claimed_by, closed_by_tag FROM tickets WHERE id = ? AND owner_id = ? AND status = "closed"',
+        [ticketId, ownerId]
+      );
+      if (ticket) return { db, ticket, guildId: guild_id };
+    } catch {}
+  }
+  return null;
+}
 
 module.exports = {
   name: Events.InteractionCreate,
@@ -26,187 +28,132 @@ module.exports = {
     try {
       if (interaction.isButton()) {
 
-        // ── Boutons DM : sélection de sujet (pas de guild requis) ──
+        // ── Sujet (DM) ──
         if (interaction.customId.startsWith('subject_')) {
           const subject = interaction.customId.slice('subject_'.length);
-
-          const validSubjects = client.config.ticketSubjects || [];
-          if (validSubjects.length > 0 && !validSubjects.includes(subject)) {
-            await interaction.reply({ content: 'Sujet invalide.', ephemeral: true });
-            return;
-          }
-
-          const { pendingSubject } = require('./messageCreate');
+          const { pendingSubject, openTicketForGuild } = require('./messageCreate');
           const pending = pendingSubject.get(interaction.user.id);
-
-          await interaction.update({
-            content: `Sujet sélectionné : **${subject}**\nTon ticket est en cours de création...`,
-            components: []
-          });
-
-          const { content, attachments } = pending || { content: '', attachments: [] };
+          if (!pending) {
+            return interaction.reply({ content: 'Session expirée. Renvoie ton message.', ephemeral: true });
+          }
+          await interaction.update({ content: `Sujet sélectionné : **${subject}**\nCréation du ticket...`, components: [] });
           pendingSubject.delete(interaction.user.id);
-
-          const result = await relayDmToTicket(client, interaction.user, content, attachments, subject);
-          await sendWelcomeDm(client, interaction.user, result.created);
+          const { content, attachments, guildId, db, tm, config } = pending;
+          await openTicketForGuild(interaction.user, content, attachments, { guildId, db, tm, config }, client, subject);
           return;
         }
 
-        // ── Boutons DM : notation de satisfaction ──
+        // ── Sélection de serveur (DM) ──
+        if (interaction.customId.startsWith('guildselect_')) {
+          const guildId = interaction.customId.slice('guildselect_'.length);
+          const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
+          const pending = pendingGuildSelect.get(interaction.user.id);
+          if (!pending) {
+            return interaction.reply({ content: 'Session expirée. Renvoie ton message.', ephemeral: true });
+          }
+          const guildEntry = pending.guilds.find(g => g.guildId === guildId);
+          if (!guildEntry) {
+            return interaction.reply({ content: 'Serveur invalide.', ephemeral: true });
+          }
+          pendingGuildSelect.delete(interaction.user.id);
+          await interaction.update({ content: 'Serveur sélectionné. Création du ticket...', components: [] });
+          await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
+          return;
+        }
+
+        // ── Notation (DM) ──
         if (interaction.customId.startsWith('rating_')) {
           const parts = interaction.customId.split('_');
           const rating = parseInt(parts[1]);
           const ticketId = parseInt(parts[2]);
-
           if (isNaN(rating) || rating < 1 || rating > 5 || isNaN(ticketId)) {
-            await interaction.reply({ content: 'Interaction invalide.', ephemeral: true });
-            return;
+            return interaction.reply({ content: 'Interaction invalide.', ephemeral: true });
           }
-
-          const [ticket] = await query(
-            'SELECT id, claimed_by, closed_by_tag FROM tickets WHERE id = ? AND owner_id = ? AND status = "closed"',
-            [ticketId, interaction.user.id]
-          );
-          if (!ticket) {
-            await interaction.reply({ content: 'Tu ne peux pas noter ce ticket.', ephemeral: true });
-            return;
+          const found = await findGuildForClosedTicket(ticketId, interaction.user.id);
+          if (!found) {
+            return interaction.reply({ content: 'Tu ne peux pas noter ce ticket.', ephemeral: true });
           }
-
-          const [existing] = await query(
+          const { db, ticket, guildId } = found;
+          const [existing] = await db(
             'SELECT id FROM ticket_ratings WHERE ticket_id = ? AND owner_id = ?',
             [ticketId, interaction.user.id]
           );
           if (existing) {
-            await interaction.update({ content: 'Tu as déjà noté ce ticket.', components: [] });
-            return;
+            return interaction.update({ content: 'Tu as déjà noté ce ticket.', components: [] });
           }
-
           const closedById = ticket.claimed_by;
           const closedByUser = await client.users.fetch(closedById).catch(() => null);
-          const closedByTag = closedByUser?.tag || ticket.closed_by_tag || closedById;
-
-          await saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);
-
+          const closedByTag = closedByUser?.username || ticket.closed_by_tag || closedById;
+          const tm = createManager(db, client, guildId);
+          await tm.saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);
           const stars = '⭐'.repeat(rating);
-          await interaction.update({
-            content: `Merci pour ton avis ! Tu as mis ${stars} (${rating}/5).`,
-            components: []
-          });
-          return;
+          return interaction.update({ content: `Merci pour ton avis ! Tu as mis ${stars} (${rating}/5).`, components: [] });
         }
 
-        // ── Boutons serveur : vérification staff ──
+        // ── Boutons en contexte serveur ──
         if (!interaction.guild) return;
+        const db = getTenantDb(interaction.guildId);
+        const tm = createManager(db, client, interaction.guildId);
 
-        const allowed = await ensureSupport(interaction, client);
-        if (!allowed) return;
+        if (!(await ensureSupport(interaction, client, db))) return;
 
         if (interaction.customId.startsWith('oldtickets_')) {
           const parts = interaction.customId.split('_');
           const action = parts[1];
           const userId = parts[2];
           const currentPage = Number(parts[3]) || 0;
-
-          const tickets = await getOldTicketsByUserId(userId);
-
+          const tickets = await tm.getOldTicketsByUserId(userId);
           if (!tickets.length) {
-            await interaction.reply({
-              content: 'Aucun ticket trouve.',
-              ephemeral: true
-            });
-            return;
+            return interaction.reply({ content: 'Aucun ticket trouvé.', ephemeral: true });
           }
-
           let newPage = currentPage;
           if (action === 'prev') newPage -= 1;
           if (action === 'next') newPage += 1;
-
           const { embed, totalPages, safePage } = buildOldTicketsPageEmbed(userId, tickets, newPage, 5);
-
-          await interaction.update({
-            embeds: [embed],
-            components: [oldTicketsPaginationButtons(userId, safePage, totalPages)]
-          });
-          return;
+          return interaction.update({ embeds: [embed], components: [oldTicketsPaginationButtons(userId, safePage, totalPages)] });
         }
 
-        const ticket = await getOpenTicketByChannelId(interaction.channelId);
+        const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
         if (!ticket) {
-          await interaction.reply({
-            content: 'Ce salon n est pas un ticket ouvert.',
-            ephemeral: true
-          });
-          return;
+          return interaction.reply({ content: 'Ce salon n est pas un ticket ouvert.', ephemeral: true });
         }
 
         if (interaction.customId === 'ticket_transcript') {
           await interaction.deferReply({ ephemeral: true });
-
-          const saved = await saveTranscriptSnapshot(interaction.channel, interaction.user);
-
+          const saved = await tm.saveTranscriptSnapshot(interaction.channel, interaction.user);
           if (!saved) {
-            await interaction.editReply({ content: 'Impossible de generer le transcript.' });
-            return;
+            return interaction.editReply({ content: 'Impossible de generer le transcript.' });
           }
-
           const token = hostTranscript(saved.html);
-          const url = buildUrl(interaction.client.config.webServerBaseUrl, token);
-
-          await interaction.editReply({
-            content: `Transcript enregistré (ID : ${saved.transcriptId})\nLien valable 10 minutes : ${url}`
-          });
-          return;
+          const url = buildUrl(client.config.webServerBaseUrl, token);
+          return interaction.editReply({ content: `Transcript enregistré (ID : ${saved.transcriptId})\nLien valable 10 minutes : ${url}` });
         }
 
         if (interaction.customId === 'ticket_close_with_transcript') {
-          await interaction.reply({
-            embeds: [closeConfirmationEmbed()],
-            components: [closeConfirmationButtons()],
-            ephemeral: true
-          });
-          return;
+          return interaction.reply({ embeds: [closeConfirmationEmbed()], components: [closeConfirmationButtons()], ephemeral: true });
         }
 
         if (interaction.customId === 'ticket_close_with_transcript_confirm') {
-          await interaction.update({
-            content: 'Fermeture du ticket et generation du transcript...',
-            embeds: [],
-            components: []
-          });
-
-          await closeTicketWithTranscript(client, interaction.channel, interaction.user);
+          await interaction.update({ content: 'Fermeture du ticket et generation du transcript...', embeds: [], components: [] });
+          await tm.closeTicketWithTranscript(interaction.channel, interaction.user);
           return;
         }
 
         if (interaction.customId === 'ticket_close_with_transcript_cancel') {
-          await interaction.update({
-            content: 'Fermeture annulee.',
-            embeds: [],
-            components: []
-          });
-          return;
+          return interaction.update({ content: 'Fermeture annulee.', embeds: [], components: [] });
         }
       }
 
       if (!interaction.isChatInputCommand()) return;
-
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
-
       await command.execute(client, interaction);
     } catch (error) {
       console.error('Erreur interactionCreate:', error);
-
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({
-          content: 'Une erreur est survenue.',
-          ephemeral: true
-        }).catch(() => null);
+        await interaction.followUp({ content: 'Une erreur est survenue.', ephemeral: true }).catch(() => null);
       } else {
-        await interaction.reply({
-          content: 'Une erreur est survenue.',
-          ephemeral: true
-        }).catch(() => null);
+        await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true }).catch(() => null);
       }
     }
   }

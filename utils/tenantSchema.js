@@ -97,7 +97,7 @@ const TENANT_TABLES_SQL = `
     author_id  VARCHAR(32) NOT NULL,
     author_tag VARCHAR(100) NOT NULL,
     content    TEXT NOT NULL,
-    source     ENUM('web','discord','reply','user') NOT NULL DEFAULT 'web',
+    source     ENUM('web','discord','reply','user','scheduled') NOT NULL DEFAULT 'web',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_tn_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
   );

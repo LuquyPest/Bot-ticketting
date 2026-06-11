@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { getTenantDb } = require('../utils/tenantDb');
+const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
-const { getLastClosedTicketByOwnerId, reopenTicket, getAnyOpenTicketForUser } = require('../utils/ticketManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -11,26 +12,26 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
-    if (!(await ensureSupport(interaction, client))) return;
+    const db = getTenantDb(interaction.guildId);
+    const tm = createManager(db, client, interaction.guildId);
+    if (!(await ensureSupport(interaction, client, db))) return;
 
     await interaction.deferReply({ ephemeral: true });
 
     const userId = interaction.options.getString('userid', true);
 
-    const openTicket = await getAnyOpenTicketForUser(userId);
+    const openTicket = await tm.getAnyOpenTicketForUser(userId);
     if (openTicket) {
       return interaction.editReply({ content: `Cet utilisateur a déjà un ticket ouvert (ticket #${openTicket.id}).` });
     }
 
-    const ticket = await getLastClosedTicketByOwnerId(userId);
+    const ticket = await tm.getLastClosedTicketByOwnerId(userId);
     if (!ticket) {
       return interaction.editReply({ content: 'Aucun ticket fermé trouvé pour cet utilisateur.' });
     }
 
-    const channel = await reopenTicket(client, ticket, interaction.user);
+    const channel = await tm.reopenTicket(ticket, interaction.user);
 
-    await interaction.editReply({
-      content: `Ticket #${ticket.id} réouvert dans ${channel}.`
-    });
+    await interaction.editReply({ content: `Ticket #${ticket.id} réouvert dans ${channel}.` });
   }
 };

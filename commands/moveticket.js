@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const { getTenantDb } = require('../utils/tenantDb');
+const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
-const { getOpenTicketByChannelId, logMoveTicket } = require('../utils/ticketManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -14,16 +15,13 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
-    const allowed = await ensureSupport(interaction, client);
-    if (!allowed) return;
+    const db = getTenantDb(interaction.guildId);
+    const tm = createManager(db, client, interaction.guildId);
+    if (!(await ensureSupport(interaction, client, db))) return;
 
-    const ticket = await getOpenTicketByChannelId(interaction.channelId);
+    const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      await interaction.reply({
-        content: '❌ Cette commande doit être utilisée dans un ticket.',
-        ephemeral: true
-      });
-      return;
+      return interaction.reply({ content: '❌ Cette commande doit être utilisée dans un ticket.', ephemeral: true });
     }
 
     const inputName = interaction.options.getString('categorie', true).trim().toLowerCase();
@@ -33,33 +31,22 @@ module.exports = {
     const matches = categories.filter(cat => cat.name.toLowerCase() === inputName);
 
     if (matches.size === 0) {
-      await interaction.reply({
-        content: `❌ Aucune catégorie trouvée avec le nom **${inputName}**.`,
-        ephemeral: true
-      });
-      return;
+      return interaction.reply({ content: `❌ Aucune catégorie trouvée avec le nom **${inputName}**.`, ephemeral: true });
     }
 
     if (matches.size > 1) {
-      await interaction.reply({
-        content: `❌ Plusieurs catégories portent ce nom (**${inputName}**). Utilise un nom unique.`,
-        ephemeral: true
-      });
-      return;
+      return interaction.reply({ content: `❌ Plusieurs catégories portent ce nom (**${inputName}**). Utilise un nom unique.`, ephemeral: true });
     }
 
     const targetCategory = matches.first();
 
     try {
       await interaction.channel.setParent(targetCategory.id, { lockPermissions: false });
-      await logMoveTicket(client, ticket.id, targetCategory.name, interaction.user);
+      await tm.logMoveTicket(ticket.id, targetCategory.name, interaction.user);
 
       await interaction.reply({ content: `✅ Ticket déplacé dans **${targetCategory.name}**.`, ephemeral: true });
-      await interaction.channel.send(
-        `📂 Ticket déplacé dans **${targetCategory.name}** par **${interaction.user.username}**.`
-      );
+      await interaction.channel.send(`📂 Ticket déplacé dans **${targetCategory.name}** par **${interaction.user.username}**.`);
     } catch (error) {
-      console.error('Erreur moveticket:', error);
       await interaction.reply({ content: '❌ Impossible de déplacer le ticket.', ephemeral: true });
     }
   }
