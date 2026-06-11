@@ -251,10 +251,20 @@ function createManager(db, client, guildId) {
     if (cfg.close_log_channel_id) {
       const logCh = await client.channels.fetch(cfg.close_log_channel_id).catch(() => null);
       if (logCh?.isTextBased()) {
-        await logCh.send([
-          'Ticket fermé', `ID : ${ticket.id}`, `Utilisateur : ${ticket.owner_tag}`,
-          `Fermé par : ${closedByUser.tag}`, `Transcript : ${transcript?.transcriptId || 'aucun'}`
-        ].join('\n')).catch(() => null);
+        const openedAt = ticket.created_at ? new Date(ticket.created_at) : null;
+        const mins = openedAt ? Math.round((Date.now() - openedAt.getTime()) / 60000) : null;
+        const duration = mins !== null ? (mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}min`) : '—';
+        const closeLogEmbed = new EmbedBuilder()
+          .setColor(0x6366f1)
+          .setTitle(`🔒 Ticket #${ticket.id} fermé`)
+          .addFields(
+            { name: '👤 Utilisateur', value: `<@${ticket.owner_id}>`, inline: true },
+            { name: '🛡️ Fermé par', value: closedByUser.tag, inline: true },
+            { name: '⏱️ Durée', value: duration, inline: true }
+          );
+        if (ticket.subject) closeLogEmbed.addFields({ name: '📂 Sujet', value: ticket.subject, inline: true });
+        closeLogEmbed.setFooter({ text: `Transcript #${transcript?.transcriptId || 'aucun'}` }).setTimestamp();
+        await logCh.send({ embeds: [closeLogEmbed] }).catch(() => null);
       }
     }
     await channel.delete('Ticket fermé avec transcript').catch(() => null);
