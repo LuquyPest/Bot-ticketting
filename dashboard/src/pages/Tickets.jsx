@@ -576,6 +576,25 @@ export default function Tickets() {
                   <td className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>
                   <td className="px-4 py-3.5 text-ink-2 max-w-xs">
                     <div className="truncate">{t.subject || <span className="italic text-ink-4">—</span>}</div>
+                    {/* Tags */}
+                    {t.tags && t.tags.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {t.tags.slice(0, 3).map(tag => (
+                          <span
+                            key={tag.id}
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border"
+                            style={{ backgroundColor: `${tag.color}18`, color: tag.color, borderColor: `${tag.color}35` }}
+                          >
+                            <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                            {tag.name}
+                          </span>
+                        ))}
+                        {t.tags.length > 3 && (
+                          <span className="text-[10px] text-ink-4">+{t.tags.length - 3}</span>
+                        )}
+                      </div>
+                    )}
                     {/* SLA indicator */}
                     {sla && (
                       <div className={`flex items-center gap-1 text-[10px] mt-0.5 font-semibold ${sla.cls}`}>
