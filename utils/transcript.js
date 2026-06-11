@@ -610,8 +610,12 @@ function buildHtmlTranscript(channel, messages, ticketInfo = {}) {
 </html>`;
 }
 
+const NOTE_PREFIX = require('./notePrefix');
+
 async function buildTranscripts(channel, ticketInfo = {}) {
-  const messages = await fetchAllMessages(channel);
+  const allMessages = await fetchAllMessages(channel);
+  // Staff internal notes are excluded from the transcript sent to users
+  const messages = allMessages.filter(m => !m.content?.startsWith(NOTE_PREFIX));
   return {
     messageCount: messages.length,
     txt: buildTxtTranscript(channel, messages),

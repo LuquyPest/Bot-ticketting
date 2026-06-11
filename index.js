@@ -7,6 +7,8 @@ const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
 const { startWeeklyReport } = require('./utils/weeklyReport');
 const { startScheduledMessages } = require('./utils/scheduledMessages');
 const { startEscalationChecker } = require('./utils/escalationChecker');
+const { startStaffReminderChecker } = require('./utils/staffReminderChecker');
+const { startUserInactiveChecker } = require('./utils/userInactiveChecker');
 const { startWebServer } = require('./web/server');
 
 const client = new Client({
@@ -74,6 +76,8 @@ client.once('ready', () => {
   startWeeklyReport(client);
   startScheduledMessages(client);
   startEscalationChecker(client);
+  startStaffReminderChecker(client);
+  startUserInactiveChecker(client);
 });
 
 async function shutdown(signal) {

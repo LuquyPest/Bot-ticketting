@@ -28,6 +28,21 @@ module.exports = {
     try {
       if (interaction.isButton()) {
 
+        // ── FAQ — ouvrir ticket quand même (DM) ──
+        if (interaction.customId.startsWith('faq_open_')) {
+          const { pendingFaqTicket, openTicketForGuild } = require('./messageCreate');
+          const pending = pendingFaqTicket.get(interaction.user.id);
+          if (!pending) {
+            return interaction.reply({ content: 'Session expirée. Renvoie ton message pour ouvrir un ticket.', ephemeral: true });
+          }
+          pendingFaqTicket.delete(interaction.user.id);
+          await interaction.update({ content: 'Ouverture du ticket en cours…', components: [] });
+          const { guildId, db, tm, config } = pending;
+          // Get original content from interaction message text (remove FAQ prefix)
+          await openTicketForGuild(interaction.user, '', [], { guildId, db, tm, config }, client, null);
+          return;
+        }
+
         // ── Sujet (DM) ──
         if (interaction.customId.startsWith('subject_')) {
           const subject = interaction.customId.slice('subject_'.length);
@@ -39,6 +54,7 @@ module.exports = {
           await interaction.update({ content: `Sujet sélectionné : **${subject}**\nCréation du ticket...`, components: [] });
           pendingSubject.delete(interaction.user.id);
           const { content, attachments, guildId, db, tm, config } = pending;
+          // Note: openTicketForGuild handles intake form check before creating
           await openTicketForGuild(interaction.user, content, attachments, { guildId, db, tm, config }, client, subject);
           return;
         }
