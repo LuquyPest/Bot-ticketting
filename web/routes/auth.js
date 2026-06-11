@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const axios   = require('axios');
 const crypto  = require('crypto');
+const { authenticator } = require('otplib');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 
@@ -12,6 +13,12 @@ function cfg() {
 
 // GET /api/auth/me
 router.get('/me', async (req, res) => {
+  // Pending TOTP verification (after OAuth, before 2FA confirmed)
+  if (!req.session.user && req.session.pendingTotp) {
+    const p = req.session.pendingTotp;
+    return res.json({ id: p.userId, username: p.username, avatar: p.avatar, needsTotp: true });
+  }
+
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
   const user = req.session.user;
 
@@ -138,7 +145,6 @@ router.get('/discord/callback', async (req, res) => {
       'SELECT guild_id, guild_name, guild_icon FROM guilds WHERE status = "active"'
     );
 
-    // Register/update user in each accessible guild's DB
     const userGuilds = [];
     for (const guild of activeGuilds) {
       try {
@@ -157,22 +163,42 @@ router.get('/discord/callback', async (req, res) => {
             userGuilds.push({ guild_id: guild.guild_id, guild_name: guild.guild_name, guild_icon: guild.guild_icon, role: existing.role });
           }
         }
-        // If no existing row, user has no access to this guild yet — skip
       } catch {
         // DB not ready yet — skip
       }
     }
 
+    // Check if user has 2FA enabled
+    const [totpRow] = await globalQuery(
+      'SELECT totp_enabled FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
+      [discordUser.id]
+    );
+
+    if (totpRow) {
+      // 2FA required — store pending state, don't establish full session yet
+      req.session.regenerate(err => {
+        if (err) return res.redirect('/login?error=oauth_failed');
+        req.session.pendingTotp = {
+          userId:     discordUser.id,
+          username:   discordUser.username,
+          avatar:     discordUser.avatar || null,
+          userGuilds,
+        };
+        res.redirect('/totp-verify');
+      });
+      return;
+    }
+
+    // No 2FA — establish session normally
     req.session.regenerate(err => {
       if (err) return res.redirect('/login?error=oauth_failed');
       req.session.user = {
         id:       discordUser.id,
         username: discordUser.username,
         avatar:   discordUser.avatar || null,
-        role:     null // set when guild is selected
+        role:     null,
       };
 
-      // Auto-select if only one accessible guild
       if (userGuilds.length === 1) {
         req.session.currentGuildId = userGuilds[0].guild_id;
         req.session.user.role = userGuilds[0].role;
@@ -184,6 +210,51 @@ router.get('/discord/callback', async (req, res) => {
   } catch (err) {
     console.error('OAuth error:', err.response?.data || err.message);
     res.redirect('/login?error=oauth_failed');
+  }
+});
+
+// POST /api/auth/totp-verify-login — complete login after 2FA verification
+router.post('/totp-verify-login', async (req, res) => {
+  const pending = req.session.pendingTotp;
+  if (!pending) return res.status(400).json({ error: 'Aucune session en attente de vérification' });
+
+  const code = (req.body.code || '').replace(/\s/g, '');
+  if (!code) return res.status(400).json({ error: 'Code requis' });
+
+  try {
+    const [row] = await globalQuery(
+      'SELECT totp_secret FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
+      [pending.userId]
+    );
+    if (!row) return res.status(400).json({ error: 'Configuration 2FA introuvable' });
+
+    if (!authenticator.verify({ token: code, secret: row.totp_secret })) {
+      return res.status(400).json({ error: 'Code invalide' });
+    }
+
+    const { userGuilds } = pending;
+    delete req.session.pendingTotp;
+
+    req.session.user = {
+      id:       pending.userId,
+      username: pending.username,
+      avatar:   pending.avatar,
+      role:     null,
+    };
+
+    if (userGuilds.length === 1) {
+      req.session.currentGuildId = userGuilds[0].guild_id;
+      req.session.user.role = userGuilds[0].role;
+    }
+
+    const redirect = userGuilds.length === 0 ? '/pending'
+                   : userGuilds.length === 1 ? '/'
+                   : '/select-guild';
+
+    res.json({ ok: true, redirect });
+  } catch (err) {
+    console.error('totp-verify-login error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

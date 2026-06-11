@@ -115,6 +115,13 @@ async function ensureGlobalTables(config) {
         expires      INT(11) UNSIGNED NOT NULL,
         data         TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS user_totp (
+        user_id      VARCHAR(32) NOT NULL PRIMARY KEY,
+        totp_secret  VARCHAR(64) NOT NULL,
+        totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Migrations for existing rows
@@ -122,7 +129,9 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS activation_token VARCHAR(128) DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS token_expires_at DATETIME DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS member_count INT DEFAULT NULL`,
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS last_activity_at DATETIME DEFAULT NULL`
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS last_activity_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(64) DEFAULT NULL`,
+      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_enabled TINYINT(1) NOT NULL DEFAULT 0`
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 
