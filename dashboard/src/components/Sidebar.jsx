@@ -3,11 +3,12 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
-  Kanban, Tag, BarChart2, Menu, X, Command,
+  Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
 import { useSSE } from '../hooks/useSSE';
+import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
 import CommandPalette from './CommandPalette';
 import api from '../api';
@@ -43,6 +44,7 @@ const SSE_DOT = {
 export default function Sidebar() {
   const { user, logout, sidebarOpen, setSidebarOpen } = useAuth();
   const { status } = useSSECtx() || { status: 'connecting' };
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [unclaimedCount, setUnclaimedCount] = useState(0);
@@ -113,7 +115,7 @@ export default function Sidebar() {
             {/* SSE status dot */}
             <span
               className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2
-                           border-[#09090f] ${dot.cls}`}
+                           border-base ${dot.cls}`}
               title={dot.title}
             />
           </div>
@@ -193,7 +195,7 @@ export default function Sidebar() {
                 </div>
               )}
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full
-                               bg-emerald-400 border-2 border-[#09090f]" />
+                               bg-emerald-400 border-2 border-base" />
             </div>
 
             {/* Info */}
@@ -209,6 +211,16 @@ export default function Sidebar() {
 
             {/* Notification bell */}
             <NotificationBell />
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              className="text-ink-4 hover:text-primary-light hover:bg-primary/10 p-1.5 rounded-lg
+                         transition-all duration-150 flex-shrink-0"
+            >
+              {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+            </button>
 
             {/* Logout */}
             <button

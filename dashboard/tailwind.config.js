@@ -4,12 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        base: '#09090f',
+        base:    'var(--color-base)',
         surface: {
-          DEFAULT: '#0e0e18',
-          card:    '#13131f',
-          hover:   '#1a1a2c',
-          elevated:'#1e1e30',
+          DEFAULT: 'var(--color-surface)',
+          card:    'var(--color-surface-card)',
+          hover:   'var(--color-surface-hover)',
+          elevated:'var(--color-surface-elevated)',
         },
         border: {
           DEFAULT: 'rgba(255,255,255,0.07)',
@@ -24,10 +24,10 @@ export default {
           glow:    'rgba(124,110,243,0.3)',
         },
         ink: {
-          1: '#f1f0ff',
-          2: '#a0a0b8',
-          3: '#54546a',
-          4: '#2e2e44',
+          1: 'var(--color-ink-1)',
+          2: 'var(--color-ink-2)',
+          3: 'var(--color-ink-3)',
+          4: 'var(--color-ink-4)',
         },
       },
       fontFamily: {
