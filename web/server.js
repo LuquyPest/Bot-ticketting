@@ -148,6 +148,9 @@ app.use('/api/staff-roles', withGuild(['fondateur']),            require('./rout
 app.use('/api/analytics',   withGuild(['support', 'fondateur']), require('./routes/analytics'));
 app.use('/api/badges',      withGuild(['support', 'fondateur']), require('./routes/badges'));
 app.use('/api/goals',       withGuild(['support', 'fondateur']), require('./routes/goals'));
+app.use('/api/api-keys',    withGuild(['fondateur']),            require('./routes/apiKeys'));
+app.use('/api/newsletter',  withGuild(['fondateur']),            require('./routes/newsletter'));
+app.use('/api/login-logs',  withGuild(['support', 'fondateur']), require('./routes/loginLogs'));
 
 app.use('/api/sa', require('./routes/superadmin'));
 
@@ -163,6 +166,7 @@ if (fs.existsSync(distPath)) {
 
 function startWebServer(client) {
   app.locals.client = client;
+  app.set('botClient', client);
   const port = config.webServerPort || 3000;
   const server = app.listen(port, () =>
     logger.info('Serveur web démarré', { port, https: isHttps })

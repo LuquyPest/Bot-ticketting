@@ -29,6 +29,9 @@ const TotpVerify  = lazy(() => import('./pages/TotpVerify'));
 const Profile     = lazy(() => import('./pages/Profile'));
 const Analytics   = lazy(() => import('./pages/Analytics'));
 const Search      = lazy(() => import('./pages/Search'));
+const ApiKeys     = lazy(() => import('./pages/ApiKeys'));
+const Newsletter  = lazy(() => import('./pages/Newsletter'));
+const LoginLogs   = lazy(() => import('./pages/LoginLogs'));
 
 function PageLoader() {
   return (
@@ -191,6 +194,15 @@ export default function App() {
                         <Route path="search"     element={<ErrorBoundary><Search /></ErrorBoundary>} />
                         <Route path="patchnotes" element={
                           <RequireRole role="fondateur"><ErrorBoundary><Patchnotes /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="api-keys" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><ApiKeys /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="newsletter" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Newsletter /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="login-logs" element={
+                          <RequireRole role={['support','fondateur']}><ErrorBoundary><LoginLogs /></ErrorBoundary></RequireRole>
                         } />
                       </Routes>
                     </Suspense>

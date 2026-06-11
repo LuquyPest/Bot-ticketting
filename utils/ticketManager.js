@@ -3,6 +3,7 @@ const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
 const { sanitizeChannelName } = require('./sanitize');
 const { broadcast } = require('./sse');
+const { fireTicketWebhook } = require('./webhookEmitter');
 
 // Returns the guild_config row from the per-guild DB (or defaults).
 async function getGuildConfig(db) {
@@ -132,6 +133,8 @@ function createManager(db, client, guildId) {
       const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
       await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
 
+      fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
+
       if (firstMessage || attachments.length) {
         let msg = `--- ${user.tag} : ${firstMessage || '[aucun texte]'}`;
         if (attachments.length) msg += '\n\nFichiers :\n' + attachments.map(f => f.url).join('\n');
@@ -236,6 +239,8 @@ function createManager(db, client, guildId) {
     }
     await channel.delete('Ticket fermé avec transcript').catch(() => null);
 
+    fireTicketWebhook(db, 'ticket_close', { ticketId: ticket.id, ownerTag: ticket.owner_tag, closedBy: closedByUser.tag }).catch(() => null);
+
     // Check badge unlocks for the staff member who closed the ticket
     if (ticket.claimed_by) {
       try {
@@ -269,6 +274,7 @@ function createManager(db, client, guildId) {
   async function setClaim(ticketId, adminUser) {
     await db('UPDATE tickets SET claimed_by=? WHERE id=?', [adminUser ? adminUser.id : null, ticketId]);
     if (adminUser) {
+      fireTicketWebhook(db, 'ticket_claim', { ticketId, claimedBy: adminUser.tag }).catch(() => null);
       await db(
         `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 1, 0)
          ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_claimed=tickets_claimed+1`,

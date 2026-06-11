@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon, ShieldCheck,
-  Search, TrendingUp,
+  Search, TrendingUp, Key, Mail, History,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -30,8 +30,11 @@ const ALL_NAV = [
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
   { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
+  { to: '/login-logs',  label: 'Connexions',   icon: History,         roles: ['support','fondateur'] },
   { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
   { to: '/staff-roles', label: 'Rôles staff',  icon: ShieldCheck,     roles: ['fondateur'] },
+  { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
+  { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
 ];
 
 const ROLE_STYLES = {

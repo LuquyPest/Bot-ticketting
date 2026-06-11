@@ -3,7 +3,7 @@ const { getTenantDb } = require('./tenantDb');
 const { createManager } = require('./ticketManager');
 
 async function getActiveGuilds() {
-  return globalQuery('SELECT guild_id FROM guilds WHERE status = "active"');
+  return globalQuery('SELECT guild_id FROM guilds WHERE status = "active" AND maintenance_mode = 0');
 }
 
 // Scan all active guilds to find the user's first open ticket.
