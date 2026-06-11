@@ -170,4 +170,90 @@ router.patch('/', async (req, res) => {
   }
 });
 
+// GET /api/config/bot-identity — pseudo + avatar actuel du bot sur ce serveur
+router.get('/bot-identity', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
+  const client = req.app.get('botClient');
+  if (!client?.isReady()) return res.status(503).json({ error: 'Bot non connecté' });
+  try {
+    const guild = await client.guilds.fetch(req.guildId).catch(() => null);
+    if (!guild) return res.status(404).json({ error: 'Serveur Discord introuvable' });
+    const me = guild.members.me;
+    res.json({
+      username:    client.user.username,
+      nickname:    me.nickname || null,
+      displayName: me.displayName,
+      avatarUrl:   me.displayAvatarURL({ size: 256, extension: 'png' }),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// PATCH /api/config/bot-identity — change le pseudo et/ou l'avatar per-guild (fondateur)
+router.patch('/bot-identity', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
+  const client = req.app.get('botClient');
+  if (!client?.isReady()) return res.status(503).json({ error: 'Bot non connecté' });
+
+  const { nickname, avatarDataUrl } = req.body;
+  if (nickname !== undefined && typeof nickname !== 'string' && nickname !== null)
+    return res.status(400).json({ error: 'nickname doit être une chaîne ou null' });
+  if (nickname !== undefined && nickname !== null && nickname.length > 32)
+    return res.status(400).json({ error: 'nickname trop long (max 32 caractères)' });
+  if (avatarDataUrl !== undefined && avatarDataUrl !== null) {
+    if (typeof avatarDataUrl !== 'string' || !/^data:image\/(png|jpeg|gif|webp);base64,/.test(avatarDataUrl))
+      return res.status(400).json({ error: 'avatarDataUrl invalide (data URI attendu)' });
+    // Limite ~2 Mo base64
+    if (avatarDataUrl.length > 2_800_000)
+      return res.status(400).json({ error: 'Image trop lourde (max 2 Mo)' });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(req.guildId).catch(() => null);
+    if (!guild) return res.status(404).json({ error: 'Serveur Discord introuvable' });
+
+    const errors  = {};
+    const results = {};
+
+    if (nickname !== undefined) {
+      try {
+        await guild.members.me.setNickname(nickname || null, 'Changement via dashboard');
+        results.nickname = nickname || null;
+      } catch (err) {
+        errors.nickname = err.message;
+      }
+    }
+
+    if (avatarDataUrl !== undefined) {
+      try {
+        const { Routes } = require('discord.js');
+        await client.rest.patch(Routes.guildMember(req.guildId, '@me'), {
+          body: { avatar: avatarDataUrl || null },
+        });
+        results.avatarUpdated = true;
+      } catch (err) {
+        errors.avatar = err.message;
+      }
+    }
+
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ errors, results });
+    }
+
+    await logAudit(
+      req.session.user.id, req.session.user.username,
+      'bot_identity_update', 'guild', req.guildId,
+      { nickname: results.nickname, avatarUpdated: results.avatarUpdated },
+      req.guildDb
+    );
+
+    res.json({ ok: true, ...results });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;
