@@ -27,11 +27,13 @@ module.exports = async function guildMiddleware(req, res, next) {
     req.guildDb = getTenantDb(guildId);
     req.guild   = guild;
 
-    // Update last_activity_at asynchronously (fire-and-forget)
-    globalQuery(
-      'UPDATE guilds SET last_activity_at = NOW() WHERE guild_id = ?',
-      [guildId]
-    ).catch(() => {});
+    // Update last_activity_at only on write operations to reduce DB noise on polling/SSE reads
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
+      globalQuery(
+        'UPDATE guilds SET last_activity_at = NOW() WHERE guild_id = ?',
+        [guildId]
+      ).catch(() => {});
+    }
 
     next();
   } catch (err) {
