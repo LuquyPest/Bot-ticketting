@@ -25,6 +25,7 @@ const Kanban      = lazy(() => import('./pages/Kanban'));
 const Equipe      = lazy(() => import('./pages/Equipe'));
 const Tags        = lazy(() => import('./pages/Tags'));
 const StaffRoles  = lazy(() => import('./pages/StaffRoles'));
+const TotpVerify  = lazy(() => import('./pages/TotpVerify'));
 
 function PageLoader() {
   return (
@@ -49,14 +50,21 @@ function RequireAuth({ children }) {
 
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
 
-  // No guild selected yet (multiple guilds, needs to pick one)
-  if (!user.guildId && location.pathname !== '/select-guild' && location.pathname !== '/pending') {
-    return <Navigate to="/select-guild" replace />;
+  // User came through OAuth but has 2FA enabled — must verify before accessing dashboard
+  if (user.needsTotp && location.pathname !== '/totp-verify') {
+    return <Navigate to="/totp-verify" replace />;
   }
 
-  // Guild selected but user is pending approval
-  if (user.role === 'nouveau' && location.pathname !== '/pending') {
-    return <Navigate to="/pending" replace />;
+  if (!user.needsTotp) {
+    // No guild selected yet (multiple guilds, needs to pick one)
+    if (!user.guildId && location.pathname !== '/select-guild' && location.pathname !== '/pending') {
+      return <Navigate to="/select-guild" replace />;
+    }
+
+    // Guild selected but user is pending approval
+    if (user.role === 'nouveau' && location.pathname !== '/pending') {
+      return <Navigate to="/pending" replace />;
+    }
   }
 
   return children;
@@ -109,6 +117,13 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <ErrorBoundary><Login /></ErrorBoundary>
               </Suspense>
+            } />
+            <Route path="/totp-verify" element={
+              <RequireAuth>
+                <Suspense fallback={<PageLoader />}>
+                  <ErrorBoundary><TotpVerify /></ErrorBoundary>
+                </Suspense>
+              </RequireAuth>
             } />
             <Route path="/pending" element={
               <RequireAuth>

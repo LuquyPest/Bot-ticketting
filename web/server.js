@@ -120,7 +120,8 @@ app.get('/t/:token', (req, res) => {
   res.type('html').send(page.html);
 });
 
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth',    require('./routes/auth'));
+app.use('/api/profile', require('./routes/profile'));
 
 const requireRole    = require('./middleware/role');
 const guildMiddleware = require('./middleware/guild');
