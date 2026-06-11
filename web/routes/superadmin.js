@@ -9,6 +9,15 @@ const { getTenantDb, getDbName } = require('../../utils/tenantDb');
 const { ensureTenantSchema } = require('../../utils/tenantSchema');
 const requireSuperAdmin = require('../middleware/superadmin');
 
+function logSaAuth(req, username, status) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const ua = (req.headers['user-agent'] || '').slice(0, 500);
+  globalQuery(
+    'INSERT INTO sa_auth_logs (username, ip, user_agent, status) VALUES (?, ?, ?, ?)',
+    [username, ip, ua, status]
+  ).catch(() => null);
+}
+
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 
 // POST /api/sa/auth/login
@@ -32,7 +41,10 @@ router.post('/auth/login', async (req, res) => {
     // and prevent username enumeration via timing side-channel.
     const DUMMY_HASH = '$2b$12$invalidhashpaddingtomatchcostXXXXXXXXXXXXXXXXXXXXXXXXX';
     const valid = await bcrypt.compare(password, account ? account.password_hash : DUMMY_HASH);
-    if (!account || !valid) return res.status(401).json({ error: 'Identifiants invalides' });
+    if (!account || !valid) {
+      logSaAuth(req, username.trim(), 'failed');
+      return res.status(401).json({ error: 'Identifiants invalides' });
+    }
 
     req.session.saPendingLogin = { id: account.id, username: account.username, type: accountType };
 
@@ -105,6 +117,7 @@ router.post('/auth/totp-verify', async (req, res) => {
     if (!authenticator.verify({ token: code.replace(/\s/g, ''), secret: account.totp_secret })) {
       req.session.saPendingLogin.totpAttempts = (pending.totpAttempts || 0) + 1;
       const remaining = SA_TOTP_MAX_ATTEMPTS - req.session.saPendingLogin.totpAttempts;
+      logSaAuth(req, pending.username, 'totp_failed');
       return res.status(400).json({
         error: `Code invalide — ${remaining} tentative${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
       });
