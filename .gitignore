@@ -3,3 +3,4 @@ config.json
 dashboard/node_modules/
 dashboard/dist/
 .env
+!.env.example

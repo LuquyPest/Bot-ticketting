@@ -10,11 +10,18 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-COPY package*.json ./
+# Switch to non-root user before installing deps so node_modules is owned by node
+RUN chown node:node /app
+USER node
+
+COPY --chown=node:node package*.json ./
 RUN npm install --omit=dev
 
-COPY . .
-COPY --from=dashboard-builder /build/dist ./dashboard/dist
+COPY --chown=node:node . .
+COPY --chown=node:node --from=dashboard-builder /build/dist ./dashboard/dist
+
+ENV NODE_ENV=production
+EXPOSE 3000
 
 # config.json est fourni via bind-mount au runtime (voir docker-compose.yml)
 CMD ["node", "bootstrap.js"]
