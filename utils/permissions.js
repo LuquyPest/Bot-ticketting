@@ -26,12 +26,6 @@ async function isSupportMember(client, guild, userId, db) {
     } catch { }
   }
 
-  // Fallback to legacy config.json fields for first-run / development
-  if (!supportRoleIds.length && !chiefRoleIds.length) {
-    if (client.config?.supportRoleId)      supportRoleIds.push(client.config.supportRoleId);
-    if (client.config?.chiefSupportRoleId) chiefRoleIds.push(client.config.chiefSupportRoleId);
-  }
-
   const allRoleIds = [...new Set([...supportRoleIds, ...chiefRoleIds])];
   return allRoleIds.some(id => member.roles.cache.has(id));
 }
@@ -47,10 +41,6 @@ async function isChiefSupportMember(client, guild, userId, db) {
       const [cfg] = await db('SELECT chief_role_ids FROM guild_config LIMIT 1');
       if (cfg) chiefRoleIds = parseJsonField(cfg.chief_role_ids);
     } catch { }
-  }
-
-  if (!chiefRoleIds.length && client.config?.chiefSupportRoleId) {
-    chiefRoleIds.push(client.config.chiefSupportRoleId);
   }
 
   return chiefRoleIds.some(id => member.roles.cache.has(id));

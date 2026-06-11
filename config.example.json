@@ -1,0 +1,23 @@
+{
+  "token": "TON_TOKEN_BOT_DISCORD",
+  "clientId": "ID_APPLICATION_BOT",
+  "guildId": "ID_SERVEUR_POUR_SLASH_COMMANDS",
+
+  "webEnabled": true,
+  "webServerPort": 3000,
+  "webServerBaseUrl": "https://ton-domaine.com",
+
+  "dashboard": {
+    "sessionSecret": "GENERE_AVEC_openssl_rand_-hex_32",
+    "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
+    "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
+  },
+
+  "database": {
+    "host": "db",
+    "port": 3306,
+    "user": "botuser",
+    "password": "MEME_VALEUR_QUE_DB_PASSWORD_DANS_ENV",
+    "database": "ticketbot_global"
+  }
+}

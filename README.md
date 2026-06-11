@@ -159,7 +159,7 @@ docker compose up -d --build
 
 ## Configuration config.json
 
-### Champs requis
+Le `config.json` contient **uniquement les informations techniques de démarrage** — ce qui est nécessaire avant que le bot puisse se connecter à la base de données. Tout le reste (rôles Discord, catégories, messages, limites, webhooks…) se configure depuis le **dashboard web** et est stocké en base de données.
 
 ```json
 {
@@ -167,40 +167,39 @@ docker compose up -d --build
   "clientId": "ID_APPLICATION_BOT",
   "guildId": "ID_SERVEUR_POUR_SLASH_COMMANDS",
 
+  "webEnabled": true,
   "webServerPort": 3000,
   "webServerBaseUrl": "https://ton-domaine.com",
+
+  "dashboard": {
+    "sessionSecret": "GENERE_AVEC_openssl_rand_-hex_32",
+    "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
+    "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
+  },
 
   "database": {
     "host": "db",
     "port": 3306,
     "user": "botuser",
-    "password": "mot_de_passe_botuser",
+    "password": "MEME_VALEUR_QUE_DB_PASSWORD_DANS_ENV",
     "database": "ticketbot_global"
   }
 }
 ```
 
-> `database.host` doit être `db` (nom du service Docker Compose, pas `localhost`).  
-> `guildId` est le serveur sur lequel les commandes slash sont déployées.
-
-### Dashboard web
-
-```json
-"webEnabled": true,
-
-"dashboard": {
-  "sessionSecret": "CHAINE_ALEATOIRE_MIN_32_CARACTERES",
-  "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
-  "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
-}
-```
-
 | Champ | Description |
 |-------|-------------|
+| `token` | Token du bot Discord |
+| `clientId` | ID de l'application Discord (pour OAuth et slash commands) |
+| `guildId` | Serveur sur lequel les commandes slash sont déployées |
 | `webEnabled` | `true` pour activer le dashboard et l'API |
-| `dashboard.sessionSecret` | Clé secrète sessions (min. 32 chars) — générer avec `openssl rand -hex 32` |
+| `webServerPort` | Port interne du serveur Express (3000 par défaut) |
+| `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |
+| `dashboard.sessionSecret` | Clé secrète sessions — **min. 32 chars**, générer avec `openssl rand -hex 32` |
 | `dashboard.discordClientSecret` | Secret OAuth2 depuis le portail développeur Discord |
 | `dashboard.discordCallbackUrl` | Doit correspondre exactement à l'URL configurée dans le portail Discord |
+| `database.host` | Doit être `db` (nom du service Docker Compose, pas `localhost`) |
+| `database.password` | Doit correspondre à `DB_PASSWORD` dans `.env` |
 
 ### Configurer le bot Discord
 
