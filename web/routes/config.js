@@ -28,6 +28,21 @@ const FIELD_MAP = {
   embedColor:                'embed_color',
   botDisplayName:            'bot_display_name',
   webhookUrl:                'webhook_url',
+  // Phase 1 — feature flags
+  faqEnabled:               'faq_enabled',
+  intakeFormEnabled:        'intake_form_enabled',
+  staffReminderEnabled:     'staff_reminder_enabled',
+  staffReminderHours:       'staff_reminder_hours',
+  userInactiveEnabled:      'user_inactive_enabled',
+  userInactiveWarnHours:    'user_inactive_warn_hours',
+  userInactiveCloseHours:   'user_inactive_close_hours',
+  internalNotesEnabled:     'internal_notes_enabled',
+  badgesEnabled:            'badges_enabled',
+  monthlyGoalsEnabled:      'monthly_goals_enabled',
+  leaderboardEnabled:       'leaderboard_enabled',
+  webhooksEnabled:          'webhooks_enabled',
+  webhookEvents:            'webhook_events',
+  apiKeysEnabled:           'api_keys_enabled',
 };
 
 const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
@@ -58,10 +73,25 @@ const VALIDATORS = {
   embedColor:               v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
   botDisplayName:           v => typeof v === 'string' && v.length >= 1 && v.length <= 100,
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500),
+  // Phase 1 — feature flags
+  faqEnabled:               v => v === 0 || v === 1 || v === true || v === false,
+  intakeFormEnabled:        v => v === 0 || v === 1 || v === true || v === false,
+  staffReminderEnabled:     v => v === 0 || v === 1 || v === true || v === false,
+  staffReminderHours:       v => Number.isInteger(v) && v >= 1 && v <= 168,
+  userInactiveEnabled:      v => v === 0 || v === 1 || v === true || v === false,
+  userInactiveWarnHours:    v => Number.isInteger(v) && v >= 1 && v <= 720,
+  userInactiveCloseHours:   v => Number.isInteger(v) && v >= 1 && v <= 720,
+  internalNotesEnabled:     v => v === 0 || v === 1 || v === true || v === false,
+  badgesEnabled:            v => v === 0 || v === 1 || v === true || v === false,
+  monthlyGoalsEnabled:      v => v === 0 || v === 1 || v === true || v === false,
+  leaderboardEnabled:       v => v === 0 || v === 1 || v === true || v === false,
+  webhooksEnabled:          v => v === 0 || v === 1 || v === true || v === false,
+  webhookEvents:            v => Array.isArray(v) && v.every(e => typeof e === 'string' && e.length <= 50),
+  apiKeysEnabled:           v => v === 0 || v === 1 || v === true || v === false,
 };
 
 // Fields stored as JSON in the DB
-const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids']);
+const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events']);
 
 function dbRow2Api(row) {
   const out = {};

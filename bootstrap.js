@@ -122,6 +122,20 @@ async function ensureGlobalTables(config) {
         totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
         created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS login_logs (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    VARCHAR(32) NOT NULL,
+        username   VARCHAR(100) NOT NULL,
+        ip         VARCHAR(45) NOT NULL,
+        user_agent VARCHAR(500) DEFAULT NULL,
+        country    VARCHAR(3) DEFAULT NULL,
+        guild_id   VARCHAR(32) DEFAULT NULL,
+        status     ENUM('success','2fa_required','blocked') NOT NULL DEFAULT 'success',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ll_user (user_id),
+        INDEX idx_ll_created (created_at)
+      );
     `);
 
     // Migrations for existing rows
@@ -131,7 +145,8 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS member_count INT DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS last_activity_at DATETIME DEFAULT NULL`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(64) DEFAULT NULL`,
-      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_enabled TINYINT(1) NOT NULL DEFAULT 0`
+      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS maintenance_mode TINYINT(1) NOT NULL DEFAULT 0`
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 
