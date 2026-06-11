@@ -29,20 +29,28 @@ const QUICK_FILTERS = [
   { id: 'claimed',   label: 'Claim',     filter: { claimed: 'true' } },
 ];
 
-/* ── Quick-view tooltip (apparaît après 3s de survol, suit la souris) ── */
-const POPUP_W = 300;
-const POPUP_H = 270;
+/* ── Quick-view tooltip (apparaît après 1.5s de survol, suit la souris) ── */
+const POPUP_W = 320;
+const POPUP_H = 380;
 
-function QuickView({ ticket, x, y }) {
+const MSG_SOURCE_STYLE = {
+  user:    { dot: 'bg-violet-400', label: 'text-violet-300' },
+  reply:   { dot: 'bg-primary',    label: 'text-primary-light' },
+  discord: { dot: 'bg-indigo-400', label: 'text-indigo-300' },
+  note:    { dot: 'bg-amber-400',  label: 'text-amber-300' },
+};
+
+function QuickView({ ticket, x, y, messages }) {
   const left = x + 20 + POPUP_W > window.innerWidth  ? x - POPUP_W - 12 : x + 20;
   const top  = y + 20 + POPUP_H > window.innerHeight ? y - POPUP_H - 8  : y + 20;
 
   return (
     <div
-      className="fixed z-50 w-[300px] bg-surface-elevated border border-white/[0.12] rounded-2xl p-5
+      className="fixed z-50 w-[320px] bg-surface-elevated border border-white/[0.12] rounded-2xl p-5
                  shadow-[0_16px_60px_rgba(0,0,0,0.8)] animate-fade-in pointer-events-none"
       style={{ left, top }}
     >
+      {/* Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20
                         flex items-center justify-center flex-shrink-0">
@@ -55,6 +63,8 @@ function QuickView({ ticket, x, y }) {
           </p>
         </div>
       </div>
+
+      {/* Meta */}
       <div className="space-y-0 text-xs">
         <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
           <span className="text-ink-4 flex items-center gap-1.5"><User size={10} /> Utilisateur</span>
@@ -84,7 +94,46 @@ function QuickView({ ticket, x, y }) {
           </span>
         </div>
       </div>
-      <p className="text-[10px] text-ink-4 mt-3 pt-3 border-t border-white/[0.04]">Cliquez pour ouvrir</p>
+
+      {/* Last 2 messages */}
+      <div className="mt-3 pt-3 border-t border-white/[0.06]">
+        <p className="text-[10px] text-ink-4 uppercase tracking-wider font-semibold mb-2">
+          Derniers messages
+        </p>
+        {!messages ? (
+          <div className="space-y-2">
+            {[0,1].map(i => (
+              <div key={i} className="h-9 rounded-xl bg-surface shimmer" />
+            ))}
+          </div>
+        ) : messages.length === 0 ? (
+          <p className="text-[11px] text-ink-4 italic">Aucun message</p>
+        ) : (
+          <div className="space-y-2">
+            {messages.map((m, i) => {
+              const s = MSG_SOURCE_STYLE[m.source] || MSG_SOURCE_STYLE.reply;
+              return (
+                <div key={i} className="bg-surface/60 border border-white/[0.05] rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+                    <span className={`text-[10px] font-semibold truncate ${s.label}`}>
+                      {m.author_tag || 'Système'}
+                    </span>
+                    <span className="text-[10px] text-ink-4 ml-auto flex-shrink-0 tabular-nums">
+                      {fmtDate(m.created_at, { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-3 leading-snug line-clamp-2 break-words">
+                    {m.content || <span className="italic text-ink-4">—</span>}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10px] text-ink-4 mt-3">Cliquez pour ouvrir le ticket</p>
     </div>
   );
 }
@@ -279,7 +328,7 @@ export default function Tickets() {
   return (
     <div className="p-6 space-y-5 pb-24">
 
-      {quickView && <QuickView ticket={quickView.ticket} x={quickView.x} y={quickView.y} />}
+      {quickView && <QuickView ticket={quickView.ticket} x={quickView.x} y={quickView.y} messages={quickView.messages} />}
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -534,8 +583,19 @@ export default function Tickets() {
                   onMouseEnter={e => {
                     setFocusedRow(rowIdx);
                     mousePosRef.current = { x: e.clientX, y: e.clientY };
-                    hoverTimer.current = setTimeout(() => {
-                      setQuickView({ ticket: t, x: mousePosRef.current.x, y: mousePosRef.current.y });
+                    hoverTimer.current = setTimeout(async () => {
+                      const pos = { x: mousePosRef.current.x, y: mousePosRef.current.y };
+                      setQuickView({ ticket: t, x: pos.x, y: pos.y, messages: null });
+                      try {
+                        const { data: notes } = await api.get(`/tickets/${t.id}/notes`);
+                        setQuickView(qv =>
+                          qv?.ticket.id === t.id ? { ...qv, messages: notes.slice(-2) } : qv
+                        );
+                      } catch {
+                        setQuickView(qv =>
+                          qv?.ticket.id === t.id ? { ...qv, messages: [] } : qv
+                        );
+                      }
                     }, 1500);
                   }}
                   onMouseMove={e => { mousePosRef.current = { x: e.clientX, y: e.clientY }; }}
