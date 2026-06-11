@@ -237,15 +237,29 @@ function createManager(db, client, guildId) {
     const cfg = await getGuildConfig(db);
 
     const linkedIds = await getAllLinkedUserIds(ticket.id);
+    const openedAt2 = ticket.created_at ? new Date(ticket.created_at) : null;
+    const mins2 = openedAt2 ? Math.round((Date.now() - openedAt2.getTime()) / 60000) : null;
+    const duration2 = mins2 !== null ? (mins2 < 60 ? `${mins2} min` : `${Math.floor(mins2 / 60)}h ${mins2 % 60}min`) : '—';
+    const closeDmEmbed = new EmbedBuilder()
+      .setColor(0x6366f1)
+      .setTitle(`🔒 Ticket #${ticket.id} fermé`)
+      .setDescription('Merci de nous avoir contactés. Ton ticket a été traité et fermé.')
+      .addFields(
+        { name: '⏱️ Durée', value: duration2, inline: true },
+        { name: '🛡️ Staff', value: closedByUser.tag, inline: true }
+      );
     for (const uid of linkedIds) {
       const u = await client.users.fetch(uid).catch(() => null);
-      if (u) await u.send('Ton ticket a été fermé par le staff.').catch(() => null);
+      if (u) await u.send({ embeds: [closeDmEmbed] }).catch(() => null);
     }
 
     const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
     if (owner) {
       const { ratingButtons } = require('./components');
-      await owner.send({ content: 'Comment évalues-tu la qualité du support sur ce ticket ?', components: [ratingButtons(ticket.id)] }).catch(() => null);
+      const ratingEmbed = new EmbedBuilder()
+        .setColor(0x6366f1)
+        .setDescription('**Comment s\'est passée ton expérience avec notre équipe ?**');
+      await owner.send({ embeds: [ratingEmbed], components: [ratingButtons(ticket.id)] }).catch(() => null);
     }
 
     if (cfg.close_log_channel_id) {
