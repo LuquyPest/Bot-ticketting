@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
@@ -7,8 +7,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
+import { useSSE } from '../hooks/useSSE';
 import NotificationBell from './NotificationBell';
 import CommandPalette from './CommandPalette';
+import api from '../api';
 import toast from 'react-hot-toast';
 
 const ALL_NAV = [
@@ -43,6 +45,14 @@ export default function Sidebar() {
   const { status } = useSSECtx() || { status: 'connecting' };
   const navigate = useNavigate();
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [unclaimedCount, setUnclaimedCount] = useState(0);
+
+  /* fetch unclaimed count on mount + on SSE events */
+  const fetchUnclaimed = () => {
+    api.get('/dashboard/stats').then(r => setUnclaimedCount(r.data.unclaimedTickets || 0)).catch(() => {});
+  };
+  useEffect(() => { fetchUnclaimed(); }, []);
+  useSSE({ new_ticket: fetchUnclaimed, ticket: fetchUnclaimed });
 
   const handleLogout = async () => {
     await logout();
@@ -151,7 +161,17 @@ export default function Sidebar() {
                       isActive ? 'text-primary-light' : 'text-ink-4 group-hover:text-ink-3'
                     }`}
                   />
-                  <span className="truncate">{label}</span>
+                  <span className="truncate flex-1">{label}</span>
+                  {/* Unclaimed badge on Tickets */}
+                  {to === '/tickets' && unclaimedCount > 0 && (
+                    <span className="ml-auto flex-shrink-0 min-w-[18px] h-[18px] px-1
+                                     rounded-full bg-amber-500/20 border border-amber-500/30
+                                     text-amber-300 text-[10px] font-bold
+                                     flex items-center justify-center tabular-nums
+                                     shadow-[0_0_8px_rgba(245,158,11,0.25)]">
+                      {unclaimedCount > 99 ? '99+' : unclaimedCount}
+                    </span>
+                  )}
                 </span>
               )}
             </NavLink>
