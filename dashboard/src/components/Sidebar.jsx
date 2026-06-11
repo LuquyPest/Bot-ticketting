@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
-  Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
+  Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon, ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -28,6 +28,7 @@ const ALL_NAV = [
   { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'] },
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
+  { to: '/staff-roles', label: 'Rôles staff',  icon: ShieldCheck,     roles: ['fondateur'] },
 ];
 
 const ROLE_STYLES = {
