@@ -29,75 +29,62 @@ const QUICK_FILTERS = [
   { id: 'claimed',   label: 'Claim',     filter: { claimed: 'true' } },
 ];
 
-/* ── Quick-view overlay ──────────────────────────────────────── */
-function QuickView({ ticket, onClose }) {
-  useEffect(() => {
-    function handler(e) {
-      if (e.key === 'Escape' || e.key === ' ') { e.preventDefault(); onClose(); }
-    }
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+/* ── Quick-view tooltip (apparaît après 3s de survol, suit la souris) ── */
+const POPUP_W = 300;
+const POPUP_H = 270;
 
-  if (!ticket) return null;
+function QuickView({ ticket, x, y }) {
+  const left = x + 20 + POPUP_W > window.innerWidth  ? x - POPUP_W - 12 : x + 20;
+  const top  = y + 20 + POPUP_H > window.innerHeight ? y - POPUP_H - 8  : y + 20;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative bg-surface-card border border-white/[0.1] rounded-2xl p-6
-                   shadow-[0_24px_80px_rgba(0,0,0,0.8)] w-full max-w-md animate-fade-in"
-        onClick={e => e.stopPropagation()}
-      >
-        <button onClick={onClose} className="absolute top-4 right-4 text-ink-4 hover:text-ink-2 transition-colors">
-          <X size={15} />
-        </button>
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-            <FileText size={15} className="text-primary-light" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-ink-4 font-mono">Ticket #{ticket.id}</p>
-            <p className="text-sm font-semibold text-ink-1 mt-0.5 truncate">
-              {ticket.subject || <span className="italic text-ink-4">Sans sujet</span>}
-            </p>
-          </div>
+    <div
+      className="fixed z-50 w-[300px] bg-surface-elevated border border-white/[0.12] rounded-2xl p-5
+                 shadow-[0_16px_60px_rgba(0,0,0,0.8)] animate-fade-in pointer-events-none"
+      style={{ left, top }}
+    >
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20
+                        flex items-center justify-center flex-shrink-0">
+          <FileText size={13} className="text-primary-light" />
         </div>
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-            <span className="text-ink-4 flex items-center gap-1.5"><User size={11} /> Utilisateur</span>
-            <span className="text-ink-2 font-medium">{ticket.owner_tag}</span>
-          </div>
-          <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-            <span className="text-ink-4">Statut</span>
-            <Badge label={ticket.status} variant={ticket.status} />
-          </div>
-          <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-            <span className="text-ink-4">Priorité</span>
-            <span className="flex items-center gap-1.5 text-ink-2">
-              <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[ticket.priority] || 'bg-ink-4'}`} />
-              {PRIORITY_LABELS[ticket.priority] || ticket.priority}
-            </span>
-          </div>
-          {ticket.claimed_by_tag && (
-            <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-              <span className="text-ink-4">Assigné à</span>
-              <span className="text-ink-2">{ticket.claimed_by_tag}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between py-1.5">
-            <span className="text-ink-4">Créé le</span>
-            <span className="text-ink-3 tabular-nums">
-              {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        </div>
-        <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between">
-          <span className="text-[10px] text-ink-4">Espace / Échap pour fermer</span>
-          <button onClick={onClose} className="text-xs text-primary-light hover:text-ink-1 font-medium transition-colors">
-            Ouvrir le ticket →
-          </button>
+        <div className="min-w-0">
+          <p className="text-[10px] text-ink-4 font-mono">Ticket #{ticket.id}</p>
+          <p className="text-sm font-semibold text-ink-1 mt-0.5 truncate">
+            {ticket.subject || <span className="italic text-ink-4">Sans sujet</span>}
+          </p>
         </div>
       </div>
+      <div className="space-y-0 text-xs">
+        <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+          <span className="text-ink-4 flex items-center gap-1.5"><User size={10} /> Utilisateur</span>
+          <span className="text-ink-2 font-medium">{ticket.owner_tag}</span>
+        </div>
+        <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+          <span className="text-ink-4">Statut</span>
+          <Badge label={ticket.status} variant={ticket.status} />
+        </div>
+        <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+          <span className="text-ink-4">Priorité</span>
+          <span className="flex items-center gap-1.5 text-ink-2">
+            <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[ticket.priority] || 'bg-ink-4'}`} />
+            {PRIORITY_LABELS[ticket.priority] || ticket.priority}
+          </span>
+        </div>
+        {ticket.claimed_by_tag && (
+          <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+            <span className="text-ink-4">Assigné à</span>
+            <span className="text-emerald-400 font-medium">{ticket.claimed_by_tag}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-ink-4">Créé le</span>
+          <span className="text-ink-3 tabular-nums">
+            {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      </div>
+      <p className="text-[10px] text-ink-4 mt-3 pt-3 border-t border-white/[0.04]">Cliquez pour ouvrir</p>
     </div>
   );
 }
@@ -154,8 +141,10 @@ export default function Tickets() {
   const [tagList,    setTagList]    = useState([]);
   const [focusedRow, setFocusedRow] = useState(-1);
 
-  const searchRef  = useRef(null);
-  const tableRef   = useRef(null);
+  const searchRef    = useRef(null);
+  const tableRef     = useRef(null);
+  const hoverTimer   = useRef(null);
+  const mousePosRef  = useRef({ x: 0, y: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -251,12 +240,6 @@ export default function Tickets() {
       // Don't capture when typing in an input
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
 
-      if (e.key === ' ' && focusedRow >= 0) {
-        e.preventDefault();
-        const t = data.tickets[focusedRow];
-        if (t) setQuickView(qv => qv?.id === t.id ? null : t);
-        return;
-      }
       if (e.key === '/' || e.key === 's') {
         e.preventDefault();
         searchRef.current?.focus();
@@ -296,7 +279,7 @@ export default function Tickets() {
   return (
     <div className="p-6 space-y-5 pb-24">
 
-      {quickView && <QuickView ticket={quickView} onClose={() => setQuickView(null)} />}
+      {quickView && <QuickView ticket={quickView.ticket} x={quickView.x} y={quickView.y} />}
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -346,10 +329,6 @@ export default function Tickets() {
         <span className="flex items-center gap-1">
           <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">↵</kbd>
           <span>ouvrir</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">Espace</kbd>
-          <span>aperçu</span>
         </span>
         <span className="flex items-center gap-1">
           <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">/</kbd>
@@ -552,7 +531,15 @@ export default function Tickets() {
                 <tr
                   key={t.id}
                   onClick={() => navigate(`/tickets/${t.id}`)}
-                  onMouseEnter={() => setFocusedRow(rowIdx)}
+                  onMouseEnter={e => {
+                    setFocusedRow(rowIdx);
+                    mousePosRef.current = { x: e.clientX, y: e.clientY };
+                    hoverTimer.current = setTimeout(() => {
+                      setQuickView({ ticket: t, x: mousePosRef.current.x, y: mousePosRef.current.y });
+                    }, 3000);
+                  }}
+                  onMouseMove={e => { mousePosRef.current = { x: e.clientX, y: e.clientY }; }}
+                  onMouseLeave={() => { clearTimeout(hoverTimer.current); setQuickView(null); }}
                   className={`
                     border-b border-white/[0.04] last:border-0 cursor-pointer transition-colors
                     ${t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''}
