@@ -190,9 +190,17 @@ router.post('/2fa/enable', requireAuth, async (req, res) => {
   }
 });
 
+const TOTP_DISABLE_MAX = 5;
+
 router.post('/2fa/disable', requireAuth, async (req, res) => {
   const code = (req.body.code || '').replace(/\s/g, '');
   if (!code) return res.status(400).json({ error: 'Code requis' });
+
+  const attempts = req.session.totpDisableAttempts || 0;
+  if (attempts >= TOTP_DISABLE_MAX) {
+    req.session.destroy(() => {});
+    return res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi' });
+  }
 
   try {
     const [row] = await globalQuery(
@@ -201,9 +209,15 @@ router.post('/2fa/disable', requireAuth, async (req, res) => {
     );
     if (!row) return res.status(400).json({ error: '2FA non activé' });
 
-    if (!authenticator.verify({ token: code, secret: row.totp_secret }))
-      return res.status(400).json({ error: 'Code invalide' });
+    if (!authenticator.verify({ token: code, secret: row.totp_secret })) {
+      req.session.totpDisableAttempts = attempts + 1;
+      const remaining = TOTP_DISABLE_MAX - req.session.totpDisableAttempts;
+      return res.status(400).json({
+        error: `Code invalide — ${remaining} tentative${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
+      });
+    }
 
+    delete req.session.totpDisableAttempts;
     await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [req.session.user.id]);
     res.json({ ok: true });
   } catch (err) {
