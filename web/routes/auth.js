@@ -224,10 +224,19 @@ router.get('/discord/callback', async (req, res) => {
   }
 });
 
+const TOTP_MAX_ATTEMPTS = 5;
+
 // POST /api/auth/totp-verify-login — complete login after 2FA verification
 router.post('/totp-verify-login', async (req, res) => {
   const pending = req.session.pendingTotp;
   if (!pending) return res.status(400).json({ error: 'Aucune session en attente de vérification' });
+
+  // Lockout after too many failed attempts — invalidate session, force re-auth
+  if ((pending.totpAttempts || 0) >= TOTP_MAX_ATTEMPTS) {
+    delete req.session.pendingTotp;
+    logLogin(req, pending.userId, pending.username, 'blocked');
+    return res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi depuis Discord' });
+  }
 
   const code = (req.body.code || '').replace(/\s/g, '');
   if (!code) return res.status(400).json({ error: 'Code requis' });
@@ -240,7 +249,11 @@ router.post('/totp-verify-login', async (req, res) => {
     if (!row) return res.status(400).json({ error: 'Configuration 2FA introuvable' });
 
     if (!authenticator.verify({ token: code, secret: row.totp_secret })) {
-      return res.status(400).json({ error: 'Code invalide' });
+      req.session.pendingTotp.totpAttempts = (pending.totpAttempts || 0) + 1;
+      const remaining = TOTP_MAX_ATTEMPTS - req.session.pendingTotp.totpAttempts;
+      return res.status(400).json({
+        error: `Code invalide — ${remaining} tentative${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
+      });
     }
 
     const { userGuilds } = pending;
