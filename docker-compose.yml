@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MARIADB_DATABASE: discord_tickets
+      MARIADB_DATABASE: ticketbot_global
       MARIADB_USER: botuser
       MARIADB_PASSWORD: ${DB_PASSWORD}
     volumes:

@@ -1,4 +1,5 @@
--- Accorde le droit CREATE global à botuser
--- Nécessaire pour que bootstrap.js puisse exécuter CREATE DATABASE IF NOT EXISTS
+-- Grant privileges to allow botuser to create per-guild databases at runtime
+GRANT ALL PRIVILEGES ON `ticketbot_global`.* TO 'botuser'@'%';
+GRANT ALL PRIVILEGES ON `ticketbot_guild_%`.* TO 'botuser'@'%';
 GRANT CREATE ON *.* TO 'botuser'@'%';
 FLUSH PRIVILEGES;

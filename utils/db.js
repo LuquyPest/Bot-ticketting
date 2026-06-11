@@ -1,24 +1,6 @@
-const mysql = require('mysql2/promise');
-const config = require('../config.json');
+// Global DB pool — ticketbot_global
+// Used for: session store, superadmins, managers, guilds registry.
+// Per-guild data → use utils/tenantDb.js
+const { getPool, globalQuery } = require('./globalDb');
 
-const pool = mysql.createPool({
-  host: config.database.host,
-  port: config.database.port,
-  user: config.database.user,
-  password: config.database.password,
-  database: config.database.database,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  charset: 'utf8mb4'
-});
-
-async function query(sql, params = []) {
-  const [result] = await pool.query(sql, params);
-  return result;
-}
-
-module.exports = {
-  pool,
-  query
-};
+module.exports = { pool: getPool(), query: globalQuery };

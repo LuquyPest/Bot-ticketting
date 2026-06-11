@@ -4,448 +4,143 @@ const { spawn } = require('child_process');
 const mysql = require('mysql2/promise');
 
 const ROOT = __dirname;
-const configPath = path.join(ROOT, 'config.json');
-const indexPath = path.join(ROOT, 'index.js');
-const deployPath = path.join(ROOT, 'deploy-commands.js');
-const packageJsonPath = path.join(ROOT, 'package.json');
+const configPath  = path.join(ROOT, 'config.json');
+const indexPath   = path.join(ROOT, 'index.js');
+const deployPath  = path.join(ROOT, 'deploy-commands.js');
+const packagePath = path.join(ROOT, 'package.json');
 
-function fail(message) {
-  console.error(`❌ ${message}`);
-  process.exit(1);
-}
-
-function ok(message) {
-  console.log(`✅ ${message}`);
-}
-
-function info(message) {
-  console.log(`ℹ️ ${message}`);
-}
+function fail(msg) { console.error(`❌ ${msg}`); process.exit(1); }
+function ok(msg)   { console.log(`✅ ${msg}`); }
+function info(msg) { console.log(`ℹ️  ${msg}`); }
 
 function readJson(filePath, label) {
-  if (!fs.existsSync(filePath)) {
-    fail(`${label} introuvable.`);
-  }
-
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch (error) {
-    fail(`Impossible de lire ${label}: ${error.message}`);
-  }
+  if (!fs.existsSync(filePath)) fail(`${label} introuvable.`);
+  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+  catch (e) { fail(`Impossible de lire ${label}: ${e.message}`); }
 }
 
-function readConfig() {
-  return readJson(configPath, 'config.json');
-}
+function readConfig() { return readJson(configPath, 'config.json'); }
 
 function validateConfig(config) {
-  const requiredTopLevel = [
-    'token',
-    'clientId',
-    'guildId',
-    'ticketCategoryId',
-    'supportRoleId',
-    'chiefSupportRoleId',
-    'ticketPrefix',
-    'webServerPort',
-    'webServerBaseUrl',
-    'database'
-  ];
-
-  for (const key of requiredTopLevel) {
-    if (!(key in config)) {
-      fail(`Champ manquant dans config.json: ${key}`);
-    }
+  const required = ['token', 'clientId', 'webServerPort', 'webServerBaseUrl', 'database'];
+  for (const key of required) {
+    if (!(key in config)) fail(`Champ manquant dans config.json: ${key}`);
   }
-
   const requiredDb = ['host', 'port', 'user', 'password', 'database'];
   for (const key of requiredDb) {
-    if (!(key in config.database)) {
-      fail(`Champ manquant dans config.json.database: ${key}`);
-    }
+    if (!(key in config.database)) fail(`Champ manquant dans config.json.database: ${key}`);
   }
-
   if (config.webEnabled !== false) {
-    if (!config.webFounderId) {
-      fail('Champ manquant dans config.json: webFounderId (requis si webEnabled est true)');
-    }
-    if (!config.dashboard?.sessionSecret) {
-      fail('Champ manquant dans config.json.dashboard: sessionSecret');
-    }
-    if (!config.dashboard?.discordClientSecret) {
-      fail('Champ manquant dans config.json.dashboard: discordClientSecret');
-    }
-    if (!config.dashboard?.discordCallbackUrl) {
-      fail('Champ manquant dans config.json.dashboard: discordCallbackUrl');
-    }
+    if (!config.dashboard?.sessionSecret)        fail('Champ manquant: dashboard.sessionSecret');
+    if (!config.dashboard?.discordClientSecret)  fail('Champ manquant: dashboard.discordClientSecret');
+    if (!config.dashboard?.discordCallbackUrl)   fail('Champ manquant: dashboard.discordCallbackUrl');
   }
-
   ok('config.json valide.');
 }
 
 function ensureFilesExist() {
-  if (!fs.existsSync(indexPath)) fail('index.js introuvable.');
-  if (!fs.existsSync(deployPath)) fail('deploy-commands.js introuvable.');
-  if (!fs.existsSync(packageJsonPath)) fail('package.json introuvable.');
+  if (!fs.existsSync(indexPath))   fail('index.js introuvable.');
+  if (!fs.existsSync(deployPath))  fail('deploy-commands.js introuvable.');
+  if (!fs.existsSync(packagePath)) fail('package.json introuvable.');
   ok('Fichiers principaux trouvés.');
 }
 
 function ensureDependenciesInstalled() {
-  try {
-    require.resolve('discord.js', { paths: [ROOT] });
-  } catch {
-    fail('discord.js n’est pas installé. Fais: npm install');
-  }
-
-  try {
-    require.resolve('mysql2', { paths: [ROOT] });
-  } catch {
-    fail('mysql2 n’est pas installé. Fais: npm install');
-  }
-
-  ok('Dépendances principales installées.');
+  ['discord.js', 'mysql2', 'bcrypt', 'otplib', 'qrcode'].forEach(pkg => {
+    try { require.resolve(pkg, { paths: [ROOT] }); }
+    catch { fail(`${pkg} n'est pas installé. Fais: npm install`); }
+  });
+  ok('Dépendances installées.');
 }
 
-async function ensureDatabase(config) {
-  const { host, port, user, password, database } = config.database;
+async function ensureGlobalDatabase(config) {
+  const { host, port, user, password } = config.database;
+  const conn = await mysql.createConnection({ host, port, user, password, multipleStatements: true });
+  try {
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`ticketbot_global\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    ok('Base globale "ticketbot_global" prête.');
+  } finally {
+    await conn.end();
+  }
+}
 
-  const connection = await mysql.createConnection({
-    host,
-    port,
-    user,
-    password,
-    multipleStatements: true
+async function ensureGlobalTables(config) {
+  const { host, port, user, password } = config.database;
+  const conn = await mysql.createConnection({
+    host, port, user, password, database: 'ticketbot_global', multipleStatements: true
   });
 
-  await connection.query(
-    `CREATE DATABASE IF NOT EXISTS \`${database}\`
-     CHARACTER SET utf8mb4
-     COLLATE utf8mb4_unicode_ci`
-  );
+  try {
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS superadmins (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        username     VARCHAR(80) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        totp_secret  VARCHAR(64) DEFAULT NULL,
+        totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
 
-  await connection.end();
-  ok(`Base de données "${database}" prête.`);
-}
+      CREATE TABLE IF NOT EXISTS managers (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        username         VARCHAR(80) NOT NULL UNIQUE,
+        password_hash    VARCHAR(255) NOT NULL,
+        assigned_guilds  JSON NOT NULL DEFAULT ('[]'),
+        created_by       INT DEFAULT NULL,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_mgr_sa FOREIGN KEY (created_by) REFERENCES superadmins(id) ON DELETE SET NULL
+      );
 
-async function ensureTables(config) {
-  const { host, port, user, password, database } = config.database;
+      CREATE TABLE IF NOT EXISTS guilds (
+        id                 INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id           VARCHAR(32) NOT NULL UNIQUE,
+        guild_name         VARCHAR(200) NOT NULL,
+        guild_icon         VARCHAR(200) DEFAULT NULL,
+        owner_discord_id   VARCHAR(32) NOT NULL,
+        owner_discord_tag  VARCHAR(100) NOT NULL,
+        status             ENUM('pending','active','suspended') NOT NULL DEFAULT 'pending',
+        db_name            VARCHAR(100) NOT NULL,
+        activation_token   VARCHAR(128) DEFAULT NULL,
+        token_expires_at   DATETIME DEFAULT NULL,
+        approved_by        INT DEFAULT NULL,
+        approved_at        DATETIME DEFAULT NULL,
+        member_count       INT DEFAULT NULL,
+        last_activity_at   DATETIME DEFAULT NULL,
+        created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_guild_approver FOREIGN KEY (approved_by) REFERENCES superadmins(id) ON DELETE SET NULL
+      );
 
-  const connection = await mysql.createConnection({
-    host,
-    port,
-    user,
-    password,
-    database,
-    multipleStatements: true
-  });
+      CREATE TABLE IF NOT EXISTS web_sessions (
+        session_id   VARCHAR(128) NOT NULL PRIMARY KEY,
+        expires      INT(11) UNSIGNED NOT NULL,
+        data         TEXT
+      );
+    `);
 
-  const sql = `
-    CREATE TABLE IF NOT EXISTS tickets (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      channel_id VARCHAR(32) NOT NULL UNIQUE,
-      owner_id VARCHAR(32) NOT NULL,
-      owner_tag VARCHAR(100) NOT NULL,
-      claimed_by VARCHAR(32) DEFAULT NULL,
-      status ENUM('open', 'closed') NOT NULL DEFAULT 'open',
-      subject VARCHAR(100) DEFAULT NULL,
-      priority ENUM('low','normal','urgent') NOT NULL DEFAULT 'normal',
-      last_message_at DATETIME DEFAULT NULL,
-      first_response_at DATETIME DEFAULT NULL,
-      warned_inactive TINYINT(1) NOT NULL DEFAULT 0,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      closed_at DATETIME DEFAULT NULL,
-      closed_by_tag VARCHAR(100) DEFAULT NULL
-    );
+    // Migrations for existing rows
+    const migrations = [
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS activation_token VARCHAR(128) DEFAULT NULL`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS token_expires_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS member_count INT DEFAULT NULL`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS last_activity_at DATETIME DEFAULT NULL`
+    ];
+    for (const m of migrations) await conn.query(m).catch(() => null);
 
-    CREATE TABLE IF NOT EXISTS ticket_participants (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ticket_id INT NOT NULL,
-      user_id VARCHAR(32) NOT NULL,
-      added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_ticket_participant (ticket_id, user_id),
-      CONSTRAINT fk_ticket_participants_ticket
-        FOREIGN KEY (ticket_id) REFERENCES tickets(id)
-        ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS transcript_snapshots (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ticket_id INT NOT NULL,
-      channel_id VARCHAR(32) NOT NULL,
-      created_by_id VARCHAR(32) NOT NULL,
-      created_by_tag VARCHAR(100) NOT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      message_count INT NOT NULL DEFAULT 0,
-      html LONGTEXT NOT NULL,
-      txt LONGTEXT NOT NULL,
-      CONSTRAINT fk_transcript_ticket
-        FOREIGN KEY (ticket_id) REFERENCES tickets(id)
-        ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS admin_stats (
-      admin_id VARCHAR(32) PRIMARY KEY,
-      admin_tag VARCHAR(100) NOT NULL,
-      tickets_claimed INT NOT NULL DEFAULT 0,
-      tickets_closed INT NOT NULL DEFAULT 0,
-      total_ratings INT NOT NULL DEFAULT 0,
-      total_rating_score INT NOT NULL DEFAULT 0,
-      total_response_count INT NOT NULL DEFAULT 0,
-      total_response_seconds BIGINT NOT NULL DEFAULT 0,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS blacklist (
-      user_id VARCHAR(32) PRIMARY KEY,
-      user_tag VARCHAR(100) NOT NULL,
-      reason TEXT DEFAULT NULL,
-      added_by_id VARCHAR(32) NOT NULL,
-      added_by_tag VARCHAR(100) NOT NULL,
-      added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS ticket_ratings (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ticket_id INT NOT NULL,
-      owner_id VARCHAR(32) NOT NULL,
-      closed_by_id VARCHAR(32) NOT NULL,
-      rating TINYINT NOT NULL,
-      rated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_rating_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS dashboard_users (
-      user_id VARCHAR(32) PRIMARY KEY,
-      username VARCHAR(100) NOT NULL,
-      avatar VARCHAR(64) DEFAULT NULL,
-      role ENUM('nouveau', 'support', 'fondateur') NOT NULL DEFAULT 'nouveau',
-      discord_has_support TINYINT(1) NOT NULL DEFAULT 0,
-      first_login DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      last_login DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS ticket_notes (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ticket_id INT NOT NULL,
-      author_id VARCHAR(32) NOT NULL,
-      author_tag VARCHAR(100) NOT NULL,
-      content TEXT NOT NULL,
-      source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web',
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_note_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS reply_templates (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      content TEXT NOT NULL,
-      created_by_id VARCHAR(32) NOT NULL,
-      created_by_tag VARCHAR(100) NOT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS grades (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(80) NOT NULL,
-      color VARCHAR(7) NOT NULL DEFAULT '#6366f1',
-      parent_id INT DEFAULT NULL,
-      position INT NOT NULL DEFAULT 0,
-      is_default TINYINT(1) NOT NULL DEFAULT 0,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_grade_parent FOREIGN KEY (parent_id) REFERENCES grades(id) ON DELETE SET NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS grade_permissions (
-      grade_id INT NOT NULL,
-      permission VARCHAR(50) NOT NULL,
-      PRIMARY KEY (grade_id, permission),
-      CONSTRAINT fk_grade_perm FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS user_grades (
-      user_id VARCHAR(32) NOT NULL,
-      grade_id INT NOT NULL,
-      assigned_by_id VARCHAR(32) NOT NULL,
-      assigned_by_tag VARCHAR(100) NOT NULL,
-      assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (user_id, grade_id),
-      CONSTRAINT fk_user_grade FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_log (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      actor_id VARCHAR(32) NOT NULL,
-      actor_tag VARCHAR(100) NOT NULL,
-      action VARCHAR(100) NOT NULL,
-      target_type VARCHAR(50) DEFAULT NULL,
-      target_id VARCHAR(50) DEFAULT NULL,
-      details JSON DEFAULT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS ticket_tags (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(50) NOT NULL UNIQUE,
-      color VARCHAR(7) NOT NULL DEFAULT '#6366f1',
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS ticket_tag_assignments (
-      ticket_id INT NOT NULL,
-      tag_id INT NOT NULL,
-      PRIMARY KEY (ticket_id, tag_id),
-      CONSTRAINT fk_tta_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
-      CONSTRAINT fk_tta_tag FOREIGN KEY (tag_id) REFERENCES ticket_tags(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS scheduled_messages (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      ticket_id INT NOT NULL,
-      sender_id VARCHAR(32) NOT NULL,
-      sender_tag VARCHAR(100) NOT NULL,
-      content TEXT NOT NULL,
-      send_at DATETIME NOT NULL,
-      sent TINYINT(1) NOT NULL DEFAULT 0,
-      sent_at DATETIME DEFAULT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_sched_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
-    );
-  `;
-
-  await connection.query(sql);
-
-  // Migration : ajout des nouvelles colonnes sur tables existantes
-  const migrations = [
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS subject VARCHAR(100) DEFAULT NULL`,
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority ENUM('low','normal','urgent') NOT NULL DEFAULT 'normal'`,
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS last_message_at DATETIME DEFAULT NULL`,
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS first_response_at DATETIME DEFAULT NULL`,
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS warned_inactive TINYINT(1) NOT NULL DEFAULT 0`,
-    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_ratings INT NOT NULL DEFAULT 0`,
-    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_rating_score INT NOT NULL DEFAULT 0`,
-    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_count INT NOT NULL DEFAULT 0`,
-    `ALTER TABLE admin_stats ADD COLUMN IF NOT EXISTS total_response_seconds BIGINT NOT NULL DEFAULT 0`,
-    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS discord_has_support TINYINT(1) NOT NULL DEFAULT 0`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS uniq_rating_owner ON ticket_ratings (ticket_id, owner_id)`,
-    `ALTER TABLE ticket_notes ADD COLUMN IF NOT EXISTS source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web'`,
-    `ALTER TABLE ticket_notes MODIFY COLUMN source ENUM('web', 'discord', 'reply', 'user') NOT NULL DEFAULT 'web'`,
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS visibility_grade_id INT DEFAULT NULL`,
-    `ALTER TABLE blacklist ADD COLUMN IF NOT EXISTS expires_at DATETIME DEFAULT NULL`,
-    `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS vacation_mode TINYINT(1) NOT NULL DEFAULT 0`,
-    `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS escalation_alerted TINYINT(1) NOT NULL DEFAULT 0`,
-    `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS subject VARCHAR(100) DEFAULT NULL`
-  ];
-
-  for (const migration of migrations) {
-    await connection.query(migration).catch(() => null);
+    ok('Tables globales créées ou déjà présentes.');
+  } finally {
+    await conn.end();
   }
-
-  ok('Tables créées ou déjà présentes.');
-
-  await verifySchema(connection);
-  await connection.end();
 }
 
-async function getColumns(connection, tableName) {
-  const [rows] = await connection.query(`SHOW COLUMNS FROM \`${tableName}\``);
-  return rows.map(row => row.Field);
-}
-
-async function verifySchema(connection) {
-  const expected = {
-    tickets: [
-      'id', 'channel_id', 'owner_id', 'owner_tag', 'claimed_by',
-      'status', 'subject', 'priority', 'last_message_at', 'first_response_at',
-      'warned_inactive', 'created_at', 'closed_at', 'closed_by_tag', 'visibility_grade_id'
-    ],
-    ticket_participants: ['id', 'ticket_id', 'user_id', 'added_at'],
-    transcript_snapshots: [
-      'id', 'ticket_id', 'channel_id', 'created_by_id',
-      'created_by_tag', 'created_at', 'message_count', 'html', 'txt'
-    ],
-    admin_stats: [
-      'admin_id', 'admin_tag', 'tickets_claimed', 'tickets_closed',
-      'total_ratings', 'total_rating_score', 'total_response_count',
-      'total_response_seconds', 'updated_at'
-    ],
-    blacklist: ['user_id', 'user_tag', 'reason', 'added_by_id', 'added_by_tag', 'added_at'],
-    ticket_ratings: ['id', 'ticket_id', 'owner_id', 'closed_by_id', 'rating', 'rated_at'],
-    dashboard_users: ['user_id', 'username', 'avatar', 'role', 'discord_has_support', 'first_login', 'last_login'],
-    ticket_notes: ['id', 'ticket_id', 'author_id', 'author_tag', 'content', 'source', 'created_at'],
-    reply_templates: ['id', 'name', 'content', 'created_by_id', 'created_by_tag', 'created_at'],
-    grades: ['id', 'name', 'color', 'parent_id', 'position', 'is_default', 'created_at'],
-    grade_permissions: ['grade_id', 'permission'],
-    user_grades: ['user_id', 'grade_id', 'assigned_by_id', 'assigned_by_tag', 'assigned_at'],
-    audit_log: ['id', 'actor_id', 'actor_tag', 'action', 'target_type', 'target_id', 'details', 'created_at'],
-    ticket_tags: ['id', 'name', 'color', 'created_at'],
-    ticket_tag_assignments: ['ticket_id', 'tag_id'],
-    scheduled_messages: ['id', 'ticket_id', 'sender_id', 'sender_tag', 'content', 'send_at', 'sent', 'sent_at', 'created_at']
-  };
-
-  for (const [table, columns] of Object.entries(expected)) {
-    const actualColumns = await getColumns(connection, table);
-    for (const column of columns) {
-      if (!actualColumns.includes(column)) {
-        fail(`Colonne manquante dans la table "${table}": ${column}`);
-      }
-    }
-  }
-
-  ok('Structure SQL vérifiée.');
-}
-
-async function verifyDiscordConfig(config) {
-  info('Vérification Discord...');
-
-  const { Client, GatewayIntentBits, ChannelType } = require('discord.js');
+async function verifyDiscordToken(config) {
+  info('Vérification du token Discord...');
+  const { Client, GatewayIntentBits } = require('discord.js');
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
   try {
     await client.login(config.token);
-  } catch (error) {
-    fail(`Token Discord invalide ou connexion impossible: ${error.message}`);
-  }
-
-  try {
-    const guild = await client.guilds.fetch(config.guildId).catch(() => null);
-    if (!guild) fail(`Serveur Discord introuvable avec guildId=${config.guildId}`);
-    ok(`Serveur trouv�: ${guild.name || guild.id}`);
-
-    const channels = await guild.channels.fetch();
-    const roles = await guild.roles.fetch();
-
-    const ticketCategory = channels.get(config.ticketCategoryId);
-    if (!ticketCategory) fail(`Catégorie tickets introuvable: ${config.ticketCategoryId}`);
-    if (ticketCategory.type !== ChannelType.GuildCategory) fail('ticketCategoryId ne correspond pas à une catégorie Discord.');
-    ok(`Catégorie tickets trouvée: ${ticketCategory.name}`);
-
-    const supportRole = roles.get(config.supportRoleId);
-    if (!supportRole) fail(`Rôle support introuvable: ${config.supportRoleId}`);
-    ok(`Rôle support trouvé: ${supportRole.name}`);
-
-    const chiefSupportRole = roles.get(config.chiefSupportRoleId);
-    if (!chiefSupportRole) fail(`Rôle chef support introuvable: ${config.chiefSupportRoleId}`);
-    ok(`Rôle chef support trouvé: ${chiefSupportRole.name}`);
-
-    const optionalLogChannels = [
-      ['closeLogChannelId', 'log fermeture'],
-      ['claimLogChannelId', 'log claim'],
-      ['moveLogChannelId', 'log déplacement'],
-      ['addUserLogChannelId', 'log ajout utilisateur'],
-      ['removeUserLogChannelId', 'log retrait utilisateur']
-    ];
-
-    for (const [key, label] of optionalLogChannels) {
-      if (!config[key]) {
-        info(`Aucun ${label} configuré (${key}).`);
-        continue;
-      }
-
-      const channel = channels.get(config[key]);
-      if (!channel) fail(`Salon introuvable pour ${key}: ${config[key]}`);
-      if (channel.type === ChannelType.GuildCategory) fail(`Le channel ${key} ne doit pas être une catégorie.`);
-      ok(`Salon ${label} trouvé: ${channel.name}`);
-    }
+    ok(`Token Discord valide — ${client.user.tag}`);
+  } catch (e) {
+    fail(`Token Discord invalide: ${e.message}`);
   } finally {
     client.destroy();
   }
@@ -454,52 +149,38 @@ async function verifyDiscordConfig(config) {
 function runNodeScript(scriptFile, label) {
   return new Promise((resolve, reject) => {
     info(`${label}...`);
-
-    const child = spawn(process.execPath, [scriptFile], {
-      cwd: ROOT,
-      stdio: 'inherit'
-    });
-
-    child.on('error', error => reject(new Error(`${label} impossible: ${error.message}`)));
-    child.on('exit', code => {
-      if (code === 0) resolve();
-      else reject(new Error(`${label} a échoué avec le code ${code}`));
-    });
+    const child = spawn(process.execPath, [scriptFile], { cwd: ROOT, stdio: 'inherit' });
+    child.on('error', e => reject(new Error(`${label} impossible: ${e.message}`)));
+    child.on('exit', code => code === 0 ? resolve() : reject(new Error(`${label} a échoué (code ${code})`)));
   });
 }
 
 function launchBot() {
   info('Lancement du bot...');
-
-  const child = spawn(process.execPath, ['index.js'], {
-    cwd: ROOT,
-    stdio: 'inherit'
-  });
-
-  child.on('error', error => fail(`Impossible de lancer le bot: ${error.message}`));
+  const child = spawn(process.execPath, ['index.js'], { cwd: ROOT, stdio: 'inherit' });
+  child.on('error', e => fail(`Impossible de lancer le bot: ${e.message}`));
   child.on('exit', code => process.exit(code ?? 0));
 }
 
 async function main() {
   try {
-    info('Vérification de l’environnement...');
+    info('Vérification de l\'environnement...');
     const config = readConfig();
-
     validateConfig(config);
     ensureFilesExist();
     ensureDependenciesInstalled();
 
     info('Connexion MariaDB...');
-    await ensureDatabase(config);
-    await ensureTables(config);
+    await ensureGlobalDatabase(config);
+    await ensureGlobalTables(config);
 
-    await verifyDiscordConfig(config);
+    await verifyDiscordToken(config);
     await runNodeScript('deploy-commands.js', 'Déploiement des commandes slash');
 
-    ok('Tout est prêt.');
+    ok('Tout est prêt. Démarrage du bot multitenant.');
     launchBot();
-  } catch (error) {
-    fail(error.message || String(error));
+  } catch (e) {
+    fail(e.message || String(e));
   }
 }
 
