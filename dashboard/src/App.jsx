@@ -27,6 +27,8 @@ const Tags        = lazy(() => import('./pages/Tags'));
 const StaffRoles  = lazy(() => import('./pages/StaffRoles'));
 const TotpVerify  = lazy(() => import('./pages/TotpVerify'));
 const Profile     = lazy(() => import('./pages/Profile'));
+const Analytics   = lazy(() => import('./pages/Analytics'));
+const Search      = lazy(() => import('./pages/Search'));
 
 function PageLoader() {
   return (
@@ -183,6 +185,10 @@ export default function App() {
                         } />
                         <Route path="kanban"     element={<ErrorBoundary><Kanban /></ErrorBoundary>} />
                         <Route path="profile"    element={<ErrorBoundary><Profile /></ErrorBoundary>} />
+                        <Route path="analytics"  element={
+                          <RequireRole role={['support','fondateur']}><ErrorBoundary><Analytics /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="search"     element={<ErrorBoundary><Search /></ErrorBoundary>} />
                         <Route path="patchnotes" element={
                           <RequireRole role="fondateur"><ErrorBoundary><Patchnotes /></ErrorBoundary></RequireRole>
                         } />
