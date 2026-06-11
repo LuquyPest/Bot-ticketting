@@ -32,6 +32,8 @@ const Search      = lazy(() => import('./pages/Search'));
 const ApiKeys     = lazy(() => import('./pages/ApiKeys'));
 const Newsletter  = lazy(() => import('./pages/Newsletter'));
 const LoginLogs   = lazy(() => import('./pages/LoginLogs'));
+const Panels      = lazy(() => import('./pages/Panels'));
+const Forms       = lazy(() => import('./pages/Forms'));
 
 function PageLoader() {
   return (
@@ -203,6 +205,12 @@ export default function App() {
                         } />
                         <Route path="login-logs" element={
                           <RequireRole role={['support','fondateur']}><ErrorBoundary><LoginLogs /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="panels" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Panels /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="forms" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Forms /></ErrorBoundary></RequireRole>
                         } />
                       </Routes>
                     </Suspense>

@@ -1,4 +1,4 @@
-const { Events } = require('discord.js');
+const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { getActiveGuilds } = require('../utils/guildScan');
@@ -158,6 +158,76 @@ module.exports = {
         if (interaction.customId === 'ticket_close_with_transcript_cancel') {
           return interaction.update({ content: 'Fermeture annulee.', embeds: [], components: [] });
         }
+
+        // ── Bouton panel (guild) ──
+        if (interaction.customId.startsWith('panel_btn_') && interaction.guild) {
+          const btnId = parseInt(interaction.customId.slice('panel_btn_'.length));
+          const db = getTenantDb(interaction.guildId);
+          const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
+          if (!btn) return interaction.reply({ content: 'Bouton invalide ou expiré.', ephemeral: true });
+
+          if (btn.form_id) {
+            const fields = await db(
+              'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC LIMIT 5',
+              [btn.form_id]
+            ).catch(() => []);
+
+            if (!fields.length) {
+              const { openTicketFromPanel } = require('./panelTicket');
+              await interaction.deferReply({ ephemeral: true });
+              await openTicketFromPanel(interaction, client, db, btn, '');
+              return;
+            }
+
+            const modal = new ModalBuilder()
+              .setCustomId(`panel_form_${btnId}`)
+              .setTitle(btn.label.slice(0, 45));
+
+            for (const f of fields) {
+              const input = new TextInputBuilder()
+                .setCustomId(`field_${f.id}`)
+                .setLabel(f.label.slice(0, 45))
+                .setStyle(f.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+                .setRequired(!!f.required);
+              if (f.placeholder) input.setPlaceholder(f.placeholder.slice(0, 100));
+              if (f.min_length)   input.setMinLength(f.min_length);
+              if (f.max_length)   input.setMaxLength(f.max_length);
+              modal.addComponents(new ActionRowBuilder().addComponents(input));
+            }
+
+            return interaction.showModal(modal);
+          }
+
+          // Pas de formulaire — ouvre le ticket directement
+          await interaction.deferReply({ ephemeral: true });
+          const { openTicketFromPanel } = require('./panelTicket');
+          await openTicketFromPanel(interaction, client, db, btn, '');
+          return;
+        }
+      }
+
+      // ── Soumission de formulaire panel (modal) ──
+      if (interaction.isModalSubmit() && interaction.customId.startsWith('panel_form_')) {
+        const btnId = parseInt(interaction.customId.slice('panel_form_'.length));
+        const db = getTenantDb(interaction.guildId);
+        const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
+        if (!btn) return interaction.reply({ content: 'Bouton invalide.', ephemeral: true });
+
+        const fields = await db(
+          'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC LIMIT 5',
+          [btn.form_id]
+        ).catch(() => []);
+
+        const lines = fields.map(f => {
+          const val = interaction.fields.getTextInputValue(`field_${f.id}`).trim() || '—';
+          return `**${f.label}** : ${val}`;
+        });
+        const formContent = lines.join('\n');
+
+        await interaction.deferReply({ ephemeral: true });
+        const { openTicketFromPanel } = require('./panelTicket');
+        await openTicketFromPanel(interaction, client, db, btn, formContent);
+        return;
       }
 
       if (!interaction.isChatInputCommand()) return;
