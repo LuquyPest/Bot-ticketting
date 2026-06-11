@@ -146,7 +146,7 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   if (intakeHandled) return;
 
   const result = await tm.relayDmToTicket(user, content, attachments, subject);
-  await tm.sendWelcomeDm(user, result.created, subject);
+  await tm.sendWelcomeDm(user, result.created, subject, result.ticket?.id);
   if (result.created) {
     broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
   }
@@ -237,7 +237,7 @@ module.exports = {
       const found = await findUserOpenTicket(user.id, client);
       if (found) {
         const result = await found.tm.relayDmToTicket(user, content, attachments);
-        await found.tm.sendWelcomeDm(user, result.created);
+        await found.tm.sendWelcomeDm(user, result.created, null, result.ticket?.id);
         if (result.created) {
           broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, found.guildId);
         }
