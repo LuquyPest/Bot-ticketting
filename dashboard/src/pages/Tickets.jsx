@@ -146,6 +146,8 @@ export default function Tickets() {
   const [showBulkPriority, setShowBulkPriority] = useState(false);
   const [showBulkStaff,    setShowBulkStaff]    = useState(false);
   const [showBulkTag,      setShowBulkTag]       = useState(false);
+  const [showBulkTemplate, setShowBulkTemplate] = useState(false);
+  const [templates, setTemplates] = useState([]);
   const [showDateFilter,   setShowDateFilter]   = useState(false);
   const [showStaffFilter,  setShowStaffFilter]  = useState(false);
   const [staffList,  setStaffList]  = useState([]);
@@ -173,10 +175,11 @@ export default function Tickets() {
   useEffect(() => { setSelected(new Set()); setFocusedRow(-1); }, [page, filters]);
   useAutoRefresh(load);
 
-  /* Load staff + tags */
+  /* Load staff + tags + templates */
   useEffect(() => {
     api.get('/staff').then(r => setStaffList(r.data)).catch(() => {});
     api.get('/tags').then(r => setTagList(r.data)).catch(() => {});
+    api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
   }, []);
 
   useSSE({
@@ -230,7 +233,8 @@ export default function Tickets() {
     setBulkLoading(true);
     try {
       const { data: r } = await api.post('/tickets/bulk', { ids, action, value });
-      toast.success(`${r.affected} ticket(s) ${action === 'close' ? 'fermé(s)' : 'mis à jour'}`);
+      const label = { close: 'fermé(s)', reopen: 'réouvert(s)', send_template: 'envoyé(s)' }[action] || 'mis à jour';
+      toast.success(`${r.affected} ticket(s) ${label}`);
       setSelected(new Set());
       setShowBulkPriority(false);
       await load();
@@ -734,6 +738,61 @@ export default function Tickets() {
             </div>
           )}
 
+
+          {/* Send template */}
+          {templates.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowBulkTemplate(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); setShowBulkTag(false); }}
+                disabled={bulkLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+                           text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
+                           transition-all disabled:opacity-50"
+              >
+                <FileText size={11} /> Réponse
+                <ChevronDown size={11} className={showBulkTemplate ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              {showBulkTemplate && (
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+                                rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-48
+                                max-h-56 overflow-y-auto animate-in">
+                  <p className="px-3.5 pt-2.5 pb-1 text-[10px] text-ink-4 uppercase tracking-wider font-semibold">
+                    Envoyer un template
+                  </p>
+                  {templates.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      onClick={async () => {
+                        const ok = await confirmToast(`Envoyer "${tpl.name}" à ${selected.size} ticket(s) ?`);
+                        if (ok) { bulkAction('send_template', tpl.id); setShowBulkTemplate(false); }
+                      }}
+                      className="w-full flex items-start gap-2 px-3.5 py-2.5 text-xs
+                                 hover:bg-white/[0.05] transition-colors text-left"
+                    >
+                      <FileText size={11} className="text-primary-light mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-ink-2 font-medium truncate">{tpl.name}</p>
+                        <p className="text-ink-4 truncate mt-0.5">{tpl.content?.slice(0, 40)}…</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reopen */}
+          <button
+            onClick={async () => {
+              const ok = await confirmToast(`Réouvrir ${selected.size} ticket(s) ?`);
+              if (ok) bulkAction('reopen');
+            }}
+            disabled={bulkLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20
+                       text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+          >
+            <FolderOpen size={11} /> Réouvrir
+          </button>
 
           {/* Close */}
           <button
