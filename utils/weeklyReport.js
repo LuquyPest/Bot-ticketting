@@ -1,31 +1,34 @@
 const { EmbedBuilder } = require('discord.js');
-const { query } = require('./db');
+const { getActiveGuilds } = require('./guildScan');
+const { getTenantDb } = require('./tenantDb');
+const { getGuildConfig } = require('./ticketManager');
 
-async function sendWeeklyReport(client) {
-  const channelId = client.config.weeklyReportChannelId;
-  if (!channelId) return;
+function fmt(seconds) {
+  if (!seconds) return 'N/A';
+  const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
 
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel || !channel.isTextBased()) return;
+async function sendWeeklyReportForGuild(client, guildId) {
+  const db = getTenantDb(guildId);
+  const cfg = await getGuildConfig(db);
+  if (!cfg.weekly_report_channel_id) return;
+
+  const channel = await client.channels.fetch(cfg.weekly_report_channel_id).catch(() => null);
+  if (!channel?.isTextBased()) return;
 
   const [[opened], [closed], [unclaimed], [avgResp], [avgRes], leaderboard] = await Promise.all([
-    query("SELECT COUNT(*) as c FROM tickets WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
-    query("SELECT COUNT(*) as c FROM tickets WHERE closed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status = 'closed'"),
-    query("SELECT COUNT(*) as c FROM tickets WHERE status = 'open' AND claimed_by IS NULL"),
-    query("SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at)) as v FROM tickets WHERE first_response_at IS NOT NULL AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
-    query("SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, closed_at)) as v FROM tickets WHERE status = 'closed' AND closed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
-    query(`SELECT admin_id, admin_tag, tickets_closed, tickets_claimed,
-             CASE WHEN total_response_count > 0 THEN FLOOR(total_response_seconds / total_response_count) ELSE NULL END as avg_resp,
-             CASE WHEN total_ratings > 0 THEN ROUND(total_rating_score / total_ratings, 1) ELSE NULL END as avg_rating
-           FROM admin_stats WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-           ORDER BY tickets_closed DESC LIMIT 10`)
+    db("SELECT COUNT(*) as c FROM tickets WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
+    db("SELECT COUNT(*) as c FROM tickets WHERE closed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status = 'closed'"),
+    db("SELECT COUNT(*) as c FROM tickets WHERE status = 'open' AND claimed_by IS NULL"),
+    db("SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at)) as v FROM tickets WHERE first_response_at IS NOT NULL AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
+    db("SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, closed_at)) as v FROM tickets WHERE status = 'closed' AND closed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
+    db(`SELECT admin_id, admin_tag, tickets_closed, tickets_claimed,
+          CASE WHEN total_response_count > 0 THEN FLOOR(total_response_seconds / total_response_count) ELSE NULL END as avg_resp,
+          CASE WHEN total_ratings > 0 THEN ROUND(total_rating_score / total_ratings, 1) ELSE NULL END as avg_rating
+        FROM admin_stats WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ORDER BY tickets_closed DESC LIMIT 10`)
   ]);
-
-  function fmt(seconds) {
-    if (!seconds) return 'N/A';
-    const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
 
   const MEDALS = ['🥇', '🥈', '🥉'];
   const leaderboardStr = leaderboard.length > 0
@@ -37,17 +40,20 @@ async function sendWeeklyReport(client) {
       }).join('\n')
     : '_Aucune activité cette semaine_';
 
+  const now = new Date();
+  const weekAgo = new Date(Date.now() - 7 * 86400000);
+
   const statsEmbed = new EmbedBuilder()
     .setColor(0x6366f1)
     .setTitle('📊 Rapport hebdomadaire — Support')
-    .setDescription(`Semaine du ${new Date(Date.now() - 7 * 86400000).toLocaleDateString('fr-FR')} au ${new Date().toLocaleDateString('fr-FR')}`)
+    .setDescription(`Semaine du ${weekAgo.toLocaleDateString('fr-FR')} au ${now.toLocaleDateString('fr-FR')}`)
     .addFields(
-      { name: '🎫 Ouverts', value: String(opened.c), inline: true },
-      { name: '✅ Fermés', value: String(closed.c), inline: true },
-      { name: '⏳ Non claim', value: String(unclaimed.c), inline: true },
-      { name: '⚡ Tps réponse moy.', value: fmt(avgResp.v), inline: true },
-      { name: '🏁 Tps résolution moy.', value: fmt(avgRes.v), inline: true },
-      { name: '​', value: '​', inline: true }
+      { name: '🎫 Ouverts',            value: String(opened.c),   inline: true },
+      { name: '✅ Fermés',             value: String(closed.c),   inline: true },
+      { name: '⏳ Non claim',          value: String(unclaimed.c), inline: true },
+      { name: '⚡ Tps réponse moy.',   value: fmt(avgResp.v),     inline: true },
+      { name: '🏁 Tps résolution moy.', value: fmt(avgRes.v),     inline: true },
+      { name: '​',                value: '​',            inline: true }
     )
     .setTimestamp();
 
@@ -61,19 +67,28 @@ async function sendWeeklyReport(client) {
   await channel.send({ embeds: [statsEmbed, leaderboardEmbed] }).catch(console.error);
 }
 
+async function sendWeeklyReport(client) {
+  const guilds = await getActiveGuilds();
+  for (const { guild_id } of guilds) {
+    try {
+      await sendWeeklyReportForGuild(client, guild_id);
+    } catch (err) {
+      console.error(`weeklyReport error [${guild_id}]:`, err);
+    }
+  }
+}
+
 function startWeeklyReport(client) {
   function scheduleNext() {
     const now = new Date();
     const next = new Date();
-    // Next Monday 09:00
     const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
     next.setDate(now.getDate() + daysUntilMonday);
     next.setHours(9, 0, 0, 0);
-    const delay = next - now;
     setTimeout(() => {
       sendWeeklyReport(client).catch(console.error);
       setInterval(() => sendWeeklyReport(client).catch(console.error), 7 * 24 * 60 * 60 * 1000);
-    }, delay);
+    }, next - now);
   }
   scheduleNext();
 }
