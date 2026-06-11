@@ -72,7 +72,7 @@ const VALIDATORS = {
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
   embedColor:               v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
   botDisplayName:           v => typeof v === 'string' && v.length >= 1 && v.length <= 100,
-  webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500),
+  webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
   // Phase 1 — feature flags
   faqEnabled:               v => v === 0 || v === 1 || v === true || v === false,
   intakeFormEnabled:        v => v === 0 || v === 1 || v === true || v === false,
