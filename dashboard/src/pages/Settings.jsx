@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -137,13 +137,33 @@ export default function Settings() {
   const [roles, setRoles]           = useState([]);
   const [discordLoading, setDL]     = useState(true);
 
+  // Bot identity (per-guild)
+  const [botIdentity, setBotIdentity]       = useState(null);
+  const [botNickname, setBotNickname]       = useState('');
+  const [avatarPreview, setAvatarPreview]   = useState(null);
+  const [avatarDataUrl, setAvatarDataUrl]   = useState(null);
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const avatarInputRef = useRef(null);
+
   const load = () => {
     setLoading(true);
     api.get('/config').then(r => setCfg(r.data)).finally(() => setLoading(false));
   };
 
+  const loadBotIdentity = () => {
+    api.get('/config/bot-identity')
+      .then(r => {
+        setBotIdentity(r.data);
+        setBotNickname(r.data.nickname || '');
+        setAvatarPreview(r.data.avatarUrl);
+        setAvatarDataUrl(null);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     load();
+    loadBotIdentity();
     Promise.all([
       api.get('/discord/channels').catch(() => ({ data: [] })),
       api.get('/discord/categories').catch(() => ({ data: [] })),
@@ -156,6 +176,42 @@ export default function Settings() {
   }, []);
 
   const set = (key, val) => setCfg(c => ({ ...c, [key]: val }));
+
+  const handleAvatarFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('Image trop lourde (max 2 Mo)'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAvatarPreview(ev.target.result);
+      setAvatarDataUrl(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveIdentity = async () => {
+    setSavingIdentity(true);
+    try {
+      const body = {};
+      const trimmed = botNickname.trim();
+      if (trimmed !== (botIdentity?.nickname || '')) body.nickname = trimmed || null;
+      if (avatarDataUrl) body.avatarDataUrl = avatarDataUrl;
+      if (!Object.keys(body).length) { toast('Aucun changement.'); setSavingIdentity(false); return; }
+      const { data } = await api.patch('/config/bot-identity', body);
+      if (data.errors) {
+        Object.values(data.errors).forEach(e => toast.error(e));
+      } else {
+        toast.success('Identité du bot mise à jour !');
+        loadBotIdentity();
+      }
+    } catch (err) {
+      const errs = err.response?.data?.errors;
+      if (errs) Object.values(errs).forEach(e => toast.error(e));
+      else toast.error(err.response?.data?.error || 'Erreur lors de la mise à jour');
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -243,7 +299,79 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Bot identity */}
+      {/* Bot Discord identity (per-guild) */}
+      <Section
+        title="Apparence du bot sur ce serveur"
+        description="Pseudo et photo de profil visibles uniquement sur ce serveur Discord"
+      >
+        <div className="flex items-start gap-5">
+          {/* Avatar */}
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <div className="relative group">
+              <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/10 bg-surface">
+                {avatarPreview
+                  ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center">
+                      <Bot size={28} className="text-ink-4" />
+                    </div>
+                }
+              </div>
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100
+                           flex items-center justify-center transition-opacity cursor-pointer"
+                title="Changer l'avatar"
+              >
+                <Upload size={18} className="text-white" />
+              </button>
+            </div>
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              className="text-xs text-ink-4 hover:text-ink-2 transition-colors"
+            >
+              Changer
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              className="hidden"
+              onChange={handleAvatarFile}
+            />
+          </div>
+
+          {/* Nickname */}
+          <div className="flex-1 space-y-3">
+            <Field label="Pseudo sur ce serveur" hint="Laisse vide pour utiliser le nom par défaut du bot (max 32 caractères)">
+              <input
+                type="text"
+                value={botNickname}
+                onChange={e => setBotNickname(e.target.value)}
+                maxLength={32}
+                placeholder={botIdentity?.username || 'Pseudo du bot'}
+                className={BASE}
+              />
+            </Field>
+            {botIdentity && (
+              <p className="text-xs text-ink-4">
+                Nom actuel : <span className="text-ink-3 font-medium">{botIdentity.displayName}</span>
+                {botIdentity.nickname && <span className="ml-1 text-ink-4">(pseudo) · global : {botIdentity.username}</span>}
+              </p>
+            )}
+            <button
+              onClick={saveIdentity}
+              disabled={savingIdentity}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary-light
+                         text-white text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {savingIdentity ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              {savingIdentity ? 'Mise à jour…' : 'Appliquer'}
+            </button>
+          </div>
+        </div>
+      </Section>
+
+      {/* Bot embed identity */}
       <Section title="Identité du bot">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Nom d'affichage" hint="Utilisé dans les embeds et messages">
