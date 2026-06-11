@@ -1,5 +1,4 @@
 # Bot Ticketing Discord
-Coucou Geminii
 Bot Discord de support par tickets avec **interface web d'administration**. L'utilisateur ouvre son ticket en **message privé** au bot, le staff gère tout depuis un salon privé sur le serveur et depuis le **dashboard web**.
 
 ---
