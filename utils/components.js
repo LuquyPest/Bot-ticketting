@@ -7,13 +7,13 @@ const {
 function ticketButtons() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('ticket_transcript')
-      .setLabel('Transcript')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId('ticket_close_with_transcript')
-      .setLabel('Fermer et enregistrer le transcript')
-      .setStyle(ButtonStyle.Danger)
+      .setLabel('🔒 Fermer le ticket')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('ticket_transcript')
+      .setLabel('📋 Transcript')
+      .setStyle(ButtonStyle.Secondary)
   );
 }
 
