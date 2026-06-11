@@ -23,6 +23,10 @@ module.exports = async function guildMiddleware(req, res, next) {
       return res.status(403).json({ error: 'Serveur introuvable ou inactif' });
     }
 
+    if (guild.maintenance_mode) {
+      return res.status(503).json({ error: 'Ce serveur est en maintenance — réessaie plus tard' });
+    }
+
     req.guildId = guildId;
     req.guildDb = getTenantDb(guildId);
     req.guild   = guild;
