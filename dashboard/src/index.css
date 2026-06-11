@@ -2,8 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design Tokens ──────────────────────────────────────────────── */
+/* ─── Design Tokens — Dark (default) ────────────────────────────── */
 :root {
+  /* Tailwind color vars */
+  --color-base:             #09090f;
+  --color-surface:          #0e0e18;
+  --color-surface-card:     #13131f;
+  --color-surface-hover:    #1a1a2c;
+  --color-surface-elevated: #1e1e30;
+  --color-ink-1:            #f1f0ff;
+  --color-ink-2:            #a0a0b8;
+  --color-ink-3:            #54546a;
+  --color-ink-4:            #2e2e44;
+
+  /* Legacy vars (toasts, body bg) */
   --bg:           #09090f;
   --surface-1:    #0e0e18;
   --surface-2:    #13131f;
@@ -20,6 +32,29 @@
   --radius-md:    12px;
   --radius-lg:    16px;
   --radius-xl:    20px;
+}
+
+/* ─── Design Tokens — Light ──────────────────────────────────────── */
+html.light {
+  --color-base:             #f2f2f8;
+  --color-surface:          #fafafa;
+  --color-surface-card:     #ffffff;
+  --color-surface-hover:    #eeeef7;
+  --color-surface-elevated: #ffffff;
+  --color-ink-1:            #1a1a2c;
+  --color-ink-2:            #50506a;
+  --color-ink-3:            #8888a0;
+  --color-ink-4:            #c0c0d4;
+
+  --bg:           #f2f2f8;
+  --surface-1:    #fafafa;
+  --surface-2:    #ffffff;
+  --surface-3:    #eeeef7;
+  --border:       rgba(10, 10, 30, 0.09);
+  --border-hover: rgba(10, 10, 30, 0.15);
+  --text-1:       #1a1a2c;
+  --text-2:       #50506a;
+  --text-3:       #8888a0;
 }
 
 /* ─── Base ───────────────────────────────────────────────────────── */
@@ -220,3 +255,64 @@ body {
   border-radius: var(--radius-lg) !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
 }
+
+/* ─── Light mode overrides ───────────────────────────────────────── */
+
+/* Glass utilities */
+html.light .glass-dark {
+  background: rgba(242, 242, 248, 0.92) !important;
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+}
+html.light .glass {
+  background: rgba(250, 250, 252, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+html.light .glass-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Shimmer */
+html.light .shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(10,10,30,0.04) 0%,
+    rgba(10,10,30,0.09) 50%,
+    rgba(10,10,30,0.04) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Scrollbar */
+html.light ::-webkit-scrollbar-thumb       { background: rgba(10,10,30,0.12); }
+html.light ::-webkit-scrollbar-thumb:hover { background: rgba(10,10,30,0.2);  }
+
+/* White-opacity borders → dark-opacity in light mode */
+html.light [class*="border-white/"] { border-color: rgba(10,10,30,0.09) !important; }
+html.light [class*="ring-white/"]   { --tw-ring-color: rgba(10,10,30,0.09) !important; }
+
+/* White-opacity backgrounds → dark-opacity in light mode */
+html.light [class*="bg-white/"] { background-color: rgba(10,10,30,0.04) !important; }
+
+/* Utility classes that use @apply — explicit overrides needed */
+html.light .input-base {
+  border-color: rgba(10,10,30,0.1) !important;
+  color: var(--color-ink-1);
+}
+html.light .input-base:hover { border-color: rgba(10,10,30,0.16) !important; }
+
+html.light .card { border-color: rgba(10,10,30,0.08) !important; }
+
+html.light .data-table thead tr,
+html.light .data-table tbody tr { border-color: rgba(10,10,30,0.07) !important; }
+html.light .data-table tbody tr:hover { background-color: rgba(10,10,30,0.03) !important; }
+
+/* Shadow adjustments */
+html.light .shadow-card,
+html.light [class*="shadow-card"] {
+  box-shadow: 0 1px 3px rgba(10,10,30,0.07), 0 0 0 1px rgba(10,10,30,0.06) !important;
+}
+
+/* Selection */
+html.light ::selection { color: #1a1a2c; }

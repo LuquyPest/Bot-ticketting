@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 const Login       = lazy(() => import('./pages/Login'));
 const Pending     = lazy(() => import('./pages/Pending'));
@@ -75,6 +76,7 @@ export default function App() {
   };
 
   return (
+    <ThemeProvider>
     <AuthCtx.Provider value={{ user, setUser, loading, logout, sidebarOpen, setSidebarOpen }}>
       <SSEProvider>
         <NotificationProvider>
@@ -143,5 +145,6 @@ export default function App() {
         </NotificationProvider>
       </SSEProvider>
     </AuthCtx.Provider>
+    </ThemeProvider>
   );
 }
