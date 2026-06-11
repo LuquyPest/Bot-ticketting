@@ -28,10 +28,11 @@ router.post('/auth/login', async (req, res) => {
       if (mgr) { account = mgr; accountType = 'manager'; }
     }
 
-    if (!account) return res.status(401).json({ error: 'Identifiants invalides' });
-
-    const valid = await bcrypt.compare(password, account.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Identifiants invalides' });
+    // Always run bcrypt.compare even when account is not found to normalize response time
+    // and prevent username enumeration via timing side-channel.
+    const DUMMY_HASH = '$2b$12$invalidhashpaddingtomatchcostXXXXXXXXXXXXXXXXXXXXXXXXX';
+    const valid = await bcrypt.compare(password, account ? account.password_hash : DUMMY_HASH);
+    if (!account || !valid) return res.status(401).json({ error: 'Identifiants invalides' });
 
     req.session.saPendingLogin = { id: account.id, username: account.username, type: accountType };
 
