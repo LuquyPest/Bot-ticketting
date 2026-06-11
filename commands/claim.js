@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -29,6 +29,13 @@ module.exports = {
 
     await tm.setClaim(ticket.id, interaction.user);
     await tm.updateChannelTopic(ticket.id).catch(() => null);
-    await interaction.reply(`✅ Ticket pris en charge par **${interaction.user.username}**.`);
+    const claimEmbed = new EmbedBuilder()
+      .setColor(0x1abc9c)
+      .setTitle('✋ Ticket pris en charge')
+      .addFields(
+        { name: 'Staff', value: `<@${interaction.user.id}>`, inline: true },
+        { name: 'Heure', value: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), inline: true }
+      );
+    await interaction.reply({ embeds: [claimEmbed] });
   }
 };

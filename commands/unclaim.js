@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -20,6 +20,13 @@ module.exports = {
 
     await tm.setClaim(ticket.id, null);
     await tm.updateChannelTopic(ticket.id).catch(() => null);
-    await interaction.reply('✅ Ticket désattribué.');
+    const unclaimEmbed = new EmbedBuilder()
+      .setColor(0x4e5058)
+      .setTitle('↩️ Ticket désattribué')
+      .addFields(
+        { name: 'Staff', value: `<@${interaction.user.id}>`, inline: true },
+        { name: 'Heure', value: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), inline: true }
+      );
+    await interaction.reply({ embeds: [unclaimEmbed] });
   }
 };
