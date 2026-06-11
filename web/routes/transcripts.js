@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../../utils/db');
 
 const TRANSCRIPT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https://cdn.discordapp.com data:; media-src https://cdn.discordapp.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;";
 
@@ -19,13 +18,13 @@ router.get('/', async (req, res) => {
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [snapshots, [{ total }]] = await Promise.all([
-      query(
+      req.guildDb(
         `SELECT ts.id, ts.ticket_id, ts.created_by_tag, ts.created_at, ts.message_count, t.owner_tag, t.subject
          FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id
          ${whereClause} ORDER BY ts.created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
-      query(
+      req.guildDb(
         `SELECT COUNT(*) as total FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id ${whereClause}`,
         params
       )
@@ -40,7 +39,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id/html', async (req, res) => {
   try {
-    const [snap] = await query('SELECT html FROM transcript_snapshots WHERE id = ?', [req.params.id]);
+    const [snap] = await req.guildDb('SELECT html FROM transcript_snapshots WHERE id = ?', [req.params.id]);
     if (!snap) return res.status(404).send('Introuvable');
     res.setHeader('Content-Security-Policy', TRANSCRIPT_CSP);
     res.type('html').send(snap.html);
@@ -52,7 +51,7 @@ router.get('/:id/html', async (req, res) => {
 
 router.get('/:id/txt', async (req, res) => {
   try {
-    const [snap] = await query('SELECT txt, ticket_id FROM transcript_snapshots WHERE id = ?', [req.params.id]);
+    const [snap] = await req.guildDb('SELECT txt, ticket_id FROM transcript_snapshots WHERE id = ?', [req.params.id]);
     if (!snap) return res.status(404).send('Introuvable');
     res.setHeader('Content-Disposition', `attachment; filename="transcript-${snap.ticket_id}.txt"`);
     res.type('text/plain').send(snap.txt);

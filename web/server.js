@@ -121,21 +121,27 @@ app.get('/t/:token', (req, res) => {
 
 app.use('/api/auth', require('./routes/auth'));
 
-const requireRole = require('./middleware/role');
-app.use('/api/dashboard',   requireRole('support', 'fondateur'), require('./routes/dashboard'));
-app.use('/api/tickets',     requireRole('support', 'fondateur'), require('./routes/tickets'));
-app.use('/api/staff',       requireRole('support', 'fondateur'), require('./routes/staff'));
-app.use('/api/discord',     requireRole('support', 'fondateur'), require('./routes/discord'));
-app.use('/api/events',      requireRole('support', 'fondateur'), require('./routes/events'));
-app.use('/api/templates',   requireRole('support', 'fondateur'), require('./routes/templates'));
-app.use('/api/blacklist',   requireRole('fondateur'),            require('./routes/blacklist'));
-app.use('/api/transcripts', requireRole('fondateur'),            require('./routes/transcripts'));
-app.use('/api/config',      requireRole('fondateur'),            require('./routes/config'));
-app.use('/api/users',       requireRole('support', 'fondateur'), require('./routes/users'));
-app.use('/api/grades',      requireRole('support', 'fondateur'), require('./routes/grades'));
-app.use('/api/audit',       requireRole('support', 'fondateur'), require('./routes/audit'));
-app.use('/api/tags',        requireRole('support', 'fondateur'), require('./routes/tags'));
-app.use('/api/messages',    requireRole('support', 'fondateur'), require('./routes/messages'));
+const requireRole    = require('./middleware/role');
+const guildMiddleware = require('./middleware/guild');
+
+// All guild-scoped routes: guildMiddleware resolves req.guildDb from session,
+// then requireRole checks permissions against that guild's DB.
+const withGuild = (role) => [guildMiddleware, requireRole(...(Array.isArray(role) ? role : [role]))];
+
+app.use('/api/dashboard',   withGuild(['support', 'fondateur']), require('./routes/dashboard'));
+app.use('/api/tickets',     withGuild(['support', 'fondateur']), require('./routes/tickets'));
+app.use('/api/staff',       withGuild(['support', 'fondateur']), require('./routes/staff'));
+app.use('/api/discord',     withGuild(['support', 'fondateur']), require('./routes/discord'));
+app.use('/api/events',      withGuild(['support', 'fondateur']), require('./routes/events'));
+app.use('/api/templates',   withGuild(['support', 'fondateur']), require('./routes/templates'));
+app.use('/api/blacklist',   withGuild(['fondateur']),            require('./routes/blacklist'));
+app.use('/api/transcripts', withGuild(['fondateur']),            require('./routes/transcripts'));
+app.use('/api/config',      withGuild(['fondateur']),            require('./routes/config'));
+app.use('/api/users',       withGuild(['support', 'fondateur']), require('./routes/users'));
+app.use('/api/grades',      withGuild(['support', 'fondateur']), require('./routes/grades'));
+app.use('/api/audit',       withGuild(['support', 'fondateur']), require('./routes/audit'));
+app.use('/api/tags',        withGuild(['support', 'fondateur']), require('./routes/tags'));
+app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
 
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {

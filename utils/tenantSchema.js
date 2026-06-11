@@ -209,8 +209,14 @@ const TENANT_TABLES_SQL = `
     inactive_warning_hours INT NOT NULL DEFAULT 48,
     inactive_hours        INT NOT NULL DEFAULT 62,
     ticket_subjects       JSON NOT NULL DEFAULT ('[]'),
-    webhook_url           VARCHAR(500) DEFAULT NULL,
-    updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    webhook_url                VARCHAR(500) DEFAULT NULL,
+    reply_rate_limit_seconds   INT NOT NULL DEFAULT 30,
+    weekly_report_channel_id   VARCHAR(32) DEFAULT NULL,
+    spam_alert_channel_id      VARCHAR(32) DEFAULT NULL,
+    escalation_alert_channel_id VARCHAR(32) DEFAULT NULL,
+    escalation_alert_hours     INT NOT NULL DEFAULT 24,
+    escalation_close_hours     INT NOT NULL DEFAULT 72,
+    updated_at                 DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );
 `;
 
