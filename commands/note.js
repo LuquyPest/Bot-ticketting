@@ -6,8 +6,6 @@ const { ensureSupport } = require('../utils/permissions');
 const NOTE_PREFIX = require('../utils/notePrefix');
 
 module.exports = {
-  NOTE_PREFIX,
-
   data: new SlashCommandBuilder()
     .setName('note')
     .setDescription('Ajoute une note interne (non visible par l\'utilisateur, hors transcript)')

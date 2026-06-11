@@ -6,7 +6,6 @@ async function getActiveGuilds() {
   return globalQuery('SELECT guild_id FROM guilds WHERE status = "active" AND maintenance_mode = 0');
 }
 
-// Scan all active guilds to find the user's first open ticket.
 // Returns { ticket, guildId, db, tm } or null.
 async function findUserOpenTicket(userId, client) {
   const guilds = await getActiveGuilds();
@@ -37,7 +36,6 @@ async function isUserBlacklisted(userId) {
   return { blacklisted: false };
 }
 
-// Find all active guilds where the bot is active AND the user is a member.
 // Returns array of { guildId, discordGuild, db, tm, config }
 async function findGuildsForUser(userId, client) {
   const guilds = await getActiveGuilds();
