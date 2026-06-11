@@ -1,6 +1,7 @@
-const https = require('https');
-const dns   = require('dns').promises;
-const net   = require('net');
+const https  = require('https');
+const dns    = require('dns').promises;
+const net    = require('net');
+const crypto = require('crypto');
 
 // RFC1918 + loopback + link-local + CGNAT + reserved ranges (SSRF blocklist)
 const BLOCKED_CIDRS = [
@@ -40,23 +41,29 @@ async function isSafeWebhookUrl(rawUrl) {
   } catch { return false; }
 }
 
-async function emitWebhook(webhookUrl, event, payload) {
+async function emitWebhook(webhookUrl, event, payload, secret) {
   if (!webhookUrl) return;
   if (!await isSafeWebhookUrl(webhookUrl)) return { blocked: true };
 
   const body = JSON.stringify({ event, timestamp: new Date().toISOString(), ...payload });
   const url = new URL(webhookUrl);
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(body),
+    'User-Agent': 'TicketBot/1.0',
+    'X-TicketBot-Event': event,
+  };
+  if (secret) {
+    headers['X-TicketBot-Signature-256'] = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
+  }
+
   const options = {
     hostname: url.hostname,
     port: url.port || 443,
     path: url.pathname + url.search,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(body),
-      'User-Agent': 'TicketBot/1.0',
-      'X-TicketBot-Event': event,
-    },
+    headers,
     timeout: 5000,
   };
 
@@ -75,14 +82,14 @@ async function emitWebhook(webhookUrl, event, payload) {
 // Fire webhook if enabled for this guild
 async function fireTicketWebhook(db, event, payload) {
   try {
-    const [cfg] = await db('SELECT webhooks_enabled, webhook_url, webhook_events FROM guild_config LIMIT 1');
+    const [cfg] = await db('SELECT webhooks_enabled, webhook_url, webhook_secret, webhook_events FROM guild_config LIMIT 1');
     if (!cfg?.webhooks_enabled || !cfg.webhook_url) return;
 
     let events = [];
     try { events = Array.isArray(cfg.webhook_events) ? cfg.webhook_events : JSON.parse(cfg.webhook_events || '[]'); } catch {}
     if (events.length && !events.includes(event)) return;
 
-    await emitWebhook(cfg.webhook_url, event, payload);
+    await emitWebhook(cfg.webhook_url, event, payload, cfg.webhook_secret || null);
   } catch {}
 }
 
