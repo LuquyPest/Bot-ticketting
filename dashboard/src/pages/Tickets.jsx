@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
-  ChevronDown, Calendar, AlertTriangle,
+  ChevronDown, Calendar, AlertTriangle, Tag as TagIcon,
+  FolderOpen, FileText, User,
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -15,6 +16,18 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import toast from 'react-hot-toast';
+
+/* ── Quick-filter pills config ────────────────────────────────── */
+const QUICK_FILTERS = [
+  { id: 'all',       label: 'Tous',      filter: {} },
+  { id: 'open',      label: 'Ouverts',   filter: { status: 'open' } },
+  { id: 'closed',    label: 'Fermés',    filter: { status: 'closed' } },
+  { id: 'urgent',    label: 'Urgent',    filter: { priority: 'urgent' }, dot: 'bg-red-400' },
+  { id: 'normal',    label: 'Normal',    filter: { priority: 'normal' }, dot: 'bg-amber-400' },
+  { id: 'low',       label: 'Faible',    filter: { priority: 'low' }, dot: 'bg-sky-400' },
+  { id: 'unclaimed', label: 'Non claim', filter: { claimed: 'false' } },
+  { id: 'claimed',   label: 'Claim',     filter: { claimed: 'true' } },
+];
 
 const PRIORITY_DOT = {
   low:    'bg-sky-400',
@@ -51,7 +64,8 @@ export default function Tickets() {
 
   const [data, setData]   = useState({ tickets: [], total: 0, pages: 1 });
   const [page, setPage]   = useState(1);
-  const [filters, setFilters] = useState({ status: '', priority: '', subject: '', dateFrom: '', dateTo: '' });
+  const [filters, setFilters] = useState({ status: '', priority: '', subject: '', dateFrom: '', dateTo: '', claimed: '', staffId: '' });
+  const [activeQuick, setActiveQuick] = useState('all');
   const [loading,     setLoading]     = useState(true);
   const [selected,    setSelected]    = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -105,6 +119,17 @@ export default function Tickets() {
 
   const setFilter = (key, val) => {
     setFilters(f => ({ ...f, [key]: val }));
+    setPage(1);
+  };
+
+  const applyQuick = (qf) => {
+    setActiveQuick(qf.id);
+    setFilters(f => ({
+      ...f,
+      status:   qf.filter.status   ?? '',
+      priority: qf.filter.priority ?? '',
+      claimed:  qf.filter.claimed  ?? '',
+    }));
     setPage(1);
   };
 
@@ -204,6 +229,27 @@ export default function Tickets() {
         )}
       </div>
 
+      {/* Quick-filter pills */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {QUICK_FILTERS.map(qf => {
+          const isActive = activeQuick === qf.id;
+          return (
+            <button
+              key={qf.id}
+              onClick={() => applyQuick(qf)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium
+                          border transition-all duration-150 select-none
+                          ${isActive
+                            ? 'bg-primary/15 text-primary-light border-primary/40 shadow-[0_0_12px_rgba(124,110,243,0.15)]'
+                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
+            >
+              {qf.dot && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${qf.dot}`} />}
+              {qf.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Keyboard hint */}
       <div className="flex items-center gap-3 text-[10px] text-ink-4">
         <span className="flex items-center gap-1">
@@ -239,7 +285,7 @@ export default function Tickets() {
         <Select
           className="w-40"
           value={filters.status}
-          onChange={v => setFilter('status', v)}
+          onChange={v => { setFilter('status', v); setActiveQuick(''); }}
           placeholder="Tous statuts"
           options={[
             { value: '', label: 'Tous statuts' },
@@ -250,7 +296,7 @@ export default function Tickets() {
         <Select
           className="w-44"
           value={filters.priority}
-          onChange={v => setFilter('priority', v)}
+          onChange={v => { setFilter('priority', v); setActiveQuick(''); }}
           placeholder="Toutes priorités"
           options={[
             { value: '',       label: 'Toutes priorités' },
