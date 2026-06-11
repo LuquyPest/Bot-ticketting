@@ -215,6 +215,7 @@ const TENANT_TABLES_SQL = `
     inactive_hours        INT NOT NULL DEFAULT 62,
     ticket_subjects       JSON NOT NULL DEFAULT ('[]'),
     webhook_url                VARCHAR(500) DEFAULT NULL,
+    webhook_secret             VARCHAR(255) DEFAULT NULL,
     reply_rate_limit_seconds   INT NOT NULL DEFAULT 30,
     weekly_report_channel_id   VARCHAR(32) DEFAULT NULL,
     spam_alert_channel_id      VARCHAR(32) DEFAULT NULL,
@@ -362,6 +363,7 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhooks_enabled TINYINT(1) NOT NULL DEFAULT 0`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhook_events JSON NOT NULL DEFAULT ('["ticket_open","ticket_close","ticket_claim"]')`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS api_keys_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhook_secret VARCHAR(255) DEFAULT NULL`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

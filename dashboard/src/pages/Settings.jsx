@@ -186,6 +186,7 @@ export default function Settings() {
         escalationAlertHours:     cfg.escalationAlertHours,
         escalationCloseHours:     cfg.escalationCloseHours,
         webhookUrl:               sn(cfg.webhookUrl),
+        webhookSecret:            sn(cfg.webhookSecret),
         faqEnabled:               cfg.faqEnabled ? 1 : 0,
         intakeFormEnabled:        cfg.intakeFormEnabled ? 1 : 0,
         staffReminderEnabled:     cfg.staffReminderEnabled ? 1 : 0,
@@ -399,6 +400,10 @@ export default function Settings() {
         <Field label="Webhook URL" hint="Facultatif — notifications externes sur les événements tickets">
           <input type="url" value={cfg.webhookUrl || ''} onChange={e => set('webhookUrl', e.target.value)}
             placeholder="https://discord.com/api/webhooks/…" className={BASE} />
+        </Field>
+        <Field label="Webhook Secret" hint="Optionnel — clé HMAC-SHA256 pour vérifier les signatures (min 16 caractères)">
+          <input type="password" value={cfg.webhookSecret || ''} onChange={e => set('webhookSecret', e.target.value || null)}
+            placeholder="••••••••••••••••" autoComplete="off" className={BASE} />
         </Field>
       </Section>
 

@@ -28,6 +28,7 @@ const FIELD_MAP = {
   embedColor:                'embed_color',
   botDisplayName:            'bot_display_name',
   webhookUrl:                'webhook_url',
+  webhookSecret:             'webhook_secret',
   // Phase 1 — feature flags
   faqEnabled:               'faq_enabled',
   intakeFormEnabled:        'intake_form_enabled',
@@ -73,6 +74,7 @@ const VALIDATORS = {
   embedColor:               v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
   botDisplayName:           v => typeof v === 'string' && v.length >= 1 && v.length <= 100,
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
+  webhookSecret:            v => v === null || (typeof v === 'string' && v.length >= 16 && v.length <= 255),
   // Phase 1 — feature flags
   faqEnabled:               v => v === 0 || v === 1 || v === true || v === false,
   intakeFormEnabled:        v => v === 0 || v === 1 || v === true || v === false,
