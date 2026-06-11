@@ -15,9 +15,23 @@ function logLogin(req, userId, username, status) {
   ).catch(() => null);
 }
 
+let _cfg = null;
+let _cfgMtime = 0;
+const fs = require('fs');
+const _cfgPath = require.resolve('../../config.json');
+
 function cfg() {
-  delete require.cache[require.resolve('../../config.json')];
-  return require('../../config.json');
+  try {
+    const mtime = fs.statSync(_cfgPath).mtimeMs;
+    if (!_cfg || mtime !== _cfgMtime) {
+      delete require.cache[_cfgPath];
+      _cfg = require(_cfgPath);
+      _cfgMtime = mtime;
+    }
+  } catch {
+    if (!_cfg) throw new Error('config.json introuvable');
+  }
+  return _cfg;
 }
 
 // GET /api/auth/me
