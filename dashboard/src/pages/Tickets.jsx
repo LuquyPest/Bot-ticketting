@@ -147,6 +147,7 @@ export default function Tickets() {
   const [showBulkStaff,    setShowBulkStaff]    = useState(false);
   const [showBulkTag,      setShowBulkTag]       = useState(false);
   const [showDateFilter,   setShowDateFilter]   = useState(false);
+  const [showStaffFilter,  setShowStaffFilter]  = useState(false);
   const [staffList,  setStaffList]  = useState([]);
   const [tagList,    setTagList]    = useState([]);
   const [focusedRow, setFocusedRow] = useState(-1);
@@ -172,12 +173,11 @@ export default function Tickets() {
   useEffect(() => { setSelected(new Set()); setFocusedRow(-1); }, [page, filters]);
   useAutoRefresh(load);
 
-  /* Load staff + tags for bulk menus (fondateur only) */
+  /* Load staff + tags */
   useEffect(() => {
-    if (user?.role !== 'fondateur') return;
     api.get('/staff').then(r => setStaffList(r.data)).catch(() => {});
     api.get('/tags').then(r => setTagList(r.data)).catch(() => {});
-  }, [user?.role]);
+  }, []);
 
   useSSE({
     ticket: (d) => {
@@ -285,7 +285,7 @@ export default function Tickets() {
     return () => window.removeEventListener('keydown', handler);
   }, [data.tickets, focusedRow, navigate]);
 
-  const colCount = user?.role === 'fondateur' ? 9 : 8;
+  const colCount = user?.role === 'fondateur' ? 10 : 9;
 
   const hasDateFilter = filters.dateFrom || filters.dateTo;
 
@@ -392,6 +392,55 @@ export default function Tickets() {
             { value: 'urgent', label: 'Urgent' },
           ]}
         />
+        {/* Staff filter */}
+        {staffList.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowStaffFilter(o => !o)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium
+                          border transition-all duration-150
+                          ${filters.staffId
+                            ? 'bg-primary/10 text-primary-light border-primary/30'
+                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
+            >
+              <User size={13} />
+              {filters.staffId
+                ? (staffList.find(s => s.admin_id === filters.staffId)?.admin_tag || 'Staff')
+                : 'Staff'}
+              {filters.staffId ? (
+                <span onClick={e => { e.stopPropagation(); setFilter('staffId', ''); setShowStaffFilter(false); }}
+                  className="ml-1 hover:text-ink-1 cursor-pointer">
+                  <X size={11} />
+                </span>
+              ) : (
+                <ChevronDown size={11} className={showStaffFilter ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              )}
+            </button>
+            {showStaffFilter && (
+              <div className="absolute top-full mt-1 left-0 bg-surface-elevated border border-white/[0.1]
+                              rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-44
+                              max-h-52 overflow-y-auto z-20">
+                <button
+                  onClick={() => { setFilter('staffId', ''); setShowStaffFilter(false); }}
+                  className="w-full flex items-center px-3.5 py-2.5 text-xs text-ink-3 hover:bg-white/[0.05] transition-colors"
+                >
+                  Tous les staff
+                </button>
+                {staffList.map(s => (
+                  <button
+                    key={s.admin_id}
+                    onClick={() => { setFilter('staffId', s.admin_id); setShowStaffFilter(false); }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-ink-2
+                               hover:bg-white/[0.05] hover:text-ink-1 transition-colors"
+                  >
+                    {s.admin_tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Date filter toggle */}
         <button
           onClick={() => setShowDateFilter(o => !o)}
@@ -468,6 +517,7 @@ export default function Tickets() {
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Sujet</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Statut</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Priorité</th>
+              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Assigné à</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Créé le</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermé par</th>
             </tr>
@@ -540,6 +590,11 @@ export default function Tickets() {
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
                       {PRIORITY_LABELS[t.priority] || t.priority}
                     </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs truncate max-w-[120px]">
+                    {t.claimed_by_tag
+                      ? <span className="text-emerald-400 font-medium">{t.claimed_by_tag}</span>
+                      : <span className="text-ink-4 italic">—</span>}
                   </td>
                   <td className="px-4 py-3.5 text-ink-3 text-xs whitespace-nowrap tabular-nums">
                     {fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
