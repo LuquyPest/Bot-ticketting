@@ -219,7 +219,102 @@ const TENANT_TABLES_SQL = `
     escalation_alert_channel_id VARCHAR(32) DEFAULT NULL,
     escalation_alert_hours     INT NOT NULL DEFAULT 24,
     escalation_close_hours     INT NOT NULL DEFAULT 72,
-    updated_at                 DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    faq_enabled               TINYINT(1) NOT NULL DEFAULT 0,
+    intake_form_enabled       TINYINT(1) NOT NULL DEFAULT 0,
+    staff_reminder_enabled    TINYINT(1) NOT NULL DEFAULT 0,
+    staff_reminder_hours      INT NOT NULL DEFAULT 4,
+    user_inactive_enabled     TINYINT(1) NOT NULL DEFAULT 0,
+    user_inactive_warn_hours  INT NOT NULL DEFAULT 24,
+    user_inactive_close_hours INT NOT NULL DEFAULT 72,
+    internal_notes_enabled    TINYINT(1) NOT NULL DEFAULT 1,
+    badges_enabled            TINYINT(1) NOT NULL DEFAULT 0,
+    monthly_goals_enabled     TINYINT(1) NOT NULL DEFAULT 0,
+    leaderboard_enabled       TINYINT(1) NOT NULL DEFAULT 1,
+    webhooks_enabled          TINYINT(1) NOT NULL DEFAULT 0,
+    webhook_events            JSON NOT NULL DEFAULT ('["ticket_open","ticket_close","ticket_claim"]'),
+    api_keys_enabled          TINYINT(1) NOT NULL DEFAULT 0,
+    updated_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS faq_rules (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    keywords     JSON NOT NULL DEFAULT ('[]'),
+    response     TEXT NOT NULL,
+    allow_ticket TINYINT(1) NOT NULL DEFAULT 1,
+    active       TINYINT(1) NOT NULL DEFAULT 1,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS intake_forms (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(100) NOT NULL,
+    subject    VARCHAR(100) DEFAULT NULL,
+    active     TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS intake_form_fields (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    form_id    INT NOT NULL,
+    label      VARCHAR(100) NOT NULL,
+    field_type ENUM('text','number','choice') NOT NULL DEFAULT 'text',
+    choices    JSON DEFAULT NULL,
+    required   TINYINT(1) NOT NULL DEFAULT 1,
+    position   INT NOT NULL DEFAULT 0,
+    CONSTRAINT fk_iff_form FOREIGN KEY (form_id) REFERENCES intake_forms(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS staff_notes (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id  INT NOT NULL,
+    author_id  VARCHAR(32) NOT NULL,
+    author_tag VARCHAR(100) NOT NULL,
+    content    TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sn_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS badge_definitions (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    icon        VARCHAR(100) NOT NULL DEFAULT '🏆',
+    color       VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+    trigger_key VARCHAR(50) NOT NULL,
+    threshold   INT DEFAULT NULL,
+    active      TINYINT(1) NOT NULL DEFAULT 1,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS user_badges (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    user_id    VARCHAR(32) NOT NULL,
+    badge_id   INT NOT NULL,
+    awarded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_badge (user_id, badge_id),
+    CONSTRAINT fk_ub_badge FOREIGN KEY (badge_id) REFERENCES badge_definitions(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS monthly_goals (
+    id      INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(32) NOT NULL,
+    year    SMALLINT NOT NULL,
+    month   TINYINT NOT NULL,
+    target  INT NOT NULL DEFAULT 50,
+    UNIQUE KEY uniq_goal (user_id, year, month)
+  );
+
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL,
+    key_hash     VARCHAR(255) NOT NULL UNIQUE,
+    key_prefix   VARCHAR(8) NOT NULL,
+    permissions  JSON NOT NULL DEFAULT ('[]'),
+    created_by   VARCHAR(32) NOT NULL,
+    last_used_at DATETIME DEFAULT NULL,
+    expires_at   DATETIME DEFAULT NULL,
+    active       TINYINT(1) NOT NULL DEFAULT 1,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 `;
 
@@ -247,6 +342,21 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT NULL`,
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS banner_color VARCHAR(7) NOT NULL DEFAULT '#6366f1'`,
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS profile_picture_url VARCHAR(512) DEFAULT NULL`,
+      // Phase 1 — feature flags in guild_config
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS faq_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS intake_form_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS staff_reminder_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS staff_reminder_hours INT NOT NULL DEFAULT 4`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS user_inactive_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS user_inactive_warn_hours INT NOT NULL DEFAULT 24`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS user_inactive_close_hours INT NOT NULL DEFAULT 72`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS internal_notes_enabled TINYINT(1) NOT NULL DEFAULT 1`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS badges_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS monthly_goals_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS leaderboard_enabled TINYINT(1) NOT NULL DEFAULT 1`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhooks_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS webhook_events JSON NOT NULL DEFAULT ('["ticket_open","ticket_close","ticket_claim"]')`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS api_keys_enabled TINYINT(1) NOT NULL DEFAULT 0`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

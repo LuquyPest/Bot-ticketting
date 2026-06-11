@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, RefreshCw, Plus, X, Check, Loader2 } from 'lucide-react';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -72,6 +72,27 @@ function CategoryPicker({ value, onChange, categories, loading }) {
         <option key={cat.id} value={cat.id}>{cat.name}</option>
       ))}
     </select>
+  );
+}
+
+function FeatureToggle({ label, hint, checked, onChange, children }) {
+  const on = !!checked;
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-ink-2 font-medium">{label}</p>
+        {hint && <p className="text-xs text-ink-4 mt-0.5">{hint}</p>}
+        {on && children && <div className="mt-2">{children}</div>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!on)}
+        className={`flex-shrink-0 mt-0.5 transition-colors ${on ? 'text-primary-light' : 'text-ink-4 hover:text-ink-3'}`}
+        title={on ? 'Désactiver' : 'Activer'}
+      >
+        {on ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+      </button>
+    </div>
   );
 }
 
@@ -165,6 +186,20 @@ export default function Settings() {
         escalationAlertHours:     cfg.escalationAlertHours,
         escalationCloseHours:     cfg.escalationCloseHours,
         webhookUrl:               sn(cfg.webhookUrl),
+        faqEnabled:               cfg.faqEnabled ? 1 : 0,
+        intakeFormEnabled:        cfg.intakeFormEnabled ? 1 : 0,
+        staffReminderEnabled:     cfg.staffReminderEnabled ? 1 : 0,
+        staffReminderHours:       cfg.staffReminderHours ?? 4,
+        userInactiveEnabled:      cfg.userInactiveEnabled ? 1 : 0,
+        userInactiveWarnHours:    cfg.userInactiveWarnHours ?? 24,
+        userInactiveCloseHours:   cfg.userInactiveCloseHours ?? 72,
+        internalNotesEnabled:     cfg.internalNotesEnabled !== false ? 1 : 0,
+        badgesEnabled:            cfg.badgesEnabled ? 1 : 0,
+        monthlyGoalsEnabled:      cfg.monthlyGoalsEnabled ? 1 : 0,
+        leaderboardEnabled:       cfg.leaderboardEnabled !== false ? 1 : 0,
+        webhooksEnabled:          cfg.webhooksEnabled ? 1 : 0,
+        webhookEvents:            cfg.webhookEvents || ['ticket_open', 'ticket_close', 'ticket_claim'],
+        apiKeysEnabled:           cfg.apiKeysEnabled ? 1 : 0,
       });
       toast.success('Configuration sauvegardée !');
     } catch (err) {
@@ -365,6 +400,95 @@ export default function Settings() {
           <input type="url" value={cfg.webhookUrl || ''} onChange={e => set('webhookUrl', e.target.value)}
             placeholder="https://discord.com/api/webhooks/…" className={BASE} />
         </Field>
+      </Section>
+
+      {/* Feature flags */}
+      <Section title="Fonctionnalités" description="Active ou désactive les fonctionnalités avancées pour ce serveur.">
+        <FeatureToggle
+          label="Auto-réponses FAQ"
+          hint="Répond automatiquement aux mots-clés en DM avant la création d'un ticket"
+          checked={cfg.faqEnabled} onChange={v => set('faqEnabled', v)}
+        />
+        <FeatureToggle
+          label="Formulaires d'intake"
+          hint="Affiche un questionnaire configurable avant l'ouverture du ticket"
+          checked={cfg.intakeFormEnabled} onChange={v => set('intakeFormEnabled', v)}
+        />
+        <FeatureToggle
+          label="Rappels staff automatiques"
+          hint="DM au staff claimer si aucune réponse dans le délai configuré"
+          checked={cfg.staffReminderEnabled} onChange={v => set('staffReminderEnabled', v)}
+        >
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-ink-3">Délai (h)</label>
+            <input type="number" min={1} max={168} value={cfg.staffReminderHours ?? 4}
+              onChange={e => set('staffReminderHours', parseInt(e.target.value))} className={NUM_INPUT} />
+          </div>
+        </FeatureToggle>
+        <FeatureToggle
+          label="Fermeture par inactivité utilisateur"
+          hint="Ferme le ticket si l'utilisateur ne répond pas après le staff"
+          checked={cfg.userInactiveEnabled} onChange={v => set('userInactiveEnabled', v)}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-ink-3 whitespace-nowrap">Avertissement (h)</label>
+              <input type="number" min={1} max={720} value={cfg.userInactiveWarnHours ?? 24}
+                onChange={e => set('userInactiveWarnHours', parseInt(e.target.value))} className={NUM_INPUT} />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-ink-3 whitespace-nowrap">Fermeture (h)</label>
+              <input type="number" min={1} max={720} value={cfg.userInactiveCloseHours ?? 72}
+                onChange={e => set('userInactiveCloseHours', parseInt(e.target.value))} className={NUM_INPUT} />
+            </div>
+          </div>
+        </FeatureToggle>
+        <FeatureToggle
+          label="Notes internes staff"
+          hint="Permet au staff d'ajouter des notes privées (/note) invisibles à l'utilisateur"
+          checked={cfg.internalNotesEnabled !== false} onChange={v => set('internalNotesEnabled', v)}
+        />
+        <FeatureToggle
+          label="Badges débloquables"
+          hint="Attribue automatiquement des badges aux membres staff selon leurs performances"
+          checked={cfg.badgesEnabled} onChange={v => set('badgesEnabled', v)}
+        />
+        <FeatureToggle
+          label="Objectifs mensuels"
+          hint="Quota de tickets mensuel avec barre de progression sur le profil"
+          checked={cfg.monthlyGoalsEnabled} onChange={v => set('monthlyGoalsEnabled', v)}
+        />
+        <FeatureToggle
+          label="Leaderboard dashboard"
+          hint="Classement staff hebdomadaire / mensuel sur la page d'accueil"
+          checked={cfg.leaderboardEnabled !== false} onChange={v => set('leaderboardEnabled', v)}
+        />
+        <FeatureToggle
+          label="Webhooks sortants"
+          hint="Appels HTTP sur les événements tickets (ouverture, fermeture, claim…)"
+          checked={cfg.webhooksEnabled} onChange={v => set('webhooksEnabled', v)}
+        >
+          <div className="space-y-1">
+            <p className="text-xs text-ink-4 mb-1">Événements à notifier :</p>
+            {['ticket_open','ticket_close','ticket_claim','ticket_note','ticket_priority'].map(evt => (
+              <label key={evt} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox"
+                  checked={(cfg.webhookEvents || ['ticket_open','ticket_close','ticket_claim']).includes(evt)}
+                  onChange={e => {
+                    const cur = cfg.webhookEvents || ['ticket_open','ticket_close','ticket_claim'];
+                    set('webhookEvents', e.target.checked ? [...cur, evt] : cur.filter(x => x !== evt));
+                  }}
+                  className="accent-primary" />
+                <span className="text-xs text-ink-3 font-mono">{evt}</span>
+              </label>
+            ))}
+          </div>
+        </FeatureToggle>
+        <FeatureToggle
+          label="API publique"
+          hint="Génère des clés d'API pour interagir avec le bot depuis des services externes"
+          checked={cfg.apiKeysEnabled} onChange={v => set('apiKeysEnabled', v)}
+        />
       </Section>
     </div>
   );
