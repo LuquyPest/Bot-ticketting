@@ -1,10 +1,20 @@
 const express = require('express');
 const router = express.Router();
 
+const NEWSLETTER_COOLDOWN_MS = 60 * 1000; // 1 minute minimum entre deux envois
+const _lastSent = new Map(); // guildId → timestamp
+
 // POST /api/newsletter/send — DM broadcast to all active staff
 // Requires fondateur + botClient attached to req
 router.post('/send', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Accès refusé' });
+
+  const last = _lastSent.get(req.guildId) || 0;
+  const elapsed = Date.now() - last;
+  if (elapsed < NEWSLETTER_COOLDOWN_MS) {
+    const wait = Math.ceil((NEWSLETTER_COOLDOWN_MS - elapsed) / 1000);
+    return res.status(429).json({ error: `Attends encore ${wait}s avant le prochain envoi` });
+  }
 
   const { message, subject } = req.body;
   if (!message || typeof message !== 'string' || message.length < 5 || message.length > 2000)
@@ -35,6 +45,7 @@ router.post('/send', async (req, res) => {
       }
     }
 
+    _lastSent.set(req.guildId, Date.now());
     res.json({ ok: true, sent, failed, total: staff.length });
   } catch (err) {
     console.error(err);
