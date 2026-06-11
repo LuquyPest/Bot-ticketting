@@ -319,6 +319,32 @@ const TENANT_TABLES_SQL = `
     active       TINYINT(1) NOT NULL DEFAULT 1,
     created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS ticket_panels (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL,
+    channel_id   VARCHAR(20) DEFAULT NULL,
+    message_id   VARCHAR(20) DEFAULT NULL,
+    title        VARCHAR(256) NOT NULL DEFAULT 'Support',
+    description  TEXT DEFAULT NULL,
+    color        VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+    footer_text  VARCHAR(256) DEFAULT NULL,
+    image_url    VARCHAR(512) DEFAULT NULL,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS panel_buttons (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    panel_id  INT NOT NULL,
+    label     VARCHAR(80) NOT NULL,
+    emoji     VARCHAR(50) DEFAULT NULL,
+    style     ENUM('primary','secondary','success','danger') NOT NULL DEFAULT 'primary',
+    subject   VARCHAR(100) DEFAULT NULL,
+    form_id   INT DEFAULT NULL,
+    position  INT NOT NULL DEFAULT 0,
+    CONSTRAINT fk_pb_panel FOREIGN KEY (panel_id) REFERENCES ticket_panels(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pb_form  FOREIGN KEY (form_id)  REFERENCES intake_forms(id)  ON DELETE SET NULL
+  );
 `;
 
 async function ensureTenantSchema(guildId) {
@@ -367,6 +393,11 @@ async function ensureTenantSchema(guildId) {
       // Phase 3 — per-subject welcome messages + ip allowlist
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS subject_welcome_messages JSON NOT NULL DEFAULT ('{}')`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ip_allowlist JSON NOT NULL DEFAULT ('[]')`,
+      // Phase 4 — intake form modal fields + panels
+      `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS placeholder VARCHAR(100) DEFAULT NULL`,
+      `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS style ENUM('short','paragraph') NOT NULL DEFAULT 'short'`,
+      `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS min_length INT DEFAULT NULL`,
+      `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS max_length INT DEFAULT NULL`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 
