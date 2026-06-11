@@ -12,7 +12,6 @@ import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
 import CommandPalette from './CommandPalette';
 import GuildSwitcher from './GuildSwitcher';
-import ProfileModal from './ProfileModal';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -49,8 +48,7 @@ export default function Sidebar() {
   const { status } = useSSECtx() || { status: 'connecting' };
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [cmdOpen, setCmdOpen]       = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [cmdOpen, setCmdOpen]             = useState(false);
   const [unclaimedCount, setUnclaimedCount] = useState(0);
 
   /* fetch unclaimed count on mount + on SSE events */
@@ -191,12 +189,11 @@ export default function Sidebar() {
 
         {/* User footer */}
         <div className="px-2 pb-3 pt-2">
-          {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
           <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl
                           bg-white/[0.03] border border-white/[0.05]">
-            {/* Avatar — clickable to open profile */}
+            {/* Avatar — link to profile page */}
             <button
-              onClick={() => setProfileOpen(true)}
+              onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
               title="Mon profil"
               className="relative flex-shrink-0 rounded-full hover:ring-2 hover:ring-primary/50
                          transition-all focus:outline-none"
@@ -213,9 +210,9 @@ export default function Sidebar() {
                                bg-emerald-400 border-2 border-base" />
             </button>
 
-            {/* Info — clickable to open profile */}
+            {/* Info — link to profile page */}
             <button
-              onClick={() => setProfileOpen(true)}
+              onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
               className="min-w-0 flex-1 text-left hover:opacity-80 transition-opacity"
             >
               <p className="text-xs text-ink-1 truncate font-semibold leading-tight">{user?.username}</p>

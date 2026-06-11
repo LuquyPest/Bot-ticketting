@@ -78,17 +78,20 @@ const TENANT_TABLES_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS dashboard_users (
-    user_id           VARCHAR(32) PRIMARY KEY,
-    username          VARCHAR(100) NOT NULL,
-    avatar            VARCHAR(64) DEFAULT NULL,
-    role              ENUM('nouveau','support','fondateur') NOT NULL DEFAULT 'nouveau',
-    discord_has_role  TINYINT(1) NOT NULL DEFAULT 0,
-    staff_role_id     INT DEFAULT NULL,
-    approved_by       VARCHAR(32) DEFAULT NULL,
-    approved_at       DATETIME DEFAULT NULL,
-    vacation_mode     TINYINT(1) NOT NULL DEFAULT 0,
-    first_login       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_login        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    user_id             VARCHAR(32) PRIMARY KEY,
+    username            VARCHAR(100) NOT NULL,
+    avatar              VARCHAR(64) DEFAULT NULL,
+    role                ENUM('nouveau','support','fondateur') NOT NULL DEFAULT 'nouveau',
+    discord_has_role    TINYINT(1) NOT NULL DEFAULT 0,
+    staff_role_id       INT DEFAULT NULL,
+    approved_by         VARCHAR(32) DEFAULT NULL,
+    approved_at         DATETIME DEFAULT NULL,
+    vacation_mode       TINYINT(1) NOT NULL DEFAULT 0,
+    bio                 VARCHAR(160) DEFAULT NULL,
+    banner_color        VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+    profile_picture_url VARCHAR(512) DEFAULT NULL,
+    first_login         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_login          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS ticket_notes (
@@ -238,6 +241,14 @@ async function ensureTenantSchema(guildId) {
     );
     await conn.query(`USE \`${dbName}\``);
     await conn.query(TENANT_TABLES_SQL);
+
+    // Migrations for existing tenant DBs
+    const migrations = [
+      `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT NULL`,
+      `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS banner_color VARCHAR(7) NOT NULL DEFAULT '#6366f1'`,
+      `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS profile_picture_url VARCHAR(512) DEFAULT NULL`,
+    ];
+    for (const m of migrations) await conn.query(m).catch(() => null);
 
     // Seed default guild_config row
     await conn.query(`
