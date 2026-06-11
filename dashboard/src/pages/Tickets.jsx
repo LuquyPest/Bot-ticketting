@@ -536,7 +536,7 @@ export default function Tickets() {
                     mousePosRef.current = { x: e.clientX, y: e.clientY };
                     hoverTimer.current = setTimeout(() => {
                       setQuickView({ ticket: t, x: mousePosRef.current.x, y: mousePosRef.current.y });
-                    }, 3000);
+                    }, 1500);
                   }}
                   onMouseMove={e => { mousePosRef.current = { x: e.clientX, y: e.clientY }; }}
                   onMouseLeave={() => { clearTimeout(hoverTimer.current); setQuickView(null); }}
