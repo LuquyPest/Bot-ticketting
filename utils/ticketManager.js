@@ -185,19 +185,25 @@ function createManager(db, client, guildId) {
     return { channel, ticket, created: false };
   }
 
-  async function sendWelcomeDm(user, created, subject = null) {
+  async function sendWelcomeDm(user, created, subject = null, ticketId = null) {
     if (!created) return;
     const cfg = await getGuildConfig(db);
-    let msg = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
+    let welcomeText = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
     if (subject) {
       try {
         const subjectMsgs = typeof cfg.subject_welcome_messages === 'string'
           ? JSON.parse(cfg.subject_welcome_messages)
           : (cfg.subject_welcome_messages || {});
-        if (subjectMsgs[subject]) msg = subjectMsgs[subject];
+        if (subjectMsgs[subject]) welcomeText = subjectMsgs[subject];
       } catch {}
     }
-    await user.send(msg).catch(() => null);
+    const welcomeEmbed = new EmbedBuilder()
+      .setColor(0x6366f1)
+      .setTitle(ticketId ? `🎫 Ticket #${ticketId} créé` : '🎫 Ticket créé')
+      .setDescription(welcomeText)
+      .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
+    if (subject) welcomeEmbed.addFields({ name: '📂 Sujet', value: subject, inline: true });
+    await user.send({ embeds: [welcomeEmbed] }).catch(() => null);
   }
 
   async function saveTranscriptSnapshot(channel, createdByUser, ticketOverride = null) {
@@ -301,16 +307,30 @@ function createManager(db, client, guildId) {
       `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
     );
-    const embed = new EmbedBuilder()
-      .setColor(0x10b981).setTitle(`🔄 Ticket #${ticket.id} — Réouvert`)
-      .addFields({ name: 'Utilisateur', value: `<@${ticket.owner_id}> (${ticket.owner_tag})`, inline: true }, { name: 'Priorité', value: '🔵 Normal', inline: true })
+    const reopenEmbed = new EmbedBuilder()
+      .setColor(0x10b981)
+      .setAuthor({ name: 'Ticket réouvert' })
+      .setTitle(`Ticket #${ticket.id}`)
+      .setDescription(`Bienvenue à nouveau <@${ticket.owner_id}> ! Le ticket a été réouvert.`)
+      .addFields(
+        { name: '👤 Utilisateur', value: `<@${ticket.owner_id}>`, inline: true },
+        { name: '📂 Sujet', value: ticket.subject || 'Non défini', inline: true },
+        { name: '🔵 Priorité', value: 'Normale', inline: true }
+      )
+      .setFooter({ text: 'Ticket réouvert' })
       .setTimestamp();
-    if (ticket.subject) embed.addFields({ name: 'Sujet', value: ticket.subject });
-    await channel.send({ embeds: [embed], components: [ticketButtons()] });
+    await channel.send({ embeds: [reopenEmbed], components: [ticketButtons()] });
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
     await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
     const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
-    if (owner) await owner.send('Ton ticket a été réouvert. Tu peux continuer à répondre en DM.').catch(() => null);
+    if (owner) {
+      const reopenDmEmbed = new EmbedBuilder()
+        .setColor(0x10b981)
+        .setTitle(`🔄 Ticket #${ticket.id} réouvert`)
+        .setDescription('Ton ticket a été réouvert. Tu peux continuer à répondre en DM.')
+        .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
+      await owner.send({ embeds: [reopenDmEmbed] }).catch(() => null);
+    }
     return channel;
   }
 
