@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
@@ -44,7 +45,7 @@ function QuickView({ ticket, x, y, messages }) {
   const left = x + 20 + POPUP_W > window.innerWidth  ? x - POPUP_W - 12 : x + 20;
   const top  = y + 20 + POPUP_H > window.innerHeight ? y - POPUP_H - 8  : y + 20;
 
-  return (
+  return createPortal(
     <div
       className="fixed z-50 w-[320px] bg-surface-elevated border border-white/[0.12] rounded-2xl p-5
                  shadow-[0_16px_60px_rgba(0,0,0,0.8)] animate-fade-in pointer-events-none"
@@ -81,10 +82,10 @@ function QuickView({ ticket, x, y, messages }) {
             {PRIORITY_LABELS[ticket.priority] || ticket.priority}
           </span>
         </div>
-        {ticket.claimed_by_tag && (
+        {ticket.claimed_by && (
           <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
             <span className="text-ink-4">Assigné à</span>
-            <span className="text-emerald-400 font-medium">{ticket.claimed_by_tag}</span>
+            <span className="text-emerald-400 font-medium">{ticket._claimedTag || ticket.claimed_by}</span>
           </div>
         )}
         <div className="flex items-center justify-between py-1.5">
@@ -134,7 +135,8 @@ function QuickView({ ticket, x, y, messages }) {
       </div>
 
       <p className="text-[10px] text-ink-4 mt-3">Cliquez pour ouvrir le ticket</p>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -585,7 +587,11 @@ export default function Tickets() {
                     mousePosRef.current = { x: e.clientX, y: e.clientY };
                     hoverTimer.current = setTimeout(async () => {
                       const pos = { x: mousePosRef.current.x, y: mousePosRef.current.y };
-                      setQuickView({ ticket: t, x: pos.x, y: pos.y, messages: null });
+                      const claimedTag = t.claimed_by
+                        ? (staffList.find(s => s.admin_id === t.claimed_by)?.admin_tag || t.claimed_by)
+                        : null;
+                      const enriched = claimedTag ? { ...t, _claimedTag: claimedTag } : t;
+                      setQuickView({ ticket: enriched, x: pos.x, y: pos.y, messages: null });
                       try {
                         const { data: notes } = await api.get(`/tickets/${t.id}/notes`);
                         setQuickView(qv =>
@@ -662,9 +668,14 @@ export default function Tickets() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-xs truncate max-w-[120px]">
-                    {t.claimed_by_tag
-                      ? <span className="text-emerald-400 font-medium">{t.claimed_by_tag}</span>
-                      : <span className="text-ink-4 italic">—</span>}
+                    {(() => {
+                      const tag = t.claimed_by
+                        ? (staffList.find(s => s.admin_id === t.claimed_by)?.admin_tag || t.claimed_by)
+                        : null;
+                      return tag
+                        ? <span className="text-emerald-400 font-medium">{tag}</span>
+                        : <span className="text-ink-4 italic">—</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3.5 text-ink-3 text-xs whitespace-nowrap tabular-nums">
                     {fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
