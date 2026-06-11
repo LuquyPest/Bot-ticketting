@@ -429,4 +429,47 @@ router.get('/stats', requireSuperAdmin, async (req, res) => {
   }
 });
 
+// PATCH /api/sa/guilds/:guildId/limits — set per-guild resource limits
+router.patch('/guilds/:guildId/limits', requireSuperAdmin, async (req, res) => {
+  const { max_tickets, max_agents, transcript_retention_days } = req.body;
+  const isInt = v => v === undefined || (Number.isInteger(v) && v >= 0);
+  if (!isInt(max_tickets) || !isInt(max_agents) || !isInt(transcript_retention_days)) {
+    return res.status(400).json({ error: 'Valeurs entières positives requises (0 = illimité)' });
+  }
+  try {
+    const [guild] = await globalQuery('SELECT guild_id FROM guilds WHERE guild_id = ?', [req.params.guildId]);
+    if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
+    if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
+    const updates = [];
+    const values  = [];
+    if (max_tickets !== undefined)              { updates.push('max_tickets = ?');                values.push(max_tickets); }
+    if (max_agents !== undefined)               { updates.push('max_agents = ?');                 values.push(max_agents); }
+    if (transcript_retention_days !== undefined){ updates.push('transcript_retention_days = ?'); values.push(transcript_retention_days); }
+    if (!updates.length) return res.status(400).json({ error: 'Aucune valeur fournie' });
+    values.push(guild.guild_id);
+    await globalQuery(`UPDATE guilds SET ${updates.join(', ')} WHERE guild_id = ?`, values);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/sa/error-logs — centralized error log from all guilds
+router.get('/error-logs', requireSuperAdmin, async (req, res) => {
+  const { guild_id, limit = 100, offset = 0 } = req.query;
+  try {
+    const where  = guild_id ? 'WHERE guild_id = ?' : '';
+    const params = guild_id ? [guild_id, parseInt(limit), parseInt(offset)] : [parseInt(limit), parseInt(offset)];
+    const [rows, [{ total }]] = await Promise.all([
+      globalQuery(`SELECT id, guild_id, context, message, stack, created_at FROM error_logs ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, params),
+      globalQuery(`SELECT COUNT(*) as total FROM error_logs ${where}`, guild_id ? [guild_id] : []),
+    ]);
+    res.json({ rows, total });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

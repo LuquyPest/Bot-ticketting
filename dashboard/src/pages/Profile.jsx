@@ -2,9 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Save, RefreshCw, ShieldCheck, ShieldOff, Loader2, Eye, EyeOff,
   Check, Star, Clock, Trophy, Ticket, Palmtree, Link, Pencil, X,
+  Bell, BellOff, Monitor, Trash2,
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import usePushNotifications from '../hooks/usePushNotifications';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,6 +121,37 @@ export default function Profile() {
   const [vacation, setVacation]           = useState(false);
   const [editingPhoto, setEditingPhoto]   = useState(false);
 
+  // Push notifications
+  const push = usePushNotifications();
+
+  // Sessions actives
+  const [sessions, setSessions]           = useState([]);
+  const [sessionsLoading, setSessionsL]   = useState(false);
+  const [revokingAll, setRevokingAll]     = useState(false);
+
+  const loadSessions = useCallback(() => {
+    setSessionsL(true);
+    api.get('/sessions').then(r => setSessions(r.data)).catch(() => {}).finally(() => setSessionsL(false));
+  }, []);
+
+  const revokeSession = async (sessionId) => {
+    try {
+      await api.delete(`/sessions/${sessionId}`);
+      setSessions(prev => prev.filter(s => s.sessionId !== sessionId));
+      toast.success('Session révoquée');
+    } catch { toast.error('Erreur révocation'); }
+  };
+
+  const revokeAll = async () => {
+    setRevokingAll(true);
+    try {
+      const r = await api.delete('/sessions');
+      setSessions(prev => prev.filter(s => s.isCurrent));
+      toast.success(`${r.data.revoked} session(s) révoquée(s)`);
+    } catch { toast.error('Erreur'); }
+    setRevokingAll(false);
+  };
+
   // 2FA
   const [twoFaEnabled, setTwoFaEnabled]   = useState(false);
   const [twoFaLoading, setTwoFaLoading]   = useState(true);
@@ -150,7 +183,7 @@ export default function Profile() {
       .finally(() => setTwoFaLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadSessions(); }, [load, loadSessions]);
 
   const save = async () => {
     setSaving(true);
@@ -581,6 +614,79 @@ export default function Profile() {
           </div>
         </Section>
       </div>
+
+      {/* ── Notifications push ───────────────────────────────────────────── */}
+      {push.supported && (
+        <Section title="Notifications">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink-1">Notifications navigateur</p>
+              <p className="text-xs text-ink-3 mt-0.5">
+                {push.subscribed ? 'Activées — tu reçois une notification à chaque réponse sur un ticket.'
+                 : push.permission === 'denied' ? 'Bloquées par le navigateur — autorise-les dans les paramètres.'
+                 : 'Désactivées — active-les pour recevoir des alertes en temps réel.'}
+              </p>
+            </div>
+            {push.subscribed ? (
+              <button onClick={push.unsubscribe} disabled={push.loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                           bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20
+                           disabled:opacity-50 transition-colors flex-shrink-0">
+                {push.loading ? <Loader2 size={13} className="animate-spin" /> : <BellOff size={13} />}
+                Désactiver
+              </button>
+            ) : (
+              <button onClick={push.subscribe} disabled={push.loading || push.permission === 'denied'}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                           bg-primary/20 text-primary-light border border-primary/30 hover:bg-primary/30
+                           disabled:opacity-50 transition-colors flex-shrink-0">
+                {push.loading ? <Loader2 size={13} className="animate-spin" /> : <Bell size={13} />}
+                Activer
+              </button>
+            )}
+          </div>
+        </Section>
+      )}
+
+      {/* ── Sessions actives ──────────────────────────────────────────────── */}
+      <Section title="Sessions actives">
+        <div className="space-y-2">
+          {sessionsLoading && (
+            <div className="flex justify-center py-4"><Loader2 size={18} className="animate-spin text-primary-light" /></div>
+          )}
+          {!sessionsLoading && sessions.map(s => (
+            <div key={s.sessionId}
+              className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <Monitor size={15} className="text-ink-4 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-medium text-ink-1 truncate">
+                    {s.userAgent?.split(' ').slice(-1)[0]?.replace(/\/.*/, '') || 'Navigateur inconnu'}
+                  </p>
+                  {s.isCurrent && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                      Actuelle
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-ink-4 mt-0.5">{s.ip} · {new Date(s.lastSeenAt).toLocaleString('fr-FR')}</p>
+              </div>
+              {!s.isCurrent && (
+                <button onClick={() => revokeSession(s.sessionId)}
+                  className="text-ink-4 hover:text-red-400 transition-colors flex-shrink-0">
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+          {!sessionsLoading && sessions.filter(s => !s.isCurrent).length > 0 && (
+            <button onClick={revokeAll} disabled={revokingAll}
+              className="w-full py-2 text-xs text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-50">
+              {revokingAll ? 'Révocation…' : 'Révoquer toutes les autres sessions'}
+            </button>
+          )}
+        </div>
+      </Section>
 
       {/* ── All-time stats footer ─────────────────────────────────────────── */}
       <div className="bg-surface-card border border-white/[0.06] rounded-2xl px-5 py-4">

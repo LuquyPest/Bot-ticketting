@@ -63,4 +63,31 @@ router.get('/:adminId', async (req, res) => {
   }
 });
 
+// GET /api/staff/export/csv — download all staff stats as CSV
+router.get('/export/csv', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
+  try {
+    const stats = await req.guildDb(
+      'SELECT admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score, total_response_count, total_response_seconds, updated_at FROM admin_stats ORDER BY tickets_closed DESC'
+    );
+    const rows = stats.map(r => ({
+      id:                r.admin_id,
+      tag:               r.admin_tag,
+      claimed:           r.tickets_claimed,
+      closed:            r.tickets_closed,
+      avg_rating:        r.total_ratings > 0 ? (r.total_rating_score / r.total_ratings).toFixed(2) : '',
+      avg_response_sec:  r.total_response_count > 0 ? Math.floor(r.total_response_seconds / r.total_response_count) : '',
+      updated_at:        r.updated_at ? new Date(r.updated_at).toISOString() : '',
+    }));
+    const headers = ['id', 'tag', 'claimed', 'closed', 'avg_rating', 'avg_response_sec', 'updated_at'];
+    const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="staff_stats.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

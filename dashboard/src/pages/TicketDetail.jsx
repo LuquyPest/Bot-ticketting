@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
@@ -13,6 +13,20 @@ import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
+
+const TEMPLATE_VAR_RE = /\{\{(username|ticket_id|date|staff_name|subject)\}\}/gi;
+
+function hasVars(text) { return TEMPLATE_VAR_RE.test(text); }
+
+function resolveVars(text, ticket, staffUsername) {
+  const date = new Date().toLocaleDateString('fr-FR');
+  return text
+    .replace(/\{\{username\}\}/gi,   ticket?.owner_tag   ?? '')
+    .replace(/\{\{ticket_id\}\}/gi,  String(ticket?.id   ?? ''))
+    .replace(/\{\{date\}\}/gi,       date)
+    .replace(/\{\{staff_name\}\}/gi, staffUsername        ?? '')
+    .replace(/\{\{subject\}\}/gi,    ticket?.subject     ?? '');
+}
 
 const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 
@@ -745,10 +759,23 @@ export default function TicketDetail() {
                             className="group/tpl flex items-start gap-2 px-3.5 py-2.5
                                        hover:bg-white/[0.04] border-b border-white/[0.05] last:border-0
                                        transition-colors cursor-pointer"
-                            onClick={() => { setComposeText(tpl.content); setShowTemplates(false); }}>
+                            onClick={() => {
+                              setComposeText(resolveVars(tpl.content, ticket, user?.username));
+                              setShowTemplates(false);
+                            }}>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-ink-1 truncate">{tpl.name}</p>
-                              <p className="text-[10px] text-ink-3 truncate mt-0.5">{tpl.content}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-semibold text-ink-1 truncate">{tpl.name}</p>
+                                {hasVars(tpl.content) && (
+                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-500/20
+                                                   text-violet-300 border border-violet-500/20 flex-shrink-0">
+                                    vars
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-ink-3 truncate mt-0.5">
+                                {resolveVars(tpl.content, ticket, user?.username)}
+                              </p>
                             </div>
                             {(user?.role === 'fondateur' || tpl.created_by_id === user?.id) && (
                               <button onClick={(e) => deleteTemplate(tpl.id, e)}

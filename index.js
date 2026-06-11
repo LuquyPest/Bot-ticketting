@@ -10,6 +10,7 @@ const { startEscalationChecker } = require('./utils/escalationChecker');
 const { startStaffReminderChecker } = require('./utils/staffReminderChecker');
 const { startUserInactiveChecker } = require('./utils/userInactiveChecker');
 const { startWebServer } = require('./web/server');
+const { startWorkers }  = require('./utils/jobQueue');
 
 const client = new Client({
   intents: [
@@ -72,6 +73,7 @@ client.login(config.token);
 
 client.once('ready', () => {
   logger.info('Bot connecté', { tag: client.user.tag });
+  startWorkers(client);
   startInactiveChecker(client);
   startWeeklyReport(client);
   startScheduledMessages(client);

@@ -6,13 +6,56 @@ const { authenticator } = require('otplib');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+}
+
 function logLogin(req, userId, username, status) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const ip = getClientIp(req);
   const ua = (req.headers['user-agent'] || '').slice(0, 500);
   globalQuery(
     'INSERT INTO login_logs (user_id, username, ip, user_agent, status) VALUES (?, ?, ?, ?, ?)',
     [userId, username, ip, ua, status]
   ).catch(() => null);
+}
+
+function trackSession(req, userId) {
+  const ip = getClientIp(req);
+  const ua = (req.headers['user-agent'] || '').slice(0, 500);
+  const sid = req.session.id;
+  globalQuery(
+    `INSERT INTO user_sessions (user_id, session_id, ip, user_agent)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE last_seen_at = NOW()`,
+    [userId, sid, ip, ua]
+  ).catch(() => null);
+}
+
+async function checkNewIpAlert(req, userId) {
+  const ip = getClientIp(req);
+  try {
+    const rows = await globalQuery(
+      'SELECT ip FROM login_logs WHERE user_id = ? AND status = "success" ORDER BY id DESC LIMIT 10',
+      [userId]
+    );
+    const known = new Set(rows.map(r => r.ip));
+    if (known.size === 0 || known.has(ip)) return; // first login or known IP
+
+    const config = cfg();
+    if (!config.token) return;
+    const date = new Date().toLocaleString('fr-FR');
+    const dmChannel = await axios.post(
+      'https://discord.com/api/users/@me/channels',
+      { recipient_id: userId },
+      { headers: { Authorization: `Bot ${config.token}` } }
+    ).catch(() => null);
+    if (!dmChannel?.data?.id) return;
+    await axios.post(
+      `https://discord.com/api/channels/${dmChannel.data.id}/messages`,
+      { content: `⚠️ **Nouvelle connexion au dashboard** depuis une IP inconnue \`${ip}\` le ${date}.\nSi ce n'est pas toi, révoque tes sessions depuis ton profil.` },
+      { headers: { Authorization: `Bot ${config.token}` } }
+    ).catch(() => null);
+  } catch {}
 }
 
 let _cfg = null;
@@ -158,9 +201,18 @@ router.post('/select-guild', async (req, res) => {
 
     if (!dbUser) return res.status(403).json({ error: 'Accès refusé — contacte le fondateur du serveur' });
 
-    req.session.currentGuildId = guildId;
-    req.session.user.role = dbUser.role;
-    res.json({ ok: true, guildId, role: dbUser.role });
+    const userData     = { ...req.session.user, role: dbUser.role };
+    const accessToken  = req.session.discordAccessToken;
+
+    // Regenerate session ID after privilege change (prevents session fixation)
+    req.session.regenerate(regenErr => {
+      if (regenErr) return res.status(500).json({ error: 'Erreur serveur' });
+      req.session.user               = userData;
+      req.session.discordAccessToken = accessToken;
+      req.session.currentGuildId     = guildId;
+      res.json({ ok: true, guildId, role: dbUser.role });
+    });
+    return;
   } catch (err) {
     console.error('select-guild error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -228,6 +280,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     logLogin(req, discordUser.id, discordUser.username, 'success');
+    checkNewIpAlert(req, discordUser.id).catch(() => null);
     req.session.regenerate(err => {
       if (err) return res.redirect('/login?error=oauth_failed');
       req.session.user = {
@@ -237,6 +290,7 @@ router.get('/discord/callback', async (req, res) => {
         role:     null,
       };
       req.session.discordAccessToken = token.access_token;
+      req.session.save(() => trackSession(req, discordUser.id));
       res.redirect('/select-guild');
     });
   } catch (err) {
@@ -278,6 +332,7 @@ router.post('/totp-verify-login', async (req, res) => {
     }
 
     logLogin(req, pending.userId, pending.username, 'success');
+    checkNewIpAlert(req, pending.userId).catch(() => null);
     req.session.user = {
       id:       pending.userId,
       username: pending.username,
@@ -286,6 +341,7 @@ router.post('/totp-verify-login', async (req, res) => {
     };
     req.session.discordAccessToken = pending.discordAccessToken;
     delete req.session.pendingTotp;
+    req.session.save(() => trackSession(req, pending.userId));
 
     res.json({ ok: true, redirect: '/select-guild' });
   } catch (err) {
@@ -296,7 +352,14 @@ router.post('/totp-verify-login', async (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
+  const sid    = req.session.id;
+  const userId = req.session.user?.id;
+  req.session.destroy(() => {
+    if (userId) {
+      globalQuery('DELETE FROM user_sessions WHERE session_id = ?', [sid]).catch(() => null);
+    }
+    res.json({ ok: true });
+  });
 });
 
 module.exports = router;
