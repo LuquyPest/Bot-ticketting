@@ -383,6 +383,54 @@ function createManager(db, client, guildId) {
     return rows[0] || null;
   }
 
+  async function getOldTicketsByUserId(userId) {
+    return db(
+      `SELECT id, channel_id, owner_id, owner_tag, subject, priority, status, created_at, closed_at, closed_by_tag
+       FROM tickets WHERE owner_id = ? AND status = 'closed' ORDER BY closed_at DESC LIMIT 50`,
+      [userId]
+    );
+  }
+
+  async function addToBlacklist(userId, userTag, reason, addedByUser) {
+    await db(
+      `INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE reason = VALUES(reason), added_by_id = VALUES(added_by_id),
+         added_by_tag = VALUES(added_by_tag), added_at = NOW()`,
+      [userId, userTag, reason || null, addedByUser.id, addedByUser.tag || addedByUser.username]
+    );
+  }
+
+  async function removeFromBlacklist(userId) {
+    const rows = await db('SELECT user_id FROM blacklist WHERE user_id = ?', [userId]);
+    if (!rows.length) return false;
+    await db('DELETE FROM blacklist WHERE user_id = ?', [userId]);
+    return true;
+  }
+
+  async function getBlacklist() {
+    await db('DELETE FROM blacklist WHERE expires_at IS NOT NULL AND expires_at <= NOW()');
+    return db('SELECT * FROM blacklist ORDER BY added_at DESC');
+  }
+
+  async function getTranscriptById(id) {
+    const [row] = await db(
+      'SELECT id, ticket_id, created_by_tag, created_at, message_count, html, txt FROM transcript_snapshots WHERE id = ?',
+      [id]
+    );
+    return row || null;
+  }
+
+  async function setPriority(ticketId, priority) {
+    await db('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+  }
+
+  async function getAdminStats() {
+    return db(
+      'SELECT admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score, total_response_count, total_response_seconds, updated_at FROM admin_stats ORDER BY tickets_closed DESC'
+    );
+  }
+
   return {
     getGuildConfig,
     getOpenTicketByOwnerId,
@@ -411,7 +459,14 @@ function createManager(db, client, guildId) {
     updateChannelTopic,
     logMoveTicket,
     logAddUser,
-    logRemoveUser
+    logRemoveUser,
+    getOldTicketsByUserId,
+    addToBlacklist,
+    removeFromBlacklist,
+    getBlacklist,
+    getTranscriptById,
+    setPriority,
+    getAdminStats
   };
 }
 

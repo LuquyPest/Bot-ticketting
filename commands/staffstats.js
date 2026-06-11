@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { getTenantDb } = require('../utils/tenantDb');
+const { createManager } = require('../utils/ticketManager');
 const { ensureChiefSupport } = require('../utils/permissions');
-const { getAdminStats } = require('../utils/ticketManager');
 
 function formatDuration(seconds) {
   if (!seconds) return '-';
@@ -15,14 +16,14 @@ module.exports = {
     .setDescription('Affiche les statistiques des admins sur les tickets'),
 
   async execute(client, interaction) {
-    const allowed = await ensureChiefSupport(interaction, client);
-    if (!allowed) return;
+    const db = getTenantDb(interaction.guildId);
+    const tm = createManager(db, client, interaction.guildId);
+    if (!(await ensureChiefSupport(interaction, client, db))) return;
 
-    const stats = await getAdminStats();
+    const stats = await tm.getAdminStats();
 
     if (!stats.length) {
-      await interaction.reply({ content: '❌ Aucune statistique disponible.', ephemeral: true });
-      return;
+      return interaction.reply({ content: '❌ Aucune statistique disponible.', ephemeral: true });
     }
 
     const description = stats.slice(0, 20).map((row, index) => {

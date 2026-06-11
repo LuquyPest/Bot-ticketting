@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { getTenantDb } = require('../utils/tenantDb');
+const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
-const { getTranscriptById } = require('../utils/ticketManager');
 const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 
 module.exports = {
@@ -12,17 +13,17 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
-    const allowed = await ensureSupport(interaction, client);
-    if (!allowed) return;
+    const db = getTenantDb(interaction.guildId);
+    const tm = createManager(db, client, interaction.guildId);
+    if (!(await ensureSupport(interaction, client, db))) return;
 
     await interaction.deferReply({ ephemeral: true });
 
     const transcriptId = interaction.options.getInteger('transcriptid', true);
-    const transcript = await getTranscriptById(transcriptId);
+    const transcript = await tm.getTranscriptById(transcriptId);
 
     if (!transcript) {
-      await interaction.editReply({ content: 'Transcript introuvable.' });
-      return;
+      return interaction.editReply({ content: 'Transcript introuvable.' });
     }
 
     const token = hostTranscript(transcript.html);
