@@ -28,42 +28,54 @@ function isPrivateIp(ip) {
   return BLOCKED_CIDRS.some(([base, mask]) => (n & mask) === base);
 }
 
-async function isSafeWebhookUrl(rawUrl) {
-  let url;
-  try { url = new URL(rawUrl); } catch { return false; }
-  if (url.protocol !== 'https:') return false;          // http:// blocked
-  if (!url.hostname || url.hostname.length > 253) return false;
-  if (net.isIP(url.hostname)) return !isPrivateIp(url.hostname);
-  // Resolve DNS and check all returned IPs
+// Resolves the hostname once, verifies all returned IPs, and returns the first
+// safe IP to use as a pinned address — prevents DNS rebinding attacks where a
+// second resolution at request time could return a private IP.
+async function resolveAndPin(hostname) {
+  if (net.isIP(hostname)) {
+    return isPrivateIp(hostname) ? null : hostname;
+  }
   try {
-    const results = await dns.lookup(url.hostname, { all: true });
-    return results.every(r => !isPrivateIp(r.address));
-  } catch { return false; }
+    const results = await dns.lookup(hostname, { all: true });
+    if (!results.length) return null;
+    if (results.some(r => isPrivateIp(r.address))) return null;
+    return results[0].address;
+  } catch { return null; }
 }
 
 async function emitWebhook(webhookUrl, event, payload, secret) {
   if (!webhookUrl) return;
-  if (!await isSafeWebhookUrl(webhookUrl)) return { blocked: true };
+
+  let url;
+  try { url = new URL(webhookUrl); } catch { return { blocked: true }; }
+  if (url.protocol !== 'https:') return { blocked: true };
+  if (!url.hostname || url.hostname.length > 253) return { blocked: true };
+
+  // Resolve DNS once and pin the IP — https.request uses the pinned IP,
+  // avoiding a second OS-level resolution that a DNS rebinding attack could hijack.
+  const resolvedIp = await resolveAndPin(url.hostname);
+  if (!resolvedIp) return { blocked: true };
 
   const body = JSON.stringify({ event, timestamp: new Date().toISOString(), ...payload });
-  const url = new URL(webhookUrl);
 
   const headers = {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
     'User-Agent': 'TicketBot/1.0',
     'X-TicketBot-Event': event,
+    'Host': url.hostname,
   };
   if (secret) {
     headers['X-TicketBot-Signature-256'] = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
   }
 
   const options = {
-    hostname: url.hostname,
-    port: url.port || 443,
+    hostname: resolvedIp,        // pinned — no second DNS resolution at connection time
+    port: parseInt(url.port) || 443,
     path: url.pathname + url.search,
     method: 'POST',
     headers,
+    servername: url.hostname,    // TLS SNI uses the original hostname
     timeout: 5000,
   };
 
