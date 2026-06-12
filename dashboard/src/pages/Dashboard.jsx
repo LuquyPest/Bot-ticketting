@@ -39,14 +39,19 @@ function buildChart(opened, closed, unclaimed, days) {
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-surface-elevated border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs
-                    shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+    <div
+      className="rounded-xl px-3.5 py-2.5 text-xs shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+      style={{
+        background: 'var(--color-surface-elevated)',
+        border: '1px solid rgba(255,255,255,0.1)',
+      }}
+    >
       <p className="text-ink-3 mb-2 font-medium">{label}</p>
       {payload.map(p => (
         <p key={p.name} className="flex items-center gap-1.5 py-0.5" style={{ color: p.color }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.color }} />
+          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
           <span className="text-ink-2">{p.name}</span>
-          <span className="font-bold ml-auto pl-3 tabular-nums">{p.value}</span>
+          <span className="font-bold ml-auto pl-3 tabular-nums text-ink-1">{p.value}</span>
         </p>
       ))}
     </div>
@@ -271,8 +276,8 @@ export default function Dashboard() {
                   <Tooltip
                     formatter={(v, n) => [v, n]}
                     contentStyle={{
-                      background: '#1a1a2c', border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: 12, fontSize: 12, color: '#f1f0ff'
+                      background: 'var(--color-surface-elevated)', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 12, fontSize: 12, color: 'var(--color-ink-1)'
                     }}
                   />
                 </PieChart>
@@ -308,22 +313,30 @@ export default function Dashboard() {
           </div>
           {topStaff.length > 0 ? (
             <div className="space-y-2.5">
-              {topStaff.map((s, i) => (
-                <div key={s.admin_id}
-                  className="flex items-center gap-3 p-2.5 rounded-xl bg-surface hover:bg-surface-hover
-                             border border-white/[0.04] transition-colors">
-                  <span className="text-lg w-7 text-center leading-none">
-                    {['🥇','🥈','🥉'][i]}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink-1 truncate">{s.admin_tag}</p>
-                    <p className="text-xs text-ink-3 mt-0.5">
-                      {s.tickets_closed} fermés
-                      {s.avgRating ? ` · ⭐ ${s.avgRating}` : ''}
-                    </p>
+              {topStaff.map((s, i) => {
+                const rankCls = [
+                  'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                  'bg-slate-400/15 text-slate-300 border-slate-400/25',
+                  'bg-orange-600/15 text-orange-400 border-orange-600/25',
+                ][i] || 'bg-white/[0.04] text-ink-4 border-white/[0.06]';
+                return (
+                  <div key={s.admin_id}
+                    className="flex items-center gap-3 p-2.5 rounded-xl bg-surface hover:bg-surface-hover
+                               border border-white/[0.04] transition-colors">
+                    <span className={`w-6 h-6 rounded-full text-[10px] font-bold border
+                                     flex items-center justify-center flex-shrink-0 ${rankCls}`}>
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-ink-1 truncate">{s.admin_tag}</p>
+                      <p className="text-xs text-ink-3 mt-0.5">
+                        {s.tickets_closed} fermés
+                        {s.avgRating ? ` · ${s.avgRating} / 5` : ''}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-ink-4 text-center py-6">Aucune donnée</p>
