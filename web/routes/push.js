@@ -4,6 +4,26 @@ const webpush    = require('web-push');
 const { globalQuery } = require('../../utils/globalDb');
 const guildMiddleware = require('../middleware/guild');
 
+// Allowlist of known push service origin prefixes — blocks SSRF via stored endpoint
+const ALLOWED_PUSH_ORIGINS = [
+  'https://fcm.googleapis.com/',
+  'https://updates.push.services.mozilla.com/',
+  'https://push.services.mozilla.org/',
+  'https://notify.windows.com/',
+  'https://web.push.apple.com/',
+  'https://fcm.googleapis.com/',
+  'https://push.googleapis.com/',
+];
+
+function isValidPushEndpoint(endpoint) {
+  if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== 'https:') return false;
+    return ALLOWED_PUSH_ORIGINS.some(origin => endpoint.startsWith(origin));
+  } catch { return false; }
+}
+
 let vapidReady = false;
 
 function initVapid() {
@@ -35,6 +55,9 @@ router.post('/subscribe', guildMiddleware, async (req, res) => {
   const { endpoint, keys } = req.body;
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'Subscription invalide' });
+  }
+  if (!isValidPushEndpoint(endpoint)) {
+    return res.status(400).json({ error: 'Endpoint push non autorisé' });
   }
   try {
     await globalQuery(
