@@ -85,9 +85,12 @@ router.post('/auth/totp-setup', async (req, res) => {
     const table = pending.type === 'superadmin' ? 'superadmins' : 'managers';
     await globalQuery(`UPDATE ${table} SET totp_secret = ?, totp_enabled = 1 WHERE id = ?`, [secret, pending.id]);
 
-    delete req.session.saPendingLogin;
-    req.session.superAdmin = { id: pending.id, username: pending.username, type: pending.type };
-    res.json({ ok: true, username: pending.username, type: pending.type });
+    const saUser = { id: pending.id, username: pending.username, type: pending.type };
+    req.session.regenerate(err => {
+      if (err) return res.status(500).json({ error: 'Erreur serveur' });
+      req.session.superAdmin = saUser;
+      res.json({ ok: true, username: pending.username, type: pending.type });
+    });
   } catch (err) {
     console.error('sa totp-setup error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -123,9 +126,12 @@ router.post('/auth/totp-verify', async (req, res) => {
       });
     }
 
-    delete req.session.saPendingLogin;
-    req.session.superAdmin = { id: pending.id, username: pending.username, type: pending.type };
-    res.json({ ok: true, username: pending.username, type: pending.type });
+    const saUser = { id: pending.id, username: pending.username, type: pending.type };
+    req.session.regenerate(err => {
+      if (err) return res.status(500).json({ error: 'Erreur serveur' });
+      req.session.superAdmin = saUser;
+      res.json({ ok: true, username: pending.username, type: pending.type });
+    });
   } catch (err) {
     console.error('sa totp-verify error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
