@@ -17,6 +17,9 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Panel Superadmin](#panel-superadmin)
 - [Commandes Discord](#commandes-discord)
 - [Fonctionnalités avancées](#fonctionnalités-avancées)
+- [Panels Discord](#panels-discord)
+- [Push Notifications Web](#push-notifications-web)
+- [Gestion des sessions](#gestion-des-sessions)
 - [Webhooks sortants](#webhooks-sortants)
 - [API Keys](#api-keys)
 - [Base de données](#base-de-données)
@@ -57,6 +60,8 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 | Base de données | MariaDB 11 (mysql2, architecture multi-tenant) |
 | Authentification | OAuth2 Discord, TOTP 2FA (otplib), bcrypt |
 | Temps réel | Server-Sent Events (SSE) |
+| Notifications push | Web Push API (VAPID, web-push) |
+| File de jobs | Redis 7 + BullMQ (rapports, vérifications async) |
 | Dashboard frontend | React + Vite + Tailwind CSS |
 | Déploiement | Docker (multi-stage), Docker Compose, Traefik |
 
@@ -101,6 +106,7 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 - **Docker** et **Docker Compose v2**
 - Un **bot Discord** configuré (token + OAuth2)
 - Un serveur avec domaine public et **Traefik** (inclus dans la stack) ou tout autre reverse proxy HTTPS
+- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`), utilisé par BullMQ pour la file de jobs asynchrones et les rapports hebdomadaires
 
 ---
 
@@ -166,6 +172,12 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
   "token": "TON_TOKEN_BOT_DISCORD",
   "clientId": "ID_APPLICATION_BOT",
 
+  "vapid": {
+    "publicKey":  "GENERE_AVEC_node_-e_require('web-push').generateVAPIDKeys()",
+    "privateKey": "GENERE_AVEC_node_-e_require('web-push').generateVAPIDKeys()",
+    "contact":    "admin@ton-domaine.com"
+  },
+
   "webEnabled": true,
   "webServerPort": 3000,
   "webServerBaseUrl": "https://ton-domaine.com",
@@ -190,6 +202,9 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 |-------|-------------|
 | `token` | Token du bot Discord — identité unique du bot, commun à tous les serveurs |
 | `clientId` | ID de l'application Discord — nécessaire pour OAuth2 et le déploiement global des commandes slash |
+| `vapid.publicKey` | Clé publique VAPID pour les push notifications — générer avec `node -e "console.log(require('web-push').generateVAPIDKeys())"` |
+| `vapid.privateKey` | Clé privée VAPID (à conserver secrète) |
+| `vapid.contact` | Adresse e-mail de contact incluse dans les requêtes push (ex. `admin@ton-domaine.com`) |
 | `webEnabled` | `true` pour activer le dashboard et l'API |
 | `webServerPort` | Port interne du serveur Express (3000 par défaut) |
 | `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |
@@ -263,6 +278,7 @@ Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur
 | **Rôles staff** | fondateur | Configuration des rôles Discord mappés au bot |
 | **Newsletter** | fondateur | Envoi de DM en masse aux membres avec des tickets |
 | **Clés API** | fondateur | Génération de clés API pour intégrations externes |
+| **Panels** | fondateur | Création et publication de panels de boutons Discord pour ouvrir des tickets |
 | **Paramètres** | fondateur | Configuration complète du serveur via interface graphique |
 
 ### Fonctionnalités dans la vue ticket
@@ -411,6 +427,63 @@ Embed Discord automatique envoyé chaque semaine dans un salon configuré. Conti
 
 ---
 
+## Panels Discord
+
+Les panels permettent de poster dans un salon Discord un **embed avec des boutons** configurables — les membres peuvent ouvrir un ticket directement en cliquant sur un bouton, sans passer par les DMs.
+
+Chaque panel comprend :
+- Un **embed** personnalisable (titre, description, couleur, image, footer)
+- Des **boutons** (jusqu'à 25, répartis en lignes de 5) avec label, emoji, style et sujet optionnel
+- Un lien optionnel vers un **formulaire d'intake** (modal Discord) déclenché au clic
+
+Le fondateur peut créer, modifier, publier et retirer des panels depuis **Dashboard → Panels**. La publication envoie ou met à jour le message Discord dans le salon cible ; la suppression du panel retire le message automatiquement.
+
+**Tables associées :** `ticket_panels`, `panel_buttons`
+
+---
+
+## Push Notifications Web
+
+Les agents du dashboard peuvent s'abonner aux **notifications push navigateur** (Web Push API). Une notification est envoyée lors de l'arrivée d'un nouveau ticket ou d'un nouveau message.
+
+**Configuration dans `config.json` :**
+```json
+"vapid": {
+  "publicKey":  "...",
+  "privateKey": "...",
+  "contact":    "admin@ton-domaine.com"
+}
+```
+
+Générer les clés VAPID :
+```bash
+node -e "const wp = require('web-push'); const k = wp.generateVAPIDKeys(); console.log(JSON.stringify(k, null, 2));"
+```
+
+Si le bloc `vapid` est absent de `config.json`, le push est simplement désactivé — le reste du bot fonctionne normalement.
+
+**Sécurité :** les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — aucun endpoint arbitraire ne peut être souscrit.
+
+**Table associée :** `push_subscriptions` (dans `ticketbot_global`)
+
+---
+
+## Gestion des sessions
+
+Les utilisateurs peuvent consulter et révoquer leurs sessions actives depuis leur **profil dashboard** (`/profile`).
+
+| Action | Endpoint | Description |
+|--------|----------|-------------|
+| Lister les sessions | `GET /api/sessions` | IP, user-agent, dates de création et dernière activité |
+| Révoquer une session | `DELETE /api/sessions/:sessionId` | Déconnecte une session spécifique |
+| Révoquer toutes les autres | `DELETE /api/sessions` | Ferme toutes les sessions sauf la courante |
+
+La session courante est identifiée dans la liste pour éviter une auto-déconnexion accidentelle.
+
+**Table associée :** `user_sessions` (dans `ticketbot_global`)
+
+---
+
 ## Webhooks sortants
 
 Notifie une URL externe (HTTPS uniquement) lors d'événements tickets.
@@ -443,9 +516,11 @@ Clés d'API générées par le fondateur pour des intégrations externes. Chaque
 | `superadmins` | Comptes du panel SA |
 | `managers` | Comptes managers avec guilds assignées |
 | `web_sessions` | Sessions express-session (MySQL store) |
+| `user_sessions` | Suivi des sessions actives par utilisateur (IP, user-agent, timestamps) |
 | `user_totp` | Secrets TOTP des utilisateurs dashboard |
 | `login_logs` | Historique des connexions OAuth Discord |
 | `sa_auth_logs` | Historique des tentatives d'auth superadmin |
+| `push_subscriptions` | Abonnements push navigateur (endpoint VAPID + clés par utilisateur/guild) |
 
 ### Par serveur — `ticketbot_guild_{guildId}`
 
@@ -475,6 +550,8 @@ Clés d'API générées par le fondateur pour des intégrations externes. Chaque
 | `staff_roles` | Rôles Discord mappés avec niveaux et permissions |
 | `guild_config` | Configuration complète du serveur |
 | `audit_log` | Journal d'audit de toutes les actions dashboard |
+| `ticket_panels` | Panels de boutons Discord (embed + métadonnées, message_id publié) |
+| `panel_buttons` | Boutons associés à un panel (label, emoji, style, sujet, formulaire) |
 
 ---
 
@@ -509,6 +586,7 @@ Bot-ticketting/
 ├── events/                         # Handlers Discord
 │   ├── interactionCreate.js        # Boutons, slash commands, rating, oldtickets
 │   ├── messageCreate.js            # DM → ticket + FAQ + intake + relay
+│   ├── panelTicket.js              # Ouverture de ticket depuis un bouton de panel Discord
 │   ├── guildCreate.js              # Enregistrement nouveau serveur
 │   ├── guildDelete.js              # Suspension serveur
 │   └── ready.js                    # Log connexion bot
@@ -523,7 +601,8 @@ Bot-ticketting/
 │   ├── permissions.js              # Vérification rôles staff Discord
 │   ├── gradePermissions.js         # Système de grades + permissions + audit
 │   ├── components.js               # Boutons Discord (ActionRowBuilder)
-│   ├── embeds.js                   # Embeds réutilisables
+│   ├── embeds.js                   # Embeds réutilisables (staff)
+│   ├── dmEmbeds.js                 # Embeds DM centralisés via EmbedBuilder (membre)
 │   ├── transcript.js               # Génération HTML/TXT
 │   ├── transcriptServer.js         # Pages temporaires (TTL 10 min)
 │   ├── notePrefix.js               # Préfixe des notes internes Discord
@@ -531,6 +610,8 @@ Bot-ticketting/
 │   ├── rateLimit.js                # Cooldowns in-memory commandes Discord
 │   ├── sse.js                      # Registre SSE guild-aware
 │   ├── webhookEmitter.js           # Webhooks sortants + anti-SSRF
+│   ├── redis.js                    # Client Redis lazy (ioredis)
+│   ├── jobQueue.js                 # File BullMQ : rapports hebdo, vérifications async
 │   ├── logger.js                   # Logger JSON structuré (stdout)
 │   ├── inactiveTicketChecker.js    # Fermeture auto tickets inactifs
 │   ├── userInactiveChecker.js      # Fermeture auto si utilisateur inactif
@@ -566,15 +647,25 @@ Bot-ticketting/
 │       ├── staffRoles.js           # Rôles Discord mappés
 │       ├── discord.js              # Catégories Discord
 │       ├── events.js               # Endpoint SSE
+│       ├── panels.js               # Panels Discord (CRUD + publish/unpublish)
+│       ├── forms.js                # Formulaires d'intake (CRUD champs)
+│       ├── push.js                 # Push notifications (VAPID, subscribe/unsubscribe)
+│       ├── sessions.js             # Gestion des sessions actives (liste + révocation)
 │       ├── loginLogs.js            # Journaux de connexion
 │       ├── audit.js                # Journal d'audit
 │       ├── apiKeys.js              # Clés API
 │       └── newsletter.js           # Envoi DM en masse
 │
 └── dashboard/                      # Frontend React + Vite + Tailwind
+    ├── public/
+    │   └── sw.js                   # Service Worker pour les push notifications
     └── src/
-        ├── pages/                  # Dashboard, Tickets, TicketDetail, Paramètres…
+        ├── pages/                  # Dashboard, Tickets, TicketDetail, Panels, Paramètres…
         ├── components/             # Composants UI réutilisables
+        ├── hooks/
+        │   ├── useSSE.js           # Abonnement SSE
+        │   ├── useAutoRefresh.js   # Rafraîchissement automatique des données
+        │   └── usePushNotifications.js  # Abonnement / désabonnement push navigateur
         └── utils/                  # Helpers frontend (dates, durées…)
 ```
 
@@ -596,6 +687,7 @@ Bot-ticketting/
 | **Brute-force TOTP** | Lockout session après 5 tentatives TOTP incorrectes |
 | **Docker** | Exécution en tant qu'utilisateur `node` (non-root), `NODE_ENV=production` |
 | **Maintenance** | Mode maintenance par serveur — bloque toutes les requêtes API de la guild |
+| **Push endpoint allowlist** | Les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — bloque tout endpoint arbitraire |
 
 ---
 
