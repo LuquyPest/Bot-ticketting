@@ -101,19 +101,27 @@ export default function Sidebar() {
     <>
       {/* Mobile hamburger button (outside sidebar) */}
       <button
+        aria-label={sidebarOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+        aria-expanded={sidebarOpen}
+        aria-controls="main-sidebar"
         className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-surface-card border border-white/[0.08]
                    text-ink-3 hover:text-ink-1 transition-all lg:hidden shadow-card"
         onClick={() => setSidebarOpen(o => !o)}
       >
-        {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
+        {sidebarOpen ? <X size={16} aria-hidden="true" /> : <Menu size={16} aria-hidden="true" />}
       </button>
 
-      <aside className={`
-        w-56 flex-shrink-0 flex flex-col glass-dark border-r border-white/[0.06]
-        transition-transform duration-300
-        fixed inset-y-0 left-0 z-40 lg:relative lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <aside
+        id="main-sidebar"
+        role="navigation"
+        aria-label="Navigation principale"
+        className={`
+          w-56 flex-shrink-0 flex flex-col glass-dark border-r border-white/[0.06]
+          transition-transform duration-200 ease-out
+          fixed inset-y-0 left-0 z-40 lg:relative lg:translate-x-0
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
 
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/[0.06]">
@@ -138,11 +146,12 @@ export default function Sidebar() {
           {/* ⌘K button */}
           <button
             onClick={() => setCmdOpen(true)}
+            aria-label="Ouvrir la palette de commandes (⌘K)"
             title="Recherche (⌘K)"
             className="p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-white/[0.06]
                        transition-all flex-shrink-0"
           >
-            <Command size={13} />
+            <Command size={13} aria-hidden="true" />
           </button>
         </div>
 
@@ -202,6 +211,7 @@ export default function Sidebar() {
             {/* Avatar — link to profile page */}
             <button
               onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
+              aria-label="Mon profil"
               title="Mon profil"
               className="relative flex-shrink-0 rounded-full hover:ring-2 hover:ring-primary/50
                          transition-all focus:outline-none"
@@ -238,21 +248,23 @@ export default function Sidebar() {
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
               title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
               className="text-ink-4 hover:text-primary-light hover:bg-primary/10 p-1.5 rounded-lg
                          transition-all duration-150 flex-shrink-0"
             >
-              {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+              {theme === 'dark' ? <Sun size={13} aria-hidden="true" /> : <Moon size={13} aria-hidden="true" />}
             </button>
 
             {/* Logout */}
             <button
               onClick={handleLogout}
+              aria-label="Déconnexion"
               title="Déconnexion"
               className="text-ink-4 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg
                          transition-all duration-150 flex-shrink-0"
             >
-              <LogOut size={13} />
+              <LogOut size={13} aria-hidden="true" />
             </button>
           </div>
         </div>
