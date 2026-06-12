@@ -113,9 +113,17 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
     return res.status(400).json({ error: 'Bio trop longue (max 160 caractères)' });
   if (bannerColor !== undefined && (typeof bannerColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(bannerColor)))
     return res.status(400).json({ error: 'Couleur de bannière invalide (format #RRGGBB)' });
-  if (profilePictureUrl !== undefined && profilePictureUrl !== null &&
-      (typeof profilePictureUrl !== 'string' || profilePictureUrl.length > 512))
-    return res.status(400).json({ error: 'URL de photo invalide (max 512 caractères)' });
+  if (profilePictureUrl !== undefined && profilePictureUrl !== null) {
+    if (typeof profilePictureUrl !== 'string' || profilePictureUrl.length > 512)
+      return res.status(400).json({ error: 'URL de photo invalide (max 512 caractères)' });
+    try {
+      const parsed = new URL(profilePictureUrl);
+      if (parsed.protocol !== 'https:')
+        return res.status(400).json({ error: 'URL de photo de profil doit être HTTPS' });
+    } catch {
+      return res.status(400).json({ error: 'URL de photo de profil invalide' });
+    }
+  }
 
   const sets = [];
   const params = [];
