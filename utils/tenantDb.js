@@ -3,6 +3,7 @@ const mysql = require('mysql2/promise');
 const _pools = new Map();
 
 function getDbName(guildId) {
+  if (!/^\d{17,20}$/.test(String(guildId))) throw new Error(`guildId invalide: ${guildId}`);
   return `ticketbot_guild_${guildId}`;
 }
 
