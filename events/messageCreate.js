@@ -1,10 +1,16 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
+const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { findAllOpenTickets, isUserBlacklisted, findGuildsForUser } = require('../utils/guildScan');
 const { subjectButtons } = require('../utils/components');
 const { broadcast } = require('../utils/sse');
 const { globalQuery } = require('../utils/globalDb');
+const {
+  emptyMessageEmbed, blacklistedEmbed, notInGuildEmbed,
+  serverLimitEmbed, dailyLimitEmbed, serverSelectEmbed,
+  subjectSelectEmbed, faqEmbed,
+  intakeFormStartEmbed, intakeFormStepEmbed,
+} = require('../utils/dmEmbeds');
 
 // userId → { content, attachments, guildId, db, tm, config }
 const pendingSubject = new Map();
@@ -49,8 +55,8 @@ async function checkFaq(user, content, guildEntry, client) {
     }
 
     const msg = rule.allow_ticket
-      ? { content: `📚 **Réponse automatique :**\n${rule.response}\n\n*Cette réponse répond-elle à ta question ? Sinon tu peux ouvrir un ticket.*`, components: row }
-      : { content: `📚 **Réponse automatique :**\n${rule.response}` };
+      ? { embeds: [faqEmbed(rule.response, true)], components: row }
+      : { embeds: [faqEmbed(rule.response, false)] };
 
     await user.send(msg).catch(() => null);
     return true;
@@ -88,7 +94,7 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   });
   setTimeout(() => pendingIntakeForm.delete(user.id), 15 * 60 * 1000);
 
-  await user.send(`📋 **Quelques questions avant d'ouvrir ton ticket** (${questions.length} question${questions.length > 1 ? 's' : ''}) :\n\n**${questions[0].label}**`).catch(() => null);
+  await user.send({ embeds: [intakeFormStartEmbed(questions[0].label, 1, questions.length)] }).catch(() => null);
   return true;
 }
 
@@ -100,7 +106,7 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   if (guildLimits?.max_tickets > 0) {
     const [[{ openCount }]] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [[{ openCount: 0 }]]);
     if (openCount >= guildLimits.max_tickets) {
-      await user.send('Le serveur a atteint sa limite de tickets simultanés. Réessaie plus tard.').catch(() => null);
+      await user.send({ embeds: [serverLimitEmbed()] }).catch(() => null);
       return;
     }
   }
@@ -108,7 +114,7 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   const maxPerDay = config.max_tickets_per_day ?? 3;
   const dailyCount = await tm.getDailyTicketCount(user.id);
   if (dailyCount >= maxPerDay) {
-    await user.send(`Tu as déjà ouvert ${maxPerDay} ticket(s) aujourd'hui. Réessaie demain.`).catch(() => null);
+    await user.send({ embeds: [dailyLimitEmbed(maxPerDay)] }).catch(() => null);
     if (config.spam_alert_channel_id) {
       const alertCh = await client.channels.fetch(config.spam_alert_channel_id).catch(() => null);
       if (alertCh?.isTextBased()) {
@@ -136,7 +142,7 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
       pendingSubject.set(user.id, { content, attachments, guildId, db, tm, config });
       setTimeout(() => pendingSubject.delete(user.id), 10 * 60 * 1000);
       const rows = subjectButtons(subjects);
-      await user.send({ content: 'Quel est le sujet de ta demande ?', components: rows }).catch(() => null);
+      await user.send({ embeds: [subjectSelectEmbed()], components: rows }).catch(() => null);
       return;
     }
   }
@@ -222,13 +228,13 @@ module.exports = {
         : [];
 
       if (!content && attachments.length === 0) {
-        await user.send('Envoie un message ou un fichier.').catch(() => null);
+        await user.send({ embeds: [emptyMessageEmbed()] }).catch(() => null);
         return;
       }
 
       const { blacklisted } = await isUserBlacklisted(user.id);
       if (blacklisted) {
-        await user.send('Tu ne peux pas ouvrir de ticket.').catch(() => null);
+        await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
         return;
       }
 
@@ -239,7 +245,7 @@ module.exports = {
         state.step += 1;
 
         if (state.step < state.questions.length) {
-          await user.send(`**${state.questions[state.step].label}**`).catch(() => null);
+          await user.send({ embeds: [intakeFormStepEmbed(state.questions[state.step].label, state.step + 1, state.questions.length)] }).catch(() => null);
         } else {
           // All questions answered — build intake summary and open ticket
           pendingIntakeForm.delete(user.id);
@@ -273,7 +279,7 @@ module.exports = {
           name: t.guildName,
           description: `Ticket #${t.ticket.id}${t.ticket.subject ? ` — ${t.ticket.subject}` : ''}`,
         })));
-        await user.send({ content: 'Tu as des tickets ouverts sur plusieurs serveurs. Lequel veux-tu contacter ?', components: [menu] }).catch(() => null);
+        await user.send({ embeds: [serverSelectEmbed('relay')], components: [menu] }).catch(() => null);
         return;
       }
 
@@ -281,7 +287,7 @@ module.exports = {
       const candidateGuilds = await findGuildsForUser(user.id, client);
 
       if (candidateGuilds.length === 0) {
-        await user.send('Tu ne fais partie d\'aucun serveur utilisant ce bot.').catch(() => null);
+        await user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
         return;
       }
 
@@ -298,7 +304,7 @@ module.exports = {
         name: g.discordGuild.name,
         description: 'Ouvrir un ticket sur ce serveur',
       })));
-      await user.send({ content: 'Sur quel serveur veux-tu ouvrir un ticket ?', components: [menu] }).catch(() => null);
+      await user.send({ embeds: [serverSelectEmbed('new_ticket')], components: [menu] }).catch(() => null);
     } catch (error) {
       console.error('Erreur RAW handler:', error);
     }
