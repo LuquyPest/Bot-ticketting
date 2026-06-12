@@ -184,6 +184,7 @@ router.get('/staff-compare', async (req, res) => {
 router.get('/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q || q.length < 2) return res.json([]);
+  if (q.length > 100) return res.status(400).json({ error: 'Recherche trop longue (max 100 caractères)' });
 
   try {
     const like = `%${q.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
