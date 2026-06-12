@@ -1,7 +1,7 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
-const { findUserOpenTicket, isUserBlacklisted, findGuildsForUser } = require('../utils/guildScan');
+const { findAllOpenTickets, isUserBlacklisted, findGuildsForUser } = require('../utils/guildScan');
 const { subjectButtons } = require('../utils/components');
 const { broadcast } = require('../utils/sse');
 const { globalQuery } = require('../utils/globalDb');
@@ -152,6 +152,23 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   }
 }
 
+// Builds a StringSelectMenu row for guild/ticket selection in DMs.
+// entries: [{ guildId, name, description }]
+function buildGuildSelectMenu(entries) {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('guild_select')
+    .setPlaceholder('Choisir un serveur…')
+    .addOptions(
+      entries.slice(0, 25).map(e =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(e.name.slice(0, 100))
+          .setValue(e.guildId)
+          .setDescription(e.description.slice(0, 100))
+      )
+    );
+  return new ActionRowBuilder().addComponents(menu);
+}
+
 module.exports = {
   name: 'raw',
 
@@ -233,9 +250,12 @@ module.exports = {
         return;
       }
 
-      // Si l'utilisateur a déjà un ticket ouvert, on relay
-      const found = await findUserOpenTicket(user.id, client);
-      if (found) {
+      // Cherche tous les tickets ouverts de l'utilisateur sur tous les serveurs actifs
+      const openTickets = await findAllOpenTickets(user.id, client);
+
+      if (openTickets.length === 1) {
+        // Un seul ticket ouvert — relay direct, sans question
+        const found = openTickets[0];
         const result = await found.tm.relayDmToTicket(user, content, attachments);
         await found.tm.sendWelcomeDm(user, result.created, null, result.ticket?.id);
         if (result.created) {
@@ -244,7 +264,20 @@ module.exports = {
         return;
       }
 
-      // Pas de ticket ouvert — cherche les serveurs où l'utilisateur est membre
+      if (openTickets.length > 1) {
+        // Plusieurs tickets ouverts sur des serveurs différents — demander lequel
+        pendingGuildSelect.set(user.id, { mode: 'relay', content, attachments, guilds: openTickets });
+        setTimeout(() => pendingGuildSelect.delete(user.id), 10 * 60 * 1000);
+        const menu = buildGuildSelectMenu(openTickets.map(t => ({
+          guildId: t.guildId,
+          name: t.guildName,
+          description: `Ticket #${t.ticket.id}${t.ticket.subject ? ` — ${t.ticket.subject}` : ''}`,
+        })));
+        await user.send({ content: 'Tu as des tickets ouverts sur plusieurs serveurs. Lequel veux-tu contacter ?', components: [menu] }).catch(() => null);
+        return;
+      }
+
+      // Aucun ticket ouvert — cherche les serveurs où l'utilisateur est membre
       const candidateGuilds = await findGuildsForUser(user.id, client);
 
       if (candidateGuilds.length === 0) {
@@ -257,26 +290,15 @@ module.exports = {
         return;
       }
 
-      // Plusieurs serveurs — afficher un sélecteur
-      pendingGuildSelect.set(user.id, { content, attachments, guilds: candidateGuilds });
+      // Plusieurs serveurs disponibles — demander lequel
+      pendingGuildSelect.set(user.id, { mode: 'new_ticket', content, attachments, guilds: candidateGuilds });
       setTimeout(() => pendingGuildSelect.delete(user.id), 10 * 60 * 1000);
-
-      const rows = [];
-      let row = new ActionRowBuilder();
-      candidateGuilds.slice(0, 5).forEach((g, i) => {
-        row.addComponents(
-          new ButtonBuilder()
-            .setCustomId(`guildselect_${g.guildId}`)
-            .setLabel(g.discordGuild.name.slice(0, 80))
-            .setStyle(ButtonStyle.Primary)
-        );
-        if ((i + 1) % 5 === 0 || i === candidateGuilds.length - 1) {
-          rows.push(row);
-          row = new ActionRowBuilder();
-        }
-      });
-
-      await user.send({ content: 'Sur quel serveur veux-tu ouvrir un ticket ?', components: rows }).catch(() => null);
+      const menu = buildGuildSelectMenu(candidateGuilds.map(g => ({
+        guildId: g.guildId,
+        name: g.discordGuild.name,
+        description: 'Ouvrir un ticket sur ce serveur',
+      })));
+      await user.send({ content: 'Sur quel serveur veux-tu ouvrir un ticket ?', components: [menu] }).catch(() => null);
     } catch (error) {
       console.error('Erreur RAW handler:', error);
     }

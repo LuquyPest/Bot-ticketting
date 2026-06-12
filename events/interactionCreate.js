@@ -59,7 +59,7 @@ module.exports = {
           return;
         }
 
-        // ── Sélection de serveur (DM) ──
+        // ── Sélection de serveur — bouton legacy (compat sessions en cours) ──
         if (interaction.customId.startsWith('guildselect_')) {
           const guildId = interaction.customId.slice('guildselect_'.length);
           const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
@@ -204,6 +204,33 @@ module.exports = {
           await openTicketFromPanel(interaction, client, db, btn, '');
           return;
         }
+      }
+
+      // ── Sélection de serveur via menu déroulant (DM) ──
+      if (interaction.isStringSelectMenu() && interaction.customId === 'guild_select') {
+        const guildId = interaction.values[0];
+        const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
+        const pending = pendingGuildSelect.get(interaction.user.id);
+        if (!pending) {
+          return interaction.update({ content: 'Session expirée. Renvoie ton message pour réessayer.', components: [] });
+        }
+        pendingGuildSelect.delete(interaction.user.id);
+
+        if (pending.mode === 'relay') {
+          // Relay vers un ticket existant sur le serveur choisi
+          const entry = pending.guilds.find(g => g.guildId === guildId);
+          if (!entry) return interaction.update({ content: 'Serveur invalide.', components: [] });
+          await interaction.update({ content: `Message envoyé au ticket sur **${entry.guildName}**.`, components: [] });
+          await entry.tm.relayDmToTicket(interaction.user, pending.content, pending.attachments);
+          return;
+        }
+
+        // Ouverture d'un nouveau ticket sur le serveur choisi
+        const guildEntry = pending.guilds.find(g => g.guildId === guildId);
+        if (!guildEntry) return interaction.update({ content: 'Serveur invalide.', components: [] });
+        await interaction.update({ content: `Création du ticket sur **${guildEntry.discordGuild.name}**…`, components: [] });
+        await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
+        return;
       }
 
       // ── Soumission de formulaire panel (modal) ──
