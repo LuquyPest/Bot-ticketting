@@ -38,24 +38,36 @@ export default function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={toggle}
+        aria-label={unreadCount > 0 ? `Notifications — ${unreadCount} non lue${unreadCount > 1 ? 's' : ''}` : 'Notifications'}
+        aria-expanded={open}
+        aria-controls="notif-panel"
         title="Notifications"
         className="relative p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-white/[0.06]
                    transition-all flex-shrink-0"
       >
-        <Bell size={13} />
+        <Bell size={13} aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary
-                           text-white text-[8px] font-bold flex items-center justify-center
-                           shadow-[0_0_8px_rgba(124,110,243,0.6)] leading-none">
+          <span
+            aria-hidden="true"
+            className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary
+                       text-white text-[8px] font-bold flex items-center justify-center
+                       shadow-[0_0_8px_rgba(124,110,243,0.6)] leading-none"
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card border border-white/[0.1]
-                        rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden animate-scale-in
-                        z-50">
+        <div
+          id="notif-panel"
+          role="dialog"
+          aria-label="Notifications"
+          aria-live="polite"
+          className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card border border-white/[0.1]
+                     rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden animate-scale-in
+                     z-50"
+        >
           <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-white/[0.06]">
             <span className="text-xs font-semibold text-ink-2">Notifications</span>
             {notifications.length > 0 && (
@@ -68,41 +80,47 @@ export default function NotificationBell() {
             )}
           </div>
 
-          <div className="max-h-72 overflow-y-auto">
+          <ul className="max-h-72 overflow-y-auto list-none m-0 p-0">
             {notifications.length === 0 ? (
-              <p className="text-xs text-ink-4 text-center py-6">Aucune notification</p>
+              <li className="text-xs text-ink-4 text-center py-6">Aucune notification</li>
             ) : notifications.map(n => {
               const Icon = ICON_MAP[n.type] || Bell;
               return (
-                <button
+                <li
                   key={n.id}
-                  onClick={() => {
-                    if (n.href) { navigate(n.href); setOpen(false); }
-                    remove(n.id);
-                  }}
-                  className="w-full flex items-start gap-3 px-3.5 py-2.5 hover:bg-white/[0.04]
-                             text-left border-b border-white/[0.04] last:border-0 transition-colors group"
+                  className="relative flex items-start gap-3 border-b border-white/[0.04] last:border-0 group"
                 >
-                  <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center
-                                  flex-shrink-0 mt-0.5">
-                    <Icon size={13} className="text-primary-light" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-ink-1">{n.title}</p>
-                    <p className="text-[11px] text-ink-3 truncate mt-0.5">{n.body}</p>
-                    <p className="text-[10px] text-ink-4 mt-1">{timeAgo(n.timestamp)}</p>
-                  </div>
+                  <button
+                    onClick={() => {
+                      if (n.href) { navigate(n.href); setOpen(false); }
+                      remove(n.id);
+                    }}
+                    className="flex-1 flex items-start gap-3 px-3.5 py-2.5 hover:bg-white/[0.04]
+                               text-left transition-colors pr-8"
+                  >
+                    <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center
+                                    flex-shrink-0 mt-0.5">
+                      <Icon size={13} className="text-primary-light" aria-hidden="true" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-ink-1">{n.title}</p>
+                      <p className="text-[11px] text-ink-3 truncate mt-0.5">{n.body}</p>
+                      <p className="text-[10px] text-ink-4 mt-1">{timeAgo(n.timestamp)}</p>
+                    </div>
+                  </button>
                   <button
                     onClick={e => { e.stopPropagation(); remove(n.id); }}
-                    className="opacity-0 group-hover:opacity-100 text-ink-4 hover:text-ink-2
-                               transition-all flex-shrink-0 mt-0.5"
+                    aria-label="Rejeter la notification"
+                    className="absolute right-2 top-1/2 -translate-y-1/2
+                               opacity-0 group-hover:opacity-100 text-ink-4 hover:text-ink-2
+                               transition-all p-1 rounded"
                   >
-                    <X size={11} />
+                    <X size={11} aria-hidden="true" />
                   </button>
-                </button>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </div>
       )}
     </div>
