@@ -10,6 +10,72 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.7',
+    date: '12 juin 2026',
+    title: 'Correctifs de sécurité — pentest round 2',
+    changes: [
+      { type: 'fix',  text: 'Session fixation sur le panel SuperAdmin : session.regenerate() ajouté après validation TOTP (totp-setup et totp-verify), conformément au flux OAuth utilisateur' },
+      { type: 'fix',  text: 'SSRF via souscription Web Push : l\'endpoint est désormais validé contre une allowlist des origines push connues (FCM, Mozilla, Apple, Windows) avant stockage' },
+      { type: 'fix',  text: 'DNS rebinding sur les webhooks sortants : le hostname est résolu une seule fois et l\'IP est pinée directement dans https.request — une seconde résolution DNS hostile ne peut plus hijacker la connexion' },
+      { type: 'fix',  text: 'URL de photo de profil : validation du scheme HTTPS obligatoire (javascript: et http:// rejetés)' },
+      { type: 'fix',  text: 'Validation stricte du format snowflake Discord (^\d{17,20}$) dans getDbName — protège le DROP DATABASE lors de la suppression d\'un serveur' },
+      { type: 'fix',  text: 'Longueur maximum sur la recherche analytics fixée à 100 caractères (les wildcards LIKE étaient déjà échappés)' },
+      { type: 'tech', text: 'Header Permissions-Policy ajouté : camera, microphone, géolocalisation, paiement et USB désactivés explicitement' },
+    ]
+  },
+  {
+    version: 'v2.6',
+    date: '11 juin 2026',
+    title: 'Refonte graphique — design tokens WCAG, accessibilité et polish UI',
+    changes: [
+      { type: 'impr', text: 'Tokens de couleur mis à niveau WCAG AA : ink-3 et ink-4 recalculés pour atteindre les ratios de contraste minimaux (5:1 et 3:1) en mode sombre et clair' },
+      { type: 'impr', text: 'Tokens sémantiques ajoutés : --color-success, --color-warning, --color-danger avec variantes light — mappés dans Tailwind (success, warning, danger)' },
+      { type: 'impr', text: 'prefers-reduced-motion : bloc @media complet désactivant toutes les animations pour les utilisateurs qui le demandent' },
+      { type: 'impr', text: 'Classes réutilisables dans @layer components : .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .card, .input-base (min-height 44px touch target)' },
+      { type: 'impr', text: 'StatCard redesignée : ligne accent 2px dégradée en haut, nombre en text-2rem, icône avec ring lumineux, glow dynamique au survol via onMouseEnter/Leave' },
+      { type: 'impr', text: 'Badge avec animation pulse (dot-pulse keyframe) sur le statut ouvert uniquement, role="status" et aria-label pour les lecteurs d\'écran' },
+      { type: 'impr', text: 'Dashboard : médailles emoji (🥇🥈🥉) remplacées par des badges numérotés HTML avec classes de couleur or/argent/bronze — conforme P4 no-emoji-icons' },
+      { type: 'impr', text: 'Tooltips des graphiques : couleurs de fond et de texte remplacées par des variables CSS (var(--color-surface-elevated), var(--color-ink-1)) pour s\'adapter au mode clair/sombre' },
+      { type: 'impr', text: 'Sidebar : aria-label, aria-expanded et aria-controls sur le bouton hamburger ; aria-hidden sur toutes les icônes décoratives ; transition réduite à 200ms ease-out' },
+      { type: 'impr', text: 'Sidebar : aria-label sur tous les boutons icon-only — ⌘K, thème, déconnexion, avatar profil' },
+      { type: 'fix',  text: 'NotificationBell : balise <button> imbriquée dans une autre <button> (HTML invalide) — restructuré en <li> avec deux boutons séparés (item + dismiss)' },
+      { type: 'fix',  text: 'NotificationBell : aria-label dynamique sur la cloche (compte de notifications non lues), aria-expanded, aria-controls, aria-live="polite" sur le panel' },
+      { type: 'tech', text: 'Police Inter : passage à la variable font complète (opsz + wght 100–900), ajout de crossorigin sur les deux preconnect, font-display:optional pour supprimer le FOIT' },
+    ]
+  },
+  {
+    version: 'v2.5',
+    date: '10 juin 2026',
+    title: 'Embeds Discord enrichis — 10 types de messages refactorisés',
+    changes: [
+      { type: 'impr', text: 'Boutons du ticket : labels renommés "🔒 Fermer le ticket" et "📋 Transcript", ordre inversé (fermeture en premier)' },
+      { type: 'impr', text: 'Embed d\'ouverture : setAuthor "Nouveau ticket", titre "#ID", description avec mention de l\'utilisateur, 3 champs en ligne (Utilisateur / Sujet / Priorité), footer horodaté' },
+      { type: 'impr', text: 'Relay DM utilisateur → ticket : passage de texte brut (`--- tag : message`) à un EmbedBuilder avec auteur, contenu, heure et champ pièce jointe' },
+      { type: 'impr', text: 'Réponse staff /reply : embed indigo avec badge "Staff", description, heure et champ pièce jointe — envoyé en DM et dans le canal' },
+      { type: 'impr', text: 'Claim : embed vert (0x1abc9c) "✋ Ticket pris en charge" avec mention staff et heure' },
+      { type: 'impr', text: 'Unclaim : embed gris (0x4e5058) "↩️ Ticket désattribué" avec mention staff et heure' },
+      { type: 'impr', text: 'Note interne : embed jaune (0xfee75c) avec bandeau "🔒 Note interne — visible staff uniquement" et footer auteur/heure' },
+      { type: 'impr', text: 'Changement de priorité : embed coloré dynamiquement (vert Faible / indigo Normal / rouge Urgent) avec 3 champs et message épinglé automatiquement' },
+      { type: 'impr', text: 'Log de fermeture : embed violet (0x6366f1) avec durée calculée depuis l\'ouverture, mention utilisateur, staff, sujet et ID transcript' },
+      { type: 'impr', text: 'DM de fermeture : embed séparé avec durée et staff, puis embed de notation indépendant pour le propriétaire du ticket uniquement' },
+      { type: 'impr', text: 'DM de bienvenue : embed avec titre "🎫 Ticket #ID créé", message de bienvenue configuré, champ sujet si présent' },
+      { type: 'impr', text: 'Réouverture : embed enrichi avec 3 champs + DM embed envoyé au propriétaire du ticket' },
+    ]
+  },
+  {
+    version: 'v2.4',
+    date: '9 juin 2026',
+    title: 'Panels Discord, formulaires d\'intake et identité bot par serveur',
+    changes: [
+      { type: 'new',  text: 'Panels visuels : création de boutons Discord persistants dans n\'importe quel salon pour ouvrir un ticket — titre, description, couleur, emoji et sujet pré-rempli configurables' },
+      { type: 'new',  text: 'Formulaires d\'intake : chaque panel peut être associé à un formulaire Discord (modal) avec jusqu\'à 5 champs personnalisés (court/long, obligatoire ou non, placeholder)' },
+      { type: 'new',  text: 'Déploiement des panels : bouton "Publier" depuis le dashboard envoie le message avec bouton(s) dans le canal Discord cible' },
+      { type: 'new',  text: 'Identité bot par serveur : le fondateur peut modifier le pseudo et l\'avatar du bot spécifiquement pour son serveur depuis les Paramètres' },
+      { type: 'tech', text: 'Nouvelles tables : ticket_panels, intake_forms, intake_form_fields, intake_form_responses' },
+      { type: 'tech', text: 'Nouveaux événements Discord : boutons de panel routés vers l\'event panelTicket.js, création de ticket avec champs pré-remplis depuis le formulaire' },
+    ]
+  },
+  {
     version: 'v2.3',
     date: '8 juin 2026',
     title: 'UX avancée — Command palette, notifications, raccourcis clavier',
