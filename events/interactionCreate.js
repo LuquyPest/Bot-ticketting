@@ -6,6 +6,10 @@ const { ensureSupport } = require('../utils/permissions');
 const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../utils/components');
 const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/embeds');
+const {
+  sessionExpiredEmbed, relayConfirmEmbed,
+  ticketCreatingEmbed, ratingConfirmEmbed, alreadyRatedEmbed,
+} = require('../utils/dmEmbeds');
 
 async function findGuildForClosedTicket(ticketId, ownerId) {
   const guilds = await getActiveGuilds();
@@ -33,10 +37,10 @@ module.exports = {
           const { pendingFaqTicket, openTicketForGuild } = require('./messageCreate');
           const pending = pendingFaqTicket.get(interaction.user.id);
           if (!pending) {
-            return interaction.reply({ content: 'Session expirée. Renvoie ton message pour ouvrir un ticket.', ephemeral: true });
+            return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
           }
           pendingFaqTicket.delete(interaction.user.id);
-          await interaction.update({ content: 'Ouverture du ticket en cours…', components: [] });
+          await interaction.update({ embeds: [ticketCreatingEmbed('…')], components: [] });
           const { guildId, db, tm, config } = pending;
           // Get original content from interaction message text (remove FAQ prefix)
           await openTicketForGuild(interaction.user, '', [], { guildId, db, tm, config }, client, null);
@@ -49,9 +53,9 @@ module.exports = {
           const { pendingSubject, openTicketForGuild } = require('./messageCreate');
           const pending = pendingSubject.get(interaction.user.id);
           if (!pending) {
-            return interaction.reply({ content: 'Session expirée. Renvoie ton message.', ephemeral: true });
+            return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
           }
-          await interaction.update({ content: `Sujet sélectionné : **${subject}**\nCréation du ticket...`, components: [] });
+          await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
           pendingSubject.delete(interaction.user.id);
           const { content, attachments, guildId, db, tm, config } = pending;
           // Note: openTicketForGuild handles intake form check before creating
@@ -65,14 +69,14 @@ module.exports = {
           const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
           const pending = pendingGuildSelect.get(interaction.user.id);
           if (!pending) {
-            return interaction.reply({ content: 'Session expirée. Renvoie ton message.', ephemeral: true });
+            return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
           }
           const guildEntry = pending.guilds.find(g => g.guildId === guildId);
           if (!guildEntry) {
             return interaction.reply({ content: 'Serveur invalide.', ephemeral: true });
           }
           pendingGuildSelect.delete(interaction.user.id);
-          await interaction.update({ content: 'Serveur sélectionné. Création du ticket...', components: [] });
+          await interaction.update({ embeds: [ticketCreatingEmbed(guildEntry.discordGuild?.name)], components: [] });
           await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
           return;
         }
@@ -95,15 +99,14 @@ module.exports = {
             [ticketId, interaction.user.id]
           );
           if (existing) {
-            return interaction.update({ content: 'Tu as déjà noté ce ticket.', components: [] });
+            return interaction.update({ embeds: [alreadyRatedEmbed()], components: [] });
           }
           const closedById = ticket.claimed_by;
           const closedByUser = await client.users.fetch(closedById).catch(() => null);
           const closedByTag = closedByUser?.username || ticket.closed_by_tag || closedById;
           const tm = createManager(db, client, guildId);
           await tm.saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);
-          const stars = '⭐'.repeat(rating);
-          return interaction.update({ content: `Merci pour ton avis ! Tu as mis ${stars} (${rating}/5).`, components: [] });
+          return interaction.update({ embeds: [ratingConfirmEmbed(rating)], components: [] });
         }
 
         // ── Boutons en contexte serveur ──
@@ -212,15 +215,14 @@ module.exports = {
         const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
         const pending = pendingGuildSelect.get(interaction.user.id);
         if (!pending) {
-          return interaction.update({ content: 'Session expirée. Renvoie ton message pour réessayer.', components: [] });
+          return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
         }
         pendingGuildSelect.delete(interaction.user.id);
 
         if (pending.mode === 'relay') {
-          // Relay vers un ticket existant sur le serveur choisi
           const entry = pending.guilds.find(g => g.guildId === guildId);
           if (!entry) return interaction.update({ content: 'Serveur invalide.', components: [] });
-          await interaction.update({ content: `Message envoyé au ticket sur **${entry.guildName}**.`, components: [] });
+          await interaction.update({ embeds: [relayConfirmEmbed(entry.guildName)], components: [] });
           await entry.tm.relayDmToTicket(interaction.user, pending.content, pending.attachments);
           return;
         }
@@ -228,7 +230,7 @@ module.exports = {
         // Ouverture d'un nouveau ticket sur le serveur choisi
         const guildEntry = pending.guilds.find(g => g.guildId === guildId);
         if (!guildEntry) return interaction.update({ content: 'Serveur invalide.', components: [] });
-        await interaction.update({ content: `Création du ticket sur **${guildEntry.discordGuild.name}**…`, components: [] });
+        await interaction.update({ embeds: [ticketCreatingEmbed(guildEntry.discordGuild?.name)], components: [] });
         await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
         return;
       }
