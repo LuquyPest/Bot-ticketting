@@ -1,4 +1,4 @@
-# Bot Ticketing Discord — Multi-Tenant
+# Bot Ticketing Discord
 
 Bot Discord de support par tickets avec **dashboard web d'administration**. Architecture **multi-tenant** : un seul bot peut servir plusieurs serveurs Discord simultanément, chaque serveur ayant sa propre base de données isolée et son propre dashboard.
 
