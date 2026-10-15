@@ -39,8 +39,15 @@ services:
 
   bot:
     build: .
-    restart: on-failure:5
-    env_file: .env
+    restart: unless-stopped
+    # Only what the bot needs from .env — DB_ROOT_PASSWORD must stay out of this container
+    environment:
+      SA_USERNAME: ${SA_USERNAME:-}
+      SA_PASSWORD: ${SA_PASSWORD:-}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       db:
         condition: service_healthy
