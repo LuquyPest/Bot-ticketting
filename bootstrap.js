@@ -225,7 +225,6 @@ async function seedSuperAdmin(config) {
   const username = process.env.SA_USERNAME?.trim();
   const password = process.env.SA_PASSWORD;
   if (!username || !password) return;
-  if (password.length < 12) fail('SA_PASSWORD doit faire au moins 12 caractères.');
 
   const { host, port, user, password: dbPass } = config.database;
   const conn = await mysql.createConnection({ host, port, user, password: dbPass, database: 'ticketbot_global' });
@@ -235,6 +234,8 @@ async function seedSuperAdmin(config) {
       info('Compte superadmin déjà existant — SA_USERNAME/SA_PASSWORD ignorés.');
       return;
     }
+    // Checked only when the account is actually created: an existing install must still boot
+    if (password.length < 12) fail('SA_PASSWORD doit faire au moins 12 caractères pour créer le compte superadmin.');
     const bcrypt = require('bcrypt');
     const hash = await bcrypt.hash(password, 12);
     await conn.query('INSERT INTO superadmins (username, password_hash) VALUES (?, ?)', [username, hash]);
