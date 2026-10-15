@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticator } = require('otplib');
+const { verifyTotp, generateRecoveryCodes } = require('../../utils/totp');
+const { seal } = require('../../utils/secretBox');
 const QRCode = require('qrcode');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb } = require('../../utils/tenantDb');
@@ -117,9 +119,11 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
     if (typeof profilePictureUrl !== 'string' || profilePictureUrl.length > 512)
       return res.status(400).json({ error: 'URL de photo invalide (max 512 caractères)' });
     try {
+      // Discord CDN only: matches the dashboard CSP (img-src) and stops a third-party host
+      // from logging the IP of every staff member who views the profile
       const parsed = new URL(profilePictureUrl);
-      if (parsed.protocol !== 'https:')
-        return res.status(400).json({ error: 'URL de photo de profil doit être HTTPS' });
+      if (parsed.protocol !== 'https:' || !['cdn.discordapp.com', 'media.discordapp.net'].includes(parsed.hostname))
+        return res.status(400).json({ error: 'La photo de profil doit être une image hébergée sur Discord (cdn.discordapp.com)' });
     } catch {
       return res.status(400).json({ error: 'URL de photo de profil invalide' });
     }
@@ -173,25 +177,30 @@ router.post('/2fa/setup', requireAuth, async (req, res) => {
   }
 });
 
+const codeOf = req => (typeof req.body.code === 'string' ? req.body.code : '').trim();
+
 router.post('/2fa/enable', requireAuth, async (req, res) => {
-  const code = (req.body.code || '').replace(/\s/g, '');
+  const code = codeOf(req);
   if (!code) return res.status(400).json({ error: 'Code requis' });
 
   const setup = req.session.twoFaSetup;
   if (!setup || setup.userId !== req.session.user.id)
     return res.status(400).json({ error: 'Session de configuration expirée. Recommence depuis le début.' });
 
-  if (!authenticator.verify({ token: code, secret: setup.secret }))
-    return res.status(400).json({ error: 'Code invalide' });
+  const step = verifyTotp(code, setup.secret);
+  if (!step) return res.status(400).json({ error: 'Code invalide' });
 
   try {
+    const { codes, hashes } = generateRecoveryCodes();
     await globalQuery(
-      `INSERT INTO user_totp (user_id, totp_secret, totp_enabled) VALUES (?, ?, 1)
-       ON DUPLICATE KEY UPDATE totp_secret = VALUES(totp_secret), totp_enabled = 1`,
-      [req.session.user.id, setup.secret]
+      `INSERT INTO user_totp (user_id, totp_secret, totp_enabled, totp_last_step, recovery_codes) VALUES (?, ?, 1, ?, ?)
+       ON DUPLICATE KEY UPDATE totp_secret = VALUES(totp_secret), totp_enabled = 1,
+         totp_last_step = VALUES(totp_last_step), recovery_codes = VALUES(recovery_codes)`,
+      [req.session.user.id, seal(setup.secret), step, JSON.stringify(hashes)]
     );
     delete req.session.twoFaSetup;
-    res.json({ ok: true });
+    // Shown once: only hashes are stored
+    res.json({ ok: true, recoveryCodes: codes });
   } catch (err) {
     console.error('profile/2fa/enable error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -200,36 +209,58 @@ router.post('/2fa/enable', requireAuth, async (req, res) => {
 
 const TOTP_DISABLE_MAX = 5;
 
-router.post('/2fa/disable', requireAuth, async (req, res) => {
-  const code = (req.body.code || '').replace(/\s/g, '');
-  if (!code) return res.status(400).json({ error: 'Code requis' });
+// Checks a TOTP for the logged-in user (with lockout). Sends the error response and returns false on failure.
+async function checkUserTotp(req, res) {
+  const code = codeOf(req);
+  if (!code) { res.status(400).json({ error: 'Code requis' }); return false; }
 
   const attempts = req.session.totpDisableAttempts || 0;
   if (attempts >= TOTP_DISABLE_MAX) {
     req.session.destroy(() => {});
-    return res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi' });
+    res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi' });
+    return false;
   }
 
+  const [row] = await globalQuery(
+    'SELECT totp_secret, totp_last_step FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
+    [req.session.user.id]
+  );
+  if (!row) { res.status(400).json({ error: '2FA non activé' }); return false; }
+
+  const step = verifyTotp(code, row.totp_secret, row.totp_last_step);
+  if (!step) {
+    req.session.totpDisableAttempts = attempts + 1;
+    const remaining = TOTP_DISABLE_MAX - req.session.totpDisableAttempts;
+    res.status(400).json({
+      error: `Code invalide — ${remaining} tentative${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
+    });
+    return false;
+  }
+  delete req.session.totpDisableAttempts;
+  await globalQuery('UPDATE user_totp SET totp_last_step = ? WHERE user_id = ?', [step, req.session.user.id]);
+  return true;
+}
+
+router.post('/2fa/disable', requireAuth, async (req, res) => {
   try {
-    const [row] = await globalQuery(
-      'SELECT totp_secret FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
-      [req.session.user.id]
-    );
-    if (!row) return res.status(400).json({ error: '2FA non activé' });
-
-    if (!authenticator.verify({ token: code, secret: row.totp_secret })) {
-      req.session.totpDisableAttempts = attempts + 1;
-      const remaining = TOTP_DISABLE_MAX - req.session.totpDisableAttempts;
-      return res.status(400).json({
-        error: `Code invalide — ${remaining} tentative${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
-      });
-    }
-
-    delete req.session.totpDisableAttempts;
+    if (!(await checkUserTotp(req, res))) return;
     await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [req.session.user.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error('profile/2fa/disable error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/profile/2fa/recovery-codes — new set of recovery codes (invalidates the old ones)
+router.post('/2fa/recovery-codes', requireAuth, async (req, res) => {
+  try {
+    if (!(await checkUserTotp(req, res))) return;
+    const { codes, hashes } = generateRecoveryCodes();
+    await globalQuery('UPDATE user_totp SET recovery_codes = ? WHERE user_id = ?', [JSON.stringify(hashes), req.session.user.id]);
+    res.json({ ok: true, recoveryCodes: codes });
+  } catch (err) {
+    console.error('profile/2fa/recovery-codes error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

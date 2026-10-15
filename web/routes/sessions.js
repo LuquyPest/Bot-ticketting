@@ -1,6 +1,9 @@
 const express = require('express');
 const router  = express.Router();
 const { globalQuery } = require('../../utils/globalDb');
+const { getRedis, SESSION_PREFIX } = require('../../utils/redis');
+
+const destroyStoredSession = sid => getRedis().del(SESSION_PREFIX + sid);
 
 // GET /api/sessions — list active sessions for the logged-in user
 router.get('/', async (req, res) => {
@@ -39,8 +42,7 @@ router.delete('/:sessionId', async (req, res) => {
       return res.status(404).json({ error: 'Session introuvable' });
     }
 
-    // Remove from MySQL session store
-    await globalQuery('DELETE FROM web_sessions WHERE session_id = ?', [sessionId]);
+    await destroyStoredSession(sessionId);
     // Remove from our tracking table
     await globalQuery('DELETE FROM user_sessions WHERE session_id = ?', [sessionId]);
 
@@ -61,7 +63,7 @@ router.delete('/', async (req, res) => {
       [req.session.user.id, currentSid]
     );
     for (const { session_id } of others) {
-      await globalQuery('DELETE FROM web_sessions WHERE session_id = ?', [session_id]).catch(() => null);
+      await destroyStoredSession(session_id).catch(() => null);
     }
     await globalQuery(
       'DELETE FROM user_sessions WHERE user_id = ? AND session_id != ?',

@@ -200,7 +200,24 @@ async function ensureGlobalTables(config) {
         created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY idx_sub_endpoint (user_id, guild_id, endpoint(200)),
         INDEX idx_sub_guild (guild_id)
-      )`
+      )`,
+      // Encrypted TOTP secrets (utils/secretBox.js) are longer than the old base32 values
+      `ALTER TABLE superadmins MODIFY totp_secret VARCHAR(255) DEFAULT NULL`,
+      `ALTER TABLE managers MODIFY totp_secret VARCHAR(255) DEFAULT NULL`,
+      `ALTER TABLE user_totp MODIFY totp_secret VARCHAR(255) NOT NULL`,
+      // TOTP replay protection: last accepted time step
+      `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE user_totp ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0`,
+      // Dashboard 2FA recovery codes (JSON array of sha256 hashes)
+      `ALTER TABLE user_totp ADD COLUMN IF NOT EXISTS recovery_codes TEXT DEFAULT NULL`,
+      // Per-account lockout for superadmin/manager logins
+      `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
+      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
+      // 'bot_removed' (auto-reactivated on re-invite) vs 'admin' (manual suspension)
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS suspension_reason VARCHAR(32) DEFAULT NULL`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 
@@ -214,6 +231,7 @@ async function seedSuperAdmin(config) {
   const username = process.env.SA_USERNAME?.trim();
   const password = process.env.SA_PASSWORD;
   if (!username || !password) return;
+  if (password.length < 12) fail('SA_PASSWORD doit faire au moins 12 caractères.');
 
   const { host, port, user, password: dbPass } = config.database;
   const conn = await mysql.createConnection({ host, port, user, password: dbPass, database: 'ticketbot_global' });

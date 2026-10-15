@@ -27,10 +27,14 @@ router.get('/', requireAuthAndRole, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
 
   try {
+    // login_logs is global: a fondateur only sees the members of their own guild
+    const members = isFondateur
+      ? (await getTenantDb(req.session.currentGuildId)('SELECT user_id FROM dashboard_users')).map(r => r.user_id)
+      : [];
     const rows = isFondateur
       ? await globalQuery(
-          `SELECT * FROM login_logs ORDER BY created_at DESC LIMIT ?`,
-          [limit]
+          `SELECT * FROM login_logs WHERE user_id IN (?) ORDER BY created_at DESC LIMIT ?`,
+          [members.length ? members : ['0'], limit]
         )
       : await globalQuery(
           `SELECT * FROM login_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,

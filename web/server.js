@@ -33,7 +33,9 @@ if (config.dashboard.sessionSecret.length < 32) {
 
 const app = express();
 
-app.set('trust proxy', 1);
+// Number of reverse proxies in front of the app (Traefik = 1; Cloudflare + Traefik = 2).
+// Drives req.ip, used by rate limiting, the IP allowlist and login logs.
+app.set('trust proxy', Number.isInteger(config.trustProxyHops) ? config.trustProxyHops : 1);
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -71,19 +73,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Session store: Redis with MySQL fallback if Redis is unreachable
-function buildSessionStore() {
-  try {
-    const RedisStore = require('connect-redis').default;
-    const { getRedis } = require('../utils/redis');
-    return new RedisStore({ client: getRedis(), prefix: 'sess:', ttl: 86400 });
-  } catch {
-    const MySQLStore = require('express-mysql-session')(session);
-    return new MySQLStore({ createDatabaseTable: true, schema: { tableName: 'web_sessions' } }, pool);
-  }
-}
-
-const sessionStore = buildSessionStore();
+// Session store: Redis (already a hard dependency for BullMQ).
+// Keys are `${SESSION_PREFIX}<sid>` — routes/sessions.js deletes them to revoke a session.
+const { RedisStore } = require('connect-redis');
+const { getRedis, SESSION_PREFIX } = require('../utils/redis');
+const sessionStore = new RedisStore({ client: getRedis(), prefix: SESSION_PREFIX, ttl: 86400 });
 
 // Detect HTTPS from either the public base URL or the Discord callback URL.
 // When TLS is terminated by a reverse proxy (Traefik), webServerBaseUrl may
@@ -105,6 +99,8 @@ app.use(session({
   }
 }));
 
+// Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
+app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -113,8 +109,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// CSRF guard for cookie-authenticated routes. /api/v1 uses bearer API keys (no cookies) so it is exempt.
 app.use((req, res, next) => {
-  if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
+  if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method) && !req.path.startsWith('/api/v1/')) {
     if (req.headers['x-requested-with'] !== 'XMLHttpRequest') {
       return res.status(403).json({ error: 'Requête non autorisée' });
     }
@@ -160,6 +157,7 @@ app.get('/t/:token', (req, res) => {
   res.type('html').send(page.html);
 });
 
+app.use('/api/v1',       require('./routes/apiV1'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/push',     require('./routes/push'));
@@ -179,14 +177,13 @@ app.use('/api/discord',     withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/events',      withGuild(['support', 'fondateur']), require('./routes/events'));
 app.use('/api/templates',   withGuild(['support', 'fondateur']), require('./routes/templates'));
 app.use('/api/blacklist',   withGuild(['fondateur']),            require('./routes/blacklist'));
-app.use('/api/transcripts', withGuild(['fondateur']),            require('./routes/transcripts'));
+app.use('/api/transcripts', withGuild(['support', 'fondateur']), require('./routes/transcripts'));
 app.use('/api/config',      withGuild(['fondateur']),            require('./routes/config'));
 app.use('/api/users',       withGuild(['support', 'fondateur']), require('./routes/users'));
 app.use('/api/grades',      withGuild(['support', 'fondateur']), require('./routes/grades'));
 app.use('/api/audit',       withGuild(['support', 'fondateur']), require('./routes/audit'));
 app.use('/api/tags',        withGuild(['support', 'fondateur']), require('./routes/tags'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
-app.use('/api/staff-roles', withGuild(['fondateur']),            require('./routes/staffRoles'));
 app.use('/api/analytics',   withGuild(['support', 'fondateur']), require('./routes/analytics'));
 app.use('/api/badges',      withGuild(['support', 'fondateur']), require('./routes/badges'));
 app.use('/api/goals',       withGuild(['support', 'fondateur']), require('./routes/goals'));

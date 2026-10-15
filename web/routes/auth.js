@@ -2,12 +2,15 @@ const express = require('express');
 const router  = express.Router();
 const axios   = require('axios');
 const crypto  = require('crypto');
-const { authenticator } = require('otplib');
+const { verifyTotp, consumeRecoveryCode } = require('../../utils/totp');
+const { seal, open, isSealed } = require('../../utils/secretBox');
+
+const RECOVERY_RE = /^[0-9a-f]{5}-?[0-9a-f]{5}$/i;
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 
 function getClientIp(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  return req.ip || 'unknown'; // resolved through `trust proxy` — never trust raw X-Forwarded-For
 }
 
 function logLogin(req, userId, username, status) {
@@ -161,7 +164,10 @@ router.get('/invite-url', (req, res) => {
   const url = new URL('https://discord.com/oauth2/authorize');
   url.searchParams.set('client_id', config.clientId);
   url.searchParams.set('scope', 'bot applications.commands');
-  url.searchParams.set('permissions', '117776'); // VIEW + SEND + MANAGE_CHANNELS + HISTORY + EMBED + ATTACH
+  // VIEW + SEND + MANAGE_CHANNELS + HISTORY + EMBED + ATTACH + VIEW_AUDIT_LOG (who invited the bot → founder)
+  // + MENTION_EVERYONE (lets "urgent" ping support roles that are not mentionable; mentions are
+  // otherwise disabled by the client's default allowedMentions, so @everyone can never be triggered)
+  url.searchParams.set('permissions', '248976');
   if (guildId) {
     url.searchParams.set('guild_id', guildId);
     url.searchParams.set('disable_guild_select', 'true');
@@ -173,7 +179,7 @@ router.get('/invite-url', (req, res) => {
 router.post('/select-guild', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
   const { guildId } = req.body;
-  if (!guildId) return res.status(400).json({ error: 'guildId requis' });
+  if (typeof guildId !== 'string' || !/^\d{17,20}$/.test(guildId)) return res.status(400).json({ error: 'guildId requis' });
 
   try {
     const [guild] = await globalQuery(
@@ -279,8 +285,9 @@ router.get('/discord/callback', async (req, res) => {
       return;
     }
 
-    logLogin(req, discordUser.id, discordUser.username, 'success');
-    checkNewIpAlert(req, discordUser.id).catch(() => null);
+    // Check before logging, otherwise the current IP is already "known"
+    checkNewIpAlert(req, discordUser.id).catch(() => null)
+      .finally(() => logLogin(req, discordUser.id, discordUser.username, 'success'));
     req.session.regenerate(err => {
       if (err) return res.redirect('/login?error=oauth_failed');
       req.session.user = {
@@ -313,17 +320,37 @@ router.post('/totp-verify-login', async (req, res) => {
     return res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi depuis Discord' });
   }
 
-  const code = (req.body.code || '').replace(/\s/g, '');
+  const code = (typeof req.body.code === 'string' ? req.body.code : '').trim();
   if (!code) return res.status(400).json({ error: 'Code requis' });
 
   try {
     const [row] = await globalQuery(
-      'SELECT totp_secret FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
+      'SELECT totp_secret, totp_last_step, recovery_codes FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
       [pending.userId]
     );
     if (!row) return res.status(400).json({ error: 'Configuration 2FA introuvable' });
 
-    if (!authenticator.verify({ token: code, secret: row.totp_secret })) {
+    // Either a 6-digit TOTP (never accepted twice) or a one-time recovery code
+    let ok = false;
+    if (RECOVERY_RE.test(code)) {
+      const remaining = consumeRecoveryCode(code, row.recovery_codes);
+      if (remaining) {
+        await globalQuery('UPDATE user_totp SET recovery_codes = ? WHERE user_id = ?', [JSON.stringify(remaining), pending.userId]);
+        ok = true;
+      }
+    } else {
+      const step = verifyTotp(code, row.totp_secret, row.totp_last_step);
+      if (step) {
+        // Also migrates legacy plaintext secrets to encrypted storage
+        await globalQuery(
+          'UPDATE user_totp SET totp_last_step = ?, totp_secret = ? WHERE user_id = ?',
+          [step, isSealed(row.totp_secret) ? row.totp_secret : seal(open(row.totp_secret)), pending.userId]
+        );
+        ok = true;
+      }
+    }
+
+    if (!ok) {
       req.session.pendingTotp.totpAttempts = (pending.totpAttempts || 0) + 1;
       const remaining = TOTP_MAX_ATTEMPTS - req.session.pendingTotp.totpAttempts;
       return res.status(400).json({
@@ -331,19 +358,21 @@ router.post('/totp-verify-login', async (req, res) => {
       });
     }
 
-    logLogin(req, pending.userId, pending.username, 'success');
-    checkNewIpAlert(req, pending.userId).catch(() => null);
-    req.session.user = {
-      id:       pending.userId,
-      username: pending.username,
-      avatar:   pending.avatar,
-      role:     null,
-    };
-    req.session.discordAccessToken = pending.discordAccessToken;
-    delete req.session.pendingTotp;
-    req.session.save(() => trackSession(req, pending.userId));
-
-    res.json({ ok: true, redirect: '/select-guild' });
+    checkNewIpAlert(req, pending.userId).catch(() => null)
+      .finally(() => logLogin(req, pending.userId, pending.username, 'success'));
+    // New session ID once fully authenticated
+    req.session.regenerate(err => {
+      if (err) return res.status(500).json({ error: 'Erreur serveur' });
+      req.session.user = {
+        id:       pending.userId,
+        username: pending.username,
+        avatar:   pending.avatar,
+        role:     null,
+      };
+      req.session.discordAccessToken = pending.discordAccessToken;
+      req.session.save(() => trackSession(req, pending.userId));
+      res.json({ ok: true, redirect: '/select-guild' });
+    });
   } catch (err) {
     console.error('totp-verify-login error:', err);
     res.status(500).json({ error: 'Erreur serveur' });

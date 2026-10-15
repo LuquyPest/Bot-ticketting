@@ -2,15 +2,18 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const { authenticator } = require('otplib');
+const { verifyTotp } = require('../../utils/totp');
+const { seal, open, isSealed } = require('../../utils/secretBox');
 const QRCode = require('qrcode');
 const mysql = require('mysql2/promise');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb, getDbName } = require('../../utils/tenantDb');
 const { ensureTenantSchema } = require('../../utils/tenantSchema');
 const requireSuperAdmin = require('../middleware/superadmin');
+const { parseJsonField } = require('../../utils/jsonField');
 
 function logSaAuth(req, username, status) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const ip = req.ip || 'unknown';
   const ua = (req.headers['user-agent'] || '').slice(0, 500);
   globalQuery(
     'INSERT INTO sa_auth_logs (username, ip, user_agent, status) VALUES (?, ?, ?, ?)',
@@ -18,12 +21,43 @@ function logSaAuth(req, username, status) {
   ).catch(() => null);
 }
 
+const isGuildIdList = v => Array.isArray(v) && v.length <= 500 && v.every(id => typeof id === 'string' && /^\d{17,20}$/.test(id));
+
 // ─── AUTH ────────────────────────────────────────────────────────────────────
+
+// Per-account lockout (on top of the per-IP rate limit): resists distributed brute force.
+const LOCK_AFTER_FAILURES = 5;
+const LOCK_MINUTES = 15;
+const tableOf = type => (type === 'superadmin' ? 'superadmins' : 'managers');
+
+async function recordFailure(type, id) {
+  await globalQuery(
+    `UPDATE ${tableOf(type)}
+     SET failed_attempts = failed_attempts + 1,
+         locked_until = IF(failed_attempts >= ?, NOW() + INTERVAL ? MINUTE, locked_until)
+     WHERE id = ?`,
+    [LOCK_AFTER_FAILURES, LOCK_MINUTES, id]
+  ).catch(() => null);
+}
+
+// Final step of a successful login: fresh session ID, counters reset.
+function completeLogin(req, res, pending) {
+  globalQuery(`UPDATE ${tableOf(pending.type)} SET failed_attempts = 0, locked_until = NULL WHERE id = ?`, [pending.id]).catch(() => null);
+  logSaAuth(req, pending.username, 'success');
+  const saUser = { id: pending.id, username: pending.username, type: pending.type, lastSeen: Date.now() };
+  req.session.regenerate(err => {
+    if (err) return res.status(500).json({ error: 'Erreur serveur' });
+    req.session.superAdmin = saUser;
+    res.json({ ok: true, username: pending.username, type: pending.type });
+  });
+}
 
 // POST /api/sa/auth/login
 router.post('/auth/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Identifiants requis' });
+  if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
+    return res.status(400).json({ error: 'Identifiants requis' });
+  }
 
   try {
     let account = null;
@@ -41,7 +75,14 @@ router.post('/auth/login', async (req, res) => {
     // and prevent username enumeration via timing side-channel.
     const DUMMY_HASH = '$2b$12$invalidhashpaddingtomatchcostXXXXXXXXXXXXXXXXXXXXXXXXX';
     const valid = await bcrypt.compare(password, account ? account.password_hash : DUMMY_HASH);
+
+    // Same message as the IP limiter, so a lock does not confirm that the account exists
+    if (account?.locked_until && new Date(account.locked_until) > new Date()) {
+      logSaAuth(req, username.trim(), 'failed');
+      return res.status(429).json({ error: 'Trop de tentatives, réessaye dans 15 minutes' });
+    }
     if (!account || !valid) {
+      if (account) await recordFailure(accountType, account.id);
       logSaAuth(req, username.trim(), 'failed');
       return res.status(401).json({ error: 'Identifiants invalides' });
     }
@@ -77,20 +118,15 @@ router.post('/auth/totp-setup', async (req, res) => {
   const secret = pending.tempSecret;
   if (!secret) return res.status(400).json({ error: 'Aucun secret en attente de confirmation' });
 
-  if (!authenticator.verify({ token: code.replace(/\s/g, ''), secret })) {
-    return res.status(400).json({ error: 'Code invalide' });
-  }
+  const step = verifyTotp(code, secret);
+  if (!step) return res.status(400).json({ error: 'Code invalide' });
 
   try {
-    const table = pending.type === 'superadmin' ? 'superadmins' : 'managers';
-    await globalQuery(`UPDATE ${table} SET totp_secret = ?, totp_enabled = 1 WHERE id = ?`, [secret, pending.id]);
-
-    const saUser = { id: pending.id, username: pending.username, type: pending.type };
-    req.session.regenerate(err => {
-      if (err) return res.status(500).json({ error: 'Erreur serveur' });
-      req.session.superAdmin = saUser;
-      res.json({ ok: true, username: pending.username, type: pending.type });
-    });
+    await globalQuery(
+      `UPDATE ${tableOf(pending.type)} SET totp_secret = ?, totp_enabled = 1, totp_last_step = ? WHERE id = ?`,
+      [seal(secret), step, pending.id]
+    );
+    completeLogin(req, res, pending);
   } catch (err) {
     console.error('sa totp-setup error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -113,12 +149,20 @@ router.post('/auth/totp-verify', async (req, res) => {
   if (!code || typeof code !== 'string') return res.status(400).json({ error: 'Code TOTP requis' });
 
   try {
-    const table = pending.type === 'superadmin' ? 'superadmins' : 'managers';
-    const [account] = await globalQuery(`SELECT totp_secret FROM ${table} WHERE id = ?`, [pending.id]);
+    const [account] = await globalQuery(
+      `SELECT totp_secret, totp_last_step, locked_until FROM ${tableOf(pending.type)} WHERE id = ?`,
+      [pending.id]
+    );
     if (!account?.totp_secret) return res.status(401).json({ error: 'Compte invalide' });
+    if (account.locked_until && new Date(account.locked_until) > new Date()) {
+      delete req.session.saPendingLogin;
+      return res.status(429).json({ error: 'Trop de tentatives, réessaye dans 15 minutes' });
+    }
 
-    if (!authenticator.verify({ token: code.replace(/\s/g, ''), secret: account.totp_secret })) {
+    const step = verifyTotp(code, account.totp_secret, account.totp_last_step);
+    if (!step) {
       req.session.saPendingLogin.totpAttempts = (pending.totpAttempts || 0) + 1;
+      await recordFailure(pending.type, pending.id);
       const remaining = SA_TOTP_MAX_ATTEMPTS - req.session.saPendingLogin.totpAttempts;
       logSaAuth(req, pending.username, 'totp_failed');
       return res.status(400).json({
@@ -126,12 +170,12 @@ router.post('/auth/totp-verify', async (req, res) => {
       });
     }
 
-    const saUser = { id: pending.id, username: pending.username, type: pending.type };
-    req.session.regenerate(err => {
-      if (err) return res.status(500).json({ error: 'Erreur serveur' });
-      req.session.superAdmin = saUser;
-      res.json({ ok: true, username: pending.username, type: pending.type });
-    });
+    // Records the used step (replay protection) and migrates a legacy plaintext secret
+    await globalQuery(
+      `UPDATE ${tableOf(pending.type)} SET totp_last_step = ?, totp_secret = ? WHERE id = ?`,
+      [step, isSealed(account.totp_secret) ? account.totp_secret : seal(open(account.totp_secret)), pending.id]
+    );
+    completeLogin(req, res, pending);
   } catch (err) {
     console.error('sa totp-verify error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -140,14 +184,18 @@ router.post('/auth/totp-verify', async (req, res) => {
 
 // GET /api/sa/auth/me
 router.get('/auth/me', requireSuperAdmin, (req, res) => {
-  res.json(req.saUser);
+  const { id, username, type } = req.saUser;
+  res.json({ id, username, type });
 });
 
-// POST /api/sa/auth/logout
+// POST /api/sa/auth/logout — drops the SA identity and rotates the session ID (dashboard login kept)
 router.post('/auth/logout', (req, res) => {
-  delete req.session.superAdmin;
-  delete req.session.saPendingLogin;
-  res.json({ ok: true });
+  const { user, discordAccessToken, currentGuildId } = req.session;
+  req.session.regenerate(err => {
+    if (err) return res.status(500).json({ error: 'Erreur serveur' });
+    Object.assign(req.session, { user, discordAccessToken, currentGuildId });
+    res.json({ ok: true });
+  });
 });
 
 // ─── GUILDS ──────────────────────────────────────────────────────────────────
@@ -157,7 +205,7 @@ router.post('/auth/logout', (req, res) => {
 async function canAccessGuild(req, guildId) {
   if (req.saUser.type === 'superadmin') return true;
   const [mgr] = await globalQuery('SELECT assigned_guilds FROM managers WHERE id = ?', [req.saUser.id]);
-  const assigned = mgr?.assigned_guilds ? JSON.parse(mgr.assigned_guilds) : [];
+  const assigned = parseJsonField(mgr?.assigned_guilds);
   return assigned.includes(guildId);
 }
 
@@ -170,7 +218,7 @@ router.get('/guilds', requireSuperAdmin, async (req, res) => {
     }
     // Manager — only assigned guilds
     const [mgr] = await globalQuery('SELECT assigned_guilds FROM managers WHERE id = ?', [req.saUser.id]);
-    const ids = mgr?.assigned_guilds ? JSON.parse(mgr.assigned_guilds) : [];
+    const ids = parseJsonField(mgr?.assigned_guilds);
     if (!ids.length) return res.json([]);
     const guilds = await globalQuery('SELECT * FROM guilds WHERE guild_id IN (?) ORDER BY created_at DESC', [ids]);
     res.json(guilds);
@@ -259,7 +307,7 @@ router.patch('/guilds/:guildId/suspend', requireSuperAdmin, async (req, res) => 
   try {
     const [guild] = await globalQuery('SELECT guild_id FROM guilds WHERE guild_id = ?', [req.params.guildId]);
     if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
-    await globalQuery('UPDATE guilds SET status = "suspended" WHERE guild_id = ?', [guild.guild_id]);
+    await globalQuery('UPDATE guilds SET status = "suspended", suspension_reason = "admin" WHERE guild_id = ?', [guild.guild_id]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -273,7 +321,7 @@ router.patch('/guilds/:guildId/reactivate', requireSuperAdmin, async (req, res) 
   try {
     const [guild] = await globalQuery('SELECT guild_id, status FROM guilds WHERE guild_id = ?', [req.params.guildId]);
     if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
-    await globalQuery('UPDATE guilds SET status = "active" WHERE guild_id = ?', [guild.guild_id]);
+    await globalQuery('UPDATE guilds SET status = "active", suspension_reason = NULL WHERE guild_id = ?', [guild.guild_id]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -332,7 +380,7 @@ router.get('/managers', requireSuperAdmin, async (req, res) => {
     );
     res.json(managers.map(m => ({
       ...m,
-      assigned_guilds: typeof m.assigned_guilds === 'string' ? JSON.parse(m.assigned_guilds) : m.assigned_guilds
+      assigned_guilds: parseJsonField(m.assigned_guilds)
     })));
   } catch (err) {
     console.error(err);
@@ -348,11 +396,11 @@ router.post('/managers', requireSuperAdmin, async (req, res) => {
     if (!username || typeof username !== 'string' || !username.trim()) {
       return res.status(400).json({ error: 'Username requis' });
     }
-    if (!password || typeof password !== 'string' || password.length < 8) {
-      return res.status(400).json({ error: 'Mot de passe requis (min 8 caractères)' });
+    if (!password || typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({ error: 'Mot de passe requis (min 12 caractères)' });
     }
-    if (!Array.isArray(assigned_guilds)) {
-      return res.status(400).json({ error: 'assigned_guilds doit être un tableau' });
+    if (!isGuildIdList(assigned_guilds)) {
+      return res.status(400).json({ error: 'assigned_guilds doit être un tableau d\'IDs de serveurs' });
     }
 
     const hash = await bcrypt.hash(password, 12);
@@ -379,17 +427,17 @@ router.patch('/managers/:id', requireSuperAdmin, async (req, res) => {
     const params = [];
 
     if (password !== undefined) {
-      if (typeof password !== 'string' || password.length < 8) {
-        return res.status(400).json({ error: 'Mot de passe trop court (min 8 caractères)' });
+      if (typeof password !== 'string' || password.length < 12) {
+        return res.status(400).json({ error: 'Mot de passe trop court (min 12 caractères)' });
       }
       updates.push('password_hash = ?');
       params.push(await bcrypt.hash(password, 12));
       // Reset TOTP so the manager must set up again after password change
-      updates.push('totp_secret = NULL', 'totp_enabled = 0');
+      updates.push('totp_secret = NULL', 'totp_enabled = 0', 'totp_last_step = 0', 'failed_attempts = 0', 'locked_until = NULL');
     }
 
     if (assigned_guilds !== undefined) {
-      if (!Array.isArray(assigned_guilds)) return res.status(400).json({ error: 'assigned_guilds invalide' });
+      if (!isGuildIdList(assigned_guilds)) return res.status(400).json({ error: 'assigned_guilds invalide' });
       updates.push('assigned_guilds = ?');
       params.push(JSON.stringify(assigned_guilds));
     }
@@ -408,7 +456,7 @@ router.patch('/managers/:id', requireSuperAdmin, async (req, res) => {
 router.post('/managers/:id/reset-totp', requireSuperAdmin, async (req, res) => {
   if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
   try {
-    await globalQuery('UPDATE managers SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?', [parseInt(req.params.id)]);
+    await globalQuery('UPDATE managers SET totp_secret = NULL, totp_enabled = 0, totp_last_step = 0 WHERE id = ?', [parseInt(req.params.id)]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -479,10 +527,13 @@ router.patch('/guilds/:guildId/limits', requireSuperAdmin, async (req, res) => {
 
 // GET /api/sa/error-logs — centralized error log from all guilds
 router.get('/error-logs', requireSuperAdmin, async (req, res) => {
-  const { guild_id, limit = 100, offset = 0 } = req.query;
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const guild_id = typeof req.query.guild_id === 'string' ? req.query.guild_id : null;
+  const limit  = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
   try {
     const where  = guild_id ? 'WHERE guild_id = ?' : '';
-    const params = guild_id ? [guild_id, parseInt(limit), parseInt(offset)] : [parseInt(limit), parseInt(offset)];
+    const params = guild_id ? [guild_id, limit, offset] : [limit, offset];
     const [rows, [{ total }]] = await Promise.all([
       globalQuery(`SELECT id, guild_id, context, message, stack, created_at FROM error_logs ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, params),
       globalQuery(`SELECT COUNT(*) as total FROM error_logs ${where}`, guild_id ? [guild_id] : []),

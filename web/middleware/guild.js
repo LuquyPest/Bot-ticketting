@@ -1,18 +1,28 @@
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 const net = require('net');
+const { parseJsonField } = require('../../utils/jsonField');
 
-function ipMatchesCidr(ip, cidr) {
-  if (!cidr.includes('/')) return ip === cidr;
-  const [range, bits] = cidr.split('/');
-  const mask = parseInt(bits, 10);
-  if (net.isIPv4(ip) && net.isIPv4(range)) {
-    const ipNum  = ip.split('.').reduce((a, o) => (a << 8) + parseInt(o, 10), 0) >>> 0;
-    const rngNum = range.split('.').reduce((a, o) => (a << 8) + parseInt(o, 10), 0) >>> 0;
-    const maskNum = (~0 << (32 - mask)) >>> 0;
-    return (ipNum & maskNum) === (rngNum & maskNum);
+// Builds a BlockList from "1.2.3.4", "10.0.0.0/8" or IPv6 entries; invalid entries are ignored.
+function buildAllowlist(entries) {
+  const list = new net.BlockList();
+  for (const entry of entries) {
+    if (typeof entry !== 'string') continue;
+    const [addr, bits] = entry.trim().split('/');
+    const type = net.isIPv4(addr) ? 'ipv4' : net.isIPv6(addr) ? 'ipv6' : null;
+    if (!type) continue;
+    try {
+      if (bits === undefined) list.addAddress(addr, type);
+      else list.addSubnet(addr, parseInt(bits, 10), type);
+    } catch { /* invalid prefix */ }
   }
-  return ip === range;
+  return list;
+}
+
+function isAllowed(list, ip) {
+  const v4 = ip.startsWith('::ffff:') ? ip.slice(7) : ip; // IPv4-mapped IPv6
+  if (net.isIPv4(v4)) return list.check(v4, 'ipv4');
+  return net.isIPv6(ip) && list.check(ip, 'ipv6');
 }
 
 // Resolves the current guild from the session and attaches:
@@ -47,13 +57,10 @@ module.exports = async function guildMiddleware(req, res, next) {
     // IP allowlist check (fondateur is always exempt)
     if (req.session?.user?.role !== 'fondateur') {
       const [cfgRow] = await req.guildDb('SELECT ip_allowlist FROM guild_config WHERE id = 1');
-      const allowlist = (() => {
-        try { return JSON.parse(cfgRow?.ip_allowlist || '[]'); } catch { return []; }
-      })();
+      const allowlist = parseJsonField(cfgRow?.ip_allowlist);
       if (allowlist.length > 0) {
-        const clientIp = (req.headers['x-forwarded-for']?.split(',')[0]?.trim()) || req.socket.remoteAddress || '';
-        const allowed = allowlist.some(cidr => ipMatchesCidr(clientIp, cidr));
-        if (!allowed) return res.status(403).json({ error: 'Accès refusé depuis cette adresse IP' });
+        // req.ip honours `trust proxy` (the hop added by Traefik), unlike the raw X-Forwarded-For header
+        if (!isAllowed(buildAllowlist(allowlist), req.ip || '')) return res.status(403).json({ error: 'Accès refusé depuis cette adresse IP' });
       }
     }
     req.guild = guild;
