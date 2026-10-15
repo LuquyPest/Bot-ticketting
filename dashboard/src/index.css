@@ -175,7 +175,6 @@ html.light ::selection { background: rgba(124,110,243,0.2); color: #14142a; }
            disabled:opacity-50 disabled:cursor-not-allowed;
     min-height: 40px;
     padding: 0.5rem 1rem;
-    active:scale: .98;
   }
   .btn:active:not(:disabled) { transform: scale(0.98); }
 

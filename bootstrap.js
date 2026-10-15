@@ -185,6 +185,8 @@ async function ensureGlobalTables(config) {
         INDEX idx_el_guild (guild_id),
         INDEX idx_el_created (created_at)
       )`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS inviter_discord_id VARCHAR(32) DEFAULT NULL`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS inviter_discord_tag VARCHAR(100) DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS max_tickets INT NOT NULL DEFAULT 0`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS max_agents INT NOT NULL DEFAULT 0`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS transcript_retention_days INT NOT NULL DEFAULT 0`,
@@ -203,6 +205,28 @@ async function ensureGlobalTables(config) {
     for (const m of migrations) await conn.query(m).catch(() => null);
 
     ok('Tables globales créées ou déjà présentes.');
+  } finally {
+    await conn.end();
+  }
+}
+
+async function seedSuperAdmin(config) {
+  const username = process.env.SA_USERNAME?.trim();
+  const password = process.env.SA_PASSWORD;
+  if (!username || !password) return;
+
+  const { host, port, user, password: dbPass } = config.database;
+  const conn = await mysql.createConnection({ host, port, user, password: dbPass, database: 'ticketbot_global' });
+  try {
+    const [rows] = await conn.query('SELECT COUNT(*) AS n FROM superadmins');
+    if (rows[0].n > 0) {
+      info('Compte superadmin déjà existant — SA_USERNAME/SA_PASSWORD ignorés.');
+      return;
+    }
+    const bcrypt = require('bcrypt');
+    const hash = await bcrypt.hash(password, 12);
+    await conn.query('INSERT INTO superadmins (username, password_hash) VALUES (?, ?)', [username, hash]);
+    ok(`Compte superadmin "${username}" créé. Retire SA_USERNAME et SA_PASSWORD du .env après le premier démarrage.`);
   } finally {
     await conn.end();
   }
@@ -249,6 +273,7 @@ async function main() {
     info('Connexion MariaDB...');
     await ensureGlobalDatabase(config);
     await ensureGlobalTables(config);
+    await seedSuperAdmin(config);
 
     await verifyDiscordToken(config);
     await runNodeScript('deploy-commands.js', 'Déploiement des commandes slash');

@@ -8,7 +8,7 @@ const { oldTicketsPaginationButtons } = require('../utils/components');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('oldtickets')
-    .setDescription('Affiche les anciens tickets d'un utilisateur')
+    .setDescription("Affiche les anciens tickets d'un utilisateur")
     .addStringOption(option =>
       option.setName('userid').setDescription('ID Discord').setRequired(true)
     ),

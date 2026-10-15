@@ -217,18 +217,34 @@ router.post('/guilds/:guildId/approve', requireSuperAdmin, async (req, res) => {
 
     await ensureTenantSchema(guild.guild_id);
 
-    // Register guild owner as fondateur in the per-guild DB
+    // Fondateur = invitant (fallback sur le owner si non capturé)
+    const founderId  = guild.inviter_discord_id  || guild.owner_discord_id;
+    const founderTag = guild.inviter_discord_tag || guild.owner_discord_tag;
+
     const db = getTenantDb(guild.guild_id);
     await db(
       `INSERT INTO dashboard_users (user_id, username, role) VALUES (?, ?, 'fondateur')
        ON DUPLICATE KEY UPDATE role = 'fondateur'`,
-      [guild.owner_discord_id, guild.owner_discord_tag]
+      [founderId, founderTag]
     );
 
     await globalQuery(
       'UPDATE guilds SET status = "active", approved_by = ?, approved_at = NOW(), activation_token = NULL WHERE guild_id = ?',
       [req.saUser.id, guild.guild_id]
     );
+
+    // DM au fondateur
+    try {
+      const client = req.app.locals.client;
+      const baseUrl = require('../../config.json').webServerBaseUrl || '';
+      const founderUser = await client.users.fetch(founderId);
+      await founderUser.send([
+        `✅ Ton serveur **${guild.guild_name}** a été activé !`,
+        '',
+        `Tu peux maintenant accéder au dashboard : **${baseUrl}**`,
+        'Connecte-toi avec Discord et sélectionne ton serveur.'
+      ].join('\n')).catch(() => null);
+    } catch {}
 
     res.json({ ok: true });
   } catch (err) {

@@ -2,7 +2,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --appendonly no
+    command: redis-server --maxmemory 128mb --maxmemory-policy noeviction --appendonly no
     volumes:
       - redis_data:/data
     healthcheck:
@@ -40,6 +40,7 @@ services:
   bot:
     build: .
     restart: on-failure:5
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
