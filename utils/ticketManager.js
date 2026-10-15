@@ -249,8 +249,8 @@ function createManager(db, client, guildId) {
     if (!ticket) return null;
 
     await db(
-      `UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=? WHERE id=?`,
-      [closedByUser.tag, ticket.id]
+      `UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=?, closed_by_id=? WHERE id=?`,
+      [closedByUser.tag, closedByUser.api ? null : closedByUser.id, ticket.id]
     );
     // Closures through the public API (closedByUser.api) do not count in a staff member's stats
     if (!closedByUser.api) {
@@ -320,7 +320,7 @@ function createManager(db, client, guildId) {
   async function reopenTicket(ticket, reopenedByUser) {
     const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag });
     await db(
-      `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, warned_inactive=0, last_message_at=NOW() WHERE id=?`,
+      `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
     );
     const reopenEmbed = new EmbedBuilder()
@@ -394,8 +394,10 @@ function createManager(db, client, guildId) {
     );
   }
 
+  // closedById may be null (ticket closed automatically or via the API): the rating is kept, unattributed
   async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
     await db('INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating) VALUES (?, ?, ?, ?)', [ticketId, ownerId, closedById, rating]);
+    if (!closedById) return;
     await db(
       `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score)
        VALUES (?, ?, 0, 0, 1, ?)

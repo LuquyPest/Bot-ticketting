@@ -21,7 +21,8 @@ const TENANT_TABLES_SQL = `
     visibility_grade_id INT DEFAULT NULL,
     created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     closed_at           DATETIME DEFAULT NULL,
-    closed_by_tag       VARCHAR(100) DEFAULT NULL
+    closed_by_tag       VARCHAR(100) DEFAULT NULL,
+    closed_by_id        VARCHAR(32) DEFAULT NULL
   );
 
   CREATE TABLE IF NOT EXISTS ticket_participants (
@@ -72,7 +73,7 @@ const TENANT_TABLES_SQL = `
     id           INT AUTO_INCREMENT PRIMARY KEY,
     ticket_id    INT NOT NULL,
     owner_id     VARCHAR(32) NOT NULL,
-    closed_by_id VARCHAR(32) NOT NULL,
+    closed_by_id VARCHAR(32) DEFAULT NULL,
     rating       TINYINT NOT NULL,
     rated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_rating (ticket_id, owner_id),
@@ -357,6 +358,9 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS style ENUM('short','paragraph') NOT NULL DEFAULT 'short'`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS min_length INT DEFAULT NULL`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS max_length INT DEFAULT NULL`,
+      // Ratings: attributed to the claimer, else the closer; may be unattributed (auto/API close)
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS closed_by_id VARCHAR(32) DEFAULT NULL`,
+      `ALTER TABLE ticket_ratings MODIFY closed_by_id VARCHAR(32) DEFAULT NULL`,
       // Webhook secrets used to be written in clear into the audit log
       `UPDATE audit_log SET details = JSON_SET(details, '$.webhookSecret', '[modifié]')
        WHERE action = 'config_update' AND JSON_EXISTS(details, '$.webhookSecret')

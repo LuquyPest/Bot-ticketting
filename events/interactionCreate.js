@@ -18,7 +18,7 @@ async function findGuildForClosedTicket(ticketId, ownerId, guildId) {
     try {
       const db = getTenantDb(guild_id);
       const [ticket] = await db(
-        'SELECT id, claimed_by, closed_by_tag FROM tickets WHERE id = ? AND owner_id = ? AND status = "closed"',
+        'SELECT id, claimed_by, closed_by_id, closed_by_tag FROM tickets WHERE id = ? AND owner_id = ? AND status = "closed"',
         [ticketId, ownerId]
       );
       if (ticket) return { db, ticket, guildId: guild_id };
@@ -98,8 +98,9 @@ module.exports = {
           if (existing) {
             return interaction.update({ embeds: [alreadyRatedEmbed()], components: [] });
           }
-          const closedById = ticket.claimed_by;
-          const closedByUser = await client.users.fetch(closedById).catch(() => null);
+          // Credit the staff member who handled the ticket: the claimer, else whoever closed it
+          const closedById = ticket.claimed_by || ticket.closed_by_id || null;
+          const closedByUser = closedById ? await client.users.fetch(closedById).catch(() => null) : null;
           const closedByTag = closedByUser?.username || ticket.closed_by_tag || closedById;
           const tm = createManager(db, client, guildId);
           await tm.saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);

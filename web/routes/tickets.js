@@ -200,8 +200,8 @@ router.patch('/:id/status', async (req, res) => {
         await tm.closeTicketWithTranscript(channel, staffUser);
       } else {
         await req.guildDb(
-          'UPDATE tickets SET status = "closed", closed_at = NOW(), closed_by_tag = ? WHERE id = ?',
-          [staffUser.tag, ticket.id]
+          'UPDATE tickets SET status = "closed", closed_at = NOW(), closed_by_tag = ?, closed_by_id = ? WHERE id = ?',
+          [staffUser.tag, staffUser.id, ticket.id]
         );
       }
     } else {
@@ -661,7 +661,7 @@ router.post('/bulk', async (req, res) => {
           await channel.send(`🔒 Ticket fermé en masse par ${staffUser.tag}.`).catch(() => null);
           await tm.closeTicketWithTranscript(channel, staffUser).catch(() => null);
         } else {
-          await req.guildDb("UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=? WHERE id=?", [staffUser.tag, ticket.id]);
+          await req.guildDb("UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=?, closed_by_id=? WHERE id=?", [staffUser.tag, staffUser.id, ticket.id]);
           broadcast('ticket', { id: ticket.id, status: 'closed' }, req.guildId);
         }
       }
