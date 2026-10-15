@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
-  Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon, ShieldCheck,
+  Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
   Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck,
 } from 'lucide-react';
 import { useAuth } from '../App';
@@ -26,7 +26,7 @@ const ALL_NAV = [
   { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
   { to: '/audit',       label: 'Audit',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
   { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
-  { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'] },
+  { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'], perm: 'view_transcripts' },
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
   { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
@@ -34,7 +34,6 @@ const ALL_NAV = [
   { to: '/panels',       label: 'Panels',       icon: LayoutTemplate,  roles: ['fondateur'] },
   { to: '/forms',        label: 'Formulaires',  icon: ClipboardCheck,  roles: ['fondateur'] },
   { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
-  { to: '/staff-roles', label: 'Rôles staff',  icon: ShieldCheck,     roles: ['fondateur'] },
   { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
   { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
 ];

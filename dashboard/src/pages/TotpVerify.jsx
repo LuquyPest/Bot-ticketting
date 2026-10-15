@@ -56,7 +56,8 @@ export default function TotpVerify() {
         {/* Form */}
         <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 space-y-4">
           <p className="text-xs text-ink-3 text-center">
-            Entre le code généré par ton application d'authentification pour accéder au dashboard.
+            Entre le code généré par ton application d'authentification pour accéder au dashboard,
+            ou l'un de tes codes de secours (format <span className="font-mono">xxxxx-xxxxx</span>).
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -64,11 +65,11 @@ export default function TotpVerify() {
               <label className="text-xs font-medium text-ink-3">Code 2FA</label>
               <input
                 type="text"
-                inputMode="numeric"
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 placeholder="000 000"
-                maxLength={7}
+                maxLength={11}
+                autoComplete="one-time-code"
                 autoFocus
                 className="w-full px-3 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]
                            text-base text-ink-1 placeholder-ink-4 outline-none

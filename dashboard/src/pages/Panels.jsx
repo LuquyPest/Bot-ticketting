@@ -30,9 +30,12 @@ function EmbedPreview({ panel }) {
           {panel.description && (
             <p className="text-[#dbdee1] text-xs leading-relaxed whitespace-pre-wrap">{panel.description}</p>
           )}
-          {panel.image_url && (
+          {panel.image_url && (/^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//.test(panel.image_url) ? (
             <img src={panel.image_url} alt="" className="rounded-lg max-w-full mt-2" onError={e => e.target.style.display = 'none'} />
-          )}
+          ) : (
+            // The dashboard CSP only loads Discord-hosted images; Discord itself will display any HTTPS image
+            <p className="mt-2 text-[11px] text-ink-4 break-all">🖼️ Image (aperçu indisponible ici, visible sur Discord) : {panel.image_url}</p>
+          ))}
           {panel.footer_text && (
             <p className="text-[#949ba4] text-[10px] pt-1 border-t border-white/10">{panel.footer_text}</p>
           )}

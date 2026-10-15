@@ -3,6 +3,7 @@ import { X, ShieldCheck, ShieldOff, Loader2, Eye, EyeOff, Check } from 'lucide-r
 import { useAuth } from '../App';
 import api from '../api';
 import toast from 'react-hot-toast';
+import RecoveryCodes from './RecoveryCodes';
 
 const ROLE_STYLES = {
   fondateur: { text: 'text-violet-300', bg: 'bg-violet-500/10 border-violet-500/20', label: 'Fondateur' },
@@ -40,6 +41,7 @@ export default function ProfileModal({ onClose }) {
   // setup flow
   const [step, setStep] = useState('idle'); // idle | setup-qr | setup-confirm | disable-confirm
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState(null);
   const [secret, setSecret]       = useState('');
   const [code, setCode]           = useState('');
   const [showSecret, setShowSecret] = useState(false);
@@ -88,9 +90,10 @@ export default function ProfileModal({ onClose }) {
     setActionLoading(true);
     setError('');
     try {
-      await api.post('/profile/2fa/enable', { code });
+      const r = await api.post('/profile/2fa/enable', { code });
       setTwoFaEnabled(true);
       resetState();
+      setRecoveryCodes(r.data.recoveryCodes || null);
       toast.success('2FA activé — ton compte est maintenant protégé');
     } catch (err) {
       setError(err.response?.data?.error || 'Code invalide');
@@ -168,7 +171,11 @@ export default function ProfileModal({ onClose }) {
           </div>
 
           {/* idle state */}
-          {step === 'idle' && !statusLoading && (
+          {recoveryCodes && (
+            <RecoveryCodes codes={recoveryCodes} onDone={() => setRecoveryCodes(null)} />
+          )}
+
+          {step === 'idle' && !statusLoading && !recoveryCodes && (
             <>
               {twoFaEnabled ? (
                 <div className="space-y-3">

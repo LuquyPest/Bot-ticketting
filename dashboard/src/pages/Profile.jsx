@@ -7,6 +7,7 @@ import {
 import api from '../api';
 import toast from 'react-hot-toast';
 import usePushNotifications from '../hooks/usePushNotifications';
+import RecoveryCodes from '../components/RecoveryCodes';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -157,6 +158,7 @@ export default function Profile() {
   const [twoFaLoading, setTwoFaLoading]   = useState(true);
   const [twoFaStep, setTwoFaStep]         = useState('idle');
   const [qrDataUrl, setQrDataUrl]         = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState(null);
   const [secret, setSecret]               = useState('');
   const [showSecret, setShowSecret]       = useState(false);
   const [totpCode, setTotpCode]           = useState('');
@@ -223,10 +225,22 @@ export default function Profile() {
     e.preventDefault();
     set2FaAL(true); setTwoFaError('');
     try {
-      await api.post('/profile/2fa/enable', { code: totpCode });
+      const r = await api.post('/profile/2fa/enable', { code: totpCode });
       setTwoFaEnabled(true);
       reset2Fa();
+      setRecoveryCodes(r.data.recoveryCodes || null);
       toast.success('2FA activé — ton compte est maintenant protégé');
+    } catch (err) { setTwoFaError(err.response?.data?.error || 'Code invalide'); }
+    set2FaAL(false);
+  };
+
+  const confirmRegenCodes = async (e) => {
+    e.preventDefault();
+    set2FaAL(true); setTwoFaError('');
+    try {
+      const r = await api.post('/profile/2fa/recovery-codes', { code: totpCode });
+      reset2Fa();
+      setRecoveryCodes(r.data.recoveryCodes);
     } catch (err) { setTwoFaError(err.response?.data?.error || 'Code invalide'); }
     set2FaAL(false);
   };
@@ -444,7 +458,7 @@ export default function Profile() {
               ) : (
                 <div className="flex gap-2">
                   <input type="url" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
-                    placeholder="https://…/photo.jpg" autoFocus
+                    placeholder="https://cdn.discordapp.com/…  (lien d'une image envoyée sur Discord)" autoFocus
                     className="flex-1 bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4
                                rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
                   <button onClick={() => setEditingPhoto(false)}
@@ -524,7 +538,11 @@ export default function Profile() {
               )}
             </div>
 
-            {twoFaStep === 'idle' && !twoFaLoading && (
+            {recoveryCodes && (
+              <RecoveryCodes codes={recoveryCodes} onDone={() => setRecoveryCodes(null)} />
+            )}
+
+            {twoFaStep === 'idle' && !twoFaLoading && !recoveryCodes && (
               <>
                 <p className="text-xs text-ink-4">
                   {twoFaEnabled
@@ -532,11 +550,18 @@ export default function Profile() {
                     : 'Protège ton compte avec une application comme Google Authenticator ou Authy.'}
                 </p>
                 {twoFaEnabled ? (
-                  <button onClick={() => { setTwoFaStep('disable'); setTotpCode(''); setTwoFaError(''); }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-                               text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-all">
-                    <ShieldOff size={14} /> Désactiver le 2FA
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => { setTwoFaStep('regen'); setTotpCode(''); setTwoFaError(''); }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                                 text-ink-2 border border-white/[0.08] hover:bg-white/[0.05] transition-all">
+                      <ShieldCheck size={14} /> Nouveaux codes de secours
+                    </button>
+                    <button onClick={() => { setTwoFaStep('disable'); setTotpCode(''); setTwoFaError(''); }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                                 text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-all">
+                      <ShieldOff size={14} /> Désactiver le 2FA
+                    </button>
+                  </div>
                 ) : (
                   <button onClick={start2FaSetup} disabled={twoFaActionLoading}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
@@ -584,6 +609,29 @@ export default function Profile() {
                                flex items-center justify-center gap-2">
                     {twoFaActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                     Confirmer
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {twoFaStep === 'regen' && (
+              <form onSubmit={confirmRegenCodes} className="space-y-4">
+                <p className="text-xs text-ink-3 text-center">
+                  Entre le code de ton application : les anciens codes de secours seront invalidés.
+                </p>
+                <TotpInput value={totpCode} onChange={setTotpCode} autoFocus />
+                {twoFaError && <p className="text-xs text-red-400 text-center">{twoFaError}</p>}
+                <div className="flex gap-2">
+                  <button type="button" onClick={reset2Fa}
+                    className="flex-1 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1
+                               hover:bg-white/[0.05] transition-all">Annuler</button>
+                  <button type="submit"
+                    disabled={twoFaActionLoading || totpCode.replace(/\s/g, '').length < 6}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-primary
+                               hover:bg-primary-light disabled:opacity-60 transition-all
+                               flex items-center justify-center gap-2">
+                    {twoFaActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                    Générer
                   </button>
                 </div>
               </form>

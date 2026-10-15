@@ -24,7 +24,6 @@ const Audit       = lazy(() => import('./pages/Audit'));
 const Kanban      = lazy(() => import('./pages/Kanban'));
 const Equipe      = lazy(() => import('./pages/Equipe'));
 const Tags        = lazy(() => import('./pages/Tags'));
-const StaffRoles  = lazy(() => import('./pages/StaffRoles'));
 const TotpVerify  = lazy(() => import('./pages/TotpVerify'));
 const Profile     = lazy(() => import('./pages/Profile'));
 const Analytics   = lazy(() => import('./pages/Analytics'));
@@ -168,13 +167,10 @@ export default function App() {
                           <RequireRole role="fondateur"><ErrorBoundary><Blacklist /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="transcripts" element={
-                          <RequireRole role="fondateur"><ErrorBoundary><Transcripts /></ErrorBoundary></RequireRole>
+                          <RequireRole role="fondateur" perm="view_transcripts"><ErrorBoundary><Transcripts /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="settings"   element={
                           <RequireRole role="fondateur"><ErrorBoundary><Settings /></ErrorBoundary></RequireRole>
-                        } />
-                        <Route path="staff-roles" element={
-                          <RequireRole role="fondateur"><ErrorBoundary><StaffRoles /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="equipe"     element={
                           <RequireRole role="fondateur"><ErrorBoundary><Equipe /></ErrorBoundary></RequireRole>
