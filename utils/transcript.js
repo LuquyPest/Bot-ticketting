@@ -610,12 +610,16 @@ function buildHtmlTranscript(channel, messages, ticketInfo = {}) {
 </html>`;
 }
 
-const NOTE_PREFIX = require('./notePrefix');
+const { NOTE_PREFIX, NOTE_EMBED_AUTHOR } = require('./notePrefix');
+
+const isInternalNote = m =>
+  m.content?.startsWith(NOTE_PREFIX) ||
+  (m.author?.bot && m.embeds?.some(e => e.author?.name?.startsWith(NOTE_EMBED_AUTHOR)));
 
 async function buildTranscripts(channel, ticketInfo = {}) {
   const allMessages = await fetchAllMessages(channel);
   // Staff internal notes are excluded from the transcript sent to users
-  const messages = allMessages.filter(m => !m.content?.startsWith(NOTE_PREFIX));
+  const messages = allMessages.filter(m => !isInternalNote(m));
   return {
     messageCount: messages.length,
     txt: buildTxtTranscript(channel, messages),
@@ -623,4 +627,4 @@ async function buildTranscripts(channel, ticketInfo = {}) {
   };
 }
 
-module.exports = { buildTranscripts };
+module.exports = { buildTranscripts, escapeHtml };

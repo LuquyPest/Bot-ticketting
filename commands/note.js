@@ -3,7 +3,7 @@ const { getTenantDb } = require('../utils/tenantDb');
 const { createManager, getGuildConfig } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 
-const NOTE_PREFIX = require('../utils/notePrefix');
+const { NOTE_EMBED_AUTHOR } = require('../utils/notePrefix');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -34,7 +34,7 @@ module.exports = {
 
     const noteEmbed = new EmbedBuilder()
       .setColor(0xfee75c)
-      .setAuthor({ name: '🔒 Note interne — visible staff uniquement' })
+      .setAuthor({ name: `${NOTE_EMBED_AUTHOR} — visible staff uniquement` })
       .setDescription(content)
       .setFooter({ text: `${interaction.user.username} · ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` });
     await interaction.reply({ embeds: [noteEmbed] });
