@@ -38,7 +38,6 @@ const FIELD_MAP = {
   webhookUrl:                'webhook_url',
   webhookSecret:             'webhook_secret',
   // Phase 1 — feature flags
-  faqEnabled:               'faq_enabled',
   intakeFormEnabled:        'intake_form_enabled',
   staffReminderEnabled:     'staff_reminder_enabled',
   staffReminderHours:       'staff_reminder_hours',
@@ -46,7 +45,6 @@ const FIELD_MAP = {
   userInactiveWarnHours:    'user_inactive_warn_hours',
   userInactiveCloseHours:   'user_inactive_close_hours',
   internalNotesEnabled:     'internal_notes_enabled',
-  badgesEnabled:            'badges_enabled',
   monthlyGoalsEnabled:      'monthly_goals_enabled',
   leaderboardEnabled:       'leaderboard_enabled',
   webhooksEnabled:          'webhooks_enabled',
@@ -87,7 +85,6 @@ const VALIDATORS = {
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
   webhookSecret:            v => v === null || (typeof v === 'string' && v.length >= 16 && v.length <= 255),
   // Phase 1 — feature flags
-  faqEnabled:               v => v === 0 || v === 1 || v === true || v === false,
   intakeFormEnabled:        v => v === 0 || v === 1 || v === true || v === false,
   staffReminderEnabled:     v => v === 0 || v === 1 || v === true || v === false,
   staffReminderHours:       v => Number.isInteger(v) && v >= 1 && v <= 168,
@@ -95,7 +92,6 @@ const VALIDATORS = {
   userInactiveWarnHours:    v => Number.isInteger(v) && v >= 1 && v <= 720,
   userInactiveCloseHours:   v => Number.isInteger(v) && v >= 1 && v <= 720,
   internalNotesEnabled:     v => v === 0 || v === 1 || v === true || v === false,
-  badgesEnabled:            v => v === 0 || v === 1 || v === true || v === false,
   monthlyGoalsEnabled:      v => v === 0 || v === 1 || v === true || v === false,
   leaderboardEnabled:       v => v === 0 || v === 1 || v === true || v === false,
   webhooksEnabled:          v => v === 0 || v === 1 || v === true || v === false,

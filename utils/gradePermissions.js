@@ -32,11 +32,6 @@ async function getUserPermissions(userId, db) {
   return new Set(perms.map(p => p.permission));
 }
 
-async function hasPermission(userId, permission, db) {
-  const perms = await getUserPermissions(userId, db);
-  return perms.has(permission);
-}
-
 async function getDescendantIds(gradeIds, db) {
   if (!gradeIds.length) return [];
   const q = db || globalQuery;
@@ -101,10 +96,7 @@ async function logAudit(actorId, actorTag, action, targetType, targetId, details
 
 module.exports = {
   PERMISSIONS,
-  getUserGradeIds,
   getUserPermissions,
-  hasPermission,
-  getDescendantIds,
   getVisibleGradeIds,
   canUserSeeTicket,
   discordStaffCanSee,

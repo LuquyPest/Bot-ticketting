@@ -44,21 +44,6 @@ module.exports = {
 
       if (interaction.isButton()) {
 
-        // ── FAQ — ouvrir ticket quand même (DM) ──
-        if (interaction.customId.startsWith('faq_open_')) {
-          const { pendingFaqTicket, openTicketForGuild } = require('./messageCreate');
-          const pending = pendingFaqTicket.get(interaction.user.id);
-          if (!pending) {
-            return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
-          }
-          pendingFaqTicket.delete(interaction.user.id);
-          await interaction.update({ embeds: [ticketCreatingEmbed('…')], components: [] });
-          const { guildId, db, tm, config } = pending;
-          // Get original content from interaction message text (remove FAQ prefix)
-          await openTicketForGuild(interaction.user, '', [], { guildId, db, tm, config }, client, null);
-          return;
-        }
-
         // ── Sujet (DM) ──
         if (interaction.customId.startsWith('subject_')) {
           const { pendingSubject, openTicketForGuild } = require('./messageCreate');

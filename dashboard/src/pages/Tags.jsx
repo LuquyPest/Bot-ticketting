@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, Check, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Tag } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirmToast';

@@ -314,13 +314,6 @@ function createManager(db, client, guildId) {
 
     fireTicketWebhook(db, 'ticket_close', { ticketId: ticket.id, ownerTag: ticket.owner_tag, closedBy: closedByUser.tag }).catch(() => null);
 
-    if (ticket.claimed_by) {
-      try {
-        const { checkAndAwardBadges } = require('../web/routes/badges');
-        await checkAndAwardBadges(db, ticket.claimed_by, closedByUser.tag);
-      } catch {}
-    }
-
     return transcript;
   }
 

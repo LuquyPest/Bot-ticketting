@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Search as SearchIcon, Ticket, Clock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, Ticket, Clock, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 

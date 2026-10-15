@@ -1,14 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   BarChart2, Activity, Users, Shield, Clock, AlertTriangle,
-  TrendingUp, CheckCircle, RefreshCw, ChevronDown
-} from 'lucide-react';
+  TrendingUp, CheckCircle, RefreshCw} from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 import api from '../api';
-import { fmtDuration } from '../utils/format';
+import {} from '../utils/format';
 import Badge from '../components/Badge';
 import { SkeletonCard } from '../components/Skeleton';
 

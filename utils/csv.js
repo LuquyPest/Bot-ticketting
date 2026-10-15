@@ -6,8 +6,4 @@ function csvCell(val) {
   return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-function toCsv(headers, rows) {
-  return [headers.join(','), ...rows.map(r => headers.map(h => csvCell(r[h])).join(','))].join('\n');
-}
-
-module.exports = { csvCell, toCsv };
+module.exports = { csvCell };

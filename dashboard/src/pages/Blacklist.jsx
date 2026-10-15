@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldBan, Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';

@@ -1,4 +1,3 @@
-const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { globalQuery } = require('../utils/globalDb');
 const { broadcast } = require('../utils/sse');

@@ -10,9 +10,10 @@ const { sendPushToGuild } = require('./push');
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
 
-const { csvCell: csvEscape, toCsv } = require('../../utils/csv');
+const { csvCell: csvEscape } = require('../../utils/csv');
 const { parseJsonField } = require('../../utils/jsonField');
 const { fetchGuildChannel } = require('../../utils/discordGuard');
+const { escapeHtml } = require('../../utils/transcript');
 
 async function checkAccess(req, ticketId) {
   const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticketId]);
@@ -687,12 +688,7 @@ router.get('/:id/pdf', async (req, res) => {
     const SOURCE_LABEL = { reply: 'Réponse Staff', user: 'Utilisateur', discord: 'Discord', web: 'Note interne' };
     const SOURCE_COLOR = { reply: '#4f46e5', user: '#7c3aed', discord: '#1e3a5f', web: '#374151' };
 
-    const esc = s => (s || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+    const esc = s => escapeHtml(s || '');
 
     const notesHtml = notes.map(n => `
       <div class="message" style="border-left:3px solid ${SOURCE_COLOR[n.source] || '#374151'};padding:10px 14px;margin:10px 0;background:#f9fafb;border-radius:4px">
@@ -736,26 +732,6 @@ ${notesHtml || '<p style="color:#6b7280;font-size:13px;text-align:center;padding
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Security-Policy', `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'`);
     res.send(html);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-// GET /api/tickets/export/csv — download all tickets as CSV
-router.get('/export/csv', async (req, res) => {
-  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
-  try {
-    const tickets = await req.guildDb(
-      `SELECT id, owner_id, owner_tag, subject, priority, status, claimed_by,
-              created_at, closed_at, closed_by_tag
-       FROM tickets ORDER BY id DESC LIMIT 10000`
-    );
-    const headers = ['id', 'owner_id', 'owner_tag', 'subject', 'priority', 'status', 'claimed_by', 'created_at', 'closed_at', 'closed_by_tag'];
-    const csv = toCsv(headers, tickets);
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="tickets.csv"');
-    res.send(csv);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

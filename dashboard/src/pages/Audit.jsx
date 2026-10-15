@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, ScrollText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';

@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef} from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, AlertTriangle,
-  UserCircle, ChevronDown, Tag, History
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';

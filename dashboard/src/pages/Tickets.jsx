@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
-  ChevronDown, Calendar, AlertTriangle, Tag as TagIcon,
+  ChevronDown, Calendar, AlertTriangle,
   FolderOpen, FileText, User,
 } from 'lucide-react';
 import api from '../api';

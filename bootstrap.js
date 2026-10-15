@@ -118,12 +118,6 @@ async function ensureGlobalTables(config) {
         CONSTRAINT fk_guild_approver FOREIGN KEY (approved_by) REFERENCES superadmins(id) ON DELETE SET NULL
       );
 
-      CREATE TABLE IF NOT EXISTS web_sessions (
-        session_id   VARCHAR(128) NOT NULL PRIMARY KEY,
-        expires      INT(11) UNSIGNED NOT NULL,
-        data         TEXT
-      );
-
       CREATE TABLE IF NOT EXISTS user_totp (
         user_id      VARCHAR(32) NOT NULL PRIMARY KEY,
         totp_secret  VARCHAR(64) NOT NULL,

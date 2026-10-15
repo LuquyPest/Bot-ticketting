@@ -5,7 +5,6 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const { pages } = require('../utils/transcriptServer');
-const { pool } = require('../utils/db');
 const { globalQuery } = require('../utils/globalDb');
 const logger = require('../utils/logger');
 
@@ -121,7 +120,7 @@ app.use((req, res, next) => {
 
 app.get('/api/health', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
+    await globalQuery('SELECT 1');
     res.json({ status: 'ok', uptime: Math.floor(process.uptime()) });
   } catch {
     res.status(503).json({ status: 'error', db: 'unreachable' });
@@ -185,13 +184,12 @@ app.use('/api/audit',       withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/tags',        withGuild(['support', 'fondateur']), require('./routes/tags'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
 app.use('/api/analytics',   withGuild(['support', 'fondateur']), require('./routes/analytics'));
-app.use('/api/badges',      withGuild(['support', 'fondateur']), require('./routes/badges'));
 app.use('/api/goals',       withGuild(['support', 'fondateur']), require('./routes/goals'));
 app.use('/api/api-keys',    withGuild(['fondateur']),            require('./routes/apiKeys'));
 app.use('/api/newsletter',  withGuild(['fondateur']),            require('./routes/newsletter'));
 app.use('/api/panels',      withGuild(['fondateur']),            require('./routes/panels'));
 app.use('/api/forms',       withGuild(['fondateur']),            require('./routes/forms'));
-app.use('/api/login-logs',  require('./routes/loginLogs')); // auth géré dans la route (global DB, pas de guild scope)
+app.use('/api/login-logs',  withGuild(['support', 'fondateur']), require('./routes/loginLogs'));
 
 app.use('/api/sa', require('./routes/superadmin'));
 

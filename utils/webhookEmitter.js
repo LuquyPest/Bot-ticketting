@@ -96,4 +96,4 @@ async function fireTicketWebhook(db, event, payload) {
   } catch {}
 }
 
-module.exports = { emitWebhook, fireTicketWebhook };
+module.exports = { fireTicketWebhook };

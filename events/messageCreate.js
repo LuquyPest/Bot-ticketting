@@ -1,4 +1,4 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { findAllOpenTickets, isBlacklistedIn, isGuildOperational, findGuildsForUser } = require('../utils/guildScan');
@@ -11,7 +11,7 @@ const { globalQuery } = require('../utils/globalDb');
 const {
   emptyMessageEmbed, blacklistedEmbed, notInGuildEmbed,
   serverLimitEmbed, dailyLimitEmbed, serverSelectEmbed,
-  subjectSelectEmbed, faqEmbed,
+  subjectSelectEmbed,
   intakeFormStartEmbed, intakeFormStepEmbed,
 } = require('../utils/dmEmbeds');
 
@@ -21,8 +21,6 @@ const pendingSubject = new Map();
 const pendingGuildSelect = new Map();
 // userId → { content, attachments, guildEntry, subject, questions: [], step: 0, answers: [] }
 const pendingIntakeForm = new Map();
-// userId → { content, attachments, guildEntry, subject }
-const pendingFaqTicket = new Map();
 
 // Stores a pending state that expires after `ttlMs` — without a later state being wiped by an older timer.
 function setPending(map, userId, state, ttlMs) {
@@ -33,48 +31,6 @@ function setPending(map, userId, state, ttlMs) {
 // DM flood protection: each DM scans every active guild, so cap it per user.
 const DM_MAX = 8;
 const DM_WINDOW_MS = 30 * 1000;
-
-// Returns true if a FAQ rule matched and the user was shown a reply (ticket creation paused)
-async function checkFaq(user, content, guildEntry, client) {
-  const { guildId, db, config } = guildEntry;
-  if (!config.faq_enabled) return false;
-
-  let rules;
-  try {
-    rules = await db('SELECT * FROM faq_rules WHERE active = 1');
-  } catch { return false; }
-  if (!rules.length) return false;
-
-  const lower = content.toLowerCase();
-  for (const rule of rules) {
-    let keywords = [];
-    try { keywords = Array.isArray(rule.keywords) ? rule.keywords : JSON.parse(rule.keywords || '[]'); } catch {}
-    if (!keywords.length) continue;
-    const matched = keywords.some(kw => lower.includes(String(kw).toLowerCase()));
-    if (!matched) continue;
-
-    const row = [];
-    if (rule.allow_ticket) {
-      row.push(
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`faq_open_${guildId}`)
-            .setLabel('Ouvrir un ticket quand même')
-            .setStyle(ButtonStyle.Secondary)
-        )
-      );
-      setPending(pendingFaqTicket, user.id, { guildId, db, tm: guildEntry.tm, config }, 10 * 60 * 1000);
-    }
-
-    const msg = rule.allow_ticket
-      ? { embeds: [faqEmbed(rule.response, true)], components: row }
-      : { embeds: [faqEmbed(rule.response, false)] };
-
-    await user.send(msg).catch(() => null);
-    return true;
-  }
-  return false;
-}
 
 // Starts intake form questioning sequence, returns true if form was triggered
 async function checkIntakeForm(user, content, attachments, guildEntry, client, subject) {
@@ -112,7 +68,7 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
 async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null) {
   const { guildId, db, tm, config } = guildEntry;
 
-  // Every entry point (DM, subject/FAQ/guild buttons) ends here, so the per-guild checks live here
+  // Every entry point (DM, subject/guild buttons) ends here, so the per-guild checks live here
   if (!(await isGuildOperational(guildId))) {
     await user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
     return;
@@ -148,10 +104,6 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   }
 
   if (subject === null) {
-    // FAQ check before anything (only on first message without existing ticket)
-    const faqHandled = await checkFaq(user, content, { guildId, db, tm, config }, client);
-    if (faqHandled) return;
-
     const subjects = parseJsonField(config.ticket_subjects);
 
     if (subjects.length > 0) {
@@ -338,6 +290,5 @@ module.exports = {
   pendingSubject,
   pendingGuildSelect,
   pendingIntakeForm,
-  pendingFaqTicket,
   openTicketForGuild
 };

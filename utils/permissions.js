@@ -59,4 +59,4 @@ async function ensureChiefSupport(interaction, client, db) {
   return true;
 }
 
-module.exports = { isSupportMember, isChiefSupportMember, ensureSupport, ensureChiefSupport };
+module.exports = { ensureSupport, ensureChiefSupport };

@@ -88,8 +88,9 @@ async function shutdown(signal) {
   logger.info('Arrêt en cours', { signal });
   httpServer?.close();
   client.destroy();
-  const { pool } = require('./utils/db');
-  await pool.end().catch(() => {});
+  await require('./utils/globalDb').getPool().end().catch(() => {});
+  await require('./utils/tenantDb').closeAll();
+  await require('./utils/redis').getRedis().quit().catch(() => {});
   process.exit(0);
 }
 

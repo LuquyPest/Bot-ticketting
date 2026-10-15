@@ -184,17 +184,6 @@ const TENANT_TABLES_SQL = `
     CONSTRAINT fk_sm_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
   );
 
-  CREATE TABLE IF NOT EXISTS staff_roles (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    name             VARCHAR(80) NOT NULL,
-    discord_role_ids JSON NOT NULL DEFAULT ('[]'),
-    level            INT NOT NULL DEFAULT 1,
-    permissions      JSON NOT NULL DEFAULT ('[]'),
-    is_founder_role  TINYINT(1) NOT NULL DEFAULT 0,
-    color            VARCHAR(7) NOT NULL DEFAULT '#6366f1',
-    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
   CREATE TABLE IF NOT EXISTS guild_config (
     id                    INT AUTO_INCREMENT PRIMARY KEY,
     ticket_category_id    VARCHAR(32) DEFAULT NULL,
@@ -239,15 +228,6 @@ const TENANT_TABLES_SQL = `
     updated_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );
 
-  CREATE TABLE IF NOT EXISTS faq_rules (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    keywords     JSON NOT NULL DEFAULT ('[]'),
-    response     TEXT NOT NULL,
-    allow_ticket TINYINT(1) NOT NULL DEFAULT 1,
-    active       TINYINT(1) NOT NULL DEFAULT 1,
-    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
   CREATE TABLE IF NOT EXISTS intake_forms (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(100) NOT NULL,
@@ -275,27 +255,6 @@ const TENANT_TABLES_SQL = `
     content    TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_sn_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS badge_definitions (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    description VARCHAR(255) NOT NULL,
-    icon        VARCHAR(100) NOT NULL DEFAULT '🏆',
-    color       VARCHAR(7) NOT NULL DEFAULT '#6366f1',
-    trigger_key VARCHAR(50) NOT NULL,
-    threshold   INT DEFAULT NULL,
-    active      TINYINT(1) NOT NULL DEFAULT 1,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS user_badges (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    user_id    VARCHAR(32) NOT NULL,
-    badge_id   INT NOT NULL,
-    awarded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_user_badge (user_id, badge_id),
-    CONSTRAINT fk_ub_badge FOREIGN KEY (badge_id) REFERENCES badge_definitions(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS monthly_goals (
@@ -417,4 +376,4 @@ async function ensureTenantSchema(guildId) {
   }
 }
 
-module.exports = { ensureTenantSchema, TENANT_TABLES_SQL };
+module.exports = { ensureTenantSchema };

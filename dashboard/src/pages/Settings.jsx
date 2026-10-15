@@ -243,7 +243,6 @@ export default function Settings() {
         escalationCloseHours:     cfg.escalationCloseHours,
         webhookUrl:               sn(cfg.webhookUrl),
         webhookSecret:            sn(cfg.webhookSecret),
-        faqEnabled:               cfg.faqEnabled ? 1 : 0,
         intakeFormEnabled:        cfg.intakeFormEnabled ? 1 : 0,
         staffReminderEnabled:     cfg.staffReminderEnabled ? 1 : 0,
         staffReminderHours:       cfg.staffReminderHours ?? 4,
@@ -251,7 +250,6 @@ export default function Settings() {
         userInactiveWarnHours:    cfg.userInactiveWarnHours ?? 24,
         userInactiveCloseHours:   cfg.userInactiveCloseHours ?? 72,
         internalNotesEnabled:     cfg.internalNotesEnabled !== false ? 1 : 0,
-        badgesEnabled:            cfg.badgesEnabled ? 1 : 0,
         monthlyGoalsEnabled:      cfg.monthlyGoalsEnabled ? 1 : 0,
         leaderboardEnabled:       cfg.leaderboardEnabled !== false ? 1 : 0,
         webhooksEnabled:          cfg.webhooksEnabled ? 1 : 0,
@@ -538,11 +536,6 @@ export default function Settings() {
       {/* Feature flags */}
       <Section title="Fonctionnalités" description="Active ou désactive les fonctionnalités avancées pour ce serveur.">
         <FeatureToggle
-          label="Auto-réponses FAQ"
-          hint="Répond automatiquement aux mots-clés en DM avant la création d'un ticket"
-          checked={cfg.faqEnabled} onChange={v => set('faqEnabled', v)}
-        />
-        <FeatureToggle
           label="Formulaires d'intake"
           hint="Affiche un questionnaire configurable avant l'ouverture du ticket"
           checked={cfg.intakeFormEnabled} onChange={v => set('intakeFormEnabled', v)}
@@ -582,13 +575,8 @@ export default function Settings() {
           checked={cfg.internalNotesEnabled !== false} onChange={v => set('internalNotesEnabled', v)}
         />
         <FeatureToggle
-          label="Badges débloquables"
-          hint="Attribue automatiquement des badges aux membres staff selon leurs performances"
-          checked={cfg.badgesEnabled} onChange={v => set('badgesEnabled', v)}
-        />
-        <FeatureToggle
           label="Objectifs mensuels"
-          hint="Quota de tickets mensuel avec barre de progression sur le profil"
+          hint="Objectif de 50 tickets traités par mois, avec barre de progression sur le dashboard"
           checked={cfg.monthlyGoalsEnabled} onChange={v => set('monthlyGoalsEnabled', v)}
         />
         <FeatureToggle

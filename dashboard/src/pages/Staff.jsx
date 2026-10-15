@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Clock, Ticket, Users, AlertCircle, TrendingUp, Award, Target, TrendingDown, Minus } from 'lucide-react';
+import { Star, Clock, Ticket, Users, AlertCircle, TrendingUp, Award, TrendingDown, Minus } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';

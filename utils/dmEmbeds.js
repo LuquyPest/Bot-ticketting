@@ -67,17 +67,6 @@ function subjectSelectEmbed() {
     .setFooter({ text: 'Cette sélection expire dans 10 minutes' });
 }
 
-function faqEmbed(response, allowTicket) {
-  const embed = new EmbedBuilder()
-    .setColor(C.primary)
-    .setAuthor({ name: 'Réponse automatique' })
-    .setDescription(response);
-  if (allowTicket) {
-    embed.setFooter({ text: 'Cette réponse ne répond pas à ta question ? Tu peux quand même ouvrir un ticket.' });
-  }
-  return embed;
-}
-
 function intakeFormStartEmbed(firstQuestion, step, total) {
   return new EmbedBuilder()
     .setColor(C.primary)
@@ -139,7 +128,6 @@ module.exports = {
   dailyLimitEmbed,
   serverSelectEmbed,
   subjectSelectEmbed,
-  faqEmbed,
   intakeFormStartEmbed,
   intakeFormStepEmbed,
   sessionExpiredEmbed,
