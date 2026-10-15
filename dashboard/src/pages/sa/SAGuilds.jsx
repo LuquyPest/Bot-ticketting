@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Building2, CheckCircle, Clock, XCircle, RefreshCw,
-  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon
+  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X
 } from 'lucide-react';
 import api from '../../api';
 import { useSA } from './SAApp';
@@ -61,6 +61,90 @@ function ConfirmModal({ message, onConfirm, onCancel, danger }) {
   );
 }
 
+// Founders of a tenant's dashboard; the super-admin can appoint new ones by Discord ID.
+function FoundersModal({ guild, canEdit, onClose }) {
+  const [founders, setFounders] = useState(null);
+  const [discordId, setDiscordId] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = () => api.get(`/sa/guilds/${guild.guild_id}/founders`)
+    .then(r => setFounders(r.data))
+    .catch(err => { toast.error(err.response?.data?.error || 'Erreur chargement'); setFounders([]); });
+
+  useEffect(() => { load(); }, [guild.guild_id]);
+
+  const add = async (e) => {
+    e.preventDefault();
+    const id = discordId.trim();
+    if (!/^\d{17,20}$/.test(id)) return toast.error('ID Discord invalide (17 à 20 chiffres)');
+    setSaving(true);
+    try {
+      const r = await api.post(`/sa/guilds/${guild.guild_id}/founders`, { discordId: id });
+      toast.success(`${r.data.username} est maintenant fondateur`);
+      if (!r.data.isMember) toast(`⚠️ ${r.data.username} n'est pas membre du serveur Discord`, { duration: 6000 });
+      setDiscordId('');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 w-full max-w-md space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink-1 flex items-center gap-2">
+            <Crown size={15} className="text-amber-400" /> Fondateurs — {guild.guild_name}
+          </h2>
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-1"><X size={16} /></button>
+        </div>
+
+        {founders === null ? (
+          <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-ink-3" /></div>
+        ) : founders.length === 0 ? (
+          <p className="text-xs text-ink-4 text-center py-4">Aucun fondateur</p>
+        ) : (
+          <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+            {founders.map(f => (
+              <li key={f.user_id} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm text-ink-1 truncate">{f.username || f.user_id}</p>
+                  <p className="text-[10px] font-mono text-ink-4">{f.user_id}</p>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  {f.isInviter && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-indigo-300 bg-indigo-500/10 border-indigo-500/20">Invitant</span>}
+                  {f.isOwner && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20">Propriétaire</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {canEdit && (
+          <form onSubmit={add} className="space-y-2 pt-2 border-t border-white/[0.06]">
+            <label className="text-xs font-medium text-ink-3">Ajouter un fondateur (ID Discord)</label>
+            <div className="flex gap-2">
+              <input value={discordId} onChange={e => setDiscordId(e.target.value)}
+                placeholder="123456789012345678" inputMode="numeric" maxLength={20}
+                className="flex-1 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-ink-1
+                           placeholder-ink-4 outline-none focus:border-primary/50 font-mono" />
+              <button type="submit" disabled={saving}
+                className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-light
+                           disabled:opacity-60 flex items-center gap-1.5">
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Ajouter
+              </button>
+            </div>
+            <p className="text-[10px] text-ink-4">
+              Accès complet au dashboard de ce serveur. La personne reçoit un DM et se connecte avec Discord.
+            </p>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SAGuilds() {
   const { saUser } = useSA();
   const isSA = saUser?.type === 'superadmin';
@@ -71,6 +155,7 @@ export default function SAGuilds() {
   const [tab, setTab]             = useState('all');
   const [confirm, setConfirm]     = useState(null); // { action, guild }
   const [actioning, setActioning] = useState(null);
+  const [foundersOf, setFoundersOf] = useState(null); // guild whose founders modal is open
 
   const load = () => {
     setLoading(true);
@@ -124,6 +209,9 @@ export default function SAGuilds() {
 
   return (
     <div className="p-6 space-y-5 max-w-6xl">
+      {foundersOf && (
+        <FoundersModal guild={foundersOf} canEdit={isSA} onClose={() => setFoundersOf(null)} />
+      )}
       {confirm && (
         <ConfirmModal
           message={
@@ -242,6 +330,14 @@ export default function SAGuilds() {
                         {guild.created_at ? new Date(guild.created_at).toLocaleDateString('fr-FR') : '—'}
                       </td>
                       <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                        {guild.status !== 'pending' && !isActioning && (
+                          <ActionBtn
+                            icon={Crown} label="Fondateurs"
+                            cls="text-amber-300 hover:bg-amber-400/10"
+                            onClick={() => setFoundersOf(guild)}
+                          />
+                        )}
                         {isSA && (
                           <div className="flex items-center gap-1.5">
                             {isActioning ? (
@@ -284,6 +380,7 @@ export default function SAGuilds() {
                             )}
                           </div>
                         )}
+                        </div>
                       </td>
                     </tr>
                   );

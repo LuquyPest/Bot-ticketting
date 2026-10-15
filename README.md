@@ -344,6 +344,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 |---------|-------------|
 | **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs |
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
+| **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer de nouveaux par ID Discord (DM envoyé, action tracée dans l'audit du serveur) |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
 | **Stats globales** | Vue d'ensemble de tous les serveurs actifs |
 

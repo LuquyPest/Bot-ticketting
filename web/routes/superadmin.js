@@ -9,6 +9,7 @@ const mysql = require('mysql2/promise');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb, getDbName } = require('../../utils/tenantDb');
 const { ensureTenantSchema } = require('../../utils/tenantSchema');
+const { logAudit } = require('../../utils/gradePermissions');
 const requireSuperAdmin = require('../middleware/superadmin');
 const { parseJsonField } = require('../../utils/jsonField');
 
@@ -363,6 +364,73 @@ router.patch('/guilds/:guildId/maintenance', requireSuperAdmin, async (req, res)
     if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
     await globalQuery('UPDATE guilds SET maintenance_mode = ? WHERE guild_id = ?', [enabled ? 1 : 0, guild.guild_id]);
     res.json({ ok: true, maintenance_mode: enabled ? 1 : 0 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ─── FOUNDERS (per-tenant) ──────────────────────────────────────────────────
+
+const SNOWFLAKE_RE = /^\d{17,20}$/;
+
+// GET /api/sa/guilds/:guildId/founders — fondateurs du dashboard de ce serveur
+router.get('/guilds/:guildId/founders', requireSuperAdmin, async (req, res) => {
+  try {
+    const [guild] = await globalQuery('SELECT guild_id, status, owner_discord_id, inviter_discord_id FROM guilds WHERE guild_id = ?', [req.params.guildId]);
+    if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
+    if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
+    if (guild.status === 'pending') return res.json([]); // no tenant DB before approval
+
+    const rows = await getTenantDb(guild.guild_id)(
+      `SELECT user_id, username, avatar, first_login, last_login FROM dashboard_users
+       WHERE role = 'fondateur' ORDER BY first_login ASC`
+    );
+    res.json(rows.map(r => ({
+      ...r,
+      isOwner:   r.user_id === guild.owner_discord_id,
+      isInviter: r.user_id === guild.inviter_discord_id,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/sa/guilds/:guildId/founders — { discordId } : nomme un fondateur (superadmin uniquement)
+router.post('/guilds/:guildId/founders', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const discordId = typeof req.body.discordId === 'string' ? req.body.discordId.trim() : '';
+  if (!SNOWFLAKE_RE.test(discordId)) return res.status(400).json({ error: 'ID Discord invalide (17 à 20 chiffres)' });
+
+  try {
+    const [guild] = await globalQuery('SELECT guild_id, guild_name, status FROM guilds WHERE guild_id = ?', [req.params.guildId]);
+    if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
+    if (guild.status === 'pending') return res.status(400).json({ error: 'Approuve d\'abord le serveur' });
+
+    const client = req.app.locals.client;
+    const user = await client?.users.fetch(discordId).catch(() => null);
+    if (!user) return res.status(404).json({ error: 'Utilisateur Discord introuvable' });
+    if (user.bot) return res.status(400).json({ error: 'Impossible de nommer un bot fondateur' });
+
+    const discordGuild = await client.guilds.fetch(guild.guild_id).catch(() => null);
+    const isMember = !!(discordGuild && await discordGuild.members.fetch(discordId).catch(() => null));
+
+    const db = getTenantDb(guild.guild_id);
+    await db(
+      `INSERT INTO dashboard_users (user_id, username, avatar, role) VALUES (?, ?, ?, 'fondateur')
+       ON DUPLICATE KEY UPDATE role = 'fondateur', username = VALUES(username), avatar = VALUES(avatar)`,
+      [user.id, user.username, user.avatar || null]
+    );
+    await logAudit(`sa:${req.saUser.id}`, `SA ${req.saUser.username}`, 'founder_add', 'user', user.id, { username: user.username }, db);
+
+    const baseUrl = require('../../config.json').webServerBaseUrl || '';
+    await user.send(
+      `👑 Tu as été nommé **fondateur** du dashboard de **${guild.guild_name}**.` +
+      (baseUrl ? `\nConnecte-toi avec Discord sur ${baseUrl} et sélectionne le serveur.` : '')
+    ).catch(() => null);
+
+    res.json({ ok: true, user_id: user.id, username: user.username, isMember });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
