@@ -35,19 +35,19 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
                     ┌─────────────────────────────────┐
                     │         ticketbot_global         │
                     │  guilds · superadmins · managers │
-                    │  web_sessions · login_logs       │
-                    │  user_totp · sa_auth_logs        │
+                    │  login_logs · user_totp          │
+                    │  sa_auth_logs · user_sessions    │
                     └─────────────┬───────────────────┘
                                   │
               ┌───────────────────┼───────────────────┐
               ▼                   ▼                   ▼
    ticketbot_guild_111  ticketbot_guild_222  ticketbot_guild_333
    tickets · staff      tickets · staff      tickets · staff
-   grades · badges      grades · badges      grades · badges
+   grades · panels      grades · panels      grades · panels
    config · …           config · …           config · …
 ```
 
-Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans `ticketbot_global`. Un superadmin valide la demande depuis le panel `/sa`, ce qui crée la base de données dédiée et active le serveur.
+Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans `ticketbot_global`. Un superadmin valide la demande depuis le panel `/sa`, ce qui crée la base de données dédiée et active le serveur. Tant qu'un serveur n'est pas actif (en attente, suspendu ou en maintenance), le bot n'y répond pas.
 
 ---
 
@@ -55,14 +55,14 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 
 | Couche | Technologies |
 |--------|-------------|
-| Bot Discord | Node.js 20, Discord.js 14 |
+| Bot Discord | Node.js 22, Discord.js 14 |
 | API / serveur web | Express 5, express-session, Helmet, express-rate-limit |
 | Base de données | MariaDB 11 (mysql2, architecture multi-tenant) |
-| Authentification | OAuth2 Discord, TOTP 2FA (otplib), bcrypt |
+| Authentification | OAuth2 Discord, TOTP 2FA (otplib, secrets chiffrés AES-256-GCM), bcrypt |
 | Temps réel | Server-Sent Events (SSE) |
 | Notifications push | Web Push API (VAPID, web-push) |
-| File de jobs | Redis 7 + BullMQ (rapports, vérifications async) |
-| Dashboard frontend | React + Vite + Tailwind CSS |
+| Sessions & jobs | Redis 7 (sessions express-session via connect-redis, file BullMQ) |
+| Dashboard frontend | React 18, React Router 7, Vite, Tailwind CSS |
 | Déploiement | Docker (multi-stage), Docker Compose, Traefik |
 
 ---
@@ -74,12 +74,13 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 1. Le membre envoie un **message privé** au bot
 2. Si le membre est dans plusieurs serveurs utilisant le bot → sélecteur de serveur
 3. Si des **sujets de ticket** sont configurés → menu de boutons
-4. Si la **FAQ automatique** est activée → réponse automatique selon les mots-clés (avec option d'ouvrir un ticket quand même)
-5. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
-6. Un salon privé est créé dans le serveur Discord
-7. Les messages et fichiers suivants sont relayés dans ce salon
-8. Le membre reçoit les réponses du staff en DM
-9. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles)
+4. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
+5. Un salon privé est créé dans le serveur Discord
+6. Les messages et fichiers suivants sont relayés dans ce salon
+7. Le membre reçoit les réponses du staff en DM
+8. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles)
+
+Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans un salon (voir [Panels Discord](#panels-discord)). Un utilisateur blacklisté sur un serveur ne peut pas y ouvrir de ticket (la blacklist est propre à chaque serveur).
 
 ### Côté staff
 
@@ -105,8 +106,8 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 
 - **Docker** et **Docker Compose v2**
 - Un **bot Discord** configuré (token + OAuth2)
-- Un serveur avec domaine public et **Traefik** (inclus dans la stack) ou tout autre reverse proxy HTTPS
-- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`), utilisé par BullMQ pour la file de jobs asynchrones et les rapports hebdomadaires
+- Un serveur avec domaine public et un reverse proxy HTTPS — le `docker-compose.yml` est prévu pour **Traefik** (réseau Docker externe `proxy`, labels déjà présents)
+- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`), utilisé pour les sessions du dashboard et la file de jobs BullMQ
 
 ---
 
@@ -128,9 +129,12 @@ cp .env.example .env
 ```env
 DB_ROOT_PASSWORD=mot_de_passe_root_fort
 DB_PASSWORD=mot_de_passe_botuser
+SA_USERNAME=admin
+SA_PASSWORD=mot_de_passe_superadmin_12_caracteres_min
 ```
 
 `DB_PASSWORD` doit correspondre exactement à `config.json → database.password`.
+`SA_USERNAME` / `SA_PASSWORD` créent le premier compte superadmin au démarrage (uniquement si aucun n'existe) — retire-les du `.env` une fois le compte créé. Seules ces deux variables sont transmises au conteneur du bot.
 
 ### 3. Créer `config.json`
 
@@ -148,10 +152,11 @@ docker compose up -d --build
 
 `bootstrap.js` s'exécute automatiquement au démarrage et effectue :
 1. Validation de `config.json` (champs requis, session secret ≥ 32 chars)
-2. Connexion MariaDB — création de `ticketbot_global` et de ses tables
-3. Vérification du token Discord
-4. Déploiement des commandes slash
-5. Lancement du bot + serveur web
+2. Connexion MariaDB — création/migration de `ticketbot_global` et de ses tables
+3. Création du compte superadmin initial (si `SA_USERNAME`/`SA_PASSWORD` sont définis)
+4. Vérification du token Discord
+5. Déploiement des commandes slash (réservées aux serveurs, pas en DM)
+6. Lancement du bot + serveur web — au démarrage, les migrations des bases par serveur sont appliquées à tous les serveurs actifs
 
 ```bash
 # Voir les logs en direct
@@ -222,24 +227,24 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 
 1. [discord.com/developers/applications](https://discord.com/developers/applications) → **New Application**
 2. Onglet **Bot** → copier le Token
-3. Activer : **Presence Intent**, **Server Members Intent**, **Message Content Intent**
+3. Activer : **Server Members Intent**, **Message Content Intent**
 4. **OAuth2** → ajouter l'URL callback → copier le **Client Secret**
-5. **OAuth2 → URL Generator** : scopes `bot` + `applications.commands`, permissions :  
-   `Manage Channels` · `Send Messages` · `Read Message History` · `Embed Links` · `Attach Files` · `View Channel`
+5. Le lien d'invitation est généré par le dashboard (sélection du serveur). Permissions demandées (`248976`) :  
+   `Manage Channels` · `View Channel` · `Send Messages` · `Read Message History` · `Embed Links` · `Attach Files` · `View Audit Log` (identifier qui a invité le bot) · `Mention Everyone` (pinger les rôles support en « Urgent »). Le bot ne mentionne que les utilisateurs par défaut : `@everyone` ne peut jamais être déclenché.
 
 ---
 
 ## Activation d'un serveur
 
-Lorsqu'un propriétaire de serveur Discord ajoute le bot :
+Lorsqu'un membre (avec la permission *Gérer le serveur*) ajoute le bot :
 
-1. Le bot est **enregistré automatiquement** dans `ticketbot_global.guilds` avec le statut `pending`
-2. Le propriétaire reçoit un **DM de confirmation** avec le lien du dashboard
-3. Un **superadmin** valide la demande depuis le panel `/sa` → statut `active`
-4. La base de données dédiée `ticketbot_guild_{id}` est créée automatiquement
-5. Le propriétaire peut désormais se connecter au dashboard et configurer son serveur
+1. Le bot est **enregistré automatiquement** dans `ticketbot_global.guilds` avec le statut `pending` (les serveurs où le bot est déjà présent sont aussi enregistrés au démarrage)
+2. La personne qui a invité le bot (lue dans le journal d'audit, à défaut le propriétaire) reçoit un **DM de confirmation**
+3. Un **superadmin** valide la demande depuis le panel `/sa` → statut `active`, création de la base `ticketbot_guild_{id}`
+4. L'invitant devient **fondateur** et reçoit un DM d'activation avec le lien du dashboard
 
 > Sans validation superadmin, aucune fonctionnalité n'est disponible pour le serveur.
+> Si le bot est retiré puis ré-invité, le serveur est réactivé automatiquement ; une suspension décidée par un superadmin, elle, est conservée.
 
 ---
 
@@ -255,7 +260,7 @@ Accessible sur `https://ton-domaine.com` après connexion via Discord OAuth.
 | `support` | Dashboard · Tickets · Staff · Analytics — chaque action est soumise aux permissions de ses grades (voir ci-dessous) |
 | `fondateur` | Accès complet + Paramètres · Blacklist · Transcripts · Utilisateurs · Clés API |
 
-Le fondateur est la personne qui a invité le bot (ou, à défaut, le propriétaire du serveur), désignée à l'approbation du serveur ; il peut promouvoir d'autres fondateurs. Les nouveaux membres reçoivent `nouveau` et attendent une attribution depuis la page **Utilisateurs**.
+Le fondateur est la personne qui a invité le bot (ou, à défaut, le propriétaire du serveur), désignée à l'approbation du serveur ; il peut promouvoir d'autres fondateurs. Les nouveaux membres reçoivent `nouveau` et attendent l'attribution d'un grade depuis la page **Équipe**.
 
 Un `support` n'a aucun droit sans grade. Permissions de grade appliquées par l'API :
 
@@ -284,26 +289,26 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 
 ### Pages disponibles
 
-| Page | Rôles | Description |
+| Page | Accès | Description |
 |------|-------|-------------|
-| **Dashboard** | support, fondateur | Stats globales, graphique d'activité, tickets récents |
-| **Tickets** | support, fondateur | Liste avec filtres, indicateurs non-lus, aging, vue détaillée SSE |
-| **Staff** | support, fondateur | Statistiques par agent (claims, fermetures, temps de réponse, notes) |
-| **Analytics** | support, fondateur | Graphiques avancés — volume, SLA, satisfaction, activité par heure |
-| **Grades** | support, fondateur | Hiérarchie de rôles avec permissions granulaires |
-| **Badges** | support, fondateur | Badges débloqués par le staff selon leur activité |
-| **Objectifs** | support, fondateur | Objectifs mensuels par agent |
-| **Tags** | support, fondateur | Tags sur les tickets pour organisation |
-| **Messages** | support, fondateur | Messages personnalisés (accueil, fermeture…) |
-| **Journaux de connexion** | fondateur | Historique des connexions au dashboard |
-| **Audit** | fondateur | Journal des actions effectuées sur le dashboard |
-| **Blacklist** | fondateur | Gestion des utilisateurs bannis — propre à chaque serveur (un blocage n'affecte jamais les autres serveurs) |
-| **Transcripts** | fondateur | Consultation et téléchargement des transcripts HTML/TXT |
-| **Utilisateurs** | fondateur | Attribution des rôles dashboard |
-| **Newsletter** | fondateur | Envoi de DM en masse aux membres avec des tickets |
-| **Clés API** | fondateur | Génération de clés API pour intégrations externes |
-| **Panels** | fondateur | Création et publication de panels de boutons Discord pour ouvrir des tickets |
-| **Paramètres** | fondateur | Configuration complète du serveur via interface graphique |
+| **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, objectif mensuel |
+| **Tickets** / **Kanban** | `view_tickets` | Liste filtrable ou vue en colonnes, détail en temps réel |
+| **Mes stats** | support | Statistiques personnelles (claims, fermetures, temps de réponse) |
+| **Analytiques** / **Recherche** | support, fondateur | Volume, SLA, satisfaction ; recherche plein texte (respecte la visibilité) |
+| **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
+| **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
+| **Grades** | fondateur, `manage_grades` | Hiérarchie de grades et permissions |
+| **Audit** | fondateur, `view_audit` | Journal des actions du dashboard |
+| **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
+| **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances |
+| **Tags** | fondateur | Tags pour organiser les tickets |
+| **Blacklist** | fondateur | Utilisateurs bloqués — propre à chaque serveur |
+| **Panels** / **Formulaires** | fondateur | Panels de boutons Discord et formulaires associés |
+| **Paramètres** | fondateur | Configuration du serveur (salons, rôles, messages, automatismes, webhooks, allowlist IP…) |
+| **Clés API** | fondateur | Clés pour l'API publique v1 |
+| **Newsletter** | fondateur | DM groupé au staff |
+| **Patchnotes** | fondateur | Historique des versions |
+| **Profil** | tous | Bio, photo (CDN Discord), 2FA, codes de secours, sessions actives, notifications push |
 
 ### Fonctionnalités dans la vue ticket
 
@@ -311,7 +316,6 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 - **Répondre au membre** : mode *Répondre* (DM envoyé) ou *Note interne* (staff seulement)
 - **Réponse anonyme** : toggle "Anonyme/Identifié" masquant le pseudo du staff
 - **Templates** : réponses prédéfinies insérables en un clic
-- **Messages programmés** : planification d'un message à une date/heure précise
 - **Claim / Unclaim** : prise en charge depuis le dashboard ou depuis Discord
 - **Priorité** : Faible / Normal / Urgent — met à jour le topic du salon Discord
 - **Participants** : ajout/retrait d'utilisateurs liés en DM
@@ -330,7 +334,9 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 - Connexion par **identifiant + mot de passe** (bcrypt)
 - **TOTP 2FA** requis après configuration initiale
 - Les tentatives échouées sont loguées dans `sa_auth_logs`
-- Rate limiting : 20 tentatives / 15 min sur les endpoints d'auth SA
+- Rate limiting : 20 tentatives / 15 min par IP sur les endpoints d'auth SA
+- Verrouillage du compte 15 min après 5 échecs (mot de passe ou TOTP), quelle que soit l'IP
+- Déconnexion automatique après 30 min d'inactivité
 
 ### Fonctionnalités
 
@@ -340,6 +346,8 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
 | **Stats globales** | Vue d'ensemble de tous les serveurs actifs |
+
+Routes d'administration sans écran dédié (appelables avec une session SA) : `GET /api/sa/stats`, `PATCH /api/sa/guilds/:guildId/limits` (`max_tickets`, `max_agents`, `transcript_retention_days`) et `GET /api/sa/error-logs` (superadmin uniquement).
 
 ### Rôles dans le panel SA
 
@@ -352,7 +360,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 
 ## Commandes Discord
 
-Toutes les commandes sont réservées au staff (rôle Support ou Chef Support).
+Toutes les commandes sont réservées au staff (rôles Discord Support ou Chef Support configurés dans les paramètres) et utilisables uniquement sur un serveur actif. `/gettranscript` et `/oldtickets` masquent les tickets restreints à un grade que l'utilisateur ne peut pas voir.
 
 | Commande | Rôle | Description |
 |----------|------|-------------|
@@ -368,7 +376,7 @@ Toutes les commandes sont réservées au staff (rôle Support ou Chef Support).
 | `/reopen` | Support | Réouvre le dernier ticket fermé d'un utilisateur |
 | `/oldtickets` | Support | Historique paginé des tickets d'un utilisateur |
 | `/gettranscript` | Support | Génère un lien temporaire (10 min) vers un transcript HTML |
-| `/note` | Support | Ajoute une note interne (non envoyée au membre) |
+| `/note` | Support | Ajoute une note interne (non envoyée au membre, exclue des transcripts) |
 | `/blacklist` | Chef Support | Gestion de la liste noire (add / remove / list) |
 | `/staffstats` | Chef Support | Statistiques détaillées par agent |
 
@@ -384,48 +392,25 @@ Le topic est mis à jour automatiquement à chaque changement d'état :
 
 ## Fonctionnalités avancées
 
-### FAQ automatique
-
-Règles de réponse automatique par mots-clés. Si le message d'un membre correspond, une réponse préformatée est envoyée en DM. Optionnellement, un bouton "Ouvrir un ticket quand même" peut être proposé.
-
-Configuration depuis **Paramètres → FAQ** dans le dashboard.
-
 ### Formulaires d'intake
 
 Avant la création d'un ticket, un questionnaire étape par étape peut être déclenché. Les réponses sont intégrées au contenu initial du ticket.
 
-- Déclenchement global ou par sujet de ticket
-- Types de champs : texte, nombre, choix multiple
-- Configuration depuis **Paramètres → Formulaires** dans le dashboard
+- Déclenchement global ou par sujet de ticket (DM), ou au clic sur un bouton de panel (modal Discord, 5 champs max)
+- Types de champs : texte court ou paragraphe, avec longueur min/max et placeholder
+- Configuration depuis la page **Formulaires** du dashboard
 
 ### Système de grades
 
 Hiérarchie de rôles personnalisée avec permissions granulaires — indépendant des rôles Discord natifs.
 
-**Permissions disponibles :**
-
-| Permission | Description |
-|------------|-------------|
-| `view_tickets` | Voir la liste des tickets |
-| `claim_ticket` | Prendre en charge un ticket |
-| `reply_ticket` | Répondre à un ticket |
-| `close_ticket` | Fermer un ticket |
-| `manage_participants` | Gérer les participants |
-| `view_transcripts` | Consulter les transcripts |
-| `manage_users` | Gérer les utilisateurs dashboard |
-| `manage_grades` | Gérer les grades |
-| `manage_settings` | Modifier les paramètres |
-| `view_audit` | Voir le journal d'audit |
+Les permissions sont détaillées dans [Système de rôles](#système-de-rôles).
 
 Un grade peut avoir un `parent_id` — les membres d'un grade voient aussi les tickets visibles par leurs grades enfants (héritage hiérarchique).
 
-### Système de badges
-
-Badges débloqués automatiquement par le staff selon leur activité (fermetures, claims, notes de satisfaction…). Les triggers et seuils sont configurables depuis le dashboard.
-
 ### Objectifs mensuels
 
-Objectifs de tickets fermés par agent et par mois, avec suivi depuis le dashboard.
+Quand l'option est activée dans les paramètres, chaque agent voit sur le dashboard sa progression vers un objectif de 50 tickets traités dans le mois.
 
 ### Escalade (tickets urgents)
 
@@ -468,7 +453,7 @@ Le fondateur peut créer, modifier, publier et retirer des panels depuis **Dashb
 
 ## Push Notifications Web
 
-Les agents du dashboard peuvent s'abonner aux **notifications push navigateur** (Web Push API). Une notification est envoyée lors de l'arrivée d'un nouveau ticket ou d'un nouveau message.
+Les agents du dashboard peuvent s'abonner aux **notifications push navigateur** (Web Push API) depuis leur profil. Une notification est envoyée quand un membre du staff répond à un ticket depuis le dashboard, uniquement aux agents autorisés à voir ce ticket.
 
 **Configuration dans `config.json` :**
 ```json
@@ -546,10 +531,11 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | Table | Description |
 |-------|-------------|
 | `guilds` | Registre de tous les serveurs (pending / active / suspended) |
-| `superadmins` | Comptes du panel SA |
+| `superadmins` | Comptes du panel SA (TOTP chiffré, compteur d'échecs) |
 | `managers` | Comptes managers avec guilds assignées |
+| `error_logs` | Erreurs centralisées (tous serveurs) |
 | `user_sessions` | Suivi des sessions actives par utilisateur (IP, user-agent, timestamps) |
-| `user_totp` | Secrets TOTP des utilisateurs dashboard |
+| `user_totp` | Secrets TOTP chiffrés, dernier pas utilisé, codes de secours hachés |
 | `login_logs` | Historique des connexions OAuth Discord |
 | `sa_auth_logs` | Historique des tentatives d'auth superadmin |
 | `push_subscriptions` | Abonnements push navigateur (endpoint VAPID + clés par utilisateur/guild) |
@@ -570,11 +556,8 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `grades` | Hiérarchie de rôles personnalisée |
 | `grade_permissions` | Permissions par grade |
 | `user_grades` | Association utilisateurs ↔ grades |
-| `badge_definitions` | Définitions des badges (trigger, seuil, icône) |
-| `user_badges` | Badges obtenus par les agents |
 | `monthly_goals` | Objectifs mensuels par agent |
 | `api_keys` | Clés API (hash + permissions) |
-| `faq_rules` | Règles de réponse automatique par mots-clés |
 | `intake_forms` | Formulaires d'intake |
 | `intake_form_fields` | Champs des formulaires |
 | `scheduled_messages` | Messages planifiés |
@@ -591,7 +574,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 ```
 Bot-ticketting/
 ├── Dockerfile                      # Build multi-stage (React + bot)
-├── docker-compose.yml              # Bot + MariaDB + Traefik labels
+├── docker-compose.yml              # Bot + MariaDB + Redis + labels Traefik
 ├── docker/
 │   └── mariadb-init.sql            # Droits SQL initiaux pour botuser
 ├── .env                            # Variables secret (à créer depuis .env.example)
@@ -616,14 +599,13 @@ Bot-ticketting/
 │
 ├── events/                         # Handlers Discord
 │   ├── interactionCreate.js        # Boutons, slash commands, rating, oldtickets
-│   ├── messageCreate.js            # DM → ticket + FAQ + intake + relay
+│   ├── messageCreate.js            # DM → ticket + intake + relay (limité par utilisateur)
 │   ├── panelTicket.js              # Ouverture de ticket depuis un bouton de panel Discord
 │   ├── guildCreate.js              # Enregistrement nouveau serveur
 │   ├── guildDelete.js              # Suspension serveur
-│   └── ready.js                    # Log connexion bot
+│   └── ready.js                    # Synchro des serveurs + migrations au démarrage
 │
 ├── utils/
-│   ├── db.js                       # Pool global (ticketbot_global)
 │   ├── globalDb.js                 # Pool global lazy + globalQuery()
 │   ├── tenantDb.js                 # Pool par guild + getTenantDb()
 │   ├── tenantSchema.js             # Schéma SQL complet des tables per-guild
@@ -636,13 +618,18 @@ Bot-ticketting/
 │   ├── dmEmbeds.js                 # Embeds DM centralisés via EmbedBuilder (membre)
 │   ├── transcript.js               # Génération HTML/TXT
 │   ├── transcriptServer.js         # Pages temporaires (TTL 10 min)
-│   ├── notePrefix.js               # Préfixe des notes internes Discord
+│   ├── notePrefix.js               # Marqueurs des notes internes (exclues des transcripts)
+│   ├── jsonField.js                # Lecture tolérante des colonnes JSON
+│   ├── discordGuard.js             # Salons/rôles limités au serveur courant
+│   ├── secretBox.js                # Chiffrement AES-256-GCM des secrets
+│   ├── totp.js                     # TOTP anti-rejeu + codes de secours
+│   ├── csv.js                      # Échappement CSV (anti-formules)
 │   ├── sanitize.js                 # Sanitisation des noms de salons
-│   ├── rateLimit.js                # Cooldowns in-memory commandes Discord
+│   ├── rateLimit.js                # Cooldowns + limiteur de DM
 │   ├── sse.js                      # Registre SSE guild-aware
 │   ├── webhookEmitter.js           # Webhooks sortants + anti-SSRF
 │   ├── redis.js                    # Client Redis lazy (ioredis)
-│   ├── jobQueue.js                 # File BullMQ : rapports hebdo, vérifications async
+│   ├── jobQueue.js                 # File BullMQ : rapports hebdomadaires
 │   ├── logger.js                   # Logger JSON structuré (stdout)
 │   ├── inactiveTicketChecker.js    # Fermeture auto tickets inactifs
 │   ├── userInactiveChecker.js      # Fermeture auto si utilisateur inactif
@@ -666,15 +653,14 @@ Bot-ticketting/
 │       ├── staff.js                # Stats staff
 │       ├── analytics.js            # Analytiques avancées
 │       ├── config.js               # Paramètres du serveur
-│       ├── users.js                # Gestion utilisateurs dashboard
+│       ├── users.js                # Membres du dashboard (page Équipe)
 │       ├── grades.js               # Grades et permissions
-│       ├── badges.js               # Badges + débloquage automatique
-│       ├── goals.js                # Objectifs mensuels
+│       ├── goals.js                # Objectif mensuel de l'utilisateur
 │       ├── blacklist.js            # Liste noire
 │       ├── transcripts.js          # Transcripts
 │       ├── templates.js            # Templates de réponse
 │       ├── tags.js                 # Tags sur tickets
-│       ├── messages.js             # Messages personnalisés
+│       ├── messages.js             # Messages programmés
 │       ├── discord.js              # Catégories Discord
 │       ├── events.js               # Endpoint SSE
 │       ├── panels.js               # Panels Discord (CRUD + publish/unpublish)
@@ -683,7 +669,8 @@ Bot-ticketting/
 │       ├── sessions.js             # Gestion des sessions actives (liste + révocation)
 │       ├── loginLogs.js            # Journaux de connexion
 │       ├── audit.js                # Journal d'audit
-│       ├── apiKeys.js              # Clés API
+│       ├── apiKeys.js              # Gestion des clés API
+│       ├── apiV1.js                # API publique v1 (auth par clé)
 │       └── newsletter.js           # Envoi DM en masse
 │
 └── dashboard/                      # Frontend React + Vite + Tailwind
@@ -706,17 +693,21 @@ Bot-ticketting/
 | Mesure | Description |
 |--------|-------------|
 | **CSP** | Content-Security-Policy strict via Helmet (script-src self, no inline) |
-| **Sessions** | Cookie `Secure` + `HttpOnly` + `SameSite: Lax`, store MySQL |
+| **Sessions** | Cookie `Secure` + `HttpOnly` + `SameSite: Lax`, store Redis, régénérées à chaque élévation de privilège, révocables depuis le profil |
 | **Session secret** | Rejeté au démarrage si < 32 caractères |
-| **TOTP 2FA** | Disponible pour les utilisateurs dashboard et activable pour les SA |
+| **TOTP 2FA** | Optionnelle pour le dashboard (codes de secours), obligatoire pour les SA ; anti-rejeu, secrets chiffrés |
+| **Contrôle d'accès** | Permissions de grade et visibilité par grade appliquées côté API, temps réel, push et commandes Discord |
+| **Isolation multi-tenant** | Base par serveur ; salons, rôles, blacklist et journaux de connexion ne débordent jamais sur un autre serveur |
+| **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR |
 | **Rate limiting** | 20 req/15 min sur les endpoints d'auth, 200 req/min sur l'API générale |
 | **CSRF** | Toutes les mutations (POST/PATCH/DELETE/PUT) exigent `X-Requested-With: XMLHttpRequest` |
 | **SSRF** | Webhooks sortants : résolution DNS + blocage de tous les ranges privés/réservés |
 | **Audit SA** | Toutes les tentatives de connexion SA (succès, échec, TOTP) loguées dans `sa_auth_logs` |
 | **Audit dashboard** | Toutes les mutations du dashboard loguées dans `audit_log` |
-| **Brute-force TOTP** | Lockout session après 5 tentatives TOTP incorrectes |
-| **Docker** | Exécution en tant qu'utilisateur `node` (non-root), `NODE_ENV=production` |
-| **Maintenance** | Mode maintenance par serveur — bloque toutes les requêtes API de la guild |
+| **Brute-force** | 5 tentatives TOTP par session ; comptes SA verrouillés 15 min après 5 échecs ; 8 DM / 30 s par utilisateur côté bot |
+| **Docker** | Utilisateur `node` (non-root), `no-new-privileges`, `cap_drop: ALL`, `NODE_ENV=production` ; `botuser` limité aux bases `ticketbot_*` |
+| **Base de données** | Requêtes paramétrées, `stringifyObjects` activé (pas d'injection via objets JSON) |
+| **Maintenance / suspension** | Bloque l'API du serveur et rend le bot inactif sur ce serveur |
 | **Push endpoint allowlist** | Les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — bloque tout endpoint arbitraire |
 
 ---
@@ -748,7 +739,16 @@ proxy_read_timeout 3600s;
 → Génère une clé : `openssl rand -hex 32`, et mets-la dans `config.json → dashboard.sessionSecret`.
 
 **Je suis bloqué sur la page d'attente (rôle "nouveau")**  
-→ Le fondateur du serveur doit t'attribuer un rôle depuis **Dashboard → Utilisateurs**.
+→ Le fondateur du serveur doit t'attribuer un grade depuis la page **Équipe**.
 
-**Le superadmin est bloqué en "2fa_required"**  
-→ Lance le setup TOTP via `POST /api/sa/auth/totp-setup` et scanne le QR code avec une app d'authentification (Authy, Google Authenticator…).
+**Un support voit « Permission insuffisante » partout**  
+→ Un support n'a aucun droit sans grade : le fondateur doit lui attribuer un grade avec au moins `view_tickets` (page **Équipe**).
+
+**Première connexion superadmin**  
+→ Après l'identifiant et le mot de passe, le panel affiche un QR code TOTP à scanner (Authy, Google Authenticator…), puis demande un code pour confirmer.
+
+**Compte superadmin verrouillé**  
+→ Attends 15 minutes après 5 échecs. Un superadmin peut réinitialiser le mot de passe (et la 2FA) d'un manager depuis le panel.
+
+**J'ai perdu mon téléphone (2FA dashboard)**  
+→ Utilise un de tes codes de secours sur l'écran de vérification, puis désactive/réactive la 2FA depuis ton profil.

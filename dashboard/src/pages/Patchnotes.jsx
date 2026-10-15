@@ -10,6 +10,27 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.8',
+    date: '15 octobre 2026',
+    title: 'Audit de sécurité complet (OWASP) et nettoyage',
+    changes: [
+      { type: 'fix',  text: 'Permissions de grade appliquées partout (voir, répondre, claim, fermer, participants, transcripts) : un support sans grade n\'a plus accès aux tickets' },
+      { type: 'fix',  text: 'Visibilité par grade respectée dans la liste, la recherche, le temps réel, les notifications push, les transcripts et les commandes Discord' },
+      { type: 'fix',  text: 'Isolation entre serveurs : journaux de connexion, blacklist, salons et rôles configurés ne peuvent plus déborder sur un autre serveur' },
+      { type: 'fix',  text: 'Protection SSRF des webhooks : les réseaux 172.16/12, 192.168/16 et 169.254/16 n\'étaient pas bloqués' },
+      { type: 'fix',  text: 'Allowlist IP désormais réellement appliquée, sur la vraie IP client' },
+      { type: 'fix',  text: 'Création de tickets : plus de doublons en cas de messages rapides, limite de tickets du superadmin corrigée, messages longs découpés' },
+      { type: 'fix',  text: 'Boutons de panel utilisables par les membres ; notes internes /note exclues des transcripts' },
+      { type: 'new',  text: '2FA : codes de secours à usage unique, protection contre la réutilisation d\'un code, secrets chiffrés en base' },
+      { type: 'new',  text: 'API publique v1 authentifiée par clé (tickets, statistiques, fermeture)' },
+      { type: 'new',  text: 'Page « Programmés » pour planifier des messages dans un ticket' },
+      { type: 'impr', text: 'Superadmin : verrouillage après 5 échecs, déconnexion après 30 min d\'inactivité' },
+      { type: 'impr', text: 'Serveurs suspendus ou en maintenance : le bot ne répond plus sur ces serveurs' },
+      { type: 'tech', text: 'Sessions stockées dans Redis, Node.js 22, dépendances à jour (0 vulnérabilité en production)' },
+      { type: 'tech', text: 'Retrait des fonctionnalités inachevées : rôles staff, badges, FAQ automatique, exports CSV sans interface' },
+    ]
+  },
+  {
     version: 'v2.7',
     date: '12 juin 2026',
     title: 'Correctifs de sécurité — pentest round 2',
