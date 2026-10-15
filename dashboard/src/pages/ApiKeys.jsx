@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 
 const PERM_LABELS = {
   read_tickets: 'Lire les tickets',
-  create_tickets: 'Créer des tickets',
   close_tickets: 'Fermer des tickets',
   read_stats: 'Lire les statistiques',
 };
@@ -114,6 +113,11 @@ export default function ApiKeys() {
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
           <p className="text-sm font-semibold text-emerald-300">Clé créée — copie-la maintenant !</p>
           <p className="text-xs text-emerald-400/70">Elle ne sera plus affichée après rechargement de la page.</p>
+          <p className="text-xs text-ink-3">
+            Utilisation : en-tête <code className="font-mono">Authorization: Bearer &lt;clé&gt;</code> sur{' '}
+            <code className="font-mono">/api/v1/tickets</code>, <code className="font-mono">/api/v1/tickets/:id</code>,{' '}
+            <code className="font-mono">POST /api/v1/tickets/:id/close</code>, <code className="font-mono">/api/v1/stats</code>.
+          </p>
           <div className="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2 font-mono text-xs text-emerald-300">
             <span className="flex-1 break-all">{newKey.key}</span>
             <CopyButton text={newKey.key} />
