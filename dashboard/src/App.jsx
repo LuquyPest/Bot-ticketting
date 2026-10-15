@@ -28,6 +28,7 @@ const TotpVerify  = lazy(() => import('./pages/TotpVerify'));
 const Profile     = lazy(() => import('./pages/Profile'));
 const Analytics   = lazy(() => import('./pages/Analytics'));
 const Search      = lazy(() => import('./pages/Search'));
+const Messages    = lazy(() => import('./pages/Messages'));
 const ApiKeys     = lazy(() => import('./pages/ApiKeys'));
 const Newsletter  = lazy(() => import('./pages/Newsletter'));
 const LoginLogs   = lazy(() => import('./pages/LoginLogs'));
@@ -190,6 +191,9 @@ export default function App() {
                           <RequireRole role={['support','fondateur']}><ErrorBoundary><Analytics /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="search"     element={<ErrorBoundary><Search /></ErrorBoundary>} />
+                        <Route path="messages"   element={
+                          <RequireRole role="fondateur" perm="reply_ticket"><ErrorBoundary><Messages /></ErrorBoundary></RequireRole>
+                        } />
                         <Route path="patchnotes" element={
                           <RequireRole role="fondateur"><ErrorBoundary><Patchnotes /></ErrorBoundary></RequireRole>
                         } />

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -30,6 +30,7 @@ const ALL_NAV = [
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
   { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
+  { to: '/messages',    label: 'Programmés',   icon: Clock,           roles: ['fondateur'], perm: 'reply_ticket' },
   { to: '/login-logs',  label: 'Connexions',   icon: History,         roles: ['support','fondateur'] },
   { to: '/panels',       label: 'Panels',       icon: LayoutTemplate,  roles: ['fondateur'] },
   { to: '/forms',        label: 'Formulaires',  icon: ClipboardCheck,  roles: ['fondateur'] },

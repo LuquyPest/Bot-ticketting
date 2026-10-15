@@ -16,7 +16,8 @@ function AddModal({ onClose, onAdded }) {
     }
     setLoading(true);
     try {
-      await api.post('/messages', form);
+      // datetime-local has no timezone: send an absolute instant, not the browser's wall-clock time
+      await api.post('/messages', { ...form, send_at: new Date(form.send_at).toISOString() });
       toast.success('Message programmé');
       onAdded();
       onClose();
@@ -28,7 +29,9 @@ function AddModal({ onClose, onAdded }) {
   };
 
   // Min datetime = now + 2 minutes
-  const minDt = new Date(Date.now() + 2 * 60000).toISOString().slice(0, 16);
+  // (local time, as expected by datetime-local — toISOString() would give UTC)
+  const soon = new Date(Date.now() + 2 * 60000);
+  const minDt = new Date(soon.getTime() - soon.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
