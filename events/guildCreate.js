@@ -32,6 +32,11 @@ module.exports = {
       const [existing] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [guild.id]);
 
       if (existing) {
+        // Bot kicked then re-invited: restore the previous activation (an admin suspension stays)
+        if (existing.status === 'suspended' && existing.suspension_reason === 'bot_removed') {
+          await globalQuery('UPDATE guilds SET status = "active", suspension_reason = NULL WHERE guild_id = ?', [guild.id]);
+          logger.info('Serveur réactivé après ré-invitation du bot', { guildId: guild.id });
+        }
         await globalQuery(
           'UPDATE guilds SET guild_name = ?, guild_icon = ?, member_count = ?, owner_discord_id = ?, owner_discord_tag = ?, inviter_discord_id = ?, inviter_discord_tag = ? WHERE guild_id = ?',
           [guild.name, guild.iconURL() || null, guild.memberCount, ownerDiscordId, ownerDiscordTag, inviterDiscordId, inviterDiscordTag, guild.id]

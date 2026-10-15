@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
+const { fetchGuildChannel } = require('./discordGuard');
 const { getGuildConfig } = require('./ticketManager');
 
 function fmt(seconds) {
@@ -14,7 +15,7 @@ async function sendWeeklyReportForGuild(client, guildId) {
   const cfg = await getGuildConfig(db);
   if (!cfg.weekly_report_channel_id) return;
 
-  const channel = await client.channels.fetch(cfg.weekly_report_channel_id).catch(() => null);
+  const channel = await fetchGuildChannel(client, guildId, cfg.weekly_report_channel_id);
   if (!channel?.isTextBased()) return;
 
   const [[opened], [closed], [unclaimed], [avgResp], [avgRes], leaderboard] = await Promise.all([

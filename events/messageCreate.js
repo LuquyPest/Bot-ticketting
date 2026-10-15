@@ -1,7 +1,10 @@
 const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
-const { findAllOpenTickets, isUserBlacklisted, findGuildsForUser } = require('../utils/guildScan');
+const { findAllOpenTickets, isBlacklistedIn, isGuildOperational, findGuildsForUser } = require('../utils/guildScan');
+const { allowBurst, firstOverflow } = require('../utils/rateLimit');
+const { parseJsonField } = require('../utils/jsonField');
+const { fetchGuildChannel } = require('../utils/discordGuard');
 const { subjectButtons } = require('../utils/components');
 const { broadcast } = require('../utils/sse');
 const { globalQuery } = require('../utils/globalDb');
@@ -20,6 +23,16 @@ const pendingGuildSelect = new Map();
 const pendingIntakeForm = new Map();
 // userId → { content, attachments, guildEntry, subject }
 const pendingFaqTicket = new Map();
+
+// Stores a pending state that expires after `ttlMs` — without a later state being wiped by an older timer.
+function setPending(map, userId, state, ttlMs) {
+  map.set(userId, state);
+  setTimeout(() => { if (map.get(userId) === state) map.delete(userId); }, ttlMs);
+}
+
+// DM flood protection: each DM scans every active guild, so cap it per user.
+const DM_MAX = 8;
+const DM_WINDOW_MS = 30 * 1000;
 
 // Returns true if a FAQ rule matched and the user was shown a reply (ticket creation paused)
 async function checkFaq(user, content, guildEntry, client) {
@@ -50,8 +63,7 @@ async function checkFaq(user, content, guildEntry, client) {
             .setStyle(ButtonStyle.Secondary)
         )
       );
-      pendingFaqTicket.set(user.id, { guildId, db, tm: guildEntry.tm, config });
-      setTimeout(() => pendingFaqTicket.delete(user.id), 10 * 60 * 1000);
+      setPending(pendingFaqTicket, user.id, { guildId, db, tm: guildEntry.tm, config }, 10 * 60 * 1000);
     }
 
     const msg = rule.allow_ticket
@@ -88,11 +100,10 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   } catch { return false; }
   if (!questions.length) return false;
 
-  pendingIntakeForm.set(user.id, {
+  setPending(pendingIntakeForm, user.id, {
     content, attachments, guildEntry, subject,
     questions, step: 0, answers: []
-  });
-  setTimeout(() => pendingIntakeForm.delete(user.id), 15 * 60 * 1000);
+  }, 15 * 60 * 1000);
 
   await user.send({ embeds: [intakeFormStartEmbed(questions[0].label, 1, questions.length)] }).catch(() => null);
   return true;
@@ -101,10 +112,20 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
 async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null) {
   const { guildId, db, tm, config } = guildEntry;
 
+  // Every entry point (DM, subject/FAQ/guild buttons) ends here, so the per-guild checks live here
+  if (!(await isGuildOperational(guildId))) {
+    await user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
+    return;
+  }
+  if (await isBlacklistedIn(db, user.id)) {
+    await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
+    return;
+  }
+
   // Check guild-wide concurrent ticket limit set by superadmin
   const [guildLimits] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]).catch(() => [{}]);
   if (guildLimits?.max_tickets > 0) {
-    const [[{ openCount }]] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [[{ openCount: 0 }]]);
+    const [{ openCount }] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [{ openCount: 0 }]);
     if (openCount >= guildLimits.max_tickets) {
       await user.send({ embeds: [serverLimitEmbed()] }).catch(() => null);
       return;
@@ -116,7 +137,7 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   if (dailyCount >= maxPerDay) {
     await user.send({ embeds: [dailyLimitEmbed(maxPerDay)] }).catch(() => null);
     if (config.spam_alert_channel_id) {
-      const alertCh = await client.channels.fetch(config.spam_alert_channel_id).catch(() => null);
+      const alertCh = await fetchGuildChannel(client, guildId, config.spam_alert_channel_id);
       if (alertCh?.isTextBased()) {
         await alertCh.send(
           `⚠️ **Anti-spam** : \`${user.username}\` (${user.id}) a tenté d'ouvrir un ${dailyCount + 1}e ticket (limite : ${maxPerDay}).`
@@ -131,16 +152,10 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
     const faqHandled = await checkFaq(user, content, { guildId, db, tm, config }, client);
     if (faqHandled) return;
 
-    let subjects = [];
-    try {
-      subjects = Array.isArray(config.ticket_subjects)
-        ? config.ticket_subjects
-        : JSON.parse(config.ticket_subjects || '[]');
-    } catch {}
+    const subjects = parseJsonField(config.ticket_subjects);
 
     if (subjects.length > 0) {
-      pendingSubject.set(user.id, { content, attachments, guildId, db, tm, config });
-      setTimeout(() => pendingSubject.delete(user.id), 10 * 60 * 1000);
+      setPending(pendingSubject, user.id, { content, attachments, guildId, db, tm, config, subjects }, 10 * 60 * 1000);
       const rows = subjectButtons(subjects);
       await user.send({ embeds: [subjectSelectEmbed()], components: rows }).catch(() => null);
       return;
@@ -186,6 +201,8 @@ module.exports = {
 
       // ── Message dans un salon de ticket (staff → note web) ──
       if (data.guild_id) {
+        // Skip pending/suspended guilds (no tenant DB, or must stay inert)
+        if (!(await isGuildOperational(data.guild_id))) return;
         const db = getTenantDb(data.guild_id);
         const tm = createManager(db, client, data.guild_id);
         const ticket = await tm.getOpenTicketByChannelId(data.channel_id);
@@ -232,9 +249,10 @@ module.exports = {
         return;
       }
 
-      const { blacklisted } = await isUserBlacklisted(user.id);
-      if (blacklisted) {
-        await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
+      if (!allowBurst(`dm:${user.id}`, DM_MAX, DM_WINDOW_MS)) {
+        if (firstOverflow(`dm:${user.id}`)) {
+          await user.send('⏳ Tu envoies trop de messages à la suite — attends quelques secondes avant de réessayer.').catch(() => null);
+        }
         return;
       }
 
@@ -257,7 +275,14 @@ module.exports = {
       }
 
       // Cherche tous les tickets ouverts de l'utilisateur sur tous les serveurs actifs
-      const openTickets = await findAllOpenTickets(user.id, client);
+      // (sauf ceux où il est blacklisté — la blacklist est propre à chaque serveur)
+      const allOpen = await findAllOpenTickets(user.id, client);
+      const openTickets = [];
+      for (const t of allOpen) if (!(await isBlacklistedIn(t.db, user.id).catch(() => false))) openTickets.push(t);
+      if (allOpen.length && !openTickets.length) {
+        await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
+        return;
+      }
 
       if (openTickets.length === 1) {
         // Un seul ticket ouvert — relay direct, sans question
@@ -272,8 +297,7 @@ module.exports = {
 
       if (openTickets.length > 1) {
         // Plusieurs tickets ouverts sur des serveurs différents — demander lequel
-        pendingGuildSelect.set(user.id, { mode: 'relay', content, attachments, guilds: openTickets });
-        setTimeout(() => pendingGuildSelect.delete(user.id), 10 * 60 * 1000);
+        setPending(pendingGuildSelect, user.id, { mode: 'relay', content, attachments, guilds: openTickets }, 10 * 60 * 1000);
         const menu = buildGuildSelectMenu(openTickets.map(t => ({
           guildId: t.guildId,
           name: t.guildName,
@@ -284,10 +308,12 @@ module.exports = {
       }
 
       // Aucun ticket ouvert — cherche les serveurs où l'utilisateur est membre
-      const candidateGuilds = await findGuildsForUser(user.id, client);
+      const memberGuilds = await findGuildsForUser(user.id, client);
+      const candidateGuilds = [];
+      for (const g of memberGuilds) if (!(await isBlacklistedIn(g.db, user.id).catch(() => false))) candidateGuilds.push(g);
 
       if (candidateGuilds.length === 0) {
-        await user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
+        await user.send({ embeds: [memberGuilds.length ? blacklistedEmbed() : notInGuildEmbed()] }).catch(() => null);
         return;
       }
 
@@ -297,8 +323,7 @@ module.exports = {
       }
 
       // Plusieurs serveurs disponibles — demander lequel
-      pendingGuildSelect.set(user.id, { mode: 'new_ticket', content, attachments, guilds: candidateGuilds });
-      setTimeout(() => pendingGuildSelect.delete(user.id), 10 * 60 * 1000);
+      setPending(pendingGuildSelect, user.id, { mode: 'new_ticket', content, attachments, guilds: candidateGuilds }, 10 * 60 * 1000);
       const menu = buildGuildSelectMenu(candidateGuilds.map(g => ({
         guildId: g.guildId,
         name: g.discordGuild.name,

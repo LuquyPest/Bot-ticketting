@@ -1,7 +1,7 @@
 const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
-const { getActiveGuilds } = require('../utils/guildScan');
+const { getActiveGuilds, isGuildOperational } = require('../utils/guildScan');
 const { ensureSupport } = require('../utils/permissions');
 const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../utils/components');
@@ -11,9 +11,10 @@ const {
   ticketCreatingEmbed, ratingConfirmEmbed, alreadyRatedEmbed,
 } = require('../utils/dmEmbeds');
 
-async function findGuildForClosedTicket(ticketId, ownerId) {
+async function findGuildForClosedTicket(ticketId, ownerId, guildId) {
   const guilds = await getActiveGuilds();
   for (const { guild_id } of guilds) {
+    if (guildId && guild_id !== guildId) continue; // legacy buttons carry no guildId
     try {
       const db = getTenantDb(guild_id);
       const [ticket] = await db(
@@ -30,6 +31,17 @@ module.exports = {
   name: Events.InteractionCreate,
   async execute(client, interaction) {
     try {
+      // Pending, suspended or maintenance guilds: the bot stays inert (commands, buttons, panels, modals)
+      if (interaction.guildId && !(await isGuildOperational(interaction.guildId))) {
+        if (interaction.isRepliable()) {
+          await interaction.reply({ content: '❌ Le bot n\'est pas actif sur ce serveur (en attente, suspendu ou en maintenance).', ephemeral: true }).catch(() => null);
+        }
+        return;
+      }
+      if (interaction.isChatInputCommand() && !interaction.guildId) {
+        return interaction.reply({ content: 'Cette commande s\'utilise uniquement sur un serveur.', ephemeral: true });
+      }
+
       if (interaction.isButton()) {
 
         // ── FAQ — ouvrir ticket quand même (DM) ──
@@ -49,10 +61,10 @@ module.exports = {
 
         // ── Sujet (DM) ──
         if (interaction.customId.startsWith('subject_')) {
-          const subject = interaction.customId.slice('subject_'.length);
           const { pendingSubject, openTicketForGuild } = require('./messageCreate');
           const pending = pendingSubject.get(interaction.user.id);
-          if (!pending) {
+          const subject = pending?.subjects?.[parseInt(interaction.customId.slice('subject_'.length))];
+          if (!pending || !subject) {
             return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
           }
           await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
@@ -89,7 +101,7 @@ module.exports = {
           if (isNaN(rating) || rating < 1 || rating > 5 || isNaN(ticketId)) {
             return interaction.reply({ content: 'Interaction invalide.', ephemeral: true });
           }
-          const found = await findGuildForClosedTicket(ticketId, interaction.user.id);
+          const found = await findGuildForClosedTicket(ticketId, interaction.user.id, parts[3]);
           if (!found) {
             return interaction.reply({ content: 'Tu ne peux pas noter ce ticket.', ephemeral: true });
           }
@@ -114,58 +126,10 @@ module.exports = {
         const db = getTenantDb(interaction.guildId);
         const tm = createManager(db, client, interaction.guildId);
 
-        if (!(await ensureSupport(interaction, client, db))) return;
-
-        if (interaction.customId.startsWith('oldtickets_')) {
-          const parts = interaction.customId.split('_');
-          const action = parts[1];
-          const userId = parts[2];
-          const currentPage = Number(parts[3]) || 0;
-          const tickets = await tm.getOldTicketsByUserId(userId);
-          if (!tickets.length) {
-            return interaction.reply({ content: 'Aucun ticket trouvé.', ephemeral: true });
-          }
-          let newPage = currentPage;
-          if (action === 'prev') newPage -= 1;
-          if (action === 'next') newPage += 1;
-          const { embed, totalPages, safePage } = buildOldTicketsPageEmbed(userId, tickets, newPage, 5);
-          return interaction.update({ embeds: [embed], components: [oldTicketsPaginationButtons(userId, safePage, totalPages)] });
-        }
-
-        const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
-        if (!ticket) {
-          return interaction.reply({ content: 'Ce salon n est pas un ticket ouvert.', ephemeral: true });
-        }
-
-        if (interaction.customId === 'ticket_transcript') {
-          await interaction.deferReply({ ephemeral: true });
-          const saved = await tm.saveTranscriptSnapshot(interaction.channel, interaction.user);
-          if (!saved) {
-            return interaction.editReply({ content: 'Impossible de generer le transcript.' });
-          }
-          const token = hostTranscript(saved.html);
-          const url = buildUrl(client.config.webServerBaseUrl, token);
-          return interaction.editReply({ content: `Transcript enregistré (ID : ${saved.transcriptId})\nLien valable 10 minutes : ${url}` });
-        }
-
-        if (interaction.customId === 'ticket_close_with_transcript') {
-          return interaction.reply({ embeds: [closeConfirmationEmbed()], components: [closeConfirmationButtons()], ephemeral: true });
-        }
-
-        if (interaction.customId === 'ticket_close_with_transcript_confirm') {
-          await interaction.update({ content: 'Fermeture du ticket et generation du transcript...', embeds: [], components: [] });
-          await tm.closeTicketWithTranscript(interaction.channel, interaction.user);
-          return;
-        }
-
-        if (interaction.customId === 'ticket_close_with_transcript_cancel') {
-          return interaction.update({ content: 'Fermeture annulee.', embeds: [], components: [] });
-        }
-
         // ── Bouton panel (guild) ──
-        if (interaction.customId.startsWith('panel_btn_') && interaction.guild) {
+        // Public: any member can open a ticket from a panel, so this runs before ensureSupport.
+        if (interaction.customId.startsWith('panel_btn_')) {
           const btnId = parseInt(interaction.customId.slice('panel_btn_'.length));
-          const db = getTenantDb(interaction.guildId);
           const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
           if (!btn) return interaction.reply({ content: 'Bouton invalide ou expiré.', ephemeral: true });
 
@@ -206,6 +170,54 @@ module.exports = {
           const { openTicketFromPanel } = require('./panelTicket');
           await openTicketFromPanel(interaction, client, db, btn, '');
           return;
+        }
+
+        if (!(await ensureSupport(interaction, client, db))) return;
+
+        if (interaction.customId.startsWith('oldtickets_')) {
+          const parts = interaction.customId.split('_');
+          const action = parts[1];
+          const userId = parts[2];
+          const currentPage = Number(parts[3]) || 0;
+          const tickets = await tm.getOldTicketsByUserId(userId, interaction.user.id);
+          if (!tickets.length) {
+            return interaction.reply({ content: 'Aucun ticket trouvé.', ephemeral: true });
+          }
+          let newPage = currentPage;
+          if (action === 'prev') newPage -= 1;
+          if (action === 'next') newPage += 1;
+          const { embed, totalPages, safePage } = buildOldTicketsPageEmbed(userId, tickets, newPage, 5);
+          return interaction.update({ embeds: [embed], components: [oldTicketsPaginationButtons(userId, safePage, totalPages)] });
+        }
+
+        const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
+        if (!ticket) {
+          return interaction.reply({ content: 'Ce salon n est pas un ticket ouvert.', ephemeral: true });
+        }
+
+        if (interaction.customId === 'ticket_transcript') {
+          await interaction.deferReply({ ephemeral: true });
+          const saved = await tm.saveTranscriptSnapshot(interaction.channel, interaction.user);
+          if (!saved) {
+            return interaction.editReply({ content: 'Impossible de generer le transcript.' });
+          }
+          const token = hostTranscript(saved.html);
+          const url = buildUrl(client.config.webServerBaseUrl, token);
+          return interaction.editReply({ content: `Transcript enregistré (ID : ${saved.transcriptId})\nLien valable 10 minutes : ${url}` });
+        }
+
+        if (interaction.customId === 'ticket_close_with_transcript') {
+          return interaction.reply({ embeds: [closeConfirmationEmbed()], components: [closeConfirmationButtons()], ephemeral: true });
+        }
+
+        if (interaction.customId === 'ticket_close_with_transcript_confirm') {
+          await interaction.update({ content: 'Fermeture du ticket et generation du transcript...', embeds: [], components: [] });
+          await tm.closeTicketWithTranscript(interaction.channel, interaction.user);
+          return;
+        }
+
+        if (interaction.customId === 'ticket_close_with_transcript_cancel') {
+          return interaction.update({ content: 'Fermeture annulee.', embeds: [], components: [] });
         }
       }
 

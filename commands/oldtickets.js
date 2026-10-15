@@ -19,7 +19,7 @@ module.exports = {
     if (!(await ensureSupport(interaction, client, db))) return;
 
     const userId = interaction.options.getString('userid', true);
-    const tickets = await tm.getOldTicketsByUserId(userId);
+    const tickets = await tm.getOldTicketsByUserId(userId, interaction.user.id);
 
     if (!tickets.length) {
       return interaction.reply({ content: '❌ Aucun ticket trouvé pour cet utilisateur.', ephemeral: true });

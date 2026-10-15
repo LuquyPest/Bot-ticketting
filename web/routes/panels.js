@@ -2,6 +2,29 @@ const express = require('express');
 const router = express.Router();
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { logAudit } = require('../../utils/gradePermissions');
+const { fetchGuildChannel } = require('../../utils/discordGuard');
+
+const isHttpsUrl = v => { try { return new URL(v).protocol === 'https:'; } catch { return false; } };
+
+// Returns an error message, or null when the panel payload is acceptable.
+function validatePanel({ name, title, description, color, footer_text, image_url, buttons }, partial = false) {
+  if ((!partial || name !== undefined) && (typeof name !== 'string' || !name.trim() || name.length > 100)) return 'Nom requis (max 100)';
+  if (title !== undefined && title !== null && (typeof title !== 'string' || title.length > 256)) return 'Titre invalide (max 256)';
+  if (description !== undefined && description !== null && (typeof description !== 'string' || description.length > 4000)) return 'Description invalide (max 4000)';
+  if (color !== undefined && color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) return 'Couleur invalide (#RRGGBB)';
+  if (footer_text !== undefined && footer_text !== null && (typeof footer_text !== 'string' || footer_text.length > 2048)) return 'Pied de page invalide (max 2048)';
+  if (image_url !== undefined && image_url !== null && image_url !== '' && (typeof image_url !== 'string' || image_url.length > 500 || !isHttpsUrl(image_url))) return 'Image : URL HTTPS requise';
+  if (buttons !== undefined) {
+    if (!Array.isArray(buttons) || buttons.length > 25) return 'Boutons invalides (max 25)';
+    for (const b of buttons) {
+      if (typeof b?.label !== 'string' || !b.label.trim() || b.label.length > 80) return 'Libellé de bouton invalide (max 80)';
+      if (b.style !== undefined && !(b.style in STYLE_MAP)) return 'Style de bouton invalide';
+      if (b.subject != null && (typeof b.subject !== 'string' || b.subject.length > 100)) return 'Sujet de bouton invalide';
+      if (b.emoji != null && (typeof b.emoji !== 'string' || b.emoji.length > 64)) return 'Emoji invalide';
+    }
+  }
+  return null;
+}
 
 const STYLE_MAP = {
   primary:   ButtonStyle.Primary,
@@ -61,7 +84,8 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const { name, title, description, color, footer_text, image_url, buttons = [] } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
+  const invalid = validatePanel(req.body);
+  if (invalid) return res.status(400).json({ error: invalid });
   try {
     const r = await req.guildDb(
       'INSERT INTO ticket_panels (name, title, description, color, footer_text, image_url) VALUES (?, ?, ?, ?, ?, ?)',
@@ -89,6 +113,8 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const { name, title, description, color, footer_text, image_url, buttons } = req.body;
+  const invalid = validatePanel(req.body, true);
+  if (invalid) return res.status(400).json({ error: invalid });
   try {
     const [panel] = await req.guildDb('SELECT * FROM ticket_panels WHERE id = ?', [req.params.id]);
     if (!panel) return res.status(404).json({ error: 'Panel introuvable' });
@@ -137,7 +163,7 @@ router.delete('/:id', async (req, res) => {
     if (panel.message_id && panel.channel_id) {
       const client = req.app.get('botClient');
       if (client?.isReady()) {
-        const ch = await client.channels.fetch(panel.channel_id).catch(() => null);
+        const ch = await fetchGuildChannel(client, req.guildId, panel.channel_id);
         if (ch) await ch.messages.delete(panel.message_id).catch(() => null);
       }
     }
@@ -169,7 +195,8 @@ router.post('/:id/publish', async (req, res) => {
     const components = buildDiscordComponents(buttons);
     const payload = { embeds: [embed], components };
 
-    const ch = await client.channels.fetch(channel_id).catch(() => null);
+    // Must be a channel of *this* guild — never let a tenant make the bot post elsewhere
+    const ch = await fetchGuildChannel(client, req.guildId, String(channel_id));
     if (!ch?.isTextBased()) return res.status(400).json({ error: 'Salon introuvable ou invalide' });
 
     let messageId = panel.message_id;
@@ -184,7 +211,7 @@ router.post('/:id/publish', async (req, res) => {
       }
     } else {
       if (panel.message_id && panel.channel_id) {
-        const oldCh = await client.channels.fetch(panel.channel_id).catch(() => null);
+        const oldCh = await fetchGuildChannel(client, req.guildId, panel.channel_id);
         if (oldCh) await oldCh.messages.delete(panel.message_id).catch(() => null);
       }
       const msg = await ch.send(payload);
@@ -200,7 +227,7 @@ router.post('/:id/publish', async (req, res) => {
     res.json({ ok: true, message_id: messageId, channel_id });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || 'Erreur serveur' });
+    res.status(500).json({ error: 'Publication impossible — vérifie les permissions du bot dans ce salon et le contenu du panel' });
   }
 });
 
@@ -214,7 +241,7 @@ router.delete('/:id/publish', async (req, res) => {
     if (panel.message_id && panel.channel_id) {
       const client = req.app.get('botClient');
       if (client?.isReady()) {
-        const ch = await client.channels.fetch(panel.channel_id).catch(() => null);
+        const ch = await fetchGuildChannel(client, req.guildId, panel.channel_id);
         if (ch) await ch.messages.delete(panel.message_id).catch(() => null);
       }
       await req.guildDb('UPDATE ticket_panels SET channel_id = NULL, message_id = NULL WHERE id = ?', [panel.id]);

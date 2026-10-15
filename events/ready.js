@@ -42,5 +42,12 @@ module.exports = {
     logger.info('Synchronisation des serveurs existants', { count: guilds.size });
     await Promise.all(guilds.map(g => syncGuild(client, g)));
     logger.info('Synchronisation terminée');
+
+    // Tenant migrations are idempotent: apply them to every active guild, not only at approval time
+    const { ensureTenantSchema } = require('../utils/tenantSchema');
+    const active = await globalQuery('SELECT guild_id FROM guilds WHERE status = "active"').catch(() => []);
+    for (const { guild_id } of active) {
+      await ensureTenantSchema(guild_id).catch(err => logger.error('Migration tenant échouée', { guildId: guild_id, err: err.message }));
+    }
   }
 };

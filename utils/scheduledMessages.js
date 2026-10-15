@@ -20,11 +20,12 @@ async function processPending(client) {
 
       for (const msg of due) {
         try {
+          // Claim first (atomic): a message is sent at most once, even if a run overlaps or crashes
+          const claim = await db('UPDATE scheduled_messages SET sent = 1, sent_at = NOW() WHERE id = ? AND sent = 0', [msg.id]);
+          if (claim.affectedRows !== 1) continue;
+
           const [ticket] = await db('SELECT * FROM tickets WHERE id = ?', [msg.ticket_id]);
-          if (!ticket || ticket.status !== 'open') {
-            await db('UPDATE scheduled_messages SET sent = 1 WHERE id = ?', [msg.id]);
-            continue;
-          }
+          if (!ticket || ticket.status !== 'open') continue;
 
           const text = `--- ${msg.sender_tag} (programmé) : ${msg.content}`;
 
@@ -55,8 +56,6 @@ async function processPending(client) {
               created_at: new Date()
             }
           }, guild_id);
-
-          await db('UPDATE scheduled_messages SET sent = 1, sent_at = NOW() WHERE id = ?', [msg.id]);
         } catch (err) {
           console.error(`scheduledMessages msg error [${guild_id}]:`, err);
         }
@@ -67,8 +66,13 @@ async function processPending(client) {
   }
 }
 
+let running = false;
 function startScheduledMessages(client) {
-  setInterval(() => processPending(client).catch(console.error), 60 * 1000);
+  setInterval(async () => {
+    if (running) return; // previous run still sending
+    running = true;
+    try { await processPending(client); } catch (err) { console.error(err); } finally { running = false; }
+  }, 60 * 1000);
 }
 
 module.exports = { startScheduledMessages };

@@ -2,12 +2,7 @@ async function getMember(guild, userId) {
   return guild.members.fetch(userId).catch(() => null);
 }
 
-// Parse a JSON field from guild_config that may already be an array or a JSON string
-function parseJsonField(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  try { return JSON.parse(val); } catch { return []; }
-}
+const { parseJsonField } = require('./jsonField');
 
 async function isSupportMember(client, guild, userId, db) {
   const member = await getMember(guild, userId);

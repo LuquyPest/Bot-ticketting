@@ -1,9 +1,37 @@
 const { ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { parseJsonField } = require('./jsonField');
 const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
 const { sanitizeChannelName } = require('./sanitize');
 const { broadcast } = require('./sse');
 const { fireTicketWebhook } = require('./webhookEmitter');
+const { fetchGuildChannel } = require('./discordGuard');
+
+// One ticket creation at a time per guild+user, shared by every createManager() instance
+// (a new manager is built per message, so a per-instance lock would protect nothing).
+const creating = new Map(); // `${guildId}:${userId}` -> Promise
+
+// Discord limits: 4096 chars per embed description, 6000 per message.
+const EMBED_CHUNK = 4000;
+function chunkText(text, size = EMBED_CHUNK) {
+  const out = [];
+  for (let i = 0; i < text.length; i += size) out.push(text.slice(i, i + size));
+  return out.length ? out : [''];
+}
+
+// Posts a user's message (any length, any number of attachments) as one or more embeds.
+async function sendUserContent(channel, user, content, attachments = []) {
+  const files = attachments.map(f => f.url).join('\n');
+  const body = [content, files && `📎 **Fichiers**\n${files}`].filter(Boolean).join('\n\n') || '*[aucun texte]*';
+  const chunks = chunkText(body);
+  const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  for (const [i, chunk] of chunks.entries()) {
+    const embed = new EmbedBuilder().setColor(0x4e5058).setDescription(chunk);
+    if (i === 0) embed.setAuthor({ name: `${user.tag} · utilisateur` });
+    if (i === chunks.length - 1) embed.setFooter({ text: chunks.length > 1 ? `${time} · ${chunks.length} parties` : time });
+    await channel.send({ embeds: [embed] });
+  }
+}
 
 async function getGuildConfig(db) {
   const rows = await db('SELECT * FROM guild_config LIMIT 1');
@@ -74,8 +102,8 @@ function createManager(db, client, guildId) {
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
 
-    const supportRoleIds = cfg.support_role_ids ? JSON.parse(cfg.support_role_ids) : [];
-    const chiefRoleIds   = cfg.chief_role_ids   ? JSON.parse(cfg.chief_role_ids) : [];
+    const supportRoleIds = parseJsonField(cfg.support_role_ids);
+    const chiefRoleIds   = parseJsonField(cfg.chief_role_ids);
     const allRoleIds     = [...new Set([...supportRoleIds, ...chiefRoleIds])];
 
     const permOverwrites = [
@@ -98,66 +126,66 @@ function createManager(db, client, guildId) {
     });
   }
 
-  const _creating = new Set();
-
   async function createTicket(user, firstMessage, attachments = [], subject = null) {
-    if (_creating.has(user.id)) {
-      const existing = await getOpenTicketByOwnerId(user.id);
-      if (existing) {
-        const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
-        if (ch) return { channel: ch, ticket: existing, created: false };
+    const lockKey = `${gid}:${user.id}`;
+    // A creation is already running for this user: wait for it and reuse its ticket
+    while (creating.has(lockKey)) {
+      const result = await creating.get(lockKey).catch(() => null);
+      if (result?.ticket) {
+        // Burst of DMs: the first one created the ticket, the following ones must still be delivered
+        if (firstMessage || attachments.length) return relayDmToTicket(user, firstMessage, attachments, subject);
+        return { ...result, created: false };
       }
     }
-    _creating.add(user.id);
+    const promise = createTicketUnlocked(user, firstMessage, attachments, subject);
+    creating.set(lockKey, promise);
     try {
-      const existing = await getOpenTicketByOwnerId(user.id);
-      if (existing) {
-        const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
-        if (ch) return { channel: ch, ticket: existing, created: false };
-        await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [existing.id]);
-      }
-
-      const channel = await createTicketChannel(user);
-      const ticket = await createTicketDb(channel.id, user, subject);
-
-      const embed = new EmbedBuilder()
-        .setColor(0x6366f1)
-        .setAuthor({ name: 'Nouveau ticket' })
-        .setTitle(`Ticket #${ticket.id}`)
-        .setDescription(`Bienvenue <@${user.id}> ! Notre équipe va traiter ta demande dans les plus brefs délais.`)
-        .addFields(
-          { name: '👤 Utilisateur', value: `<@${user.id}>`, inline: true },
-          { name: '📂 Sujet', value: ticket.subject || 'Non défini', inline: true },
-          { name: '🔵 Priorité', value: 'Normale', inline: true }
-        )
-        .setFooter({ text: 'Ticket ouvert' })
-        .setTimestamp();
-
-      await channel.send({ embeds: [embed], components: [ticketButtons()] });
-      const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
-      await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
-
-      fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
-
-      if (firstMessage || attachments.length) {
-        const dmEmbed = new EmbedBuilder()
-          .setColor(0x4e5058)
-          .setAuthor({ name: `${user.tag} · utilisateur` })
-          .setDescription(firstMessage || '*[aucun texte]*')
-          .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
-        if (attachments.length) dmEmbed.addFields({ name: '📎 Fichiers', value: attachments.map(f => f.url).join('\n') });
-        await channel.send({ embeds: [dmEmbed] });
-        const noteContent = [firstMessage, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
-        const nr = await db(
-          'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "user")',
-          [ticket.id, user.id, user.tag, noteContent]
-        );
-        broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: user.id, author_tag: user.tag, content: noteContent, source: 'user', created_at: new Date() } }, gid);
-      }
-      return { channel, ticket, created: true };
+      return await promise;
     } finally {
-      _creating.delete(user.id);
+      creating.delete(lockKey);
     }
+  }
+
+  async function createTicketUnlocked(user, firstMessage, attachments, subject) {
+    const existing = await getOpenTicketByOwnerId(user.id);
+    if (existing) {
+      const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
+      if (ch) return { channel: ch, ticket: existing, created: false };
+      await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [existing.id]);
+    }
+
+    const channel = await createTicketChannel(user);
+    const ticket = await createTicketDb(channel.id, user, subject);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x6366f1)
+      .setAuthor({ name: 'Nouveau ticket' })
+      .setTitle(`Ticket #${ticket.id}`)
+      .setDescription(`Bienvenue <@${user.id}> ! Notre équipe va traiter ta demande dans les plus brefs délais.`)
+      .addFields(
+        { name: '👤 Utilisateur', value: `<@${user.id}>`, inline: true },
+        { name: '📂 Sujet', value: ticket.subject || 'Non défini', inline: true },
+        { name: '🔵 Priorité', value: 'Normale', inline: true }
+      )
+      .setFooter({ text: 'Ticket ouvert' })
+      .setTimestamp();
+
+    await channel.send({ embeds: [embed], components: [ticketButtons()] });
+    const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
+    await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
+
+    fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
+
+    if (firstMessage || attachments.length) {
+      await sendUserContent(channel, user, firstMessage, attachments);
+      const noteContent = [firstMessage, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
+      const nr = await db(
+        'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "user")',
+        [ticket.id, user.id, user.tag, noteContent]
+      );
+      broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: user.id, author_tag: user.tag, content: noteContent, source: 'user', created_at: new Date() } }, gid);
+    }
+    return { channel, ticket, created: true };
   }
 
   async function relayDmToTicket(user, content, attachments = [], subject = null) {
@@ -167,13 +195,7 @@ function createManager(db, client, guildId) {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return createTicket(user, content, attachments, subject);
 
-    const relayEmbed = new EmbedBuilder()
-      .setColor(0x4e5058)
-      .setAuthor({ name: `${user.tag} · utilisateur` })
-      .setDescription(content || '*[aucun texte]*')
-      .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
-    if (attachments.length) relayEmbed.addFields({ name: '📎 Fichiers', value: attachments.map(f => f.url).join('\n') });
-    await channel.send({ embeds: [relayEmbed] });
+    await sendUserContent(channel, user, content, attachments);
     await db('UPDATE tickets SET last_message_at = NOW(), user_warned_inactive = 0 WHERE id = ?', [ticket.id]);
 
     const noteContent = [content, ...attachments.map(a => a.url)].filter(Boolean).join('\n');
@@ -191,9 +213,7 @@ function createManager(db, client, guildId) {
     let welcomeText = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
     if (subject) {
       try {
-        const subjectMsgs = typeof cfg.subject_welcome_messages === 'string'
-          ? JSON.parse(cfg.subject_welcome_messages)
-          : (cfg.subject_welcome_messages || {});
+        const subjectMsgs = parseJsonField(cfg.subject_welcome_messages, {});
         if (subjectMsgs[subject]) welcomeText = subjectMsgs[subject];
       } catch {}
     }
@@ -232,11 +252,14 @@ function createManager(db, client, guildId) {
       `UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=? WHERE id=?`,
       [closedByUser.tag, ticket.id]
     );
-    await db(
-      `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 0, 1)
-       ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_closed=tickets_closed+1`,
-      [closedByUser.id, closedByUser.tag]
-    );
+    // Closures through the public API (closedByUser.api) do not count in a staff member's stats
+    if (!closedByUser.api) {
+      await db(
+        `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 0, 1)
+         ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_closed=tickets_closed+1`,
+        [closedByUser.id, closedByUser.tag]
+      );
+    }
 
     const updatedTicket = await getTicketByChannelId(channel.id);
     const transcript = await saveTranscriptSnapshot(channel, closedByUser, updatedTicket);
@@ -265,11 +288,11 @@ function createManager(db, client, guildId) {
       const ratingEmbed = new EmbedBuilder()
         .setColor(0x6366f1)
         .setDescription('**Comment s\'est passée ton expérience avec notre équipe ?**');
-      await owner.send({ embeds: [ratingEmbed], components: [ratingButtons(ticket.id)] }).catch(() => null);
+      await owner.send({ embeds: [ratingEmbed], components: [ratingButtons(ticket.id, gid)] }).catch(() => null);
     }
 
     if (cfg.close_log_channel_id) {
-      const logCh = await client.channels.fetch(cfg.close_log_channel_id).catch(() => null);
+      const logCh = await fetchGuildChannel(client, gid, cfg.close_log_channel_id);
       if (logCh?.isTextBased()) {
         const openedAt = ticket.created_at ? new Date(ticket.created_at) : null;
         const mins = openedAt ? Math.round((Date.now() - openedAt.getTime()) / 60000) : null;
@@ -346,7 +369,7 @@ function createManager(db, client, guildId) {
     }
     const cfg = await getGuildConfig(db);
     if (adminUser && cfg.claim_log_channel_id) {
-      const logCh = await client.channels.fetch(cfg.claim_log_channel_id).catch(() => null);
+      const logCh = await fetchGuildChannel(client, gid, cfg.claim_log_channel_id);
       if (logCh?.isTextBased()) {
         await logCh.send(`Ticket #${ticketId} claim par ${adminUser.tag} (${adminUser.id})`).catch(() => null);
       }
@@ -438,21 +461,21 @@ function createManager(db, client, guildId) {
   async function logMoveTicket(ticketId, categoryName, movedByUser) {
     const cfg = await getGuildConfig(db);
     if (!cfg.move_log_channel_id) return;
-    const ch = await client.channels.fetch(cfg.move_log_channel_id).catch(() => null);
+    const ch = await fetchGuildChannel(client, gid, cfg.move_log_channel_id);
     if (ch?.isTextBased()) await ch.send(`Ticket #${ticketId} déplacé vers ${categoryName} par ${movedByUser.tag} (${movedByUser.id})`).catch(() => null);
   }
 
   async function logAddUser(ticketId, targetUserId, addedByUser) {
     const cfg = await getGuildConfig(db);
     if (!cfg.add_user_log_channel_id) return;
-    const ch = await client.channels.fetch(cfg.add_user_log_channel_id).catch(() => null);
+    const ch = await fetchGuildChannel(client, gid, cfg.add_user_log_channel_id);
     if (ch?.isTextBased()) await ch.send(`Utilisateur ${targetUserId} ajouté au ticket #${ticketId} par ${addedByUser.tag}`).catch(() => null);
   }
 
   async function logRemoveUser(ticketId, targetUserId, removedByUser) {
     const cfg = await getGuildConfig(db);
     if (!cfg.remove_user_log_channel_id) return;
-    const ch = await client.channels.fetch(cfg.remove_user_log_channel_id).catch(() => null);
+    const ch = await fetchGuildChannel(client, gid, cfg.remove_user_log_channel_id);
     if (ch?.isTextBased()) await ch.send(`Utilisateur ${targetUserId} retiré du ticket #${ticketId} par ${removedByUser.tag}`).catch(() => null);
   }
 
@@ -461,12 +484,17 @@ function createManager(db, client, guildId) {
     return rows[0] || null;
   }
 
-  async function getOldTicketsByUserId(userId) {
-    return db(
-      `SELECT id, channel_id, owner_id, owner_tag, subject, priority, status, created_at, closed_at, closed_by_tag
+  // viewerId: the Discord staff member asking — tickets restricted to a grade they cannot see are hidden
+  async function getOldTicketsByUserId(userId, viewerId) {
+    const rows = await db(
+      `SELECT id, channel_id, owner_id, owner_tag, subject, priority, status, created_at, closed_at, closed_by_tag, visibility_grade_id
        FROM tickets WHERE owner_id = ? AND status = 'closed' ORDER BY closed_at DESC LIMIT 50`,
       [userId]
     );
+    const { discordStaffCanSee } = require('./gradePermissions');
+    const visible = [];
+    for (const t of rows) if (await discordStaffCanSee(db, viewerId, t.visibility_grade_id)) visible.push(t);
+    return visible;
   }
 
   async function addToBlacklist(userId, userTag, reason, addedByUser) {
@@ -493,7 +521,8 @@ function createManager(db, client, guildId) {
 
   async function getTranscriptById(id) {
     const [row] = await db(
-      'SELECT id, ticket_id, created_by_tag, created_at, message_count, html, txt FROM transcript_snapshots WHERE id = ?',
+      `SELECT ts.id, ts.ticket_id, ts.created_by_tag, ts.created_at, ts.message_count, ts.html, ts.txt, t.visibility_grade_id
+       FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id WHERE ts.id = ?`,
       [id]
     );
     return row || null;

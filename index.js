@@ -20,6 +20,8 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent
   ],
+  // Only user mentions ping by default; role pings must be allowed explicitly per message.
+  allowedMentions: { parse: ['users'], repliedUser: false },
   partials: [
     Partials.Channel,
     Partials.Message,
@@ -90,6 +92,16 @@ async function shutdown(signal) {
   await pool.end().catch(() => {});
   process.exit(0);
 }
+
+// A stray rejection in an event handler must not take the whole bot down.
+process.on('unhandledRejection', err => {
+  logger.error('unhandledRejection', { err: err?.stack || String(err) });
+});
+// After an uncaught exception the process state is unknown: log and let Docker restart us.
+process.on('uncaughtException', err => {
+  logger.error('uncaughtException', { err: err?.stack || String(err) });
+  process.exit(1);
+});
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));

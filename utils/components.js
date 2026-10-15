@@ -50,16 +50,17 @@ function subjectButtons(subjects) {
   let row = new ActionRowBuilder();
   let count = 0;
 
-  for (const subject of subjects) {
+  // customId carries the index, not the text: labels are truncated to 80 chars
+  // and two long subjects could otherwise collide (Discord rejects duplicate IDs).
+  for (const [i, subject] of subjects.entries()) {
     if (count > 0 && count % 5 === 0) {
       rows.push(row);
       row = new ActionRowBuilder();
     }
-    const safe = subject.slice(0, 80);
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`subject_${safe}`)
-        .setLabel(safe)
+        .setCustomId(`subject_${i}`)
+        .setLabel(subject.slice(0, 80))
         .setStyle(ButtonStyle.Primary)
     );
     count++;
@@ -69,13 +70,14 @@ function subjectButtons(subjects) {
   return rows;
 }
 
-function ratingButtons(ticketId) {
+// customId: rating_<stars>_<ticketId>_<guildId> (ticket IDs are only unique per guild)
+function ratingButtons(ticketId, guildId) {
   const stars = ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'];
   const styles = [ButtonStyle.Danger, ButtonStyle.Danger, ButtonStyle.Secondary, ButtonStyle.Success, ButtonStyle.Success];
   return new ActionRowBuilder().addComponents(
     stars.map((label, i) =>
       new ButtonBuilder()
-        .setCustomId(`rating_${i + 1}_${ticketId}`)
+        .setCustomId(`rating_${i + 1}_${ticketId}${guildId ? `_${guildId}` : ''}`)
         .setLabel(label)
         .setStyle(styles[i])
     )

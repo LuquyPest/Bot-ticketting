@@ -22,20 +22,25 @@ async function findAllOpenTickets(userId, client) {
   return found;
 }
 
-// Returns { blacklisted, guildId } — true if blacklisted in ANY active guild
-async function isUserBlacklisted(userId) {
-  const guilds = await getActiveGuilds();
-  for (const { guild_id } of guilds) {
-    try {
-      const db = getTenantDb(guild_id);
-      const rows = await db(
-        'SELECT 1 FROM blacklist WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1',
-        [userId]
-      );
-      if (rows.length) return { blacklisted: true, guildId: guild_id };
-    } catch { }
+// Blacklists are per guild: being blocked on one server never affects another.
+async function isBlacklistedIn(db, userId) {
+  const rows = await db(
+    'SELECT 1 FROM blacklist WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1',
+    [userId]
+  );
+  return rows.length > 0;
+}
+
+// Active + not in maintenance, cached briefly: called on every guild message/interaction.
+const STATUS_TTL_MS = 30 * 1000;
+let _operational = { at: 0, ids: new Set() };
+async function isGuildOperational(guildId) {
+  if (!guildId) return false;
+  if (Date.now() - _operational.at > STATUS_TTL_MS) {
+    const rows = await getActiveGuilds();
+    _operational = { at: Date.now(), ids: new Set(rows.map(r => r.guild_id)) };
   }
-  return { blacklisted: false };
+  return _operational.ids.has(guildId);
 }
 
 // Returns array of { guildId, discordGuild, db, tm, config }
@@ -57,4 +62,4 @@ async function findGuildsForUser(userId, client) {
   return matches;
 }
 
-module.exports = { getActiveGuilds, findAllOpenTickets, isUserBlacklisted, findGuildsForUser };
+module.exports = { getActiveGuilds, findAllOpenTickets, isBlacklistedIn, isGuildOperational, findGuildsForUser };

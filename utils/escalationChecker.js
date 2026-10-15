@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
+const { fetchGuildChannel } = require('./discordGuard');
 const { createManager, getGuildConfig } = require('./ticketManager');
 
 async function runEscalationCheckForGuild(client, guild_id) {
@@ -39,7 +40,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
     }
 
     if (alertChId) {
-      const ch = await client.channels.fetch(alertChId).catch(() => null);
+      const ch = await fetchGuildChannel(client, guild_id, alertChId);
       if (ch?.isTextBased()) {
         const embed = new EmbedBuilder()
           .setColor(0xef4444)

@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const { parseJsonField } = require('../../utils/jsonField');
 const { logAudit } = require('../../utils/gradePermissions');
+const { foreignChannels, foreignRoles } = require('../../utils/discordGuard');
+
+const CHANNEL_FIELDS = ['ticketCategoryId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
+  'removeUserLogChannelId', 'weeklyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
+const ROLE_FIELDS = ['supportRoleIds', 'chiefRoleIds'];
+// Never written to the audit log in clear
+const SECRET_FIELDS = new Set(['webhookSecret']);
 
 // Allowed fields and their DB column names (all stored in guild_config table)
 const FIELD_MAP = {
@@ -112,9 +120,7 @@ function dbRow2Api(row) {
   for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
     if (dbCol in row) {
       let val = row[dbCol];
-      if (JSON_FIELDS.has(dbCol) && typeof val === 'string') {
-        try { val = JSON.parse(val); } catch { val = []; }
-      }
+      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, dbCol === 'subject_welcome_messages' ? {} : []);
       out[apiKey] = val;
     }
   }
@@ -153,13 +159,27 @@ router.patch('/', async (req, res) => {
 
     if (!setClauses.length) return res.json({ ok: true });
 
+    // Channel/role IDs must belong to this guild (the bot would otherwise post in another server)
+    const client = req.app.locals.client;
+    if (client) {
+      const channelIds = CHANNEL_FIELDS.filter(k => k in updates).map(k => updates[k]).filter(Boolean);
+      if ((await foreignChannels(client, req.guildId, channelIds)).length) {
+        return res.status(400).json({ error: 'Un des salons choisis n\'appartient pas à ce serveur' });
+      }
+      const roleIds = ROLE_FIELDS.filter(k => k in updates).flatMap(k => updates[k]);
+      if ((await foreignRoles(client, req.guildId, roleIds)).length) {
+        return res.status(400).json({ error: 'Un des rôles choisis n\'appartient pas à ce serveur' });
+      }
+    }
+
     params.push(1); // WHERE id = 1
     await req.guildDb(`UPDATE guild_config SET ${setClauses.join(', ')} WHERE id = ?`, params);
 
     await logAudit(
       req.session.user.id, req.session.user.username,
       'config_update', 'guild_config', req.guildId,
-      Object.fromEntries(Object.keys(updates).filter(k => k in FIELD_MAP).map(k => [k, updates[k]])),
+      Object.fromEntries(Object.keys(updates).filter(k => k in FIELD_MAP)
+        .map(k => [k, SECRET_FIELDS.has(k) && updates[k] ? '[modifié]' : updates[k]])),
       req.guildDb
     );
 

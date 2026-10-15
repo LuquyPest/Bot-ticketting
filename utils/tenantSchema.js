@@ -398,6 +398,11 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS style ENUM('short','paragraph') NOT NULL DEFAULT 'short'`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS min_length INT DEFAULT NULL`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS max_length INT DEFAULT NULL`,
+      // Webhook secrets used to be written in clear into the audit log
+      `UPDATE audit_log SET details = JSON_SET(details, '$.webhookSecret', '[modifié]')
+       WHERE action = 'config_update' AND JSON_EXISTS(details, '$.webhookSecret')
+         AND JSON_VALUE(details, '$.webhookSecret') IS NOT NULL
+         AND JSON_VALUE(details, '$.webhookSecret') <> '[modifié]'`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

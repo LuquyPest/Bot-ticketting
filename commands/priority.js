@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { parseJsonField } = require('../utils/jsonField');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager, getGuildConfig } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -54,12 +55,10 @@ module.exports = {
     // Mention support roles when escalated to urgent
     if (priority === 'urgent') {
       const cfg = await getGuildConfig(db);
-      const roleIds = Array.isArray(cfg.support_role_ids)
-        ? cfg.support_role_ids
-        : JSON.parse(cfg.support_role_ids || '[]');
+      const roleIds = parseJsonField(cfg.support_role_ids);
       if (roleIds.length) {
         const mentions = roleIds.map(id => `<@&${id}>`).join(' ');
-        await interaction.channel.send(`🚨 **Ticket urgent** — ${mentions}`).catch(() => null);
+        await interaction.channel.send({ content: `🚨 **Ticket urgent** — ${mentions}`, allowedMentions: { roles: roleIds } }).catch(() => null);
       }
     }
 

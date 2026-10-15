@@ -11,7 +11,8 @@ async function deployCommands() {
   for (const file of files) {
     const command = require(path.join(commandsPath, file));
     if (command?.data) {
-      commands.push(command.data.toJSON());
+      // Guild-only: every command needs a tenant DB (0 = InteractionContextType.Guild)
+      commands.push({ ...command.data.toJSON(), contexts: [0], integration_types: [0] });
     }
   }
 
