@@ -56,6 +56,32 @@ async function getVisibleGradeIds(userId, db) {
   return getDescendantIds(gradeIds, db);
 }
 
+// Whether a dashboard user may see a ticket restricted to `gradeId` (null = unrestricted).
+// Used for out-of-request delivery (SSE, push) where req.userPermissions is not available.
+async function canUserSeeTicket(db, userId, gradeId) {
+  const [u] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [userId]);
+  if (u?.role === 'fondateur') return true;
+  if (u?.role !== 'support') return false;
+  const perms = await getUserPermissions(userId, db);
+  if (!perms.has('view_tickets')) return false;
+  if (!gradeId) return true;
+  return (await getVisibleGradeIds(userId, db)).includes(gradeId);
+}
+
+// SQL fragment restricting a ticket query to what req's user may see.
+// `col` is the visibility_grade_id column (e.g. 't.visibility_grade_id').
+// Discord-side staff (support role, maybe no dashboard account): unrestricted tickets are fine,
+// restricted ones follow the dashboard grade rules.
+async function discordStaffCanSee(db, userId, gradeId) {
+  return !gradeId || canUserSeeTicket(db, userId, gradeId);
+}
+
+async function visibilityFilter(req, col = 'visibility_grade_id') {
+  if (req.userIsFondateur) return { sql: '1=1', params: [] };
+  const ids = await getVisibleGradeIds(req.session.user.id, req.guildDb);
+  return { sql: `(${col} IS NULL OR ${col} IN (?))`, params: [ids.length ? ids : [0]] };
+}
+
 async function logAudit(actorId, actorTag, action, targetType, targetId, details, db) {
   const q = db || globalQuery;
   try {
@@ -80,5 +106,8 @@ module.exports = {
   hasPermission,
   getDescendantIds,
   getVisibleGradeIds,
+  canUserSeeTicket,
+  discordStaffCanSee,
+  visibilityFilter,
   logAudit
 };

@@ -6,6 +6,18 @@ function canManageGrades(req) {
   return req.userIsFondateur || req.userPermissions.has('manage_grades');
 }
 
+// Non-fondateurs cannot grant permissions they do not hold themselves.
+function exceedsOwnPerms(req, perms) {
+  return !req.userIsFondateur && perms.some(p => !req.userPermissions.has(p));
+}
+
+// Non-fondateurs cannot edit the grades they hold (would let them escalate themselves).
+async function holdsGrade(req, gradeId) {
+  if (req.userIsFondateur) return false;
+  const [row] = await req.guildDb('SELECT 1 FROM user_grades WHERE user_id = ? AND grade_id = ?', [req.session.user.id, gradeId]);
+  return !!row;
+}
+
 router.get('/', async (req, res) => {
   try {
     const grades = await req.guildDb(
@@ -50,6 +62,7 @@ router.post('/', async (req, res) => {
     const cleanParent = parent_id ? parseInt(parent_id) : null;
     const cleanPos = Number.isInteger(position) ? position : 0;
     const validPerms = (Array.isArray(perms) ? perms : []).filter(p => PERMISSIONS.includes(p));
+    if (exceedsOwnPerms(req, validPerms)) return res.status(403).json({ error: 'Tu ne peux pas accorder des permissions que tu n\'as pas' });
 
     const result = await req.guildDb(
       'INSERT INTO grades (name, color, parent_id, position) VALUES (?, ?, ?, ?)',
@@ -82,7 +95,13 @@ router.patch('/:id', async (req, res) => {
     const [grade] = await req.guildDb('SELECT * FROM grades WHERE id = ?', [gradeId]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
+    if (await holdsGrade(req, gradeId)) return res.status(403).json({ error: 'Impossible de modifier un grade que tu possèdes' });
+
     const { name, color, parent_id, position, is_default } = req.body;
+    // Re-parenting changes who can see restricted tickets — fondateur only
+    if (parent_id !== undefined && !req.userIsFondateur) {
+      return res.status(403).json({ error: 'Seul le fondateur peut changer la hiérarchie des grades' });
+    }
     const updates = [];
     const params = [];
 
@@ -132,8 +151,12 @@ router.put('/:id/permissions', async (req, res) => {
     const [grade] = await req.guildDb('SELECT id FROM grades WHERE id = ?', [gradeId]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
+    if (await holdsGrade(req, gradeId)) return res.status(403).json({ error: 'Impossible de modifier un grade que tu possèdes' });
+
     const { permissions: perms = [] } = req.body;
     const validPerms = (Array.isArray(perms) ? perms : []).filter(p => PERMISSIONS.includes(p));
+    const current = (await req.guildDb('SELECT permission FROM grade_permissions WHERE grade_id = ?', [gradeId])).map(r => r.permission);
+    if (exceedsOwnPerms(req, [...validPerms, ...current])) return res.status(403).json({ error: 'Tu ne peux pas modifier des permissions que tu n\'as pas' });
 
     await req.guildDb('DELETE FROM grade_permissions WHERE grade_id = ?', [gradeId]);
     for (const p of validPerms) {
@@ -154,7 +177,8 @@ router.put('/:id/permissions', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
-  if (!canManageGrades(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  // Deleting a grade makes its restricted tickets public — fondateur only
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   try {
     const gradeId = parseInt(req.params.id);
     const [grade] = await req.guildDb('SELECT * FROM grades WHERE id = ?', [gradeId]);

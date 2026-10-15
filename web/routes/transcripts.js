@@ -1,5 +1,22 @@
 const express = require('express');
 const router = express.Router();
+const { visibilityFilter } = require('../../utils/gradePermissions');
+
+router.use((req, res, next) => {
+  if (!req.userIsFondateur && !req.userPermissions.has('view_transcripts')) {
+    return res.status(403).json({ error: 'Permission insuffisante' });
+  }
+  next();
+});
+
+async function findSnapshot(req, cols) {
+  const vis = await visibilityFilter(req, 't.visibility_grade_id');
+  const [snap] = await req.guildDb(
+    `SELECT ${cols} FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id WHERE ts.id = ? AND ${vis.sql}`,
+    [parseInt(req.params.id), ...vis.params]
+  );
+  return snap;
+}
 
 const TRANSCRIPT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https://cdn.discordapp.com data:; media-src https://cdn.discordapp.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;";
 
@@ -11,10 +28,11 @@ router.get('/', async (req, res) => {
     const limit = 20;
     const offset = (page - 1) * limit;
 
-    const where = [];
-    const params = [];
-    if (ticketId) { where.push('ts.ticket_id = ?'); params.push(ticketId); }
-    if (search) { where.push('(t.owner_tag LIKE ? OR t.subject LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    const where = [vis.sql];
+    const params = [...vis.params];
+    if (ticketId) { where.push('ts.ticket_id = ?'); params.push(String(ticketId)); }
+    if (typeof search === 'string' && search) { where.push('(t.owner_tag LIKE ? OR t.subject LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [snapshots, [{ total }]] = await Promise.all([
@@ -39,7 +57,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id/html', async (req, res) => {
   try {
-    const [snap] = await req.guildDb('SELECT html FROM transcript_snapshots WHERE id = ?', [req.params.id]);
+    const snap = await findSnapshot(req, 'ts.html');
     if (!snap) return res.status(404).send('Introuvable');
     res.setHeader('Content-Security-Policy', TRANSCRIPT_CSP);
     res.type('html').send(snap.html);
@@ -51,7 +69,7 @@ router.get('/:id/html', async (req, res) => {
 
 router.get('/:id/txt', async (req, res) => {
   try {
-    const [snap] = await req.guildDb('SELECT txt, ticket_id FROM transcript_snapshots WHERE id = ?', [req.params.id]);
+    const snap = await findSnapshot(req, 'ts.txt, ts.ticket_id');
     if (!snap) return res.status(404).send('Introuvable');
     res.setHeader('Content-Disposition', `attachment; filename="transcript-${snap.ticket_id}.txt"`);
     res.type('text/plain').send(snap.txt);

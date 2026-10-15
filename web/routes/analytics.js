@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { toCsv } = require('../../utils/csv');
+const { visibilityFilter } = require('../../utils/gradePermissions');
 
 // ── Volume chart: tickets opened/closed per day ───────────────────────────────
 router.get('/volume', async (req, res) => {
@@ -182,12 +184,16 @@ router.get('/staff-compare', async (req, res) => {
 
 // ── Full-text search ──────────────────────────────────────────────────────────
 router.get('/search', async (req, res) => {
-  const q = (req.query.q || '').trim();
+  if (!req.userIsFondateur && !req.userPermissions.has('view_tickets')) {
+    return res.status(403).json({ error: 'Permission insuffisante' });
+  }
+  const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
   if (!q || q.length < 2) return res.json([]);
   if (q.length > 100) return res.status(400).json({ error: 'Recherche trop longue (max 100 caractères)' });
 
   try {
     const like = `%${q.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
     const rows = await req.guildDb(
       `SELECT t.id, t.owner_tag, t.subject, t.status, t.priority, t.created_at, t.closed_at,
               n.content as matched_note, n.author_tag as note_author, n.source as note_source,
@@ -195,10 +201,10 @@ router.get('/search', async (req, res) => {
        FROM tickets t
        LEFT JOIN ticket_notes n ON n.ticket_id = t.id
          AND n.content LIKE ?
-       WHERE (t.owner_tag LIKE ? OR t.subject LIKE ? OR n.content LIKE ?)
+       WHERE (t.owner_tag LIKE ? OR t.subject LIKE ? OR n.content LIKE ?) AND ${vis.sql}
        ORDER BY t.created_at DESC
        LIMIT 50`,
-      [like, like, like, like]
+      [like, like, like, like, ...vis.params]
     );
 
     // Deduplicate — keep one row per ticket (best matching note)
@@ -257,10 +263,7 @@ router.get('/export/csv', async (req, res) => {
     ]);
 
     // Three sheets as separate CSV blocks separated by blank lines
-    const toCSV = (headers, rows) => [
-      headers.join(','),
-      ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))
-    ].join('\n');
+    const toCSV = toCsv;
 
     const csv = [
       '# Volume quotidien (90 jours)',

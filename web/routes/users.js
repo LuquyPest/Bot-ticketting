@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { logAudit } = require('../../utils/gradePermissions');
 
+// A non-fondateur may only hand out grades whose permissions they already hold.
+async function gradeExceedsOwnPerms(req, gradeId) {
+  if (req.userIsFondateur) return false;
+  const perms = await req.guildDb('SELECT permission FROM grade_permissions WHERE grade_id = ?', [gradeId]);
+  return perms.some(p => !req.userPermissions.has(p.permission));
+}
+
 function canManageUsers(req) {
   return req.userIsFondateur || req.userPermissions.has('manage_users');
 }
@@ -45,8 +52,8 @@ router.patch('/:id/role', async (req, res) => {
     if (req.params.id === req.session.user.id) {
       return res.status(400).json({ error: 'Impossible de modifier son propre rôle' });
     }
-    // Protect the guild owner (founder set at approval time)
-    if (req.guild?.owner_discord_id && req.params.id === req.guild.owner_discord_id) {
+    // Protect the guild owner and the inviter (founder set at approval time)
+    if ([req.guild?.owner_discord_id, req.guild?.inviter_discord_id].includes(req.params.id)) {
       return res.status(400).json({ error: 'Impossible de modifier le rôle du fondateur du serveur' });
     }
     await req.guildDb('UPDATE dashboard_users SET role = ? WHERE user_id = ?', [role, req.params.id]);
@@ -86,9 +93,15 @@ router.post('/:id/grades', async (req, res) => {
   try {
     const { grade_id } = req.body;
     if (!grade_id) return res.status(400).json({ error: 'grade_id requis' });
+    if (!req.userIsFondateur && req.params.id === req.session.user.id) {
+      return res.status(403).json({ error: 'Impossible de modifier ses propres grades' });
+    }
 
     const [grade] = await req.guildDb('SELECT * FROM grades WHERE id = ?', [parseInt(grade_id)]);
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
+    if (await gradeExceedsOwnPerms(req, grade.id)) {
+      return res.status(403).json({ error: 'Ce grade donne des permissions que tu n\'as pas' });
+    }
 
     const [targetUser] = await req.guildDb('SELECT user_id, role FROM dashboard_users WHERE user_id = ?', [req.params.id]);
     if (!targetUser) return res.status(404).json({ error: 'Utilisateur introuvable' });
@@ -117,7 +130,13 @@ router.post('/:id/grades', async (req, res) => {
 
 router.delete('/:id/grades/:gradeId', async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  if (!req.userIsFondateur && req.params.id === req.session.user.id) {
+    return res.status(403).json({ error: 'Impossible de modifier ses propres grades' });
+  }
   try {
+    if (await gradeExceedsOwnPerms(req, parseInt(req.params.gradeId))) {
+      return res.status(403).json({ error: 'Ce grade donne des permissions que tu n\'as pas' });
+    }
     const [grade] = await req.guildDb('SELECT name FROM grades WHERE id = ?', [parseInt(req.params.gradeId)]);
     await req.guildDb(
       'DELETE FROM user_grades WHERE user_id = ? AND grade_id = ?',

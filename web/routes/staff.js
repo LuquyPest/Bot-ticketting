@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { toCsv } = require('../../utils/csv');
 
 router.get('/', async (req, res) => {
   try {
@@ -80,7 +81,7 @@ router.get('/export/csv', async (req, res) => {
       updated_at:        r.updated_at ? new Date(r.updated_at).toISOString() : '',
     }));
     const headers = ['id', 'tag', 'claimed', 'closed', 'avg_rating', 'avg_response_sec', 'updated_at'];
-    const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))].join('\n');
+    const csv = toCsv(headers, rows);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="staff_stats.csv"');
     res.send(csv);

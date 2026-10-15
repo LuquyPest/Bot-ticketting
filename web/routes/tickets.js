@@ -4,19 +4,15 @@ const { createManager } = require('../../utils/ticketManager');
 const { sanitizeChannelName } = require('../../utils/sanitize');
 const { ChannelType } = require('discord.js');
 const { broadcast } = require('../../utils/sse');
-const { getVisibleGradeIds, logAudit } = require('../../utils/gradePermissions');
+const { getVisibleGradeIds, visibilityFilter, logAudit } = require('../../utils/gradePermissions');
 const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
 
-function csvEscape(val) {
-  if (val == null) return '';
-  const str = String(val);
-  return str.includes(',') || str.includes('"') || str.includes('\n')
-    ? '"' + str.replace(/"/g, '""') + '"'
-    : str;
-}
+const { csvCell: csvEscape, toCsv } = require('../../utils/csv');
+const { parseJsonField } = require('../../utils/jsonField');
+const { fetchGuildChannel } = require('../../utils/discordGuard');
 
 async function checkAccess(req, ticketId) {
   const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticketId]);
@@ -31,11 +27,27 @@ async function checkAccess(req, ticketId) {
   return { ticket, denied: false };
 }
 
+function hasPerm(req, perm) {
+  return req.userIsFondateur || req.userPermissions?.has(perm);
+}
+
+// Loads req.params.id, enforcing view_tickets + grade visibility + any extra permission.
+// Sends the error response itself and returns null when access is refused.
+async function loadTicket(req, res, ...perms) {
+  const missing = ['view_tickets', ...perms].find(p => !hasPerm(req, p));
+  if (missing) { res.status(403).json({ error: 'Permission insuffisante' }); return null; }
+  const { ticket, denied } = await checkAccess(req, req.params.id);
+  if (!ticket) { res.status(404).json({ error: 'Ticket introuvable' }); return null; }
+  if (denied)  { res.status(403).json({ error: 'Accès refusé' }); return null; }
+  return ticket;
+}
+
 function getManager(req) {
   return createManager(req.guildDb, req.app.locals.client, req.guildId);
 }
 
 router.get('/', async (req, res) => {
+  if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const { status, priority, subject } = req.query;
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
@@ -48,11 +60,9 @@ router.get('/', async (req, res) => {
     const where = [];
     const params = [];
 
-    if (!req.userIsFondateur) {
-      const visibleIds = await getVisibleGradeIds(req.session.user.id, req.guildDb);
-      where.push('(visibility_grade_id IS NULL OR visibility_grade_id IN (?))');
-      params.push(visibleIds.length > 0 ? visibleIds : [0]);
-    }
+    const vis = await visibilityFilter(req);
+    where.push(vis.sql);
+    params.push(...vis.params);
     if (status)   { where.push('status = ?');     params.push(status); }
     if (priority) { where.push('priority = ?');   params.push(priority); }
     if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
@@ -104,9 +114,8 @@ router.get('/export', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { ticket, denied } = await checkAccess(req, req.params.id);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
 
     const [participantRows, transcript, rating] = await Promise.all([
       req.guildDb('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
@@ -153,12 +162,12 @@ router.patch('/:id/priority', async (req, res) => {
       const client = req.app.locals.client;
       if (client && ticket.channel_id) {
         const [cfg] = await req.guildDb('SELECT support_role_ids FROM guild_config WHERE id = 1');
-        const roleIds = JSON.parse(cfg?.support_role_ids || '[]');
+        const roleIds = parseJsonField(cfg?.support_role_ids);
         if (roleIds.length) {
           const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
           if (channel) {
             const mentions = roleIds.map(id => `<@&${id}>`).join(' ');
-            await channel.send(`🚨 **Ticket passé en priorité Urgente** — ${mentions}`).catch(() => null);
+            await channel.send({ content: `🚨 **Ticket passé en priorité Urgente** — ${mentions}`, allowedMentions: { roles: roleIds } }).catch(() => null);
           }
         }
       }
@@ -172,13 +181,12 @@ router.patch('/:id/priority', async (req, res) => {
 });
 
 router.patch('/:id/status', async (req, res) => {
-  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const { status } = req.body;
   if (!VALID_STATUS.has(status)) return res.status(400).json({ error: 'Statut invalide' });
 
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'close_ticket');
+    if (!ticket) return;
     if (ticket.status === status) return res.json({ ok: true });
 
     const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
@@ -208,9 +216,8 @@ router.patch('/:id/status', async (req, res) => {
 
 router.get('/:id/notes', async (req, res) => {
   try {
-    const { ticket, denied } = await checkAccess(req, req.params.id);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
 
     const notes = await req.guildDb(
       'SELECT id, author_id, author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
@@ -225,9 +232,8 @@ router.get('/:id/notes', async (req, res) => {
 
 router.post('/:id/notes', async (req, res) => {
   try {
-    const { ticket, denied } = await checkAccess(req, req.params.id);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
 
     const { content } = req.body;
     if (!content || typeof content !== 'string' || !content.trim()) {
@@ -269,8 +275,8 @@ router.post('/:id/notes', async (req, res) => {
 
 router.post('/:id/reply', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { content, file_url, anonymous } = req.body;
@@ -330,7 +336,7 @@ router.post('/:id/reply', async (req, res) => {
     sendPushToGuild(req.guildId, {
       type: 'reply',
       title: `Réponse #${ticket.id}`,
-      body: `${anonymous ? 'Support' : req.session.user.username} : ${content.slice(0, 100)}`,
+      body: `${anonymous ? 'Support' : req.session.user.username} : ${(content || 'Fichier joint').slice(0, 100)}`,
       ticketId: ticket.id,
     }).catch(() => null);
     res.json(replyNote);
@@ -342,8 +348,8 @@ router.post('/:id/reply', async (req, res) => {
 
 router.patch('/:id/claim', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'claim_ticket');
+    if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { action } = req.body;
@@ -394,8 +400,8 @@ router.patch('/:id/claim', async (req, res) => {
 
 router.post('/:id/participants', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'manage_participants');
+    if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { discord_id } = req.body;
@@ -443,8 +449,8 @@ router.post('/:id/participants', async (req, res) => {
 
 router.delete('/:id/participants/:userId', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'manage_participants');
+    if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { userId } = req.params;
@@ -476,8 +482,8 @@ router.delete('/:id/participants/:userId', async (req, res) => {
 
 router.patch('/:id/move', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { category_id } = req.body;
@@ -491,7 +497,7 @@ router.patch('/:id/move', async (req, res) => {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
 
-    const category = await client.channels.fetch(category_id).catch(() => null);
+    const category = await fetchGuildChannel(client, req.guildId, String(category_id));
     if (!category || category.type !== ChannelType.GuildCategory) {
       return res.status(400).json({ error: 'Catégorie Discord introuvable' });
     }
@@ -512,8 +518,8 @@ router.patch('/:id/move', async (req, res) => {
 
 router.patch('/:id/rename', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { name } = req.body;
@@ -540,8 +546,8 @@ router.patch('/:id/rename', async (req, res) => {
 
 router.patch('/:id/subject', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
 
     const { subject } = req.body;
     if (subject !== undefined && subject !== null && typeof subject !== 'string') {
@@ -565,8 +571,8 @@ router.patch('/:id/subject', async (req, res) => {
 
 router.patch('/:id/visibility', async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT id FROM tickets WHERE id = ?', [req.params.id]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    const ticket = await loadTicket(req, res, 'manage_grades');
+    if (!ticket) return;
 
     const { visibility_grade_id } = req.body;
     const gradeId = visibility_grade_id ? parseInt(visibility_grade_id) : null;
@@ -592,9 +598,8 @@ router.patch('/:id/visibility', async (req, res) => {
 
 router.get('/:id/history', async (req, res) => {
   try {
-    const { ticket, denied } = await checkAccess(req, req.params.id);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
 
     const history = await req.guildDb(
       `SELECT id, status, subject, priority, claimed_by, created_at, closed_at, closed_by_tag
@@ -610,9 +615,11 @@ router.get('/:id/history', async (req, res) => {
 
 router.delete('/:id/notes/:noteId', async (req, res) => {
   try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
     const [note] = await req.guildDb('SELECT * FROM ticket_notes WHERE id = ?', [req.params.noteId]);
     if (!note) return res.status(404).json({ error: 'Note introuvable' });
-    if (note.ticket_id !== parseInt(req.params.id)) {
+    if (note.ticket_id !== ticket.id) {
       return res.status(400).json({ error: 'Note invalide' });
     }
     if (!req.userIsFondateur && note.author_id !== req.session.user.id) {
@@ -668,15 +675,15 @@ router.post('/bulk', async (req, res) => {
 
 router.get('/:id/pdf', async (req, res) => {
   try {
-    const { ticket, denied } = await checkAccess(req, req.params.id);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-    if (denied)  return res.status(403).json({ error: 'Accès refusé' });
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
 
     const notes = await req.guildDb(
       'SELECT author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
       [ticket.id]
     );
 
+    const nonce = require('crypto').randomBytes(16).toString('base64');
     const SOURCE_LABEL = { reply: 'Réponse Staff', user: 'Utilisateur', discord: 'Discord', web: 'Note interne' };
     const SOURCE_COLOR = { reply: '#4f46e5', user: '#7c3aed', discord: '#1e3a5f', web: '#374151' };
 
@@ -707,7 +714,7 @@ router.get('/:id/pdf', async (req, res) => {
 </style></head><body>
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
   <h1>Ticket #${ticket.id} — ${esc(ticket.subject || 'Sans sujet')}</h1>
-  <button onclick="window.print()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px">Imprimer / PDF</button>
+  <button id="print" style="padding:8px 14px;background:#4f46e5;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px">Imprimer / PDF</button>
 </div>
 <div class="meta-grid">
   <div class="meta-cell">Utilisateur<strong>${esc(ticket.owner_tag) || '—'}</strong></div>
@@ -723,9 +730,11 @@ ${notesHtml || '<p style="color:#6b7280;font-size:13px;text-align:center;padding
 <div style="margin-top:24px;font-size:11px;color:#9ca3af;text-align:center">
   Exporté le ${new Date().toLocaleString('fr-FR')} — Ticket Bot Dashboard
 </div>
+<script nonce="${nonce}">document.getElementById('print').addEventListener('click', () => window.print());</script>
 </body></html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Security-Policy', `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'`);
     res.send(html);
   } catch (err) {
     console.error(err);
@@ -743,10 +752,7 @@ router.get('/export/csv', async (req, res) => {
        FROM tickets ORDER BY id DESC LIMIT 10000`
     );
     const headers = ['id', 'owner_id', 'owner_tag', 'subject', 'priority', 'status', 'claimed_by', 'created_at', 'closed_at', 'closed_by_tag'];
-    const csv = [
-      headers.join(','),
-      ...tickets.map(r => headers.map(h => JSON.stringify(r[h] != null ? String(r[h]) : '')).join(','))
-    ].join('\n');
+    const csv = toCsv(headers, tickets);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="tickets.csv"');
     res.send(csv);

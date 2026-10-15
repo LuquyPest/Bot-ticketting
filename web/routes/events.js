@@ -3,13 +3,15 @@ const router = express.Router();
 const { addClient } = require('../../utils/sse');
 
 router.get('/', (req, res) => {
+  const remove = addClient(res, req.session?.user?.id, req.guildId);
+  if (!remove) return res.status(429).json({ error: 'Trop de connexions temps réel ouvertes' });
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  const remove = addClient(res, req.session?.user?.id, req.guildId);
   res.write('event: connected\ndata: {}\n\n');
 
   const keepAlive = setInterval(() => {

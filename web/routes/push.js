@@ -3,6 +3,11 @@ const router     = express.Router();
 const webpush    = require('web-push');
 const { globalQuery } = require('../../utils/globalDb');
 const guildMiddleware = require('../middleware/guild');
+const requireRole     = require('../middleware/role');
+const { getTenantDb } = require('../../utils/tenantDb');
+const { canUserSeeTicket } = require('../../utils/gradePermissions');
+
+const withStaff = [guildMiddleware, requireRole('support', 'fondateur')];
 
 // Allowlist of known push service origin prefixes — blocks SSRF via stored endpoint
 const ALLOWED_PUSH_ORIGINS = [
@@ -11,7 +16,6 @@ const ALLOWED_PUSH_ORIGINS = [
   'https://push.services.mozilla.org/',
   'https://notify.windows.com/',
   'https://web.push.apple.com/',
-  'https://fcm.googleapis.com/',
   'https://push.googleapis.com/',
 ];
 
@@ -51,9 +55,9 @@ router.get('/vapid-public-key', (req, res) => {
 });
 
 // POST /api/push/subscribe — save a push subscription for the current user+guild
-router.post('/subscribe', guildMiddleware, async (req, res) => {
+router.post('/subscribe', withStaff, async (req, res) => {
   const { endpoint, keys } = req.body;
-  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+  if (!endpoint || typeof keys?.p256dh !== 'string' || typeof keys?.auth !== 'string') {
     return res.status(400).json({ error: 'Subscription invalide' });
   }
   if (!isValidPushEndpoint(endpoint)) {
@@ -76,7 +80,7 @@ router.post('/subscribe', guildMiddleware, async (req, res) => {
 // POST /api/push/unsubscribe — remove subscription
 router.post('/unsubscribe', guildMiddleware, async (req, res) => {
   const { endpoint } = req.body;
-  if (!endpoint) return res.status(400).json({ error: 'endpoint requis' });
+  if (typeof endpoint !== 'string') return res.status(400).json({ error: 'endpoint requis' });
   try {
     await globalQuery(
       'DELETE FROM push_subscriptions WHERE user_id = ? AND guild_id = ? AND endpoint = ?',
@@ -88,15 +92,28 @@ router.post('/unsubscribe', guildMiddleware, async (req, res) => {
   }
 });
 
-// Utility — send a push notification to all subscribers of a guild
+// Utility — send a push notification to the guild's subscribers allowed to see payload.ticketId
 async function sendPushToGuild(guildId, payload) {
   initVapid();
   if (!vapidReady) return;
   const subs = await globalQuery(
-    'SELECT endpoint, p256dh, auth_key FROM push_subscriptions WHERE guild_id = ?',
+    'SELECT user_id, endpoint, p256dh, auth_key FROM push_subscriptions WHERE guild_id = ?',
     [guildId]
   ).catch(() => []);
+  if (!subs.length) return;
+
+  const db = getTenantDb(guildId);
+  let gradeId = null;
+  if (payload.ticketId) {
+    const [t] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [payload.ticketId]).catch(() => []);
+    gradeId = t?.visibility_grade_id ?? null;
+  }
+  const allowed = new Map();
   for (const sub of subs) {
+    if (!allowed.has(sub.user_id)) {
+      allowed.set(sub.user_id, await canUserSeeTicket(db, sub.user_id, gradeId).catch(() => false));
+    }
+    if (!allowed.get(sub.user_id)) continue;
     const subscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } };
     webpush.sendNotification(subscription, JSON.stringify(payload)).catch(async err => {
       // Remove expired/invalid subscriptions (410 Gone)
