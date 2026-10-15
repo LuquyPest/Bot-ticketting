@@ -181,9 +181,11 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
   "webEnabled": true,
   "webServerPort": 3000,
   "webServerBaseUrl": "https://ton-domaine.com",
+  "trustProxyHops": 1,
 
   "dashboard": {
     "sessionSecret": "GENERE_AVEC_openssl_rand_-hex_32",
+    "encryptionKey": "GENERE_AVEC_openssl_rand_-hex_32",
     "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
     "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
   },
@@ -208,7 +210,9 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 | `webEnabled` | `true` pour activer le dashboard et l'API |
 | `webServerPort` | Port interne du serveur Express (3000 par défaut) |
 | `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |
+| `trustProxyHops` | Nombre de reverse proxies devant l'app (défaut `1` = Traefik ; `2` si Cloudflare + Traefik). Sert à déterminer la vraie IP client (rate limiting, allowlist IP, logs) |
 | `dashboard.sessionSecret` | Clé secrète sessions — **min. 32 chars**, générer avec `openssl rand -hex 32` |
+| `dashboard.encryptionKey` | Clé AES-256 (64 caractères hex, `openssl rand -hex 32`) qui chiffre les secrets 2FA en base. Optionnelle : à défaut, dérivée de `sessionSecret` — **changer l'une ou l'autre rend les 2FA existantes inutilisables** |
 | `dashboard.discordClientSecret` | Secret OAuth2 depuis le portail développeur Discord |
 | `dashboard.discordCallbackUrl` | Doit correspondre exactement à l'URL configurée dans le portail Discord |
 | `database.host` | Doit être `db` (nom du service Docker Compose, pas `localhost`) |
@@ -248,14 +252,35 @@ Accessible sur `https://ton-domaine.com` après connexion via Discord OAuth.
 | Rôle | Accès |
 |------|-------|
 | `nouveau` | Page d'attente — aucun accès fonctionnel |
-| `support` | Dashboard · Tickets · Staff · Analytics · Grades |
+| `support` | Dashboard · Tickets · Staff · Analytics — chaque action est soumise aux permissions de ses grades (voir ci-dessous) |
 | `fondateur` | Accès complet + Paramètres · Blacklist · Transcripts · Utilisateurs · Clés API |
 
-Le fondateur est désigné via le système de rôles staff configuré dans les paramètres. Les nouveaux membres reçoivent `nouveau` et attendent une attribution depuis la page **Utilisateurs**.
+Le fondateur est la personne qui a invité le bot (ou, à défaut, le propriétaire du serveur), désignée à l'approbation du serveur ; il peut promouvoir d'autres fondateurs. Les nouveaux membres reçoivent `nouveau` et attendent une attribution depuis la page **Utilisateurs**.
+
+Un `support` n'a aucun droit sans grade. Permissions de grade appliquées par l'API :
+
+| Permission | Autorise |
+|------------|----------|
+| `view_tickets` | Voir les tickets, notes, historique, recherche, messages programmés, notifications temps réel/push |
+| `reply_ticket` | Répondre, ajouter des notes, programmer des messages, renommer/déplacer/changer le sujet, tags |
+| `claim_ticket` | Prendre en charge / libérer un ticket |
+| `close_ticket` | Fermer / rouvrir un ticket |
+| `manage_participants` | Ajouter / retirer des participants |
+| `view_transcripts` | Consulter les transcripts |
+| `manage_users` | Attribuer des grades (pas à soi-même, ni un grade aux permissions supérieures aux siennes) |
+| `manage_grades` | Créer/éditer les grades (pas ceux qu'on possède) et restreindre la visibilité d'un ticket |
+| `manage_settings` | Gérer les tags |
+| `view_audit` | Consulter le journal d'audit |
+
+Un ticket restreint à un grade n'est visible (liste, détail, recherche, SSE, push, transcripts) que par ce grade, ses grades parents et le fondateur.
 
 ### 2FA pour les comptes dashboard
 
-Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur profil. Une fois activée, un code TOTP est requis après chaque connexion Discord OAuth.
+Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur profil. Une fois activée, un code TOTP est requis après chaque connexion Discord OAuth. Un même code n'est jamais accepté deux fois, et les secrets sont chiffrés en base (AES-256-GCM).
+
+À l'activation, **10 codes de secours** à usage unique sont affichés une seule fois (format `xxxxx-xxxxx`) ; ils remplacent le code TOTP sur l'écran de vérification en cas de perte du téléphone. Ils peuvent être régénérés depuis le profil.
+
+Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de passe ou TOTP), déconnexion automatique après 30 min d'inactivité, mot de passe manager de 12 caractères minimum.
 
 ### Pages disponibles
 
@@ -272,10 +297,9 @@ Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur
 | **Messages** | support, fondateur | Messages personnalisés (accueil, fermeture…) |
 | **Journaux de connexion** | fondateur | Historique des connexions au dashboard |
 | **Audit** | fondateur | Journal des actions effectuées sur le dashboard |
-| **Blacklist** | fondateur | Gestion des utilisateurs bannis |
+| **Blacklist** | fondateur | Gestion des utilisateurs bannis — propre à chaque serveur (un blocage n'affecte jamais les autres serveurs) |
 | **Transcripts** | fondateur | Consultation et téléchargement des transcripts HTML/TXT |
 | **Utilisateurs** | fondateur | Attribution des rôles dashboard |
-| **Rôles staff** | fondateur | Configuration des rôles Discord mappés au bot |
 | **Newsletter** | fondateur | Envoi de DM en masse aux membres avec des tickets |
 | **Clés API** | fondateur | Génération de clés API pour intégrations externes |
 | **Panels** | fondateur | Création et publication de panels de boutons Discord pour ouvrir des tickets |
@@ -502,7 +526,16 @@ Configuration depuis **Paramètres → Webhooks** dans le dashboard.
 
 ## API Keys
 
-Clés d'API générées par le fondateur pour des intégrations externes. Chaque clé a un préfixe lisible, des permissions granulaires et une date d'expiration optionnelle. Seul le hash bcrypt est stocké, jamais la clé en clair.
+Clés d'API générées par le fondateur pour des intégrations externes (l'option doit être activée dans les paramètres). Chaque clé a des permissions granulaires et une date d'expiration optionnelle. Seul le hash SHA-256 est stocké, jamais la clé en clair.
+
+Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization: Bearer <clé>`.
+
+| Méthode | Route | Permission |
+|---------|-------|------------|
+| `GET` | `/api/v1/tickets?status=open\|closed&page=1` | `read_tickets` |
+| `GET` | `/api/v1/tickets/:id` (ticket + messages) | `read_tickets` |
+| `POST` | `/api/v1/tickets/:id/close` | `close_tickets` |
+| `GET` | `/api/v1/stats` | `read_stats` |
 
 ---
 
@@ -515,7 +548,6 @@ Clés d'API générées par le fondateur pour des intégrations externes. Chaque
 | `guilds` | Registre de tous les serveurs (pending / active / suspended) |
 | `superadmins` | Comptes du panel SA |
 | `managers` | Comptes managers avec guilds assignées |
-| `web_sessions` | Sessions express-session (MySQL store) |
 | `user_sessions` | Suivi des sessions actives par utilisateur (IP, user-agent, timestamps) |
 | `user_totp` | Secrets TOTP des utilisateurs dashboard |
 | `login_logs` | Historique des connexions OAuth Discord |
@@ -547,7 +579,6 @@ Clés d'API générées par le fondateur pour des intégrations externes. Chaque
 | `intake_form_fields` | Champs des formulaires |
 | `scheduled_messages` | Messages planifiés |
 | `staff_notes` | Notes internes isolées (commande `/note`) |
-| `staff_roles` | Rôles Discord mappés avec niveaux et permissions |
 | `guild_config` | Configuration complète du serveur |
 | `audit_log` | Journal d'audit de toutes les actions dashboard |
 | `ticket_panels` | Panels de boutons Discord (embed + métadonnées, message_id publié) |
@@ -644,7 +675,6 @@ Bot-ticketting/
 │       ├── templates.js            # Templates de réponse
 │       ├── tags.js                 # Tags sur tickets
 │       ├── messages.js             # Messages personnalisés
-│       ├── staffRoles.js           # Rôles Discord mappés
 │       ├── discord.js              # Catégories Discord
 │       ├── events.js               # Endpoint SSE
 │       ├── panels.js               # Panels Discord (CRUD + publish/unpublish)

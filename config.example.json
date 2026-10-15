@@ -11,9 +11,11 @@
   "webEnabled": true,
   "webServerPort": 3000,
   "webServerBaseUrl": "https://ton-domaine.com",
+  "trustProxyHops": 1,
 
   "dashboard": {
     "sessionSecret": "GENERE_AVEC_openssl_rand_-hex_32",
+    "encryptionKey": "GENERE_AVEC_openssl_rand_-hex_32",
     "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
     "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
   },
