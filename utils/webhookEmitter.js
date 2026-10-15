@@ -3,29 +3,20 @@ const dns    = require('dns').promises;
 const net    = require('net');
 const crypto = require('crypto');
 
-// RFC1918 + loopback + link-local + CGNAT + reserved ranges (SSRF blocklist)
-const BLOCKED_CIDRS = [
-  [0x7f000000, 0xff000000],   // 127.0.0.0/8  loopback
-  [0x0a000000, 0xff000000],   // 10.0.0.0/8
-  [0xac100000, 0xfff00000],   // 172.16.0.0/12
-  [0xc0a80000, 0xffff0000],   // 192.168.0.0/16
-  [0xa9fe0000, 0xffff0000],   // 169.254.0.0/16  link-local / AWS metadata
-  [0x64400000, 0xffc00000],   // 100.64.0.0/10   CGNAT
-  [0xc0000000, 0xffffff00],   // 192.0.0.0/24    IETF Protocol Assignments
-  [0x00000000, 0xff000000],   // 0.0.0.0/8
-  [0xe0000000, 0xf0000000],   // 224.0.0.0/4     multicast
-  [0xf0000000, 0xf0000000],   // 240.0.0.0/4     reserved
-];
-
-function ipToInt(ip) {
-  return ip.split('.').reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>> 0;
-}
+// SSRF blocklist: loopback, RFC1918 (incl. Docker networks), link-local / cloud metadata, CGNAT,
+// documentation/benchmark ranges, multicast and reserved. net.BlockList does the matching —
+// hand-rolled bit masks broke on ranges >= 128.0.0.0 (JS `&` yields signed ints).
+const BLOCKED = new net.BlockList();
+for (const [addr, prefix] of [
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
+  ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15],
+  ['198.51.100.0', 24], ['203.0.113.0', 24], ['224.0.0.0', 4], ['240.0.0.0', 4],
+]) BLOCKED.addSubnet(addr, prefix, 'ipv4');
 
 function isPrivateIp(ip) {
-  if (net.isIPv6(ip)) return true; // block all IPv6 including ::1, fc00::/7
+  if (net.isIPv6(ip)) return true; // block all IPv6 including ::1, fc00::/7 and IPv4-mapped
   if (!net.isIPv4(ip)) return true;
-  const n = ipToInt(ip);
-  return BLOCKED_CIDRS.some(([base, mask]) => (n & mask) === base);
+  return BLOCKED.check(ip, 'ipv4');
 }
 
 // Resolves the hostname once, verifies all returned IPs, and returns the first

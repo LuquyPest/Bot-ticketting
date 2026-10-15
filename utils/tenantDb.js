@@ -19,7 +19,8 @@ function _getPool(guildId) {
     waitForConnections: true,
     connectionLimit:  5,
     queueLimit:       0,
-    charset:          'utf8mb4'
+    charset:          'utf8mb4',
+    stringifyObjects: true // objects in params must never expand to `col` = val (SQLi gadget)
   });
   _pools.set(guildId, pool);
   return pool;

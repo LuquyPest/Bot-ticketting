@@ -14,7 +14,8 @@ function getPool() {
     waitForConnections: true,
     connectionLimit:  10,
     queueLimit:       0,
-    charset:          'utf8mb4'
+    charset:          'utf8mb4',
+    stringifyObjects: true // objects in params must never expand to `col` = val (SQLi gadget)
   });
   return _pool;
 }

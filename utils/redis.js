@@ -20,4 +20,6 @@ function getRedis() {
   return _redis;
 }
 
-module.exports = { getRedis };
+const SESSION_PREFIX = 'sess:';
+
+module.exports = { getRedis, SESSION_PREFIX };
