@@ -145,6 +145,7 @@ export default function TicketDetail() {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
   const [editingSubject, setEditingSubject] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
   const [subjectInput, setSubjectInput] = useState('');
   const [savingSubject, setSavingSubject] = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -362,8 +363,9 @@ export default function TicketDetail() {
       const { data } = await api.patch(`/tickets/${id}/subject`, { subject: subjectInput.trim() || null });
       setTicket(t => ({ ...t, subject: data.subject }));
       setEditingSubject(false);
-      toast.success('Sujet mis à jour');
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+      toast.success('Titre mis à jour');
+      return true;
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); return false; }
     finally { setSavingSubject(false); }
   };
 
@@ -577,8 +579,31 @@ export default function TicketDetail() {
           {ticket.owner_tag && (
             <span className="text-xs text-ink-3 ml-0.5">{ticket.owner_tag}</span>
           )}
-          {ticket.subject && (
-            <span className="text-xs text-ink-4 truncate max-w-xs">· {ticket.subject}</span>
+          {/* Title (= ticket subject): editable in place */}
+          {editingTitle ? (
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 max-w-md">
+              <input type="text" value={subjectInput} autoFocus maxLength={100}
+                onChange={e => setSubjectInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') saveSubject().then(ok => ok && setEditingTitle(false));
+                  if (e.key === 'Escape') setEditingTitle(false);
+                }}
+                placeholder="Titre du ticket…"
+                className="flex-1 min-w-0 bg-surface border border-primary/40 text-ink-1 placeholder-ink-4
+                           rounded-lg px-2.5 py-1 text-sm focus:outline-none" />
+              <button onClick={() => saveSubject().then(ok => ok && setEditingTitle(false))} disabled={savingSubject}
+                className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50 flex-shrink-0" title="Enregistrer"><Check size={15} /></button>
+              <button onClick={() => setEditingTitle(false)} className="text-ink-4 hover:text-ink-2 flex-shrink-0" title="Annuler"><X size={15} /></button>
+            </div>
+          ) : can('reply_ticket') ? (
+            <button onClick={() => { setSubjectInput(ticket.subject || ''); setEditingTitle(true); }}
+              title="Modifier le titre"
+              className="group flex items-center gap-1.5 min-w-0 text-sm text-ink-2 hover:text-ink-1">
+              <span className="truncate max-w-xs">{ticket.subject || <span className="italic text-ink-4">Ajouter un titre</span>}</span>
+              <Pencil size={12} className="text-ink-4 group-hover:text-ink-2 flex-shrink-0" />
+            </button>
+          ) : ticket.subject && (
+            <span className="text-sm text-ink-2 truncate max-w-xs">{ticket.subject}</span>
           )}
 
           <div className="ml-auto flex items-center gap-2 flex-shrink-0">
@@ -860,7 +885,7 @@ export default function TicketDetail() {
                 <FileText size={11} className="text-ink-3" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] text-ink-4 leading-tight font-medium">Sujet</p>
+                <p className="text-[10px] text-ink-4 leading-tight font-medium">Titre</p>
                 {editingSubject ? (
                   <div className="flex items-center gap-1.5 mt-1">
                     <input type="text" value={subjectInput}
