@@ -27,6 +27,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Après la note de satisfaction, le membre peut laisser un commentaire libre, affiché dans la fiche du ticket' },
       { type: 'new',  text: 'Bouton « Fermer mon ticket » dans les MP du membre (bienvenue et réponses du staff), avec confirmation' },
       { type: 'new',  text: 'Modèles de réponse personnels ou partagés : tout le staff peut en enregistrer, et ceux liés au sujet du ticket sont suggérés au-dessus de la zone de réponse' },
+      { type: 'new',  text: 'Notification quand on t\'attribue un ticket : dashboard, push et MP Discord (désactivable dans le profil)' },
     ]
   },
   {

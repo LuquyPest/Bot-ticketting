@@ -147,6 +147,7 @@ async function main() {
     users: { fetch: async id => {
       if (/^30000000000000000[12]$/.test(id)) return { id, username: 'founder' + id.slice(-1), avatar: null, bot: false, send: async () => {} };
       if (/^2000000000000000\d\d$/.test(id)) return { id, username: 'member' + id.slice(-2), tag: 'member' + id.slice(-2), send: async p => memberDms.push({ id, p }) };
+      if (/^10000000000000000\d$/.test(id)) return { id, username: 'staff' + id.slice(-1), tag: 'staff' + id.slice(-1), send: async p => memberDms.push({ id, p }) };
       return null;
     } },
   };
@@ -600,6 +601,37 @@ async function main() {
   r = await req('POST', '/api/tickets/bulk', { sid: sessions.FV, body: { ids: [tbulk], action: 'send_template', value: pOnly.id } });
   check('modèles: envoi groupé refusé avec le modèle personnel d\'un autre', r.status === 400, JSON.stringify([r.status, r.body]));
   await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tbulk]);
+
+  // ── Assignment notification: live event + DM to the assignee, never for self-assignment ──
+  const streams = {};
+  for (const name of ['S1T', 'S3T']) {
+    streams[name] = { data: '' };
+    streams[name].req = http.get({ host: '127.0.0.1', port: config.webServerPort, path: '/api/events',
+      headers: { Cookie: 'connect.sid=' + encodeURIComponent('s:' + sign(sessions[name], config.dashboard.sessionSecret)) } },
+      res => res.on('data', c => { streams[name].data += String(c); }));
+  }
+  await new Promise(res => setTimeout(res, 300));
+  const ta = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('12','u12','ca1','open','Attribution')")).insertId;
+  memberDms.length = 0;
+  r = await req('POST', `/api/tickets/${ta}/assignees`, { sid: sessions.FV, body: { user_id: U.S1 } });
+  await new Promise(res => setTimeout(res, 300));
+  const assignDm = memberDms.find(m => m.id === U.S1)?.p?.embeds?.[0]?.data;
+  check('attribution: événement temps réel pour la personne attribuée', r.status === 200 && /event: assigned/.test(streams.S1T.data) && streams.S1T.data.includes(`"ticketId":${ta}`), JSON.stringify([r.status, streams.S1T.data.slice(-300)]));
+  check('attribution: pas d\'événement pour les autres', !/event: assigned/.test(streams.S3T.data), streams.S3T.data.slice(-200));
+  check('attribution: MP Discord à la personne attribuée', assignDm?.author?.name?.includes(`Ticket #${ta} attribué`) && assignDm.description.includes('F'), JSON.stringify(assignDm));
+  memberDms.length = 0;
+  await req('POST', `/api/tickets/${ta}/assignees`, { sid: sessions.FV, body: { user_id: U.F } });
+  await new Promise(res => setTimeout(res, 200));
+  check('attribution: rien quand on s\'attribue soi-même', !memberDms.some(m => m.id === U.F), JSON.stringify(memberDms));
+  r = await req('PATCH', '/api/profile', { sid: sessions.S1T, body: { notifyAssignDm: false } });
+  const ta2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('13','u13','ca2','open','Attribution 2')")).insertId;
+  memberDms.length = 0;
+  streams.S1T.data = '';
+  await req('POST', `/api/tickets/${ta2}/assignees`, { sid: sessions.FV, body: { user_id: U.S1 } });
+  await new Promise(res => setTimeout(res, 300));
+  check('attribution: MP désactivable depuis le profil (le temps réel reste)', r.status === 200 && !memberDms.some(m => m.id === U.S1) && /event: assigned/.test(streams.S1T.data), JSON.stringify([r.status, memberDms]));
+  for (const st of Object.values(streams)) st.req.destroy();
+  await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ta, ta2]]);
 
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });

@@ -93,12 +93,13 @@ router.post('/unsubscribe', guildMiddleware, async (req, res) => {
 });
 
 // Utility — send a push notification to the guild's subscribers allowed to see payload.ticketId
-async function sendPushToGuild(guildId, payload) {
+// (only to `onlyUserId` when given)
+async function sendPushToGuild(guildId, payload, onlyUserId = null) {
   initVapid();
   if (!vapidReady) return;
   const subs = await globalQuery(
-    'SELECT user_id, endpoint, p256dh, auth_key FROM push_subscriptions WHERE guild_id = ?',
-    [guildId]
+    `SELECT user_id, endpoint, p256dh, auth_key FROM push_subscriptions WHERE guild_id = ?${onlyUserId ? ' AND user_id = ?' : ''}`,
+    onlyUserId ? [guildId, onlyUserId] : [guildId]
   ).catch(() => []);
   if (!subs.length) return;
 
@@ -126,3 +127,4 @@ async function sendPushToGuild(guildId, payload) {
 
 module.exports = router;
 module.exports.sendPushToGuild = sendPushToGuild;
+module.exports.sendPushToUser = (guildId, userId, payload) => sendPushToGuild(guildId, payload, userId);

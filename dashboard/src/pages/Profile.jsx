@@ -2,8 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Save, RefreshCw, ShieldCheck, ShieldOff, Loader2, Eye, EyeOff,
   Check, Star, Clock, Trophy, Ticket, Palmtree, Link, X,
-  Bell, BellOff, Monitor, Trash2,
-} from 'lucide-react';
+  Bell, BellOff, Monitor, Trash2, BellRing } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import usePushNotifications from '../hooks/usePushNotifications';
@@ -120,6 +119,7 @@ export default function Profile() {
   const [bannerColor, setBannerColor]     = useState('#6366f1');
   const [photoUrl, setPhotoUrl]           = useState('');
   const [vacation, setVacation]           = useState(false);
+  const [notifyAssignDm, setNotifyAssignDm] = useState(true);
   const [editingPhoto, setEditingPhoto]   = useState(false);
 
   // Push notifications
@@ -174,6 +174,7 @@ export default function Profile() {
         setBannerColor(r.data.profile.bannerColor || '#6366f1');
         setPhotoUrl(r.data.profile.profilePictureUrl || '');
         setVacation(r.data.profile.vacationMode || false);
+        setNotifyAssignDm(r.data.profile.notifyAssignDm !== false);
         setImgError(false);
       })
       .catch(() => toast.error('Erreur chargement du profil'))
@@ -195,6 +196,7 @@ export default function Profile() {
         bannerColor,
         profilePictureUrl: photoUrl || null,
         vacationMode:      vacation,
+        notifyAssignDm,
       });
       toast.success('Profil sauvegardé');
       setEditingPhoto(false);
@@ -509,6 +511,23 @@ export default function Profile() {
                   Mode vacances
                 </p>
                 <p className="text-xs text-ink-4">Indique que tu es absent temporairement</p>
+              </div>
+            </label>
+
+            {/* Assignment DM */}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div onClick={() => setNotifyAssignDm(v => !v)} role="switch" aria-checked={notifyAssignDm}
+                className={`w-10 h-5 rounded-full transition-colors flex-shrink-0
+                           ${notifyAssignDm ? 'bg-primary' : 'bg-white/[0.1]'}`}>
+                <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform
+                                ${notifyAssignDm ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              <div>
+                <p className="text-sm text-ink-2 font-medium flex items-center gap-1.5">
+                  <BellRing size={13} className={notifyAssignDm ? 'text-primary-light' : 'text-ink-4'} />
+                  MP Discord quand on m'attribue un ticket
+                </p>
+                <p className="text-xs text-ink-4">La notification du dashboard et le push restent actifs</p>
               </div>
             </label>
 

@@ -436,6 +436,7 @@ function createManager(db, client, guildId) {
     const tag = user.tag || user.username || user.id;
     await recordEvent(db, { actor: byUser || user, action: 'ticket_assign', ticketId, targetType: 'user', targetId: user.id, details: { assignee: tag } });
     fireTicketWebhook(db, 'ticket_claim', { ticketId, claimedBy: tag }).catch(() => null);
+    require('./assignNotify').notifyAssignee(db, client, gid, ticketId, user, byUser).catch(() => null);
     await db(
       `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 1, 0)
        ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_claimed=tickets_claimed+1`,

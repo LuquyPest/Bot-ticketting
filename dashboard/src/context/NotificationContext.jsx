@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useCallback, useReducer } from 'react';
+import toast from 'react-hot-toast';
 import { useSSE } from '../hooks/useSSE';
 
 const NotifCtx = createContext({
@@ -30,6 +31,12 @@ function NotifListener({ add }) {
         : (data.ownerTag || 'Nouveau ticket'),
       href: data.id ? `/tickets/${data.id}` : null,
     }),
+    // Sent only to the staff member someone else assigned
+    assigned: (data) => {
+      const body = `${data.by} t'a attribué le ticket #${data.ticketId}${data.subject ? ` — ${data.subject}` : ''}`;
+      add({ type: 'assigned', title: 'Ticket attribué', body, href: `/tickets/${data.ticketId}` });
+      toast(body, { icon: '📌', duration: 6000 });
+    },
   });
   return null;
 }

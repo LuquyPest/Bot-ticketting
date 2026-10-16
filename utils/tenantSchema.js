@@ -428,6 +428,8 @@ async function ensureTenantSchema(guildId) {
       // Reply templates: personal or shared (existing ones stay shared) + usage counter
       `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS scope ENUM('personal','shared') NOT NULL DEFAULT 'shared'`,
       `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS use_count INT NOT NULL DEFAULT 0`,
+      // Discord DM when someone else assigns you a ticket (profile setting)
+      `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS notify_assign_dm TINYINT(1) NOT NULL DEFAULT 1`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

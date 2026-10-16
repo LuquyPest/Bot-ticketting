@@ -57,4 +57,12 @@ function broadcast(event, data, guildId) {
   for (const entry of [...set]) send(set, entry, line);
 }
 
-module.exports = { addClient, broadcast };
+// Event for a single user (e.g. "a ticket was assigned to you").
+function sendToUser(guildId, userId, event, data) {
+  const set = clients.get(guildId || '_global');
+  if (!set) return;
+  const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const entry of [...set]) if (entry.userId === userId) send(set, entry, line);
+}
+
+module.exports = { addClient, broadcast, sendToUser };
