@@ -211,6 +211,12 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
+      // Super-admin settings (error alert, plans…), JSON values
+      `CREATE TABLE IF NOT EXISTS sa_settings (
+        k          VARCHAR(64) PRIMARY KEY,
+        v          JSON NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
       // 'bot_removed' (auto-reactivated on re-invite) vs 'admin' (manual suspension)
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS suspension_reason VARCHAR(32) DEFAULT NULL`,
     ];

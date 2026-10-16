@@ -36,7 +36,16 @@ async function resolveAndPin(hostname) {
 
 async function emitWebhook(webhookUrl, event, payload, secret) {
   if (!webhookUrl) return;
+  const body = JSON.stringify({ event, timestamp: new Date().toISOString(), ...payload });
+  const headers = { 'X-TicketBot-Event': event };
+  if (secret) {
+    headers['X-TicketBot-Signature-256'] = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
+  }
+  return safePostJson(webhookUrl, body, headers);
+}
 
+// POST a JSON body to an external HTTPS URL with the SSRF protections (public IP only, DNS pinned).
+async function safePostJson(webhookUrl, body, extraHeaders = {}) {
   let url;
   try { url = new URL(webhookUrl); } catch { return { blocked: true }; }
   if (url.protocol !== 'https:') return { blocked: true };
@@ -47,18 +56,14 @@ async function emitWebhook(webhookUrl, event, payload, secret) {
   const resolvedIp = await resolveAndPin(url.hostname);
   if (!resolvedIp) return { blocked: true };
 
-  const body = JSON.stringify({ event, timestamp: new Date().toISOString(), ...payload });
-
+  if (typeof body !== 'string') body = JSON.stringify(body);
   const headers = {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
     'User-Agent': 'TicketBot/1.0',
-    'X-TicketBot-Event': event,
     'Host': url.hostname,
+    ...extraHeaders,
   };
-  if (secret) {
-    headers['X-TicketBot-Signature-256'] = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
-  }
 
   const options = {
     hostname: resolvedIp,        // pinned — no second DNS resolution at connection time
@@ -96,4 +101,4 @@ async function fireTicketWebhook(db, event, payload) {
   } catch {}
 }
 
-module.exports = { fireTicketWebhook };
+module.exports = { fireTicketWebhook, safePostJson };

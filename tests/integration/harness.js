@@ -1023,6 +1023,35 @@ async function main() {
   const [captured] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'capture-test'");
   check('erreurs: vider selon les filtres uniquement', r.body.deleted === 1 && Number(left.n) === 0 && Number(captured.n) >= 1, JSON.stringify([r.body, left, captured]));
 
+  // ── Error spike alert ──
+  r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.MGR, body: {} });
+  check('alerte erreurs: réservée au superadmin', r.status === 403, r.status);
+  r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAnew, body: { enabled: true, threshold: 0, windowMinutes: 15, discordUserIds: [], webhookUrl: null } });
+  check('alerte erreurs: seuil invalide refusé', r.status === 400, r.status);
+  r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAnew, body: { enabled: true, threshold: 3, windowMinutes: 15, discordUserIds: [U.S1], webhookUrl: 'https://127.0.0.1/hook' } });
+  check('alerte erreurs: réglages enregistrés', r.status === 200 && r.body.threshold === 3, JSON.stringify(r.body));
+  {
+    const alert = app('./utils/errorAlert');
+    await redis.del('alert:errors:cooldown');
+    await globalQuery('DELETE FROM error_logs');
+    let res = await alert.runErrorAlertCheck(fakeClient);
+    check('alerte erreurs: rien sous le seuil', !res.sent && res.count === 0, JSON.stringify(res));
+    for (let i = 0; i < 4; i++) await globalQuery("INSERT INTO error_logs (context, message) VALUES ('pic', ?)", ['erreur ' + i]);
+    memberDms.length = 0;
+    res = await alert.runErrorAlertCheck(fakeClient);
+    const alertDm = memberDms.find(m => m.id === U.S1)?.p?.embeds?.[0];
+    check('alerte erreurs: MP envoyé au-delà du seuil', res.sent?.dm === 1 && alertDm?.description?.includes('4 erreur(s)') && alertDm.description.includes('`pic`'), JSON.stringify([res, alertDm]));
+    check('alerte erreurs: webhook vers une IP privée bloqué (anti-SSRF)', res.sent?.webhook?.blocked === true, JSON.stringify(res.sent?.webhook));
+    res = await alert.runErrorAlertCheck(fakeClient);
+    check('alerte erreurs: une seule alerte par heure', res.skipped === 'cooldown', JSON.stringify(res));
+    r = await req('POST', '/api/sa/settings/error-alert/test', { sid: sessions.SAnew });
+    check('alerte erreurs: envoi de test', r.status === 200 && r.body.dm === 1, JSON.stringify(r.body));
+    await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAnew, body: { enabled: false, threshold: 3, windowMinutes: 15, discordUserIds: [], webhookUrl: null } });
+    await redis.del('alert:errors:cooldown');
+    res = await alert.runErrorAlertCheck(fakeClient);
+    check('alerte erreurs: désactivée → aucun envoi', res.skipped === 'disabled', JSON.stringify(res));
+  }
+
   // ── Multi-instance: limits and creation lock shared through Redis ──
   {
     const rl = app('./utils/rateLimit');

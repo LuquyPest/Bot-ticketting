@@ -801,4 +801,47 @@ router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
   res.json({ ok: true, deleted: r.affectedRows || 0 });
 });
 
+// ─── ERROR ALERT ─────────────────────────────────────────────────────────────
+
+function cleanErrorAlert(body) {
+  const { enabled, threshold, windowMinutes, discordUserIds, webhookUrl } = body || {};
+  if (typeof enabled !== 'boolean') return { error: 'enabled doit être un booléen' };
+  if (!Number.isInteger(threshold) || threshold < 1 || threshold > 10000) return { error: 'Seuil invalide (1 à 10 000)' };
+  if (!Number.isInteger(windowMinutes) || windowMinutes < 1 || windowMinutes > 1440) return { error: 'Fenêtre invalide (1 à 1 440 minutes)' };
+  if (!Array.isArray(discordUserIds) || discordUserIds.length > 10 || !discordUserIds.every(id => /^\d{17,20}$/.test(id)))
+    return { error: 'IDs Discord invalides (10 au plus)' };
+  if (webhookUrl !== null && (typeof webhookUrl !== 'string' || webhookUrl.length > 500 || !/^https:\/\/.{3,}/.test(webhookUrl)))
+    return { error: 'URL de webhook invalide (https uniquement)' };
+  return { value: { enabled, threshold, windowMinutes, discordUserIds: [...new Set(discordUserIds)], webhookUrl } };
+}
+
+// GET /api/sa/settings/error-alert
+router.get('/settings/error-alert', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const { getSetting } = require('../../utils/saSettings');
+  const { DEFAULTS, KEY } = require('../../utils/errorAlert');
+  res.json(await getSetting(KEY, DEFAULTS));
+});
+
+// PUT /api/sa/settings/error-alert
+router.put('/settings/error-alert', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const { value, error } = cleanErrorAlert(req.body);
+  if (error) return res.status(400).json({ error });
+  const { setSetting } = require('../../utils/saSettings');
+  await setSetting(require('../../utils/errorAlert').KEY, value);
+  res.json(value);
+});
+
+// POST /api/sa/settings/error-alert/test — sends a test alert with the saved settings
+router.post('/settings/error-alert/test', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const { getSetting } = require('../../utils/saSettings');
+  const alert = require('../../utils/errorAlert');
+  const settings = await getSetting(alert.KEY, alert.DEFAULTS);
+  if (!settings.discordUserIds.length && !settings.webhookUrl) return res.status(400).json({ error: 'Aucun destinataire configuré' });
+  const results = await alert.sendAlert(req.app.locals.client, settings, await alert.errorSummary(settings.windowMinutes), true);
+  res.json({ ok: true, dm: results.dm, webhook: results.webhook });
+});
+
 module.exports = router;

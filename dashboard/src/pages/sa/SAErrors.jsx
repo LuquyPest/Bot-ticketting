@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { RefreshCw, Loader2, Search, Trash2, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { RefreshCw, Loader2, Search, Trash2, ChevronDown, ChevronRight, X, BellRing, Send } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/confirmToast';
@@ -19,6 +19,89 @@ function hourlySeries(rows) {
     out.push({ label: `${d.getHours()}h`, n: byAgo.get(ago) || 0 });
   }
   return out;
+}
+
+// Error spike alert (Discord DM and/or webhook), checked every 5 minutes by the bot.
+function AlertSettings() {
+  const [open, setOpen] = useState(false);
+  const [cfg, setCfg] = useState(null);
+  const [ids, setIds] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open || cfg) return;
+    api.get('/sa/settings/error-alert').then(r => { setCfg(r.data); setIds(r.data.discordUserIds.join(', ')); })
+      .catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
+  }, [open, cfg]);
+
+  const payload = () => ({
+    ...cfg,
+    threshold: Number(cfg.threshold), windowMinutes: Number(cfg.windowMinutes),
+    discordUserIds: ids.split(/[\s,;]+/).filter(Boolean),
+    webhookUrl: cfg.webhookUrl?.trim() || null,
+  });
+  const save = async () => {
+    setBusy(true);
+    try { const r = await api.put('/sa/settings/error-alert', payload()); setCfg(r.data); toast.success('Alerte enregistrée'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const test = async () => {
+    setBusy(true);
+    try {
+      await api.put('/sa/settings/error-alert', payload());
+      const r = await api.post('/sa/settings/error-alert/test');
+      const wh = r.data.webhook ? (r.data.webhook.status >= 200 && r.data.webhook.status < 300 ? 'webhook OK' : 'webhook en échec') : null;
+      toast.success([`${r.data.dm} MP envoyé(s)`, wh].filter(Boolean).join(' · '));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const input = 'w-full px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-xs text-ink-1 outline-hidden focus:border-primary/50';
+
+  return (
+    <div className="glass-dark rounded-2xl border border-overlay/8">
+      <button onClick={() => setOpen(o => !o)} className="w-full px-5 py-3.5 flex items-center gap-2.5 text-left">
+        <BellRing size={15} className="text-red-400" />
+        <span className="flex-1">
+          <span className="text-sm font-semibold text-ink-1">Alerte en cas de pic d'erreurs</span>
+          <span className="block text-[11px] text-ink-4">MP Discord et/ou webhook quand les erreurs dépassent un seuil (une alerte par heure au plus)</span>
+        </span>
+        {open ? <ChevronDown size={14} className="text-ink-4" /> : <ChevronRight size={14} className="text-ink-4" />}
+      </button>
+      {open && (cfg === null ? (
+        <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-ink-3" /></div>
+      ) : (
+        <div className="px-5 pb-5 space-y-3 border-t border-overlay/6 pt-4">
+          <label className="flex items-center gap-2 text-xs text-ink-2 cursor-pointer">
+            <input type="checkbox" checked={cfg.enabled} onChange={e => setCfg(c => ({ ...c, enabled: e.target.checked }))} />
+            Alerte activée
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1 text-[11px] text-ink-3">Seuil (nombre d'erreurs)
+              <input type="number" min={1} value={cfg.threshold} onChange={e => setCfg(c => ({ ...c, threshold: e.target.value }))} className={input} />
+            </label>
+            <label className="space-y-1 text-[11px] text-ink-3">Sur une fenêtre de (minutes)
+              <input type="number" min={1} value={cfg.windowMinutes} onChange={e => setCfg(c => ({ ...c, windowMinutes: e.target.value }))} className={input} />
+            </label>
+          </div>
+          <label className="block space-y-1 text-[11px] text-ink-3">IDs Discord à prévenir en MP (séparés par des virgules)
+            <input value={ids} onChange={e => setIds(e.target.value)} placeholder="123456789012345678" className={`${input} font-mono`} />
+          </label>
+          <label className="block space-y-1 text-[11px] text-ink-3">URL de webhook (Discord ou autre, https)
+            <input value={cfg.webhookUrl || ''} onChange={e => setCfg(c => ({ ...c, webhookUrl: e.target.value }))} placeholder="https://discord.com/api/webhooks/…" className={input} />
+          </label>
+          <div className="flex gap-2 justify-end">
+            <button onClick={test} disabled={busy} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-ink-2 border border-overlay/8 hover:bg-overlay/5 disabled:opacity-50">
+              <Send size={12} /> Envoyer un test
+            </button>
+            <button onClick={save} disabled={busy} className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary-light disabled:opacity-50">
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ErrorRow({ e, onDelete }) {
@@ -105,6 +188,8 @@ export default function SAErrors() {
           <RefreshCw size={15} />
         </button>
       </div>
+
+      <AlertSettings />
 
       {!data ? (
         <div className="flex justify-center py-16"><Loader2 size={20} className="animate-spin text-ink-3" /></div>

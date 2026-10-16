@@ -104,6 +104,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Messages programmés | Envoi différé à une date/heure précise |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
+| Alerte d'erreurs | Toutes les 5 min : prévient le super-admin si les erreurs dépassent le seuil configuré |
 | Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et des transcripts au-delà de la durée fixée par le super-admin |
 
 ---
@@ -385,7 +386,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 | **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
 | **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min), avec déblocage manuel — superadmin uniquement |
-| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement |
+| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement. **Alerte** configurable : au-delà d'un seuil d'erreurs sur une fenêtre donnée, MP Discord aux IDs choisis et/ou webhook (embed pour un webhook Discord, JSON sinon), une alerte par heure au plus, bouton de test |
 
 Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les réponses HTTP 5xx (avec la route), les échecs des tâches planifiées et les rejets non gérés. Les erreurs Discord attendues (membre aux MP fermés, interaction expirée ou déjà traitée, message déjà supprimé) sont ignorées. Un même message n'est enregistré qu'une fois par minute (60 entrées / min au plus) ; la purge de rétention supprime les entrées de plus de 30 jours.
 

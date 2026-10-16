@@ -19,6 +19,8 @@ const VERSIONS = [
       { type: 'impr', text: 'Les événements automatiques (fusion, fermeture par le membre) apparaissent comme une ligne discrète dans l\'historique, distincte des notes du staff' },
       { type: 'impr', text: 'Journal d\'erreurs : les erreurs Discord attendues (MP fermés, interaction expirée…) ne sont plus enregistrées' },
       { type: 'tech', text: 'Limiteurs, anti-flood des MP, verrou de création de ticket et temps réel partagés via Redis (survivent aux redémarrages, prêts pour plusieurs instances)' },
+      { type: 'tech', text: 'Dépendances à jour : Vite 8, recharts 3, lucide-react 1, connect-redis 9 ; test de fumée du dashboard en CI' },
+      { type: 'new',  text: 'Panel super-admin : alerte en cas de pic d\'erreurs (MP Discord et/ou webhook)' },
     ]
   },
   {
