@@ -410,9 +410,13 @@ export default function TicketDetail() {
   const changeVisibility = async (gradeId) => {
     setSavingVisibility(true);
     try {
-      await api.patch(`/tickets/${id}/visibility`, { visibility_grade_id: gradeId ? parseInt(gradeId) : null });
+      const { data } = await api.patch(`/tickets/${id}/visibility`, { visibility_grade_id: gradeId ? parseInt(gradeId) : null });
       setTicket(t => ({ ...t, visibility_grade_id: gradeId ? parseInt(gradeId) : null }));
-      toast.success('Visibilité mise à jour');
+      if (data.channelSync === 'missing_permissions') {
+        toast.error('Visibilité mise à jour sur le dashboard, mais le salon Discord n\'a pas pu être modifié : le bot n\'a pas la permission « Gérer les rôles ».', { duration: 8000 });
+      } else {
+        toast.success('Visibilité mise à jour');
+      }
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setSavingVisibility(false); }
   };
@@ -1050,7 +1054,7 @@ export default function TicketDetail() {
               </select>
               {ticket.visibility_grade_id && (
                 <p className="text-[10px] text-amber-400/80 mt-2">
-                  Ticket restreint — visible uniquement par certains grades.
+                  Ticket restreint — visible uniquement par certains grades, sur le dashboard comme sur Discord.
                 </p>
               )}
             </div>

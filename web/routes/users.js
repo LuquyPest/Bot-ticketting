@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { logAudit } = require('../../utils/gradePermissions');
 const { canAddAgent, limitMessage } = require('../../utils/limits');
+const { scheduleResync } = require('../../utils/channelVisibility');
 
 // A non-fondateur may only hand out grades whose permissions they already hold.
 async function gradeExceedsOwnPerms(req, gradeId) {
@@ -71,6 +72,7 @@ router.patch('/:id/role', async (req, res) => {
       { role }, req.guildDb
     );
 
+    scheduleResync(req.guildDb, req.app.locals.client, req.guildId);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -132,6 +134,7 @@ router.post('/:id/grades', async (req, res) => {
       { grade_id: grade.id, grade_name: grade.name }, req.guildDb
     );
 
+    scheduleResync(req.guildDb, req.app.locals.client, req.guildId);
     res.json({ ok: true, grade: { id: grade.id, name: grade.name, color: grade.color } });
   } catch (err) {
     console.error(err);
@@ -160,6 +163,7 @@ router.delete('/:id/grades/:gradeId', async (req, res) => {
       { grade_id: parseInt(req.params.gradeId), grade_name: grade?.name }, req.guildDb
     );
 
+    scheduleResync(req.guildDb, req.app.locals.client, req.guildId);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

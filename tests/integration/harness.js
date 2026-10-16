@@ -424,6 +424,47 @@ async function main() {
   const [fo] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [U.F]);
   check('fondateur jamais modifié par la synchro', fo.role === 'fondateur', JSON.stringify(fo));
 
+  // ── Restricted ticket → Discord channel hidden from the staff roles ──
+  await mk('FV', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
+  const bits = v => (Array.isArray(v) ? v.reduce((m, f) => m | BigInt(f), 0n) : BigInt(v ?? 0));
+  const VIS_CH = '900000000000000077';
+  const visCh = mkChannel(VIS_CH, G);
+  visCh.failPerms = false;
+  visCh.permissionOverwrites = {
+    cache: new Map([['555000000000000000', { id: '555000000000000000', type: 1, allow: { bitfield: 1024n }, deny: { bitfield: 0n } }]]),
+    set: async function (list) {
+      if (visCh.failPerms) throw Object.assign(new Error('Missing Permissions'), { code: 50013 });
+      this.cache = new Map(list.map(o => [o.id, { id: o.id, type: o.type, allow: { bitfield: bits(o.allow) }, deny: { bitfield: bits(o.deny) } }]));
+    },
+  };
+  channels.set(VIS_CH, visCh);
+  const VIEW = 1024n;
+  const canView = id => { const o = visCh.permissionOverwrites.cache.get(id); return o ? ((o.allow.bitfield & VIEW) ? 'allow' : (o.deny.bitfield & VIEW) ? 'deny' : 'none') : 'absent'; };
+  const tv = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('7','u7',?,'open','vis')", [VIS_CH])).insertId;
+  r = await req('PATCH', `/api/tickets/${tv}/visibility`, { sid: sessions.FV, body: { visibility_grade_id: g2 } });
+  check('visibilité Discord: rôles staff masqués, fondateur autorisé', r.status === 200 && r.body.channelSync === 'ok'
+    && canView('800000000000000001') === 'deny' && canView('800000000000000003') === 'deny' && canView(U.F) === 'allow' && canView(G) === 'deny',
+    JSON.stringify([r.body, [...visCh.permissionOverwrites.cache.keys()]]));
+  check('visibilité Discord: staff hors grade non autorisé', canView('400000000000000002') === 'absent' && canView(U.S2) === 'absent', JSON.stringify([...visCh.permissionOverwrites.cache.keys()]));
+  check('visibilité Discord: permission ajoutée à la main conservée', canView('555000000000000000') === 'allow');
+  const s2HadG1 = (await db('SELECT 1 FROM user_grades WHERE user_id = ? AND grade_id = ?', [U.S2, g1])).length > 0;
+  await db('INSERT IGNORE INTO user_grades (user_id, grade_id, assigned_by_id, assigned_by_tag) VALUES (?, ?, "x", "x")', [U.S2, g1]);
+  r = await req('POST', `/api/users/${U.S2}/grades`, { sid: sessions.FV, body: { grade_id: g2 } });
+  await new Promise(res => setTimeout(res, 200));
+  check('visibilité Discord: grade attribué → salon ouvert au membre', r.status === 200 && canView(U.S2) === 'allow', JSON.stringify([r.status, r.body, canView(U.S2)]));
+  r = await req('DELETE', `/api/users/${U.S2}/grades/${g2}`, { sid: sessions.FV });
+  await new Promise(res => setTimeout(res, 200));
+  check('visibilité Discord: grade retiré → salon refermé', canView(U.S2) === 'absent', canView(U.S2));
+  if (!s2HadG1) await db('DELETE FROM user_grades WHERE user_id = ? AND grade_id = ?', [U.S2, g1]);
+  visCh.failPerms = true;
+  r = await req('PATCH', `/api/tickets/${tv}/visibility`, { sid: sessions.FV, body: { visibility_grade_id: null } });
+  check('visibilité Discord: permission manquante signalée sans erreur', r.status === 200 && r.body.channelSync === 'missing_permissions', JSON.stringify(r.body));
+  visCh.failPerms = false;
+  r = await req('PATCH', `/api/tickets/${tv}/visibility`, { sid: sessions.FV, body: { visibility_grade_id: null } });
+  check('visibilité Discord: restriction levée → rôles staff rétablis', r.body.channelSync === 'ok' && canView('800000000000000001') === 'allow' && canView('800000000000000003') === 'allow' && canView(U.F) === 'absent' && canView('555000000000000000') === 'allow',
+    JSON.stringify([...visCh.permissionOverwrites.cache.entries()].map(([k, o]) => [k, String(o.allow.bitfield), String(o.deny.bitfield)])));
+  await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tv]);
+
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
   r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketCategoryId: CAT_OPEN, waitingCategoryId: CAT_WAIT, inProgressCategoryId: null } });

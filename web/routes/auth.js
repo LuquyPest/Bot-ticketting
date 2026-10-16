@@ -179,7 +179,7 @@ router.get('/invite-url', (req, res) => {
   // VIEW + SEND + MANAGE_CHANNELS + HISTORY + EMBED + ATTACH + VIEW_AUDIT_LOG (who invited the bot → founder)
   // + MENTION_EVERYONE (lets "urgent" ping support roles that are not mentionable; mentions are
   // otherwise disabled by the client's default allowedMentions, so @everyone can never be triggered)
-  url.searchParams.set('permissions', '248976');
+  url.searchParams.set('permissions', '268684432');
   if (guildId) {
     url.searchParams.set('guild_id', guildId);
     url.searchParams.set('disable_guild_select', 'true');

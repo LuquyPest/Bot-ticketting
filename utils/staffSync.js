@@ -4,6 +4,7 @@
 // Fondateurs and accounts managed by hand are never touched.
 const { parseJsonField } = require('./jsonField');
 const { recordEvent } = require('./audit');
+const { scheduleResync } = require('./channelVisibility');
 const { canAddAgent } = require('./limits');
 
 const SUPPORT_PERMS = ['view_tickets', 'reply_ticket', 'claim_ticket', 'close_ticket', 'manage_participants'];
@@ -63,6 +64,7 @@ async function syncDiscordStaff(client, db, guildId, user) {
       await db('DELETE FROM user_grades WHERE user_id = ? AND grade_id IN (?)',
         [user.id, [cfg?.support_grade_id, cfg?.chief_grade_id].filter(Boolean).concat(0)]);
       await recordEvent(db, { actor: null, action: 'staff_access_revoked', targetType: 'user', targetId: user.id, details: { user: user.username } });
+      scheduleResync(db, client, guildId);
       return 'nouveau';
     }
     return row?.role || null;
@@ -84,14 +86,16 @@ async function syncDiscordStaff(client, db, guildId, user) {
     [user.id, user.username, user.avatar || null]
   );
   // Promotion/demotion between support and chief: keep only the grade matching the current role
-  await db('DELETE FROM user_grades WHERE user_id = ? AND grade_id IN (?) AND grade_id <> ?', [user.id, [supportId, chiefId], gradeId]);
-  await db(
+  const demoted = await db('DELETE FROM user_grades WHERE user_id = ? AND grade_id IN (?) AND grade_id <> ?', [user.id, [supportId, chiefId], gradeId]);
+  const promoted = await db(
     `INSERT IGNORE INTO user_grades (user_id, grade_id, assigned_by_id, assigned_by_tag) VALUES (?, ?, 'discord', 'Rôle Discord')`,
     [user.id, gradeId]
   );
   if (!wasStaff) {
     await recordEvent(db, { actor: null, action: 'staff_access_granted', targetType: 'user', targetId: user.id, details: { user: user.username, level } });
   }
+  // Restricted ticket channels follow grades: open/close them to this member
+  if (demoted.affectedRows || promoted.affectedRows) scheduleResync(db, client, guildId);
   return 'support';
 }
 

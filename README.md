@@ -236,8 +236,8 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 2. Onglet **Bot** → copier le Token
 3. Activer : **Server Members Intent**, **Message Content Intent**
 4. **OAuth2** → ajouter l'URL callback → copier le **Client Secret**
-5. Le lien d'invitation est généré par le dashboard (sélection du serveur). Permissions demandées (`248976`) :  
-   `Manage Channels` · `View Channel` · `Send Messages` · `Read Message History` · `Embed Links` · `Attach Files` · `View Audit Log` (identifier qui a invité le bot) · `Mention Everyone` (pinger les rôles support en « Urgent »). Le bot ne mentionne que les utilisateurs par défaut : `@everyone` ne peut jamais être déclenché.
+5. Le lien d'invitation est généré par le dashboard (sélection du serveur). Permissions demandées (`268684432`) :  
+   `Manage Channels` · `Manage Roles` (masquer le salon d'un ticket restreint à certains grades) · `View Channel` · `Send Messages` · `Read Message History` · `Embed Links` · `Attach Files` · `View Audit Log` (identifier qui a invité le bot) · `Mention Everyone` (pinger les rôles support en « Urgent »). Le bot ne mentionne que les utilisateurs par défaut : `@everyone` ne peut jamais être déclenché.
 
 ---
 
@@ -287,6 +287,8 @@ Un `support` n'a aucun droit sans grade. Permissions de grade appliquées par l'
 | `view_audit` | Consulter le journal d'audit |
 
 Un ticket restreint à un grade n'est visible (liste, détail, recherche, SSE, push, transcripts) que par ce grade, ses grades parents et le fondateur.
+
+Sur Discord, le salon d'un ticket restreint est masqué aux rôles support / chef support et ouvert individuellement aux membres du staff autorisés (fondateurs et grades concernés). Les droits du salon sont recalculés quand la restriction est levée et quand les grades, leurs permissions ou les comptes du staff changent. Le bot a besoin de la permission **Gérer les rôles** : sans elle, la restriction ne s'applique qu'au dashboard et un avertissement est affiché (pour un serveur invité avant cette version, réinviter le bot ou lui ajouter la permission).
 
 ### 2FA pour les comptes dashboard
 

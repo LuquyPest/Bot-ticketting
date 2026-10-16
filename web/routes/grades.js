@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { PERMISSIONS, logAudit } = require('../../utils/gradePermissions');
+const { syncTicketChannel, scheduleResync } = require('../../utils/channelVisibility');
 
 function canManageGrades(req) {
   return req.userIsFondateur || req.userPermissions.has('manage_grades');
@@ -137,6 +138,7 @@ router.patch('/:id', async (req, res) => {
       req.body, req.guildDb
     );
 
+    scheduleResync(req.guildDb, req.app.locals.client, req.guildId);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -169,6 +171,7 @@ router.put('/:id/permissions', async (req, res) => {
       { permissions: validPerms }, req.guildDb
     );
 
+    scheduleResync(req.guildDb, req.app.locals.client, req.guildId);
     res.json({ ok: true, permissions: validPerms });
   } catch (err) {
     console.error(err);
@@ -185,6 +188,7 @@ router.delete('/:id', async (req, res) => {
     if (!grade) return res.status(404).json({ error: 'Grade introuvable' });
 
     await req.guildDb('UPDATE grades SET parent_id = ? WHERE parent_id = ?', [grade.parent_id, gradeId]);
+    const unrestricted = await req.guildDb("SELECT id, channel_id FROM tickets WHERE status = 'open' AND visibility_grade_id = ?", [gradeId]);
     await req.guildDb('UPDATE tickets SET visibility_grade_id = NULL WHERE visibility_grade_id = ?', [gradeId]);
     await req.guildDb('DELETE FROM grades WHERE id = ?', [gradeId]);
 
@@ -194,6 +198,12 @@ router.delete('/:id', async (req, res) => {
       { name: grade.name }, req.guildDb
     );
 
+    // Its tickets are public again (channel shown to the support roles); the hierarchy changed too
+    const client = req.app.locals.client;
+    (async () => {
+      for (const t of unrestricted) await syncTicketChannel(req.guildDb, client, req.guildId, { ...t, visibility_grade_id: null });
+      scheduleResync(req.guildDb, client, req.guildId);
+    })().catch(() => null);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

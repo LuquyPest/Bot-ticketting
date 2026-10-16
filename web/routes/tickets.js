@@ -3,6 +3,7 @@ const router = express.Router();
 const { createManager } = require('../../utils/ticketManager');
 const { broadcast } = require('../../utils/sse');
 const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, logAudit } = require('../../utils/gradePermissions');
+const { syncTicketChannel } = require('../../utils/channelVisibility');
 const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
@@ -622,7 +623,9 @@ router.patch('/:id/visibility', async (req, res) => {
       { visibility_grade_id: gradeId }, req.guildDb
     );
     broadcast('ticket', { id: ticket.id, visibility_grade_id: gradeId }, req.guildId);
-    res.json({ ok: true, visibility_grade_id: gradeId });
+    // Hide / show the Discord channel accordingly
+    const channelSync = await syncTicketChannel(req.guildDb, req.app.locals.client, req.guildId, { ...ticket, visibility_grade_id: gradeId });
+    res.json({ ok: true, visibility_grade_id: gradeId, channelSync: channelSync.ok ? 'ok' : channelSync.reason });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
