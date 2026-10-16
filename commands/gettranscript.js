@@ -15,7 +15,7 @@ module.exports = {
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db))) return;
+    if (!(await ensureSupport(interaction, client, db, 'view_transcripts'))) return;
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 

@@ -390,25 +390,27 @@ Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les rép
 
 ## Commandes Discord
 
-Toutes les commandes sont réservées au staff (rôles Discord Support ou Chef Support configurés dans les paramètres) et utilisables uniquement sur un serveur actif. `/gettranscript` et `/oldtickets` masquent les tickets restreints à un grade que l'utilisateur ne peut pas voir.
+Les commandes sont réservées au staff et utilisables uniquement sur un serveur actif. Elles appliquent les mêmes règles que le dashboard : le compte (synchronisé depuis les rôles Discord support / chef support, ou géré depuis **Équipe**) doit être `support` ou `fondateur`, et un `support` doit avoir la **permission de grade** indiquée. Dans le salon d'un ticket restreint à un grade, seuls les membres autorisés à le voir peuvent agir. Les fondateurs ont tous les droits, même sans rôle Discord. `/gettranscript` et `/oldtickets` masquent les tickets restreints que l'utilisateur ne peut pas voir.
 
-| Commande | Rôle | Description |
-|----------|------|-------------|
-| `/reply` | Support | Répond au membre avec ton pseudo (texte et/ou fichier) |
-| `/areply` | Support | Répond anonymement (affiché comme "Support") |
-| `/claim` | Support | S'ajoute aux personnes assignées au ticket (plusieurs personnes possibles) |
-| `/unclaim` | Support | Se retire des personnes assignées |
-| `/priority` | Support | Définit la priorité : Faible / Normal / Urgent |
-| `/adduser` | Support | Ajoute un participant lié au ticket en DM |
-| `/removeuser` | Support | Retire un participant |
-| `/rename` | Support | Change le titre du ticket — le salon Discord porte toujours le même nom que le titre |
-| `/moveticket` | Support | Change l'étape du ticket : Ouvert / En attente / En cours (déplace le salon dans la catégorie associée) |
-| `/reopen` | Support | Réouvre le dernier ticket fermé d'un utilisateur |
-| `/oldtickets` | Support | Historique paginé des tickets d'un utilisateur |
-| `/gettranscript` | Support | Génère un lien temporaire (10 min) vers un transcript HTML |
-| `/note` | Support | Ajoute une note interne (non envoyée au membre, exclue des transcripts) |
-| `/blacklist` | Chef Support | Gestion de la liste noire (add / remove / list) |
-| `/staffstats` | Chef Support | Statistiques détaillées par agent |
+| Commande | Permission | Description |
+|----------|------------|-------------|
+| `/reply` | `reply_ticket` | Répond au membre avec ton pseudo (texte et/ou fichier) |
+| `/areply` | `reply_ticket` | Répond anonymement (affiché comme "Support") |
+| `/claim` | `claim_ticket` | S'ajoute aux personnes assignées au ticket (plusieurs personnes possibles) |
+| `/unclaim` | `claim_ticket` | Se retire des personnes assignées |
+| `/priority` | `reply_ticket` | Définit la priorité : Faible / Normal / Urgent |
+| `/adduser` | `manage_participants` | Ajoute un participant lié au ticket en DM |
+| `/removeuser` | `manage_participants` | Retire un participant |
+| `/rename` | `reply_ticket` | Change le titre du ticket — le salon Discord porte toujours le même nom que le titre |
+| `/moveticket` | `reply_ticket` | Change l'étape du ticket : Ouvert / En attente / En cours (déplace le salon dans la catégorie associée) |
+| `/reopen` | `close_ticket` | Réouvre le dernier ticket fermé d'un utilisateur |
+| `/oldtickets` | `view_tickets` | Historique paginé des tickets d'un utilisateur |
+| `/gettranscript` | `view_transcripts` | Génère un lien temporaire (10 min) vers un transcript HTML |
+| `/note` | `reply_ticket` | Ajoute une note interne (non envoyée au membre, exclue des transcripts) |
+| `/blacklist` | Rôle Chef Support | Gestion de la liste noire (add / remove / list) |
+| `/staffstats` | Rôle Chef Support | Statistiques détaillées par agent |
+
+Boutons du salon : **Transcript** demande `view_transcripts`, **Fermer** demande `close_ticket`.
 
 ### Topic du salon Discord
 

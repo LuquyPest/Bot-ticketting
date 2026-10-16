@@ -14,7 +14,7 @@ module.exports = {
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db))) return;
+    if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {

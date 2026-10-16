@@ -14,7 +14,7 @@ module.exports = {
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db))) return;
+    if (!(await ensureSupport(interaction, client, db, 'close_ticket'))) return;
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -28,6 +28,10 @@ module.exports = {
     const ticket = await tm.getLastClosedTicketByOwnerId(userId);
     if (!ticket) {
       return interaction.editReply({ content: 'Aucun ticket fermé trouvé pour cet utilisateur.' });
+    }
+    const { discordStaffCanSee } = require('../utils/gradePermissions');
+    if (!(await discordStaffCanSee(db, interaction.user.id, ticket.visibility_grade_id))) {
+      return interaction.editReply({ content: '❌ Ce ticket est réservé à certains grades.' });
     }
 
     const channel = await tm.reopenTicket(ticket, interaction.user);

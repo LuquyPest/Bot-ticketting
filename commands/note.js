@@ -20,7 +20,7 @@ module.exports = {
     if (!cfg.internal_notes_enabled) {
       return interaction.reply({ content: 'Les notes internes ne sont pas activées sur ce serveur.', flags: MessageFlags.Ephemeral });
     }
-    if (!(await ensureSupport(interaction, client, db))) return;
+    if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const tm = createManager(db, client, interaction.guildId);
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);

@@ -21,7 +21,7 @@ module.exports = {
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db))) return;
+    if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const cfg = await tm.getGuildConfig(db);
     const cooldown = ((cfg.reply_rate_limit_seconds ?? client.config?.replyRateLimitSeconds ?? 3)) * 1000;

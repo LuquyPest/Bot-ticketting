@@ -16,7 +16,7 @@ module.exports = {
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db))) return;
+    if (!(await ensureSupport(interaction, client, db, 'view_tickets'))) return;
 
     const userId = interaction.options.getString('userid', true);
     const tickets = await tm.getOldTicketsByUserId(userId, interaction.user.id);

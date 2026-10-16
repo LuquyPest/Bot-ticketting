@@ -465,6 +465,37 @@ async function main() {
     JSON.stringify([...visCh.permissionOverwrites.cache.entries()].map(([k, o]) => [k, String(o.allow.bitfield), String(o.deny.bitfield)])));
   await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tv]);
 
+  // ── Discord commands follow grade permissions and ticket visibility ──
+  const CMD_CH = '900000000000000078';
+  channels.set(CMD_CH, mkChannel(CMD_CH, G));
+  const tc = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('8','u8',?,'open','cmd')", [CMD_CH])).insertId;
+  const runCmd = async (name, userId, channelId = CMD_CH) => {
+    const out = {};
+    const interaction = {
+      guildId: G, channelId, guild: guildObj, channel: channels.get(channelId),
+      user: { id: userId, username: 'u' + userId.slice(-2), tag: 'u' + userId.slice(-2), avatar: null },
+      options: { getString: () => null, getAttachment: () => null, getUser: () => null, getInteger: () => null },
+      reply: async p => { out.reply = p; }, deferReply: async () => {}, editReply: async p => { out.edit = p; },
+      followUp: async p => { out.follow = p; },
+    };
+    await app(`./commands/${name}`).execute(fakeClient, interaction);
+    return out;
+  };
+  const assigned = async uid => (await db('SELECT 1 FROM ticket_assignees WHERE ticket_id = ? AND user_id = ?', [tc, uid])).length > 0;
+  let out = await runCmd('claim', U.S1); // S1: grade without claim_ticket
+  check('commande Discord: permission de grade manquante refusée', /permission « Prendre en charge »/.test(out.reply?.content) && !(await assigned(U.S1)), JSON.stringify(out));
+  out = await runCmd('claim', '400000000000000003'); // no staff role nor account
+  check('commande Discord: non-staff refusé', /Permission refusée/.test(out.reply?.content), JSON.stringify(out));
+  out = await runCmd('claim', '400000000000000002'); // Discord chief role → Chef support grade
+  check('commande Discord: grade autorisé accepté', await assigned('400000000000000002'), JSON.stringify(out));
+  out = await runCmd('claim', U.F);
+  check('commande Discord: fondateur sans rôle Discord accepté', await assigned(U.F), JSON.stringify(out));
+  await db('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [g2, tc]);
+  await db('DELETE FROM ticket_assignees WHERE ticket_id = ?', [tc]);
+  out = await runCmd('claim', '400000000000000002');
+  check('commande Discord: ticket restreint refusé hors grade', /réservé à certains grades/.test(out.reply?.content) && !(await assigned('400000000000000002')), JSON.stringify(out));
+  await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tc]);
+
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
   r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketCategoryId: CAT_OPEN, waitingCategoryId: CAT_WAIT, inProgressCategoryId: null } });

@@ -23,6 +23,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Panel super-admin : modification des limites par serveur (tickets, staff, conservation des transcripts)' },
       { type: 'new',  text: 'Panel super-admin : page « Erreurs » alimentée par toutes les erreurs du bot, du dashboard et des automatismes' },
       { type: 'fix',  text: 'Un ticket restreint à un grade masque aussi son salon Discord : seuls les membres du staff autorisés le voient (permission « Gérer les rôles » requise)' },
+      { type: 'fix',  text: 'Les commandes et boutons Discord (/reply, /claim, /adduser, Fermer, Transcript…) vérifient maintenant les permissions de grade et la visibilité du ticket, comme le dashboard' },
     ]
   },
   {

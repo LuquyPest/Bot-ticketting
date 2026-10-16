@@ -149,7 +149,11 @@ module.exports = {
           return interaction.showModal(modal);
         }
 
-        if (!(await ensureSupport(interaction, client, db))) return;
+        // Staff buttons: same grade permissions as the matching commands
+        const buttonPermission = interaction.customId === 'ticket_transcript' ? 'view_transcripts'
+          : interaction.customId.startsWith('ticket_close_with_transcript') ? 'close_ticket'
+          : 'view_tickets';
+        if (!(await ensureSupport(interaction, client, db, buttonPermission))) return;
 
         if (interaction.customId.startsWith('oldtickets_')) {
           const parts = interaction.customId.split('_');
