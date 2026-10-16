@@ -2,17 +2,18 @@ const express = require('express');
 const router = express.Router();
 const { createManager } = require('../../utils/ticketManager');
 const { sanitizeChannelName } = require('../../utils/sanitize');
-const { ChannelType } = require('discord.js');
 const { broadcast } = require('../../utils/sse');
-const { getVisibleGradeIds, visibilityFilter, logAudit } = require('../../utils/gradePermissions');
+const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, logAudit } = require('../../utils/gradePermissions');
 const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
+const VALID_STAGE    = new Set(['open', 'waiting', 'in_progress']);
+const SNOWFLAKE_RE   = /^\d{17,20}$/;
+const DATE_RE        = /^\d{4}-\d{2}-\d{2}$/;
 
 const { csvCell: csvEscape } = require('../../utils/csv');
 const { parseJsonField } = require('../../utils/jsonField');
-const { fetchGuildChannel } = require('../../utils/discordGuard');
 const { escapeHtml } = require('../../utils/transcript');
 
 async function checkAccess(req, ticketId) {
@@ -43,6 +44,32 @@ async function loadTicket(req, res, ...perms) {
   return ticket;
 }
 
+// Adds `assignees: [{ user_id, username, avatar }]` to each ticket row.
+async function attachAssignees(req, tickets) {
+  if (!tickets.length) return tickets;
+  const rows = await req.guildDb(
+    `SELECT a.ticket_id, a.user_id, COALESCE(u.username, a.user_id) AS username, u.avatar
+     FROM ticket_assignees a LEFT JOIN dashboard_users u ON u.user_id = a.user_id
+     WHERE a.ticket_id IN (?) ORDER BY a.assigned_at ASC`,
+    [tickets.map(t => t.id)]
+  );
+  const byTicket = new Map();
+  for (const r of rows) {
+    if (!byTicket.has(r.ticket_id)) byTicket.set(r.ticket_id, []);
+    byTicket.get(r.ticket_id).push({ user_id: r.user_id, username: r.username, avatar: r.avatar });
+  }
+  return tickets.map(t => ({ ...t, assignees: byTicket.get(t.id) || [] }));
+}
+
+// A staff member who can be assigned to `ticket` (dashboard support/fondateur allowed to see it), or null.
+async function findAssignableStaff(req, userId, ticket) {
+  if (!SNOWFLAKE_RE.test(String(userId))) return null;
+  const [u] = await req.guildDb("SELECT user_id, username FROM dashboard_users WHERE user_id = ? AND role IN ('support', 'fondateur')", [String(userId)]);
+  if (!u) return null;
+  if (ticket && !(await canUserSeeTicket(req.guildDb, u.user_id, ticket.visibility_grade_id))) return null;
+  return { id: u.user_id, username: u.username, tag: u.username };
+}
+
 function getManager(req) {
   return createManager(req.guildDb, req.app.locals.client, req.guildId);
 }
@@ -50,9 +77,16 @@ function getManager(req) {
 router.get('/', async (req, res) => {
   if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const { status, priority, subject } = req.query;
+    const str = k => (typeof req.query[k] === 'string' ? req.query[k] : '');
+    const status = str('status'), priority = str('priority'), subject = str('subject').slice(0, 100);
+    const stage = str('stage'), claimed = str('claimed'), dateFrom = str('dateFrom'), dateTo = str('dateTo');
+    const assignee = str('assignee') === 'me' ? req.session.user.id : str('assignee');
+    const tag = parseInt(str('tag')) || null;
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
+    if (stage    && !VALID_STAGE.has(stage))       return res.status(400).json({ error: 'Étape invalide' });
+    if (assignee && !SNOWFLAKE_RE.test(assignee))  return res.status(400).json({ error: 'Assigné invalide' });
+    if ((dateFrom && !DATE_RE.test(dateFrom)) || (dateTo && !DATE_RE.test(dateTo))) return res.status(400).json({ error: 'Date invalide' });
 
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 20;
@@ -67,18 +101,25 @@ router.get('/', async (req, res) => {
     if (status)   { where.push('status = ?');     params.push(status); }
     if (priority) { where.push('priority = ?');   params.push(priority); }
     if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
+    if (stage)    { where.push('stage = ?');      params.push(stage); }
+    if (claimed === 'true')  where.push('EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
+    if (claimed === 'false') where.push('NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
+    if (assignee) { where.push('EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id AND a.user_id = ?)'); params.push(assignee); }
+    if (dateFrom) { where.push('created_at >= ?'); params.push(dateFrom); }
+    if (dateTo)   { where.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(dateTo); }
+    if (tag)      { where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta WHERE ta.ticket_id = tickets.id AND ta.tag_id = ?)'); params.push(tag); }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
     ]);
 
-    res.json({ tickets, total, page, pages: Math.ceil(total / limit) });
+    res.json({ tickets: await attachAssignees(req, tickets), total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -113,6 +154,20 @@ router.get('/export', async (req, res) => {
   }
 });
 
+// GET /api/tickets/staff — staff members tickets can be assigned to
+router.get('/staff', async (req, res) => {
+  if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const staff = await req.guildDb(
+      "SELECT user_id, username, avatar, role FROM dashboard_users WHERE role IN ('support', 'fondateur') ORDER BY username ASC"
+    );
+    res.json(staff);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res);
@@ -132,9 +187,13 @@ router.get('/:id', async (req, res) => {
       })
     );
 
+    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id FROM guild_config WHERE id = 1');
     res.json({
       ...ticket,
       participants,
+      assignees: await getManager(req).getAssignees(ticket.id),
+      // Stages whose Discord category is configured (Paramètres)
+      stages: { open: !!cfg?.ticket_category_id, waiting: !!cfg?.waiting_category_id, in_progress: !!cfg?.in_progress_category_id },
       transcript: transcript[0] || null,
       rating: rating[0] || null
     });
@@ -274,6 +333,56 @@ router.post('/:id/notes', async (req, res) => {
   }
 });
 
+// Sends a staff reply to the ticket owner/participants and the Discord channel, records it and notifies.
+async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
+  const sender = anonymous ? 'Support' : req.session.user.username;
+  let msg = `--- ${sender} : ${content || ''}`.trim();
+  if (file_url) msg += `\nFichier : ${file_url}`;
+
+  const tm = getManager(req);
+  const client = req.app.locals.client;
+  const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
+
+  for (const userId of linkedUserIds) {
+    const user = await client?.users.fetch(userId).catch(() => null);
+    if (user) await user.send(msg).catch(() => null);
+  }
+
+  if (client && ticket.channel_id) {
+    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    if (channel) await channel.send(msg).catch(() => null);
+  }
+
+  const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+  await tm.recordStaffResponse(ticket.id, staffUser);
+  await tm.updateLastMessage(ticket.id);
+
+  const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
+  const noteContent = [content, file_url].filter(Boolean).join('\n');
+  const result = await req.guildDb(
+    'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
+    [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
+  );
+
+  const replyNote = {
+    id: result.insertId,
+    author_id: req.session.user.id,
+    author_tag: noteAuthorTag,
+    content: noteContent,
+    source: 'reply',
+    created_at: new Date()
+  };
+  broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
+  // Push notification to all subscribers of this guild when staff replies
+  sendPushToGuild(req.guildId, {
+    type: 'reply',
+    title: `Réponse #${ticket.id}`,
+    body: `${anonymous ? 'Support' : req.session.user.username} : ${(content || 'Fichier joint').slice(0, 100)}`,
+    ticketId: ticket.id,
+  }).catch(() => null);
+  return replyNote;
+}
+
 router.post('/:id/reply', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');
@@ -295,51 +404,7 @@ router.post('/:id/reply', async (req, res) => {
       }
     }
 
-    const sender = anonymous ? 'Support' : req.session.user.username;
-    let msg = `--- ${sender} : ${content || ''}`.trim();
-    if (file_url) msg += `\nFichier : ${file_url}`;
-
-    const tm = getManager(req);
-    const client = req.app.locals.client;
-    const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
-
-    for (const userId of linkedUserIds) {
-      const user = await client?.users.fetch(userId).catch(() => null);
-      if (user) await user.send(msg).catch(() => null);
-    }
-
-    if (client && ticket.channel_id) {
-      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
-      if (channel) await channel.send(msg).catch(() => null);
-    }
-
-    const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
-    await tm.recordStaffResponse(ticket.id, staffUser);
-    await tm.updateLastMessage(ticket.id);
-
-    const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
-    const noteContent = [content, file_url].filter(Boolean).join('\n');
-    const result = await req.guildDb(
-      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
-      [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
-    );
-
-    const replyNote = {
-      id: result.insertId,
-      author_id: req.session.user.id,
-      author_tag: noteAuthorTag,
-      content: noteContent,
-      source: 'reply',
-      created_at: new Date()
-    };
-    broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
-    // Push notification to all subscribers of this guild when staff replies
-    sendPushToGuild(req.guildId, {
-      type: 'reply',
-      title: `Réponse #${ticket.id}`,
-      body: `${anonymous ? 'Support' : req.session.user.username} : ${(content || 'Fichier joint').slice(0, 100)}`,
-      ticketId: ticket.id,
-    }).catch(() => null);
+    const replyNote = await sendStaffReply(req, ticket, { content, file_url, anonymous });
     res.json(replyNote);
   } catch (err) {
     console.error(err);
@@ -347,52 +412,58 @@ router.post('/:id/reply', async (req, res) => {
   }
 });
 
-router.patch('/:id/claim', async (req, res) => {
+// Channel message + topic refresh + live update after the assignee list changed.
+async function notifyAssignment(req, ticket, message) {
+  const tm = getManager(req);
+  const client = req.app.locals.client;
+  if (client && ticket.channel_id) {
+    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    if (channel) await channel.send(message).catch(() => null);
+  }
+  await tm.updateChannelTopic(ticket.id).catch(() => null);
+  const assignees = await tm.getAssignees(ticket.id);
+  const [t] = await req.guildDb('SELECT claimed_by FROM tickets WHERE id = ?', [ticket.id]);
+  broadcast('ticket', { id: ticket.id, claimed_by: t?.claimed_by || null, assignees }, req.guildId);
+}
+
+// POST /api/tickets/:id/assignees — { user_id } : assign another staff member
+router.post('/:id/assignees', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'claim_ticket');
     if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+    const target = await findAssignableStaff(req, req.body.user_id, ticket);
+    if (!target) return res.status(400).json({ error: 'Membre du staff introuvable ou sans accès à ce ticket' });
 
-    const { action } = req.body;
-    if (action !== 'claim' && action !== 'unclaim') {
-      return res.status(400).json({ error: 'Action invalide (claim | unclaim)' });
+    const me = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+    const added = await getManager(req).addAssignee(ticket.id, target, me);
+    if (added) {
+      await notifyAssignment(req, ticket, target.id === me.id
+        ? `✅ **${me.username}** s'est assigné au ticket (dashboard).`
+        : `👥 <@${target.id}> a été assigné au ticket par **${me.username}** (dashboard).`);
     }
+    res.json({ ok: true, assignees: await getManager(req).getAssignees(ticket.id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 
-    const { id: userId, username } = req.session.user;
-
-    if (action === 'claim') {
-      if (ticket.claimed_by && ticket.claimed_by !== userId && !req.userIsFondateur) {
-        return res.status(403).json({ error: 'Déjà pris en charge par quelqu\'un d\'autre' });
-      }
-    } else {
-      if (ticket.claimed_by !== userId && !req.userIsFondateur) {
-        return res.status(403).json({ error: 'Tu ne peux pas unclaim le ticket d\'un autre' });
-      }
+// DELETE /api/tickets/:id/assignees/:userId
+router.delete('/:id/assignees/:userId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'claim_ticket');
+    if (!ticket) return;
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+    const removed = await getManager(req).removeAssignee(ticket.id, String(req.params.userId));
+    if (removed) {
+      const [u] = await req.guildDb('SELECT username FROM dashboard_users WHERE user_id = ?', [String(req.params.userId)]);
+      const name = u?.username || req.params.userId;
+      await notifyAssignment(req, ticket, String(req.params.userId) === req.session.user.id
+        ? `🔓 **${name}** s'est retiré du ticket (dashboard).`
+        : `🔓 **${name}** a été retiré du ticket par **${req.session.user.username}** (dashboard).`);
     }
-
-    const tm = getManager(req);
-    const staffUser = { id: userId, tag: username, username };
-    const client = req.app.locals.client;
-
-    if (action === 'claim') {
-      await tm.setClaim(ticket.id, staffUser);
-    } else {
-      await req.guildDb('UPDATE tickets SET claimed_by = NULL WHERE id = ?', [ticket.id]);
-    }
-
-    if (client && ticket.channel_id) {
-      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
-      if (channel) {
-        const msg = action === 'claim'
-          ? `✅ Ticket pris en charge par **${username}** (dashboard).`
-          : `🔓 Ticket libéré par **${username}** (dashboard).`;
-        await channel.send(msg).catch(() => null);
-      }
-    }
-
-    await tm.updateChannelTopic(ticket.id).catch(() => null);
-    broadcast('ticket', { id: ticket.id, claimed_by: action === 'claim' ? userId : null }, req.guildId);
-    res.json({ ok: true, claimed_by: action === 'claim' ? userId : null });
+    res.json({ ok: true, assignees: await getManager(req).getAssignees(ticket.id) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -487,30 +558,17 @@ router.patch('/:id/move', async (req, res) => {
     if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
-    const { category_id } = req.body;
-    if (!category_id || !/^\d{17,20}$/.test(String(category_id))) {
-      return res.status(400).json({ error: 'ID catégorie invalide' });
-    }
+    const { stage } = req.body;
+    if (!VALID_STAGE.has(stage)) return res.status(400).json({ error: 'Étape invalide (open | waiting | in_progress)' });
+    if (!req.app.locals.client) return res.status(503).json({ error: 'Bot Discord non disponible' });
 
-    const client = req.app.locals.client;
-    if (!client || !ticket.channel_id) return res.status(503).json({ error: 'Bot Discord non disponible' });
+    const tm = getManager(req);
+    const result = await tm.moveToStage(ticket.id, stage, { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username });
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    await tm.updateChannelTopic(ticket.id).catch(() => null);
+    broadcast('ticket', { id: ticket.id, stage }, req.guildId);
+    res.json({ ok: true, stage, label: result.label });
 
-    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
-    if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
-
-    const category = await fetchGuildChannel(client, req.guildId, String(category_id));
-    if (!category || category.type !== ChannelType.GuildCategory) {
-      return res.status(400).json({ error: 'Catégorie Discord introuvable' });
-    }
-
-    await channel.setParent(category_id, { lockPermissions: false });
-    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
-    await getManager(req).logMoveTicket(ticket.id, category.name, staffUser);
-    await channel.send(
-      `📂 Ticket déplacé dans **${category.name}** par **${req.session.user.username}** (dashboard).`
-    ).catch(() => null);
-
-    res.json({ ok: true, category_name: category.name });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -665,6 +723,44 @@ router.post('/bulk', async (req, res) => {
           broadcast('ticket', { id: ticket.id, status: 'closed' }, req.guildId);
         }
       }
+      return res.json({ ok: true, affected: tickets.length });
+    }
+    if (action === 'assign') {
+      const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
+      const tm = getManager(req);
+      const me = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+      let affected = 0;
+      for (const ticket of tickets) {
+        const target = await findAssignableStaff(req, value, ticket);
+        if (!target) continue;
+        if (await tm.addAssignee(ticket.id, target, me)) {
+          affected++;
+          await notifyAssignment(req, ticket, `👥 <@${target.id}> a été assigné au ticket par **${me.username}** (dashboard).`);
+        }
+      }
+      return res.json({ ok: true, affected });
+    }
+    if (action === 'add_tag') {
+      const [tag] = await req.guildDb('SELECT id FROM ticket_tags WHERE id = ?', [parseInt(value)]);
+      if (!tag) return res.status(400).json({ error: 'Tag introuvable' });
+      for (const id of cleanIds) await req.guildDb('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [id, tag.id]);
+      return res.json({ ok: true, affected: cleanIds.length });
+    }
+    if (action === 'reopen') {
+      const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'closed'", [cleanIds]);
+      const tm = getManager(req);
+      const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+      let affected = 0;
+      for (const ticket of tickets) {
+        try { await tm.reopenTicket(ticket, staffUser); affected++; broadcast('ticket', { id: ticket.id, status: 'open' }, req.guildId); } catch { /* channel creation failed */ }
+      }
+      return res.json({ ok: true, affected });
+    }
+    if (action === 'send_template') {
+      const [tpl] = await req.guildDb('SELECT content FROM reply_templates WHERE id = ?', [parseInt(value)]);
+      if (!tpl) return res.status(400).json({ error: 'Template introuvable' });
+      const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
+      for (const ticket of tickets) await sendStaffReply(req, ticket, { content: tpl.content, anonymous: false });
       return res.json({ ok: true, affected: tickets.length });
     }
     return res.status(400).json({ error: 'Action invalide' });

@@ -4,7 +4,7 @@ const { parseJsonField } = require('../../utils/jsonField');
 const { logAudit } = require('../../utils/gradePermissions');
 const { foreignChannels, foreignRoles } = require('../../utils/discordGuard');
 
-const CHANNEL_FIELDS = ['ticketCategoryId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
+const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCategoryId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
   'removeUserLogChannelId', 'weeklyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
 const ROLE_FIELDS = ['supportRoleIds', 'chiefRoleIds'];
 // Never written to the audit log in clear
@@ -21,6 +21,8 @@ const FIELD_MAP = {
   inactiveHours:             'inactive_hours',
   replyRateLimitSeconds:     'reply_rate_limit_seconds',
   ticketCategoryId:          'ticket_category_id',
+  waitingCategoryId:         'waiting_category_id',
+  inProgressCategoryId:      'in_progress_category_id',
   supportRoleIds:            'support_role_ids',
   chiefRoleIds:              'chief_role_ids',
   supportGradeId:            'support_grade_id',
@@ -70,6 +72,8 @@ const VALIDATORS = {
   inactiveHours:            v => Number.isInteger(v) && v >= 1 && v <= 720,
   replyRateLimitSeconds:    v => Number.isInteger(v) && v >= 0 && v <= 300,
   ticketCategoryId:         SNOWFLAKE,
+  waitingCategoryId:        SNOWFLAKE,
+  inProgressCategoryId:     SNOWFLAKE,
   supportRoleIds:           SNOWFLAKE_ARRAY,
   chiefRoleIds:             SNOWFLAKE_ARRAY,
   supportGradeId:           v => v === null || (Number.isInteger(v) && v > 0),

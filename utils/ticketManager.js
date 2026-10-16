@@ -320,7 +320,7 @@ function createManager(db, client, guildId) {
   async function reopenTicket(ticket, reopenedByUser) {
     const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag });
     await db(
-      `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, warned_inactive=0, last_message_at=NOW() WHERE id=?`,
+      `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, stage='open', warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
     );
     const reopenEmbed = new EmbedBuilder()
@@ -350,23 +350,88 @@ function createManager(db, client, guildId) {
     return channel;
   }
 
-  async function setClaim(ticketId, adminUser) {
-    await db('UPDATE tickets SET claimed_by=? WHERE id=?', [adminUser ? adminUser.id : null, ticketId]);
-    if (adminUser) {
-      fireTicketWebhook(db, 'ticket_claim', { ticketId, claimedBy: adminUser.tag }).catch(() => null);
-      await db(
-        `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 1, 0)
-         ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_claimed=tickets_claimed+1`,
-        [adminUser.id, adminUser.tag]
-      );
-    }
+  // ── Assignees ── a ticket can be assigned to several staff members; tickets.claimed_by is kept
+  // in sync with the first one (used by stats, reminders, escalation and ratings).
+
+  async function getAssignees(ticketId) {
+    return db(
+      `SELECT a.user_id, COALESCE(u.username, a.user_id) AS username, u.avatar, a.assigned_at
+       FROM ticket_assignees a LEFT JOIN dashboard_users u ON u.user_id = a.user_id
+       WHERE a.ticket_id = ? ORDER BY a.assigned_at ASC`,
+      [ticketId]
+    );
+  }
+
+  // The primary assignee stays the same while still assigned; otherwise the longest-assigned one takes over.
+  async function syncPrimaryAssignee(ticketId) {
+    await db(
+      `UPDATE tickets SET claimed_by = CASE
+         WHEN claimed_by IN (SELECT user_id FROM ticket_assignees WHERE ticket_id = ?) THEN claimed_by
+         ELSE (SELECT user_id FROM ticket_assignees WHERE ticket_id = ? ORDER BY assigned_at ASC, user_id ASC LIMIT 1)
+       END
+       WHERE id = ?`,
+      [ticketId, ticketId, ticketId]
+    );
+  }
+
+  // Returns true when the user was not already assigned.
+  async function addAssignee(ticketId, user, byUser = user) {
+    const r = await db(
+      'INSERT IGNORE INTO ticket_assignees (ticket_id, user_id, assigned_by_id) VALUES (?, ?, ?)',
+      [ticketId, user.id, byUser?.id || null]
+    );
+    if (!r.affectedRows) return false;
+    await syncPrimaryAssignee(ticketId);
+    const tag = user.tag || user.username || user.id;
+    fireTicketWebhook(db, 'ticket_claim', { ticketId, claimedBy: tag }).catch(() => null);
+    await db(
+      `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 1, 0)
+       ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_claimed=tickets_claimed+1`,
+      [user.id, tag]
+    );
     const cfg = await getGuildConfig(db);
-    if (adminUser && cfg.claim_log_channel_id) {
+    if (cfg.claim_log_channel_id) {
       const logCh = await fetchGuildChannel(client, gid, cfg.claim_log_channel_id);
       if (logCh?.isTextBased()) {
-        await logCh.send(`Ticket #${ticketId} claim par ${adminUser.tag} (${adminUser.id})`).catch(() => null);
+        const by = byUser && byUser.id !== user.id ? ` par ${byUser.tag || byUser.username}` : '';
+        await logCh.send(`Ticket #${ticketId} attribué à ${tag} (${user.id})${by}`).catch(() => null);
       }
     }
+    return true;
+  }
+
+  async function removeAssignee(ticketId, userId) {
+    const r = await db('DELETE FROM ticket_assignees WHERE ticket_id = ? AND user_id = ?', [ticketId, userId]);
+    if (r.affectedRows) await syncPrimaryAssignee(ticketId);
+    return r.affectedRows > 0;
+  }
+
+  // Kept for callers that "claim" for themselves (null = no-op: use removeAssignee)
+  async function setClaim(ticketId, adminUser) {
+    if (adminUser) await addAssignee(ticketId, adminUser, adminUser);
+  }
+
+  // ── Stages ── Ouvert / En attente / En cours, each mapped to a Discord category in Paramètres.
+  const STAGE_CATEGORY = { open: 'ticket_category_id', waiting: 'waiting_category_id', in_progress: 'in_progress_category_id' };
+  const STAGE_LABEL = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
+
+  // Returns { ok, error?, label }. Moves the Discord channel into the stage's category.
+  async function moveToStage(ticketId, stage, byUser) {
+    if (!STAGE_CATEGORY[stage]) return { ok: false, error: 'Étape invalide' };
+    const [ticket] = await db('SELECT id, channel_id, status FROM tickets WHERE id = ?', [ticketId]);
+    if (!ticket || ticket.status !== 'open') return { ok: false, error: 'Ticket fermé ou introuvable' };
+    const cfg = await getGuildConfig(db);
+    const categoryId = cfg[STAGE_CATEGORY[stage]];
+    if (!categoryId) return { ok: false, error: `Aucune catégorie Discord n'est associée à « ${STAGE_LABEL[stage]} » (Paramètres)` };
+    const category = await fetchGuildChannel(client, gid, categoryId);
+    if (!category || category.type !== ChannelType.GuildCategory) return { ok: false, error: 'Catégorie Discord introuvable' };
+    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    if (!channel) return { ok: false, error: 'Salon Discord introuvable' };
+    await channel.setParent(category.id, { lockPermissions: false });
+    await db('UPDATE tickets SET stage = ? WHERE id = ?', [stage, ticketId]);
+    await logMoveTicket(ticketId, `${STAGE_LABEL[stage]} (${category.name})`, byUser);
+    await channel.send(`📂 Ticket passé en **${STAGE_LABEL[stage]}** par **${byUser.username || byUser.tag}**.`).catch(() => null);
+    return { ok: true, label: STAGE_LABEL[stage] };
   }
 
   async function addParticipant(ticketId, userId) {
@@ -443,11 +508,10 @@ function createManager(db, client, guildId) {
     if (!ticket?.channel_id || ticket.status !== 'open') return;
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return;
-    let claimerName = 'Libre';
-    if (ticket.claimed_by) {
-      const u = await client.users.fetch(ticket.claimed_by).catch(() => null);
-      claimerName = u?.username || ticket.claimed_by;
-    }
+    const assignees = await getAssignees(ticketId);
+    const claimerName = assignees.length
+      ? assignees.slice(0, 3).map(a => a.username).join(', ') + (assignees.length > 3 ? ` +${assignees.length - 3}` : '')
+      : 'Libre';
     const prio = PRIO_TOPIC[ticket.priority] || ticket.priority;
     const subjectPart = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
     await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · ${prio} · ${claimerName}${subjectPart}`).catch(() => null);
@@ -607,6 +671,10 @@ function createManager(db, client, guildId) {
     closeTicketWithTranscript,
     reopenTicket,
     setClaim,
+    getAssignees,
+    addAssignee,
+    removeAssignee,
+    moveToStage,
     addParticipant,
     removeParticipant,
     updateLastMessage,

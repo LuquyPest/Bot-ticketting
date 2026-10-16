@@ -6,7 +6,7 @@ const { ensureSupport } = require('../utils/permissions');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('unclaim')
-    .setDescription('Retire la prise en charge du ticket'),
+    .setDescription('Se retire des personnes assignées au ticket'),
 
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
@@ -18,7 +18,10 @@ module.exports = {
       return interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
     }
 
-    await tm.setClaim(ticket.id, null);
+    const removed = await tm.removeAssignee(ticket.id, interaction.user.id);
+    if (!removed) {
+      return interaction.reply({ content: 'Tu n\'es pas assigné à ce ticket.', ephemeral: true });
+    }
     await tm.updateChannelTopic(ticket.id).catch(() => null);
     const unclaimEmbed = new EmbedBuilder()
       .setColor(0x4e5058)

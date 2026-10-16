@@ -6,7 +6,7 @@ const { ensureSupport } = require('../utils/permissions');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('claim')
-    .setDescription('Prend en charge le ticket'),
+    .setDescription('S\'ajoute aux personnes assignées au ticket'),
 
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
@@ -18,16 +18,11 @@ module.exports = {
       return interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
     }
 
-    if (ticket.claimed_by && ticket.claimed_by !== interaction.user.id) {
-      const previousClaimer = await interaction.guild.members.fetch(ticket.claimed_by).catch(() => null);
-      const name = previousClaimer?.user?.username ?? ticket.claimed_by;
-      return interaction.reply({
-        content: `Ce ticket est déjà pris en charge par **${name}**. Utilise /unclaim d'abord si tu veux le reprendre.`,
-        ephemeral: true
-      });
+    // Several staff members can be assigned to the same ticket
+    const added = await tm.addAssignee(ticket.id, interaction.user, interaction.user);
+    if (!added) {
+      return interaction.reply({ content: 'Tu es déjà assigné à ce ticket.', ephemeral: true });
     }
-
-    await tm.setClaim(ticket.id, interaction.user);
     await tm.updateChannelTopic(ticket.id).catch(() => null);
     const claimEmbed = new EmbedBuilder()
       .setColor(0x1abc9c)

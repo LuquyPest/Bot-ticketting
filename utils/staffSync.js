@@ -81,4 +81,4 @@ async function syncDiscordStaff(client, db, guildId, user) {
   return 'support';
 }
 
-module.exports = { syncDiscordStaff, discordStaffLevel, ensureStaffGrades };
+module.exports = { syncDiscordStaff, discordStaffLevel };

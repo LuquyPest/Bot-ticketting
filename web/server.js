@@ -173,6 +173,7 @@ const withGuild = (role) => [guildMiddleware, requireRole(...(Array.isArray(role
 
 app.use('/api/dashboard',   withGuild(['support', 'fondateur']), require('./routes/dashboard'));
 app.use('/api/tickets',     withGuild(['support', 'fondateur']), require('./routes/tickets'));
+app.use('/api/ticket-views', withGuild(['support', 'fondateur']), require('./routes/ticketViews'));
 app.use('/api/staff',       withGuild(['support', 'fondateur']), require('./routes/staff'));
 app.use('/api/discord',     withGuild(['support', 'fondateur']), require('./routes/discord'));
 app.use('/api/events',      withGuild(['support', 'fondateur']), require('./routes/events'));

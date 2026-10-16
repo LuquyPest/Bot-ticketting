@@ -5,9 +5,11 @@ import api from '../api';
 import { useSSE } from '../hooks/useSSE';
 
 const COLUMNS = [
-  { key: 'unclaimed', label: 'Non claim',  color: 'amber',   query: { status: 'open' },             filter: t => t.status === 'open' && !t.claimed_by },
-  { key: 'claimed',   label: 'En cours',   color: 'indigo',  query: { status: 'open' },             filter: t => t.status === 'open' && t.claimed_by },
-  { key: 'closed',    label: 'Fermés',     color: 'emerald', query: { status: 'closed' },           filter: t => t.status === 'closed' }
+  // Columns follow the ticket stages (Paramètres → catégories Ouvert / En attente / En cours)
+  { key: 'open',        label: 'Ouvert',     color: 'sky',     filter: t => t.status === 'open' && (t.stage || 'open') === 'open' },
+  { key: 'waiting',     label: 'En attente', color: 'amber',   filter: t => t.status === 'open' && t.stage === 'waiting' },
+  { key: 'in_progress', label: 'En cours',   color: 'indigo',  filter: t => t.status === 'open' && t.stage === 'in_progress' },
+  { key: 'closed',      label: 'Fermés',     color: 'emerald', filter: t => t.status === 'closed' }
 ];
 
 const PRIO_COLOR = {
@@ -37,8 +39,8 @@ function TicketCard({ ticket, onClick }) {
       {ticket.subject && (
         <p className="text-xs text-ink-3 truncate">{ticket.subject}</p>
       )}
-      {ticket.claimed_by && (
-        <p className="text-[10px] text-ink-4">claim par {ticket.claimed_by}</p>
+      {ticket.assignees?.length > 0 && (
+        <p className="text-[10px] text-ink-4 truncate">👥 {ticket.assignees.map(a => a.username).join(', ')}</p>
       )}
     </button>
   );
@@ -70,6 +72,7 @@ export default function Kanban() {
   });
 
   const COL_STYLES = {
+    sky:     { header: 'border-sky-500/20 bg-sky-500/5', dot: 'bg-sky-400' },
     amber:   { header: 'border-amber-500/20 bg-amber-500/5', dot: 'bg-amber-400' },
     indigo:  { header: 'border-primary/20 bg-primary/5',     dot: 'bg-primary-light' },
     emerald: { header: 'border-emerald-500/20 bg-emerald-500/5', dot: 'bg-emerald-400' },
@@ -92,7 +95,7 @@ export default function Kanban() {
         </button>
       </div>
 
-      <div className="flex-1 grid grid-cols-3 gap-4 min-h-0">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 min-h-0">
         {COLUMNS.map(col => {
           const items = tickets.filter(col.filter);
           const s = COL_STYLES[col.color];

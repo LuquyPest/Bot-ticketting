@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
   ChevronDown, Calendar, AlertTriangle,
-  FolderOpen, FileText, User,
+  FolderOpen, FileText, User, Star, BookmarkPlus,
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -19,16 +19,23 @@ import { useSSE } from '../hooks/useSSE';
 import toast from 'react-hot-toast';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const QUICK_FILTERS = [
-  { id: 'all',       label: 'Tous',      filter: {} },
-  { id: 'open',      label: 'Ouverts',   filter: { status: 'open' } },
-  { id: 'closed',    label: 'Fermés',    filter: { status: 'closed' } },
-  { id: 'urgent',    label: 'Urgent',    filter: { priority: 'urgent' }, dot: 'bg-red-400' },
-  { id: 'normal',    label: 'Normal',    filter: { priority: 'normal' }, dot: 'bg-amber-400' },
-  { id: 'low',       label: 'Faible',    filter: { priority: 'low' }, dot: 'bg-sky-400' },
-  { id: 'unclaimed', label: 'Non claim', filter: { claimed: 'false' } },
-  { id: 'claimed',   label: 'Claim',     filter: { claimed: 'true' } },
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '' };
+
+/* ── Built-in views (the default one shows open tickets) ─────── */
+const BUILTIN_VIEWS = [
+  { id: 'open',        label: 'Ouverts',       filters: { status: 'open' } },
+  { id: 'mine',        label: 'Mes tickets',   filters: { status: 'open', assignee: 'me' } },
+  { id: 'unassigned',  label: 'Non attribués', filters: { status: 'open', claimed: 'false' } },
+  { id: 'waiting',     label: 'En attente',    filters: { status: 'open', stage: 'waiting' } },
+  { id: 'in_progress', label: 'En cours',      filters: { status: 'open', stage: 'in_progress' } },
+  { id: 'urgent',      label: 'Urgents',       filters: { status: 'open', priority: 'urgent' }, dot: 'bg-red-400' },
+  { id: 'closed',      label: 'Fermés',        filters: { status: 'closed' } },
+  { id: 'all',         label: 'Tous',          filters: {} },
 ];
+
+const STAGE_LABELS = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
+const STAGE_CLS = { open: 'text-sky-300', waiting: 'text-amber-300', in_progress: 'text-emerald-300' };
+const assigneeNames = t => (t.assignees || []).map(a => a.username).join(', ');
 
 /* ── Quick-view tooltip (apparaît après 1.5s de survol, suit la souris) ── */
 const POPUP_W = 320;
@@ -82,10 +89,16 @@ function QuickView({ ticket, x, y, messages }) {
             {PRIORITY_LABELS[ticket.priority] || ticket.priority}
           </span>
         </div>
-        {ticket.claimed_by && (
+        {ticket.status === 'open' && (
           <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
-            <span className="text-ink-4">Assigné à</span>
-            <span className="text-emerald-400 font-medium">{ticket._claimedTag || ticket.claimed_by}</span>
+            <span className="text-ink-4">Étape</span>
+            <span className={STAGE_CLS[ticket.stage] || 'text-ink-2'}>{STAGE_LABELS[ticket.stage] || '—'}</span>
+          </div>
+        )}
+        {ticket.assignees?.length > 0 && (
+          <div className="flex items-center justify-between gap-3 py-1.5 border-b border-white/[0.04]">
+            <span className="text-ink-4 flex-shrink-0">Attribué à</span>
+            <span className="text-emerald-400 font-medium truncate">{assigneeNames(ticket)}</span>
           </div>
         )}
         <div className="flex items-center justify-between py-1.5">
@@ -175,8 +188,9 @@ export default function Tickets() {
 
   const [data, setData]   = useState({ tickets: [], total: 0, pages: 1 });
   const [page, setPage]   = useState(1);
-  const [filters, setFilters] = useState({ status: '', priority: '', subject: '', dateFrom: '', dateTo: '', claimed: '', staffId: '' });
-  const [activeQuick, setActiveQuick] = useState('all');
+  const [filters, setFilters] = useState({ ...EMPTY_FILTERS, status: 'open' });
+  const [activeView, setActiveView] = useState('open'); // built-in id or `saved:<id>`
+  const [savedViews, setSavedViews] = useState([]);
   const [quickView, setQuickView] = useState(null);
   const [loading,     setLoading]     = useState(true);
   const [selected,    setSelected]    = useState(new Set());
@@ -217,7 +231,12 @@ export default function Tickets() {
 
   /* Load staff + tags + templates */
   useEffect(() => {
-    api.get('/staff').then(r => setStaffList(r.data)).catch(() => {});
+    api.get('/tickets/staff').then(r => setStaffList(r.data)).catch(() => {});
+    api.get('/ticket-views').then(r => {
+      setSavedViews(r.data);
+      const def = r.data.find(v => v.is_default);
+      if (def) applyView(`saved:${def.id}`, def.filters);
+    }).catch(() => {});
     api.get('/tags').then(r => setTagList(r.data)).catch(() => {});
     api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
   }, []);
@@ -230,7 +249,7 @@ export default function Tickets() {
       }));
     },
     new_ticket: () => {
-      if (page === 1 && !filters.status && !filters.priority && !filters.subject) load();
+      if (page === 1 && filters.status !== 'closed') load();
     },
   });
 
@@ -239,16 +258,41 @@ export default function Tickets() {
     setPage(1);
   };
 
-  const applyQuick = (qf) => {
-    setActiveQuick(qf.id);
-    setFilters(f => ({
-      ...f,
-      status:   qf.filter.status   ?? '',
-      priority: qf.filter.priority ?? '',
-      claimed:  qf.filter.claimed  ?? '',
-    }));
+  const applyView = (id, viewFilters) => {
+    setActiveView(id);
+    setFilters({ ...EMPTY_FILTERS, ...viewFilters });
     setPage(1);
   };
+
+  const saveCurrentView = async () => {
+    const name = window.prompt('Nom de la vue :');
+    if (!name?.trim()) return;
+    const viewFilters = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    try {
+      const { data: v } = await api.post('/ticket-views', { name: name.trim(), filters: viewFilters });
+      setSavedViews(list => [...list, v].sort((a, b) => a.name.localeCompare(b.name)));
+      setActiveView(`saved:${v.id}`);
+      toast.success(`Vue « ${v.name} » enregistrée`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  const deleteView = async (v) => {
+    if (!await confirmToast(`Supprimer la vue « ${v.name} » ?`)) return;
+    try {
+      await api.delete(`/ticket-views/${v.id}`);
+      setSavedViews(list => list.filter(x => x.id !== v.id));
+      if (activeView === `saved:${v.id}`) applyView('open', BUILTIN_VIEWS[0].filters);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  const toggleDefaultView = async (v) => {
+    try {
+      await api.patch(`/ticket-views/${v.id}`, { is_default: !v.is_default });
+      setSavedViews(list => list.map(x => ({ ...x, is_default: x.id === v.id ? !v.is_default : false })));
+      toast.success(v.is_default ? 'Vue par défaut retirée (retour à « Ouverts »)' : `« ${v.name} » est ta vue par défaut`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
 
   const allIds      = data.tickets.map(t => t.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
@@ -350,25 +394,45 @@ export default function Tickets() {
         )}
       </div>
 
-      {/* Quick-filter pills */}
+      {/* Views: built-in + saved (per user) */}
       <div className="flex items-center gap-2 flex-wrap">
-        {QUICK_FILTERS.map(qf => {
-          const isActive = activeQuick === qf.id;
+        {BUILTIN_VIEWS.map(v => {
+          const isActive = activeView === v.id;
           return (
-            <button
-              key={qf.id}
-              onClick={() => applyQuick(qf)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium
-                          border transition-all duration-150 select-none
+            <button key={v.id} onClick={() => applyView(v.id, v.filters)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 select-none
                           ${isActive
                             ? 'bg-primary/15 text-primary-light border-primary/40 shadow-[0_0_12px_rgba(124,110,243,0.15)]'
-                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
-            >
-              {qf.dot && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${qf.dot}`} />}
-              {qf.label}
+                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}>
+              {v.dot && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${v.dot}`} />}
+              {v.label}
             </button>
           );
         })}
+        {savedViews.length > 0 && <span className="w-px h-5 bg-white/[0.08] mx-1" />}
+        {savedViews.map(v => {
+          const isActive = activeView === `saved:${v.id}`;
+          return (
+            <span key={v.id}
+              className={`group flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-xl text-xs font-medium border transition-all
+                          ${isActive ? 'bg-violet-500/15 text-violet-200 border-violet-400/40' : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1'}`}>
+              <button onClick={() => applyView(`saved:${v.id}`, v.filters)} className="py-0.5">{v.name}</button>
+              <button onClick={() => toggleDefaultView(v)} title={v.is_default ? 'Vue par défaut' : 'Définir comme vue par défaut'}
+                className={`p-0.5 rounded ${v.is_default ? 'text-amber-400' : 'text-ink-4 opacity-0 group-hover:opacity-100 hover:text-amber-400'}`}>
+                <Star size={11} fill={v.is_default ? 'currentColor' : 'none'} />
+              </button>
+              <button onClick={() => deleteView(v)} title="Supprimer la vue"
+                className="p-0.5 rounded text-ink-4 opacity-0 group-hover:opacity-100 hover:text-red-400">
+                <X size={11} />
+              </button>
+            </span>
+          );
+        })}
+        <button onClick={saveCurrentView} title="Enregistrer les filtres actuels comme vue"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-white/[0.12]
+                     text-ink-3 hover:text-ink-1 hover:border-white/[0.2] transition-all">
+          <BookmarkPlus size={12} /> Enregistrer la vue
+        </button>
       </div>
 
       {/* Keyboard hint */}
@@ -406,7 +470,7 @@ export default function Tickets() {
         <Select
           className="w-40"
           value={filters.status}
-          onChange={v => { setFilter('status', v); setActiveQuick(''); }}
+          onChange={v => { setFilter('status', v); setActiveView(''); }}
           placeholder="Tous statuts"
           options={[
             { value: '', label: 'Tous statuts' },
@@ -417,13 +481,25 @@ export default function Tickets() {
         <Select
           className="w-44"
           value={filters.priority}
-          onChange={v => { setFilter('priority', v); setActiveQuick(''); }}
+          onChange={v => { setFilter('priority', v); setActiveView(''); }}
           placeholder="Toutes priorités"
           options={[
             { value: '',       label: 'Toutes priorités' },
             { value: 'low',    label: 'Faible' },
             { value: 'normal', label: 'Normal' },
             { value: 'urgent', label: 'Urgent' },
+          ]}
+        />
+        <Select
+          className="w-40"
+          value={filters.stage}
+          onChange={v => { setFilter('stage', v); setActiveView(''); }}
+          placeholder="Toutes étapes"
+          options={[
+            { value: '',            label: 'Toutes étapes' },
+            { value: 'open',        label: 'Ouvert' },
+            { value: 'waiting',     label: 'En attente' },
+            { value: 'in_progress', label: 'En cours' },
           ]}
         />
         {/* Staff filter */}
@@ -433,16 +509,16 @@ export default function Tickets() {
               onClick={() => setShowStaffFilter(o => !o)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium
                           border transition-all duration-150
-                          ${filters.staffId
+                          ${filters.assignee
                             ? 'bg-primary/10 text-primary-light border-primary/30'
                             : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
             >
               <User size={13} />
-              {filters.staffId
-                ? (staffList.find(s => s.admin_id === filters.staffId)?.admin_tag || 'Staff')
-                : 'Staff'}
-              {filters.staffId ? (
-                <span onClick={e => { e.stopPropagation(); setFilter('staffId', ''); setShowStaffFilter(false); }}
+              {filters.assignee
+                ? (filters.assignee === 'me' ? 'Moi' : (staffList.find(s => s.user_id === filters.assignee)?.username || 'Staff'))
+                : 'Attribué à'}
+              {filters.assignee ? (
+                <span onClick={e => { e.stopPropagation(); setFilter('assignee', ''); setActiveView(''); setShowStaffFilter(false); }}
                   className="ml-1 hover:text-ink-1 cursor-pointer">
                   <X size={11} />
                 </span>
@@ -455,19 +531,19 @@ export default function Tickets() {
                               rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-44
                               max-h-52 overflow-y-auto z-20">
                 <button
-                  onClick={() => { setFilter('staffId', ''); setShowStaffFilter(false); }}
+                  onClick={() => { setFilter('assignee', ''); setActiveView(''); setShowStaffFilter(false); }}
                   className="w-full flex items-center px-3.5 py-2.5 text-xs text-ink-3 hover:bg-white/[0.05] transition-colors"
                 >
-                  Tous les staff
+                  Tout le monde
                 </button>
                 {staffList.map(s => (
                   <button
-                    key={s.admin_id}
-                    onClick={() => { setFilter('staffId', s.admin_id); setShowStaffFilter(false); }}
+                    key={s.user_id}
+                    onClick={() => { setFilter('assignee', s.user_id); setActiveView(''); setShowStaffFilter(false); }}
                     className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-ink-2
                                hover:bg-white/[0.05] hover:text-ink-1 transition-colors"
                   >
-                    {s.admin_tag}
+                    {s.username}
                   </button>
                 ))}
               </div>
@@ -551,7 +627,7 @@ export default function Tickets() {
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Sujet</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Statut</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Priorité</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Assigné à</th>
+              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Attribué à</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Créé le</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermé par</th>
             </tr>
@@ -587,11 +663,7 @@ export default function Tickets() {
                     mousePosRef.current = { x: e.clientX, y: e.clientY };
                     hoverTimer.current = setTimeout(async () => {
                       const pos = { x: mousePosRef.current.x, y: mousePosRef.current.y };
-                      const claimedTag = t.claimed_by
-                        ? (staffList.find(s => s.admin_id === t.claimed_by)?.admin_tag || t.claimed_by)
-                        : null;
-                      const enriched = claimedTag ? { ...t, _claimedTag: claimedTag } : t;
-                      setQuickView({ ticket: enriched, x: pos.x, y: pos.y, messages: null });
+                      setQuickView({ ticket: t, x: pos.x, y: pos.y, messages: null });
                       try {
                         const { data: notes } = await api.get(`/tickets/${t.id}/notes`);
                         setQuickView(qv =>
@@ -660,7 +732,14 @@ export default function Tickets() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3.5"><Badge label={t.status} variant={t.status} /></td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <Badge label={t.status} variant={t.status} />
+                      {t.status === 'open' && t.stage && t.stage !== 'open' && (
+                        <span className={`text-[10px] font-medium ${STAGE_CLS[t.stage]}`}>{STAGE_LABELS[t.stage]}</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3.5">
                     <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
@@ -668,14 +747,9 @@ export default function Tickets() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-xs truncate max-w-[120px]">
-                    {(() => {
-                      const tag = t.claimed_by
-                        ? (staffList.find(s => s.admin_id === t.claimed_by)?.admin_tag || t.claimed_by)
-                        : null;
-                      return tag
-                        ? <span className="text-emerald-400 font-medium">{tag}</span>
-                        : <span className="text-ink-4 italic">—</span>;
-                    })()}
+                    {t.assignees?.length
+                      ? <span className="text-emerald-400 font-medium" title={assigneeNames(t)}>{assigneeNames(t)}</span>
+                      : <span className="text-ink-4 italic">—</span>}
                   </td>
                   <td className="px-4 py-3.5 text-ink-3 text-xs whitespace-nowrap tabular-nums">
                     {fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
@@ -748,12 +822,12 @@ export default function Tickets() {
                                 max-h-48 overflow-y-auto animate-in">
                   {staffList.map(s => (
                     <button
-                      key={s.admin_id}
-                      onClick={() => { bulkAction('assign', s.admin_id); setShowBulkStaff(false); }}
+                      key={s.user_id}
+                      onClick={() => { bulkAction('assign', s.user_id); setShowBulkStaff(false); }}
                       className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-ink-2
                                  hover:bg-white/[0.05] hover:text-ink-1 transition-colors"
                     >
-                      {s.admin_tag}
+                      {s.username}
                     </button>
                   ))}
                 </div>

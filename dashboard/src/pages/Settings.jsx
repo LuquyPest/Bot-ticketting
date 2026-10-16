@@ -232,6 +232,8 @@ export default function Settings() {
         inactiveHours:            cfg.inactiveHours,
         replyRateLimitSeconds:    cfg.replyRateLimitSeconds,
         ticketCategoryId:         sn(cfg.ticketCategoryId),
+        waitingCategoryId:        sn(cfg.waitingCategoryId),
+        inProgressCategoryId:     sn(cfg.inProgressCategoryId),
         supportRoleIds:           cfg.supportRoleIds || [],
         chiefRoleIds:             cfg.chiefRoleIds || [],
         supportGradeId:           cfg.supportGradeId || null,
@@ -458,10 +460,18 @@ export default function Settings() {
             </Field>
           ))}
         </div>
-        <Field label="Catégorie de tickets" hint="Catégorie Discord où les nouveaux tickets sont créés">
-          <CategoryPicker value={cfg.ticketCategoryId} onChange={v => set('ticketCategoryId', v)}
-            categories={categories} loading={discordLoading} />
-        </Field>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {[
+            ['ticketCategoryId', 'Catégorie « Ouvert »', 'Les nouveaux tickets y sont créés'],
+            ['waitingCategoryId', 'Catégorie « En attente »', 'Ticket en attente (réponse du membre, info externe…)'],
+            ['inProgressCategoryId', 'Catégorie « En cours »', 'Ticket en cours de traitement'],
+          ].map(([key, label, hint]) => (
+            <Field key={key} label={label} hint={hint}>
+              <CategoryPicker value={cfg[key]} onChange={v => set(key, v)}
+                categories={categories} loading={discordLoading} />
+            </Field>
+          ))}
+        </div>
       </Section>
 
       {/* Limits */}

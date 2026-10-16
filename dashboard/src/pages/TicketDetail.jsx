@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -28,6 +28,11 @@ function resolveVars(text, ticket, staffUsername) {
 }
 
 const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
+const STAGES = [
+  { value: 'open',        label: 'Ouvert',     cls: 'text-sky-300 bg-sky-500/10 border-sky-500/25' },
+  { value: 'waiting',     label: 'En attente', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
+  { value: 'in_progress', label: 'En cours',   cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25' },
+];
 
 const PRIORITY_ACTIVE = {
   low:    'bg-sky-500/10 text-sky-400 border-sky-500/20',
@@ -125,9 +130,9 @@ export default function TicketDetail() {
   const [claimLoading, setClaimLoading] = useState(false);
   const [newParticipantId, setNewParticipantId] = useState('');
   const [addingParticipant, setAddingParticipant] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [movingTicket, setMovingTicket] = useState(false);
+  const [staff, setStaff] = useState([]);
+  const [assigneeToAdd, setAssigneeToAdd] = useState('');
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [composeMode, setComposeMode] = useState('reply');
@@ -166,7 +171,7 @@ export default function TicketDetail() {
   useEffect(() => {
     loadTicket();
     loadNotes();
-    api.get('/discord/categories').then(r => setCategories(r.data)).catch(() => {});
+    api.get('/tickets/staff').then(r => setStaff(r.data)).catch(() => {});
     api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
     api.get('/grades').then(r => setGrades(r.data)).catch(() => {});
     api.get('/tags').then(r => setAllTags(r.data)).catch(() => {});
@@ -287,15 +292,24 @@ export default function TicketDetail() {
     finally { setSendingReply(false); }
   };
 
-  const toggleClaim = async () => {
-    const isClaimed = ticket.claimed_by === user?.id;
-    const isFondateur = user?.role === 'fondateur';
-    const action = (isClaimed || (isFondateur && ticket.claimed_by)) ? 'unclaim' : 'claim';
+  const addAssignee = async (userId) => {
+    if (!userId) return;
     setClaimLoading(true);
     try {
-      const { data } = await api.patch(`/tickets/${id}/claim`, { action });
-      setTicket(t => ({ ...t, claimed_by: data.claimed_by }));
-      toast.success(action === 'claim' ? 'Ticket réclamé' : 'Ticket libéré');
+      const { data } = await api.post(`/tickets/${id}/assignees`, { user_id: userId });
+      setTicket(t => ({ ...t, assignees: data.assignees }));
+      setAssigneeToAdd('');
+      toast.success(userId === user?.id ? 'Tu es assigné au ticket' : 'Membre assigné');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setClaimLoading(false); }
+  };
+
+  const removeAssignee = async (userId) => {
+    setClaimLoading(true);
+    try {
+      const { data } = await api.delete(`/tickets/${id}/assignees/${userId}`);
+      setTicket(t => ({ ...t, assignees: data.assignees }));
+      toast.success(userId === user?.id ? 'Tu t\'es retiré du ticket' : 'Membre retiré');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setClaimLoading(false); }
   };
@@ -320,13 +334,13 @@ export default function TicketDetail() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
-  const moveTicket = async () => {
-    if (!selectedCategory) return;
+  const moveTicket = async (stage) => {
+    if (stage === ticket.stage) return;
     setMovingTicket(true);
     try {
-      const { data } = await api.patch(`/tickets/${id}/move`, { category_id: selectedCategory });
-      toast.success(`Déplacé dans ${data.category_name}`);
-      setSelectedCategory('');
+      const { data } = await api.patch(`/tickets/${id}/move`, { stage });
+      setTicket(t => ({ ...t, stage: data.stage }));
+      toast.success(`Ticket passé en « ${data.label} »`);
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setMovingTicket(false); }
   };
@@ -431,24 +445,17 @@ export default function TicketDetail() {
     <div className="flex-1 p-6 text-red-400 text-sm">Ticket introuvable.</div>
   );
 
-  const myClaim   = ticket.claimed_by === user?.id;
-  const anyClaim  = !!ticket.claimed_by;
-  const canClaim  = !anyClaim || myClaim || user?.role === 'fondateur';
-  const claimLabel = myClaim
-    ? 'Libérer le ticket'
-    : anyClaim && user?.role === 'fondateur'
-    ? 'Libérer (override)'
-    : 'Prendre en charge';
+  const assignees   = ticket.assignees || [];
+  const amAssigned  = assignees.some(a => a.user_id === user?.id);
+  const canAssign   = user?.role === 'fondateur' || user?.permissions?.includes('claim_ticket');
+  const assignable  = staff.filter(s => !assignees.some(a => a.user_id === s.user_id));
+  const currentStage = STAGES.find(st => st.value === (ticket.stage || 'open'));
 
   const composeText    = composeMode === 'note' ? newNote    : replyText;
   const setComposeText = composeMode === 'note' ? setNewNote : setReplyText;
   const composeSending = composeMode === 'note' ? savingNote : sendingReply;
   const handleSend     = composeMode === 'note' ? addNote    : sendReply;
 
-  const categoryOptions = [
-    { value: '', label: 'Choisir une catégorie...' },
-    ...categories.map(c => ({ value: c.id, label: c.name })),
-  ];
 
   /* ─── Shared panel card ─────────────────────────────────────── */
   const panelCard = 'bg-white/[0.025] rounded-xl border border-white/[0.06] p-4';
@@ -843,7 +850,7 @@ export default function TicketDetail() {
             <InfoRow icon={Clock}      label="Créé le"       value={fmtDate(ticket.created_at, { dateStyle: 'medium', timeStyle: 'short' })} />
             {ticket.closed_at   && <InfoRow icon={CheckCircle2} label="Fermé le"     value={fmtDate(ticket.closed_at, { dateStyle: 'medium', timeStyle: 'short' })} />}
             {ticket.closed_by_tag && <InfoRow icon={User}    label="Fermé par"       value={ticket.closed_by_tag} />}
-            {ticket.claimed_by  && <InfoRow icon={User}      label="Pris en charge"  value={ticket.claimed_by} />}
+            {ticket.status === 'open' && <InfoRow icon={FolderOpen} label="Étape" value={currentStage?.label} />}
 
             {/* Subject inline edit */}
             <div className="flex items-start gap-2.5 py-2">
@@ -889,6 +896,52 @@ export default function TicketDetail() {
             </div>
           </div>
 
+          {/* ATTRIBUÉ À */}
+          <div className={panelCard}>
+            <SectionTitle>Attribué à</SectionTitle>
+            {assignees.length === 0 ? (
+              <p className="text-xs text-ink-4 italic mb-2">Personne — ticket libre</p>
+            ) : (
+              <ul className="space-y-1.5 mb-2">
+                {assignees.map(a => (
+                  <li key={a.user_id} className="flex items-center gap-2 rounded-lg bg-white/[0.03] border border-white/[0.06] px-2.5 py-1.5">
+                    {a.avatar
+                      ? <img src={`https://cdn.discordapp.com/avatars/${a.user_id}/${a.avatar}.webp?size=32`} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
+                      : <Users size={13} className="text-ink-3 flex-shrink-0" />}
+                    <span className="text-xs text-ink-1 truncate flex-1">{a.username}{a.user_id === user?.id && <span className="text-ink-4"> (toi)</span>}</span>
+                    {ticket.status === 'open' && canAssign && (
+                      <button onClick={() => removeAssignee(a.user_id)} disabled={claimLoading} title="Retirer"
+                        className="text-ink-4 hover:text-red-400 disabled:opacity-50 flex-shrink-0"><X size={12} /></button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {ticket.status === 'open' && canAssign && (
+              <div className="space-y-1.5">
+                {!amAssigned && (
+                  <button onClick={() => addAssignee(user.id)} disabled={claimLoading}
+                    className="w-full py-2 px-3 text-xs rounded-xl font-semibold border bg-emerald-500/10 text-emerald-400
+                               border-emerald-500/20 hover:bg-emerald-500/20 transition-all disabled:opacity-50">
+                    M'attribuer le ticket
+                  </button>
+                )}
+                {assignable.length > 0 && (
+                  <div className="flex gap-1.5">
+                    <Select className="flex-1 min-w-0" value={assigneeToAdd} onChange={setAssigneeToAdd}
+                      placeholder="Attribuer à…"
+                      options={[{ value: '', label: 'Attribuer à…' }, ...assignable.map(s => ({ value: s.user_id, label: s.username }))]} />
+                    <button onClick={() => addAssignee(assigneeToAdd)} disabled={!assigneeToAdd || claimLoading} title="Attribuer"
+                      className="p-2 rounded-xl bg-surface border border-white/[0.07] text-ink-3 hover:text-ink-1
+                                 hover:bg-surface-hover transition-all disabled:opacity-50 flex-shrink-0">
+                      <UserPlus size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* ACTIONS */}
           {(ticket.status === 'open' || (ticket.status === 'closed' && user?.role === 'fondateur')) && (
             <div className={panelCard}>
@@ -896,13 +949,6 @@ export default function TicketDetail() {
               <div className="space-y-2">
                 {ticket.status === 'open' && (
                   <>
-                    <button onClick={toggleClaim} disabled={claimLoading || !canClaim}
-                      className={`w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all
-                                  disabled:opacity-50 border ${myClaim || (anyClaim && user?.role === 'fondateur')
-                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'}`}>
-                      {claimLoading ? 'En cours...' : claimLabel}
-                    </button>
                     {user?.role === 'fondateur' && (
                       <button onClick={() => changeStatus('closed')} disabled={actionLoading}
                         className="w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all
@@ -1017,20 +1063,25 @@ export default function TicketDetail() {
             </div>
           )}
 
-          {/* DÉPLACER */}
-          {ticket.status === 'open' && categories.length > 0 && (
+          {/* ÉTAPE */}
+          {ticket.status === 'open' && (
             <div className={panelCard}>
-              <SectionTitle>Déplacer</SectionTitle>
-              <div className="flex gap-1.5">
-                <Select className="flex-1 min-w-0" value={selectedCategory}
-                  onChange={setSelectedCategory} placeholder="Catégorie..."
-                  options={categoryOptions} />
-                <button onClick={moveTicket}
-                  disabled={!selectedCategory || movingTicket}
-                  className="p-2 rounded-xl bg-surface border border-white/[0.07] text-ink-3
-                             hover:text-ink-1 hover:bg-surface-hover transition-all disabled:opacity-50 flex-shrink-0">
-                  <FolderOpen size={14} />
-                </button>
+              <SectionTitle>Étape</SectionTitle>
+              <div className="grid grid-cols-3 gap-1.5">
+                {STAGES.map(st => {
+                  const active = (ticket.stage || 'open') === st.value;
+                  const configured = ticket.stages?.[st.value] !== false;
+                  return (
+                    <button key={st.value} onClick={() => moveTicket(st.value)}
+                      disabled={movingTicket || active || !configured}
+                      title={configured ? `Passer en « ${st.label} »` : 'Aucune catégorie Discord associée (Paramètres)'}
+                      className={`py-2 px-1 rounded-xl text-[11px] font-semibold border transition-all disabled:cursor-default
+                                  ${active ? st.cls : 'text-ink-3 border-white/[0.07] hover:text-ink-1 hover:bg-white/[0.04]'}
+                                  ${!configured ? 'opacity-40' : ''}`}>
+                      {st.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

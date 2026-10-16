@@ -12,6 +12,7 @@ const TENANT_TABLES_SQL = `
     status              ENUM('open','closed') NOT NULL DEFAULT 'open',
     subject             VARCHAR(100) DEFAULT NULL,
     priority            ENUM('low','normal','urgent') NOT NULL DEFAULT 'normal',
+    stage               ENUM('open','waiting','in_progress') NOT NULL DEFAULT 'open',
     last_message_at     DATETIME DEFAULT NULL,
     first_response_at   DATETIME DEFAULT NULL,
     warned_inactive          TINYINT(1) NOT NULL DEFAULT 0,
@@ -23,6 +24,26 @@ const TENANT_TABLES_SQL = `
     closed_at           DATETIME DEFAULT NULL,
     closed_by_tag       VARCHAR(100) DEFAULT NULL,
     closed_by_id        VARCHAR(32) DEFAULT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS ticket_assignees (
+    ticket_id      INT NOT NULL,
+    user_id        VARCHAR(32) NOT NULL,
+    assigned_by_id VARCHAR(32) DEFAULT NULL,
+    assigned_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (ticket_id, user_id),
+    INDEX idx_ta_user (user_id),
+    CONSTRAINT fk_ta_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS ticket_views (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    user_id    VARCHAR(32) NOT NULL,
+    name       VARCHAR(60) NOT NULL,
+    filters    JSON NOT NULL,
+    is_default TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_tv_user (user_id)
   );
 
   CREATE TABLE IF NOT EXISTS ticket_participants (
@@ -188,6 +209,8 @@ const TENANT_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS guild_config (
     id                    INT AUTO_INCREMENT PRIMARY KEY,
     ticket_category_id    VARCHAR(32) DEFAULT NULL,
+    waiting_category_id   VARCHAR(32) DEFAULT NULL,
+    in_progress_category_id VARCHAR(32) DEFAULT NULL,
     support_role_ids      JSON NOT NULL DEFAULT ('[]'),
     chief_role_ids        JSON NOT NULL DEFAULT ('[]'),
     support_grade_id      INT DEFAULT NULL,
@@ -360,6 +383,23 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS style ENUM('short','paragraph') NOT NULL DEFAULT 'short'`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS min_length INT DEFAULT NULL`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS max_length INT DEFAULT NULL`,
+      // Ticket stages (Ouvert / En attente / En cours) mapped to Discord categories
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS stage ENUM('open','waiting','in_progress') NOT NULL DEFAULT 'open'`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS waiting_category_id VARCHAR(32) DEFAULT NULL`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS in_progress_category_id VARCHAR(32) DEFAULT NULL`,
+      // Multiple assignees per ticket (claimed_by stays the primary one); backfill from claimed_by
+      `CREATE TABLE IF NOT EXISTS ticket_assignees (
+        ticket_id INT NOT NULL, user_id VARCHAR(32) NOT NULL, assigned_by_id VARCHAR(32) DEFAULT NULL,
+        assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (ticket_id, user_id),
+        INDEX idx_ta_user (user_id),
+        CONSTRAINT fk_ta_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`,
+      `INSERT IGNORE INTO ticket_assignees (ticket_id, user_id, assigned_by_id)
+       SELECT id, claimed_by, claimed_by FROM tickets WHERE claimed_by IS NOT NULL`,
+      // Saved ticket list views (per user)
+      `CREATE TABLE IF NOT EXISTS ticket_views (
+        id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(32) NOT NULL, name VARCHAR(60) NOT NULL,
+        filters JSON NOT NULL, is_default TINYINT(1) NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_tv_user (user_id))`,
       // Grades granted by the Discord support / chief support roles (utils/staffSync.js)
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS support_grade_id INT DEFAULT NULL`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS chief_grade_id INT DEFAULT NULL`,
