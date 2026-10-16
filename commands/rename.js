@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -18,11 +18,11 @@ module.exports = {
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
+      return interaction.reply({ content: '❌ Pas un salon ticket.', flags: MessageFlags.Ephemeral });
     }
 
     const result = await tm.setSubject(ticket.id, interaction.options.getString('name', true), interaction.user);
-    if (!result?.subject) return interaction.reply({ content: '❌ Titre invalide.', ephemeral: true });
+    if (!result?.subject) return interaction.reply({ content: '❌ Titre invalide.', flags: MessageFlags.Ephemeral });
     await interaction.reply(`✅ Titre du ticket : **${result.subject}**${result.channelName ? ` (salon : \`${result.channelName}\`)` : ''}.`);
   }
 };

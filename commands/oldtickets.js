@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -22,7 +22,7 @@ module.exports = {
     const tickets = await tm.getOldTicketsByUserId(userId, interaction.user.id);
 
     if (!tickets.length) {
-      return interaction.reply({ content: '❌ Aucun ticket trouvé pour cet utilisateur.', ephemeral: true });
+      return interaction.reply({ content: '❌ Aucun ticket trouvé pour cet utilisateur.', flags: MessageFlags.Ephemeral });
     }
 
     const { embed, totalPages, safePage } = buildOldTicketsPageEmbed(userId, tickets, 0, 5);
@@ -30,7 +30,7 @@ module.exports = {
     await interaction.reply({
       embeds: [embed],
       components: [oldTicketsPaginationButtons(userId, safePage, totalPages)],
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 };

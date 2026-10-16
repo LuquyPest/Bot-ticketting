@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureChiefSupport } = require('../utils/permissions');
@@ -23,7 +23,7 @@ module.exports = {
     const stats = await tm.getAdminStats();
 
     if (!stats.length) {
-      return interaction.reply({ content: '❌ Aucune statistique disponible.', ephemeral: true });
+      return interaction.reply({ content: '❌ Aucune statistique disponible.', flags: MessageFlags.Ephemeral });
     }
 
     const description = stats.slice(0, 20).map((row, index) => {
@@ -49,6 +49,6 @@ module.exports = {
       .setDescription(description)
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 };

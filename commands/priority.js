@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { parseJsonField } = require('../utils/jsonField');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager, getGuildConfig } = require('../utils/ticketManager');
@@ -31,7 +31,7 @@ module.exports = {
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: 'Pas un ticket valide.', ephemeral: true });
+      return interaction.reply({ content: 'Pas un ticket valide.', flags: MessageFlags.Ephemeral });
     }
 
     const priority = interaction.options.getString('niveau', true);
@@ -62,6 +62,6 @@ module.exports = {
       }
     }
 
-    await interaction.reply({ content: `Priorité mise à jour : ${emoji} **${label}**`, ephemeral: true });
+    await interaction.reply({ content: `Priorité mise à jour : ${emoji} **${label}**`, flags: MessageFlags.Ephemeral });
   }
 };

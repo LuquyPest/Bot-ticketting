@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection, Events } = require('discord.js');
 const { config } = require('./utils/config');
 const logger = require('./utils/logger');
 const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
@@ -73,7 +73,7 @@ if (config.webEnabled !== false) {
 
 client.login(config.token);
 
-client.once('ready', () => {
+client.once(Events.ClientReady, () => {
   logger.info('Bot connecté', { tag: client.user.tag });
   startWorkers(client);
   startInactiveChecker(client);

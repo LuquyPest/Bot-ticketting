@@ -1,3 +1,4 @@
+const { MessageFlags } = require('discord.js');
 async function getMember(guild, userId) {
   return guild.members.fetch(userId).catch(() => null);
 }
@@ -44,7 +45,7 @@ async function isChiefSupportMember(client, guild, userId, db) {
 async function ensureSupport(interaction, client, db) {
   const allowed = await isSupportMember(client, interaction.guild, interaction.user.id, db);
   if (!allowed) {
-    await interaction.reply({ content: '❌ Permission refusée.', ephemeral: true }).catch(() => null);
+    await interaction.reply({ content: '❌ Permission refusée.', flags: MessageFlags.Ephemeral }).catch(() => null);
     return false;
   }
   return true;
@@ -53,7 +54,7 @@ async function ensureSupport(interaction, client, db) {
 async function ensureChiefSupport(interaction, client, db) {
   const allowed = await isChiefSupportMember(client, interaction.guild, interaction.user.id, db);
   if (!allowed) {
-    await interaction.reply({ content: '❌ Cette commande est réservée au chef support.', ephemeral: true }).catch(() => null);
+    await interaction.reply({ content: '❌ Cette commande est réservée au chef support.', flags: MessageFlags.Ephemeral }).catch(() => null);
     return false;
   }
   return true;

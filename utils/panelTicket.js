@@ -1,6 +1,6 @@
-const { createManager } = require('../utils/ticketManager');
-const { globalQuery } = require('../utils/globalDb');
-const { broadcast } = require('../utils/sse');
+const { createManager } = require('./ticketManager');
+const { globalQuery } = require('./globalDb');
+const { broadcast } = require('./sse');
 
 async function openTicketFromPanel(interaction, client, db, btn, formContent, subjectOverride = null) {
   const user = interaction.user;

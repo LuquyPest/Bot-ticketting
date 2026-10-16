@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -26,13 +26,13 @@ module.exports = {
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: '❌ Cette commande doit être utilisée dans un ticket.', ephemeral: true });
+      return interaction.reply({ content: '❌ Cette commande doit être utilisée dans un ticket.', flags: MessageFlags.Ephemeral });
     }
 
     const result = await tm.moveToStage(ticket.id, interaction.options.getString('etape', true), interaction.user)
       .catch(() => ({ ok: false, error: 'Impossible de déplacer le ticket.' }));
-    if (!result.ok) return interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });
+    if (!result.ok) return interaction.reply({ content: `❌ ${result.error}`, flags: MessageFlags.Ephemeral });
     await tm.updateChannelTopic(ticket.id).catch(() => null);
-    return interaction.reply({ content: `✅ Ticket passé en **${result.label}**.`, ephemeral: true });
+    return interaction.reply({ content: `✅ Ticket passé en **${result.label}**.`, flags: MessageFlags.Ephemeral });
   }
 };

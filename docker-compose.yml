@@ -40,6 +40,8 @@ services:
   bot:
     build: .
     restart: unless-stopped
+    # Runs as the host user owning config.json, so that file can stay chmod 600 (BOT_UID/BOT_GID in .env)
+    user: "${BOT_UID:-1000}:${BOT_GID:-1000}"
     # Only what the bot needs from .env — DB_ROOT_PASSWORD must stay out of this container
     environment:
       SA_USERNAME: ${SA_USERNAME:-}

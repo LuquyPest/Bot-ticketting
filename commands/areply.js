@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -27,15 +27,15 @@ module.exports = {
     const cooldown = ((cfg.reply_rate_limit_seconds ?? client.config?.replyRateLimitSeconds ?? 3)) * 1000;
     const remaining = checkRateLimit(`areply:${interaction.user.id}:${interaction.guildId}`, cooldown);
     if (remaining > 0) {
-      return interaction.reply({ content: `Attends encore ${remaining}s avant de renvoyer une réponse.`, ephemeral: true });
+      return interaction.reply({ content: `Attends encore ${remaining}s avant de renvoyer une réponse.`, flags: MessageFlags.Ephemeral });
     }
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
-    if (!ticket) return interaction.reply({ content: 'Pas un ticket', ephemeral: true });
+    if (!ticket) return interaction.reply({ content: 'Pas un ticket', flags: MessageFlags.Ephemeral });
 
     const content = interaction.options.getString('message') || '';
     const file = interaction.options.getAttachment('fichier');
-    if (!content && !file) return interaction.reply({ content: 'Tu dois fournir un message, un fichier ou les deux.', ephemeral: true });
+    if (!content && !file) return interaction.reply({ content: 'Tu dois fournir un message, un fichier ou les deux.', flags: MessageFlags.Ephemeral });
 
     const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
     let msg = `--- Support : ${content || ''}`.trim();
@@ -50,7 +50,7 @@ module.exports = {
 
     await tm.recordStaffResponse(ticket.id, interaction.user);
     await tm.updateLastMessage(ticket.id);
-    await interaction.reply({ content: 'Envoye', ephemeral: true });
+    await interaction.reply({ content: 'Envoye', flags: MessageFlags.Ephemeral });
     await interaction.channel.send(msg);
 
     const noteContent = [content, file?.url].filter(Boolean).join('\n');

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
@@ -15,13 +15,13 @@ module.exports = {
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
+      return interaction.reply({ content: '❌ Pas un salon ticket.', flags: MessageFlags.Ephemeral });
     }
 
     // Several staff members can be assigned to the same ticket
     const added = await tm.addAssignee(ticket.id, interaction.user, interaction.user);
     if (!added) {
-      return interaction.reply({ content: 'Tu es déjà assigné à ce ticket.', ephemeral: true });
+      return interaction.reply({ content: 'Tu es déjà assigné à ce ticket.', flags: MessageFlags.Ephemeral });
     }
     await tm.updateChannelTopic(ticket.id).catch(() => null);
     const claimEmbed = new EmbedBuilder()

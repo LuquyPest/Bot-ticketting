@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureChiefSupport } = require('../utils/permissions');
@@ -35,14 +35,14 @@ module.exports = {
       const raison = interaction.options.getString('raison') || null;
 
       if (user.bot) {
-        return interaction.reply({ content: 'Impossible de blacklister un bot.', ephemeral: true });
+        return interaction.reply({ content: 'Impossible de blacklister un bot.', flags: MessageFlags.Ephemeral });
       }
 
       await tm.addToBlacklist(user.id, user.username, raison, interaction.user);
 
       await interaction.reply({
         content: `${user.username} a été ajouté à la blacklist.${raison ? `\nRaison : ${raison}` : ''}`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
 
       await user.send(
@@ -56,10 +56,10 @@ module.exports = {
       const removed = await tm.removeFromBlacklist(user.id, interaction.user);
 
       if (!removed) {
-        return interaction.reply({ content: `${user.username} n'est pas dans la blacklist.`, ephemeral: true });
+        return interaction.reply({ content: `${user.username} n'est pas dans la blacklist.`, flags: MessageFlags.Ephemeral });
       }
 
-      await interaction.reply({ content: `${user.username} a été retiré de la blacklist.`, ephemeral: true });
+      await interaction.reply({ content: `${user.username} a été retiré de la blacklist.`, flags: MessageFlags.Ephemeral });
       await user.send('Tu as été retiré de la blacklist et peux à nouveau ouvrir des tickets.').catch(() => null);
       return;
     }
@@ -68,7 +68,7 @@ module.exports = {
       const list = await tm.getBlacklist();
 
       if (!list.length) {
-        return interaction.reply({ content: 'La blacklist est vide.', ephemeral: true });
+        return interaction.reply({ content: 'La blacklist est vide.', flags: MessageFlags.Ephemeral });
       }
 
       const embed = new EmbedBuilder()
@@ -81,7 +81,7 @@ module.exports = {
         .setFooter({ text: `${list.length} utilisateur(s) bloqué(s)` })
         .setTimestamp();
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
   }
 };
