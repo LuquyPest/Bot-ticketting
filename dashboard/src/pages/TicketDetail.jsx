@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -148,6 +148,8 @@ export default function TicketDetail() {
   const [templates, setTemplates] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateScope, setNewTemplateScope] = useState('personal');
+  const [linkTemplateSubject, setLinkTemplateSubject] = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   const templatesRef = useRef(null);
@@ -170,17 +172,18 @@ export default function TicketDetail() {
     loadTicket();
     loadNotes();
     api.get('/tickets/staff').then(r => setStaff(r.data)).catch(() => {});
-    api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
     api.get('/grades').then(r => setGrades(r.data)).catch(() => {});
     api.get('/tags').then(r => setAllTags(r.data)).catch(() => {});
     api.get(`/tags/ticket/${id}`).then(r => setTicketTags(r.data)).catch(() => {});
     localStorage.setItem(`ticket_seen_${id}`, Date.now().toString());
   }, [loadTicket, loadNotes, id]);
 
+  // Templates matching the ticket subject come back first, flagged `suggested`
+  const ticketLoaded = !!ticket;
   useEffect(() => {
-    if (!ticket?.subject) return;
-    api.get('/templates', { params: { subject: ticket.subject } }).then(r => setTemplates(r.data)).catch(() => {});
-  }, [ticket?.subject]);
+    if (!ticketLoaded) return;
+    api.get('/templates', { params: ticket?.subject ? { subject: ticket.subject } : {} }).then(r => setTemplates(r.data)).catch(() => {});
+  }, [ticketLoaded, ticket?.subject]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -365,15 +368,23 @@ export default function TicketDetail() {
     if (!composeText.trim() || !newTemplateName.trim()) return;
     setSavingTemplate(true);
     try {
+      const linked = linkTemplateSubject && ticket?.subject;
       const { data } = await api.post('/templates', {
         name: newTemplateName.trim(), content: composeText.trim(),
-        subject: ticket?.subject || null
+        subject: linked ? ticket.subject : null, scope: newTemplateScope,
       });
-      setTemplates(t => [...t, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setTemplates(t => [...t, { ...data, suggested: !!linked }]);
       setNewTemplateName('');
-      toast.success('Template sauvegardé');
+      toast.success(newTemplateScope === 'shared' ? 'Modèle partagé avec le staff' : 'Modèle enregistré pour toi');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setSavingTemplate(false); }
+  };
+
+  const applyTemplate = (tpl) => {
+    setComposeText(resolveVars(tpl.content, ticket, user?.username));
+    setShowTemplates(false);
+    replyRef.current?.focus();
+    api.post(`/templates/${tpl.id}/use`).catch(() => {});
   };
 
   const deleteTemplate = async (tplId, e) => {
@@ -731,6 +742,19 @@ export default function TicketDetail() {
               </button>
             </div>
 
+            {/* Suggested replies for this subject */}
+            {!composeText && templates.some(t => t.suggested) && (
+              <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                <span className="flex items-center gap-1 text-[10px] text-ink-4"><Sparkles size={10} /> Suggestions</span>
+                {templates.filter(t => t.suggested).slice(0, 4).map(tpl => (
+                  <button key={tpl.id} onClick={() => applyTemplate(tpl)} title={resolveVars(tpl.content, ticket, user?.username)}
+                    className="px-2 py-1 rounded-lg text-[11px] text-ink-2 bg-surface border border-white/[0.07] hover:text-ink-1 hover:border-primary/40 max-w-[12rem] truncate">
+                    {tpl.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Textarea */}
             <textarea
               ref={replyRef}
@@ -766,7 +790,7 @@ export default function TicketDetail() {
                                border bg-surface text-ink-3 border-white/[0.07]
                                hover:text-ink-1 hover:border-white/[0.12] transition-all">
                     <Layers size={11} />
-                    Templates
+                    Modèles
                     <ChevronDown size={10} className={`transition-transform duration-200 ${showTemplates ? 'rotate-180' : ''}`} />
                   </button>
                   {showTemplates && (
@@ -775,56 +799,84 @@ export default function TicketDetail() {
                                     overflow-hidden animate-in">
                       <div className="max-h-52 overflow-y-auto">
                         {templates.length === 0 ? (
-                          <p className="text-xs text-ink-4 p-4 text-center">Aucun template sauvegardé</p>
-                        ) : templates.map(tpl => (
-                          <div key={tpl.id}
-                            className="group/tpl flex items-start gap-2 px-3.5 py-2.5
-                                       hover:bg-white/[0.04] border-b border-white/[0.05] last:border-0
-                                       transition-colors cursor-pointer"
-                            onClick={() => {
-                              setComposeText(resolveVars(tpl.content, ticket, user?.username));
-                              setShowTemplates(false);
-                            }}>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-xs font-semibold text-ink-1 truncate">{tpl.name}</p>
-                                {hasVars(tpl.content) && (
-                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-500/20
-                                                   text-violet-300 border border-violet-500/20 flex-shrink-0">
-                                    vars
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-ink-3 truncate mt-0.5">
-                                {resolveVars(tpl.content, ticket, user?.username)}
-                              </p>
+                          <p className="text-xs text-ink-4 p-4 text-center">Aucun modèle enregistré</p>
+                        ) : [
+                          ['Suggérés pour ce sujet', t => t.suggested],
+                          ['Mes modèles', t => !t.suggested && t.scope === 'personal'],
+                          ['Partagés avec le staff', t => !t.suggested && t.scope !== 'personal'],
+                        ].map(([label, inGroup]) => {
+                          const group = templates.filter(inGroup);
+                          if (!group.length) return null;
+                          return (
+                            <div key={label}>
+                              <p className="px-3.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-4">{label}</p>
+                              {group.map(tpl => (
+                                <div key={tpl.id}
+                                  className="group/tpl flex items-start gap-2 px-3.5 py-2.5
+                                             hover:bg-white/[0.04] border-b border-white/[0.05] last:border-0
+                                             transition-colors cursor-pointer"
+                                  onClick={() => applyTemplate(tpl)}>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-xs font-semibold text-ink-1 truncate">{tpl.name}</p>
+                                      {tpl.scope === 'personal' && tpl.suggested && (
+                                        <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-white/[0.06] text-ink-3 border border-white/[0.08] flex-shrink-0">perso</span>
+                                      )}
+                                      {hasVars(tpl.content) && (
+                                        <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-500/20
+                                                         text-violet-300 border border-violet-500/20 flex-shrink-0">
+                                          vars
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-ink-3 truncate mt-0.5">
+                                      {resolveVars(tpl.content, ticket, user?.username)}
+                                    </p>
+                                    {tpl.scope !== 'personal' && !tpl.mine && (
+                                      <p className="text-[9px] text-ink-4 mt-0.5">par {tpl.created_by_tag}</p>
+                                    )}
+                                  </div>
+                                  {(user?.role === 'fondateur' || tpl.created_by_id === user?.id) && (
+                                    <button onClick={(e) => deleteTemplate(tpl.id, e)} title="Supprimer le modèle"
+                                      className="opacity-0 group-hover/tpl:opacity-100 text-ink-4
+                                                 hover:text-red-400 transition-all flex-shrink-0 mt-0.5">
+                                      <X size={11} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                            {(user?.role === 'fondateur' || tpl.created_by_id === user?.id) && (
-                              <button onClick={(e) => deleteTemplate(tpl.id, e)}
-                                className="opacity-0 group-hover/tpl:opacity-100 text-ink-4
-                                           hover:text-red-400 transition-all flex-shrink-0 mt-0.5">
-                                <X size={11} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
-                      {user?.role === 'fondateur' && (
                         <div className="border-t border-white/[0.07] px-3.5 py-2.5 space-y-2 bg-white/[0.02]">
-                          <input type="text" placeholder="Nom du template..."
+                          <input type="text" placeholder="Nom du modèle..." maxLength={100}
                             value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)}
                             className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4
                                        rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-primary/50
                                        transition-all" />
+                          <div className="flex gap-1 p-0.5 rounded-lg bg-surface border border-white/[0.06]" role="radiogroup" aria-label="Portée du modèle">
+                            {[['personal', 'Pour moi'], ['shared', 'Pour tout le staff']].map(([v, label]) => (
+                              <button key={v} type="button" role="radio" aria-checked={newTemplateScope === v} onClick={() => setNewTemplateScope(v)}
+                                className={`flex-1 py-1 rounded-md text-[11px] font-medium ${newTemplateScope === v ? 'bg-primary/15 text-ink-1' : 'text-ink-4 hover:text-ink-2'}`}>
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          {ticket?.subject && (
+                            <label className="flex items-center gap-2 text-[11px] text-ink-3 cursor-pointer">
+                              <input type="checkbox" checked={linkTemplateSubject} onChange={e => setLinkTemplateSubject(e.target.checked)} className="accent-[var(--color-primary)]" />
+                              <span className="truncate">Suggérer sur les tickets « {ticket.subject} »</span>
+                            </label>
+                          )}
                           <button onClick={saveTemplate}
                             disabled={!composeText.trim() || !newTemplateName.trim() || savingTemplate}
                             className="w-full py-2 text-xs rounded-lg bg-primary/10 text-primary-light
                                        border border-primary/20 hover:bg-primary/20
                                        disabled:opacity-40 transition-all font-semibold">
-                            {savingTemplate ? 'Sauvegarde...' : 'Sauvegarder ce texte'}
+                            {savingTemplate ? 'Enregistrement...' : 'Enregistrer ce texte comme modèle'}
                           </button>
                         </div>
-                      )}
                     </div>
                   )}
                 </div>

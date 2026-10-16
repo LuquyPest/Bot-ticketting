@@ -26,6 +26,7 @@ const VERSIONS = [
       { type: 'fix',  text: 'Les commandes et boutons Discord (/reply, /claim, /adduser, Fermer, Transcript…) vérifient maintenant les permissions de grade et la visibilité du ticket, comme le dashboard' },
       { type: 'new',  text: 'Après la note de satisfaction, le membre peut laisser un commentaire libre, affiché dans la fiche du ticket' },
       { type: 'new',  text: 'Bouton « Fermer mon ticket » dans les MP du membre (bienvenue et réponses du staff), avec confirmation' },
+      { type: 'new',  text: 'Modèles de réponse personnels ou partagés : tout le staff peut en enregistrer, et ceux liés au sujet du ticket sont suggérés au-dessus de la zone de réponse' },
     ]
   },
   {

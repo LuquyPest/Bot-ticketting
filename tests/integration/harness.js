@@ -556,6 +556,51 @@ async function main() {
   r = await req('GET', `/api/tickets/${tm9}`, { sid: sessions.FV });
   check('notation: commentaire visible dans la fiche du ticket', r.body.rating?.comment === 'Très rapide, merci !', JSON.stringify(r.body.rating));
 
+  // ── Reply templates: personal / shared, suggested by subject ──
+  await mk('S1T', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
+  await mk('S3T', { user: { id: U.S3, username: 'S3', role: null }, currentGuildId: G });
+  const READER = '100000000000000099';
+  const gRead = (await db("INSERT INTO grades (name) VALUES ('Lecture')")).insertId;
+  await db("INSERT INTO grade_permissions VALUES (?, 'view_tickets')", [gRead]);
+  await db("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'reader', 'support')", [READER]);
+  await db('INSERT INTO user_grades (user_id, grade_id, assigned_by_id, assigned_by_tag) VALUES (?, ?, "x", "x")', [READER, gRead]);
+  await mk('RD', { user: { id: READER, username: 'reader', role: null }, currentGuildId: G });
+
+  r = await req('POST', '/api/templates', { sid: sessions.S1T, body: { name: 'Remboursement', content: 'Bonjour {{username}}, votre remboursement est en cours.', subject: 'Paiement', scope: 'shared' } });
+  const tShared = r.body;
+  check('modèles: un support peut partager un modèle', r.status === 200 && tShared.scope === 'shared', JSON.stringify(r.body));
+  r = await req('POST', '/api/templates', { sid: sessions.S1T, body: { name: 'Mon brouillon', content: 'Texte perso' } });
+  const tPerso = r.body;
+  check('modèles: personnel par défaut', r.status === 200 && tPerso.scope === 'personal', JSON.stringify(r.body));
+  r = await req('POST', '/api/templates', { sid: sessions.RD, body: { name: 'x', content: 'y' } });
+  check('modèles: création refusée sans reply_ticket', r.status === 403, r.status);
+  r = await req('POST', '/api/templates', { sid: sessions.S1T, body: { name: 'x', content: 'y', scope: 'public' } });
+  check('modèles: portée invalide refusée', r.status === 400, r.status);
+
+  r = await req('GET', '/api/templates', { sid: sessions.S3T, query: { subject: 'Problème de paiement' } });
+  const s3List = r.body.map(t => t.name);
+  check('modèles: le personnel d\'un autre reste invisible', s3List.includes('Remboursement') && !s3List.includes('Mon brouillon'), JSON.stringify(s3List));
+  check('modèles: suggéré quand le sujet correspond (accents, casse)', r.body[0]?.name === 'Remboursement' && r.body[0].suggested === true, JSON.stringify(r.body.slice(0, 2)));
+  r = await req('GET', '/api/templates', { sid: sessions.S3T, query: { subject: 'Connexion' } });
+  check('modèles: pas suggéré pour un autre sujet', r.body.find(t => t.name === 'Remboursement')?.suggested === false);
+
+  r = await req('DELETE', `/api/templates/${tShared.id}`, { sid: sessions.S3T });
+  check('modèles: un autre membre ne peut pas supprimer', r.status === 403, r.status);
+  r = await req('DELETE', `/api/templates/${tPerso.id}`, { sid: sessions.S3T });
+  check('modèles: modèle personnel d\'un autre introuvable', r.status === 404, r.status);
+  r = await req('PATCH', `/api/templates/${tPerso.id}`, { sid: sessions.S1T, body: { scope: 'shared', name: 'Brouillon partagé' } });
+  check('modèles: l\'auteur peut le partager', r.status === 200 && r.body.scope === 'shared' && r.body.name === 'Brouillon partagé', JSON.stringify(r.body));
+  await req('POST', `/api/templates/${tShared.id}/use`, { sid: sessions.S3T });
+  const [used] = await db('SELECT use_count FROM reply_templates WHERE id = ?', [tShared.id]);
+  check('modèles: compteur d\'utilisation', used.use_count === 1, JSON.stringify(used));
+  r = await req('DELETE', `/api/templates/${tShared.id}`, { sid: sessions.FV });
+  check('modèles: le fondateur peut supprimer un modèle partagé', r.status === 200, r.status);
+  const pOnly = (await req('POST', '/api/templates', { sid: sessions.S1T, body: { name: 'Privé', content: 'secret' } })).body;
+  const tbulk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status) VALUES ('11','u11','cb1','open')")).insertId;
+  r = await req('POST', '/api/tickets/bulk', { sid: sessions.FV, body: { ids: [tbulk], action: 'send_template', value: pOnly.id } });
+  check('modèles: envoi groupé refusé avec le modèle personnel d\'un autre', r.status === 400, JSON.stringify([r.status, r.body]));
+  await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tbulk]);
+
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
   r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketCategoryId: CAT_OPEN, waitingCategoryId: CAT_WAIT, inProgressCategoryId: null } });

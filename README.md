@@ -340,7 +340,7 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 - **Temps réel (SSE)** : nouvelles notes et réponses sans rechargement de page
 - **Répondre au membre** : mode *Répondre* (DM envoyé) ou *Note interne* (staff seulement)
 - **Réponse anonyme** : toggle "Anonyme/Identifié" masquant le pseudo du staff
-- **Templates** : réponses prédéfinies insérables en un clic
+- **Modèles de réponse** : réponses prédéfinies insérables en un clic, avec variables (`{{username}}`, `{{ticket_id}}`, `{{date}}`, `{{staff_name}}`, `{{subject}}`). Tout membre ayant `reply_ticket` peut enregistrer le texte en cours **pour lui seul** ou **pour tout le staff**, et le lier au sujet du ticket : il est alors **suggéré** au-dessus de la zone de réponse sur les tickets dont le sujet correspond (sans tenir compte des accents ni de la casse). Les modèles les plus utilisés remontent en tête. Seul l'auteur (ou un fondateur) peut modifier ou supprimer un modèle
 - **Attribué à** : un ticket peut être attribué à plusieurs membres du staff ; « M'attribuer », attribuer quelqu'un d'autre, retirer (permission `claim_ticket`). La première personne assignée reste le responsable principal (stats, rappels, notation)
 - **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon
 - **Priorité** : Faible / Normal / Urgent — met à jour le topic du salon Discord
@@ -588,7 +588,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `admin_stats` | Statistiques cumulées par agent |
 | `blacklist` | Utilisateurs bannis (avec expiration optionnelle) |
 | `dashboard_users` | Comptes dashboard avec rôles et profil |
-| `reply_templates` | Templates de réponse rapide |
+| `reply_templates` | Modèles de réponse (personnels ou partagés, sujet associé, compteur d'utilisation) |
 | `grades` | Hiérarchie de rôles personnalisée |
 | `grade_permissions` | Permissions par grade |
 | `user_grades` | Association utilisateurs ↔ grades |

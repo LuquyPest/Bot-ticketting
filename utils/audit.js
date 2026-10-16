@@ -58,6 +58,7 @@ const ACTIONS = {
   tag_update:               ['Tag modifié', 'config'],
   tag_delete:               ['Tag supprimé', 'config'],
   template_create:          ['Modèle de réponse créé', 'config'],
+  template_update:          ['Modèle de réponse modifié', 'config'],
   template_delete:          ['Modèle de réponse supprimé', 'config'],
   // Intégrations
   api_key_create:           ['Clé API créée', 'integrations'],

@@ -425,6 +425,9 @@ async function ensureTenantSchema(guildId) {
          AND JSON_VALUE(details, '$.webhookSecret') <> '[modifié]'`,
       // Free comment left with a satisfaction rating
       `ALTER TABLE ticket_ratings ADD COLUMN IF NOT EXISTS comment TEXT DEFAULT NULL`,
+      // Reply templates: personal or shared (existing ones stay shared) + usage counter
+      `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS scope ENUM('personal','shared') NOT NULL DEFAULT 'shared'`,
+      `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS use_count INT NOT NULL DEFAULT 0`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

@@ -740,7 +740,8 @@ router.post('/bulk', async (req, res) => {
       return res.json({ ok: true, affected });
     }
     if (action === 'send_template') {
-      const [tpl] = await req.guildDb('SELECT content FROM reply_templates WHERE id = ?', [parseInt(value)]);
+      // Shared templates, or the user's own personal ones
+      const tpl = await require('./templates').visibleTemplate(req, parseInt(value));
       if (!tpl) return res.status(400).json({ error: 'Template introuvable' });
       const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
       for (const ticket of tickets) await sendStaffReply(req, ticket, { content: tpl.content, anonymous: false });
