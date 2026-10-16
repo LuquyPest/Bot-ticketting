@@ -423,6 +423,8 @@ async function ensureTenantSchema(guildId) {
        WHERE action = 'config_update' AND JSON_EXISTS(details, '$.webhookSecret')
          AND JSON_VALUE(details, '$.webhookSecret') IS NOT NULL
          AND JSON_VALUE(details, '$.webhookSecret') <> '[modifié]'`,
+      // Free comment left with a satisfaction rating
+      `ALTER TABLE ticket_ratings ADD COLUMN IF NOT EXISTS comment TEXT DEFAULT NULL`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

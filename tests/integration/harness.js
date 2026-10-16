@@ -111,7 +111,8 @@ async function main() {
     setName: async function (n) { this.name = n; return this; },
     send: async p => { sent.push({ id, p }); return { id: 'm' + sent.length }; },
     setTopic: async () => {}, delete: async () => {}, setParent: async () => {},
-    messages: { fetch: async () => null, delete: async () => {} },
+    // fetch({ limit }) → empty collection (transcripts); fetch(id) → unknown message
+    messages: { fetch: async q => (q && typeof q === 'object' ? new Map() : null), delete: async () => {} },
   });
   // Discord members and their roles (mutable to simulate role changes)
   const memberRoles = new Map([
@@ -495,6 +496,65 @@ async function main() {
   out = await runCmd('claim', '400000000000000002');
   check('commande Discord: ticket restreint refusé hors grade', /réservé à certains grades/.test(out.reply?.content) && !(await assigned('400000000000000002')), JSON.stringify(out));
   await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tc]);
+
+  // ── Member: « Fermer mon ticket » button, then rating with a free comment ──
+  const M9 = '200000000000000009', M10 = '200000000000000010';
+  const CL_CH = '900000000000000079';
+  channels.set(CL_CH, mkChannel(CL_CH, G));
+  const tm9 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member09', ?, 'open', 'à fermer')", [M9, CL_CH])).insertId;
+  await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [tm9, M10]);
+  memberDms.length = 0;
+  r = await req('POST', `/api/tickets/${tm9}/reply`, { sid: sessions.FV, body: { content: 'Réponse avec bouton' } });
+  const ownerDm = memberDms.find(m => m.id === M9)?.p, partDm = memberDms.find(m => m.id === M10)?.p;
+  const closeBtnId = ownerDm?.components?.[0]?.components?.[0]?.data?.custom_id;
+  check('membre: bouton « Fermer mon ticket » sur les réponses du staff', r.status === 200 && closeBtnId === `memberclose_${tm9}_${G}`, JSON.stringify(ownerDm?.components));
+  check('membre: pas de bouton pour un participant', partDm && !(partDm.components || []).length, JSON.stringify(partDm?.components));
+  const dmInteraction = (customId, extra = {}) => {
+    const out = {};
+    return { out, interaction: {
+      customId, guildId: null, guild: null, channelId: 'dm', values: [],
+      user: { id: M9, username: 'member09', tag: 'member09', send: async p => memberDms.push({ id: M9, p }) },
+      isButton: () => true, isStringSelectMenu: () => false, isModalSubmit: () => false, isChatInputCommand: () => false, isRepliable: () => true,
+      reply: async p => { out.reply = p; }, update: async p => { out.update = p; }, showModal: async m => { out.modal = m; },
+      ...extra,
+    } };
+  };
+  const interModM = app('./events/interactionCreate');
+  let di = dmInteraction(closeBtnId);
+  await interModM.execute(fakeClient, di.interaction);
+  const confirmId = di.out.reply?.components?.[0]?.components?.[0]?.data?.custom_id;
+  check('membre: confirmation demandée avant fermeture', confirmId === `memberclose_confirm_${tm9}_${G}`, JSON.stringify(di.out));
+  di = dmInteraction(confirmId);
+  await interModM.execute(fakeClient, di.interaction);
+  const [closed9] = await db('SELECT status, closed_by_id, closed_by_tag FROM tickets WHERE id = ?', [tm9]);
+  const [ev9] = await db("SELECT details FROM audit_log WHERE action = 'ticket_close' AND ticket_id = ?", [tm9]);
+  const [st9] = await db('SELECT 1 AS x FROM admin_stats WHERE admin_id = ?', [M9]);
+  check('membre: ticket fermé par le membre', closed9.status === 'closed' && closed9.closed_by_id === null && JSON.stringify(ev9?.details).includes('Fermé par le membre'), JSON.stringify([closed9, ev9]));
+  check('membre: fermeture non comptée dans les stats staff', !st9);
+  di = dmInteraction(confirmId);
+  await interModM.execute(fakeClient, di.interaction);
+  check('membre: double fermeture refusée proprement', /déjà fermé/.test(di.out.update?.content), JSON.stringify(di.out));
+
+  di = dmInteraction(`rating_4_${tm9}_${G}`);
+  await interModM.execute(fakeClient, di.interaction);
+  const commentBtn = di.out.update?.components?.[0]?.components?.[0]?.data?.custom_id;
+  check('notation: bouton « Ajouter un commentaire » après la note', commentBtn === `ratecomment_${tm9}_${G}`, JSON.stringify(di.out.update?.components));
+  di = dmInteraction(commentBtn);
+  await interModM.execute(fakeClient, di.interaction);
+  check('notation: fenêtre de commentaire ouverte', di.out.modal?.data?.custom_id === `ratecomment_modal_${tm9}_${G}`, JSON.stringify(di.out.modal?.data));
+  const modalSubmit = text => dmInteraction(`ratecomment_modal_${tm9}_${G}`, {
+    isButton: () => false, isModalSubmit: () => true, fields: { getTextInputValue: () => text },
+  });
+  di = modalSubmit('Très rapide, merci !');
+  await interModM.execute(fakeClient, di.interaction);
+  const [rc] = await db('SELECT rating, comment FROM ticket_ratings WHERE ticket_id = ?', [tm9]);
+  check('notation: commentaire enregistré', rc?.comment === 'Très rapide, merci !' && di.out.update?.embeds?.[0]?.data?.fields?.some(f => f.value === 'Très rapide, merci !'), JSON.stringify([rc, di.out]));
+  di = modalSubmit('Autre commentaire');
+  await interModM.execute(fakeClient, di.interaction);
+  const [rc2] = await db('SELECT comment FROM ticket_ratings WHERE ticket_id = ?', [tm9]);
+  check('notation: un seul commentaire par ticket', rc2.comment === 'Très rapide, merci !' && /déjà/.test(di.out.reply?.content), JSON.stringify([rc2, di.out]));
+  r = await req('GET', `/api/tickets/${tm9}`, { sid: sessions.FV });
+  check('notation: commentaire visible dans la fiche du ticket', r.body.rating?.comment === 'Très rapide, merci !', JSON.stringify(r.body.rating));
 
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });

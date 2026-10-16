@@ -131,6 +131,16 @@ function ratingConfirmEmbed(rating) {
     .setTimestamp();
 }
 
+function ratingCommentEmbed(rating, comment) {
+  return ratingConfirmEmbed(rating).addFields({ name: '💬 Ton commentaire', value: comment.slice(0, 1024) });
+}
+
+function memberCloseConfirmEmbed(ticket) {
+  return new EmbedBuilder()
+    .setColor(C.warning)
+    .setDescription(`Fermer le ticket **#${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}** ?\nLe staff ne pourra plus te répondre dans ce ticket.`);
+}
+
 function alreadyRatedEmbed() {
   return new EmbedBuilder()
     .setColor(C.neutral)
@@ -188,5 +198,7 @@ module.exports = {
   choiceEmbed,
   ticketCreatingEmbed,
   ratingConfirmEmbed,
+  ratingCommentEmbed,
+  memberCloseConfirmEmbed,
   alreadyRatedEmbed,
 };

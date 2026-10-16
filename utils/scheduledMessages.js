@@ -4,6 +4,7 @@ const { createManager } = require('./ticketManager');
 const { broadcast } = require('./sse');
 const { recordEvent } = require('./audit');
 const { staffReplyDmEmbed } = require('./dmEmbeds');
+const { ticketDmComponents } = require('./components');
 
 async function processPending(client) {
   let guilds;
@@ -35,7 +36,7 @@ async function processPending(client) {
           const linkedUserIds = await tm.getAllLinkedUserIds(msg.ticket_id);
           for (const userId of linkedUserIds) {
             const user = await client.users.fetch(userId).catch(() => null);
-            if (user) await user.send({ embeds: [dmEmbed] }).catch(() => null);
+            if (user) await user.send({ embeds: [dmEmbed], components: ticketDmComponents(ticket, guild_id, userId) }).catch(() => null);
           }
           await recordEvent(db, {
             actor: { id: msg.sender_id, tag: msg.sender_tag, source: 'system' }, action: 'scheduled_sent', ticketId: msg.ticket_id,

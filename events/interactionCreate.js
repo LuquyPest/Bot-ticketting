@@ -9,8 +9,17 @@ const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../ut
 const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/embeds');
 const {
   sessionExpiredEmbed, relayedToTicketEmbed, subjectAskEmbed, choiceEmbed,
-  ticketCreatingEmbed, ratingConfirmEmbed, alreadyRatedEmbed,
+  ticketCreatingEmbed, ratingConfirmEmbed, ratingCommentEmbed, memberCloseConfirmEmbed, alreadyRatedEmbed,
 } = require('../utils/dmEmbeds');
+const { ratingCommentButton, memberCloseConfirmButtons } = require('../utils/components');
+
+// Open ticket owned by the member on an active guild (member close button).
+async function findOpenOwnedTicket(ticketId, ownerId, guildId) {
+  if (!ticketId || !guildId || !(await isGuildOperational(guildId))) return null;
+  const db = getTenantDb(guildId);
+  const [ticket] = await db("SELECT id, channel_id, subject FROM tickets WHERE id = ? AND owner_id = ? AND status = 'open'", [ticketId, ownerId]).catch(() => []);
+  return ticket ? { db, ticket } : null;
+}
 
 async function findGuildForClosedTicket(ticketId, ownerId, guildId) {
   const guilds = await getActiveGuilds();
@@ -92,7 +101,46 @@ module.exports = {
           const closedByTag = closedByUser?.username || ticket.closed_by_tag || closedById;
           const tm = createManager(db, client, guildId);
           await tm.saveRating(ticketId, interaction.user.id, closedById, rating, closedByTag);
-          return interaction.update({ embeds: [ratingConfirmEmbed(rating)], components: [] });
+          return interaction.update({ embeds: [ratingConfirmEmbed(rating)], components: [ratingCommentButton(ticketId, guildId)] });
+        }
+
+        // ── Commentaire de satisfaction (DM) ── button → modal
+        if (interaction.customId.startsWith('ratecomment_')) {
+          const [, ticketId, guildId] = interaction.customId.split('_');
+          const modal = new ModalBuilder()
+            .setCustomId(`ratecomment_modal_${ticketId}_${guildId}`)
+            .setTitle('Ton avis sur le support')
+            .addComponents(new ActionRowBuilder().addComponents(
+              new TextInputBuilder().setCustomId('comment').setLabel('Commentaire').setStyle(TextInputStyle.Paragraph)
+                .setRequired(true).setMinLength(2).setMaxLength(1000).setPlaceholder('Ce qui t\'a plu, ce qui pourrait être amélioré…')
+            ));
+          return interaction.showModal(modal);
+        }
+
+        // ── Fermer mon ticket (DM, propriétaire du ticket) ──
+        if (interaction.customId === 'memberclose_cancel') {
+          return interaction.update({ embeds: [choiceEmbed('Fermeture annulée.')], components: [] });
+        }
+        if (interaction.customId.startsWith('memberclose_')) {
+          const confirm = interaction.customId.startsWith('memberclose_confirm_');
+          const [ticketId, guildId] = interaction.customId.split('_').slice(confirm ? 2 : 1);
+          const found = await findOpenOwnedTicket(parseInt(ticketId), interaction.user.id, guildId);
+          if (!found) {
+            const payload = { content: 'Ce ticket est déjà fermé.', embeds: [], components: [] };
+            return confirm ? interaction.update(payload) : interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+          }
+          if (!confirm) {
+            return interaction.reply({ embeds: [memberCloseConfirmEmbed(found.ticket)], components: [memberCloseConfirmButtons(found.ticket.id, guildId)], flags: MessageFlags.Ephemeral });
+          }
+          const channel = await client.channels.fetch(found.ticket.channel_id).catch(() => null);
+          if (!channel) return interaction.update({ content: 'Impossible de fermer ce ticket pour le moment. Écris au staff pour qu\'il le ferme.', embeds: [], components: [] });
+          await interaction.update({ embeds: [choiceEmbed(`Fermeture du ticket #${found.ticket.id}…`)], components: [] });
+          const tm = createManager(found.db, client, guildId);
+          await tm.closeTicketWithTranscript(channel, {
+            id: interaction.user.id, tag: interaction.user.username, username: interaction.user.username,
+            source: 'discord', member: true, reason: 'Fermé par le membre',
+          });
+          return;
         }
 
         // ── Boutons en contexte serveur ──
@@ -247,6 +295,17 @@ module.exports = {
       }
 
       // ── Soumission de formulaire panel (modal) ──
+      if (interaction.isModalSubmit() && interaction.customId.startsWith('ratecomment_modal_')) {
+        const [ticketId, guildId] = interaction.customId.split('_').slice(2);
+        const found = await findGuildForClosedTicket(parseInt(ticketId), interaction.user.id, guildId);
+        const comment = interaction.fields.getTextInputValue('comment').trim().slice(0, 1000);
+        if (!found || !comment) return interaction.reply({ content: 'Impossible d\'enregistrer ce commentaire.', flags: MessageFlags.Ephemeral });
+        const [rating] = await found.db('SELECT rating FROM ticket_ratings WHERE ticket_id = ? AND owner_id = ?', [found.ticket.id, interaction.user.id]);
+        const saved = rating && await createManager(found.db, client, found.guildId).saveRatingComment(found.ticket.id, interaction.user.id, comment);
+        if (!saved) return interaction.reply({ content: 'Tu as déjà laissé un commentaire pour ce ticket.', flags: MessageFlags.Ephemeral });
+        return interaction.update({ embeds: [ratingCommentEmbed(rating.rating, comment)], components: [] });
+      }
+
       if (interaction.isModalSubmit() && interaction.customId.startsWith('panel_form_')) {
         const btnId = parseInt(interaction.customId.slice('panel_form_'.length));
         const db = getTenantDb(interaction.guildId);

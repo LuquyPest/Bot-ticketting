@@ -15,6 +15,7 @@ const DATE_RE        = /^\d{4}-\d{2}-\d{2}$/;
 const { csvCell: csvEscape } = require('../../utils/csv');
 const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { staffReplyDmEmbed, ticketNoticeDmEmbed } = require('../../utils/dmEmbeds');
+const { ticketDmComponents } = require('../../utils/components');
 const { parseJsonField } = require('../../utils/jsonField');
 const { escapeHtml } = require('../../utils/transcript');
 
@@ -178,7 +179,7 @@ router.get('/:id', async (req, res) => {
     const [participantRows, transcript, rating] = await Promise.all([
       req.guildDb('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
       req.guildDb('SELECT id, created_by_tag, created_at, message_count FROM transcript_snapshots WHERE ticket_id = ? ORDER BY created_at DESC LIMIT 1', [ticket.id]),
-      req.guildDb('SELECT rating, rated_at FROM ticket_ratings WHERE ticket_id = ? LIMIT 1', [ticket.id])
+      req.guildDb('SELECT rating, comment, rated_at FROM ticket_ratings WHERE ticket_id = ? LIMIT 1', [ticket.id])
     ]);
 
     const client = req.app.locals.client;
@@ -349,7 +350,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
   const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: file_url });
   for (const userId of linkedUserIds) {
     const user = await client?.users.fetch(userId).catch(() => null);
-    if (user) await user.send({ embeds: [dmEmbed] }).catch(() => null);
+    if (user) await user.send({ embeds: [dmEmbed], components: ticketDmComponents(ticket, req.guildId, userId) }).catch(() => null);
   }
 
   if (client && ticket.channel_id) {

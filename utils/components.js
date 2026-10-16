@@ -87,7 +87,37 @@ function ratingButtons(ticketId, guildId) {
   );
 }
 
+// After a rating: optional free comment (customId ratecomment_<ticketId>_<guildId>)
+function ratingCommentButton(ticketId, guildId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`ratecomment_${ticketId}_${guildId}`).setLabel('💬 Ajouter un commentaire').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+// On the member's ticket DMs (owner only): close the ticket themselves
+function memberCloseButton(ticketId, guildId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`memberclose_${ticketId}_${guildId}`).setLabel('🔒 Fermer mon ticket').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function memberCloseConfirmButtons(ticketId, guildId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`memberclose_confirm_${ticketId}_${guildId}`).setLabel('Oui, fermer le ticket').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('memberclose_cancel').setLabel('Annuler').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+// Components for a DM about a ticket: the close button only for its owner.
+function ticketDmComponents(ticket, guildId, recipientId) {
+  return ticket?.owner_id && ticket.owner_id === recipientId && ticket.id ? [memberCloseButton(ticket.id, guildId)] : [];
+}
+
 module.exports = {
+  ratingCommentButton,
+  memberCloseButton,
+  memberCloseConfirmButtons,
+  ticketDmComponents,
   ticketButtons,
   closeConfirmationButtons,
   oldTicketsPaginationButtons,

@@ -22,6 +22,7 @@ const ACTIONS = {
   ticket_tag_add:           ['Tag ajouté', 'tickets'],
   ticket_tag_remove:        ['Tag retiré', 'tickets'],
   ticket_rating:            ['Note de satisfaction', 'tickets'],
+  ticket_rating_comment:    ['Commentaire de satisfaction', 'tickets'],
   ticket_escalation:        ['Escalade', 'tickets'],
   scheduled_create:         ['Message programmé', 'tickets'],
   scheduled_delete:         ['Message programmé annulé', 'tickets'],

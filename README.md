@@ -79,8 +79,8 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 5. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
 6. Un salon privé est créé dans le serveur Discord, **nommé d'après le sujet**
 7. Les messages et fichiers suivants sont relayés dans le ticket choisi
-8. Le membre reçoit les réponses du staff en DM (embed indiquant le serveur et le ticket)
-9. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles)
+8. Le membre reçoit les réponses du staff en DM (embed indiquant le serveur et le ticket). Le message de bienvenue et les réponses portent un bouton **« Fermer mon ticket »** (propriétaire du ticket uniquement, avec confirmation) : le ticket est fermé avec transcript, et la fermeture n'est pas comptée dans les statistiques du staff
+9. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles), puis peut **ajouter un commentaire** libre (1 000 caractères), visible dans la fiche du ticket
 
 Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans un salon (voir [Panels Discord](#panels-discord)). Un utilisateur blacklisté sur un serveur ne peut pas y ouvrir de ticket (la blacklist est propre à chaque serveur).
 
@@ -584,7 +584,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `ticket_participants` | Utilisateurs ajoutés via `/adduser` |
 | `ticket_notes` | Toutes les notes (DM entrants, réponses staff, notes internes, Discord) |
 | `transcript_snapshots` | Transcripts HTML + TXT archivés |
-| `ticket_ratings` | Notes de satisfaction (1–5 étoiles) |
+| `ticket_ratings` | Notes de satisfaction (1–5 étoiles) et commentaire du membre |
 | `admin_stats` | Statistiques cumulées par agent |
 | `blacklist` | Utilisateurs bannis (avec expiration optionnelle) |
 | `dashboard_users` | Comptes dashboard avec rôles et profil |

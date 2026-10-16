@@ -1109,6 +1109,11 @@ export default function TicketDetail() {
               <p className="text-[10px] text-ink-4 mt-1.5">
                 {fmtDate(ticket.rating.rated_at, { dateStyle: 'medium', timeStyle: 'short' })}
               </p>
+              {ticket.rating.comment && (
+                <blockquote className="mt-2.5 pl-2.5 border-l-2 border-amber-400/40 text-xs text-ink-2 whitespace-pre-wrap break-words">
+                  {ticket.rating.comment}
+                </blockquote>
+              )}
             </div>
           )}
 

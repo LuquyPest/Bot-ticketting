@@ -238,7 +238,9 @@ function createManager(db, client, guildId) {
       .setDescription(welcomeText)
       .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
     if (subject) welcomeEmbed.addFields({ name: '📂 Sujet', value: subject, inline: true });
-    await user.send({ embeds: [welcomeEmbed] }).catch(() => null);
+    const { ticketDmComponents } = require('./components');
+    const components = ticketId ? ticketDmComponents({ id: ticketId, owner_id: user.id }, gid, user.id) : [];
+    await user.send({ embeds: [welcomeEmbed], components }).catch(() => null);
   }
 
   async function saveTranscriptSnapshot(channel, createdByUser, ticketOverride = null) {
@@ -263,12 +265,13 @@ function createManager(db, client, guildId) {
     const ticket = await getOpenTicketByChannelId(channel.id);
     if (!ticket) return null;
 
+    // Closures by the API, the automations or the member themselves do not count in staff stats
+    const byStaff = !closedByUser.api && closedByUser.source !== 'system' && !closedByUser.member;
     await db(
       `UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=?, closed_by_id=? WHERE id=?`,
-      [closedByUser.tag, closedByUser.api || closedByUser.source === 'system' ? null : closedByUser.id, ticket.id]
+      [closedByUser.tag, byStaff ? closedByUser.id : null, ticket.id]
     );
-    // Closures through the public API (closedByUser.api) do not count in a staff member's stats
-    if (!closedByUser.api && closedByUser.source !== 'system') {
+    if (byStaff) {
       await db(
         `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 0, 1)
          ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_closed=tickets_closed+1`,
@@ -295,7 +298,9 @@ function createManager(db, client, guildId) {
       .setDescription('Merci de nous avoir contactés. Ton ticket a été traité et fermé.')
       .addFields(
         { name: '⏱️ Durée', value: duration2, inline: true },
-        { name: '🛡️ Staff', value: closedByUser.tag, inline: true }
+        closedByUser.member
+          ? { name: '🔒 Fermé par', value: `${closedByUser.tag} (membre)`, inline: true }
+          : { name: '🛡️ Staff', value: closedByUser.tag, inline: true }
       );
     for (const uid of linkedIds) {
       const u = await client.users.fetch(uid).catch(() => null);
@@ -513,6 +518,13 @@ function createManager(db, client, guildId) {
   }
 
   // closedById may be null (ticket closed automatically or via the API): the rating is kept, unattributed
+  async function saveRatingComment(ticketId, ownerId, comment) {
+    const r = await db('UPDATE ticket_ratings SET comment = ? WHERE ticket_id = ? AND owner_id = ? AND comment IS NULL', [comment, ticketId, ownerId]);
+    if (!r.affectedRows) return false;
+    await recordEvent(db, { actor: { id: ownerId, tag: ownerId, source: 'discord' }, action: 'ticket_rating_comment', ticketId, details: { comment: comment.slice(0, 300) } });
+    return true;
+  }
+
   async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
     await db('INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating) VALUES (?, ?, ?, ?)', [ticketId, ownerId, closedById, rating]);
     await recordEvent(db, { actor: { id: ownerId, tag: ownerId, source: 'discord' }, action: 'ticket_rating', ticketId, details: { rating, staff: closedByTag || null } });
@@ -744,6 +756,7 @@ function createManager(db, client, guildId) {
     updateLastMessage,
     recordStaffResponse,
     saveRating,
+    saveRatingComment,
     isBlacklisted,
     getDailyTicketCount,
     getInactiveTickets,
