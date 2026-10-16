@@ -10,6 +10,21 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.9',
+    date: '16 octobre 2026',
+    title: 'Assignation multiple, étapes de ticket et vues personnalisées',
+    changes: [
+      { type: 'new',  text: 'Un ticket peut être attribué à plusieurs membres du staff ; bloc « Attribué à » dans la vue ticket pour s\'attribuer, attribuer quelqu\'un d\'autre ou retirer' },
+      { type: 'new',  text: 'Étapes Ouvert / En attente / En cours, chacune associée à une catégorie Discord dans les paramètres ; changer d\'étape déplace le salon' },
+      { type: 'new',  text: 'Liste des tickets : vue « Ouverts » par défaut, vues prédéfinies et vues personnelles enregistrables (avec vue par défaut)' },
+      { type: 'new',  text: 'Kanban organisé par étape' },
+      { type: 'new',  text: 'Panel superadmin : retrait d\'un fondateur (le dernier est protégé)' },
+      { type: 'new',  text: 'Accès automatique au dashboard pour les rôles Discord support et chef support' },
+      { type: 'fix',  text: 'Filtres « attribué à », « non attribués » et dates de la liste, et actions de masse assigner / tag / réouvrir / modèle : elles n\'avaient aucun effet' },
+      { type: 'fix',  text: 'La notation d\'un ticket fermé sans prise en charge échouait' },
+    ]
+  },
+  {
     version: 'v2.8',
     date: '15 octobre 2026',
     title: 'Audit de sécurité complet (OWASP) et nettoyage',

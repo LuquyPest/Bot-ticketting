@@ -294,7 +294,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | Page | Accès | Description |
 |------|-------|-------------|
 | **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, objectif mensuel |
-| **Tickets** / **Kanban** | `view_tickets` | Liste filtrable ou vue en colonnes, détail en temps réel |
+| **Tickets** / **Kanban** | `view_tickets` | Liste filtrable (vue « Ouverts » par défaut, vues personnelles enregistrables) ou colonnes par étape, détail en temps réel |
 | **Mes stats** | support | Statistiques personnelles (claims, fermetures, temps de réponse) |
 | **Analytiques** / **Recherche** | support, fondateur | Volume, SLA, satisfaction ; recherche plein texte (respecte la visibilité) |
 | **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
@@ -312,16 +312,21 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Patchnotes** | fondateur | Historique des versions |
 | **Profil** | tous | Bio, photo (CDN Discord), 2FA, codes de secours, sessions actives, notifications push |
 
+### Vues de la liste des tickets
+
+La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes tickets, Non attribués, En attente, En cours, Urgents, Fermés, Tous. Chaque membre peut enregistrer ses propres vues (filtres statut, priorité, étape, attribué à, dates, tag, recherche), en définir une comme vue par défaut, et les supprimer — elles sont personnelles.
+
 ### Fonctionnalités dans la vue ticket
 
 - **Temps réel (SSE)** : nouvelles notes et réponses sans rechargement de page
 - **Répondre au membre** : mode *Répondre* (DM envoyé) ou *Note interne* (staff seulement)
 - **Réponse anonyme** : toggle "Anonyme/Identifié" masquant le pseudo du staff
 - **Templates** : réponses prédéfinies insérables en un clic
-- **Claim / Unclaim** : prise en charge depuis le dashboard ou depuis Discord
+- **Attribué à** : un ticket peut être attribué à plusieurs membres du staff ; « M'attribuer », attribuer quelqu'un d'autre, retirer (permission `claim_ticket`). La première personne assignée reste le responsable principal (stats, rappels, notation)
+- **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon
 - **Priorité** : Faible / Normal / Urgent — met à jour le topic du salon Discord
 - **Participants** : ajout/retrait d'utilisateurs liés en DM
-- **Déplacer / Renommer** : actions sur le salon Discord depuis le dashboard
+- **Renommer** : renomme le salon Discord depuis le dashboard
 - **Indicateurs non-lus** : point bleu sur les tickets avec messages non consultés
 - **Aging** : durée depuis le dernier message, colorée selon l'urgence
 
@@ -346,7 +351,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 |---------|-------------|
 | **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs |
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
-| **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer de nouveaux par ID Discord (DM envoyé, action tracée dans l'audit du serveur) |
+| **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
 | **Stats globales** | Vue d'ensemble de tous les serveurs actifs |
 
@@ -369,13 +374,13 @@ Toutes les commandes sont réservées au staff (rôles Discord Support ou Chef S
 |----------|------|-------------|
 | `/reply` | Support | Répond au membre avec ton pseudo (texte et/ou fichier) |
 | `/areply` | Support | Répond anonymement (affiché comme "Support") |
-| `/claim` | Support | Prend en charge le ticket |
-| `/unclaim` | Support | Retire la prise en charge |
+| `/claim` | Support | S'ajoute aux personnes assignées au ticket (plusieurs personnes possibles) |
+| `/unclaim` | Support | Se retire des personnes assignées |
 | `/priority` | Support | Définit la priorité : Faible / Normal / Urgent |
 | `/adduser` | Support | Ajoute un participant lié au ticket en DM |
 | `/removeuser` | Support | Retire un participant |
 | `/rename` | Support | Renomme le salon du ticket |
-| `/moveticket` | Support | Déplace le ticket dans une autre catégorie Discord |
+| `/moveticket` | Support | Change l'étape du ticket : Ouvert / En attente / En cours (déplace le salon dans la catégorie associée) |
 | `/reopen` | Support | Réouvre le dernier ticket fermé d'un utilisateur |
 | `/oldtickets` | Support | Historique paginé des tickets d'un utilisateur |
 | `/gettranscript` | Support | Génère un lien temporaire (10 min) vers un transcript HTML |
@@ -547,7 +552,9 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 
 | Table | Description |
 |-------|-------------|
-| `tickets` | Tickets (sujet, priorité, claims, timestamps) |
+| `tickets` | Tickets (sujet, priorité, étape, responsable principal, timestamps) |
+| `ticket_assignees` | Membres du staff assignés à chaque ticket |
+| `ticket_views` | Vues de la liste des tickets enregistrées par utilisateur |
 | `ticket_participants` | Utilisateurs ajoutés via `/adduser` |
 | `ticket_notes` | Toutes les notes (DM entrants, réponses staff, notes internes, Discord) |
 | `transcript_snapshots` | Transcripts HTML + TXT archivés |
