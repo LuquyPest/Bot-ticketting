@@ -285,7 +285,7 @@ router.post('/guilds/:guildId/approve', requireSuperAdmin, async (req, res) => {
     // DM au fondateur
     try {
       const client = req.app.locals.client;
-      const baseUrl = require('../../config.json').webServerBaseUrl || '';
+      const baseUrl = require('../../utils/config').config.webServerBaseUrl || '';
       const founderUser = await client.users.fetch(founderId);
       await founderUser.send([
         `✅ Ton serveur **${guild.guild_name}** a été activé !`,
@@ -349,7 +349,7 @@ router.delete('/guilds/:guildId', requireSuperAdmin, async (req, res) => {
     }
 
     const dbName = getDbName(guild.guild_id);
-    const cfg = require('../../config.json').database;
+    const cfg = require('../../utils/config').config.database;
     const conn = await mysql.createConnection({ host: cfg.host, port: cfg.port, user: cfg.user, password: cfg.password });
     try {
       await conn.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
@@ -435,7 +435,7 @@ router.post('/guilds/:guildId/founders', requireSuperAdmin, async (req, res) => 
     );
     await logAudit(`sa:${req.saUser.id}`, `SA ${req.saUser.username}`, 'founder_add', 'user', user.id, { username: user.username }, db);
 
-    const baseUrl = require('../../config.json').webServerBaseUrl || '';
+    const baseUrl = require('../../utils/config').config.webServerBaseUrl || '';
     await user.send(
       `👑 Tu as été nommé **fondateur** du dashboard de **${guild.guild_name}**.` +
       (baseUrl ? `\nConnecte-toi avec Discord sur ${baseUrl} et sélectionne le serveur.` : '')

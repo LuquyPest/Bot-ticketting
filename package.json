@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node bootstrap.js",
     "bot": "node index.js",
-    "deploy": "node deploy-commands.js"
+    "deploy": "node deploy-commands.js",
+    "test:integration": "bash tests/integration/run-local.sh"
   },
   "dependencies": {
     "axios": "^1.20.0",

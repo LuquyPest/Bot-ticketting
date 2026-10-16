@@ -25,6 +25,7 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Base de données](#base-de-données)
 - [Structure des fichiers](#structure-des-fichiers)
 - [Sécurité](#sécurité)
+- [Tests](#tests)
 - [Problèmes fréquents](#problèmes-fréquents)
 
 ---
@@ -733,6 +734,18 @@ Bot-ticketting/
 | **Base de données** | Requêtes paramétrées, `stringifyObjects` activé (pas d'injection via objets JSON) |
 | **Maintenance / suspension** | Bloque l'API du serveur et rend le bot inactif sur ce serveur |
 | **Push endpoint allowlist** | Les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — bloque tout endpoint arbitraire |
+
+---
+
+## Tests
+
+Suite d'intégration (`tests/integration/harness.js`) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, etc.
+
+```bash
+npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
+```
+
+La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG`) : le `config.json` de production n'est jamais lu. La même suite tourne à chaque push via **GitHub Actions** (`.github/workflows/ci.yml`), avec le build du dashboard et `npm audit`.
 
 ---
 

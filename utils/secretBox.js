@@ -8,7 +8,7 @@ let _key = null;
 
 function key() {
   if (_key) return _key;
-  const { dashboard = {} } = require('../config.json');
+  const { dashboard = {} } = require('./config').config;
   _key = /^[0-9a-f]{64}$/i.test(dashboard.encryptionKey || '')
     ? Buffer.from(dashboard.encryptionKey, 'hex')
     : Buffer.from(crypto.hkdfSync('sha256', dashboard.sessionSecret, 'ticketbot', 'secret-box-v1', 32));

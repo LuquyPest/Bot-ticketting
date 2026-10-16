@@ -66,7 +66,7 @@ async function checkNewIpAlert(req, userId) {
 let _cfg = null;
 let _cfgMtime = 0;
 const fs = require('fs');
-const _cfgPath = require.resolve('../../config.json');
+const _cfgPath = require('../../utils/config').CONFIG_PATH;
 
 function cfg() {
   try {

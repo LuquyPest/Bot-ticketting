@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
-const config = require('./config.json');
+const { config } = require('./utils/config');
 const logger = require('./utils/logger');
 const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
 const { startWeeklyReport } = require('./utils/weeklyReport');

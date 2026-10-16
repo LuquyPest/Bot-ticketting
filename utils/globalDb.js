@@ -4,7 +4,7 @@ let _pool = null;
 
 function getPool() {
   if (_pool) return _pool;
-  const cfg = require('../config.json').database;
+  const cfg = require('./config').config.database;
   _pool = mysql.createPool({
     host:             cfg.host,
     port:             cfg.port,

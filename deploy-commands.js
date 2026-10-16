@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { REST, Routes } = require('discord.js');
-const config = require('./config.json');
+const { config } = require('./utils/config');
 
 async function deployCommands() {
   const commands = [];

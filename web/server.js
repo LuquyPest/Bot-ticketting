@@ -20,7 +20,7 @@ const EXPIRED_HTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"
 h1{color:#edf2ff;font-size:24px;margin:0}p{margin:0;font-size:15px}</style></head>
 <body><h1>Transcript expiré</h1><p>Cette page n'est disponible que 10 minutes après sa génération.</p></body></html>`;
 
-const config = require('../config.json');
+const { config } = require('../utils/config');
 
 if (!config.dashboard?.sessionSecret) {
   throw new Error('FATAL: dashboard.sessionSecret doit être défini dans config.json');
@@ -181,6 +181,9 @@ app.use('/api/forms',       withGuild(['fondateur']),            require('./rout
 app.use('/api/login-logs',  withGuild(['support', 'fondateur']), require('./routes/loginLogs'));
 
 app.use('/api/sa', require('./routes/superadmin'));
+
+// Unknown API routes answer 404 JSON (instead of falling through to the dashboard's index.html)
+app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {

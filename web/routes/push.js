@@ -32,7 +32,7 @@ let vapidReady = false;
 
 function initVapid() {
   if (vapidReady) return;
-  const config = require('../../config.json');
+  const config = require('../../utils/config').config;
   if (!config.vapid?.publicKey || !config.vapid?.privateKey) return;
   webpush.setVapidDetails(
     `mailto:${config.vapid.contact || 'admin@localhost'}`,
@@ -46,7 +46,7 @@ function initVapid() {
 router.get('/vapid-public-key', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
   try {
-    const config = require('../../config.json');
+    const config = require('../../utils/config').config;
     if (!config.vapid?.publicKey) return res.status(501).json({ error: 'Push notifications non configurées' });
     res.json({ publicKey: config.vapid.publicKey });
   } catch {

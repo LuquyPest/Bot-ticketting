@@ -9,7 +9,7 @@ function getDbName(guildId) {
 
 function _getPool(guildId) {
   if (_pools.has(guildId)) return _pools.get(guildId);
-  const cfg = require('../config.json').database;
+  const cfg = require('./config').config.database;
   const pool = mysql.createPool({
     host:             cfg.host,
     port:             cfg.port,

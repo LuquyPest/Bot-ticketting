@@ -4,7 +4,8 @@ const { spawn } = require('child_process');
 const mysql = require('mysql2/promise');
 
 const ROOT = __dirname;
-const configPath  = path.join(ROOT, 'config.json');
+// Same resolution as utils/config.js, without loading the file (a missing config gets a clear message)
+const configPath  = process.env.TICKETBOT_CONFIG ? path.resolve(process.env.TICKETBOT_CONFIG) : path.join(ROOT, 'config.json');
 const indexPath   = path.join(ROOT, 'index.js');
 const deployPath  = path.join(ROOT, 'deploy-commands.js');
 const packagePath = path.join(ROOT, 'package.json');
@@ -298,4 +299,7 @@ async function main() {
   }
 }
 
-main();
+// Run when started directly (npm start); the test suite only imports the setup functions.
+if (require.main === module) main();
+
+module.exports = { ensureGlobalDatabase, ensureGlobalTables, seedSuperAdmin };

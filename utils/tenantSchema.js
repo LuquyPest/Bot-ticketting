@@ -338,7 +338,7 @@ const TENANT_TABLES_SQL = `
 `;
 
 async function ensureTenantSchema(guildId) {
-  const cfg = require('../config.json').database;
+  const cfg = require('./config').config.database;
   const dbName = getDbName(guildId);
 
   const conn = await mysql.createConnection({
