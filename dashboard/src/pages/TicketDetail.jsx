@@ -133,8 +133,6 @@ export default function TicketDetail() {
   const [movingTicket, setMovingTicket] = useState(false);
   const [staff, setStaff] = useState([]);
   const [assigneeToAdd, setAssigneeToAdd] = useState('');
-  const [renameValue, setRenameValue] = useState('');
-  const [renaming, setRenaming] = useState(false);
   const [composeMode, setComposeMode] = useState('reply');
   const [grades, setGrades] = useState([]);
   const [savingVisibility, setSavingVisibility] = useState(false);
@@ -144,7 +142,6 @@ export default function TicketDetail() {
   const [showHistory, setShowHistory] = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
-  const [editingSubject, setEditingSubject] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [subjectInput, setSubjectInput] = useState('');
   const [savingSubject, setSavingSubject] = useState(false);
@@ -346,24 +343,12 @@ export default function TicketDetail() {
     finally { setMovingTicket(false); }
   };
 
-  const renameTicket = async () => {
-    if (!renameValue.trim()) return;
-    setRenaming(true);
-    try {
-      const { data } = await api.patch(`/tickets/${id}/rename`, { name: renameValue.trim() });
-      toast.success(`Renommé en ${data.name}`);
-      setRenameValue('');
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-    finally { setRenaming(false); }
-  };
-
   const saveSubject = async () => {
     setSavingSubject(true);
     try {
       const { data } = await api.patch(`/tickets/${id}/subject`, { subject: subjectInput.trim() || null });
       setTicket(t => ({ ...t, subject: data.subject }));
-      setEditingSubject(false);
-      toast.success('Titre mis à jour');
+      toast.success(data.channelName ? `Titre mis à jour — salon Discord : ${data.channelName}` : 'Titre mis à jour');
       return true;
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); return false; }
     finally { setSavingSubject(false); }
@@ -879,48 +864,7 @@ export default function TicketDetail() {
             {ticket.closed_by_tag && <InfoRow icon={User}    label="Fermé par"       value={ticket.closed_by_tag} />}
             {ticket.status === 'open' && <InfoRow icon={FolderOpen} label="Étape" value={currentStage?.label} />}
 
-            {/* Subject inline edit */}
-            <div className="flex items-start gap-2.5 py-2">
-              <div className="w-6 h-6 rounded-lg bg-white/[0.04] flex items-center justify-center flex-shrink-0 mt-0.5">
-                <FileText size={11} className="text-ink-3" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] text-ink-4 leading-tight font-medium">Titre</p>
-                {editingSubject ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input type="text" value={subjectInput}
-                      onChange={e => setSubjectInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') saveSubject();
-                        if (e.key === 'Escape') setEditingSubject(false);
-                      }}
-                      maxLength={100} placeholder="Sujet du ticket..." autoFocus
-                      className="flex-1 min-w-0 bg-surface border border-primary/40 text-ink-1
-                                 placeholder-ink-4 rounded-lg px-2.5 py-1.5 text-xs
-                                 focus:outline-none transition-colors" />
-                    <button onClick={saveSubject} disabled={savingSubject}
-                      className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50 flex-shrink-0">
-                      <Check size={13} />
-                    </button>
-                    <button onClick={() => setEditingSubject(false)}
-                      className="text-ink-4 hover:text-ink-2 flex-shrink-0">
-                      <X size={13} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 mt-0.5 group/subject">
-                    <p className="text-xs text-ink-2 break-all">
-                      {ticket.subject || <span className="italic text-ink-4">—</span>}
-                    </p>
-                    {can('reply_ticket') && <button onClick={() => { setSubjectInput(ticket.subject || ''); setEditingSubject(true); }}
-                      className="opacity-0 group-hover/subject:opacity-100 text-ink-4
-                                 hover:text-ink-2 transition-all flex-shrink-0">
-                      <Pencil size={10} />
-                    </button>}
-                  </div>
-                )}
-              </div>
-            </div>
+            <InfoRow icon={FileText} label="Titre (= nom du salon Discord)" value={ticket.subject || '—'} />
           </div>
 
           {/* ATTRIBUÉ À */}
@@ -1067,28 +1011,6 @@ export default function TicketDetail() {
               </div>
             )}
           </div>
-
-          {/* RENOMMER */}
-          {ticket.status === 'open' && can('reply_ticket') && (
-            <div className={panelCard}>
-              <SectionTitle>Renommer</SectionTitle>
-              <div className="flex gap-1.5">
-                <input type="text" value={renameValue}
-                  onChange={e => setRenameValue(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') renameTicket(); }}
-                  placeholder="Nouveau nom..." maxLength={40}
-                  className="flex-1 min-w-0 bg-surface border border-white/[0.07] text-ink-1
-                             placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-none
-                             focus:border-primary/50 transition-all" />
-                <button onClick={renameTicket}
-                  disabled={!renameValue.trim() || renaming}
-                  className="p-2 rounded-xl bg-surface border border-white/[0.07] text-ink-3
-                             hover:text-ink-1 hover:bg-surface-hover transition-all disabled:opacity-50 flex-shrink-0">
-                  <Pencil size={14} />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* ÉTAPE */}
           {ticket.status === 'open' && can('reply_ticket') && (

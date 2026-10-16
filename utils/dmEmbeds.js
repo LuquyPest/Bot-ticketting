@@ -44,14 +44,7 @@ function dailyLimitEmbed(max) {
     .setTimestamp();
 }
 
-function serverSelectEmbed(mode) {
-  if (mode === 'relay') {
-    return new EmbedBuilder()
-      .setColor(C.primary)
-      .setAuthor({ name: 'Plusieurs tickets ouverts' })
-      .setDescription('Tu as des tickets en cours sur **plusieurs serveurs**.\nSélectionne celui auquel tu souhaites répondre.')
-      .setFooter({ text: 'Cette sélection expire dans 10 minutes' });
-  }
+function serverSelectEmbed() {
   return new EmbedBuilder()
     .setColor(C.primary)
     .setAuthor({ name: 'Choisir un serveur' })
@@ -59,12 +52,37 @@ function serverSelectEmbed(mode) {
     .setFooter({ text: 'Cette sélection expire dans 10 minutes' });
 }
 
-function subjectSelectEmbed() {
+function subjectSelectEmbed(guildName) {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: 'Nouveau ticket' })
-    .setDescription('Quel est le **sujet de ta demande** ?\nChoisis une catégorie ci-dessous.')
+    .setAuthor({ name: guildName ? `Nouveau ticket · ${guildName}` : 'Nouveau ticket' })
+    .setDescription('Ton message est bien noté. Quel est le **sujet de ton ticket** ?\nChoisis-le ci-dessous, ou « Autre sujet » pour l\'écrire toi-même.')
+    .setFooter({ text: 'Sans réponse sous 10 minutes, le ticket sera ouvert sans sujet' });
+}
+
+// Free-text subject question, sent after the member's first message.
+function subjectAskEmbed(guildName) {
+  return new EmbedBuilder()
+    .setColor(C.primary)
+    .setAuthor({ name: guildName ? `Nouveau ticket · ${guildName}` : 'Nouveau ticket' })
+    .setTitle('📝 Quel est le sujet de ton ticket ?')
+    .setDescription('Ton message est bien noté. Réponds avec **le sujet** en quelques mots (100 caractères max) — il servira de titre au ticket.')
+    .setFooter({ text: 'Sans réponse sous 10 minutes, le ticket sera ouvert sans sujet' });
+}
+
+// Shown when the member has open tickets: pick the ticket for this message, or open a new one.
+function ticketRouteEmbed(count) {
+  return new EmbedBuilder()
+    .setColor(C.primary)
+    .setAuthor({ name: count > 1 ? `Tu as ${count} tickets ouverts` : 'Tu as un ticket ouvert' })
+    .setDescription('Dans quel ticket veux-tu envoyer ce message ? Tu peux aussi ouvrir un **nouveau ticket**.')
     .setFooter({ text: 'Cette sélection expire dans 10 minutes' });
+}
+
+function relayedToTicketEmbed(guildName, ticket) {
+  return new EmbedBuilder()
+    .setColor(C.success)
+    .setDescription(`✅ Message envoyé dans le ticket **#${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}** (${guildName}).`);
 }
 
 function intakeFormStartEmbed(firstQuestion, step, total) {
@@ -89,10 +107,9 @@ function sessionExpiredEmbed() {
     .setDescription('Cette session a expiré.\nRenvoie un message pour recommencer.');
 }
 
-function relayConfirmEmbed(guildName) {
-  return new EmbedBuilder()
-    .setColor(C.success)
-    .setDescription(`Message transmis à ton ticket sur **${guildName}**.`);
+// Short confirmation replacing a menu once the member has chosen.
+function choiceEmbed(text) {
+  return new EmbedBuilder().setColor(C.neutral).setDescription(text);
 }
 
 function ticketCreatingEmbed(guildName) {
@@ -152,6 +169,9 @@ function ticketNoticeDmEmbed(client, guildId, ticket, { title, description, colo
 }
 
 module.exports = {
+  subjectAskEmbed,
+  ticketRouteEmbed,
+  relayedToTicketEmbed,
   ticketContextAuthor,
   staffReplyDmEmbed,
   ticketNoticeDmEmbed,
@@ -165,7 +185,7 @@ module.exports = {
   intakeFormStartEmbed,
   intakeFormStepEmbed,
   sessionExpiredEmbed,
-  relayConfirmEmbed,
+  choiceEmbed,
   ticketCreatingEmbed,
   ratingConfirmEmbed,
   alreadyRatedEmbed,

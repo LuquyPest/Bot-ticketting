@@ -2,7 +2,7 @@ const { createManager } = require('../utils/ticketManager');
 const { globalQuery } = require('../utils/globalDb');
 const { broadcast } = require('../utils/sse');
 
-async function openTicketFromPanel(interaction, client, db, btn, formContent) {
+async function openTicketFromPanel(interaction, client, db, btn, formContent, subjectOverride = null) {
   const user = interaction.user;
   const guildId = interaction.guildId;
 
@@ -30,13 +30,14 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent) {
   if (bl) return interaction.editReply({ content: '❌ Tu ne peux pas ouvrir de ticket.' });
 
   const userObj = { id: user.id, username: user.username, tag: user.tag || user.username };
-  const subject = btn.subject || null;
+  const subject = (subjectOverride || btn.subject || '').replace(/\s+/g, ' ').trim().slice(0, 100) || null;
 
   let content = '';
   if (formContent) content = `📋 **Formulaire :**\n${formContent}`;
 
   try {
-    const result = await tm.createTicket(userObj, content, [], subject);
+    // A member may have several tickets: a panel click always opens a new one (daily limit applies)
+    const result = await tm.createTicket(userObj, content, [], subject, { forceNew: true });
     if (result.created) {
       broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
       await tm.sendWelcomeDm(user, true, subject, result.ticket.id).catch(() => null);

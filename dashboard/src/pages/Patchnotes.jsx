@@ -20,6 +20,10 @@ const VERSIONS = [
       { type: 'new',  text: 'Les messages privés liés à un ticket sont des embeds indiquant le serveur, le numéro et le titre du ticket' },
       { type: 'new',  text: 'Le titre du ticket se modifie directement dans l\'en-tête de la vue ticket' },
       { type: 'fix',  text: 'Les fermetures automatiques ne sont plus attribuées au bot dans les statistiques staff' },
+      { type: 'new',  text: 'Le salon Discord porte le même nom que le titre du ticket (création, modification, /rename)' },
+      { type: 'new',  text: 'Nouveau ticket en MP : le bot demande le sujet après le premier message (boutons + « Autre sujet », ou réponse libre)' },
+      { type: 'new',  text: 'Plusieurs tickets par membre : à chaque message privé, le bot demande dans quel ticket écrire ou propose d\'en ouvrir un nouveau' },
+      { type: 'new',  text: 'Panels : la fenêtre demande le sujet du ticket quand le bouton n\'en définit pas' },
     ]
   },
   {

@@ -45,10 +45,12 @@ function oldTicketsPaginationButtons(userId, page, totalPages) {
   );
 }
 
+// Configured subjects as buttons (max 24) + "Autre sujet" for a free-text subject.
 function subjectButtons(subjects) {
   const rows = [];
   let row = new ActionRowBuilder();
   let count = 0;
+  subjects = subjects.slice(0, 24);
 
   // customId carries the index, not the text: labels are truncated to 80 chars
   // and two long subjects could otherwise collide (Discord rejects duplicate IDs).
@@ -64,8 +66,9 @@ function subjectButtons(subjects) {
         .setStyle(ButtonStyle.Primary)
     );
     count++;
-    if (rows.length >= 4) break;
   }
+  if (count > 0 && count % 5 === 0) { rows.push(row); row = new ActionRowBuilder(); }
+  row.addComponents(new ButtonBuilder().setCustomId('subject_other').setLabel('✏️ Autre sujet').setStyle(ButtonStyle.Secondary));
   rows.push(row);
   return rows;
 }

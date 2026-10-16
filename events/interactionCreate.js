@@ -7,7 +7,7 @@ const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../utils/components');
 const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/embeds');
 const {
-  sessionExpiredEmbed, relayConfirmEmbed,
+  sessionExpiredEmbed, relayedToTicketEmbed, subjectAskEmbed, choiceEmbed,
   ticketCreatingEmbed, ratingConfirmEmbed, alreadyRatedEmbed,
 } = require('../utils/dmEmbeds');
 
@@ -44,7 +44,14 @@ module.exports = {
 
       if (interaction.isButton()) {
 
-        // ── Sujet (DM) ──
+        // ── Sujet (DM) ── configured subject, or « Autre sujet » to type it
+        if (interaction.customId === 'subject_other') {
+          const { switchToTextSubject } = require('./messageCreate');
+          const state = switchToTextSubject(interaction.user, client);
+          if (!state) return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
+          const guildName = client.guilds.cache.get(state.guildEntry.guildId)?.name;
+          return interaction.update({ embeds: [subjectAskEmbed(guildName)], components: [] });
+        }
         if (interaction.customId.startsWith('subject_')) {
           const { pendingSubject, openTicketForGuild } = require('./messageCreate');
           const pending = pendingSubject.get(interaction.user.id);
@@ -52,29 +59,10 @@ module.exports = {
           if (!pending || !subject) {
             return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
           }
-          await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
           pendingSubject.delete(interaction.user.id);
-          const { content, attachments, guildId, db, tm, config } = pending;
-          // Note: openTicketForGuild handles intake form check before creating
-          await openTicketForGuild(interaction.user, content, attachments, { guildId, db, tm, config }, client, subject);
-          return;
-        }
-
-        // ── Sélection de serveur — bouton legacy (compat sessions en cours) ──
-        if (interaction.customId.startsWith('guildselect_')) {
-          const guildId = interaction.customId.slice('guildselect_'.length);
-          const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
-          const pending = pendingGuildSelect.get(interaction.user.id);
-          if (!pending) {
-            return interaction.reply({ embeds: [sessionExpiredEmbed()], ephemeral: true });
-          }
-          const guildEntry = pending.guilds.find(g => g.guildId === guildId);
-          if (!guildEntry) {
-            return interaction.reply({ content: 'Serveur invalide.', ephemeral: true });
-          }
-          pendingGuildSelect.delete(interaction.user.id);
-          await interaction.update({ embeds: [ticketCreatingEmbed(guildEntry.discordGuild?.name)], components: [] });
-          await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
+          await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
+          // openTicketForGuild handles the intake form before creating
+          await openTicketForGuild(interaction.user, pending.content, pending.attachments, pending.guildEntry, client, subject);
           return;
         }
 
@@ -119,43 +107,46 @@ module.exports = {
           const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
           if (!btn) return interaction.reply({ content: 'Bouton invalide ou expiré.', ephemeral: true });
 
-          if (btn.form_id) {
-            const fields = await db(
-              'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC LIMIT 5',
-              [btn.form_id]
-            ).catch(() => []);
+          // Modal: ticket subject (unless the button sets one) + the linked form's fields (5 inputs max)
+          const fields = btn.form_id ? await db(
+            'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC LIMIT 5',
+            [btn.form_id]
+          ).catch(() => []) : [];
+          const askSubject = !btn.subject && fields.length < 5;
 
-            if (!fields.length) {
-              const { openTicketFromPanel } = require('./panelTicket');
-              await interaction.deferReply({ ephemeral: true });
-              await openTicketFromPanel(interaction, client, db, btn, '');
-              return;
-            }
-
-            const modal = new ModalBuilder()
-              .setCustomId(`panel_form_${btnId}`)
-              .setTitle(btn.label.slice(0, 45));
-
-            for (const f of fields) {
-              const input = new TextInputBuilder()
-                .setCustomId(`field_${f.id}`)
-                .setLabel(f.label.slice(0, 45))
-                .setStyle(f.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
-                .setRequired(!!f.required);
-              if (f.placeholder) input.setPlaceholder(f.placeholder.slice(0, 100));
-              if (f.min_length)   input.setMinLength(f.min_length);
-              if (f.max_length)   input.setMaxLength(f.max_length);
-              modal.addComponents(new ActionRowBuilder().addComponents(input));
-            }
-
-            return interaction.showModal(modal);
+          if (!askSubject && !fields.length) {
+            const { openTicketFromPanel } = require('./panelTicket');
+            await interaction.deferReply({ ephemeral: true });
+            await openTicketFromPanel(interaction, client, db, btn, '', btn.subject || btn.label);
+            return;
           }
 
-          // Pas de formulaire — ouvre le ticket directement
-          await interaction.deferReply({ ephemeral: true });
-          const { openTicketFromPanel } = require('./panelTicket');
-          await openTicketFromPanel(interaction, client, db, btn, '');
-          return;
+          const modal = new ModalBuilder()
+            .setCustomId(`panel_form_${btnId}`)
+            .setTitle(btn.label.slice(0, 45));
+          if (askSubject) {
+            modal.addComponents(new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('ticket_subject')
+                .setLabel('Sujet du ticket')
+                .setPlaceholder('En quelques mots — sert de titre au ticket')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMaxLength(100)
+            ));
+          }
+          for (const f of fields) {
+            const input = new TextInputBuilder()
+              .setCustomId(`field_${f.id}`)
+              .setLabel(f.label.slice(0, 45))
+              .setStyle(f.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+              .setRequired(!!f.required);
+            if (f.placeholder) input.setPlaceholder(f.placeholder.slice(0, 100));
+            if (f.min_length)   input.setMinLength(f.min_length);
+            if (f.max_length)   input.setMaxLength(f.max_length);
+            modal.addComponents(new ActionRowBuilder().addComponents(input));
+          }
+          return interaction.showModal(modal);
         }
 
         if (!(await ensureSupport(interaction, client, db))) return;
@@ -207,7 +198,35 @@ module.exports = {
         }
       }
 
-      // ── Sélection de serveur via menu déroulant (DM) ──
+      // ── Choix du ticket pour un message privé (DM) ── existing ticket or a new one
+      if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_route') {
+        const { pendingRoute, startNewTicket } = require('./messageCreate');
+        const pending = pendingRoute.get(interaction.user.id);
+        if (!pending) return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
+        pendingRoute.delete(interaction.user.id);
+        const value = interaction.values[0];
+
+        if (value === 'new') {
+          await interaction.update({ embeds: [choiceEmbed('➕ Nouveau ticket')], components: [] });
+          await startNewTicket(interaction.user, pending.content, pending.attachments, client);
+          return;
+        }
+        const [, guildId, ticketId] = value.split(':');
+        const entry = pending.tickets.find(t => t.guildId === guildId && String(t.ticket.id) === ticketId);
+        if (!entry) return interaction.update({ content: 'Ticket invalide.', embeds: [], components: [] });
+        // Still open and still linked to this member?
+        const [fresh] = await entry.db(
+          `SELECT * FROM tickets WHERE id = ? AND status = 'open' AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))`,
+          [entry.ticket.id, interaction.user.id, interaction.user.id]
+        );
+        if (!fresh) return interaction.update({ content: 'Ce ticket n\'est plus ouvert. Renvoie ton message pour choisir un autre ticket.', embeds: [], components: [] });
+        const relayed = await entry.tm.relayToTicket(fresh, interaction.user, pending.content, pending.attachments);
+        if (!relayed) return interaction.update({ content: 'Impossible de joindre le salon de ce ticket. Réessaie plus tard.', embeds: [], components: [] });
+        await interaction.update({ embeds: [relayedToTicketEmbed(entry.guildName, fresh)], components: [] });
+        return;
+      }
+
+      // ── Sélection de serveur pour un nouveau ticket (DM) ──
       if (interaction.isStringSelectMenu() && interaction.customId === 'guild_select') {
         const guildId = interaction.values[0];
         const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
@@ -216,19 +235,9 @@ module.exports = {
           return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
         }
         pendingGuildSelect.delete(interaction.user.id);
-
-        if (pending.mode === 'relay') {
-          const entry = pending.guilds.find(g => g.guildId === guildId);
-          if (!entry) return interaction.update({ content: 'Serveur invalide.', components: [] });
-          await interaction.update({ embeds: [relayConfirmEmbed(entry.guildName)], components: [] });
-          await entry.tm.relayDmToTicket(interaction.user, pending.content, pending.attachments);
-          return;
-        }
-
-        // Ouverture d'un nouveau ticket sur le serveur choisi
         const guildEntry = pending.guilds.find(g => g.guildId === guildId);
         if (!guildEntry) return interaction.update({ content: 'Serveur invalide.', components: [] });
-        await interaction.update({ embeds: [ticketCreatingEmbed(guildEntry.discordGuild?.name)], components: [] });
+        await interaction.update({ embeds: [choiceEmbed(`Serveur choisi : **${guildEntry.discordGuild?.name || guildId}**`)], components: [] });
         await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
         return;
       }
@@ -240,20 +249,19 @@ module.exports = {
         const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
         if (!btn) return interaction.reply({ content: 'Bouton invalide.', ephemeral: true });
 
-        const fields = await db(
+        const fields = btn.form_id ? await db(
           'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC LIMIT 5',
           [btn.form_id]
-        ).catch(() => []);
+        ).catch(() => []) : [];
+        const valueOf = id => { try { return interaction.fields.getTextInputValue(id).trim(); } catch { return ''; } };
 
-        const lines = fields.map(f => {
-          const val = interaction.fields.getTextInputValue(`field_${f.id}`).trim() || '—';
-          return `**${f.label}** : ${val}`;
-        });
+        const lines = fields.map(f => `**${f.label}** : ${valueOf(`field_${f.id}`) || '—'}`);
         const formContent = lines.join('\n');
+        const subject = btn.subject || valueOf('ticket_subject') || btn.label;
 
         await interaction.deferReply({ ephemeral: true });
         const { openTicketFromPanel } = require('./panelTicket');
-        await openTicketFromPanel(interaction, client, db, btn, formContent);
+        await openTicketFromPanel(interaction, client, db, btn, formContent, subject);
         return;
       }
 

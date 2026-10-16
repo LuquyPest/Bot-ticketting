@@ -11,21 +11,34 @@ const { globalQuery } = require('../utils/globalDb');
 const {
   emptyMessageEmbed, blacklistedEmbed, notInGuildEmbed,
   serverLimitEmbed, dailyLimitEmbed, serverSelectEmbed,
-  subjectSelectEmbed,
+  subjectSelectEmbed, subjectAskEmbed, ticketRouteEmbed,
   intakeFormStartEmbed, intakeFormStepEmbed,
 } = require('../utils/dmEmbeds');
 
-// userId → { content, attachments, guildId, db, tm, config }
+// DM conversation states, per user. Flow for a new ticket:
+//   first message → (server choice) → subject (buttons or free text) → (intake form) → ticket created
+// userId → { user, content, attachments, guildEntry, subjects }        subject buttons
 const pendingSubject = new Map();
-// userId → { content, attachments, guilds: [{guildId, discordGuild, db, tm, config}] }
+// userId → { user, content, attachments, guildEntry }                  free-text subject
+const pendingSubjectText = new Map();
+// userId → { content, attachments, guilds: [{guildId, discordGuild, db, tm, config}] }   server for a new ticket
 const pendingGuildSelect = new Map();
+// userId → { content, attachments, tickets: [{ ticket, guildId, guildName, tm }] }       which ticket to write in
+const pendingRoute = new Map();
 // userId → { content, attachments, guildEntry, subject, questions: [], step: 0, answers: [] }
 const pendingIntakeForm = new Map();
 
+const PENDING_TTL_MS = 10 * 60 * 1000;
+
 // Stores a pending state that expires after `ttlMs` — without a later state being wiped by an older timer.
-function setPending(map, userId, state, ttlMs) {
+// onExpire runs only if the state was never consumed.
+function setPending(map, userId, state, ttlMs = PENDING_TTL_MS, onExpire = null) {
   map.set(userId, state);
-  setTimeout(() => { if (map.get(userId) === state) map.delete(userId); }, ttlMs);
+  setTimeout(() => {
+    if (map.get(userId) !== state) return;
+    map.delete(userId);
+    if (onExpire) onExpire().catch(err => console.error('pending expiry:', err.message));
+  }, ttlMs);
 }
 
 // DM flood protection: each DM scans every active guild, so cap it per user.
@@ -65,10 +78,12 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   return true;
 }
 
+// Opens a new ticket on a guild. subject: null = not asked yet (the member is asked),
+// '' = asked but none given (ticket opened without subject), otherwise the subject.
 async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null) {
   const { guildId, db, tm, config } = guildEntry;
 
-  // Every entry point (DM, subject/guild buttons) ends here, so the per-guild checks live here
+  // Every entry point (DM, subject/guild buttons, timeouts) ends here, so the per-guild checks live here
   if (!(await isGuildOperational(guildId))) {
     await user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
     return;
@@ -103,42 +118,84 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
     return;
   }
 
+  // Ask the subject after the first message; if nobody answers, open the ticket without subject
   if (subject === null) {
+    const guildName = client.guilds.cache.get(guildId)?.name;
+    const entry = { guildId, db, tm, config };
+    const openWithoutSubject = () => openTicketForGuild(user, content, attachments, entry, client, '');
     const subjects = parseJsonField(config.ticket_subjects);
-
     if (subjects.length > 0) {
-      setPending(pendingSubject, user.id, { content, attachments, guildId, db, tm, config, subjects }, 10 * 60 * 1000);
-      const rows = subjectButtons(subjects);
-      await user.send({ embeds: [subjectSelectEmbed()], components: rows }).catch(() => null);
-      return;
+      setPending(pendingSubject, user.id, { user, content, attachments, guildEntry: entry, subjects }, PENDING_TTL_MS, openWithoutSubject);
+      await user.send({ embeds: [subjectSelectEmbed(guildName)], components: subjectButtons(subjects) }).catch(() => null);
+    } else {
+      setPending(pendingSubjectText, user.id, { user, content, attachments, guildEntry: entry }, PENDING_TTL_MS, openWithoutSubject);
+      await user.send({ embeds: [subjectAskEmbed(guildName)] }).catch(() => null);
     }
+    return;
   }
 
   // Intake form check before creating the ticket
   const intakeHandled = await checkIntakeForm(user, content, attachments, { guildId, db, tm, config }, client, subject);
   if (intakeHandled) return;
 
-  const result = await tm.relayDmToTicket(user, content, attachments, subject);
-  await tm.sendWelcomeDm(user, result.created, subject, result.ticket?.id);
+  const result = await tm.createTicket(user, content, attachments, subject || null, { forceNew: true });
+  await tm.sendWelcomeDm(user, result.created, subject || null, result.ticket?.id);
   if (result.created) {
     broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
   }
 }
 
-// Builds a StringSelectMenu row for guild/ticket selection in DMs.
-// entries: [{ guildId, name, description }]
-function buildGuildSelectMenu(entries) {
+// "Autre sujet" button: the member will type the subject. Returns the pending state, or null if expired.
+function switchToTextSubject(user, client) {
+  const state = pendingSubject.get(user.id);
+  if (!state) return null;
+  pendingSubject.delete(user.id);
+  setPending(pendingSubjectText, user.id, state, PENDING_TTL_MS,
+    () => openTicketForGuild(user, state.content, state.attachments, state.guildEntry, client, ''));
+  return state;
+}
+
+// New ticket: pick the server (or ask which one), then openTicketForGuild asks the subject.
+async function startNewTicket(user, content, attachments, client) {
+  const memberGuilds = await findGuildsForUser(user.id, client);
+  const candidateGuilds = [];
+  for (const g of memberGuilds) if (!(await isBlacklistedIn(g.db, user.id).catch(() => false))) candidateGuilds.push(g);
+
+  if (candidateGuilds.length === 0) {
+    await user.send({ embeds: [memberGuilds.length ? blacklistedEmbed() : notInGuildEmbed()] }).catch(() => null);
+    return;
+  }
+  if (candidateGuilds.length === 1) {
+    await openTicketForGuild(user, content, attachments, candidateGuilds[0], client, null);
+    return;
+  }
+  setPending(pendingGuildSelect, user.id, { content, attachments, guilds: candidateGuilds });
   const menu = new StringSelectMenuBuilder()
     .setCustomId('guild_select')
     .setPlaceholder('Choisir un serveur…')
-    .addOptions(
-      entries.slice(0, 25).map(e =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(e.name.slice(0, 100))
-          .setValue(e.guildId)
-          .setDescription(e.description.slice(0, 100))
-      )
-    );
+    .addOptions(candidateGuilds.slice(0, 25).map(g =>
+      new StringSelectMenuOptionBuilder()
+        .setLabel(g.discordGuild.name.slice(0, 100))
+        .setValue(g.guildId)
+        .setDescription('Ouvrir un ticket sur ce serveur')
+    ));
+  await user.send({ embeds: [serverSelectEmbed()], components: [new ActionRowBuilder().addComponents(menu)] }).catch(() => null);
+}
+
+// Menu: one option per open ticket (server · #id — subject) + "new ticket".
+function buildTicketRouteMenu(tickets, userId) {
+  const options = tickets.slice(0, 24).map(t =>
+    new StringSelectMenuOptionBuilder()
+      .setLabel(`#${t.ticket.id} — ${t.ticket.subject || 'Sans sujet'}`.slice(0, 100))
+      .setValue(`t:${t.guildId}:${t.ticket.id}`)
+      .setDescription(`${t.guildName}${t.ticket.owner_id === userId ? '' : ' · tu es participant'}`.slice(0, 100))
+      .setEmoji('🎫')
+  );
+  options.push(new StringSelectMenuOptionBuilder().setLabel('Ouvrir un nouveau ticket').setValue('new').setEmoji('➕'));
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('ticket_route')
+    .setPlaceholder('Choisir le ticket…')
+    .addOptions(options);
   return new ActionRowBuilder().addComponents(menu);
 }
 
@@ -208,6 +265,19 @@ module.exports = {
         return;
       }
 
+      // Answer to "what is the subject of your ticket?"
+      if (pendingSubjectText.has(user.id)) {
+        const state = pendingSubjectText.get(user.id);
+        if (!content) {
+          await user.send('📝 Envoie le sujet de ton ticket en texte (quelques mots).').catch(() => null);
+          return;
+        }
+        pendingSubjectText.delete(user.id);
+        const subject = content.replace(/\s+/g, ' ').slice(0, 100);
+        await openTicketForGuild(user, state.content, state.attachments, state.guildEntry, client, subject);
+        return;
+      }
+
       // Intake form — step-by-step question reply
       if (pendingIntakeForm.has(user.id)) {
         const state = pendingIntakeForm.get(user.id);
@@ -221,74 +291,39 @@ module.exports = {
           pendingIntakeForm.delete(user.id);
           const summary = state.questions.map((q, i) => `**${q.label}** : ${state.answers[i] || '—'}`).join('\n');
           const enrichedContent = `${state.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
-          await openTicketForGuild(user, enrichedContent, state.attachments, state.guildEntry, client, state.subject);
+          await openTicketForGuild(user, enrichedContent, state.attachments, state.guildEntry, client, state.subject ?? '');
         }
         return;
       }
 
-      // Cherche tous les tickets ouverts de l'utilisateur sur tous les serveurs actifs
-      // (sauf ceux où il est blacklisté — la blacklist est propre à chaque serveur)
+      // Open tickets of the member (owner or participant), except on servers where they are blacklisted
       const allOpen = await findAllOpenTickets(user.id, client);
       const openTickets = [];
       for (const t of allOpen) if (!(await isBlacklistedIn(t.db, user.id).catch(() => false))) openTickets.push(t);
-      if (allOpen.length && !openTickets.length) {
+
+      // At least one open ticket: ask, for every message, which ticket it goes to (or a new ticket)
+      if (openTickets.length) {
+        setPending(pendingRoute, user.id, { content, attachments, tickets: openTickets });
+        await user.send({ embeds: [ticketRouteEmbed(openTickets.length)], components: [buildTicketRouteMenu(openTickets, user.id)] }).catch(() => null);
+        return;
+      }
+      if (allOpen.length) {
         await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
         return;
       }
 
-      if (openTickets.length === 1) {
-        // Un seul ticket ouvert — relay direct, sans question
-        const found = openTickets[0];
-        const result = await found.tm.relayDmToTicket(user, content, attachments);
-        await found.tm.sendWelcomeDm(user, result.created, null, result.ticket?.id);
-        if (result.created) {
-          broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, found.guildId);
-        }
-        return;
-      }
-
-      if (openTickets.length > 1) {
-        // Plusieurs tickets ouverts sur des serveurs différents — demander lequel
-        setPending(pendingGuildSelect, user.id, { mode: 'relay', content, attachments, guilds: openTickets }, 10 * 60 * 1000);
-        const menu = buildGuildSelectMenu(openTickets.map(t => ({
-          guildId: t.guildId,
-          name: t.guildName,
-          description: `Ticket #${t.ticket.id}${t.ticket.subject ? ` — ${t.ticket.subject}` : ''}`,
-        })));
-        await user.send({ embeds: [serverSelectEmbed('relay')], components: [menu] }).catch(() => null);
-        return;
-      }
-
-      // Aucun ticket ouvert — cherche les serveurs où l'utilisateur est membre
-      const memberGuilds = await findGuildsForUser(user.id, client);
-      const candidateGuilds = [];
-      for (const g of memberGuilds) if (!(await isBlacklistedIn(g.db, user.id).catch(() => false))) candidateGuilds.push(g);
-
-      if (candidateGuilds.length === 0) {
-        await user.send({ embeds: [memberGuilds.length ? blacklistedEmbed() : notInGuildEmbed()] }).catch(() => null);
-        return;
-      }
-
-      if (candidateGuilds.length === 1) {
-        await openTicketForGuild(user, content, attachments, candidateGuilds[0], client, null);
-        return;
-      }
-
-      // Plusieurs serveurs disponibles — demander lequel
-      setPending(pendingGuildSelect, user.id, { mode: 'new_ticket', content, attachments, guilds: candidateGuilds }, 10 * 60 * 1000);
-      const menu = buildGuildSelectMenu(candidateGuilds.map(g => ({
-        guildId: g.guildId,
-        name: g.discordGuild.name,
-        description: 'Ouvrir un ticket sur ce serveur',
-      })));
-      await user.send({ embeds: [serverSelectEmbed('new_ticket')], components: [menu] }).catch(() => null);
+      await startNewTicket(user, content, attachments, client);
     } catch (error) {
       console.error('Erreur RAW handler:', error);
     }
   },
 
   pendingSubject,
+  pendingSubjectText,
   pendingGuildSelect,
+  pendingRoute,
   pendingIntakeForm,
-  openTicketForGuild
+  openTicketForGuild,
+  startNewTicket,
+  switchToTextSubject,
 };

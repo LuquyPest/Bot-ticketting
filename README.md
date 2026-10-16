@@ -72,13 +72,14 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 ### Côté membre
 
 1. Le membre envoie un **message privé** au bot
-2. Si le membre est dans plusieurs serveurs utilisant le bot → sélecteur de serveur
-3. Si des **sujets de ticket** sont configurés → menu de boutons
-4. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
-5. Un salon privé est créé dans le serveur Discord
-6. Les messages et fichiers suivants sont relayés dans ce salon
-7. Le membre reçoit les réponses du staff en DM
-8. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles)
+2. S'il a déjà des tickets ouverts → le bot lui demande, **à chaque message**, dans quel ticket l'envoyer, ou s'il veut **ouvrir un nouveau ticket** (un membre peut avoir plusieurs tickets, dans la limite quotidienne)
+3. Nouveau ticket : si le membre est dans plusieurs serveurs utilisant le bot → choix du serveur
+4. Le bot demande ensuite le **sujet du ticket** : boutons si des sujets sont configurés (+ « Autre sujet »), sinon réponse libre. Sans réponse sous 10 minutes, le ticket est ouvert sans sujet
+5. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
+6. Un salon privé est créé dans le serveur Discord, **nommé d'après le sujet**
+7. Les messages et fichiers suivants sont relayés dans le ticket choisi
+8. Le membre reçoit les réponses du staff en DM (embed indiquant le serveur et le ticket)
+9. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles)
 
 Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans un salon (voir [Panels Discord](#panels-discord)). Un utilisateur blacklisté sur un serveur ne peut pas y ouvrir de ticket (la blacklist est propre à chaque serveur).
 
@@ -336,7 +337,7 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 - **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon
 - **Priorité** : Faible / Normal / Urgent — met à jour le topic du salon Discord
 - **Participants** : ajout/retrait d'utilisateurs liés en DM
-- **Renommer** : renomme le salon Discord depuis le dashboard
+- **Titre** : modifiable dans l'en-tête ; le salon Discord est renommé pareil (Discord limite à 2 renommages par 10 minutes : au-delà, le renommage du salon est différé)
 - **Indicateurs non-lus** : point bleu sur les tickets avec messages non consultés
 - **Aging** : durée depuis le dernier message, colorée selon l'urgence
 
@@ -390,7 +391,7 @@ Toutes les commandes sont réservées au staff (rôles Discord Support ou Chef S
 | `/priority` | Support | Définit la priorité : Faible / Normal / Urgent |
 | `/adduser` | Support | Ajoute un participant lié au ticket en DM |
 | `/removeuser` | Support | Retire un participant |
-| `/rename` | Support | Renomme le salon du ticket |
+| `/rename` | Support | Change le titre du ticket — le salon Discord porte toujours le même nom que le titre |
 | `/moveticket` | Support | Change l'étape du ticket : Ouvert / En attente / En cours (déplace le salon dans la catégorie associée) |
 | `/reopen` | Support | Réouvre le dernier ticket fermé d'un utilisateur |
 | `/oldtickets` | Support | Historique paginé des tickets d'un utilisateur |
@@ -458,6 +459,8 @@ Embed Discord automatique envoyé chaque semaine dans un salon configuré. Conti
 ## Panels Discord
 
 Les panels permettent de poster dans un salon Discord un **embed avec des boutons** configurables — les membres peuvent ouvrir un ticket directement en cliquant sur un bouton, sans passer par les DMs.
+
+Au clic, si le bouton n'a pas de sujet prédéfini, une fenêtre demande le **sujet du ticket** (avec les champs du formulaire associé, 5 champs au total). Un clic ouvre toujours un nouveau ticket (dans la limite quotidienne).
 
 Chaque panel comprend :
 - Un **embed** personnalisable (titre, description, couleur, image, footer)

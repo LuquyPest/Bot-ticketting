@@ -99,7 +99,13 @@ function createManager(db, client, guildId) {
     return { id: result.insertId, channel_id: channelId, owner_id: user.id, owner_tag: user.tag, subject };
   }
 
-  async function createTicketChannel(user) {
+  // Discord channel name = the ticket subject (sanitized), else <prefix>-<username>.
+  function channelNameFor(subject, user, cfg) {
+    const fromSubject = subject ? sanitizeChannelName(subject, 90) : '';
+    return fromSubject || `${cfg.ticket_prefix || 'ticket'}-${sanitizeChannelName(user.username || '', 25) || 'ticket'}`;
+  }
+
+  async function createTicketChannel(user, subject = null) {
     const cfg = await getGuildConfig(db);
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
@@ -119,16 +125,16 @@ function createManager(db, client, guildId) {
       });
     }
 
-    const prefix = cfg.ticket_prefix || 'ticket';
     return guild.channels.create({
-      name: `${prefix}-${sanitizeChannelName(user.username, 25) || 'ticket'}`,
+      name: channelNameFor(subject, user, cfg),
       type: ChannelType.GuildText,
       parent: cfg.ticket_category_id || undefined,
       permissionOverwrites: permOverwrites
     });
   }
 
-  async function createTicket(user, firstMessage, attachments = [], subject = null) {
+  // forceNew: open a new ticket even if the user already has one (several tickets per member are allowed)
+  async function createTicket(user, firstMessage, attachments = [], subject = null, { forceNew = false } = {}) {
     const lockKey = `${gid}:${user.id}`;
     // A creation is already running for this user: wait for it and reuse its ticket
     while (creating.has(lockKey)) {
@@ -139,7 +145,7 @@ function createManager(db, client, guildId) {
         return { ...result, created: false };
       }
     }
-    const promise = createTicketUnlocked(user, firstMessage, attachments, subject);
+    const promise = createTicketUnlocked(user, firstMessage, attachments, subject, forceNew);
     creating.set(lockKey, promise);
     try {
       return await promise;
@@ -148,15 +154,15 @@ function createManager(db, client, guildId) {
     }
   }
 
-  async function createTicketUnlocked(user, firstMessage, attachments, subject) {
-    const existing = await getOpenTicketByOwnerId(user.id);
+  async function createTicketUnlocked(user, firstMessage, attachments, subject, forceNew) {
+    const existing = forceNew ? null : await getOpenTicketByOwnerId(user.id);
     if (existing) {
       const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
       if (ch) return { channel: ch, ticket: existing, created: false };
       await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [existing.id]);
     }
 
-    const channel = await createTicketChannel(user);
+    const channel = await createTicketChannel(user, subject);
     const ticket = await createTicketDb(channel.id, user, subject);
 
     const embed = new EmbedBuilder()
@@ -192,11 +198,15 @@ function createManager(db, client, guildId) {
   }
 
   async function relayDmToTicket(user, content, attachments = [], subject = null) {
-    let ticket = await getOpenTicketByOwnerId(user.id) || await getOpenTicketByParticipantId(user.id);
+    const ticket = await getOpenTicketByOwnerId(user.id) || await getOpenTicketByParticipantId(user.id);
     if (!ticket) return createTicket(user, content, attachments, subject);
+    return relayToTicket(ticket, user, content, attachments);
+  }
 
+  // Posts a member's DM into a given open ticket (owner or participant). Returns null if unreachable.
+  async function relayToTicket(ticket, user, content, attachments = []) {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
-    if (!channel) return createTicket(user, content, attachments, subject);
+    if (!channel) return null;
 
     await sendUserContent(channel, user, content, attachments);
     await db('UPDATE tickets SET last_message_at = NOW(), user_warned_inactive = 0 WHERE id = ?', [ticket.id]);
@@ -328,7 +338,7 @@ function createManager(db, client, guildId) {
   }
 
   async function reopenTicket(ticket, reopenedByUser) {
-    const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag });
+    const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag }, ticket.subject);
     await db(
       `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, stage='open', warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
@@ -364,6 +374,30 @@ function createManager(db, client, guildId) {
 
   // ── Assignees ── a ticket can be assigned to several staff members; tickets.claimed_by is kept
   // in sync with the first one (used by stats, reminders, escalation and ratings).
+
+  // Changes the ticket subject and renames the Discord channel to match.
+  // Discord allows 2 renames per 10 min per channel: the rename is not awaited (it may be queued).
+  async function setSubject(ticketId, subject, byUser) {
+    const [ticket] = await db('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+    if (!ticket) return null;
+    const clean = subject ? String(subject).replace(/\s+/g, ' ').trim().slice(0, 100) || null : null;
+    await db('UPDATE tickets SET subject = ? WHERE id = ?', [clean, ticketId]);
+    if ((ticket.subject || null) !== clean) {
+      await recordEvent(db, { actor: byUser, action: 'ticket_subject', ticketId, details: { from: ticket.subject || null, to: clean } });
+    }
+    let channelName = null;
+    if (ticket.status === 'open' && ticket.channel_id) {
+      const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+      if (channel) {
+        const cfg = await getGuildConfig(db);
+        channelName = channelNameFor(clean, { username: ticket.owner_tag }, cfg);
+        if (channel.name !== channelName) channel.setName(channelName).catch(err => console.error('channel rename:', err.message));
+        updateChannelTopic(ticketId).catch(() => null);
+      }
+    }
+    broadcast('ticket', { id: ticketId, subject: clean }, gid);
+    return { subject: clean, channelName };
+  }
 
   async function getAssignees(ticketId) {
     return db(
@@ -699,6 +733,8 @@ function createManager(db, client, guildId) {
     closeTicketWithTranscript,
     reopenTicket,
     setClaim,
+    setSubject,
+    relayToTicket,
     getAssignees,
     addAssignee,
     removeAssignee,

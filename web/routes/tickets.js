@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { createManager } = require('../../utils/ticketManager');
-const { sanitizeChannelName } = require('../../utils/sanitize');
 const { broadcast } = require('../../utils/sse');
 const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, logAudit } = require('../../utils/gradePermissions');
 const { sendPushToGuild } = require('./push');
@@ -585,36 +584,7 @@ router.patch('/:id/move', async (req, res) => {
   }
 });
 
-router.patch('/:id/rename', async (req, res) => {
-  try {
-    const ticket = await loadTicket(req, res, 'reply_ticket');
-    if (!ticket) return;
-    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
-
-    const { name } = req.body;
-    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Nom requis' });
-
-    const newName = sanitizeChannelName(name.trim());
-    if (!newName) return res.status(400).json({ error: 'Nom invalide' });
-
-    const client = req.app.locals.client;
-    if (!client || !ticket.channel_id) return res.status(503).json({ error: 'Bot Discord non disponible' });
-
-    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
-    if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
-
-    const oldName = channel.name;
-    await channel.setName(newName);
-    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_rename', ticketId: ticket.id, details: { from: oldName, to: newName } });
-    await channel.send(`✏️ Ticket renommé en **${newName}** par **${req.session.user.username}** (dashboard).`).catch(() => null);
-
-    res.json({ ok: true, name: newName });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
+// PATCH /api/tickets/:id/subject — the title: also the Discord channel name (kept identical)
 router.patch('/:id/subject', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');
@@ -622,21 +592,10 @@ router.patch('/:id/subject', async (req, res) => {
 
     const { subject } = req.body;
     if (subject !== undefined && subject !== null && typeof subject !== 'string') {
-      return res.status(400).json({ error: 'Sujet invalide' });
+      return res.status(400).json({ error: 'Titre invalide' });
     }
-    const trimmed = subject ? subject.trim().slice(0, 100) : null;
-
-    await req.guildDb('UPDATE tickets SET subject = ? WHERE id = ?', [trimmed, ticket.id]);
-    if ((ticket.subject || null) !== trimmed) {
-      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_subject', ticketId: ticket.id, details: { from: ticket.subject || null, to: trimmed } });
-    }
-
-    if (ticket.status === 'open') {
-      await getManager(req).updateChannelTopic(ticket.id).catch(() => null);
-    }
-    broadcast('ticket', { id: ticket.id, subject: trimmed }, req.guildId);
-
-    res.json({ ok: true, subject: trimmed });
+    const result = await getManager(req).setSubject(ticket.id, subject, dashboardActor(req));
+    res.json({ ok: true, subject: result.subject, channelName: result.channelName });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

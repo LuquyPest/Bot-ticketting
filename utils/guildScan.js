@@ -6,17 +6,21 @@ async function getActiveGuilds() {
   return globalQuery('SELECT guild_id, guild_name FROM guilds WHERE status = "active" AND maintenance_mode = 0');
 }
 
-// Returns array of all open tickets for a user across every active guild.
-// Callers must handle 0 (no ticket), 1 (relay directly) and 2+ (ask user to pick).
+// Every open ticket of a user (as owner or participant) across all active guilds.
+// Returns [{ ticket, guildId, guildName, db, tm }] — a user may have several tickets per guild.
 async function findAllOpenTickets(userId, client) {
   const guilds = await getActiveGuilds();
   const found = [];
   for (const { guild_id, guild_name } of guilds) {
     try {
       const db = getTenantDb(guild_id);
-      const tm = createManager(db, client, guild_id);
-      const ticket = await tm.getAnyOpenTicketForUser(userId);
-      if (ticket) found.push({ ticket, guildId: guild_id, guildName: guild_name || guild_id, db, tm });
+      const tickets = await db(
+        `SELECT * FROM tickets WHERE status = 'open' AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))
+         ORDER BY created_at ASC`,
+        [userId, userId]
+      );
+      const tm = tickets.length ? createManager(db, client, guild_id) : null;
+      for (const ticket of tickets) found.push({ ticket, guildId: guild_id, guildName: guild_name || guild_id, db, tm });
     } catch {}
   }
   return found;
