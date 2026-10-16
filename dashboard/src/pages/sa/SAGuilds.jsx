@@ -6,6 +6,7 @@ import {
 import api from '../../api';
 import { useSA } from './SAApp';
 import toast from 'react-hot-toast';
+import { confirmToast } from '../../utils/confirmToast';
 
 const STATUS = {
   active:    { label: 'Actif',    cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20', icon: CheckCircle },
@@ -73,6 +74,17 @@ function FoundersModal({ guild, canEdit, onClose }) {
 
   useEffect(() => { load(); }, [guild.guild_id]);
 
+  const remove = async (f) => {
+    if (!await confirmToast(`Retirer ${f.username || f.user_id} des fondateurs ?`)) return;
+    try {
+      await api.delete(`/sa/guilds/${guild.guild_id}/founders/${f.user_id}`);
+      toast.success(`${f.username || f.user_id} n'est plus fondateur`);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+    }
+  };
+
   const add = async (e) => {
     e.preventDefault();
     const id = discordId.trim();
@@ -112,9 +124,15 @@ function FoundersModal({ guild, canEdit, onClose }) {
                   <p className="text-sm text-ink-1 truncate">{f.username || f.user_id}</p>
                   <p className="text-[10px] font-mono text-ink-4">{f.user_id}</p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   {f.isInviter && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-indigo-300 bg-indigo-500/10 border-indigo-500/20">Invitant</span>}
                   {f.isOwner && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20">Propriétaire</span>}
+                  {canEdit && founders.length > 1 && (
+                    <button onClick={() => remove(f)} title="Retirer des fondateurs"
+                      className="p-1 rounded-md text-ink-4 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </li>
             ))}

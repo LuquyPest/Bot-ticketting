@@ -437,6 +437,32 @@ router.post('/guilds/:guildId/founders', requireSuperAdmin, async (req, res) => 
   }
 });
 
+// DELETE /api/sa/guilds/:guildId/founders/:userId — retire le rôle fondateur (superadmin uniquement)
+router.delete('/guilds/:guildId/founders/:userId', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const userId = String(req.params.userId);
+  if (!SNOWFLAKE_RE.test(userId)) return res.status(400).json({ error: 'ID Discord invalide' });
+  try {
+    const [guild] = await globalQuery('SELECT guild_id, status FROM guilds WHERE guild_id = ?', [req.params.guildId]);
+    if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
+    if (guild.status === 'pending') return res.status(400).json({ error: 'Serveur non approuvé' });
+
+    const db = getTenantDb(guild.guild_id);
+    const [row] = await db("SELECT username FROM dashboard_users WHERE user_id = ? AND role = 'fondateur'", [userId]);
+    if (!row) return res.status(404).json({ error: 'Cette personne n\'est pas fondateur de ce serveur' });
+    const [{ n }] = await db("SELECT COUNT(*) AS n FROM dashboard_users WHERE role = 'fondateur'");
+    if (n <= 1) return res.status(400).json({ error: 'Impossible de retirer le dernier fondateur — ajoute d\'abord un autre fondateur' });
+
+    // Back to "nouveau"; if they hold a Discord staff role, the role sync gives them a support account again
+    await db('UPDATE dashboard_users SET role = "nouveau", discord_has_role = 0 WHERE user_id = ?', [userId]);
+    await logAudit(`sa:${req.saUser.id}`, `SA ${req.saUser.username}`, 'founder_remove', 'user', userId, { username: row.username }, db);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ─── MANAGERS ────────────────────────────────────────────────────────────────
 
 // GET /api/sa/managers
