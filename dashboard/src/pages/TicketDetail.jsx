@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -13,6 +13,7 @@ import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
+import { confirmToast } from '../utils/confirmToast';
 
 const TEMPLATE_VAR_RE = /\{\{(username|ticket_id|date|staff_name|subject)\}\}/gi;
 
@@ -334,6 +335,26 @@ export default function TicketDetail() {
       setTicket(t => ({ ...t, participants: t.participants.filter(p => p.id !== userId) }));
       toast.success('Participant retiré');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  // Merge: other open tickets of the same member
+  const [mergeCandidates, setMergeCandidates] = useState(null);
+  const [mergeTarget, setMergeTarget] = useState('');
+  const [merging, setMerging] = useState(false);
+  const loadMergeCandidates = () => api.get(`/tickets/${id}/merge-candidates`)
+    .then(r => { setMergeCandidates(r.data); setMergeTarget(r.data[0] ? String(r.data[0].id) : ''); })
+    .catch(err => toast.error(err.response?.data?.error || 'Erreur'));
+  const mergeInto = async () => {
+    const target = mergeCandidates?.find(c => String(c.id) === mergeTarget);
+    if (!target) return;
+    if (!await confirmToast(`Fusionner ce ticket dans #${target.id}${target.subject ? ` « ${target.subject} »` : ''} ? L'historique, les participants, les attributions et les tags y seront déplacés, puis ce ticket sera fermé et son salon supprimé.`)) return;
+    setMerging(true);
+    try {
+      await api.post(`/tickets/${id}/merge`, { into: target.id });
+      toast.success(`Ticket fusionné dans #${target.id}`);
+      navigate(`/tickets/${target.id}`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setMerging(false); }
   };
 
   const moveTicket = async (stage) => {
@@ -997,6 +1018,46 @@ export default function TicketDetail() {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* FUSION */}
+          {ticket.merged_into && (
+            <div className={panelCard}>
+              <SectionTitle>Fusion</SectionTitle>
+              <p className="text-xs text-ink-2">
+                Fusionné dans{' '}
+                <button onClick={() => navigate(`/tickets/${ticket.merged_into}`)} className="text-primary-light hover:underline font-semibold">
+                  #{ticket.merged_into}
+                </button>
+              </p>
+            </div>
+          )}
+          {ticket.status === 'open' && can('close_ticket') && can('reply_ticket') && (
+            <div className={panelCard}>
+              <SectionTitle>Fusionner</SectionTitle>
+              {mergeCandidates === null ? (
+                <button onClick={loadMergeCandidates}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded-xl border border-white/[0.07] text-ink-3 hover:text-ink-1 hover:bg-white/[0.04]">
+                  <GitMerge size={12} /> Fusionner avec un autre ticket du membre
+                </button>
+              ) : mergeCandidates.length === 0 ? (
+                <p className="text-[11px] text-ink-4">Ce membre n'a pas d'autre ticket ouvert.</p>
+              ) : (
+                <div className="space-y-2">
+                  <select value={mergeTarget} onChange={e => setMergeTarget(e.target.value)} aria-label="Ticket cible"
+                    className="w-full bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:border-primary/50">
+                    {mergeCandidates.map(c => (
+                      <option key={c.id} value={c.id}>#{c.id} — {c.subject || 'Sans sujet'}</option>
+                    ))}
+                  </select>
+                  <button onClick={mergeInto} disabled={merging || !mergeTarget}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded-xl font-semibold border bg-primary/10 text-primary-light border-primary/20 hover:bg-primary/20 disabled:opacity-50">
+                    <GitMerge size={12} /> {merging ? 'Fusion…' : 'Fusionner ce ticket dans la cible'}
+                  </button>
+                  <p className="text-[10px] text-ink-4">Ce ticket est fermé et son contenu rejoint la cible ; le membre est prévenu.</p>
+                </div>
+              )}
             </div>
           )}
 

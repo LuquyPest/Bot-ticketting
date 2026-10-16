@@ -436,6 +436,8 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS sla_open_hours INT NOT NULL DEFAULT 0`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS sla_waiting_hours INT NOT NULL DEFAULT 0`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS sla_in_progress_hours INT NOT NULL DEFAULT 0`,
+      // Ticket merged into another one (the source is closed)
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS merged_into INT DEFAULT NULL`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

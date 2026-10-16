@@ -662,6 +662,41 @@ async function main() {
   await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tsLate, tsWarn, tsWait]]);
   await db('UPDATE guild_config SET sla_open_hours = 0, sla_in_progress_hours = 0, in_progress_category_id = NULL WHERE id = 1');
 
+  // ── Merge two tickets of the same member ──
+  const MO = '200000000000000011';
+  const MG_A = '900000000000000081', MG_B = '900000000000000082';
+  let deletedA = false;
+  channels.set(MG_A, Object.assign(mkChannel(MG_A, G), { delete: async () => { deletedA = true; } }));
+  channels.set(MG_B, mkChannel(MG_B, G));
+  const mA = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member11', ?, 'open', 'Premier')", [MO, MG_A])).insertId;
+  const mB = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member11', ?, 'open', 'Second')", [MO, MG_B])).insertId;
+  const mOther = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000012', 'member12', 'cmo', 'open', 'Autre membre')")).insertId;
+  await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'member11', 'message du premier', 'user')", [mA, MO]);
+  await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [mA, '200000000000000013']);
+  await db('INSERT INTO ticket_assignees (ticket_id, user_id, assigned_by_id) VALUES (?, ?, ?)', [mA, U.S1, U.F]);
+  r = await req('GET', `/api/tickets/${mA}/merge-candidates`, { sid: sessions.FV });
+  check('fusion: seuls les tickets ouverts du même membre sont proposés', r.status === 200 && r.body.map(t => t.id).join() === String(mB), JSON.stringify(r.body));
+  r = await req('POST', `/api/tickets/${mA}/merge`, { sid: sessions.FV, body: { into: mOther } });
+  check('fusion: refusée entre deux membres différents', r.status === 400, JSON.stringify(r.body));
+  r = await req('POST', `/api/tickets/${mA}/merge`, { sid: sessions.S1T, body: { into: mB } });
+  check('fusion: refusée sans close_ticket', r.status === 403, r.status);
+  memberDms.length = 0;
+  r = await req('POST', `/api/tickets/${mA}/merge`, { sid: sessions.FV, body: { into: mB } });
+  const [srcM] = await db('SELECT status, merged_into FROM tickets WHERE id = ?', [mA]);
+  const notesB = await db('SELECT content FROM ticket_notes WHERE ticket_id = ?', [mB]);
+  const partsB = await db('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [mB]);
+  const asgB = await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [mB]);
+  check('fusion: ticket source fermé et lié à la cible', r.status === 200 && srcM.status === 'closed' && srcM.merged_into === mB && deletedA, JSON.stringify([r.body, srcM, deletedA]));
+  check('fusion: historique, participants et attributions déplacés', notesB.some(n => n.content === 'message du premier') && notesB.some(n => n.content.includes(`#${mA}`))
+    && partsB.some(p => p.user_id === '200000000000000013') && asgB.some(a => a.user_id === U.S1), JSON.stringify([notesB, partsB, asgB]));
+  const mergeDm = memberDms.find(m => m.id === MO)?.p?.embeds?.[0]?.data;
+  check('fusion: le membre est prévenu', mergeDm?.title?.includes('regroupés') && mergeDm.author.name.includes(`#${mB}`), JSON.stringify(mergeDm));
+  const [mev] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_merge'");
+  check('fusion: journalisée sur les deux tickets', Number(mev.n) === 2, JSON.stringify(mev));
+  r = await req('POST', `/api/tickets/${mA}/merge`, { sid: sessions.FV, body: { into: mB } });
+  check('fusion: impossible depuis un ticket déjà fermé', r.status === 400, JSON.stringify(r.body));
+  await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[mB, mOther]]);
+
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
   r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketCategoryId: CAT_OPEN, waitingCategoryId: CAT_WAIT, inProgressCategoryId: null } });

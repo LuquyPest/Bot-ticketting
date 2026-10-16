@@ -7,6 +7,7 @@ const ACTIONS = {
   ticket_open:              ['Ticket ouvert', 'tickets'],
   ticket_close:             ['Ticket fermé', 'tickets'],
   ticket_reopen:            ['Ticket réouvert', 'tickets'],
+  ticket_merge:             ['Tickets fusionnés', 'tickets'],
   ticket_reply:             ['Réponse envoyée', 'tickets'],
   ticket_note:              ['Note interne', 'tickets'],
   note_delete:              ['Note supprimée', 'tickets'],

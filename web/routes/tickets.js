@@ -212,6 +212,44 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET /api/tickets/:id/merge-candidates — other open tickets of the same member
+router.get('/:id/merge-candidates', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'close_ticket');
+    if (!ticket) return;
+    const vis = await visibilityFilter(req);
+    const rows = await req.guildDb(
+      `SELECT id, subject, stage, created_at, last_message_at FROM tickets
+       WHERE owner_id = ? AND status = 'open' AND id <> ? AND ${vis.sql} ORDER BY created_at DESC`,
+      [ticket.owner_id, ticket.id, ...vis.params]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/tickets/:id/merge { into } — merges this ticket into another one of the same member
+router.post('/:id/merge', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'close_ticket', 'reply_ticket');
+    if (!ticket) return;
+    const intoId = parseInt(req.body.into);
+    if (!intoId) return res.status(400).json({ error: 'Ticket cible requis' });
+    const { ticket: target, denied } = await checkAccess(req, intoId);
+    if (!target || denied) return res.status(404).json({ error: 'Ticket cible introuvable' });
+    const result = await getManager(req).mergeTickets(ticket.id, target.id, dashboardActor(req));
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    broadcast('ticket', { id: ticket.id, status: 'closed', merged_into: target.id }, req.guildId);
+    broadcast('ticket', { id: target.id }, req.guildId);
+    res.json({ ok: true, into: target.id, movedNotes: result.movedNotes, transcriptId: result.transcriptId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.patch('/:id/priority', async (req, res) => {
   try {
     const { priority } = req.body;

@@ -29,6 +29,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Modèles de réponse personnels ou partagés : tout le staff peut en enregistrer, et ceux liés au sujet du ticket sont suggérés au-dessus de la zone de réponse' },
       { type: 'new',  text: 'Notification quand on t\'attribue un ticket : dashboard, push et MP Discord (désactivable dans le profil)' },
       { type: 'new',  text: 'SLA par étape : délai maximal configurable pour Ouvert / En attente / En cours, temps restant dans la liste et la fiche, vue « Hors délai »' },
+      { type: 'new',  text: 'Fusion de deux tickets du même membre : historique, participants, attributions et tags regroupés, le membre est prévenu' },
     ]
   },
   {

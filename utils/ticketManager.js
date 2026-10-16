@@ -495,6 +495,57 @@ function createManager(db, client, guildId) {
     return { ok: true, label: STAGE_LABEL[stage] };
   }
 
+  // Merges an open ticket into another open ticket of the same member: history, participants,
+  // assignees, tags and pending scheduled messages move to the target; the source channel is
+  // archived (transcript) and deleted, and the source is closed with merged_into set.
+  async function mergeTickets(sourceId, targetId, byUser) {
+    if (sourceId === targetId) return { ok: false, error: 'Impossible de fusionner un ticket avec lui-même' };
+    const rows = await db("SELECT * FROM tickets WHERE id IN (?) AND status = 'open'", [[sourceId, targetId]]);
+    const source = rows.find(t => t.id === sourceId), target = rows.find(t => t.id === targetId);
+    if (!source || !target) return { ok: false, error: 'Les deux tickets doivent être ouverts' };
+    if (source.owner_id !== target.owner_id) return { ok: false, error: 'Les deux tickets doivent appartenir au même membre' };
+    const actorTag = byUser.username || byUser.tag || byUser.id;
+
+    const channel = source.channel_id ? await client.channels.fetch(source.channel_id).catch(() => null) : null;
+    const transcript = channel ? await saveTranscriptSnapshot(channel, byUser, source).catch(() => null) : null;
+
+    const moved = await db('UPDATE ticket_notes SET ticket_id = ? WHERE ticket_id = ?', [targetId, sourceId]);
+    await db('INSERT IGNORE INTO ticket_participants (ticket_id, user_id) SELECT ?, user_id FROM ticket_participants WHERE ticket_id = ?', [targetId, sourceId]);
+    await db('INSERT IGNORE INTO ticket_assignees (ticket_id, user_id, assigned_by_id) SELECT ?, user_id, assigned_by_id FROM ticket_assignees WHERE ticket_id = ?', [targetId, sourceId]);
+    await db('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) SELECT ?, tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [targetId, sourceId]);
+    await db('UPDATE scheduled_messages SET ticket_id = ? WHERE ticket_id = ? AND sent = 0', [targetId, sourceId]);
+    await syncPrimaryAssignee(targetId);
+    await db(
+      `UPDATE tickets SET status = 'closed', closed_at = NOW(), closed_by_tag = ?, closed_by_id = NULL, merged_into = ? WHERE id = ?`,
+      [`fusion → #${targetId} (${actorTag})`.slice(0, 100), targetId, sourceId]
+    );
+    await db(
+      `INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'web')`,
+      [targetId, String(byUser.id), actorTag, `🔀 Ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} fusionné dans ce ticket par ${actorTag}${transcript ? ` (transcript #${transcript.transcriptId})` : ''}.`]
+    );
+
+    const details = { from: sourceId, into: targetId, notes: moved.affectedRows || 0 };
+    await recordEvent(db, { actor: byUser, action: 'ticket_merge', ticketId: targetId, details });
+    await recordEvent(db, { actor: byUser, action: 'ticket_merge', ticketId: sourceId, details });
+
+    const targetChannel = target.channel_id ? await client.channels.fetch(target.channel_id).catch(() => null) : null;
+    await targetChannel?.send(`🔀 Le ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} a été fusionné ici par **${actorTag}**.`).catch(() => null);
+    await channel?.delete(`Fusionné dans le ticket #${targetId}`).catch(() => null);
+
+    // The member (and participants) are told where the conversation continues
+    const { ticketNoticeDmEmbed } = require('./dmEmbeds');
+    const embed = ticketNoticeDmEmbed(client, gid, target, {
+      title: `🔀 Tickets regroupés`,
+      description: `Ton ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} a été regroupé avec celui-ci. La conversation continue ici.`,
+    });
+    for (const uid of await getAllLinkedUserIds(targetId)) {
+      const u = await client.users.fetch(uid).catch(() => null);
+      if (u) await u.send({ embeds: [embed] }).catch(() => null);
+    }
+    await updateChannelTopic(targetId).catch(() => null);
+    return { ok: true, movedNotes: moved.affectedRows || 0, transcriptId: transcript?.transcriptId || null };
+  }
+
   async function addParticipant(ticketId, userId) {
     await db('INSERT IGNORE INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [ticketId, userId]);
   }
@@ -754,6 +805,7 @@ function createManager(db, client, guildId) {
     addAssignee,
     removeAssignee,
     moveToStage,
+    mergeTickets,
     addParticipant,
     removeParticipant,
     updateLastMessage,
