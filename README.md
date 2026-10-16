@@ -766,6 +766,7 @@ Suite d'intégration (`tests/integration/harness.js`) : elle démarre le vrai se
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
+cd dashboard && npm run build && npm run test:smoke   # pages principales du dashboard dans Chromium headless (API simulée)
 ```
 
 La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG`) : le `config.json` de production n'est jamais lu. La même suite tourne à chaque push via **GitHub Actions** (`.github/workflows/ci.yml`), avec le build du dashboard et `npm audit`.

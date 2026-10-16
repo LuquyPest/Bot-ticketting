@@ -10,3 +10,4 @@ LICENSE
 docker/
 tests/
 .github/
+dashboard/tests/
