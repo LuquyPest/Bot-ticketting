@@ -207,8 +207,9 @@ export default function SAGuilds() {
         await api.patch(`/sa/guilds/${guild.guild_id}/reactivate`);
         toast.success(`${guild.guild_name} réactivé`);
       } else if (action === 'delete') {
-        await api.delete(`/sa/guilds/${guild.guild_id}`);
-        toast.success(`${guild.guild_name} supprimé`);
+        const { data } = await api.delete(`/sa/guilds/${guild.guild_id}`);
+        if (data.wasInDiscord && !data.leftDiscord) toast.error(`${guild.guild_name} supprimé, mais le bot n'a pas pu quitter le serveur Discord`);
+        else toast.success(`${guild.guild_name} supprimé${data.leftDiscord ? ' — le bot a quitté le serveur' : ''}`);
       } else if (action === 'maintenance_on') {
         await api.patch(`/sa/guilds/${guild.guild_id}/maintenance`, { enabled: true });
         toast.success(`Mode maintenance activé pour ${guild.guild_name}`);
@@ -234,7 +235,7 @@ export default function SAGuilds() {
         <ConfirmModal
           message={
             confirm.action === 'delete'
-              ? `Supprimer définitivement ${confirm.guild.guild_name} et toute sa base de données ?`
+              ? `Supprimer définitivement ${confirm.guild.guild_name} et toute sa base de données ? Le bot quittera aussi le serveur Discord.`
               : confirm.action === 'suspend'
               ? `Suspendre le serveur ${confirm.guild.guild_name} ?`
               : `Réactiver le serveur ${confirm.guild.guild_name} ?`

@@ -337,6 +337,17 @@ router.delete('/guilds/:guildId', requireSuperAdmin, async (req, res) => {
     const [guild] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [req.params.guildId]);
     if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
 
+    // The bot leaves the Discord server first — otherwise it stays there and the server is
+    // re-registered as "pending" at the next restart (events/ready.js)
+    const discordGuild = await req.app.locals.client?.guilds.fetch(guild.guild_id).catch(() => null);
+    let leftDiscord = false;
+    if (discordGuild) {
+      leftDiscord = await discordGuild.leave().then(() => true).catch(err => {
+        console.error('guild leave error:', err.message);
+        return false;
+      });
+    }
+
     const dbName = getDbName(guild.guild_id);
     const cfg = require('../../config.json').database;
     const conn = await mysql.createConnection({ host: cfg.host, port: cfg.port, user: cfg.user, password: cfg.password });
@@ -347,7 +358,7 @@ router.delete('/guilds/:guildId', requireSuperAdmin, async (req, res) => {
     }
 
     await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [guild.guild_id]);
-    res.json({ ok: true });
+    res.json({ ok: true, leftDiscord, wasInDiscord: !!discordGuild });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -456,6 +467,62 @@ router.delete('/guilds/:guildId/founders/:userId', requireSuperAdmin, async (req
     // Back to "nouveau"; if they hold a Discord staff role, the role sync gives them a support account again
     await db('UPDATE dashboard_users SET role = "nouveau", discord_has_role = 0 WHERE user_id = ?', [userId]);
     await logAudit(`sa:${req.saUser.id}`, `SA ${req.saUser.username}`, 'founder_remove', 'user', userId, { username: row.username }, db);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ─── BLOCAGES (comptes SA/manager verrouillés, IP limitées) ─────────────────
+
+const { listBlocked, unblock } = require('../rateLimiters');
+
+// GET /api/sa/blocked — comptes verrouillés après trop d'échecs + IP bloquées par les limites de requêtes
+router.get('/blocked', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  try {
+    const [sas, mgrs] = await Promise.all([
+      globalQuery('SELECT id, username, failed_attempts, locked_until FROM superadmins WHERE locked_until > NOW()'),
+      globalQuery('SELECT id, username, failed_attempts, locked_until FROM managers WHERE locked_until > NOW()'),
+    ]);
+    res.json({
+      accounts: [
+        ...sas.map(a => ({ ...a, type: 'superadmin' })),
+        ...mgrs.map(a => ({ ...a, type: 'manager' })),
+      ],
+      ips: listBlocked(),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/sa/blocked/accounts/:type/:id/unlock
+router.post('/blocked/accounts/:type/:id/unlock', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const table = { superadmin: 'superadmins', manager: 'managers' }[req.params.type];
+  if (!table) return res.status(400).json({ error: 'Type de compte invalide' });
+  try {
+    const r = await globalQuery(`UPDATE ${table} SET failed_attempts = 0, locked_until = NULL WHERE id = ?`, [parseInt(req.params.id)]);
+    if (!r.affectedRows) return res.status(404).json({ error: 'Compte introuvable' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/sa/blocked/ips/unblock — { limiter, key }
+router.post('/blocked/ips/unblock', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const { limiter, key } = req.body;
+  if (typeof limiter !== 'string' || typeof key !== 'string' || key.length > 100) {
+    return res.status(400).json({ error: 'Paramètres invalides' });
+  }
+  try {
+    if (!(await unblock(limiter, key))) return res.status(404).json({ error: 'Blocage introuvable ou déjà expiré' });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

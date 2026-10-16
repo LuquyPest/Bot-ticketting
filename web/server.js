@@ -1,7 +1,6 @@
 const express = require('express');
 const session = require('express-session');
 const helmet  = require('helmet');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const { pages } = require('../utils/transcriptServer');
@@ -129,20 +128,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Trop de tentatives, réessaye dans 15 minutes' }
-});
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Trop de requêtes' }
-});
+const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs are listed in the SA panel
 
 app.use('/api/auth', authLimiter);
 app.use('/api/sa/auth', authLimiter);

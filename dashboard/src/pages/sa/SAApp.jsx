@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, Building2, Users, LogOut, Loader2 } from 'lucide-react';
+import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert } from 'lucide-react';
 import api from '../../api';
 
 const SALogin    = lazy(() => import('./SALogin'));
 const SAGuilds   = lazy(() => import('./SAGuilds'));
 const SAManagers = lazy(() => import('./SAManagers'));
+const SABlocked  = lazy(() => import('./SABlocked'));
 
 function PageLoader() {
   return (
@@ -37,7 +38,10 @@ function SALayout({ children }) {
 
   const nav = [
     { to: '/sa/guilds',   label: 'Serveurs',  icon: Building2 },
-    ...(saUser?.type === 'superadmin' ? [{ to: '/sa/managers', label: 'Managers', icon: Users }] : [])
+    ...(saUser?.type === 'superadmin' ? [
+      { to: '/sa/managers', label: 'Managers', icon: Users },
+      { to: '/sa/blocked',  label: 'Blocages', icon: ShieldAlert },
+    ] : [])
   ];
 
   return (
@@ -133,6 +137,9 @@ export default function SAApp() {
           } />
           <Route path="managers" element={
             <RequireSA><SALayout><SAManagers /></SALayout></RequireSA>
+          } />
+          <Route path="blocked" element={
+            <RequireSA><SALayout><SABlocked /></SALayout></RequireSA>
           } />
           <Route index element={<Navigate to="/sa/guilds" replace />} />
           <Route path="*" element={<Navigate to="/sa/guilds" replace />} />

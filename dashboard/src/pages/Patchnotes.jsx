@@ -22,6 +22,8 @@ const VERSIONS = [
       { type: 'new',  text: 'Accès automatique au dashboard pour les rôles Discord support et chef support' },
       { type: 'fix',  text: 'Filtres « attribué à », « non attribués » et dates de la liste, et actions de masse assigner / tag / réouvrir / modèle : elles n\'avaient aucun effet' },
       { type: 'fix',  text: 'La notation d\'un ticket fermé sans prise en charge échouait' },
+      { type: 'fix',  text: 'Supprimer un serveur depuis le panel superadmin fait maintenant quitter le serveur Discord au bot (il y restait et le serveur réapparaissait « en attente » au redémarrage)' },
+      { type: 'new',  text: 'Panel superadmin : page « Blocages » listant les comptes verrouillés et les adresses IP limitées, avec déblocage' },
     ]
   },
   {

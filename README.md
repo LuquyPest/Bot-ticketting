@@ -349,10 +349,11 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 
 | Section | Description |
 |---------|-------------|
-| **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs |
+| **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs (la suppression efface la base du serveur et fait quitter le serveur Discord au bot) |
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
 | **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
+| **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min), avec déblocage manuel — superadmin uniquement |
 | **Stats globales** | Vue d'ensemble de tous les serveurs actifs |
 
 Routes d'administration sans écran dédié (appelables avec une session SA) : `GET /api/sa/stats`, `PATCH /api/sa/guilds/:guildId/limits` (`max_tickets`, `max_agents`, `transcript_retention_days`) et `GET /api/sa/error-logs` (superadmin uniquement).
