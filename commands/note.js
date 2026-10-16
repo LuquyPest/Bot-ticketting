@@ -4,6 +4,7 @@ const { createManager, getGuildConfig } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 
 const { NOTE_EMBED_AUTHOR } = require('../utils/notePrefix');
+const { recordEvent } = require('../utils/audit');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,6 +32,7 @@ module.exports = {
       'INSERT INTO staff_notes (ticket_id, author_id, author_tag, content) VALUES (?, ?, ?, ?)',
       [ticket.id, interaction.user.id, interaction.user.username, content]
     );
+    await recordEvent(db, { actor: interaction.user, action: 'ticket_note', ticketId: ticket.id, details: { excerpt: content.slice(0, 120) } });
 
     const noteEmbed = new EmbedBuilder()
       .setColor(0xfee75c)

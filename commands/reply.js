@@ -4,6 +4,8 @@ const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 const { checkRateLimit } = require('../utils/rateLimit');
 const { broadcast } = require('../utils/sse');
+const { recordEvent } = require('../utils/audit');
+const { staffReplyDmEmbed } = require('../utils/dmEmbeds');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -39,10 +41,12 @@ module.exports = {
       .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
     if (file) replyEmbed.addFields({ name: '📎 Fichier', value: file.url });
 
+    const dmEmbed = staffReplyDmEmbed(client, interaction.guildId, ticket, { sender: interaction.user.username, content, fileUrl: file?.url });
     for (const userId of linkedUserIds) {
       const user = await client.users.fetch(userId).catch(() => null);
-      if (user) await user.send({ embeds: [replyEmbed] }).catch(() => null);
+      if (user) await user.send({ embeds: [dmEmbed] }).catch(() => null);
     }
+    await recordEvent(db, { actor: interaction.user, action: 'ticket_reply', ticketId: ticket.id, details: { anonymous: false, excerpt: (content || file?.url || '').slice(0, 120) } });
 
     await tm.recordStaffResponse(ticket.id, interaction.user);
     await tm.updateLastMessage(ticket.id);

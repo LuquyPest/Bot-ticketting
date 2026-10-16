@@ -1,5 +1,9 @@
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
+const { recordEvent } = require('./audit');
+
+// Automatic closures are made by the system (no staff stats, journal source "Automatique")
+const SYSTEM_CLOSER = { id: 'system', tag: 'Système (inactivité)', username: 'Système', source: 'system', reason: 'inactivité' };
 const { createManager, getGuildConfig } = require('./ticketManager');
 
 async function runInactiveCheck(client) {
@@ -34,9 +38,10 @@ async function runInactiveCheck(client) {
         const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
         if (!channel) {
           await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [ticket.id]);
+          await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'inactivité', channel: 'introuvable' } });
           continue;
         }
-        await tm.closeTicketWithTranscript(channel, client.user);
+        await tm.closeTicketWithTranscript(channel, SYSTEM_CLOSER);
       }
     } catch (err) {
       console.error(`Erreur inactive checker [${guild_id}]:`, err);

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 
 const SNOWFLAKE_RE = /^\d{17,20}$/;
 const VALID_DURATIONS = { '1d': 1, '7d': 7, '30d': 30, 'permanent': null };
@@ -45,6 +46,8 @@ router.post('/', async (req, res) => {
          added_by_tag = VALUES(added_by_tag), added_at = NOW(), expires_at = VALUES(expires_at)`,
       [userId, userTag, reason || null, req.session.user.id, req.session.user.username, expiresAt]
     );
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'blacklist_add', targetType: 'user', targetId: userId,
+      details: { user: userTag, reason: reason || null, duration: duration || 'permanent' } });
 
     res.json({ ok: true });
   } catch (err) {
@@ -58,7 +61,9 @@ router.delete('/:userId', async (req, res) => {
     return res.status(400).json({ error: 'userId invalide' });
   }
   try {
+    const [row] = await req.guildDb('SELECT user_tag FROM blacklist WHERE user_id = ?', [req.params.userId]);
     await req.guildDb('DELETE FROM blacklist WHERE user_id = ?', [req.params.userId]);
+    if (row) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'blacklist_remove', targetType: 'user', targetId: req.params.userId, details: { user: row.user_tag } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

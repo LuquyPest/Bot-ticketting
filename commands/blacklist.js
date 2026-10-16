@@ -53,7 +53,7 @@ module.exports = {
 
     if (sub === 'remove') {
       const user = interaction.options.getUser('utilisateur', true);
-      const removed = await tm.removeFromBlacklist(user.id);
+      const removed = await tm.removeFromBlacklist(user.id, interaction.user);
 
       if (!removed) {
         return interaction.reply({ content: `${user.username} n'est pas dans la blacklist.`, ephemeral: true });

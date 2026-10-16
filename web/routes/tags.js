@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { visibilityFilter } = require('../../utils/gradePermissions');
 
 const hasPerm = (req, perm) => req.userIsFondateur || req.userPermissions.has(perm);
@@ -47,6 +48,7 @@ router.post('/', requireSettings, async (req, res) => {
       'INSERT INTO ticket_tags (name, color) VALUES (?, ?)',
       [cleanName, cleanColor]
     );
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'tag_create', targetType: 'tag', targetId: result.insertId, details: { name: cleanName } });
     res.json({ id: result.insertId, name: cleanName, color: cleanColor });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Ce tag existe déjà' });
@@ -65,6 +67,7 @@ router.patch('/:id', requireSettings, async (req, res) => {
     if (!updates.length) return res.json({ ok: true });
     params.push(req.params.id);
     await req.guildDb(`UPDATE ticket_tags SET ${updates.join(', ')} WHERE id = ?`, params);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'tag_update', targetType: 'tag', targetId: req.params.id, details: { name: name || undefined, color: color || undefined } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -74,7 +77,9 @@ router.patch('/:id', requireSettings, async (req, res) => {
 
 router.delete('/:id', requireSettings, async (req, res) => {
   try {
+    const [tag] = await req.guildDb('SELECT name FROM ticket_tags WHERE id = ?', [req.params.id]);
     await req.guildDb('DELETE FROM ticket_tags WHERE id = ?', [req.params.id]);
+    if (tag) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'tag_delete', targetType: 'tag', targetId: req.params.id, details: { name: tag.name } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -101,10 +106,14 @@ router.post('/ticket/:ticketId', requireTicketAccess, async (req, res) => {
   try {
     const { tag_id } = req.body;
     if (!tag_id) return res.status(400).json({ error: 'tag_id requis' });
-    await req.guildDb(
+    const r = await req.guildDb(
       'INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)',
       [req.ticketId, parseInt(tag_id)]
     );
+    if (r.affectedRows) {
+      const [tag] = await req.guildDb('SELECT name FROM ticket_tags WHERE id = ?', [parseInt(tag_id)]);
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: req.ticketId, targetType: 'tag', targetId: tag_id, details: { tag: tag?.name } });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -114,10 +123,14 @@ router.post('/ticket/:ticketId', requireTicketAccess, async (req, res) => {
 
 router.delete('/ticket/:ticketId/:tagId', requireTicketAccess, async (req, res) => {
   try {
-    await req.guildDb(
+    const r = await req.guildDb(
       'DELETE FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?',
       [req.ticketId, req.params.tagId]
     );
+    if (r.affectedRows) {
+      const [tag] = await req.guildDb('SELECT name FROM ticket_tags WHERE id = ?', [req.params.tagId]);
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_remove', ticketId: req.ticketId, targetType: 'tag', targetId: req.params.tagId, details: { tag: tag?.name } });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

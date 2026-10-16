@@ -1,6 +1,10 @@
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
 const { createManager, getGuildConfig } = require('./ticketManager');
+const { recordEvent } = require('./audit');
+const { ticketNoticeDmEmbed } = require('./dmEmbeds');
+
+const SYSTEM_CLOSER = { id: 'system', tag: 'Système (inactivité utilisateur)', username: 'Système', source: 'system', reason: 'inactivité du membre' };
 
 async function runUserInactiveCheck(client) {
   let guilds;
@@ -25,9 +29,12 @@ async function runUserInactiveCheck(client) {
       for (const ticket of toWarn) {
         const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
         if (owner) {
-          await owner.send(
-            `⚠️ **Ticket #${ticket.id}** — Le staff t'a répondu mais nous n'avons pas eu de nouvelle depuis ${warnHours}h.\nSi tu n'envoies pas de message dans les prochaines ${closeHours - warnHours}h, le ticket sera fermé automatiquement.`
-          ).catch(() => null);
+          await owner.send({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
+            title: '⚠️ Ton ticket attend ta réponse',
+            description: `Le staff t'a répondu mais nous n'avons pas eu de nouvelle depuis ${warnHours}h.\nSans message de ta part dans les ${closeHours - warnHours}h, le ticket sera fermé automatiquement.`,
+            color: 'warning',
+            footer: `Réponds ici pour écrire dans le ticket #${ticket.id}`,
+          })] }).catch(() => null);
         }
         // Also warn in the ticket channel
         const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
@@ -43,14 +50,18 @@ async function runUserInactiveCheck(client) {
         const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
         if (!channel) {
           await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system (inactivité utilisateur)' WHERE id=?`, [ticket.id]);
+          await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'inactivité du membre', channel: 'introuvable' } });
           continue;
         }
         // Notify user before close
         const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
         if (owner) {
-          await owner.send(`🔒 **Ticket #${ticket.id}** fermé automatiquement après ${closeHours}h sans réponse de ta part.`).catch(() => null);
+          await owner.send({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
+            title: '🔒 Ticket fermé automatiquement',
+            description: `Fermé après ${closeHours}h sans réponse de ta part. Tu peux en ouvrir un nouveau à tout moment.`,
+          })] }).catch(() => null);
         }
-        await tm.closeTicketWithTranscript(channel, { id: client.user.id, tag: 'système (inactivité utilisateur)', username: 'système' });
+        await tm.closeTicketWithTranscript(channel, SYSTEM_CLOSER);
       }
     } catch (err) {
       console.error(`Erreur userInactiveChecker [${guild_id}]:`, err);

@@ -77,21 +77,14 @@ async function visibilityFilter(req, col = 'visibility_grade_id') {
   return { sql: `(${col} IS NULL OR ${col} IN (?))`, params: [ids.length ? ids : [0]] };
 }
 
-async function logAudit(actorId, actorTag, action, targetType, targetId, details, db) {
-  const q = db || globalQuery;
-  try {
-    await q(
-      'INSERT INTO audit_log (actor_id, actor_tag, action, target_type, target_id, details) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        actorId, actorTag, action,
-        targetType || null,
-        targetId != null ? String(targetId) : null,
-        details ? JSON.stringify(details) : null
-      ]
-    );
-  } catch (e) {
-    console.error('logAudit error:', e);
-  }
+// Kept for existing callers; see utils/audit.js (recordEvent) for the full journal API.
+async function logAudit(actorId, actorTag, action, targetType, targetId, details, db, { ticketId = null } = {}) {
+  const { recordEvent } = require('./audit');
+  const source = String(actorId).startsWith('sa:') ? 'sa' : 'dashboard';
+  await recordEvent(db || globalQuery, {
+    actor: { id: actorId, tag: actorTag, source }, action, targetType, targetId, details,
+    ticketId: ticketId || (targetType === 'ticket' ? parseInt(targetId) || null : null),
+  });
 }
 
 module.exports = {

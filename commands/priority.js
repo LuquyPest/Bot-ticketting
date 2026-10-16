@@ -35,7 +35,7 @@ module.exports = {
     }
 
     const priority = interaction.options.getString('niveau', true);
-    await tm.setPriority(ticket.id, priority);
+    await tm.setPriority(ticket.id, priority, interaction.user);
     await tm.updateChannelTopic(ticket.id).catch(() => null);
 
     const label = LABELS[priority];

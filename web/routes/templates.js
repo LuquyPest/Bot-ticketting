@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 
 router.get('/', async (req, res) => {
   try {
@@ -40,6 +41,7 @@ router.post('/', async (req, res) => {
       [name.trim(), content.trim(), cleanSubject, req.session.user.id, req.session.user.username]
     );
 
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'template_create', targetType: 'template', targetId: result.insertId, details: { name: name.trim() } });
     res.json({
       id: result.insertId,
       name: name.trim(),
@@ -62,6 +64,7 @@ router.delete('/:id', async (req, res) => {
     if (req.session.user.role !== 'fondateur' && template.created_by_id !== req.session.user.id)
       return res.status(403).json({ error: 'Accès refusé' });
     await req.guildDb('DELETE FROM reply_templates WHERE id = ?', [template.id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'template_delete', targetType: 'template', targetId: template.id, details: { name: template.name } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

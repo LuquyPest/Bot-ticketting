@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 
 const NEWSLETTER_COOLDOWN_MS = 60 * 1000; // 1 minute minimum entre deux envois
 const _lastSent = new Map(); // guildId → timestamp
@@ -46,6 +47,7 @@ router.post('/send', async (req, res) => {
     }
 
     _lastSent.set(req.guildId, Date.now());
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'newsletter_send', details: { subject: subject || null, sent, failed, excerpt: message.slice(0, 120) } });
     res.json({ ok: true, sent, failed, total: staff.length });
   } catch (err) {
     console.error(err);

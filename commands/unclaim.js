@@ -18,7 +18,7 @@ module.exports = {
       return interaction.reply({ content: '❌ Pas un salon ticket.', ephemeral: true });
     }
 
-    const removed = await tm.removeAssignee(ticket.id, interaction.user.id);
+    const removed = await tm.removeAssignee(ticket.id, interaction.user.id, interaction.user);
     if (!removed) {
       return interaction.reply({ content: 'Tu n\'es pas assigné à ce ticket.', ephemeral: true });
     }

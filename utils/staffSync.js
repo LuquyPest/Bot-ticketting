@@ -3,6 +3,7 @@
 // accounts created this way (dashboard_users.discord_has_role = 1) lose access when the role is removed.
 // Fondateurs and accounts managed by hand are never touched.
 const { parseJsonField } = require('./jsonField');
+const { recordEvent } = require('./audit');
 
 const SUPPORT_PERMS = ['view_tickets', 'reply_ticket', 'claim_ticket', 'close_ticket', 'manage_participants'];
 const CHIEF_PERMS   = [...SUPPORT_PERMS, 'view_transcripts', 'manage_users', 'view_audit'];
@@ -60,6 +61,7 @@ async function syncDiscordStaff(client, db, guildId, user) {
       await db('UPDATE dashboard_users SET role = "nouveau", discord_has_role = 0 WHERE user_id = ?', [user.id]);
       await db('DELETE FROM user_grades WHERE user_id = ? AND grade_id IN (?)',
         [user.id, [cfg?.support_grade_id, cfg?.chief_grade_id].filter(Boolean).concat(0)]);
+      await recordEvent(db, { actor: null, action: 'staff_access_revoked', targetType: 'user', targetId: user.id, details: { user: user.username } });
       return 'nouveau';
     }
     return row?.role || null;
@@ -67,6 +69,7 @@ async function syncDiscordStaff(client, db, guildId, user) {
 
   const { supportId, chiefId } = await ensureStaffGrades(db);
   const gradeId = level === 'chief' ? chiefId : supportId;
+  const wasStaff = row?.role === 'support' && row.discord_has_role === 1;
   await db(
     `INSERT INTO dashboard_users (user_id, username, avatar, role, discord_has_role) VALUES (?, ?, ?, 'support', 1)
      ON DUPLICATE KEY UPDATE role = 'support', discord_has_role = 1, username = VALUES(username), avatar = VALUES(avatar)`,
@@ -78,6 +81,9 @@ async function syncDiscordStaff(client, db, guildId, user) {
     `INSERT IGNORE INTO user_grades (user_id, grade_id, assigned_by_id, assigned_by_tag) VALUES (?, ?, 'discord', 'Rôle Discord')`,
     [user.id, gradeId]
   );
+  if (!wasStaff) {
+    await recordEvent(db, { actor: null, action: 'staff_access_granted', targetType: 'user', targetId: user.id, details: { user: user.username, level } });
+  }
   return 'support';
 }
 

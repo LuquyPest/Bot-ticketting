@@ -120,7 +120,41 @@ function alreadyRatedEmbed() {
     .setDescription('Tu as déjà noté ce ticket.');
 }
 
+// ── Ticket DMs ── a member can have open tickets on several servers: every DM about a ticket
+// carries the server and the ticket it comes from.
+function ticketContextAuthor(client, guildId, ticket) {
+  const guild = client?.guilds?.cache?.get(guildId);
+  const name = `${guild?.name || 'Support'} · Ticket #${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}`;
+  return { name: name.slice(0, 256), iconURL: guild?.iconURL({ size: 64 }) || undefined };
+}
+
+function staffReplyDmEmbed(client, guildId, ticket, { sender, content, fileUrl, scheduled = false }) {
+  const embed = new EmbedBuilder()
+    .setColor(C.primary)
+    .setAuthor(ticketContextAuthor(client, guildId, ticket))
+    .setTitle(`💬 ${sender}${scheduled ? ' · message programmé' : ''}`.slice(0, 256))
+    .setFooter({ text: `Réponds ici pour écrire dans le ticket #${ticket.id}` })
+    .setTimestamp();
+  if (content) embed.setDescription(String(content).slice(0, 4096));
+  if (fileUrl) embed.addFields({ name: '📎 Fichier', value: String(fileUrl).slice(0, 1024) });
+  return embed;
+}
+
+function ticketNoticeDmEmbed(client, guildId, ticket, { title, description, color = 'neutral', footer }) {
+  const embed = new EmbedBuilder()
+    .setColor(C[color] ?? C.neutral)
+    .setAuthor(ticketContextAuthor(client, guildId, ticket))
+    .setTitle(title.slice(0, 256))
+    .setTimestamp();
+  if (description) embed.setDescription(description.slice(0, 4096));
+  if (footer) embed.setFooter({ text: footer.slice(0, 2048) });
+  return embed;
+}
+
 module.exports = {
+  ticketContextAuthor,
+  staffReplyDmEmbed,
+  ticketNoticeDmEmbed,
   emptyMessageEmbed,
   blacklistedEmbed,
   notInGuildEmbed,

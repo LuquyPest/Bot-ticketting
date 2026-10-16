@@ -7,6 +7,7 @@ const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb } = require('../../utils/tenantDb');
 const { createManager } = require('../../utils/ticketManager');
 const { broadcast } = require('../../utils/sse');
+const { recordEvent } = require('../../utils/audit');
 
 const KEY_RE = /^tb_(\d{17,20})_[a-f0-9]{64}$/;
 
@@ -115,6 +116,7 @@ router.post('/tickets/:id/close', requirePerm('close_tickets'), async (req, res)
         'UPDATE tickets SET status = "closed", closed_at = NOW(), closed_by_tag = ? WHERE id = ?',
         [closedBy.tag, ticket.id]
       );
+      await recordEvent(req.guildDb, { actor: closedBy, action: 'ticket_close', ticketId: ticket.id, details: { via: 'api' } });
     }
     broadcast('ticket', { id: ticket.id, status: 'closed' }, req.guildId);
     res.json({ ok: true });

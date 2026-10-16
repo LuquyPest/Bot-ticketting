@@ -3,6 +3,7 @@ const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 const { sanitizeChannelName } = require('../utils/sanitize');
+const { recordEvent } = require('../utils/audit');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,7 +28,9 @@ module.exports = {
       return interaction.reply({ content: '❌ Nom invalide.', ephemeral: true });
     }
 
+    const oldName = interaction.channel.name;
     await interaction.channel.setName(newName);
+    await recordEvent(db, { actor: interaction.user, action: 'ticket_rename', ticketId: ticket.id, details: { from: oldName, to: newName } });
     await interaction.reply(`✅ Salon renommé en **${newName}**.`);
   }
 };

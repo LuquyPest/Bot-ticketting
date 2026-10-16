@@ -39,7 +39,7 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent) {
     const result = await tm.createTicket(userObj, content, [], subject);
     if (result.created) {
       broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
-      await tm.sendWelcomeDm(user, true, subject).catch(() => null);
+      await tm.sendWelcomeDm(user, true, subject, result.ticket.id).catch(() => null);
       await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${result.channel.id}>` });
     } else {
       await interaction.editReply({ content: `ℹ️ Tu as déjà un ticket ouvert : <#${result.channel.id}>` });

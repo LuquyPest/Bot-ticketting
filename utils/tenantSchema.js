@@ -172,10 +172,15 @@ const TENANT_TABLES_SQL = `
     actor_id    VARCHAR(32) NOT NULL,
     actor_tag   VARCHAR(100) NOT NULL,
     action      VARCHAR(100) NOT NULL,
+    source      VARCHAR(16) NOT NULL DEFAULT 'dashboard',
+    ticket_id   INT DEFAULT NULL,
     target_type VARCHAR(50) DEFAULT NULL,
     target_id   VARCHAR(50) DEFAULT NULL,
     details     JSON DEFAULT NULL,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_created (created_at),
+    INDEX idx_audit_action (action),
+    INDEX idx_audit_ticket (ticket_id)
   );
 
   CREATE TABLE IF NOT EXISTS ticket_tags (
@@ -383,6 +388,13 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS style ENUM('short','paragraph') NOT NULL DEFAULT 'short'`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS min_length INT DEFAULT NULL`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS max_length INT DEFAULT NULL`,
+      // Event journal: origin of each action + related ticket (utils/audit.js)
+      `ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS source VARCHAR(16) NOT NULL DEFAULT 'dashboard'`,
+      `ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS ticket_id INT DEFAULT NULL`,
+      `UPDATE audit_log SET source = 'sa' WHERE actor_id LIKE 'sa:%' AND source = 'dashboard'`,
+      `CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log (created_at)`,
+      `CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log (action)`,
+      `CREATE INDEX IF NOT EXISTS idx_audit_ticket ON audit_log (ticket_id)`,
       // Ticket stages (Ouvert / En attente / En cours) mapped to Discord categories
       `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS stage ENUM('open','waiting','in_progress') NOT NULL DEFAULT 'open'`,
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS waiting_category_id VARCHAR(32) DEFAULT NULL`,

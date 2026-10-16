@@ -2,6 +2,8 @@ const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
 const { createManager } = require('./ticketManager');
 const { broadcast } = require('./sse');
+const { recordEvent } = require('./audit');
+const { staffReplyDmEmbed } = require('./dmEmbeds');
 
 async function processPending(client) {
   let guilds;
@@ -29,11 +31,16 @@ async function processPending(client) {
 
           const text = `--- ${msg.sender_tag} (programmé) : ${msg.content}`;
 
+          const dmEmbed = staffReplyDmEmbed(client, guild_id, ticket, { sender: msg.sender_tag, content: msg.content, scheduled: true });
           const linkedUserIds = await tm.getAllLinkedUserIds(msg.ticket_id);
           for (const userId of linkedUserIds) {
             const user = await client.users.fetch(userId).catch(() => null);
-            if (user) await user.send(text).catch(() => null);
+            if (user) await user.send({ embeds: [dmEmbed] }).catch(() => null);
           }
+          await recordEvent(db, {
+            actor: { id: msg.sender_id, tag: msg.sender_tag, source: 'system' }, action: 'scheduled_sent', ticketId: msg.ticket_id,
+            targetType: 'scheduled_message', targetId: msg.id, details: { excerpt: String(msg.content).slice(0, 120) },
+          });
 
           if (ticket.channel_id) {
             const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);

@@ -2,6 +2,9 @@ const { EmbedBuilder } = require('discord.js');
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
 const { fetchGuildChannel } = require('./discordGuard');
+const { recordEvent } = require('./audit');
+
+const SYSTEM_CLOSER = { id: 'system', tag: 'Système (escalade)', username: 'Système', source: 'system', reason: 'escalade sans réponse' };
 const { createManager, getGuildConfig } = require('./ticketManager');
 
 async function runEscalationCheckForGuild(client, guild_id) {
@@ -57,6 +60,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
       }
     }
     await db('UPDATE tickets SET escalation_alerted = 1 WHERE id = ?', [ticket.id]);
+    await recordEvent(db, { actor: null, action: 'ticket_escalation', ticketId: ticket.id, details: { hours: alertHours } });
   }
 
   // 2. Tickets déjà alertés dépassant closeHours → fermeture auto
@@ -77,10 +81,11 @@ async function runEscalationCheckForGuild(client, guild_id) {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) {
       await db(`UPDATE tickets SET status='closed', closed_at=NOW() WHERE id=?`, [ticket.id]);
+      await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'escalade sans réponse', channel: 'introuvable' } });
       continue;
     }
     await channel.send('⏱️ Ce ticket urgent est fermé automatiquement après inactivité prolongée.').catch(() => null);
-    await tm.closeTicketWithTranscript(channel, client.user).catch(console.error);
+    await tm.closeTicketWithTranscript(channel, SYSTEM_CLOSER).catch(console.error);
   }
 }
 

@@ -24,7 +24,7 @@ const ALL_NAV = [
   { to: '/equipe',      label: 'Équipe',       icon: Users,           roles: ['fondateur'] },
   { to: '/grades',      label: 'Grades',       icon: Shield,          roles: ['fondateur'], perm: 'manage_grades' },
   { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
-  { to: '/audit',       label: 'Audit',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
+  { to: '/audit',       label: 'Journal',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
   { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
   { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'], perm: 'view_transcripts' },
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },

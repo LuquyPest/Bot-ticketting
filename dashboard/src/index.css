@@ -50,10 +50,23 @@
   --text-1:       var(--color-ink-1);
   --text-2:       var(--color-ink-2);
   --text-3:       var(--color-ink-3);
+
+  /* Chart categorical slots (fixed order) — validated against --color-surface-card (dataviz validator) */
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
 }
 
 /* ─── Design Tokens — Light ──────────────────────────────────────── */
 html.light {
+  /* Light steps of the same hues; 3–5 sit under 3:1 on white → charts ship visible values / a table view */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
   --color-base:             #f0f0f8;
   --color-surface:          #f9f9fd;
   --color-surface-card:     #ffffff;

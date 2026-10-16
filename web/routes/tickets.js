@@ -13,6 +13,8 @@ const SNOWFLAKE_RE   = /^\d{17,20}$/;
 const DATE_RE        = /^\d{4}-\d{2}-\d{2}$/;
 
 const { csvCell: csvEscape } = require('../../utils/csv');
+const { recordEvent, dashboardActor } = require('../../utils/audit');
+const { staffReplyDmEmbed, ticketNoticeDmEmbed } = require('../../utils/dmEmbeds');
 const { parseJsonField } = require('../../utils/jsonField');
 const { escapeHtml } = require('../../utils/transcript');
 
@@ -212,7 +214,7 @@ router.patch('/:id/priority', async (req, res) => {
     if (!ticket) return;
     const ticketId = ticket.id;
 
-    await req.guildDb('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+    await getManager(req).setPriority(ticketId, priority, dashboardActor(req));
     await getManager(req).updateChannelTopic(ticketId).catch(() => null);
     broadcast('ticket', { id: ticketId, priority }, req.guildId);
 
@@ -248,7 +250,7 @@ router.patch('/:id/status', async (req, res) => {
     if (!ticket) return;
     if (ticket.status === status) return res.json({ ok: true });
 
-    const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+    const staffUser = dashboardActor(req);
     const tm = getManager(req);
     const client = req.app.locals.client;
 
@@ -303,6 +305,7 @@ router.post('/:id/notes', async (req, res) => {
     }
 
     const trimmed = content.trim();
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_note', ticketId: ticket.id, details: { excerpt: trimmed.slice(0, 120) } });
     const result = await req.guildDb(
       'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "web")',
       [ticket.id, req.session.user.id, req.session.user.username, trimmed]
@@ -342,9 +345,11 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
   const client = req.app.locals.client;
   const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
 
+  // DM: embed naming the server and the ticket (a member can have tickets on several servers)
+  const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: file_url });
   for (const userId of linkedUserIds) {
     const user = await client?.users.fetch(userId).catch(() => null);
-    if (user) await user.send(msg).catch(() => null);
+    if (user) await user.send({ embeds: [dmEmbed] }).catch(() => null);
   }
 
   if (client && ticket.channel_id) {
@@ -352,10 +357,14 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
     if (channel) await channel.send(msg).catch(() => null);
   }
 
-  const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+  const staffUser = dashboardActor(req);
   await tm.recordStaffResponse(ticket.id, staffUser);
   await tm.updateLastMessage(ticket.id);
 
+  await recordEvent(req.guildDb, {
+    actor: dashboardActor(req), action: 'ticket_reply', ticketId: ticket.id,
+    details: { anonymous: !!anonymous, excerpt: (content || file_url || '').slice(0, 120) },
+  });
   const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
   const noteContent = [content, file_url].filter(Boolean).join('\n');
   const result = await req.guildDb(
@@ -434,7 +443,7 @@ router.post('/:id/assignees', async (req, res) => {
     const target = await findAssignableStaff(req, req.body.user_id, ticket);
     if (!target) return res.status(400).json({ error: 'Membre du staff introuvable ou sans accès à ce ticket' });
 
-    const me = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+    const me = dashboardActor(req);
     const added = await getManager(req).addAssignee(ticket.id, target, me);
     if (added) {
       await notifyAssignment(req, ticket, target.id === me.id
@@ -454,7 +463,7 @@ router.delete('/:id/assignees/:userId', async (req, res) => {
     const ticket = await loadTicket(req, res, 'claim_ticket');
     if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
-    const removed = await getManager(req).removeAssignee(ticket.id, String(req.params.userId));
+    const removed = await getManager(req).removeAssignee(ticket.id, String(req.params.userId), dashboardActor(req));
     if (removed) {
       const [u] = await req.guildDb('SELECT username FROM dashboard_users WHERE user_id = ?', [String(req.params.userId)]);
       const name = u?.username || req.params.userId;
@@ -496,13 +505,15 @@ router.post('/:id/participants', async (req, res) => {
 
     await tm.addParticipant(ticket.id, discord_id);
 
-    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
+    const staffUser = dashboardActor(req);
     await tm.logAddUser(ticket.id, discord_id, staffUser);
     broadcast('participant_add', { ticketId: ticket.id, userId: discord_id, tag: discordUser.username }, req.guildId);
 
-    await discordUser.send(
-      `Tu as été ajouté au ticket #${ticket.id}.\nSi tu réponds à ce bot en message privé, ton message ira dans ce ticket.`
-    ).catch(() => null);
+    await discordUser.send({ embeds: [ticketNoticeDmEmbed(client, req.guildId, ticket, {
+        title: '👥 Tu as été ajouté à un ticket',
+        description: 'Tu peux suivre et participer à ce ticket : réponds à ce message privé pour écrire dedans.',
+        footer: `Réponds ici pour écrire dans le ticket #${ticket.id}`,
+      })] }).catch(() => null);
 
     if (client && ticket.channel_id) {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
@@ -532,7 +543,7 @@ router.delete('/:id/participants/:userId', async (req, res) => {
     const tm = getManager(req);
     await tm.removeParticipant(ticket.id, userId);
 
-    const staffUser = { id: req.session.user.id, tag: req.session.user.username };
+    const staffUser = dashboardActor(req);
     await tm.logRemoveUser(ticket.id, userId, staffUser);
     broadcast('participant_remove', { ticketId: ticket.id, userId }, req.guildId);
 
@@ -562,7 +573,7 @@ router.patch('/:id/move', async (req, res) => {
     if (!req.app.locals.client) return res.status(503).json({ error: 'Bot Discord non disponible' });
 
     const tm = getManager(req);
-    const result = await tm.moveToStage(ticket.id, stage, { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username });
+    const result = await tm.moveToStage(ticket.id, stage, dashboardActor(req));
     if (!result.ok) return res.status(400).json({ error: result.error });
     await tm.updateChannelTopic(ticket.id).catch(() => null);
     broadcast('ticket', { id: ticket.id, stage }, req.guildId);
@@ -592,7 +603,9 @@ router.patch('/:id/rename', async (req, res) => {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return res.status(404).json({ error: 'Salon Discord introuvable' });
 
+    const oldName = channel.name;
     await channel.setName(newName);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_rename', ticketId: ticket.id, details: { from: oldName, to: newName } });
     await channel.send(`✏️ Ticket renommé en **${newName}** par **${req.session.user.username}** (dashboard).`).catch(() => null);
 
     res.json({ ok: true, name: newName });
@@ -614,6 +627,9 @@ router.patch('/:id/subject', async (req, res) => {
     const trimmed = subject ? subject.trim().slice(0, 100) : null;
 
     await req.guildDb('UPDATE tickets SET subject = ? WHERE id = ?', [trimmed, ticket.id]);
+    if ((ticket.subject || null) !== trimmed) {
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_subject', ticketId: ticket.id, details: { from: ticket.subject || null, to: trimmed } });
+    }
 
     if (ticket.status === 'open') {
       await getManager(req).updateChannelTopic(ticket.id).catch(() => null);
@@ -684,6 +700,7 @@ router.delete('/:id/notes/:noteId', async (req, res) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
     await req.guildDb('DELETE FROM ticket_notes WHERE id = ?', [note.id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'note_delete', ticketId: ticket.id, details: { author: note.author_tag, excerpt: String(note.content || '').slice(0, 120) } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -702,7 +719,8 @@ router.post('/bulk', async (req, res) => {
   try {
     if (action === 'priority') {
       if (!VALID_PRIORITY.has(value)) return res.status(400).json({ error: 'Priorité invalide' });
-      await req.guildDb('UPDATE tickets SET priority = ? WHERE id IN (?)', [value, cleanIds]);
+      const tm = getManager(req);
+      for (const id of cleanIds) await tm.setPriority(id, value, dashboardActor(req)); // one journal entry per ticket
       cleanIds.forEach(id => broadcast('ticket', { id, priority: value }, req.guildId));
       return res.json({ ok: true, affected: cleanIds.length });
     }
@@ -711,7 +729,7 @@ router.post('/bulk', async (req, res) => {
       if (!tickets.length) return res.json({ ok: true, affected: 0 });
       const tm = getManager(req);
       const client = req.app.locals.client;
-      const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+      const staffUser = dashboardActor(req);
       for (const ticket of tickets) {
         const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
         if (channel) {
@@ -727,7 +745,7 @@ router.post('/bulk', async (req, res) => {
     if (action === 'assign') {
       const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
       const tm = getManager(req);
-      const me = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+      const me = dashboardActor(req);
       let affected = 0;
       for (const ticket of tickets) {
         const target = await findAssignableStaff(req, value, ticket);
@@ -740,15 +758,18 @@ router.post('/bulk', async (req, res) => {
       return res.json({ ok: true, affected });
     }
     if (action === 'add_tag') {
-      const [tag] = await req.guildDb('SELECT id FROM ticket_tags WHERE id = ?', [parseInt(value)]);
+      const [tag] = await req.guildDb('SELECT id, name FROM ticket_tags WHERE id = ?', [parseInt(value)]);
       if (!tag) return res.status(400).json({ error: 'Tag introuvable' });
-      for (const id of cleanIds) await req.guildDb('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [id, tag.id]);
+      for (const id of cleanIds) {
+        const r = await req.guildDb('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [id, tag.id]);
+        if (r.affectedRows) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } });
+      }
       return res.json({ ok: true, affected: cleanIds.length });
     }
     if (action === 'reopen') {
       const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'closed'", [cleanIds]);
       const tm = getManager(req);
-      const staffUser = { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username };
+      const staffUser = dashboardActor(req);
       let affected = 0;
       for (const ticket of tickets) {
         try { await tm.reopenTicket(ticket, staffUser); affected++; broadcast('ticket', { id: ticket.id, status: 'open' }, req.guildId); } catch { /* channel creation failed */ }

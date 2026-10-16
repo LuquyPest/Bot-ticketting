@@ -9,6 +9,7 @@ const RECOVERY_RE = /^[0-9a-f]{5}-?[0-9a-f]{5}$/i;
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 const { syncDiscordStaff, discordStaffLevel } = require('../../utils/staffSync');
+const { recordEvent } = require('../../utils/audit');
 
 function getClientIp(req) {
   return req.ip || 'unknown'; // resolved through `trust proxy` — never trust raw X-Forwarded-For
@@ -221,6 +222,10 @@ router.post('/select-guild', async (req, res) => {
 
     if (!dbUser) return res.status(403).json({ error: 'Accès refusé — contacte le fondateur du serveur' });
 
+    await recordEvent(db, {
+      actor: { ...req.session.user, tag: req.session.user.username, source: 'dashboard' },
+      action: 'dashboard_login', details: { role: dbUser.role, ip: getClientIp(req) },
+    });
     const userData     = { ...req.session.user, role: dbUser.role };
     const accessToken  = req.session.discordAccessToken;
 

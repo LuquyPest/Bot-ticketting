@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { visibilityFilter } = require('../../utils/gradePermissions');
 
 const hasPerm = (req, perm) => req.userIsFondateur || req.userPermissions.has(perm);
@@ -51,6 +52,8 @@ router.post('/', async (req, res) => {
       'INSERT INTO scheduled_messages (ticket_id, sender_id, sender_tag, content, send_at) VALUES (?, ?, ?, ?, ?)',
       [ticket.id, req.session.user.id, req.session.user.username, content.trim().slice(0, 2000), sendDate]
     );
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'scheduled_create', ticketId: ticket.id, targetType: 'scheduled_message', targetId: result.insertId,
+      details: { send_at: sendDate.toISOString(), excerpt: content.trim().slice(0, 120) } });
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     console.error(err);
@@ -67,6 +70,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
     await req.guildDb('DELETE FROM scheduled_messages WHERE id = ?', [req.params.id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'scheduled_delete', ticketId: msg.ticket_id, targetType: 'scheduled_message', targetId: msg.id, details: { excerpt: String(msg.content).slice(0, 120) } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

@@ -6,6 +6,8 @@ const { sanitizeChannelName } = require('./sanitize');
 const { broadcast } = require('./sse');
 const { fireTicketWebhook } = require('./webhookEmitter');
 const { fetchGuildChannel } = require('./discordGuard');
+const { recordEvent } = require('./audit');
+const { ticketContextAuthor } = require('./dmEmbeds');
 
 // One ticket creation at a time per guild+user, shared by every createManager() instance
 // (a new manager is built per message, so a per-instance lock would protect nothing).
@@ -175,6 +177,7 @@ function createManager(db, client, guildId) {
     await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
 
     fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
+    await recordEvent(db, { actor: user, action: 'ticket_open', ticketId: ticket.id, details: { subject: ticket.subject || null } });
 
     if (firstMessage || attachments.length) {
       await sendUserContent(channel, user, firstMessage, attachments);
@@ -208,6 +211,7 @@ function createManager(db, client, guildId) {
   }
 
   async function sendWelcomeDm(user, created, subject = null, ticketId = null) {
+    // ticketId is required for the DM header (server + ticket); kept optional for old callers
     if (!created) return;
     const cfg = await getGuildConfig(db);
     let welcomeText = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
@@ -220,6 +224,7 @@ function createManager(db, client, guildId) {
     const welcomeEmbed = new EmbedBuilder()
       .setColor(0x6366f1)
       .setTitle(ticketId ? `🎫 Ticket #${ticketId} créé` : '🎫 Ticket créé')
+      .setAuthor(ticketContextAuthor(client, gid, { id: ticketId ?? '?', subject }))
       .setDescription(welcomeText)
       .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
     if (subject) welcomeEmbed.addFields({ name: '📂 Sujet', value: subject, inline: true });
@@ -250,10 +255,10 @@ function createManager(db, client, guildId) {
 
     await db(
       `UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=?, closed_by_id=? WHERE id=?`,
-      [closedByUser.tag, closedByUser.api ? null : closedByUser.id, ticket.id]
+      [closedByUser.tag, closedByUser.api || closedByUser.source === 'system' ? null : closedByUser.id, ticket.id]
     );
     // Closures through the public API (closedByUser.api) do not count in a staff member's stats
-    if (!closedByUser.api) {
+    if (!closedByUser.api && closedByUser.source !== 'system') {
       await db(
         `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 0, 1)
          ON DUPLICATE KEY UPDATE admin_tag=VALUES(admin_tag), tickets_closed=tickets_closed+1`,
@@ -269,8 +274,13 @@ function createManager(db, client, guildId) {
     const openedAt2 = ticket.created_at ? new Date(ticket.created_at) : null;
     const mins2 = openedAt2 ? Math.round((Date.now() - openedAt2.getTime()) / 60000) : null;
     const duration2 = mins2 !== null ? (mins2 < 60 ? `${mins2} min` : `${Math.floor(mins2 / 60)}h ${mins2 % 60}min`) : '—';
+    await recordEvent(db, {
+      actor: closedByUser, action: 'ticket_close', ticketId: ticket.id,
+      details: { transcriptId: transcript?.transcriptId || null, ...(closedByUser.reason ? { reason: closedByUser.reason } : {}) },
+    });
     const closeDmEmbed = new EmbedBuilder()
       .setColor(0x6366f1)
+      .setAuthor(ticketContextAuthor(client, gid, ticket))
       .setTitle(`🔒 Ticket #${ticket.id} fermé`)
       .setDescription('Merci de nous avoir contactés. Ton ticket a été traité et fermé.')
       .addFields(
@@ -338,10 +348,12 @@ function createManager(db, client, guildId) {
     await channel.send({ embeds: [reopenEmbed], components: [ticketButtons()] });
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
     await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
+    await recordEvent(db, { actor: reopenedByUser, action: 'ticket_reopen', ticketId: ticket.id, details: reopenedByUser?.reason ? { reason: reopenedByUser.reason } : null });
     const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
     if (owner) {
       const reopenDmEmbed = new EmbedBuilder()
         .setColor(0x10b981)
+        .setAuthor(ticketContextAuthor(client, gid, ticket))
         .setTitle(`🔄 Ticket #${ticket.id} réouvert`)
         .setDescription('Ton ticket a été réouvert. Tu peux continuer à répondre en DM.')
         .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
@@ -383,6 +395,7 @@ function createManager(db, client, guildId) {
     if (!r.affectedRows) return false;
     await syncPrimaryAssignee(ticketId);
     const tag = user.tag || user.username || user.id;
+    await recordEvent(db, { actor: byUser || user, action: 'ticket_assign', ticketId, targetType: 'user', targetId: user.id, details: { assignee: tag } });
     fireTicketWebhook(db, 'ticket_claim', { ticketId, claimedBy: tag }).catch(() => null);
     await db(
       `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 1, 0)
@@ -400,9 +413,13 @@ function createManager(db, client, guildId) {
     return true;
   }
 
-  async function removeAssignee(ticketId, userId) {
+  async function removeAssignee(ticketId, userId, byUser = null) {
+    const [who] = await db('SELECT COALESCE(u.username, a.user_id) AS username FROM ticket_assignees a LEFT JOIN dashboard_users u ON u.user_id = a.user_id WHERE a.ticket_id = ? AND a.user_id = ?', [ticketId, userId]);
     const r = await db('DELETE FROM ticket_assignees WHERE ticket_id = ? AND user_id = ?', [ticketId, userId]);
-    if (r.affectedRows) await syncPrimaryAssignee(ticketId);
+    if (r.affectedRows) {
+      await syncPrimaryAssignee(ticketId);
+      await recordEvent(db, { actor: byUser || { id: userId, tag: who?.username }, action: 'ticket_unassign', ticketId, targetType: 'user', targetId: userId, details: { assignee: who?.username || userId } });
+    }
     return r.affectedRows > 0;
   }
 
@@ -428,7 +445,9 @@ function createManager(db, client, guildId) {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return { ok: false, error: 'Salon Discord introuvable' };
     await channel.setParent(category.id, { lockPermissions: false });
+    const [before] = await db('SELECT stage FROM tickets WHERE id = ?', [ticketId]);
     await db('UPDATE tickets SET stage = ? WHERE id = ?', [stage, ticketId]);
+    await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
     await logMoveTicket(ticketId, `${STAGE_LABEL[stage]} (${category.name})`, byUser);
     await channel.send(`📂 Ticket passé en **${STAGE_LABEL[stage]}** par **${byUser.username || byUser.tag}**.`).catch(() => null);
     return { ok: true, label: STAGE_LABEL[stage] };
@@ -462,6 +481,7 @@ function createManager(db, client, guildId) {
   // closedById may be null (ticket closed automatically or via the API): the rating is kept, unattributed
   async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
     await db('INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating) VALUES (?, ?, ?, ?)', [ticketId, ownerId, closedById, rating]);
+    await recordEvent(db, { actor: { id: ownerId, tag: ownerId, source: 'discord' }, action: 'ticket_rating', ticketId, details: { rating, staff: closedByTag || null } });
     if (!closedById) return;
     await db(
       `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score)
@@ -525,6 +545,7 @@ function createManager(db, client, guildId) {
   }
 
   async function logAddUser(ticketId, targetUserId, addedByUser) {
+    await recordEvent(db, { actor: addedByUser, action: 'participant_add', ticketId, targetType: 'user', targetId: targetUserId });
     const cfg = await getGuildConfig(db);
     if (!cfg.add_user_log_channel_id) return;
     const ch = await fetchGuildChannel(client, gid, cfg.add_user_log_channel_id);
@@ -532,6 +553,7 @@ function createManager(db, client, guildId) {
   }
 
   async function logRemoveUser(ticketId, targetUserId, removedByUser) {
+    await recordEvent(db, { actor: removedByUser, action: 'participant_remove', ticketId, targetType: 'user', targetId: targetUserId });
     const cfg = await getGuildConfig(db);
     if (!cfg.remove_user_log_channel_id) return;
     const ch = await fetchGuildChannel(client, gid, cfg.remove_user_log_channel_id);
@@ -564,12 +586,14 @@ function createManager(db, client, guildId) {
          added_by_tag = VALUES(added_by_tag), added_at = NOW()`,
       [userId, userTag, reason || null, addedByUser.id, addedByUser.tag || addedByUser.username]
     );
+    await recordEvent(db, { actor: addedByUser, action: 'blacklist_add', targetType: 'user', targetId: userId, details: { user: userTag, reason: reason || null } });
   }
 
-  async function removeFromBlacklist(userId) {
-    const rows = await db('SELECT user_id FROM blacklist WHERE user_id = ?', [userId]);
+  async function removeFromBlacklist(userId, byUser = null) {
+    const rows = await db('SELECT user_id, user_tag FROM blacklist WHERE user_id = ?', [userId]);
     if (!rows.length) return false;
     await db('DELETE FROM blacklist WHERE user_id = ?', [userId]);
+    await recordEvent(db, { actor: byUser, action: 'blacklist_remove', targetType: 'user', targetId: userId, details: { user: rows[0].user_tag } });
     return true;
   }
 
@@ -587,8 +611,12 @@ function createManager(db, client, guildId) {
     return row || null;
   }
 
-  async function setPriority(ticketId, priority) {
+  async function setPriority(ticketId, priority, byUser = null) {
+    const [before] = await db('SELECT priority FROM tickets WHERE id = ?', [ticketId]);
     await db('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+    if (before?.priority !== priority) {
+      await recordEvent(db, { actor: byUser, action: 'ticket_priority', ticketId, details: { from: before?.priority, to: priority } });
+    }
   }
 
   async function getAdminStats() {

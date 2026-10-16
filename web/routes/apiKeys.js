@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 const crypto = require('crypto');
 
 // List API keys (no secret shown)
@@ -49,6 +50,7 @@ router.post('/', async (req, res) => {
     );
 
     // Return the raw key ONCE — never stored in plain text
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'api_key_create', targetType: 'api_key', targetId: keyPrefix, details: { name, permissions: perms } });
     res.json({ ok: true, key: rawKey, prefix: keyPrefix, name, permissions: perms });
   } catch (err) {
     console.error(err);
@@ -60,7 +62,9 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Accès refusé' });
   try {
+    const [key] = await req.guildDb('SELECT name FROM api_keys WHERE id = ?', [parseInt(req.params.id)]);
     await req.guildDb('UPDATE api_keys SET active = 0 WHERE id = ?', [parseInt(req.params.id)]);
+    if (key) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'api_key_revoke', targetType: 'api_key', targetId: req.params.id, details: { name: key.name } });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
