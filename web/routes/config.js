@@ -23,6 +23,8 @@ const FIELD_MAP = {
   ticketCategoryId:          'ticket_category_id',
   supportRoleIds:            'support_role_ids',
   chiefRoleIds:              'chief_role_ids',
+  supportGradeId:            'support_grade_id',
+  chiefGradeId:              'chief_grade_id',
   closeLogChannelId:         'close_log_channel_id',
   claimLogChannelId:         'claim_log_channel_id',
   moveLogChannelId:          'move_log_channel_id',
@@ -70,6 +72,8 @@ const VALIDATORS = {
   ticketCategoryId:         SNOWFLAKE,
   supportRoleIds:           SNOWFLAKE_ARRAY,
   chiefRoleIds:             SNOWFLAKE_ARRAY,
+  supportGradeId:           v => v === null || (Number.isInteger(v) && v > 0),
+  chiefGradeId:             v => v === null || (Number.isInteger(v) && v > 0),
   closeLogChannelId:        SNOWFLAKE,
   claimLogChannelId:        SNOWFLAKE,
   moveLogChannelId:         SNOWFLAKE,
@@ -154,6 +158,12 @@ router.patch('/', async (req, res) => {
     }
 
     if (!setClauses.length) return res.json({ ok: true });
+
+    for (const k of ['supportGradeId', 'chiefGradeId']) {
+      if (updates[k] && !(await req.guildDb('SELECT 1 FROM grades WHERE id = ?', [updates[k]])).length) {
+        return res.status(400).json({ error: 'Grade introuvable' });
+      }
+    }
 
     // Channel/role IDs must belong to this guild (the bot would otherwise post in another server)
     const client = req.app.locals.client;

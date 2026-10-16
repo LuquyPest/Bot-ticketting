@@ -262,6 +262,8 @@ Accessible sur `https://ton-domaine.com` après connexion via Discord OAuth.
 
 Le fondateur est la personne qui a invité le bot (ou, à défaut, le propriétaire du serveur), désignée à l'approbation du serveur ; il peut promouvoir d'autres fondateurs. Les nouveaux membres reçoivent `nouveau` et attendent l'attribution d'un grade depuis la page **Équipe**.
 
+**Accès automatique par rôle Discord :** les membres qui ont un des rôles *support* ou *chef support* choisis dans **Paramètres → Rôles d'accès** voient le serveur dans « Mes serveurs » et obtiennent un compte `support` à leur connexion, avec le grade associé à leur rôle (par défaut les grades **Support** et **Chef support**, créés automatiquement et modifiables ; *Chef support* est parent de *Support*). S'ils perdent le rôle Discord, l'accès est retiré (vérifié à la connexion puis toutes les 5 minutes). Les fondateurs et les comptes gérés à la main depuis **Équipe** ne sont jamais modifiés par cette synchronisation.
+
 Un `support` n'a aucun droit sans grade. Permissions de grade appliquées par l'API :
 
 | Permission | Autorise |
@@ -742,8 +744,11 @@ proxy_read_timeout 3600s;
 **Je suis bloqué sur la page d'attente (rôle "nouveau")**  
 → Le fondateur du serveur doit t'attribuer un grade depuis la page **Équipe**.
 
+**Un membre du staff ne voit pas le serveur ou n'arrive sur rien**  
+→ Vérifie que son rôle Discord est bien dans **Paramètres → Rôles d'accès** (support ou chef support), puis qu'il se reconnecte.
+
 **Un support voit « Permission insuffisante » partout**  
-→ Un support n'a aucun droit sans grade : le fondateur doit lui attribuer un grade avec au moins `view_tickets` (page **Équipe**).
+→ Un support n'a aucun droit sans grade : vérifie le grade associé à son rôle dans **Paramètres**, ou attribue-lui un grade avec au moins `view_tickets` (page **Équipe**).
 
 **Première connexion superadmin**  
 → Après l'identifiant et le mot de passe, le panel affiche un QR code TOTP à scanner (Authy, Google Authenticator…), puis demande un code pour confirmer.

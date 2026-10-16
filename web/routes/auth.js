@@ -8,6 +8,7 @@ const { seal, open, isSealed } = require('../../utils/secretBox');
 const RECOVERY_RE = /^[0-9a-f]{5}-?[0-9a-f]{5}$/i;
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
+const { syncDiscordStaff, discordStaffLevel } = require('../../utils/staffSync');
 
 function getClientIp(req) {
   return req.ip || 'unknown'; // resolved through `trust proxy` — never trust raw X-Forwarded-For
@@ -122,20 +123,30 @@ router.get('/guilds', async (req, res) => {
     );
 
     const MANAGE_GUILD = BigInt(0x20);
-    const manageable = discordGuilds.filter(g =>
-      g.owner || ((BigInt(g.permissions) & MANAGE_GUILD) !== 0n)
-    );
+    const canManage = g => g.owner || ((BigInt(g.permissions) & MANAGE_GUILD) !== 0n);
+    if (!discordGuilds.length) return res.json([]);
 
-    if (!manageable.length) return res.json([]);
-
-    const ids = manageable.map(g => g.id);
+    const ids = discordGuilds.map(g => g.id);
     const dbGuilds = await globalQuery(
       `SELECT guild_id, status FROM guilds WHERE guild_id IN (${ids.map(() => '?').join(',')})`,
       ids
     );
     const dbMap = new Map(dbGuilds.map(g => [g.guild_id, g.status]));
 
-    const result = manageable.map(g => ({
+    // Managers see every server (to invite the bot); others see the active servers where they
+    // already have a dashboard account or hold a Discord staff role
+    const visible = [];
+    for (const g of discordGuilds) {
+      if (canManage(g)) { visible.push(g); continue; }
+      if (dbMap.get(g.id) !== 'active') continue;
+      try {
+        const db = getTenantDb(g.id);
+        const [row] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [req.session.user.id]);
+        if (row || await discordStaffLevel(req.app.locals.client, db, g.id, req.session.user.id)) visible.push(g);
+      } catch { /* tenant DB unavailable */ }
+    }
+
+    const result = visible.map(g => ({
       id:      g.id,
       name:    g.name,
       icon:    g.icon,
@@ -189,6 +200,9 @@ router.post('/select-guild', async (req, res) => {
     if (!guild) return res.status(404).json({ error: 'Serveur introuvable ou inactif' });
 
     const db = getTenantDb(guildId);
+    // Discord support / chief support roles (Paramètres) grant or revoke dashboard access
+    await syncDiscordStaff(req.app.locals.client, db, guildId, req.session.user)
+      .catch(err => console.error('syncDiscordStaff error:', err.message));
     let [dbUser] = await db(
       'SELECT role FROM dashboard_users WHERE user_id = ?',
       [req.session.user.id]

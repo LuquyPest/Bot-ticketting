@@ -135,6 +135,7 @@ export default function Settings() {
   const [channels, setChannels]     = useState([]);
   const [categories, setCategories] = useState([]);
   const [roles, setRoles]           = useState([]);
+  const [grades, setGrades] = useState([]);
   const [discordLoading, setDL]     = useState(true);
 
   // Bot identity (per-guild)
@@ -168,10 +169,12 @@ export default function Settings() {
       api.get('/discord/channels').catch(() => ({ data: [] })),
       api.get('/discord/categories').catch(() => ({ data: [] })),
       api.get('/discord/roles').catch(() => ({ data: [] })),
-    ]).then(([ch, cat, ro]) => {
+      api.get('/grades').catch(() => ({ data: [] })),
+    ]).then(([ch, cat, ro, gr]) => {
       setChannels(ch.data);
       setCategories(cat.data);
       setRoles(ro.data);
+      setGrades(gr.data);
     }).finally(() => setDL(false));
   }, []);
 
@@ -231,6 +234,8 @@ export default function Settings() {
         ticketCategoryId:         sn(cfg.ticketCategoryId),
         supportRoleIds:           cfg.supportRoleIds || [],
         chiefRoleIds:             cfg.chiefRoleIds || [],
+        supportGradeId:           cfg.supportGradeId || null,
+        chiefGradeId:             cfg.chiefGradeId || null,
         closeLogChannelId:        sn(cfg.closeLogChannelId),
         claimLogChannelId:        sn(cfg.claimLogChannelId),
         moveLogChannelId:         sn(cfg.moveLogChannelId),
@@ -431,7 +436,7 @@ export default function Settings() {
       </Section>
 
       {/* Access roles + category */}
-      <Section title="Rôles d'accès" description="Rôles Discord ayant accès au bot et au dashboard">
+      <Section title="Rôles d'accès" description="Rôles Discord ayant accès au bot et au dashboard. Leurs membres obtiennent automatiquement un compte dashboard avec le grade associé (retiré s'ils perdent le rôle).">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Field label="Rôles support" hint="Accès standard aux tickets">
             <RoleMultiPicker value={cfg.supportRoleIds} onChange={v => set('supportRoleIds', v)}
@@ -441,6 +446,17 @@ export default function Settings() {
             <RoleMultiPicker value={cfg.chiefRoleIds} onChange={v => set('chiefRoleIds', v)}
               roles={roles} loading={discordLoading} />
           </Field>
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {[['supportGradeId', 'Grade des rôles support'], ['chiefGradeId', 'Grade des rôles chef support']].map(([key, label]) => (
+            <Field key={key} label={label} hint="Créé automatiquement à la première connexion si aucun n'est choisi">
+              <select value={cfg[key] || ''} onChange={e => set(key, e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                <option value="">Automatique</option>
+                {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            </Field>
+          ))}
         </div>
         <Field label="Catégorie de tickets" hint="Catégorie Discord où les nouveaux tickets sont créés">
           <CategoryPicker value={cfg.ticketCategoryId} onChange={v => set('ticketCategoryId', v)}

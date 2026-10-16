@@ -59,7 +59,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
+// Mutation log — registered after the session middleware so the user is known (see below)
+function auditLog(req, res, next) {
   if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method)) {
     logger.info('audit', {
       method: req.method,
@@ -70,7 +71,7 @@ app.use((req, res, next) => {
     });
   }
   next();
-});
+}
 
 // Session store: Redis (already a hard dependency for BullMQ).
 // Keys are `${SESSION_PREFIX}<sid>` — routes/sessions.js deletes them to revoke a session.
@@ -100,6 +101,7 @@ app.use(session({
 
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
+app.use(auditLog);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

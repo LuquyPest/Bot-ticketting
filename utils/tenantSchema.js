@@ -190,6 +190,8 @@ const TENANT_TABLES_SQL = `
     ticket_category_id    VARCHAR(32) DEFAULT NULL,
     support_role_ids      JSON NOT NULL DEFAULT ('[]'),
     chief_role_ids        JSON NOT NULL DEFAULT ('[]'),
+    support_grade_id      INT DEFAULT NULL,
+    chief_grade_id        INT DEFAULT NULL,
     ticket_prefix         VARCHAR(50) NOT NULL DEFAULT 'ticket',
     welcome_message       TEXT DEFAULT NULL,
     close_message         TEXT DEFAULT NULL,
@@ -358,6 +360,9 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS style ENUM('short','paragraph') NOT NULL DEFAULT 'short'`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS min_length INT DEFAULT NULL`,
       `ALTER TABLE intake_form_fields ADD COLUMN IF NOT EXISTS max_length INT DEFAULT NULL`,
+      // Grades granted by the Discord support / chief support roles (utils/staffSync.js)
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS support_grade_id INT DEFAULT NULL`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS chief_grade_id INT DEFAULT NULL`,
       // Ratings: attributed to the claimer, else the closer; may be unattributed (auto/API close)
       `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS closed_by_id VARCHAR(32) DEFAULT NULL`,
       `ALTER TABLE ticket_ratings MODIFY closed_by_id VARCHAR(32) DEFAULT NULL`,

@@ -1,4 +1,8 @@
 const { getUserPermissions, PERMISSIONS } = require('../../utils/gradePermissions');
+const { syncDiscordStaff } = require('../../utils/staffSync');
+
+// Accounts granted by a Discord role are re-checked at most this often (role removed → access revoked)
+const DISCORD_RESYNC_MS = 5 * 60 * 1000;
 
 // requireRole('support', 'fondateur') — must be called AFTER guildMiddleware
 // so req.guildDb is already set.
@@ -16,10 +20,16 @@ module.exports = function requireRole(...roles) {
     }
 
     try {
-      const [dbUser] = await db(
-        'SELECT role FROM dashboard_users WHERE user_id = ?',
+      let [dbUser] = await db(
+        'SELECT role, discord_has_role FROM dashboard_users WHERE user_id = ?',
         [req.session.user.id]
       );
+
+      if (dbUser?.discord_has_role && Date.now() - (req.session.staffSyncAt || 0) > DISCORD_RESYNC_MS) {
+        req.session.staffSyncAt = Date.now();
+        const role = await syncDiscordStaff(req.app.locals.client, db, req.guildId, req.session.user).catch(() => dbUser.role);
+        dbUser = { ...dbUser, role };
+      }
 
       if (!dbUser) {
         req.session.destroy(() => {});
