@@ -5,10 +5,21 @@ const TAG = {
   new:  { label: 'Nouveau',     cls: 'bg-indigo-600/20 text-primary-light border-primary/30' },
   fix:  { label: 'Correction',  cls: 'bg-red-600/20    text-red-400    border-red-600/30' },
   impr: { label: 'Amélioration',cls: 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' },
-  tech: { label: 'Technique',   cls: 'bg-white/6 text-ink-2 border-white/8' },
+  tech: { label: 'Technique',   cls: 'bg-overlay/6 text-ink-2 border-overlay/8' },
 };
 
 const VERSIONS = [
+  {
+    version: 'v2.12',
+    date: '16 octobre 2026',
+    title: 'Corrections, fiabilité et nouvelles fonctionnalités',
+    changes: [
+      { type: 'fix',  text: 'Thème clair : plus de fonds gris permanents sur les menus et boutons, panneau latéral de la fiche ticket lisible' },
+      { type: 'fix',  text: '/reopen fonctionne même si le membre a déjà un autre ticket ouvert' },
+      { type: 'impr', text: 'Les événements automatiques (fusion, fermeture par le membre) apparaissent comme une ligne discrète dans l\'historique, distincte des notes du staff' },
+      { type: 'impr', text: 'Journal d\'erreurs : les erreurs Discord attendues (MP fermés, interaction expirée…) ne sont plus enregistrées' },
+    ]
+  },
   {
     version: 'v2.11',
     date: '16 octobre 2026',
@@ -405,7 +416,7 @@ function VersionCard({ v }) {
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
+    <div className="bg-surface-card border border-overlay/6 rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-surface/40 transition-colors text-left"
@@ -422,7 +433,7 @@ function VersionCard({ v }) {
       </button>
 
       {open && (
-        <div className="border-t border-white/6 px-5 py-4 space-y-2">
+        <div className="border-t border-overlay/6 px-5 py-4 space-y-2">
           {v.changes.map((c, i) => {
             const tag = TAG[c.type];
             return (

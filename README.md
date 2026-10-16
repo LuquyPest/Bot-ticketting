@@ -379,7 +379,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 | **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min), avec déblocage manuel — superadmin uniquement |
 | **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement |
 
-Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les réponses HTTP 5xx (avec la route), les échecs des tâches planifiées et les rejets non gérés. Un même message n'est enregistré qu'une fois par minute (60 entrées / min au plus) ; la purge de rétention supprime les entrées de plus de 30 jours.
+Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les réponses HTTP 5xx (avec la route), les échecs des tâches planifiées et les rejets non gérés. Les erreurs Discord attendues (membre aux MP fermés, interaction expirée ou déjà traitée, message déjà supprimé) sont ignorées. Un même message n'est enregistré qu'une fois par minute (60 entrées / min au plus) ; la purge de rétention supprime les entrées de plus de 30 jours.
 
 ### Rôles dans le panel SA
 
@@ -405,7 +405,7 @@ Les commandes sont réservées au staff et utilisables uniquement sur un serveur
 | `/removeuser` | `manage_participants` | Retire un participant |
 | `/rename` | `reply_ticket` | Change le titre du ticket — le salon Discord porte toujours le même nom que le titre |
 | `/moveticket` | `reply_ticket` | Change l'étape du ticket : Ouvert / En attente / En cours (déplace le salon dans la catégorie associée) |
-| `/reopen` | `close_ticket` | Réouvre le dernier ticket fermé d'un utilisateur |
+| `/reopen` | `close_ticket` | Réouvre le dernier ticket fermé d'un utilisateur (même s'il a d'autres tickets ouverts) |
 | `/oldtickets` | `view_tickets` | Historique paginé des tickets d'un utilisateur |
 | `/gettranscript` | `view_transcripts` | Génère un lien temporaire (10 min) vers un transcript HTML |
 | `/note` | `reply_ticket` | Ajoute une note interne (non envoyée au membre, exclue des transcripts) |

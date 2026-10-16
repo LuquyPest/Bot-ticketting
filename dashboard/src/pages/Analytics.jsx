@@ -48,7 +48,7 @@ const CHART_COLORS = ['#7c6ef3', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8
 
 function ChartCard({ title, icon: Icon, children, action }) {
   return (
-    <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-4">
+    <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon size={15} className="text-primary-light" />
@@ -64,7 +64,7 @@ function ChartCard({ title, icon: Icon, children, action }) {
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-surface-elevated border border-white/10 rounded-xl px-3.5 py-2.5 text-xs shadow-2xl">
+    <div className="bg-surface-elevated border border-overlay/10 rounded-xl px-3.5 py-2.5 text-xs shadow-2xl">
       <p className="text-ink-3 mb-2 font-medium">{label}</p>
       {payload.map(p => (
         <p key={p.name} className="flex items-center gap-1.5 py-0.5" style={{ color: p.color }}>
@@ -85,7 +85,7 @@ function PeriodSelector({ value, onChange }) {
           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
                      ${value === k
                        ? 'bg-primary/20 text-primary-light border border-primary/30'
-                       : 'text-ink-4 hover:text-ink-2 hover:bg-white/4'}`}>
+                       : 'text-ink-4 hover:text-ink-2 hover:bg-overlay/4'}`}>
           {label}
         </button>
       ))}
@@ -259,17 +259,17 @@ function TabSLA() {
       </div>
 
       {/* Tickets table */}
-      <div className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-white/6">
+      <div className="bg-surface-card border border-overlay/6 rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-overlay/6">
           <h3 className="text-sm font-semibold text-ink-2">Tickets ouverts — Vue SLA</h3>
-          <button onClick={load} className="p-1.5 text-ink-4 hover:text-ink-1 transition-colors rounded-lg hover:bg-white/5">
+          <button onClick={load} className="p-1.5 text-ink-4 hover:text-ink-1 transition-colors rounded-lg hover:bg-overlay/5">
             <RefreshCw size={13} />
           </button>
         </div>
         {tickets?.length === 0 ? (
           <p className="text-sm text-ink-4 text-center py-10">Aucun ticket ouvert</p>
         ) : (
-          <div className="divide-y divide-white/4">
+          <div className="divide-y divide-overlay/4">
             {tickets?.map(t => {
               const hours = Math.floor(t.age_minutes / 60);
               const mins = t.age_minutes % 60;
@@ -277,7 +277,7 @@ function TabSLA() {
               const sc = SLA_COLORS[t.slaStatus];
               return (
                 <div key={t.id}
-                  className="flex items-center gap-4 px-5 py-3 hover:bg-white/2 transition-colors">
+                  className="flex items-center gap-4 px-5 py-3 hover:bg-overlay/2 transition-colors">
                   <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border ${sc}`}>
                     {SLA_LABELS[t.slaStatus]}
                   </span>
@@ -329,13 +329,13 @@ function TabStaff() {
       </div>
 
       {loading ? <SkeletonCard /> : (
-        <div className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden">
+        <div className="bg-surface-card border border-overlay/6 rounded-2xl overflow-hidden">
           {staff?.length === 0 ? (
             <p className="text-sm text-ink-4 text-center py-10">Aucune donnée staff pour cette période</p>
           ) : (
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/6">
+                <tr className="border-b border-overlay/6">
                   {['#', 'Staff', 'Tickets', 'Fermetures', 'Note moy.', 'Tps réponse'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-ink-4 uppercase tracking-wider">
                       {h}
@@ -343,9 +343,9 @@ function TabStaff() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/4">
+              <tbody className="divide-y divide-overlay/4">
                 {staff?.map(s => (
-                  <tr key={s.userId} className="hover:bg-white/2 transition-colors">
+                  <tr key={s.userId} className="hover:bg-overlay/2 transition-colors">
                     <td className="px-4 py-3 text-ink-4 font-mono tabular-nums">
                       <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold
                                        ${s.rank === 1 ? 'bg-amber-500/20 text-amber-300' :
@@ -401,7 +401,7 @@ export default function Analytics() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-surface-card border border-white/6 rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-surface-card border border-overlay/6 rounded-xl w-fit">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all

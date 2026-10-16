@@ -42,7 +42,7 @@ export default function NotificationBell() {
         aria-expanded={open}
         aria-controls="notif-panel"
         title="Notifications"
-        className="relative p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-white/6
+        className="relative p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-overlay/6
                    transition-all shrink-0"
       >
         <Bell size={13} aria-hidden="true" />
@@ -64,11 +64,11 @@ export default function NotificationBell() {
           role="dialog"
           aria-label="Notifications"
           aria-live="polite"
-          className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card border border-white/10
+          className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card border border-overlay/10
                      rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden animate-scale-in
                      z-50"
         >
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-white/6">
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-overlay/6">
             <span className="text-xs font-semibold text-ink-2">Notifications</span>
             {notifications.length > 0 && (
               <button
@@ -88,14 +88,14 @@ export default function NotificationBell() {
               return (
                 <li
                   key={n.id}
-                  className="relative flex items-start gap-3 border-b border-white/4 last:border-0 group"
+                  className="relative flex items-start gap-3 border-b border-overlay/4 last:border-0 group"
                 >
                   <button
                     onClick={() => {
                       if (n.href) { navigate(n.href); setOpen(false); }
                       remove(n.id);
                     }}
-                    className="flex-1 flex items-start gap-3 px-3.5 py-2.5 hover:bg-white/4
+                    className="flex-1 flex items-start gap-3 px-3.5 py-2.5 hover:bg-overlay/4
                                text-left transition-colors pr-8"
                   >
                     <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center

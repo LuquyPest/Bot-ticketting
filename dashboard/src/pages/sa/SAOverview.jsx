@@ -8,11 +8,11 @@ import { useSA } from './SAApp';
 import SALimitsModal from './SALimitsModal';
 
 const STATUS_LABEL = { active: 'Actif', pending: 'En attente', suspended: 'Suspendu' };
-const card = 'glass-dark rounded-2xl border border-white/8';
+const card = 'glass-dark rounded-2xl border border-overlay/8';
 
 function Kpi({ label, value, sub, to }) {
   const body = (
-    <div className={`${card} p-4 h-full ${to ? 'hover:border-white/16 transition-colors' : ''}`}>
+    <div className={`${card} p-4 h-full ${to ? 'hover:border-overlay/16 transition-colors' : ''}`}>
       <p className="text-[11px] text-ink-4">{label}</p>
       <p className="text-2xl font-bold text-ink-1 tabular-nums mt-1">{value ?? '—'}</p>
       {sub && <p className="text-[11px] text-ink-3 mt-0.5">{sub}</p>}
@@ -36,7 +36,7 @@ function Usage({ used, max }) {
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-surface-elevated border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
+    <div className="bg-surface-elevated border border-overlay/10 rounded-xl px-3 py-2 text-xs shadow-xl">
       <p className="text-ink-1 font-semibold mb-1">{label}</p>
       {payload.map(p => (
         <p key={p.dataKey} className="flex items-center gap-2 text-ink-2">
@@ -73,7 +73,7 @@ export default function SAOverview() {
           <h1 className="text-lg font-bold text-ink-1">Vue d'ensemble</h1>
           <p className="text-sm text-ink-3">Activité de {isSA ? 'tous les serveurs' : 'vos serveurs'}</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/5" title="Actualiser">
+        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser">
           <RefreshCw size={15} />
         </button>
       </div>
@@ -103,25 +103,25 @@ export default function SAOverview() {
       </div>
 
       <div className={`${card} overflow-hidden`}>
-        <div className="px-5 py-4 border-b border-white/6">
+        <div className="px-5 py-4 border-b border-overlay/6">
           <h2 className="text-sm font-semibold text-ink-1">Serveurs et limites</h2>
           <p className="text-[11px] text-ink-4">Utilisation par rapport aux limites fixées (∞ = illimité)</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-white/6">
+              <tr className="border-b border-overlay/6">
                 {['Serveur', 'Statut', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.', 'Transcripts', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/4">
+            <tbody className="divide-y divide-overlay/4">
               {stats.perGuild.length === 0 && (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-4">Aucun serveur</td></tr>
               )}
               {stats.perGuild.map(g => (
-                <tr key={g.guild_id} className="hover:bg-white/2">
+                <tr key={g.guild_id} className="hover:bg-overlay/2">
                   <td className="px-4 py-3">
                     <p className="text-sm font-semibold text-ink-1">{g.guild_name}</p>
                     <p className="text-[10px] text-ink-4 font-mono">{g.guild_id}</p>
@@ -137,7 +137,7 @@ export default function SAOverview() {
                   <td className="px-4 py-3 text-ink-2 whitespace-nowrap">{g.transcript_retention_days > 0 ? `${g.transcript_retention_days} j` : 'Illimité'}</td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => setLimitsOf(g)} title="Modifier les limites"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/5">
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5">
                       <Gauge size={13} /> Limites
                     </button>
                   </td>

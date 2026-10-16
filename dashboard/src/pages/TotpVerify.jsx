@@ -54,7 +54,7 @@ export default function TotpVerify() {
         </div>
 
         {/* Form */}
-        <div className="glass-dark rounded-2xl border border-white/8 p-6 space-y-4">
+        <div className="glass-dark rounded-2xl border border-overlay/8 p-6 space-y-4">
           <p className="text-xs text-ink-3 text-center">
             Entre le code généré par ton application d'authentification pour accéder au dashboard,
             ou l'un de tes codes de secours (format <span className="font-mono">xxxxx-xxxxx</span>).
@@ -71,7 +71,7 @@ export default function TotpVerify() {
                 maxLength={11}
                 autoComplete="one-time-code"
                 autoFocus
-                className="w-full px-3 py-3 rounded-xl bg-white/4 border border-white/8
+                className="w-full px-3 py-3 rounded-xl bg-overlay/4 border border-overlay/8
                            text-base text-ink-1 placeholder-ink-4 outline-hidden
                            focus:border-primary/50 text-center tracking-[0.4em] font-mono transition-colors"
               />

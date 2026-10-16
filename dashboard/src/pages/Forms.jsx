@@ -3,13 +3,13 @@ import { Plus, Trash2, Save, X, GripVertical, ChevronDown, ChevronUp, Loader2 } 
 import api from '../api';
 import toast from 'react-hot-toast';
 
-const BASE = "w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors";
+const BASE = "w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors";
 
 const EMPTY_FIELD = () => ({ label: '', placeholder: '', style: 'short', required: true, min_length: null, max_length: null });
 
 function FieldEditor({ field, index, total, onChange, onRemove, onMove }) {
   return (
-    <div className="bg-surface-card border border-white/6 rounded-xl p-4 space-y-3">
+    <div className="bg-surface-card border border-overlay/6 rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <GripVertical size={14} className="text-ink-4 shrink-0" />
         <span className="text-xs font-semibold text-ink-3 flex-1">Champ {index + 1}</span>
@@ -144,7 +144,7 @@ function FormEditor({ form, onSave, onCancel }) {
           </button>
         </div>
         {fields.length === 0 && (
-          <p className="text-xs text-ink-4 text-center py-4 border border-dashed border-white/8 rounded-xl">
+          <p className="text-xs text-ink-4 text-center py-4 border border-dashed border-overlay/8 rounded-xl">
             Aucun champ — clique sur "Ajouter un champ"
           </p>
         )}
@@ -216,7 +216,7 @@ export default function Forms() {
       </div>
 
       {editing && (
-        <div className="bg-surface-card border border-white/6 rounded-2xl p-5">
+        <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink-2 mb-4">
             {editing === 'new' ? 'Nouveau formulaire' : `Modifier — ${editing.name}`}
           </h2>
@@ -235,12 +235,12 @@ export default function Forms() {
       ) : (
         <div className="space-y-3">
           {forms.map(f => (
-            <div key={f.id} className="bg-surface-card border border-white/6 rounded-2xl p-4">
+            <div key={f.id} className="bg-surface-card border border-overlay/6 rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-ink-1">{f.name}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${f.active ? 'bg-green-500/15 text-green-400' : 'bg-white/5 text-ink-4'}`}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${f.active ? 'bg-green-500/15 text-green-400' : 'bg-overlay/5 text-ink-4'}`}>
                       {f.active ? 'Actif' : 'Inactif'}
                     </span>
                     {f.subject && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{f.subject}</span>}
@@ -249,7 +249,7 @@ export default function Forms() {
                   {f.fields?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {f.fields.map((fld, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 bg-surface rounded-lg text-ink-3 border border-white/5">
+                        <span key={i} className="text-[10px] px-2 py-0.5 bg-surface rounded-lg text-ink-3 border border-overlay/5">
                           {fld.label}
                         </span>
                       ))}
@@ -258,7 +258,7 @@ export default function Forms() {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => setEditing(f)}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-white/4 hover:bg-white/8 text-ink-2 transition-colors">
+                    className="px-3 py-1.5 text-xs rounded-lg bg-overlay/4 hover:bg-overlay/8 text-ink-2 transition-colors">
                     Modifier
                   </button>
                   <button onClick={() => deleteForm(f)}

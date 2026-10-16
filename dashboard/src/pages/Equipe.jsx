@@ -117,10 +117,10 @@ function GestionTab({ me }) {
         </button>
       </div>
 
-      <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-overlay/6 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/6 text-xs text-ink-3 uppercase tracking-wider">
+            <tr className="border-b border-overlay/6 text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
               <th className="text-left px-4 py-3 font-medium">Statut</th>
               <th className="text-left px-4 py-3 font-medium">Grades</th>
@@ -143,7 +143,7 @@ function GestionTab({ me }) {
               const availableGrades = grades.filter(g => !userGrades.find(ug => ug.id === g.id));
               return (
                 <tr key={u.user_id}
-                  className={`border-b border-white/[0.06]/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-primary/10' : 'hover:bg-surface/20'} ${updating === u.user_id ? 'opacity-60' : ''}`}>
+                  className={`border-b border-overlay/[0.06]/50 last:border-0 transition-colors ${isSuggested ? 'bg-indigo-600/5 hover:bg-primary/10' : 'hover:bg-surface/20'} ${updating === u.user_id ? 'opacity-60' : ''}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       {avatarUrl
@@ -180,14 +180,14 @@ function GestionTab({ me }) {
                         {canManage && !isMe && !isAssigning && (
                           <button onClick={() => { setAssigningTo(u.user_id); setSelectedGrade(''); }}
                             disabled={availableGrades.length === 0}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-white/10 text-ink-3 hover:border-indigo-500 hover:text-primary-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-dashed border-overlay/10 text-ink-3 hover:border-indigo-500 hover:text-primary-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                             <Plus size={9} /> Attribuer
                           </button>
                         )}
                         {canManage && isAssigning && (
                           <div className="flex items-center gap-1.5">
                             <select value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}
-                              className="bg-surface border border-white/8 text-ink-2 rounded-md px-2 py-0.5 text-xs focus:outline-hidden focus:border-primary" autoFocus>
+                              className="bg-surface border border-overlay/8 text-ink-2 rounded-md px-2 py-0.5 text-xs focus:outline-hidden focus:border-primary" autoFocus>
                               <option value="">— Choisir...</option>
                               {availableGrades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
@@ -208,7 +208,7 @@ function GestionTab({ me }) {
                     {u.role !== 'fondateur' && canManage && !isMe ? (
                       <button onClick={() => toggleVacation(u.user_id, u.vacation_mode)} disabled={updating === u.user_id}
                         title={u.vacation_mode ? 'Désactiver les vacances' : 'Activer les vacances'}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${u.vacation_mode ? 'bg-sky-500/20 border-sky-500/40 text-sky-400 hover:bg-sky-500/30' : 'bg-surface border-white/8 text-ink-3 hover:border-white/12'}`}>
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${u.vacation_mode ? 'bg-sky-500/20 border-sky-500/40 text-sky-400 hover:bg-sky-500/30' : 'bg-surface border-overlay/8 text-ink-3 hover:border-overlay/12'}`}>
                         <PlaneTakeoff size={11} />
                         {u.vacation_mode ? 'Actif' : 'Non'}
                       </button>
@@ -219,7 +219,7 @@ function GestionTab({ me }) {
                     {isMe ? <span className="text-xs text-ink-4 italic">—</span> : (
                       <div className="flex items-center gap-2">
                         <select value={u.role} disabled={updating === u.user_id} onChange={e => changeRole(u.user_id, e.target.value)}
-                          className="bg-surface border border-white/8 text-ink-2 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary disabled:opacity-50">
+                          className="bg-surface border border-overlay/8 text-ink-2 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary disabled:opacity-50">
                           <option value="nouveau">Nouveau</option>
                           <option value="support">Support</option>
                           <option value="fondateur">Fondateur</option>
@@ -240,7 +240,7 @@ function GestionTab({ me }) {
         </table>
       </div>
 
-      <div className="bg-surface-card/50 border border-white/6 rounded-2xl p-4 space-y-1.5">
+      <div className="bg-surface-card/50 border border-overlay/6 rounded-2xl p-4 space-y-1.5">
         <p className="text-xs text-ink-3 leading-relaxed">
           <span className="text-amber-400 font-medium">Nouveau</span> — Accès refusé. Attribuez un grade pour donner l'accès. ·{' '}
           <span className="text-emerald-400 font-medium">Support</span> — Accès selon les permissions de ses grades. ·{' '}
@@ -269,8 +269,8 @@ function StaffDetailModal({ adminId, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-surface-card border border-white/8 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/6 sticky top-0 bg-surface-card z-10">
+      <div className="bg-surface-card border border-overlay/8 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-overlay/6 sticky top-0 bg-surface-card z-10">
           <div>
             <h2 className="text-sm font-semibold text-ink-1">{loading ? '...' : detail?.admin_tag || 'Membre'}</h2>
             <p className="text-xs text-ink-3 mt-0.5">Statistiques détaillées</p>
@@ -292,7 +292,7 @@ function StaffDetailModal({ adminId, onClose }) {
                 { label: 'Tps réponse moy.', value: fmtSec(detail.avgResponseSeconds), color: 'text-amber-400' },
                 { label: 'Note moy.', value: detail.avgRating ? `${parseFloat(detail.avgRating).toFixed(1)} ⭐` : 'N/A', color: 'text-yellow-400' }
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-surface rounded-xl p-3 text-center border border-white/[0.08]/50">
+                <div key={label} className="bg-surface rounded-xl p-3 text-center border border-overlay/[0.08]/50">
                   <p className={`text-xl font-bold ${color}`}>{value}</p>
                   <p className="text-[11px] text-ink-3 mt-0.5">{label}</p>
                 </div>
@@ -401,7 +401,7 @@ function StatsTab() {
         <p className="text-sm text-ink-3">{staff.length} membre(s) actif(s)</p>
         <div className="flex items-center gap-2">
           <select value={sort} onChange={e => setSort(e.target.value)}
-            className="bg-surface/50 border border-white/[0.07] text-ink-2 rounded-lg px-3 py-1.5 text-xs focus:outline-hidden focus:border-primary/60">
+            className="bg-surface/50 border border-overlay/[0.07] text-ink-2 rounded-lg px-3 py-1.5 text-xs focus:outline-hidden focus:border-primary/60">
             <option value="tickets_closed">Trier par fermetures</option>
             <option value="tickets_claimed">Trier par claims</option>
             <option value="avgRating">Trier par note</option>
@@ -413,10 +413,10 @@ function StatsTab() {
         </div>
       </div>
 
-      <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-overlay/6 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/6">
+            <tr className="border-b border-overlay/6">
               <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">#</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Membre</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermetures</th>
@@ -449,7 +449,7 @@ function StatsTab() {
               </td></tr>
             ) : sorted.map((s, i) => (
               <tr key={s.admin_id} onClick={() => setSelectedStaffId(s.admin_id)}
-                className="border-b border-white/4 last:border-0 hover:bg-surface/40 transition-colors cursor-pointer">
+                className="border-b border-overlay/4 last:border-0 hover:bg-surface/40 transition-colors cursor-pointer">
                 <td className="px-4 py-3 text-ink-4 font-mono text-xs">{i + 1}</td>
                 <td className="px-4 py-3">
                   <div>
@@ -505,7 +505,7 @@ export default function Equipe() {
         </div>
       </div>
 
-      <div className="flex gap-1 bg-surface-card border border-white/6 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-surface-card border border-overlay/6 rounded-xl p-1 w-fit">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-indigo-600/20 text-ink-1 shadow-xs' : 'text-ink-3 hover:text-ink-2'}`}>

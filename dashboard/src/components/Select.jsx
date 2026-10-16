@@ -22,8 +22,8 @@ export default function Select({ value, onChange, options, placeholder = 'Sélec
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between gap-2
-                   bg-surface border border-white/[0.07] rounded-xl px-3.5 py-2 text-sm
-                   hover:border-white/12 focus:outline-hidden focus:border-primary/50
+                   bg-surface border border-overlay/[0.07] rounded-xl px-3.5 py-2 text-sm
+                   hover:border-overlay/12 focus:outline-hidden focus:border-primary/50
                    transition-all duration-150"
       >
         <span className={selected ? 'text-ink-1' : 'text-ink-3'}>
@@ -37,7 +37,7 @@ export default function Select({ value, onChange, options, placeholder = 'Sélec
 
       {open && (
         <div className="absolute top-full mt-1.5 left-0 right-0 z-40
-                        bg-surface-elevated border border-white/8 rounded-xl
+                        bg-surface-elevated border border-overlay/8 rounded-xl
                         shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden animate-in">
           {options.map(opt => (
             <button
@@ -45,7 +45,7 @@ export default function Select({ value, onChange, options, placeholder = 'Sélec
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm
-                          transition-colors hover:bg-white/5
+                          transition-colors hover:bg-overlay/5
                           ${opt.value === value ? 'text-primary-light bg-primary/5' : 'text-ink-2'}`}
             >
               <span>{opt.label}</span>

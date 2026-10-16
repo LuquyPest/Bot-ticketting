@@ -3,7 +3,7 @@ import { Plus, Trash2, Save, X, Send, Unlink, Loader2, Eye, ChevronDown, Chevron
 import api from '../api';
 import toast from 'react-hot-toast';
 
-const BASE = "w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors";
+const BASE = "w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors";
 
 const BUTTON_STYLES = [
   { value: 'primary',   label: 'Bleu',    color: 'bg-[#5865f2] text-white' },
@@ -37,7 +37,7 @@ function EmbedPreview({ panel }) {
             <p className="mt-2 text-[11px] text-ink-4 break-all">🖼️ Image (aperçu indisponible ici, visible sur Discord) : {panel.image_url}</p>
           ))}
           {panel.footer_text && (
-            <p className="text-[#949ba4] text-[10px] pt-1 border-t border-white/10">{panel.footer_text}</p>
+            <p className="text-[#949ba4] text-[10px] pt-1 border-t border-overlay/10">{panel.footer_text}</p>
           )}
         </div>
       </div>
@@ -59,7 +59,7 @@ function EmbedPreview({ panel }) {
 
 function ButtonRow({ btn, index, total, forms, onChange, onRemove, onMove }) {
   return (
-    <div className="bg-surface border border-white/6 rounded-xl p-3 space-y-2">
+    <div className="bg-surface border border-overlay/6 rounded-xl p-3 space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold text-ink-3 flex-1">Bouton {index + 1}</span>
         <button onClick={() => onMove(index, -1)} disabled={index === 0} className="p-1 text-ink-4 hover:text-ink-2 disabled:opacity-30">
@@ -187,7 +187,7 @@ function PanelEditor({ panel, forms, channels, onSave, onCancel }) {
           <div>
             <label className="text-xs text-ink-3 block mb-1">Couleur</label>
             <input type="color" value={color} onChange={e => setColor(e.target.value)}
-              className="w-10 h-9 rounded-lg border border-white/8 bg-transparent cursor-pointer p-0.5" />
+              className="w-10 h-9 rounded-lg border border-overlay/8 bg-transparent cursor-pointer p-0.5" />
           </div>
           <div>
             <label className="text-xs text-ink-3 block mb-1">URL image</label>
@@ -211,7 +211,7 @@ function PanelEditor({ panel, forms, channels, onSave, onCancel }) {
             </button>
           </div>
           {buttons.length === 0 && (
-            <p className="text-xs text-ink-4 text-center py-4 border border-dashed border-white/8 rounded-xl">
+            <p className="text-xs text-ink-4 text-center py-4 border border-dashed border-overlay/8 rounded-xl">
               Aucun bouton — clique sur "Ajouter un bouton"
             </p>
           )}
@@ -284,7 +284,7 @@ function PublishModal({ panel, channels, onPublish, onUnpublish, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface-card border border-white/8 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4"
+      <div className="bg-surface-card border border-overlay/8 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4"
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-ink-1">Publier le panel</h3>
@@ -410,7 +410,7 @@ export default function Panels() {
       </div>
 
       {editing && (
-        <div className="bg-surface-card border border-white/6 rounded-2xl p-5">
+        <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink-2 mb-5">
             {editing === 'new' ? 'Nouveau panel' : `Modifier — ${editing.name}`}
           </h2>
@@ -431,7 +431,7 @@ export default function Panels() {
       ) : (
         <div className="space-y-3">
           {panels.map(p => (
-            <div key={p.id} className="bg-surface-card border border-white/6 rounded-2xl p-4">
+            <div key={p.id} className="bg-surface-card border border-overlay/6 rounded-2xl p-4">
               <div className="flex items-start gap-4">
                 {/* Color swatch */}
                 <div className="w-2 h-14 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: p.color || '#6366f1' }} />
@@ -449,7 +449,7 @@ export default function Panels() {
                   <p className="text-xs text-ink-3 mt-0.5">{p.title}</p>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {p.buttons?.map((btn, i) => {
-                      const styleMap = { primary: 'bg-[#5865f2]/20 text-[#8891f2]', secondary: 'bg-white/5 text-ink-3', success: 'bg-green-500/20 text-green-400', danger: 'bg-red-500/20 text-red-400' };
+                      const styleMap = { primary: 'bg-[#5865f2]/20 text-[#8891f2]', secondary: 'bg-overlay/5 text-ink-3', success: 'bg-green-500/20 text-green-400', danger: 'bg-red-500/20 text-red-400' };
                       return (
                         <span key={i} className={`text-[10px] px-2 py-0.5 rounded-sm font-medium ${styleMap[btn.style] || styleMap.primary}`}>
                           {btn.emoji && `${btn.emoji} `}{btn.label}
@@ -465,7 +465,7 @@ export default function Panels() {
                     <Send size={12} /> Publier
                   </button>
                   <button onClick={() => setEditing(p)}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-white/4 hover:bg-white/8 text-ink-2 transition-colors">
+                    className="px-3 py-1.5 text-xs rounded-lg bg-overlay/4 hover:bg-overlay/8 text-ink-2 transition-colors">
                     Modifier
                   </button>
                   <button onClick={() => deletePanel(p)}

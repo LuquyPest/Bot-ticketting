@@ -10,7 +10,7 @@ function GuildIcon({ guild }) {
       <img
         src={guild.iconUrl}
         alt=""
-        className="w-12 h-12 rounded-xl ring-1 ring-white/10 object-cover shrink-0"
+        className="w-12 h-12 rounded-xl ring-1 ring-overlay/10 object-cover shrink-0"
         onError={() => setError(true)}
       />
     );
@@ -28,7 +28,7 @@ const STATUS_BADGE = {
   active:    { label: 'Actif',         cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
   pending:   { label: 'En attente',    cls: 'text-amber-300  bg-amber-500/10  border-amber-500/20'    },
   suspended: { label: 'Suspendu',      cls: 'text-red-400    bg-red-500/10    border-red-500/20'      },
-  not_added: { label: 'Non configuré', cls: 'text-ink-4      bg-white/5       border-white/10'        },
+  not_added: { label: 'Non configuré', cls: 'text-ink-4      bg-overlay/5       border-overlay/10'        },
 };
 
 export default function GuildSelect() {
@@ -112,7 +112,7 @@ export default function GuildSelect() {
         )}
 
         {/* Guild list */}
-        <div className="glass-dark rounded-2xl border border-white/8 overflow-hidden divide-y divide-white/4">
+        <div className="glass-dark rounded-2xl border border-overlay/8 overflow-hidden divide-y divide-overlay/4">
           {loading && (
             <div className="flex items-center justify-center py-14">
               <Loader2 size={22} className="animate-spin text-primary-light" />

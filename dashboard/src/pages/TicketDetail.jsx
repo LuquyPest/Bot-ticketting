@@ -52,8 +52,8 @@ function SectionTitle({ children }) {
 function InfoRow({ icon: Icon, label, value }) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-2.5 py-2 border-b border-white/4 last:border-0">
-      <div className="w-6 h-6 rounded-lg bg-white/4 flex items-center justify-center shrink-0 mt-0.5">
+    <div className="flex items-start gap-2.5 py-2 border-b border-overlay/4 last:border-0">
+      <div className="w-6 h-6 rounded-lg bg-overlay/4 flex items-center justify-center shrink-0 mt-0.5">
         <Icon size={11} className="text-ink-3" />
       </div>
       <div className="min-w-0">
@@ -66,13 +66,14 @@ function InfoRow({ icon: Icon, label, value }) {
 
 function getBubbleAlign(source) {
   if (source === 'user') return 'left';
+  if (source === 'system') return 'event';
   if (source === 'web')  return 'center';
   return 'right';
 }
 
 function getBubbleStyle(source) {
   if (source === 'user') return {
-    bubble: 'bg-surface-card text-ink-2 border border-white/8',
+    bubble: 'bg-surface-card text-ink-2 border border-overlay/8',
     avatar: 'from-violet-500 to-violet-700',
     label: null,
   };
@@ -82,7 +83,7 @@ function getBubbleStyle(source) {
     label: 'Réponse',
   };
   if (source === 'discord') return {
-    bubble: 'bg-surface-elevated text-ink-2 border border-white/8',
+    bubble: 'bg-surface-elevated text-ink-2 border border-overlay/8',
     avatar: 'from-surface-hover to-surface-elevated',
     label: 'Discord',
   };
@@ -485,7 +486,7 @@ export default function TicketDetail() {
 
 
   /* ─── Shared panel card ─────────────────────────────────────── */
-  const panelCard = 'bg-white/2.5 rounded-xl border border-white/6 p-4';
+  const panelCard = 'bg-overlay/2.5 rounded-xl border border-overlay/6 p-4';
 
   return (
     <div className="flex flex-1 min-h-screen overflow-hidden">
@@ -493,7 +494,7 @@ export default function TicketDetail() {
       {/* ── Modal: réouvrir ─────────────────────────────────── */}
       {showReopenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-          <div className="bg-surface-card border border-white/10 rounded-2xl p-6 w-full max-w-sm
+          <div className="bg-surface-card border border-overlay/10 rounded-2xl p-6 w-full max-w-sm
                           shadow-[0_24px_80px_rgba(0,0,0,0.8)] animate-scale-in">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-sm font-semibold text-ink-1">Réouvrir le ticket</h2>
@@ -507,7 +508,7 @@ export default function TicketDetail() {
                 <label className="text-xs text-ink-3 mb-1.5 block">Raison (optionnel)</label>
                 <textarea rows={3} value={reopenReason} onChange={e => setReopenReason(e.target.value)}
                   placeholder="Raison de la réouverture..."
-                  className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4
+                  className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                              rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden focus:border-primary/50
                              resize-none transition-all" />
               </div>
@@ -546,7 +547,7 @@ export default function TicketDetail() {
       {/* ── Modal: historique ───────────────────────────────── */}
       {showHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-          <div className="bg-surface-card border border-white/10 rounded-2xl p-6 w-full max-w-lg
+          <div className="bg-surface-card border border-overlay/10 rounded-2xl p-6 w-full max-w-lg
                           shadow-[0_24px_80px_rgba(0,0,0,0.8)] animate-scale-in">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-sm font-semibold text-ink-1">Historique de {ticket.owner_tag}</h2>
@@ -560,7 +561,7 @@ export default function TicketDetail() {
                 <button key={t.id}
                   onClick={() => { setShowHistory(false); navigate(`/tickets/${t.id}`); }}
                   className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl
-                             hover:bg-white/4 text-left transition-colors">
+                             hover:bg-overlay/4 text-left transition-colors">
                   <div className="min-w-0">
                     <span className="text-xs text-ink-4 font-mono mr-2 tabular-nums">#{t.id}</span>
                     <span className="text-sm text-ink-2">{t.subject || 'Sans sujet'}</span>
@@ -588,14 +589,14 @@ export default function TicketDetail() {
       <div className="flex flex-col flex-1 min-w-0 min-h-screen overflow-hidden">
 
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 glass-dark border-b border-white/6
+        <div className="sticky top-0 z-10 glass-dark border-b border-overlay/6
                         px-5 py-3 flex items-center gap-3 shrink-0">
           <button onClick={() => navigate('/tickets')}
-            className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/6
+            className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6
                        transition-all shrink-0">
             <ArrowLeft size={16} />
           </button>
-          <div className="h-4 w-px bg-white/8 shrink-0" />
+          <div className="h-4 w-px bg-overlay/8 shrink-0" />
           <span className="text-sm font-bold text-ink-1 tabular-nums">Ticket #{ticket.id}</span>
           <Badge label={ticket.status} variant={ticket.status} />
           <Badge label={PRIORITY_LABELS[ticket.priority] || ticket.priority} variant={ticket.priority} />
@@ -632,13 +633,13 @@ export default function TicketDetail() {
           <div className="ml-auto flex items-center gap-2 shrink-0">
             <button onClick={loadUserHistory}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                         text-ink-3 hover:text-ink-1 hover:bg-white/6 border border-white/[0.07]
+                         text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07]
                          transition-all">
               <History size={12} /> Historique
             </button>
             <a href={`/api/tickets/${id}/pdf`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                         text-ink-3 hover:text-ink-1 hover:bg-white/6 border border-white/[0.07]
+                         text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07]
                          transition-all">
               <FileText size={12} /> PDF
             </a>
@@ -654,7 +655,7 @@ export default function TicketDetail() {
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
           {notes.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
-              <div className="w-14 h-14 rounded-2xl bg-surface-card border border-white/[0.07]
+              <div className="w-14 h-14 rounded-2xl bg-surface-card border border-overlay/[0.07]
                               flex items-center justify-center">
                 <MessageSquare size={22} className="text-ink-4" />
               </div>
@@ -667,11 +668,23 @@ export default function TicketDetail() {
             const align = getBubbleAlign(note.source);
 
             /* Internal note */
+            // Automatic event (merge, closed by the member…): a discreet line, not a message
+            if (align === 'event') {
+              return (
+                <div key={note.id} className="flex items-center gap-3 animate-fade-in" role="note">
+                  <span className="h-px flex-1 bg-overlay/8" />
+                  <p className="text-[11px] text-ink-3 text-center max-w-md">
+                    {note.content} <span className="text-ink-4">· {fmtDate(note.created_at)}</span>
+                  </p>
+                  <span className="h-px flex-1 bg-overlay/8" />
+                </div>
+              );
+            }
             if (align === 'center') {
               return (
                 <div key={note.id} className="flex justify-center group animate-fade-in">
                   <div className="flex items-start gap-2 max-w-md px-4 py-2.5 rounded-xl
-                                  bg-surface border border-dashed border-white/8">
+                                  bg-surface border border-dashed border-overlay/8">
                     <Lock size={10} className="text-ink-4 mt-0.5 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-ink-2 leading-relaxed whitespace-pre-wrap wrap-break-word">
@@ -744,9 +757,9 @@ export default function TicketDetail() {
 
         {/* Compose box */}
         {ticket.status === 'open' && can('reply_ticket') && (
-          <div className="border-t border-white/6 glass-dark px-5 py-4 shrink-0">
+          <div className="border-t border-overlay/6 glass-dark px-5 py-4 shrink-0">
             {/* Mode toggle */}
-            <div className="flex gap-0.5 mb-3 bg-surface rounded-xl p-1 w-fit border border-white/6">
+            <div className="flex gap-0.5 mb-3 bg-surface rounded-xl p-1 w-fit border border-overlay/6">
               <button onClick={() => setComposeMode('reply')}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold
                             transition-all ${composeMode === 'reply'
@@ -771,7 +784,7 @@ export default function TicketDetail() {
                 <span className="flex items-center gap-1 text-[10px] text-ink-4"><Sparkles size={10} /> Suggestions</span>
                 {templates.filter(t => t.suggested).slice(0, 4).map(tpl => (
                   <button key={tpl.id} onClick={() => applyTemplate(tpl)} title={resolveVars(tpl.content, ticket, user?.username)}
-                    className="px-2 py-1 rounded-lg text-[11px] text-ink-2 bg-surface border border-white/[0.07] hover:text-ink-1 hover:border-primary/40 max-w-48 truncate">
+                    className="px-2 py-1 rounded-lg text-[11px] text-ink-2 bg-surface border border-overlay/[0.07] hover:text-ink-1 hover:border-primary/40 max-w-48 truncate">
                     {tpl.name}
                   </button>
                 ))}
@@ -793,7 +806,7 @@ export default function TicketDetail() {
                           text-sm focus:outline-hidden resize-none transition-all
                           ${composeMode === 'reply'
                             ? 'border-primary/30 focus:border-primary/60 focus:ring-1 focus:ring-primary/20'
-                            : 'border-white/[0.07] focus:border-white/12'}`}
+                            : 'border-overlay/[0.07] focus:border-overlay/12'}`}
             />
 
             {/* Footer */}
@@ -801,24 +814,24 @@ export default function TicketDetail() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-ink-4 tabular-nums">{composeText.length}/2000</span>
                 <span className="text-[10px] text-ink-4 hidden sm:block">
-                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-white/[0.07] font-mono text-[9px]">R</kbd> répondre ·{' '}
-                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-white/[0.07] font-mono text-[9px]">N</kbd> note ·{' '}
-                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-white/[0.07] font-mono text-[9px]">ESC</kbd> retour
+                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">R</kbd> répondre ·{' '}
+                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">N</kbd> note ·{' '}
+                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">ESC</kbd> retour
                 </span>
 
                 {/* Templates */}
                 <div className="relative" ref={templatesRef}>
                   <button onClick={() => setShowTemplates(t => !t)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                               border bg-surface text-ink-3 border-white/[0.07]
-                               hover:text-ink-1 hover:border-white/12 transition-all">
+                               border bg-surface text-ink-3 border-overlay/[0.07]
+                               hover:text-ink-1 hover:border-overlay/12 transition-all">
                     <Layers size={11} />
                     Modèles
                     <ChevronDown size={10} className={`transition-transform duration-200 ${showTemplates ? 'rotate-180' : ''}`} />
                   </button>
                   {showTemplates && (
                     <div className="absolute bottom-full mb-2 left-0 z-20 w-72 bg-surface-elevated
-                                    border border-white/10 rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.7)]
+                                    border border-overlay/10 rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.7)]
                                     overflow-hidden animate-in">
                       <div className="max-h-52 overflow-y-auto">
                         {templates.length === 0 ? (
@@ -836,14 +849,14 @@ export default function TicketDetail() {
                               {group.map(tpl => (
                                 <div key={tpl.id}
                                   className="group/tpl flex items-start gap-2 px-3.5 py-2.5
-                                             hover:bg-white/4 border-b border-white/5 last:border-0
+                                             hover:bg-overlay/4 border-b border-overlay/5 last:border-0
                                              transition-colors cursor-pointer"
                                   onClick={() => applyTemplate(tpl)}>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5">
                                       <p className="text-xs font-semibold text-ink-1 truncate">{tpl.name}</p>
                                       {tpl.scope === 'personal' && tpl.suggested && (
-                                        <span className="text-[9px] font-bold px-1 py-0.5 rounded-sm bg-white/6 text-ink-3 border border-white/8 shrink-0">perso</span>
+                                        <span className="text-[9px] font-bold px-1 py-0.5 rounded-sm bg-overlay/6 text-ink-3 border border-overlay/8 shrink-0">perso</span>
                                       )}
                                       {hasVars(tpl.content) && (
                                         <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-500/20
@@ -872,13 +885,13 @@ export default function TicketDetail() {
                           );
                         })}
                       </div>
-                        <div className="border-t border-white/[0.07] px-3.5 py-2.5 space-y-2 bg-white/2">
+                        <div className="border-t border-overlay/[0.07] px-3.5 py-2.5 space-y-2 bg-overlay/2">
                           <input type="text" placeholder="Nom du modèle..." maxLength={100}
                             value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)}
-                            className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4
+                            className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                                        rounded-lg px-3 py-2 text-xs focus:outline-hidden focus:border-primary/50
                                        transition-all" />
-                          <div className="flex gap-1 p-0.5 rounded-lg bg-surface border border-white/6" role="radiogroup" aria-label="Portée du modèle">
+                          <div className="flex gap-1 p-0.5 rounded-lg bg-surface border border-overlay/6" role="radiogroup" aria-label="Portée du modèle">
                             {[['personal', 'Pour moi'], ['shared', 'Pour tout le staff']].map(([v, label]) => (
                               <button key={v} type="button" role="radio" aria-checked={newTemplateScope === v} onClick={() => setNewTemplateScope(v)}
                                 className={`flex-1 py-1 rounded-md text-[11px] font-medium ${newTemplateScope === v ? 'bg-primary/15 text-ink-1' : 'text-ink-4 hover:text-ink-2'}`}>
@@ -909,7 +922,7 @@ export default function TicketDetail() {
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold
                                 transition-all border ${anonymous
                                   ? 'bg-primary/10 text-primary-light border-primary/20'
-                                  : 'bg-surface text-ink-3 border-white/[0.07] hover:text-ink-1 hover:border-white/12'}`}>
+                                  : 'bg-surface text-ink-3 border-overlay/[0.07] hover:text-ink-1 hover:border-overlay/12'}`}>
                     {anonymous ? <EyeOff size={11} /> : <Eye size={11} />}
                     {anonymous ? 'Anonyme' : 'Identifié'}
                   </button>
@@ -920,7 +933,7 @@ export default function TicketDetail() {
                 className={`flex items-center gap-2 py-2 px-4 text-xs rounded-xl text-white font-semibold
                             transition-all disabled:opacity-40 ${composeMode === 'reply'
                               ? 'bg-primary hover:bg-primary-light shadow-lg shadow-primary/25'
-                              : 'bg-surface-elevated hover:bg-surface-hover border border-white/10'}`}>
+                              : 'bg-surface-elevated hover:bg-surface-hover border border-overlay/10'}`}>
                 <Send size={12} />
                 {composeSending ? 'Envoi...' : composeMode === 'reply' ? 'Envoyer' : 'Ajouter'}
               </button>
@@ -931,7 +944,7 @@ export default function TicketDetail() {
 
       {/* ══════════════ Right column: sidebar ═════════════════ */}
       <div className="w-72 shrink-0 sticky top-0 h-screen overflow-y-auto
-                      border-l border-white/6 bg-[#09090f]/60 backdrop-blur-xs">
+                      border-l border-overlay/6 bg-surface/60 backdrop-blur-xs">
         <div className="p-5 space-y-4">
 
           {/* INFORMATIONS */}
@@ -954,7 +967,7 @@ export default function TicketDetail() {
             ) : (
               <ul className="space-y-1.5 mb-2">
                 {assignees.map(a => (
-                  <li key={a.user_id} className="flex items-center gap-2 rounded-lg bg-white/3 border border-white/6 px-2.5 py-1.5">
+                  <li key={a.user_id} className="flex items-center gap-2 rounded-lg bg-overlay/3 border border-overlay/6 px-2.5 py-1.5">
                     {a.avatar
                       ? <img src={`https://cdn.discordapp.com/avatars/${a.user_id}/${a.avatar}.webp?size=32`} alt="" className="w-5 h-5 rounded-full shrink-0" />
                       : <Users size={13} className="text-ink-3 shrink-0" />}
@@ -982,7 +995,7 @@ export default function TicketDetail() {
                       placeholder="Attribuer à…"
                       options={[{ value: '', label: 'Attribuer à…' }, ...assignable.map(s => ({ value: s.user_id, label: s.username }))]} />
                     <button onClick={() => addAssignee(assigneeToAdd)} disabled={!assigneeToAdd || claimLoading} title="Attribuer"
-                      className="p-2 rounded-xl bg-surface border border-white/[0.07] text-ink-3 hover:text-ink-1
+                      className="p-2 rounded-xl bg-surface border border-overlay/[0.07] text-ink-3 hover:text-ink-1
                                  hover:bg-surface-hover transition-all disabled:opacity-50 shrink-0">
                       <UserPlus size={14} />
                     </button>
@@ -1038,7 +1051,7 @@ export default function TicketDetail() {
               <SectionTitle>Fusionner</SectionTitle>
               {mergeCandidates === null ? (
                 <button onClick={loadMergeCandidates}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded-xl border border-white/[0.07] text-ink-3 hover:text-ink-1 hover:bg-white/4">
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded-xl border border-overlay/[0.07] text-ink-3 hover:text-ink-1 hover:bg-overlay/4">
                   <GitMerge size={12} /> Fusionner avec un autre ticket du membre
                 </button>
               ) : mergeCandidates.length === 0 ? (
@@ -1046,7 +1059,7 @@ export default function TicketDetail() {
               ) : (
                 <div className="space-y-2">
                   <select value={mergeTarget} onChange={e => setMergeTarget(e.target.value)} aria-label="Ticket cible"
-                    className="w-full bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden focus:border-primary/50">
+                    className="w-full bg-surface border border-overlay/[0.07] text-ink-1 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden focus:border-primary/50">
                     {mergeCandidates.map(c => (
                       <option key={c.id} value={c.id}>#{c.id} — {c.subject || 'Sans sujet'}</option>
                     ))}
@@ -1071,7 +1084,7 @@ export default function TicketDetail() {
                   className={`flex-1 py-2 px-2 text-xs rounded-xl font-semibold transition-all
                               disabled:cursor-not-allowed border ${ticket.priority === p
                                 ? PRIORITY_ACTIVE[p]
-                                : 'bg-surface text-ink-3 border-white/6 hover:bg-surface-hover hover:text-ink-1 hover:border-white/10'}`}>
+                                : 'bg-surface text-ink-3 border-overlay/6 hover:bg-surface-hover hover:text-ink-1 hover:border-overlay/10'}`}>
                   {PRIORITY_LABELS[p]}
                 </button>
               ))}
@@ -1096,7 +1109,7 @@ export default function TicketDetail() {
               {ticket.participants?.map(p => (
                 <div key={p.id}
                   className="group flex items-center justify-between px-3 py-2 rounded-xl
-                             bg-surface border border-white/6 hover:border-white/10 transition-colors">
+                             bg-surface border border-overlay/6 hover:border-overlay/10 transition-colors">
                   <div className="min-w-0">
                     <p className="text-xs text-ink-1 font-semibold truncate">{p.tag}</p>
                     <p className="text-[10px] text-ink-4 font-mono mt-0.5">{p.id}</p>
@@ -1117,13 +1130,13 @@ export default function TicketDetail() {
                   onChange={e => setNewParticipantId(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addParticipant(); }}
                   placeholder="Discord ID..."
-                  className="flex-1 min-w-0 bg-surface border border-white/[0.07] text-ink-1
+                  className="flex-1 min-w-0 bg-surface border border-overlay/[0.07] text-ink-1
                              placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden
                              focus:border-primary/50 font-mono transition-all" />
                 <button onClick={addParticipant}
                   disabled={!newParticipantId.trim() || addingParticipant}
-                  className="p-2 rounded-xl bg-surface border border-white/[0.07] text-ink-3
-                             hover:text-ink-1 hover:bg-surface-hover hover:border-white/12
+                  className="p-2 rounded-xl bg-surface border border-overlay/[0.07] text-ink-3
+                             hover:text-ink-1 hover:bg-surface-hover hover:border-overlay/12
                              transition-all disabled:opacity-50 shrink-0">
                   <UserPlus size={14} />
                 </button>
@@ -1144,7 +1157,7 @@ export default function TicketDetail() {
                       disabled={movingTicket || active || !configured}
                       title={configured ? `Passer en « ${st.label} »` : 'Aucune catégorie Discord associée (Paramètres)'}
                       className={`py-2 px-1 rounded-xl text-[11px] font-semibold border transition-all disabled:cursor-default
-                                  ${active ? st.cls : 'text-ink-3 border-white/[0.07] hover:text-ink-1 hover:bg-white/4'}
+                                  ${active ? st.cls : 'text-ink-3 border-overlay/[0.07] hover:text-ink-1 hover:bg-overlay/4'}
                                   ${!configured ? 'opacity-40' : ''}`}>
                       {st.label}
                     </button>
@@ -1167,7 +1180,7 @@ export default function TicketDetail() {
               <SectionTitle>Visibilité</SectionTitle>
               <select value={ticket.visibility_grade_id || ''} onChange={e => changeVisibility(e.target.value || null)}
                 disabled={savingVisibility}
-                className="w-full bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-2.5 py-2
+                className="w-full bg-surface border border-overlay/[0.07] text-ink-1 rounded-xl px-2.5 py-2
                            text-xs focus:outline-hidden focus:border-primary/50 transition-all disabled:opacity-50">
                 <option value="">Tous les membres du staff</option>
                 {grades.map(g => (
@@ -1204,7 +1217,7 @@ export default function TicketDetail() {
             {can('reply_ticket') && allTags.filter(t => !ticketTags.find(tt => tt.id === t.id)).length > 0 && (
               <select defaultValue=""
                 onChange={e => { if (e.target.value) { addTagToTicket(parseInt(e.target.value)); e.target.value = ''; } }}
-                className="w-full bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-2.5 py-1.5
+                className="w-full bg-surface border border-overlay/[0.07] text-ink-1 rounded-xl px-2.5 py-1.5
                            text-xs focus:outline-hidden focus:border-primary/50 transition-all">
                 <option value="">+ Ajouter un tag...</option>
                 {allTags.filter(t => !ticketTags.find(tt => tt.id === t.id)).map(t => (
@@ -1254,7 +1267,7 @@ export default function TicketDetail() {
                 </a>
                 <a href={`/api/transcripts/${ticket.transcript.id}/txt`}
                   className="flex items-center gap-2 py-2 px-3 text-xs rounded-xl bg-surface text-ink-2
-                             border border-white/[0.07] hover:bg-surface-hover hover:border-white/12
+                             border border-overlay/[0.07] hover:bg-surface-hover hover:border-overlay/12
                              transition-colors font-semibold">
                   Télécharger .txt
                 </a>

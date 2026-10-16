@@ -34,7 +34,7 @@ function AddModal({ onClose, onAdded }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-surface-card border border-white/8 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div className="bg-surface-card border border-overlay/8 rounded-2xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-ink-1">Ajouter à la blacklist</h2>
           <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
@@ -43,17 +43,17 @@ function AddModal({ onClose, onAdded }) {
           <div>
             <label className="text-xs text-ink-3 mb-1 block">User ID Discord *</label>
             <input type="text" value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} placeholder="123456789012345678"
-              className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
+              className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
           </div>
           <div>
             <label className="text-xs text-ink-3 mb-1 block">Username *</label>
             <input type="text" value={form.userTag} onChange={e => setForm(f => ({ ...f, userTag: e.target.value }))} placeholder="user#0000"
-              className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
+              className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
           </div>
           <div>
             <label className="text-xs text-ink-3 mb-1 block">Raison (optionnel)</label>
             <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Spam, abus..."
-              className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
+              className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
           </div>
           <div>
             <label className="text-xs text-ink-3 mb-1 block">Durée</label>
@@ -65,7 +65,7 @@ function AddModal({ onClose, onAdded }) {
                   onClick={() => setForm(f => ({ ...f, duration: d.value }))}
                   className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${form.duration === d.value
                     ? 'bg-red-600/20 border-red-600/50 text-red-400'
-                    : 'bg-surface border-white/8 text-ink-2 hover:border-white/12'}`}
+                    : 'bg-surface border-overlay/8 text-ink-2 hover:border-overlay/12'}`}
                 >
                   {d.label}
                 </button>
@@ -124,10 +124,10 @@ export default function Blacklist() {
         </button>
       </div>
 
-      <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-overlay/6 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/6 text-xs text-ink-3 uppercase tracking-wider">
+            <tr className="border-b border-overlay/6 text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
               <th className="text-left px-4 py-3 font-medium">Raison</th>
               <th className="text-left px-4 py-3 font-medium">Banni par</th>
@@ -142,7 +142,7 @@ export default function Blacklist() {
             ) : !list.length ? (
               <tr><td colSpan={6} className="text-center py-10 text-ink-4">Blacklist vide</td></tr>
             ) : list.map(u => (
-              <tr key={u.user_id} className="border-b border-white/[0.06]/50 last:border-0 hover:bg-surface/30 transition-colors">
+              <tr key={u.user_id} className="border-b border-overlay/[0.06]/50 last:border-0 hover:bg-surface/30 transition-colors">
                 <td className="px-4 py-3">
                   <p className="text-ink-1 font-medium">{u.user_tag}</p>
                   <p className="text-xs text-ink-4 font-mono">{u.user_id}</p>

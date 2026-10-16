@@ -20,11 +20,6 @@ module.exports = {
 
     const userId = interaction.options.getString('userid', true);
 
-    const openTicket = await tm.getAnyOpenTicketForUser(userId);
-    if (openTicket) {
-      return interaction.editReply({ content: `Cet utilisateur a déjà un ticket ouvert (ticket #${openTicket.id}).` });
-    }
-
     const ticket = await tm.getLastClosedTicketByOwnerId(userId);
     if (!ticket) {
       return interaction.editReply({ content: 'Aucun ticket fermé trouvé pour cet utilisateur.' });

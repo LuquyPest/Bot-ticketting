@@ -88,7 +88,7 @@ export default function SALogin() {
           </div>
         </div>
 
-        <div className="glass-dark rounded-2xl border border-white/8 p-6 space-y-4">
+        <div className="glass-dark rounded-2xl border border-overlay/8 p-6 space-y-4">
 
           {/* Step 1 — credentials */}
           {step === 'credentials' && (
@@ -101,7 +101,7 @@ export default function SALogin() {
                   onChange={e => setUsername(e.target.value)}
                   placeholder="superadmin"
                   autoComplete="username"
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/4 border border-white/8
+                  className="w-full px-3 py-2.5 rounded-xl bg-overlay/4 border border-overlay/8
                              text-sm text-ink-1 placeholder-ink-4 outline-hidden
                              focus:border-red-500/50 transition-colors"
                   required
@@ -116,7 +116,7 @@ export default function SALogin() {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    className="w-full px-3 py-2.5 pr-10 rounded-xl bg-white/4 border border-white/8
+                    className="w-full px-3 py-2.5 pr-10 rounded-xl bg-overlay/4 border border-overlay/8
                                text-sm text-ink-1 placeholder-ink-4 outline-hidden
                                focus:border-red-500/50 transition-colors"
                     required
@@ -147,7 +147,7 @@ export default function SALogin() {
               {qrDataUrl && (
                 <div className="flex justify-center">
                   <img src={qrDataUrl} alt="QR TOTP"
-                    className="w-44 h-44 rounded-xl border border-white/10 p-2 bg-white" />
+                    className="w-44 h-44 rounded-xl border border-overlay/10 p-2 bg-white" />
                 </div>
               )}
               {totpSecret && (
@@ -206,7 +206,7 @@ function TotpInput({ value, onChange, autoFocus }) {
         placeholder="000 000"
         maxLength={7}
         autoFocus={autoFocus}
-        className="w-full px-3 py-3 rounded-xl bg-white/4 border border-white/8
+        className="w-full px-3 py-3 rounded-xl bg-overlay/4 border border-overlay/8
                    text-base text-ink-1 placeholder-ink-4 outline-hidden focus:border-red-500/50
                    text-center tracking-[0.4em] font-mono transition-colors"
       />

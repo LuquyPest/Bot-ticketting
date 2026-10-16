@@ -69,7 +69,7 @@ export default function Search() {
           onKeyDown={handleKey}
           placeholder="Rechercher un ticket, un message, un utilisateur…"
           autoFocus
-          className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-card border border-white/8
+          className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-card border border-overlay/8
                      text-sm text-ink-1 placeholder-ink-4 outline-hidden focus:border-primary/50
                      transition-colors"
         />
@@ -110,8 +110,8 @@ export default function Search() {
               <button
                 key={ticket.id}
                 onClick={() => navigate(`/tickets/${ticket.id}`)}
-                className="w-full text-left bg-surface-card border border-white/6 rounded-xl p-4
-                           hover:border-primary/30 hover:bg-white/2 transition-all space-y-2">
+                className="w-full text-left bg-surface-card border border-overlay/6 rounded-xl p-4
+                           hover:border-primary/30 hover:bg-overlay/2 transition-all space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <Ticket size={13} className="text-ink-4 shrink-0" />

@@ -8,7 +8,7 @@ const VARIANTS = {
     label: 'Ouvert',
   },
   closed: {
-    cls: 'bg-white/5 text-ink-3 border-white/8',
+    cls: 'bg-overlay/5 text-ink-3 border-overlay/8',
     dot: 'bg-ink-4',
     pulse: false,
     label: 'Fermé',
@@ -32,7 +32,7 @@ const VARIANTS = {
     label: 'Urgent',
   },
   default: {
-    cls: 'bg-white/5 text-ink-2 border-white/8',
+    cls: 'bg-overlay/5 text-ink-2 border-overlay/8',
     dot: 'bg-ink-3',
     pulse: false,
     label: null,

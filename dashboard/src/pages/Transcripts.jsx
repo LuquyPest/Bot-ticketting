@@ -38,14 +38,14 @@ export default function Transcripts() {
           placeholder="Rechercher par utilisateur ou sujet..."
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="w-full bg-surface-card border border-white/6 text-ink-1 placeholder-ink-4 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-hidden focus:border-primary"
+          className="w-full bg-surface-card border border-overlay/6 text-ink-1 placeholder-ink-4 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-hidden focus:border-primary"
         />
       </div>
 
-      <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-overlay/6 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/6 text-xs text-ink-3 uppercase tracking-wider">
+            <tr className="border-b border-overlay/6 text-xs text-ink-3 uppercase tracking-wider">
               <th className="text-left px-4 py-3 font-medium">Ticket</th>
               <th className="text-left px-4 py-3 font-medium">Utilisateur</th>
               <th className="text-left px-4 py-3 font-medium">Sujet</th>
@@ -61,7 +61,7 @@ export default function Transcripts() {
             ) : !data.snapshots.length ? (
               <tr><td colSpan={7} className="text-center py-10 text-ink-4">Aucun transcript</td></tr>
             ) : data.snapshots.map(s => (
-              <tr key={s.id} className="border-b border-white/[0.06]/50 last:border-0 hover:bg-surface/30 transition-colors">
+              <tr key={s.id} className="border-b border-overlay/[0.06]/50 last:border-0 hover:bg-surface/30 transition-colors">
                 <td className="px-4 py-3 text-ink-3 font-mono">#{s.ticket_id}</td>
                 <td className="px-4 py-3 text-ink-1 font-medium">{s.owner_tag}</td>
                 <td className="px-4 py-3 text-ink-2 max-w-xs truncate">{s.subject || '—'}</td>

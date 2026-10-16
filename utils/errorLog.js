@@ -4,6 +4,10 @@
 // once a minute, and the volume is capped, so an error loop cannot flood the database.
 const { globalQuery } = require('./globalDb');
 
+// Discord API errors that are expected in normal use and say nothing about the bot's health:
+// member with closed DMs, interaction expired or already answered, message already deleted.
+const EXPECTED_DISCORD_CODES = new Set([50007, 10062, 40060, 10008]);
+
 const DEDUPE_MS = 60 * 1000;
 const MAX_PER_MINUTE = 60;
 const recent = new Map(); // context|message → last write
@@ -11,6 +15,7 @@ let windowStart = 0;
 let windowCount = 0;
 
 function logError(guildId, context, err, extra = null) {
+  if (EXPECTED_DISCORD_CODES.has(err?.code)) return;
   const message = String(err?.message || err || 'Erreur inconnue').slice(0, 2000);
   const ctx = String(context || 'unknown').slice(0, 100);
   const now = Date.now();
@@ -41,7 +46,7 @@ function captureConsoleErrors() {
       const text = args.filter(a => typeof a === 'string').join(' ').trim();
       const context = text ? text.replace(/[:\s]+$/, '').slice(0, 100) : 'console';
       const message = err ? err.message : args.map(a => (typeof a === 'string' ? a : safeJson(a))).join(' ');
-      logError(null, context, err ? Object.assign(new Error(message), { stack: err.stack }) : message);
+      logError(null, context, err ? Object.assign(new Error(message), { stack: err.stack, code: err.code }) : message);
     } catch {}
   };
   wrapped.__captured = true;
@@ -62,4 +67,4 @@ function httpErrorMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { logError, captureConsoleErrors, httpErrorMiddleware };
+module.exports = { logError, captureConsoleErrors, httpErrorMiddleware, EXPECTED_DISCORD_CODES };

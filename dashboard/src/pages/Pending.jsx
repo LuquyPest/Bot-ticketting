@@ -22,7 +22,7 @@ export default function Pending() {
   return (
     <div className="min-h-screen bg-base flex items-center justify-center p-4">
       <div className="w-full max-w-md text-center animate-slide-up">
-        <div className="bg-surface-card border border-white/[0.07] rounded-2xl p-8
+        <div className="bg-surface-card border border-overlay/[0.07] rounded-2xl p-8
                         shadow-[0_8px_48px_rgba(0,0,0,0.5)]">
           <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20
                           flex items-center justify-center mx-auto mb-5">
@@ -36,9 +36,9 @@ export default function Pending() {
           </p>
 
           {user && (
-            <div className="flex items-center gap-3 bg-surface border border-white/6 rounded-xl p-3 mb-6 text-left">
+            <div className="flex items-center gap-3 bg-surface border border-overlay/6 rounded-xl p-3 mb-6 text-left">
               {avatarUrl
-                ? <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full shrink-0 ring-1 ring-white/10" />
+                ? <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full shrink-0 ring-1 ring-overlay/10" />
                 : <div className="w-10 h-10 rounded-full bg-linear-to-br from-primary to-indigo-600 flex items-center justify-center text-sm font-bold shrink-0 text-white">{user.username?.[0]?.toUpperCase()}</div>
               }
               <div className="min-w-0">

@@ -50,9 +50,9 @@ function SALayout({ children }) {
 
   return (
     <div className="flex h-screen bg-base text-ink-1 overflow-hidden">
-      <aside className="w-52 shrink-0 flex flex-col glass-dark border-r border-white/6">
+      <aside className="w-52 shrink-0 flex flex-col glass-dark border-r border-overlay/6">
 
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/6">
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-overlay/6">
           <div className="w-8 h-8 rounded-xl bg-linear-to-br from-red-500 to-orange-600
                           flex items-center justify-center shadow-lg shadow-red-500/30">
             <Bot size={15} className="text-white" />
@@ -71,7 +71,7 @@ function SALayout({ children }) {
                                  text-sm font-medium transition-all duration-150 cursor-pointer
                                  ${isActive
                                    ? 'bg-red-500/10 text-red-200'
-                                   : 'text-ink-3 hover:text-ink-2 hover:bg-white/4'}`}>
+                                   : 'text-ink-3 hover:text-ink-2 hover:bg-overlay/4'}`}>
                   {isActive && (
                     <span className="absolute left-0 h-5 w-[3px] bg-red-500 rounded-r-full
                                      shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
@@ -84,9 +84,9 @@ function SALayout({ children }) {
           ))}
         </nav>
 
-        <div className="px-2 pb-3 pt-2 border-t border-white/6">
+        <div className="px-2 pb-3 pt-2 border-t border-overlay/6">
           <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl
-                          bg-white/3 border border-white/5">
+                          bg-overlay/3 border border-overlay/5">
             <div className="w-7 h-7 rounded-full bg-linear-to-br from-red-500 to-orange-600
                             flex items-center justify-center text-xs font-bold text-white shrink-0">
               {saUser?.username?.[0]?.toUpperCase()}

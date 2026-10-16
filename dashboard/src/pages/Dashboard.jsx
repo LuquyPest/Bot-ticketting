@@ -135,7 +135,7 @@ export default function Dashboard() {
   const heatMax = Math.max(1, ...heatmap.map(h => h.count));
 
   /* ─── Shared card class ─────────────────────────────────────── */
-  const card = 'bg-surface-card border border-white/6 rounded-2xl shadow-card';
+  const card = 'bg-surface-card border border-overlay/6 rounded-2xl shadow-card';
 
   return (
     <div className="p-6 space-y-5">
@@ -220,7 +220,7 @@ export default function Dashboard() {
                 Ouvertures · Fermetures · Non claim
               </p>
             </div>
-            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/6">
+            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-overlay/6">
               {[7, 14, 30].map(d => (
                 <button key={d} onClick={() => setDays(d)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
@@ -318,11 +318,11 @@ export default function Dashboard() {
                   'bg-amber-500/20 text-amber-300 border-amber-500/30',
                   'bg-slate-400/15 text-slate-300 border-slate-400/25',
                   'bg-orange-600/15 text-orange-400 border-orange-600/25',
-                ][i] || 'bg-white/4 text-ink-4 border-white/6';
+                ][i] || 'bg-overlay/4 text-ink-4 border-overlay/6';
                 return (
                   <div key={s.admin_id}
                     className="flex items-center gap-3 p-2.5 rounded-xl bg-surface hover:bg-surface-hover
-                               border border-white/4 transition-colors">
+                               border border-overlay/4 transition-colors">
                     <span className={`w-6 h-6 rounded-full text-[10px] font-bold border
                                      flex items-center justify-center shrink-0 ${rankCls}`}>
                       {i + 1}
@@ -347,7 +347,7 @@ export default function Dashboard() {
         <div className={`xl:col-span-2 ${card} p-5`}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-ink-1">Tickets récents</h2>
-            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/6">
+            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-overlay/6">
               {[['', 'Tous'], ['open', 'Ouverts'], ['closed', 'Fermés']].map(([v, l]) => (
                 <button key={v} onClick={() => setStatusFilter(v)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
@@ -363,7 +363,7 @@ export default function Dashboard() {
             {recent.map(t => (
               <button key={t.id} onClick={() => navigate(`/tickets/${t.id}`)}
                 className="w-full flex items-center justify-between p-2.5 rounded-xl
-                           hover:bg-white/3 transition-colors text-left group">
+                           hover:bg-overlay/3 transition-colors text-left group">
                 <div className="min-w-0 flex-1 mr-3">
                   <p className="text-sm text-ink-2 truncate font-medium group-hover:text-ink-1 transition-colors">
                     {t.owner_tag}
@@ -483,7 +483,7 @@ export default function Dashboard() {
                                      ${i === 0 ? 'bg-amber-500/20 text-amber-300' :
                                        i === 1 ? 'bg-slate-400/20 text-slate-300' :
                                        i === 2 ? 'bg-orange-600/20 text-orange-400' :
-                                       'bg-white/4 text-ink-4'}`}>
+                                       'bg-overlay/4 text-ink-4'}`}>
                       {i + 1}
                     </span>
                     <p className="text-xs text-ink-2 truncate flex-1">{s.username}</p>
@@ -510,7 +510,7 @@ export default function Dashboard() {
                 <p className="text-2xl font-bold text-ink-1 tabular-nums">{myGoal.achieved}</p>
                 <p className="text-xs text-ink-4">/ {myGoal.target} tickets</p>
               </div>
-              <div className="w-full h-2 bg-white/6 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-overlay/6 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{

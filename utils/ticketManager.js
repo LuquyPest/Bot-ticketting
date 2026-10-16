@@ -265,6 +265,10 @@ function createManager(db, client, guildId) {
     const ticket = await getOpenTicketByChannelId(channel.id);
     if (!ticket) return null;
 
+    if (closedByUser.member) {
+      await db(`INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, '🔒 Ticket fermé par le membre.', 'system')`,
+        [ticket.id, String(closedByUser.id), closedByUser.tag]).catch(() => null);
+    }
     // Closures by the API, the automations or the member themselves do not count in staff stats
     const byStaff = !closedByUser.api && closedByUser.source !== 'system' && !closedByUser.member;
     await db(
@@ -520,7 +524,7 @@ function createManager(db, client, guildId) {
       [`fusion → #${targetId} (${actorTag})`.slice(0, 100), targetId, sourceId]
     );
     await db(
-      `INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'web')`,
+      `INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'system')`,
       [targetId, String(byUser.id), actorTag, `🔀 Ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} fusionné dans ce ticket par ${actorTag}${transcript ? ` (transcript #${transcript.transcriptId})` : ''}.`]
     );
 

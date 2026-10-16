@@ -47,7 +47,7 @@ function buildHeatmap(data) {
 }
 
 function heatColor(n) {
-  if (n === 0) return 'bg-white/4 border-white/6';
+  if (n === 0) return 'bg-overlay/4 border-overlay/6';
   if (n <= 2)  return 'bg-primary/25 border-primary/20';
   if (n <= 5)  return 'bg-primary/45 border-primary/30';
   if (n <= 10) return 'bg-primary/70 border-primary/50';
@@ -63,14 +63,14 @@ const ROLE_STYLES = {
 const PRIORITY_STYLES = {
   urgent: 'text-red-400 bg-red-500/10 border-red-500/20',
   normal: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  low:    'text-ink-4 bg-white/4 border-white/8',
+  low:    'text-ink-4 bg-overlay/4 border-overlay/8',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatCard({ icon: Icon, value, label, sub, subColor }) {
   return (
-    <div className="bg-surface-card border border-white/6 rounded-2xl p-4 space-y-2">
+    <div className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-2">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
           <Icon size={15} className="text-primary-light" />
@@ -85,8 +85,8 @@ function StatCard({ icon: Icon, value, label, sub, subColor }) {
 
 function Section({ title, children }) {
   return (
-    <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-4">
-      <h2 className="text-sm font-semibold text-ink-2 border-b border-white/6 pb-3">{title}</h2>
+    <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
+      <h2 className="text-sm font-semibold text-ink-2 border-b border-overlay/6 pb-3">{title}</h2>
       {children}
     </div>
   );
@@ -99,7 +99,7 @@ function TotpInput({ value, onChange, autoFocus, label = 'Code 2FA' }) {
       <input type="text" inputMode="numeric" value={value}
         onChange={e => onChange(e.target.value)} placeholder="000 000" maxLength={7}
         autoFocus={autoFocus}
-        className="w-full px-3 py-3 rounded-xl bg-white/4 border border-white/8
+        className="w-full px-3 py-3 rounded-xl bg-overlay/4 border border-overlay/8
                    text-base text-ink-1 placeholder-ink-4 outline-hidden focus:border-primary/50
                    text-center tracking-[0.4em] font-mono transition-colors" />
     </div>
@@ -283,7 +283,7 @@ export default function Profile() {
     <div className="p-6 space-y-5 max-w-4xl">
 
       {/* ── Hero / Banner ───────────────────────────────────────────────── */}
-      <div className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden">
+      <div className="bg-surface-card border border-overlay/6 rounded-2xl overflow-hidden">
         {/* Banner */}
         <div className="h-28 relative"
           style={{ background: `linear-gradient(135deg, ${bannerColor}66 0%, ${bannerColor}22 100%)` }}>
@@ -397,7 +397,7 @@ export default function Profile() {
               {recentTickets.map(t => (
                 <div key={t.id}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl
-                             bg-white/3 border border-white/5 hover:bg-white/5 transition-colors">
+                             bg-overlay/3 border border-overlay/5 hover:bg-overlay/5 transition-colors">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-ink-2 truncate">
                       {t.subject || `Ticket #${t.id}`}
@@ -412,7 +412,7 @@ export default function Profile() {
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border
                                      ${t.status === 'open'
                                        ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20'
-                                       : 'text-ink-4 bg-white/4 border-white/8'}`}>
+                                       : 'text-ink-4 bg-overlay/4 border-overlay/8'}`}>
                       {t.status === 'open' ? 'Ouvert' : 'Fermé'}
                     </span>
                   </div>
@@ -437,7 +437,7 @@ export default function Profile() {
                 <div className="flex items-center gap-3">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="" onError={() => setImgError(true)}
-                      className="w-10 h-10 rounded-xl object-cover shrink-0 ring-1 ring-white/10" />
+                      className="w-10 h-10 rounded-xl object-cover shrink-0 ring-1 ring-overlay/10" />
                   ) : (
                     <div className="w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600
                                     flex items-center justify-center text-sm font-bold text-white shrink-0">
@@ -446,7 +446,7 @@ export default function Profile() {
                   )}
                   <button onClick={() => setEditingPhoto(true)}
                     className="flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1
-                               px-3 py-2 rounded-lg border border-white/8 hover:bg-white/5 transition-all">
+                               px-3 py-2 rounded-lg border border-overlay/8 hover:bg-overlay/5 transition-all">
                     <Link size={12} /> {photoUrl ? 'Changer l\'URL' : 'Ajouter une URL'}
                   </button>
                   {photoUrl && (
@@ -461,11 +461,11 @@ export default function Profile() {
                 <div className="flex gap-2">
                   <input type="url" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
                     placeholder="https://cdn.discordapp.com/…  (lien d'une image envoyée sur Discord)" autoFocus
-                    className="flex-1 bg-surface border border-white/8 text-ink-1 placeholder-ink-4
+                    className="flex-1 bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                                rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors" />
                   <button onClick={() => setEditingPhoto(false)}
                     className="px-3 py-2 rounded-lg text-sm text-ink-3 hover:text-ink-1
-                               hover:bg-white/5 border border-white/8 transition-all">
+                               hover:bg-overlay/5 border border-overlay/8 transition-all">
                     OK
                   </button>
                 </div>
@@ -477,7 +477,7 @@ export default function Profile() {
               <label className="text-sm text-ink-2 font-medium block mb-1">Bio</label>
               <textarea value={bio} onChange={e => setBio(e.target.value.slice(0, 160))} rows={2}
                 placeholder="Quelques mots sur toi…"
-                className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4
+                className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                            rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary
                            transition-colors resize-none" />
               <p className="text-[10px] text-ink-4 text-right mt-0.5">{bio.length}/160</p>
@@ -488,10 +488,10 @@ export default function Profile() {
               <label className="text-sm text-ink-2 font-medium block mb-1">Couleur de bannière</label>
               <div className="flex items-center gap-2">
                 <input type="color" value={bannerColor} onChange={e => setBannerColor(e.target.value)}
-                  className="w-10 h-9 rounded-lg border border-white/8 bg-transparent cursor-pointer p-0.5 shrink-0" />
+                  className="w-10 h-9 rounded-lg border border-overlay/8 bg-transparent cursor-pointer p-0.5 shrink-0" />
                 <input type="text" value={bannerColor} onChange={e => setBannerColor(e.target.value)}
                   pattern="^#[0-9a-fA-F]{6}$" placeholder="#6366f1"
-                  className="flex-1 bg-surface border border-white/8 text-ink-1 placeholder-ink-4
+                  className="flex-1 bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                              rounded-lg px-3 py-2 text-sm font-mono focus:outline-hidden focus:border-primary transition-colors" />
                 <div className="w-9 h-9 rounded-lg shrink-0" style={{ background: bannerColor }} />
               </div>
@@ -501,7 +501,7 @@ export default function Profile() {
             <label className="flex items-center gap-3 cursor-pointer">
               <div onClick={() => setVacation(v => !v)}
                 className={`w-10 h-5 rounded-full transition-colors shrink-0
-                           ${vacation ? 'bg-amber-500' : 'bg-white/10'}`}>
+                           ${vacation ? 'bg-amber-500' : 'bg-overlay/10'}`}>
                 <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform
                                 ${vacation ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
@@ -518,7 +518,7 @@ export default function Profile() {
             <label className="flex items-center gap-3 cursor-pointer">
               <div onClick={() => setNotifyAssignDm(v => !v)} role="switch" aria-checked={notifyAssignDm}
                 className={`w-10 h-5 rounded-full transition-colors shrink-0
-                           ${notifyAssignDm ? 'bg-primary' : 'bg-white/10'}`}>
+                           ${notifyAssignDm ? 'bg-primary' : 'bg-overlay/10'}`}>
                 <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform
                                 ${notifyAssignDm ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
@@ -551,7 +551,7 @@ export default function Profile() {
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border
                                  ${twoFaEnabled
                                    ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20'
-                                   : 'text-ink-4 bg-white/4 border-white/8'}`}>
+                                   : 'text-ink-4 bg-overlay/4 border-overlay/8'}`}>
                   {twoFaEnabled ? '● Activé' : '○ Désactivé'}
                 </span>
               )}
@@ -572,7 +572,7 @@ export default function Profile() {
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => { setTwoFaStep('regen'); setTotpCode(''); setTwoFaError(''); }}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-                                 text-ink-2 border border-white/8 hover:bg-white/5 transition-all">
+                                 text-ink-2 border border-overlay/8 hover:bg-overlay/5 transition-all">
                       <ShieldCheck size={14} /> Nouveaux codes de secours
                     </button>
                     <button onClick={() => { setTwoFaStep('disable'); setTotpCode(''); setTwoFaError(''); }}
@@ -600,7 +600,7 @@ export default function Profile() {
                 {qrDataUrl && (
                   <div className="flex justify-center">
                     <img src={qrDataUrl} alt="QR 2FA"
-                      className="w-36 h-36 rounded-xl border border-white/10 p-2 bg-white" />
+                      className="w-36 h-36 rounded-xl border border-overlay/10 p-2 bg-white" />
                   </div>
                 )}
                 {secret && (
@@ -620,7 +620,7 @@ export default function Profile() {
                 <div className="flex gap-2">
                   <button type="button" onClick={reset2Fa}
                     className="flex-1 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1
-                               hover:bg-white/5 transition-all">Annuler</button>
+                               hover:bg-overlay/5 transition-all">Annuler</button>
                   <button type="submit"
                     disabled={twoFaActionLoading || totpCode.replace(/\s/g, '').length < 6}
                     className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-primary
@@ -643,7 +643,7 @@ export default function Profile() {
                 <div className="flex gap-2">
                   <button type="button" onClick={reset2Fa}
                     className="flex-1 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1
-                               hover:bg-white/5 transition-all">Annuler</button>
+                               hover:bg-overlay/5 transition-all">Annuler</button>
                   <button type="submit"
                     disabled={twoFaActionLoading || totpCode.replace(/\s/g, '').length < 6}
                     className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-primary
@@ -666,7 +666,7 @@ export default function Profile() {
                 <div className="flex gap-2">
                   <button type="button" onClick={reset2Fa}
                     className="flex-1 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1
-                               hover:bg-white/5 transition-all">Annuler</button>
+                               hover:bg-overlay/5 transition-all">Annuler</button>
                   <button type="submit"
                     disabled={twoFaActionLoading || totpCode.replace(/\s/g, '').length < 6}
                     className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-red-600
@@ -723,7 +723,7 @@ export default function Profile() {
           )}
           {!sessionsLoading && sessions.map(s => (
             <div key={s.sessionId}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/6">
+              className="flex items-center gap-3 p-3 rounded-xl bg-overlay/3 border border-overlay/6">
               <Monitor size={15} className="text-ink-4 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -756,7 +756,7 @@ export default function Profile() {
       </Section>
 
       {/* ── All-time stats footer ─────────────────────────────────────────── */}
-      <div className="bg-surface-card border border-white/6 rounded-2xl px-5 py-4">
+      <div className="bg-surface-card border border-overlay/6 rounded-2xl px-5 py-4">
         <p className="text-xs font-semibold text-ink-3 mb-3">Statistiques globales</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[

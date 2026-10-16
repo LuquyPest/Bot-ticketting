@@ -104,7 +104,7 @@ export default function Sidebar() {
         aria-label={sidebarOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         aria-expanded={sidebarOpen}
         aria-controls="main-sidebar"
-        className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-surface-card border border-white/8
+        className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-surface-card border border-overlay/8
                    text-ink-3 hover:text-ink-1 transition-all lg:hidden shadow-card"
         onClick={() => setSidebarOpen(o => !o)}
       >
@@ -116,7 +116,7 @@ export default function Sidebar() {
         role="navigation"
         aria-label="Navigation principale"
         className={`
-          w-56 shrink-0 flex flex-col glass-dark border-r border-white/6
+          w-56 shrink-0 flex flex-col glass-dark border-r border-overlay/6
           transition-transform duration-200 ease-out
           fixed inset-y-0 left-0 z-40 lg:relative lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -124,7 +124,7 @@ export default function Sidebar() {
       >
 
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/6">
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-overlay/6">
           <div className="relative w-9 h-9 shrink-0">
             <div className="w-9 h-9 rounded-xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
                             flex items-center justify-center shadow-lg shadow-primary/30">
@@ -148,7 +148,7 @@ export default function Sidebar() {
             onClick={() => setCmdOpen(true)}
             aria-label="Ouvrir la palette de commandes (⌘K)"
             title="Recherche (⌘K)"
-            className="p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-white/6
+            className="p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-overlay/6
                        transition-all shrink-0"
           >
             <Command size={13} aria-hidden="true" />
@@ -170,7 +170,7 @@ export default function Sidebar() {
                   transition-all duration-150 cursor-pointer group
                   ${isActive
                     ? 'bg-primary/10 text-ink-1'
-                    : 'text-ink-3 hover:text-ink-2 hover:bg-white/4'}
+                    : 'text-ink-3 hover:text-ink-2 hover:bg-overlay/4'}
                 `}>
                   {isActive && (
                     <span className="absolute left-0 h-5 w-[3px] bg-linear-to-b from-primary-light to-primary
@@ -200,14 +200,14 @@ export default function Sidebar() {
         </nav>
 
         {/* Guild switcher */}
-        <div className="px-2 pb-1 border-t border-white/6 pt-2">
+        <div className="px-2 pb-1 border-t border-overlay/6 pt-2">
           <GuildSwitcher />
         </div>
 
         {/* User footer */}
         <div className="px-2 pb-3 pt-2">
           <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl
-                          bg-white/3 border border-white/5">
+                          bg-overlay/3 border border-overlay/5">
             {/* Avatar — link to profile page */}
             <button
               onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
@@ -217,7 +217,7 @@ export default function Sidebar() {
                          transition-all focus:outline-hidden"
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full ring-1 ring-white/10" />
+                <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full ring-1 ring-overlay/10" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-500 to-indigo-600
                                 flex items-center justify-center text-xs font-bold text-white">

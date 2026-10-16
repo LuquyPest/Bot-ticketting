@@ -18,6 +18,8 @@
   --color-ink-2: var(--color-ink-2);
   --color-ink-3: var(--color-ink-3);
   --color-ink-4: var(--color-ink-4);
+  /* Translucent layers (bg-overlay/5, border-overlay/8…): white on dark, ink on light */
+  --color-overlay: var(--overlay);
 }
 
 @theme {
@@ -193,7 +195,7 @@
   /* ── Inputs ─────────────────────────────────────────── */
   @apply w-full bg-surface text-ink-1 placeholder-ink-4 rounded-xl px-3.5
            focus:outline-hidden focus:ring-1 focus:ring-primary/20
-           hover:border-white/12
+           hover:border-overlay/12
            transition-all duration-150;
   border: 1px solid rgba(255, 255, 255, 0.07);
   min-height: 44px; /* touch target */
@@ -229,7 +231,7 @@
 }
 
 @utility btn-secondary {
-  @apply btn text-ink-2 hover:text-ink-1 hover:bg-white/[0.07];
+  @apply btn text-ink-2 hover:text-ink-1 hover:bg-overlay/[0.07];
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   --tw-ring-color: rgba(124, 110, 243, 0.35);
@@ -243,7 +245,7 @@
 }
 
 @utility btn-ghost {
-  @apply btn text-ink-3 hover:text-ink-1 hover:bg-white/5;
+  @apply btn text-ink-3 hover:text-ink-1 hover:bg-overlay/5;
   --tw-ring-color: rgba(124, 110, 243, 0.3);
 }
 
@@ -346,6 +348,7 @@
 @layer utilities {
   /* ─── Design Tokens — Dark (default) ────────────────────────────── */
   :root {
+    --overlay: #ffffff;
     /* Surface scale */
     --color-base: #08080e;
     --color-surface: #0d0d18;
@@ -404,6 +407,7 @@
 
   /* ─── Design Tokens — Light ──────────────────────────────────────── */
   html.light {
+    --overlay: #14142a;
     /* Light steps of the same hues; 3–5 sit under 3:1 on white → charts ship visible values / a table view */
     --viz-1: #2a78d6;
     --viz-2: #eb6834;
@@ -614,11 +618,6 @@ html.light .shimmer {
   );
   background-size: 200% 100%;
 }
-
-/* Light mode: white-opacity utilities → dark-opacity */
-html.light [class*="border-white/"]  { border-color:    rgba(20,20,42,0.09) !important; }
-html.light [class*="ring-white/"]    { --tw-ring-color:  rgba(20,20,42,0.09) !important; }
-html.light [class*="bg-white/"]      { background-color: rgba(20,20,42,0.04) !important; }
 
 /* Light mode card & table */
 html.light .card                { border-color: rgba(20,20,42,0.08); box-shadow: 0 1px 3px rgba(20,20,42,0.06), 0 0 0 1px rgba(20,20,42,0.05); }

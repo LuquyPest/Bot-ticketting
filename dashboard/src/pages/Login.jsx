@@ -72,7 +72,7 @@ export default function Login() {
         )}
 
         {/* Card */}
-        <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl p-6
+        <div className="relative bg-surface-card border border-overlay/[0.07] rounded-2xl p-6
                         shadow-[0_8px_48px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)]">
           {/* Top glow line */}
           <div className="absolute top-0 left-8 right-8 h-px
@@ -95,9 +95,9 @@ export default function Login() {
           </a>
 
           <div className="flex items-center gap-2 mt-5">
-            <div className="h-px flex-1 bg-white/6" />
+            <div className="h-px flex-1 bg-overlay/6" />
             <span className="text-[10px] text-ink-4 font-medium uppercase tracking-wider">Accès restreint</span>
-            <div className="h-px flex-1 bg-white/6" />
+            <div className="h-px flex-1 bg-overlay/6" />
           </div>
 
           <div className="flex items-center justify-center gap-1.5 mt-4">

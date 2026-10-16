@@ -16,7 +16,7 @@ export function confirmToast(message) {
           </button>
           <button
             onClick={() => { toast.dismiss(t.id); resolve(false); }}
-            className="px-3 py-1.5 rounded-lg bg-surface text-ink-3 border border-white/8
+            className="px-3 py-1.5 rounded-lg bg-surface text-ink-3 border border-overlay/8
                        text-xs font-semibold hover:bg-surface-hover transition-colors shrink-0"
           >
             Annuler

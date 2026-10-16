@@ -57,7 +57,7 @@ export default function Newsletter() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Compose form */}
-        <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-4">
+        <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-ink-2">Rédaction</h3>
 
           <div>
@@ -68,7 +68,7 @@ export default function Newsletter() {
               onChange={e => setSubject(e.target.value)}
               placeholder="ex: Nouvelles règles de modération"
               maxLength={100}
-              className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2
+              className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2
                          text-sm focus:outline-hidden focus:border-primary transition-colors placeholder:text-ink-4"
             />
           </div>
@@ -81,7 +81,7 @@ export default function Newsletter() {
               placeholder="Ton message ici..."
               maxLength={MAX_CHARS}
               rows={8}
-              className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2
+              className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2
                          text-sm focus:outline-hidden focus:border-primary transition-colors resize-none
                          placeholder:text-ink-4 leading-relaxed"
             />
@@ -100,7 +100,7 @@ export default function Newsletter() {
         </div>
 
         {/* Preview */}
-        <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-3">
+        <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-ink-2">Aperçu Discord</h3>
             <Users size={12} className="text-ink-4" />

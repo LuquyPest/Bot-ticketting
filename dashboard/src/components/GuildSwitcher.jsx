@@ -11,7 +11,7 @@ function GuildIcon({ guild, size = 'sm' }) {
       <img
         src={`https://cdn.discordapp.com/icons/${guild.guild_id}/${guild.guild_icon}.webp?size=32`}
         alt=""
-        className={`${cls} ring-1 ring-white/10 object-cover shrink-0`}
+        className={`${cls} ring-1 ring-overlay/10 object-cover shrink-0`}
         onError={() => setError(true)}
       />
     );
@@ -64,7 +64,7 @@ export default function GuildSwitcher() {
         onClick={handleOpen}
         className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl w-full
                    text-xs font-medium text-ink-2 hover:text-ink-1
-                   hover:bg-white/5 transition-all duration-150 group"
+                   hover:bg-overlay/5 transition-all duration-150 group"
         title="Changer de serveur"
       >
         {currentGuild
@@ -82,7 +82,7 @@ export default function GuildSwitcher() {
 
       {open && (
         <div className="absolute bottom-full left-0 mb-1.5 w-full z-50
-                        glass-dark rounded-xl border border-white/10 shadow-xl shadow-black/50
+                        glass-dark rounded-xl border border-overlay/10 shadow-xl shadow-black/50
                         overflow-hidden py-1">
           {!loaded && (
             <div className="flex items-center justify-center py-4">
@@ -101,7 +101,7 @@ export default function GuildSwitcher() {
                             text-xs transition-all duration-100
                             ${isActive
                               ? 'text-ink-1 bg-primary/10 cursor-default'
-                              : 'text-ink-3 hover:text-ink-1 hover:bg-white/5'}
+                              : 'text-ink-3 hover:text-ink-1 hover:bg-overlay/5'}
                             disabled:opacity-60`}
               >
                 <GuildIcon guild={guild} size="sm" />

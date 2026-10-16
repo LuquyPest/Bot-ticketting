@@ -542,6 +542,8 @@ async function main() {
   const [st9] = await db('SELECT 1 AS x FROM admin_stats WHERE admin_id = ?', [M9]);
   check('membre: ticket fermé par le membre', closed9.status === 'closed' && closed9.closed_by_id === null && JSON.stringify(ev9?.details).includes('Fermé par le membre'), JSON.stringify([closed9, ev9]));
   check('membre: fermeture non comptée dans les stats staff', !st9);
+  const [closeNote] = await db("SELECT source FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%fermé par le membre%'", [tm9]);
+  check('membre: événement système dans l\'historique', closeNote?.source === 'system', JSON.stringify(closeNote));
   di = dmInteraction(confirmId);
   await interModM.execute(fakeClient, di.interaction);
   check('membre: double fermeture refusée proprement', /déjà fermé/.test(di.out.update?.content), JSON.stringify(di.out));
@@ -566,6 +568,18 @@ async function main() {
   check('notation: un seul commentaire par ticket', rc2.comment === 'Très rapide, merci !' && /déjà/.test(di.out.reply?.content), JSON.stringify([rc2, di.out]));
   r = await req('GET', `/api/tickets/${tm9}`, { sid: sessions.FV });
   check('notation: commentaire visible dans la fiche du ticket', r.body.rating?.comment === 'Très rapide, merci !', JSON.stringify(r.body.rating));
+  // /reopen works even when the member has another open ticket (several tickets per member)
+  const tOpen9 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member09', 'co9', 'open', 'autre')", [M9])).insertId;
+  {
+    const out = {};
+    await app('./commands/reopen').execute(fakeClient, {
+      guildId: G, channelId: 'x', guild: guildObj, user: { id: U.F, username: 'F', tag: 'F' },
+      options: { getString: () => M9 }, reply: async p => { out.reply = p; }, deferReply: async () => {}, editReply: async p => { out.edit = p; },
+    });
+    const [re9] = await db('SELECT status FROM tickets WHERE id = ?', [tm9]);
+    check('/reopen: possible même si le membre a un autre ticket ouvert', re9.status === 'open' && /réouvert/.test(out.edit?.content), JSON.stringify([re9, out]));
+  }
+  await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tOpen9]]);
 
   // ── Reply templates: personal / shared, suggested by subject ──
   await mk('S1T', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
@@ -700,6 +714,8 @@ async function main() {
   check('fusion: historique, participants et attributions déplacés', notesB.some(n => n.content === 'message du premier') && notesB.some(n => n.content.includes(`#${mA}`))
     && partsB.some(p => p.user_id === '200000000000000013') && asgB.some(a => a.user_id === U.S1), JSON.stringify([notesB, partsB, asgB]));
   const mergeDm = memberDms.find(m => m.id === MO)?.p?.embeds?.[0]?.data;
+  const [sysNote] = await db("SELECT source FROM ticket_notes WHERE ticket_id = ? AND content LIKE '🔀%'", [mB]);
+  check('fusion: note de type système', sysNote?.source === 'system', JSON.stringify(sysNote));
   check('fusion: le membre est prévenu', mergeDm?.title?.includes('regroupés') && mergeDm.author.name.includes(`#${mB}`), JSON.stringify(mergeDm));
   const [mev] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_merge'");
   check('fusion: journalisée sur les deux tickets', Number(mev.n) === 2, JSON.stringify(mev));
@@ -976,6 +992,7 @@ async function main() {
   errorLog.logError(G, 'test-ctx', new Error('boom unique'));
   errorLog.logError(G, 'test-ctx', new Error('boom unique')); // same message within a minute: ignored
   errorLog.captureConsoleErrors();
+  console.error('dm-fermes:', Object.assign(new Error('Cannot send messages to this user'), { code: 50007 }));
   console.error('capture-test:', new Error('message capturé'));
   const { EventEmitter } = require('events');
   const fakeRes = Object.assign(new EventEmitter(), { statusCode: 500 });
@@ -985,6 +1002,8 @@ async function main() {
   r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'test-ctx' } });
   check('erreurs: enregistrée avec le serveur, doublon ignoré', r.status === 200 && r.body.total === 1 && !!r.body.rows[0].guild_name && r.body.rows[0].stack.includes('boom unique'), JSON.stringify(r.body.rows));
   r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { q: 'message capturé', hours: 1 } });
+  const [benign] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'dm-fermes'");
+  check('erreurs: erreurs Discord attendues ignorées (MP fermés…)', Number(benign.n) === 0, JSON.stringify(benign));
   check('erreurs: console.error capturé', r.body.rows?.some(e => e.context === 'capture-test'), JSON.stringify(r.body.rows));
   r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'http' } });
   check('erreurs: réponse HTTP 500 enregistrée avec la route', r.body.rows?.some(e => e.message === 'GET /api/tickets/:id → 500' && e.guild_id === G), JSON.stringify(r.body.rows));

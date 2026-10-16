@@ -36,7 +36,7 @@ export default function SALimitsModal({ guild, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <form onSubmit={save} className="glass-dark rounded-2xl border border-white/8 p-6 w-full max-w-md space-y-4 shadow-2xl">
+      <form onSubmit={save} className="glass-dark rounded-2xl border border-overlay/8 p-6 w-full max-w-md space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink-1 flex items-center gap-2">
             <Gauge size={15} className="text-red-400" /> Limites — {guild.guild_name}
@@ -49,14 +49,14 @@ export default function SALimitsModal({ guild, onClose, onSaved }) {
             <span className="text-xs font-medium text-ink-2">{f.label}</span>
             <input type="number" min={0} step={1} value={values[f.key]}
               onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl bg-white/4 border border-white/8 text-sm text-ink-1
+              className="w-full px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-sm text-ink-1
                          outline-hidden focus:border-primary/50 tabular-nums" />
             <span className="block text-[10px] text-ink-4">{f.hint}</span>
           </label>
         ))}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1 hover:bg-white/5">Annuler</button>
+            className="px-4 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1 hover:bg-overlay/5">Annuler</button>
           <button type="submit" disabled={saving}
             className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-light disabled:opacity-60 flex items-center gap-1.5">
             {saving && <Loader2 size={13} className="animate-spin" />} Enregistrer

@@ -7,7 +7,7 @@ import { confirmToast } from '../../utils/confirmToast';
 
 const PAGE = 50;
 const PERIODS = [[24, '24 h'], [168, '7 jours'], [720, '30 jours'], [0, 'Tout']];
-const card = 'glass-dark rounded-2xl border border-white/8';
+const card = 'glass-dark rounded-2xl border border-overlay/8';
 const fmt = d => new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 // Last 24 hours, one bar per hour (rows: { ago: hours ago, n }).
@@ -37,7 +37,7 @@ function ErrorRow({ e, onDelete }) {
             <span>· {fmt(e.created_at)}</span>
           </p>
           {open && (
-            <pre className="mt-2 p-3 rounded-lg bg-black/30 border border-white/6 text-[11px] text-ink-3 overflow-x-auto whitespace-pre-wrap break-all">
+            <pre className="mt-2 p-3 rounded-lg bg-black/30 border border-overlay/6 text-[11px] text-ink-3 overflow-x-auto whitespace-pre-wrap break-all">
               {e.stack || 'Pas de trace disponible'}
             </pre>
           )}
@@ -92,7 +92,7 @@ export default function SAErrors() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
-  const input = 'px-3 py-2 rounded-xl bg-white/4 border border-white/8 text-xs text-ink-1 outline-hidden focus:border-primary/50';
+  const input = 'px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-xs text-ink-1 outline-hidden focus:border-primary/50';
 
   return (
     <div className="p-6 space-y-5 max-w-6xl">
@@ -101,7 +101,7 @@ export default function SAErrors() {
           <h1 className="text-lg font-bold text-ink-1">Erreurs</h1>
           <p className="text-sm text-ink-3">Erreurs du bot, du dashboard et des automatismes, tous serveurs confondus</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/5" title="Actualiser">
+        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser">
           <RefreshCw size={15} />
         </button>
       </div>
@@ -134,7 +134,7 @@ export default function SAErrors() {
                     <li key={c.context}>
                       <button onClick={() => set('context', filters.context === c.context ? '' : c.context)}
                         className={`w-full flex items-center gap-2 px-2 py-1 rounded-lg text-xs text-left
-                                    ${filters.context === c.context ? 'bg-primary/15 text-ink-1' : 'text-ink-2 hover:bg-white/4'}`}>
+                                    ${filters.context === c.context ? 'bg-primary/15 text-ink-1' : 'text-ink-2 hover:bg-overlay/4'}`}>
                         <span className="font-mono truncate flex-1" title={c.context}>{c.context}</span>
                         <span className="tabular-nums text-ink-1">{c.n}</span>
                       </button>
@@ -146,7 +146,7 @@ export default function SAErrors() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 p-1 rounded-xl bg-white/4 border border-white/6">
+            <div className="flex gap-1 p-1 rounded-xl bg-overlay/4 border border-overlay/6">
               {PERIODS.map(([h, label]) => (
                 <button key={h} onClick={() => set('hours', h)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filters.hours === h ? 'bg-primary/15 text-ink-1' : 'text-ink-4 hover:text-ink-2'}`}>
@@ -165,7 +165,7 @@ export default function SAErrors() {
                 className="flex-1 bg-transparent outline-hidden placeholder-ink-4" />
             </div>
             {filters.context && (
-              <button onClick={() => set('context', '')} className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs text-ink-2 bg-white/4 border border-white/8">
+              <button onClick={() => set('context', '')} className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs text-ink-2 bg-overlay/4 border border-overlay/8">
                 <span className="font-mono">{filters.context}</span> <X size={12} />
               </button>
             )}
@@ -177,19 +177,19 @@ export default function SAErrors() {
           </div>
 
           <div className={`${card} overflow-hidden`}>
-            <div className="px-5 py-3 border-b border-white/6 text-xs text-ink-3">{data.total} erreur(s)</div>
+            <div className="px-5 py-3 border-b border-overlay/6 text-xs text-ink-3">{data.total} erreur(s)</div>
             {data.rows.length === 0 ? (
               <p className="px-5 py-10 text-xs text-ink-4 text-center">Aucune erreur pour ces filtres</p>
             ) : (
-              <ul className="divide-y divide-white/4">
+              <ul className="divide-y divide-overlay/4">
                 {data.rows.map(e => <ErrorRow key={e.id} e={e} onDelete={remove} />)}
               </ul>
             )}
             {data.total > PAGE && (
-              <div className="px-5 py-3 border-t border-white/6 flex items-center justify-between text-xs text-ink-3">
-                <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 rounded-lg hover:bg-white/5 disabled:opacity-40">Précédent</button>
+              <div className="px-5 py-3 border-t border-overlay/6 flex items-center justify-between text-xs text-ink-3">
+                <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 rounded-lg hover:bg-overlay/5 disabled:opacity-40">Précédent</button>
                 <span>Page {page + 1} / {Math.ceil(data.total / PAGE)}</span>
-                <button disabled={(page + 1) * PAGE >= data.total} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 rounded-lg hover:bg-white/5 disabled:opacity-40">Suivant</button>
+                <button disabled={(page + 1) * PAGE >= data.total} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 rounded-lg hover:bg-overlay/5 disabled:opacity-40">Suivant</button>
               </div>
             )}
           </div>
