@@ -300,7 +300,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
 | **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
 | **Grades** | fondateur, `manage_grades` | Hiérarchie de grades et permissions |
-| **Audit** | fondateur, `view_audit` | Journal des actions du dashboard |
+| **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV et onglet Analytique |
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances |
 | **Tags** | fondateur | Tags pour organiser les tickets |
@@ -311,6 +311,16 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Newsletter** | fondateur | DM groupé au staff |
 | **Patchnotes** | fondateur | Historique des versions |
 | **Profil** | tous | Bio, photo (CDN Discord), 2FA, codes de secours, sessions actives, notifications push |
+
+### Journal d'activité
+
+Chaque action est enregistrée dans `audit_log` avec son **acteur**, sa **source** (Dashboard, Discord, Automatique, API, Super-admin), le **ticket** concerné et des détails lisibles : ouverture, fermeture (y compris automatique, avec la raison), réouverture, réponses et notes, attributions, étapes, priorité, titre, renommage, participants, tags, notation, escalade, messages programmés, blacklist, connexions au dashboard, accès accordés / retirés par rôle Discord, grades, fondateurs, paramètres, panels, formulaires, tags, modèles, clés API, newsletter.
+
+La page **Journal** filtre par catégorie, action, source, acteur, ticket, période et texte, exporte en CSV, et son onglet **Analytique** montre l'activité par jour et par catégorie, les actions les plus fréquentes, les membres les plus actifs, l'origine des actions et l'activité par heure (7, 30 ou 90 jours, avec les mêmes filtres).
+
+### Messages privés
+
+Chaque message privé lié à un ticket (réponse du staff, message programmé, accueil, ajout comme participant, avertissement d'inactivité, fermeture, réouverture) est un embed dont l'en-tête indique **le serveur, le numéro et le titre du ticket** — indispensable quand un membre a des tickets ouverts sur plusieurs serveurs.
 
 ### Vues de la liste des tickets
 
@@ -574,7 +584,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `scheduled_messages` | Messages planifiés |
 | `staff_notes` | Notes internes isolées (commande `/note`) |
 | `guild_config` | Configuration complète du serveur |
-| `audit_log` | Journal d'audit de toutes les actions dashboard |
+| `audit_log` | Journal de toutes les actions (acteur, source, ticket, détails) |
 | `ticket_panels` | Panels de boutons Discord (embed + métadonnées, message_id publié) |
 | `panel_buttons` | Boutons associés à un panel (label, emoji, style, sujet, formulaire) |
 

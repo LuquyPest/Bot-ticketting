@@ -10,6 +10,19 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.10',
+    date: '16 octobre 2026',
+    title: 'Journal d\'activité complet, analytique et messages privés en embeds',
+    changes: [
+      { type: 'new',  text: 'Journal d\'activité : toutes les actions sont enregistrées (dashboard, Discord, API, automatismes, super-admin) avec la source et le ticket concerné' },
+      { type: 'new',  text: 'Page Journal : descriptions lisibles, filtres (catégorie, action, source, acteur, ticket, période, texte), export CSV' },
+      { type: 'new',  text: 'Onglet Analytique du journal : activité par jour et catégorie, actions fréquentes, membres actifs, origine des actions, activité par heure' },
+      { type: 'new',  text: 'Les messages privés liés à un ticket sont des embeds indiquant le serveur, le numéro et le titre du ticket' },
+      { type: 'new',  text: 'Le titre du ticket se modifie directement dans l\'en-tête de la vue ticket' },
+      { type: 'fix',  text: 'Les fermetures automatiques ne sont plus attribuées au bot dans les statistiques staff' },
+    ]
+  },
+  {
     version: 'v2.9',
     date: '16 octobre 2026',
     title: 'Assignation multiple, étapes de ticket et vues personnalisées',
