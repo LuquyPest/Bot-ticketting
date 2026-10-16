@@ -78,6 +78,7 @@ client.once(Events.ClientReady, () => {
 async function shutdown(signal) {
   logger.info('Arrêt en cours', { signal });
   httpServer?.close();
+  await require('./utils/sse').stopBus();
   client.destroy();
   await require('./utils/globalDb').getPool().end().catch(() => {});
   await require('./utils/tenantDb').closeAll();

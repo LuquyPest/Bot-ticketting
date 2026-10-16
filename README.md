@@ -108,6 +108,14 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 
 ---
 
+### État partagé (Redis)
+
+Tout l'état « vivant » est dans Redis : sessions, conversations MP en cours, tâches planifiées (BullMQ), limiteurs (connexion, API, cooldown des commandes, anti-flood des MP), verrou de création de ticket et événements temps réel (pub/sub `sse:events`). Un redémarrage ne perd rien, et ces briques fonctionnent déjà avec plusieurs instances.
+
+Limite actuelle : le processus héberge à la fois la connexion Discord (gateway) et le dashboard, qui appelle directement ce client. Lancer deux instances ouvrirait deux connexions Discord et chaque événement serait traité deux fois. Monter en charge demandera de séparer un processus « bot » (gateway, éventuellement shardé au-delà de ~2 500 serveurs) et des processus « web » qui lui délèguent les appels Discord.
+
+---
+
 ## Prérequis
 
 - **Docker** et **Docker Compose v2**

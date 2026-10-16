@@ -490,7 +490,7 @@ router.get('/blocked', requireSuperAdmin, async (req, res) => {
         ...sas.map(a => ({ ...a, type: 'superadmin' })),
         ...mgrs.map(a => ({ ...a, type: 'manager' })),
       ],
-      ips: listBlocked(),
+      ips: await listBlocked(),
     });
   } catch (err) {
     console.error(err);

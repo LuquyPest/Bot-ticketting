@@ -191,6 +191,7 @@ if (fs.existsSync(distPath)) {
 }
 
 function startWebServer(client) {
+  require('../utils/sse').startBus(); // real-time events shared between instances
   app.locals.client = client;
   app.set('botClient', client);
   const port = config.webServerPort || 3000;

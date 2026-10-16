@@ -22,7 +22,7 @@ module.exports = {
 
     const cfg = await tm.getGuildConfig(db);
     const cooldown = ((cfg.reply_rate_limit_seconds ?? client.config?.replyRateLimitSeconds ?? 3)) * 1000;
-    const remaining = checkRateLimit(`reply:${interaction.user.id}:${interaction.guildId}`, cooldown);
+    const remaining = await checkRateLimit(`reply:${interaction.user.id}:${interaction.guildId}`, cooldown);
     if (remaining > 0) {
       return interaction.reply({ content: `Attends encore ${remaining}s avant de renvoyer une réponse.`, flags: MessageFlags.Ephemeral });
     }

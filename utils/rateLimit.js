@@ -1,51 +1,44 @@
-// In-memory cooldown map for Discord bot command rate-limiting.
-// Intentionally in-memory: bot restarts reset cooldowns, which is acceptable
-// for command spam protection. Entries are automatically evicted after expiry
-// to prevent unbounded memory growth.
-const cooldowns = new Map();
+// Bot-side rate limiting (command cooldowns, DM flood protection), stored in Redis so every
+// bot instance shares the same counters. If Redis is unreachable the check lets the action
+// through (fail-open): an anti-spam outage must never block the support.
+const { getRedis } = require('./redis');
+const logger = require('./logger');
 
-const EVICT_INTERVAL_MS = 5 * 60 * 1000;
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, ts] of cooldowns) {
-    if (now - ts > EVICT_INTERVAL_MS) cooldowns.delete(key);
-  }
-}, EVICT_INTERVAL_MS).unref();
+const PREFIX = 'rl:bot:';
 
-function checkRateLimit(key, cooldownMs) {
-  const last = cooldowns.get(key) || 0;
-  const elapsed = Date.now() - last;
-  if (elapsed < cooldownMs) {
-    return Math.ceil((cooldownMs - elapsed) / 1000);
-  }
-  cooldowns.set(key, Date.now());
-  return 0;
+function failOpen(err, fallback) {
+  logger.warn('Limiteur indisponible (Redis)', { err: err.message });
+  return fallback;
 }
 
-module.exports = { checkRateLimit };
+// Cooldown: 0 when allowed (and starts the cooldown), else the seconds left.
+async function checkRateLimit(key, cooldownMs) {
+  try {
+    const r = getRedis();
+    if (await r.set(`${PREFIX}cd:${key}`, '1', 'PX', cooldownMs, 'NX')) return 0;
+    const left = await r.pttl(`${PREFIX}cd:${key}`);
+    return left > 0 ? Math.ceil(left / 1000) : 0;
+  } catch (err) { return failOpen(err, 0); }
+}
 
-// Sliding-window limiter: true while `key` stays under `max` hits per `windowMs`.
-const bursts = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, b] of bursts) if (now - b.start > b.windowMs) bursts.delete(key);
-}, EVICT_INTERVAL_MS).unref();
-
-function allowBurst(key, max, windowMs) {
-  const now = Date.now();
-  let b = bursts.get(key);
-  if (!b || now - b.start > windowMs) { b = { start: now, count: 0, windowMs, warned: false }; bursts.set(key, b); }
-  b.count++;
-  return b.count <= max;
+// Fixed window: true while `key` stays under `max` hits per `windowMs`.
+async function allowBurst(key, max, windowMs) {
+  try {
+    const r = getRedis();
+    const k = `${PREFIX}burst:${key}`;
+    const n = await r.incr(k);
+    if (n === 1) await r.pexpire(k, windowMs);
+    return n <= max;
+  } catch (err) { return failOpen(err, true); }
 }
 
 // True only the first time a key is over its limit in the current window (to warn once).
-function firstOverflow(key) {
-  const b = bursts.get(key);
-  if (!b || b.warned) return false;
-  b.warned = true;
-  return true;
+async function firstOverflow(key) {
+  try {
+    const r = getRedis();
+    const ttl = await r.pttl(`${PREFIX}burst:${key}`);
+    return !!(await r.set(`${PREFIX}warned:${key}`, '1', 'PX', Math.max(ttl, 1000), 'NX'));
+  } catch (err) { return failOpen(err, false); }
 }
 
-module.exports.allowBurst = allowBurst;
-module.exports.firstOverflow = firstOverflow;
+module.exports = { checkRateLimit, allowBurst, firstOverflow };

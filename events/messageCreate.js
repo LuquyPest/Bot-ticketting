@@ -274,8 +274,8 @@ module.exports = {
         return;
       }
 
-      if (!allowBurst(`dm:${user.id}`, DM_MAX, DM_WINDOW_MS)) {
-        if (firstOverflow(`dm:${user.id}`)) {
+      if (!(await allowBurst(`dm:${user.id}`, DM_MAX, DM_WINDOW_MS))) {
+        if (await firstOverflow(`dm:${user.id}`)) {
           await user.send('⏳ Tu envoies trop de messages à la suite — attends quelques secondes avant de réessayer.').catch(() => null);
         }
         return;

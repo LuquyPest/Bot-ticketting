@@ -211,6 +211,10 @@ async function main() {
   const all = events.join('');
   check('SSE: note restreinte non reçue', !all.includes('LEAK'), all);
   check('SSE: note publique reçue', all.includes('VISIBLE'), all);
+  // Event published by another instance (straight on the Redis channel)
+  await redis.publish('sse:events', JSON.stringify({ event: 'note', data: { ticketId: t1, note: { content: 'FROM-OTHER-INSTANCE' } }, guildId: G }));
+  await new Promise(r => setTimeout(r, 300));
+  check('SSE: événement d\'une autre instance reçu (pub/sub Redis)', events.join('').includes('FROM-OTHER-INSTANCE'));
   sse.destroy();
 
   // Session revocation (Redis store)
@@ -1018,6 +1022,27 @@ async function main() {
   const [left] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'test-ctx'");
   const [captured] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'capture-test'");
   check('erreurs: vider selon les filtres uniquement', r.body.deleted === 1 && Number(left.n) === 0 && Number(captured.n) >= 1, JSON.stringify([r.body, left, captured]));
+
+  // ── Multi-instance: limits and creation lock shared through Redis ──
+  {
+    const rl = app('./utils/rateLimit');
+    const first = await rl.checkRateLimit('test:cd', 5000), second = await rl.checkRateLimit('test:cd', 5000);
+    check('multi-instance: cooldown des commandes dans Redis', first === 0 && second > 0 && !!(await redis.get('rl:bot:cd:test:cd')), JSON.stringify([first, second]));
+    let allowed = 0;
+    for (let i = 0; i < 5; i++) if (await rl.allowBurst('test:burst', 3, 5000)) allowed++;
+    check('multi-instance: anti-flood des MP dans Redis', allowed === 3 && (await rl.firstOverflow('test:burst')) && !(await rl.firstOverflow('test:burst')), String(allowed));
+    check('multi-instance: compteurs HTTP dans Redis', (await redis.keys('rl:auth:*')).length > 0);
+    // Another instance holds this member's creation lock and creates the ticket meanwhile
+    const ML = '200000000000000014';
+    await redis.set(`lock:create:${G}:${ML}`, 'other-instance', 'PX', 5000);
+    const otherTicket = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member14', ?, 'open', 'créé ailleurs')", [ML, OWN_CH])).insertId;
+    setTimeout(async () => { await redis.set(`lock:created:${G}:${ML}`, String(otherTicket), 'EX', 15); await redis.del(`lock:create:${G}:${ML}`); }, 300);
+    const res = await createManager(db, fakeClient, G).createTicket({ id: ML, username: 'member14', tag: 'member14', send: async () => {} }, 'message pendant la création', []);
+    const [cnt] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [ML]);
+    const relayed = await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%pendant la création%'", [otherTicket]);
+    check('multi-instance: création en cours ailleurs → pas de doublon, message relayé', Number(cnt.n) === 1 && relayed.length === 1 && res.created === false, JSON.stringify([cnt, relayed.length, res.created]));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [otherTicket]);
+  }
 
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);

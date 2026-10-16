@@ -1,6 +1,9 @@
 // SSE client registry — guild-aware.
 // Each client is registered with a guildId so broadcasts are isolated.
 // Ticket-related events are only delivered to users allowed to see that ticket.
+// Events go through Redis pub/sub: each instance delivers them to its own open streams, so a
+// dashboard connected to instance A sees what happens on instance B. Without Redis, events
+// are delivered locally only.
 const { getTenantDb } = require('./tenantDb');
 const { canUserSeeTicket } = require('./gradePermissions');
 
@@ -45,7 +48,7 @@ async function sendToTicketAudience(set, line, guildId, ticketId) {
   }
 }
 
-function broadcast(event, data, guildId) {
+function deliverBroadcast(event, data, guildId) {
   const set = clients.get(guildId || '_global');
   if (!set) return;
   const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -58,11 +61,49 @@ function broadcast(event, data, guildId) {
 }
 
 // Event for a single user (e.g. "a ticket was assigned to you").
-function sendToUser(guildId, userId, event, data) {
+function deliverToUser(guildId, userId, event, data) {
   const set = clients.get(guildId || '_global');
   if (!set) return;
   const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const entry of [...set]) if (entry.userId === userId) send(set, entry, line);
 }
 
-module.exports = { addClient, broadcast, sendToUser };
+// ── Redis bus ──
+const CHANNEL = 'sse:events';
+let bus = null;          // subscriber connection
+let busReady = false;
+
+function deliver(msg) {
+  if (msg.userId) deliverToUser(msg.guildId, msg.userId, msg.event, msg.data);
+  else deliverBroadcast(msg.event, msg.data, msg.guildId);
+}
+
+function startBus() {
+  if (bus) return;
+  try {
+    bus = require('./redis').getRedis().duplicate();
+    bus.on('error', () => { busReady = false; });
+    bus.on('message', (channel, raw) => {
+      if (channel !== CHANNEL) return;
+      try { deliver(JSON.parse(raw)); } catch {}
+    });
+    bus.subscribe(CHANNEL).then(() => { busReady = true; }).catch(() => { busReady = false; });
+    bus.on('ready', () => { if (!busReady) bus.subscribe(CHANNEL).then(() => { busReady = true; }).catch(() => {}); });
+  } catch { bus = null; }
+}
+
+function publish(msg) {
+  startBus();
+  if (!busReady) return deliver(msg); // not subscribed (yet): local delivery
+  require('./redis').getRedis().publish(CHANNEL, JSON.stringify(msg)).catch(() => deliver(msg));
+}
+
+const broadcast = (event, data, guildId) => publish({ event, data, guildId: guildId || null });
+const sendToUser = (guildId, userId, event, data) => publish({ event, data, guildId: guildId || null, userId });
+
+async function stopBus() {
+  if (bus) await bus.quit().catch(() => {});
+  bus = null; busReady = false;
+}
+
+module.exports = { addClient, broadcast, sendToUser, startBus, stopBus };

@@ -13,6 +13,34 @@ const { ticketContextAuthor } = require('./dmEmbeds');
 // (a new manager is built per message, so a per-instance lock would protect nothing).
 const creating = new Map(); // `${guildId}:${userId}` -> Promise
 
+// Cross-instance creation lock (Redis). Fail-open: without Redis, the local lock still applies.
+const { getRedis } = require('./redis');
+const CREATION_LOCK_MS = 20000;
+async function acquireCreationLock(key) {
+  const token = require('crypto').randomBytes(8).toString('hex');
+  try {
+    const ok = await getRedis().set(`lock:create:${key}`, token, 'PX', CREATION_LOCK_MS, 'NX');
+    return { acquired: !!ok, token };
+  } catch { return { acquired: true, token: null }; }
+}
+async function releaseCreationLock(key, token) {
+  if (!token) return;
+  // Delete only our own lock (it may have expired and been taken by another instance)
+  await getRedis().eval(
+    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end", 1, `lock:create:${key}`, token
+  ).catch(() => null);
+}
+// Waits for another instance's creation; returns the ticket id it created, if any.
+async function waitCreationLock(key) {
+  const deadline = Date.now() + CREATION_LOCK_MS;
+  while (Date.now() < deadline) {
+    const held = await getRedis().exists(`lock:create:${key}`).catch(() => 0);
+    if (!held) break;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return getRedis().get(`lock:created:${key}`).catch(() => null);
+}
+
 // Discord limits: 4096 chars per embed description, 6000 per message.
 const EMBED_CHUNK = 4000;
 function chunkText(text, size = EMBED_CHUNK) {
@@ -145,12 +173,25 @@ function createManager(db, client, guildId) {
         return { ...result, created: false };
       }
     }
+    // Same check across bot instances: another process may be creating this member's ticket
+    const shared = await acquireCreationLock(lockKey);
+    if (!shared.acquired) {
+      const ticketId = await waitCreationLock(lockKey);
+      const [ticket] = ticketId ? await db("SELECT * FROM tickets WHERE id = ? AND status = 'open'", [ticketId]) : [];
+      if (ticket) {
+        if (firstMessage || attachments.length) return relayDmToTicket(user, firstMessage, attachments, subject);
+        return { ticket, created: false };
+      }
+    }
     const promise = createTicketUnlocked(user, firstMessage, attachments, subject, forceNew);
     creating.set(lockKey, promise);
     try {
-      return await promise;
+      const result = await promise;
+      if (result?.ticket?.id) await getRedis().set(`lock:created:${lockKey}`, String(result.ticket.id), 'EX', 15).catch(() => null);
+      return result;
     } finally {
       creating.delete(lockKey);
+      if (shared.acquired) await releaseCreationLock(lockKey, shared.token);
     }
   }
 
