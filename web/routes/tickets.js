@@ -204,14 +204,13 @@ router.get('/:id', async (req, res) => {
 });
 
 router.patch('/:id/priority', async (req, res) => {
-  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   try {
     const { priority } = req.body;
     if (!VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
-    const ticketId = parseInt(req.params.id);
-
-    const [ticket] = await req.guildDb('SELECT id, channel_id FROM tickets WHERE id = ?', [ticketId]);
-    if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+    // Same permission as the other ticket edits (and as /priority on Discord, open to support)
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const ticketId = ticket.id;
 
     await req.guildDb('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
     await getManager(req).updateChannelTopic(ticketId).catch(() => null);

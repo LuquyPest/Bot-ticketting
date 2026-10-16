@@ -447,7 +447,9 @@ export default function TicketDetail() {
 
   const assignees   = ticket.assignees || [];
   const amAssigned  = assignees.some(a => a.user_id === user?.id);
-  const canAssign   = user?.role === 'fondateur' || user?.permissions?.includes('claim_ticket');
+  // Each action is shown according to the grade permission the API checks for it
+  const can         = perm => user?.role === 'fondateur' || !!user?.permissions?.includes(perm);
+  const canAssign   = can('claim_ticket');
   const assignable  = staff.filter(s => !assignees.some(a => a.user_id === s.user_id));
   const currentStage = STAGES.find(st => st.value === (ticket.stage || 'open'));
 
@@ -693,7 +695,7 @@ export default function TicketDetail() {
         </div>
 
         {/* Compose box */}
-        {ticket.status === 'open' && (
+        {ticket.status === 'open' && can('reply_ticket') && (
           <div className="border-t border-white/[0.06] glass-dark px-5 py-4 flex-shrink-0">
             {/* Mode toggle */}
             <div className="flex gap-0.5 mb-3 bg-surface rounded-xl p-1 w-fit border border-white/[0.06]">
@@ -885,11 +887,11 @@ export default function TicketDetail() {
                     <p className="text-xs text-ink-2 break-all">
                       {ticket.subject || <span className="italic text-ink-4">—</span>}
                     </p>
-                    <button onClick={() => { setSubjectInput(ticket.subject || ''); setEditingSubject(true); }}
+                    {can('reply_ticket') && <button onClick={() => { setSubjectInput(ticket.subject || ''); setEditingSubject(true); }}
                       className="opacity-0 group-hover/subject:opacity-100 text-ink-4
                                  hover:text-ink-2 transition-all flex-shrink-0">
                       <Pencil size={10} />
-                    </button>
+                    </button>}
                   </div>
                 )}
               </div>
@@ -943,13 +945,13 @@ export default function TicketDetail() {
           </div>
 
           {/* ACTIONS */}
-          {(ticket.status === 'open' || (ticket.status === 'closed' && user?.role === 'fondateur')) && (
+          {can('close_ticket') && (
             <div className={panelCard}>
               <SectionTitle>Actions</SectionTitle>
               <div className="space-y-2">
                 {ticket.status === 'open' && (
                   <>
-                    {user?.role === 'fondateur' && (
+                    {can('close_ticket') && (
                       <button onClick={() => changeStatus('closed')} disabled={actionLoading}
                         className="w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all
                                    disabled:opacity-50 border bg-red-500/10 text-red-400
@@ -959,7 +961,7 @@ export default function TicketDetail() {
                     )}
                   </>
                 )}
-                {ticket.status === 'closed' && user?.role === 'fondateur' && (
+                {ticket.status === 'closed' && (
                   <button onClick={() => setShowReopenModal(true)} disabled={actionLoading}
                     className="w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all
                                disabled:opacity-50 border bg-emerald-500/10 text-emerald-400
@@ -977,7 +979,7 @@ export default function TicketDetail() {
             <div className="flex gap-1.5">
               {['low', 'normal', 'urgent'].map(p => (
                 <button key={p} onClick={() => changePriority(p)}
-                  disabled={saving || ticket.priority === p}
+                  disabled={saving || ticket.priority === p || ticket.status !== 'open' || !can('reply_ticket')}
                   className={`flex-1 py-2 px-2 text-xs rounded-xl font-semibold transition-all
                               disabled:cursor-not-allowed border ${ticket.priority === p
                                 ? PRIORITY_ACTIVE[p]
@@ -1011,7 +1013,7 @@ export default function TicketDetail() {
                     <p className="text-xs text-ink-1 font-semibold truncate">{p.tag}</p>
                     <p className="text-[10px] text-ink-4 font-mono mt-0.5">{p.id}</p>
                   </div>
-                  {ticket.status === 'open' && (
+                  {ticket.status === 'open' && can('manage_participants') && (
                     <button onClick={() => removeParticipant(p.id)}
                       className="text-ink-4 hover:text-red-400 transition-colors
                                  opacity-0 group-hover:opacity-100 ml-2 flex-shrink-0">
@@ -1021,7 +1023,7 @@ export default function TicketDetail() {
                 </div>
               ))}
             </div>
-            {ticket.status === 'open' && (
+            {ticket.status === 'open' && can('manage_participants') && (
               <div className="flex gap-1.5">
                 <input type="text" value={newParticipantId}
                   onChange={e => setNewParticipantId(e.target.value)}
@@ -1042,7 +1044,7 @@ export default function TicketDetail() {
           </div>
 
           {/* RENOMMER */}
-          {ticket.status === 'open' && (
+          {ticket.status === 'open' && can('reply_ticket') && (
             <div className={panelCard}>
               <SectionTitle>Renommer</SectionTitle>
               <div className="flex gap-1.5">
@@ -1064,7 +1066,7 @@ export default function TicketDetail() {
           )}
 
           {/* ÉTAPE */}
-          {ticket.status === 'open' && (
+          {ticket.status === 'open' && can('reply_ticket') && (
             <div className={panelCard}>
               <SectionTitle>Étape</SectionTitle>
               <div className="grid grid-cols-3 gap-1.5">
@@ -1087,7 +1089,7 @@ export default function TicketDetail() {
           )}
 
           {/* VISIBILITÉ */}
-          {grades.length > 0 && (
+          {grades.length > 0 && can('manage_grades') && (
             <div className={panelCard}>
               <SectionTitle>Visibilité</SectionTitle>
               <select value={ticket.visibility_grade_id || ''} onChange={e => changeVisibility(e.target.value || null)}
@@ -1116,15 +1118,17 @@ export default function TicketDetail() {
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold border"
                   style={{ backgroundColor: `${tag.color}18`, color: tag.color, borderColor: `${tag.color}35` }}>
                   {tag.name}
-                  <button onClick={() => removeTagFromTicket(tag.id)}
-                    className="ml-0.5 hover:opacity-70 transition-opacity">
-                    <X size={9} />
-                  </button>
+                  {can('reply_ticket') && (
+                    <button onClick={() => removeTagFromTicket(tag.id)}
+                      className="ml-0.5 hover:opacity-70 transition-opacity">
+                      <X size={9} />
+                    </button>
+                  )}
                 </span>
               ))}
               {ticketTags.length === 0 && <span className="text-xs text-ink-4 italic">Aucun tag</span>}
             </div>
-            {allTags.filter(t => !ticketTags.find(tt => tt.id === t.id)).length > 0 && (
+            {can('reply_ticket') && allTags.filter(t => !ticketTags.find(tt => tt.id === t.id)).length > 0 && (
               <select defaultValue=""
                 onChange={e => { if (e.target.value) { addTagToTicket(parseInt(e.target.value)); e.target.value = ''; } }}
                 className="w-full bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-2.5 py-1.5
@@ -1158,7 +1162,7 @@ export default function TicketDetail() {
           )}
 
           {/* TRANSCRIPT */}
-          {ticket.transcript && (
+          {ticket.transcript && can('view_transcripts') && (
             <div className={panelCard}>
               <SectionTitle>Transcript</SectionTitle>
               <p className="text-[10px] text-ink-4 mb-3">
