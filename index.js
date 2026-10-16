@@ -83,6 +83,7 @@ async function shutdown(signal) {
   await require('./utils/globalDb').getPool().end().catch(() => {});
   await require('./utils/tenantDb').closeAll();
   await require('./utils/redis').getRedis().quit().catch(() => {});
+  await require('./utils/redis').closeSessionRedis();
   process.exit(0);
 }
 
