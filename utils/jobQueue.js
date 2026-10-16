@@ -8,6 +8,7 @@ const TZ = 'Europe/Paris';
 
 // name → schedule (every: ms, or pattern: cron) + runner
 const JOBS = {
+  'pending-expiry':      { every: 15 * 1000,      run: client => require('../events/messageCreate').runPendingExpiry(client) },
   'scheduled-messages':  { every: 60 * 1000,      run: client => require('./scheduledMessages').processPending(client) },
   'escalation-check':    { every: 30 * 60 * 1000, run: client => require('./escalationChecker').runEscalationCheck(client) },
   'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },

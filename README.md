@@ -75,7 +75,7 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 1. Le membre envoie un **message privé** au bot
 2. S'il a déjà des tickets ouverts → le bot lui demande, **à chaque message**, dans quel ticket l'envoyer, ou s'il veut **ouvrir un nouveau ticket** (un membre peut avoir plusieurs tickets, dans la limite quotidienne)
 3. Nouveau ticket : si le membre est dans plusieurs serveurs utilisant le bot → choix du serveur
-4. Le bot demande ensuite le **sujet du ticket** : boutons si des sujets sont configurés (+ « Autre sujet »), sinon réponse libre. Sans réponse sous 10 minutes, le ticket est ouvert sans sujet
+4. Le bot demande ensuite le **sujet du ticket** : boutons si des sujets sont configurés (+ « Autre sujet »), sinon réponse libre. Sans réponse sous 10 minutes, le ticket est ouvert sans sujet. Les conversations en cours (sujet, choix du serveur ou du ticket, formulaire) sont gardées dans Redis : un redémarrage du bot ne fait perdre aucune réponse
 5. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
 6. Un salon privé est créé dans le serveur Discord, **nommé d'après le sujet**
 7. Les messages et fichiers suivants sont relayés dans le ticket choisi
@@ -103,6 +103,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Escalade | Alerte + fermeture auto des tickets urgents sans réponse prolongée |
 | Messages programmés | Envoi différé à une date/heure précise |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
+| Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
 | Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et des transcripts au-delà de la durée fixée par le super-admin |
 
 ---
@@ -112,7 +113,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 - **Docker** et **Docker Compose v2**
 - Un **bot Discord** configuré (token + OAuth2)
 - Un serveur avec domaine public et un reverse proxy HTTPS — le `docker-compose.yml` est prévu pour **Traefik** (réseau Docker externe `proxy`, labels déjà présents)
-- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`), utilisé pour les sessions du dashboard et la file de jobs BullMQ
+- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`), utilisé pour les sessions du dashboard, les conversations MP en cours et les tâches BullMQ
 
 ---
 
@@ -658,7 +659,8 @@ Bot-ticketting/
 │   ├── sse.js                      # Registre SSE guild-aware
 │   ├── webhookEmitter.js           # Webhooks sortants + anti-SSRF
 │   ├── redis.js                    # Client Redis lazy (ioredis)
-│   ├── jobQueue.js                 # File BullMQ : rapports hebdomadaires
+│   ├── jobQueue.js                 # Tâches planifiées BullMQ (tous les automatismes)
+│   ├── pendingStore.js             # États des conversations MP (Redis)
 │   ├── logger.js                   # Logger JSON structuré (stdout)
 │   ├── inactiveTicketChecker.js    # Fermeture auto tickets inactifs
 │   ├── userInactiveChecker.js      # Fermeture auto si utilisateur inactif

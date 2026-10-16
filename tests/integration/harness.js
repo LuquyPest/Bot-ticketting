@@ -119,6 +119,7 @@ async function main() {
     ['400000000000000002', new Map([['800000000000000003', {}]])],
     ['400000000000000003', new Map()],
     ['200000000000000005', new Map()],
+    ['200000000000000006', new Map()],
   ]);
   const memberDms = [];
   const G2 = '223456789012345678';
@@ -601,6 +602,30 @@ async function main() {
   await msgMod.execute(fakeClient, dmPacket('Encore un message'));
   const opts2 = lastDm()?.components?.[0]?.components?.[0]?.options?.map(o => o.data.label) || [];
   check('MP: le menu liste les deux tickets', opts2.filter(l => l.startsWith('#')).length === 2, JSON.stringify(opts2));
+
+  // ── DM states live in Redis: they survive a restart and expire into a ticket without subject ──
+  check('MP: état de conversation stocké dans Redis', !!(await redis.get(`pending:route:${u5id}`)));
+  for (const m of ['./events/messageCreate', './events/interactionCreate']) delete require.cache[require.resolve(path.join(ROOT, m))];
+  const interMod2 = app('./events/interactionCreate');
+  fi = fakeInteraction('ticket_route', `t:${G}:${t5[0].id}`);
+  await interMod2.execute(fakeClient, fi.interaction);
+  const n5b = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user'", [t5[0].id]);
+  check('MP: choix du ticket encore valide après redémarrage', n5b.some(n => n.content === 'Encore un message'), JSON.stringify(fi.out));
+  fi = fakeInteraction('ticket_route', `t:${G}:${t5[0].id}`);
+  await interMod2.execute(fakeClient, fi.interaction);
+  check('MP: un état ne sert qu\'une fois', /expir/i.test(JSON.stringify(fi.out.update)), JSON.stringify(fi.out.update));
+
+  const u6id = '200000000000000006';
+  await app('./events/messageCreate').execute(fakeClient, { t: 'MESSAGE_CREATE', d: { author: { id: u6id, bot: false }, content: 'Personne ne répond au sujet', attachments: [] } });
+  const kind6 = (await redis.get(`pending:subject:${u6id}`)) ? 'subject' : 'subjectText';
+  check('MP: question du sujet en attente dans Redis', !!(await redis.get(`pending:${kind6}:${u6id}`)));
+  await redis.zadd('pending:expiry', 1, `${kind6}:${u6id}`); // as if the 10 minutes had passed
+  await app('./events/messageCreate').runPendingExpiry(fakeClient);
+  const t6 = await db("SELECT subject FROM tickets WHERE owner_id = ? AND status = 'open'", [u6id]);
+  check('MP: sans réponse, ticket ouvert sans sujet par la tâche d\'expiration', t6.length === 1 && !t6[0].subject && !(await redis.get(`pending:${kind6}:${u6id}`)), JSON.stringify(t6));
+  await app('./events/messageCreate').runPendingExpiry(fakeClient);
+  const [c6] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [u6id]);
+  check('MP: expiration traitée une seule fois', Number(c6.n) === 1, c6.n);
 
   // ── Limite max_agents ──
   const { agentCount } = app('./utils/limits');

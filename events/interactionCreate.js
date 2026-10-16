@@ -3,6 +3,7 @@ const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { getActiveGuilds, isGuildOperational } = require('../utils/guildScan');
 const { ensureSupport } = require('../utils/permissions');
+const { takePending } = require('../utils/pendingStore');
 const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../utils/components');
 const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/embeds');
@@ -47,22 +48,21 @@ module.exports = {
         // ── Sujet (DM) ── configured subject, or « Autre sujet » to type it
         if (interaction.customId === 'subject_other') {
           const { switchToTextSubject } = require('./messageCreate');
-          const state = switchToTextSubject(interaction.user, client);
+          const state = await switchToTextSubject(interaction.user);
           if (!state) return interaction.reply({ embeds: [sessionExpiredEmbed()], flags: MessageFlags.Ephemeral });
-          const guildName = client.guilds.cache.get(state.guildEntry.guildId)?.name;
+          const guildName = client.guilds.cache.get(state.guildId)?.name;
           return interaction.update({ embeds: [subjectAskEmbed(guildName)], components: [] });
         }
         if (interaction.customId.startsWith('subject_')) {
-          const { pendingSubject, openTicketForGuild } = require('./messageCreate');
-          const pending = pendingSubject.get(interaction.user.id);
+          const { openTicketInGuild } = require('./messageCreate');
+          const pending = await takePending('subject', interaction.user.id);
           const subject = pending?.subjects?.[parseInt(interaction.customId.slice('subject_'.length))];
           if (!pending || !subject) {
             return interaction.reply({ embeds: [sessionExpiredEmbed()], flags: MessageFlags.Ephemeral });
           }
-          pendingSubject.delete(interaction.user.id);
           await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
           // openTicketForGuild handles the intake form before creating
-          await openTicketForGuild(interaction.user, pending.content, pending.attachments, pending.guildEntry, client, subject);
+          await openTicketInGuild(interaction.user, pending.content, pending.attachments, pending.guildId, client, subject);
           return;
         }
 
@@ -200,10 +200,9 @@ module.exports = {
 
       // ── Choix du ticket pour un message privé (DM) ── existing ticket or a new one
       if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_route') {
-        const { pendingRoute, startNewTicket } = require('./messageCreate');
-        const pending = pendingRoute.get(interaction.user.id);
+        const { startNewTicket } = require('./messageCreate');
+        const pending = await takePending('route', interaction.user.id);
         if (!pending) return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
-        pendingRoute.delete(interaction.user.id);
         const value = interaction.values[0];
 
         if (value === 'new') {
@@ -212,33 +211,34 @@ module.exports = {
           return;
         }
         const [, guildId, ticketId] = value.split(':');
-        const entry = pending.tickets.find(t => t.guildId === guildId && String(t.ticket.id) === ticketId);
-        if (!entry) return interaction.update({ content: 'Ticket invalide.', embeds: [], components: [] });
+        const entry = pending.tickets.find(t => t.guildId === guildId && String(t.ticketId) === ticketId);
+        if (!entry || !(await isGuildOperational(guildId))) return interaction.update({ content: 'Ticket invalide.', embeds: [], components: [] });
+        const routeDb = getTenantDb(guildId);
         // Still open and still linked to this member?
-        const [fresh] = await entry.db(
+        const [fresh] = await routeDb(
           `SELECT * FROM tickets WHERE id = ? AND status = 'open' AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))`,
-          [entry.ticket.id, interaction.user.id, interaction.user.id]
+          [entry.ticketId, interaction.user.id, interaction.user.id]
         );
         if (!fresh) return interaction.update({ content: 'Ce ticket n\'est plus ouvert. Renvoie ton message pour choisir un autre ticket.', embeds: [], components: [] });
-        const relayed = await entry.tm.relayToTicket(fresh, interaction.user, pending.content, pending.attachments);
+        const relayed = await createManager(routeDb, client, guildId).relayToTicket(fresh, interaction.user, pending.content, pending.attachments);
         if (!relayed) return interaction.update({ content: 'Impossible de joindre le salon de ce ticket. Réessaie plus tard.', embeds: [], components: [] });
-        await interaction.update({ embeds: [relayedToTicketEmbed(entry.guildName, fresh)], components: [] });
+        const guildName = client.guilds.cache.get(guildId)?.name || guildId;
+        await interaction.update({ embeds: [relayedToTicketEmbed(guildName, fresh)], components: [] });
         return;
       }
 
       // ── Sélection de serveur pour un nouveau ticket (DM) ──
       if (interaction.isStringSelectMenu() && interaction.customId === 'guild_select') {
         const guildId = interaction.values[0];
-        const { pendingGuildSelect, openTicketForGuild } = require('./messageCreate');
-        const pending = pendingGuildSelect.get(interaction.user.id);
+        const { openTicketInGuild } = require('./messageCreate');
+        const pending = await takePending('guildSelect', interaction.user.id);
         if (!pending) {
           return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
         }
-        pendingGuildSelect.delete(interaction.user.id);
-        const guildEntry = pending.guilds.find(g => g.guildId === guildId);
-        if (!guildEntry) return interaction.update({ content: 'Serveur invalide.', components: [] });
-        await interaction.update({ embeds: [choiceEmbed(`Serveur choisi : **${guildEntry.discordGuild?.name || guildId}**`)], components: [] });
-        await openTicketForGuild(interaction.user, pending.content, pending.attachments, guildEntry, client, null);
+        const choice = pending.guilds.find(g => g.guildId === guildId);
+        if (!choice) return interaction.update({ content: 'Serveur invalide.', components: [] });
+        await interaction.update({ embeds: [choiceEmbed(`Serveur choisi : **${choice.name || guildId}**`)], components: [] });
+        await openTicketInGuild(interaction.user, pending.content, pending.attachments, guildId, client, null);
         return;
       }
 

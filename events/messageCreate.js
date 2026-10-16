@@ -15,30 +15,35 @@ const {
   intakeFormStartEmbed, intakeFormStepEmbed,
 } = require('../utils/dmEmbeds');
 
-// DM conversation states, per user. Flow for a new ticket:
+// DM conversation states, per user, kept in Redis (utils/pendingStore.js) so an answer sent
+// while the bot restarts is not lost. Flow for a new ticket:
 //   first message → (server choice) → subject (buttons or free text) → (intake form) → ticket created
-// userId → { user, content, attachments, guildEntry, subjects }        subject buttons
-const pendingSubject = new Map();
-// userId → { user, content, attachments, guildEntry }                  free-text subject
-const pendingSubjectText = new Map();
-// userId → { content, attachments, guilds: [{guildId, discordGuild, db, tm, config}] }   server for a new ticket
-const pendingGuildSelect = new Map();
-// userId → { content, attachments, tickets: [{ ticket, guildId, guildName, tm }] }       which ticket to write in
-const pendingRoute = new Map();
-// userId → { content, attachments, guildEntry, subject, questions: [], step: 0, answers: [] }
-const pendingIntakeForm = new Map();
+// States hold plain data only; the guild entry is rebuilt from guildId when used.
+//   subject      { guildId, content, attachments, subjects }         subject buttons
+//   subjectText  { guildId, content, attachments }                   free-text subject
+//   guildSelect  { content, attachments, guilds: [{ guildId, name }] } server for a new ticket
+//   route        { content, attachments, tickets: [{ guildId, ticketId }] } which ticket to write in
+//   intake       { guildId, content, attachments, subject, questions: [label], step, answers }
+const store = require('../utils/pendingStore');
 
 const PENDING_TTL_MS = 10 * 60 * 1000;
+const INTAKE_TTL_MS = 15 * 60 * 1000;
 
-// Stores a pending state that expires after `ttlMs` — without a later state being wiped by an older timer.
-// onExpire runs only if the state was never consumed.
-function setPending(map, userId, state, ttlMs = PENDING_TTL_MS, onExpire = null) {
-  map.set(userId, state);
-  setTimeout(() => {
-    if (map.get(userId) !== state) return;
-    map.delete(userId);
-    if (onExpire) onExpire().catch(err => console.error('pending expiry:', err.message));
-  }, ttlMs);
+// { guildId, db, tm, config } for a guild, or null if it is no longer operational.
+async function loadGuildEntry(guildId, client) {
+  if (!(await isGuildOperational(guildId))) return null;
+  try {
+    const db = getTenantDb(guildId);
+    const [cfg] = await db('SELECT * FROM guild_config LIMIT 1');
+    return { guildId, db, tm: createManager(db, client, guildId), config: cfg || {} };
+  } catch { return null; }
+}
+
+// Continues the flow on a guild known by its id (states restored from Redis).
+async function openTicketInGuild(user, content, attachments, guildId, client, subject) {
+  const entry = await loadGuildEntry(guildId, client);
+  if (!entry) return user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
+  return openTicketForGuild(user, content, attachments, entry, client, subject);
 }
 
 // DM flood protection: each DM scans every active guild, so cap it per user.
@@ -69,10 +74,10 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   } catch { return false; }
   if (!questions.length) return false;
 
-  setPending(pendingIntakeForm, user.id, {
-    content, attachments, guildEntry, subject,
-    questions, step: 0, answers: []
-  }, 15 * 60 * 1000);
+  await store.setPending('intake', user.id, {
+    guildId: guildEntry.guildId, content, attachments, subject,
+    questions: questions.map(q => q.label), step: 0, answers: [],
+  }, INTAKE_TTL_MS);
 
   await user.send({ embeds: [intakeFormStartEmbed(questions[0].label, 1, questions.length)] }).catch(() => null);
   return true;
@@ -120,15 +125,14 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
 
   // Ask the subject after the first message; if nobody answers, open the ticket without subject
   if (subject === null) {
+    // No answer within the TTL: the 'pending-expiry' job opens the ticket without subject
     const guildName = client.guilds.cache.get(guildId)?.name;
-    const entry = { guildId, db, tm, config };
-    const openWithoutSubject = () => openTicketForGuild(user, content, attachments, entry, client, '');
     const subjects = parseJsonField(config.ticket_subjects);
     if (subjects.length > 0) {
-      setPending(pendingSubject, user.id, { user, content, attachments, guildEntry: entry, subjects }, PENDING_TTL_MS, openWithoutSubject);
+      await store.setPending('subject', user.id, { guildId, content, attachments, subjects }, PENDING_TTL_MS, { onExpire: true });
       await user.send({ embeds: [subjectSelectEmbed(guildName)], components: subjectButtons(subjects) }).catch(() => null);
     } else {
-      setPending(pendingSubjectText, user.id, { user, content, attachments, guildEntry: entry }, PENDING_TTL_MS, openWithoutSubject);
+      await store.setPending('subjectText', user.id, { guildId, content, attachments }, PENDING_TTL_MS, { onExpire: true });
       await user.send({ embeds: [subjectAskEmbed(guildName)] }).catch(() => null);
     }
     return;
@@ -146,13 +150,23 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
 }
 
 // "Autre sujet" button: the member will type the subject. Returns the pending state, or null if expired.
-function switchToTextSubject(user, client) {
-  const state = pendingSubject.get(user.id);
+async function switchToTextSubject(user) {
+  const state = await store.takePending('subject', user.id);
   if (!state) return null;
-  pendingSubject.delete(user.id);
-  setPending(pendingSubjectText, user.id, state, PENDING_TTL_MS,
-    () => openTicketForGuild(user, state.content, state.attachments, state.guildEntry, client, ''));
+  const { guildId, content, attachments } = state;
+  await store.setPending('subjectText', user.id, { guildId, content, attachments }, PENDING_TTL_MS, { onExpire: true });
   return state;
+}
+
+// Subject questions nobody answered: open those tickets without subject (job 'pending-expiry').
+async function runPendingExpiry(client) {
+  for (const { kind, userId, data } of await store.claimExpired()) {
+    if (kind !== 'subject' && kind !== 'subjectText') continue;
+    const user = await client.users.fetch(userId).catch(() => null);
+    if (!user) continue;
+    await openTicketInGuild(user, data.content, data.attachments, data.guildId, client, '')
+      .catch(err => console.error('pending expiry:', err.message));
+  }
 }
 
 // New ticket: pick the server (or ask which one), then openTicketForGuild asks the subject.
@@ -169,7 +183,9 @@ async function startNewTicket(user, content, attachments, client) {
     await openTicketForGuild(user, content, attachments, candidateGuilds[0], client, null);
     return;
   }
-  setPending(pendingGuildSelect, user.id, { content, attachments, guilds: candidateGuilds });
+  await store.setPending('guildSelect', user.id, {
+    content, attachments, guilds: candidateGuilds.map(g => ({ guildId: g.guildId, name: g.discordGuild.name })),
+  }, PENDING_TTL_MS);
   const menu = new StringSelectMenuBuilder()
     .setCustomId('guild_select')
     .setPlaceholder('Choisir un serveur…')
@@ -266,32 +282,35 @@ module.exports = {
       }
 
       // Answer to "what is the subject of your ticket?"
-      if (pendingSubjectText.has(user.id)) {
-        const state = pendingSubjectText.get(user.id);
+      if (await store.hasPending('subjectText', user.id)) {
         if (!content) {
           await user.send('📝 Envoie le sujet de ton ticket en texte (quelques mots).').catch(() => null);
           return;
         }
-        pendingSubjectText.delete(user.id);
-        const subject = content.replace(/\s+/g, ' ').slice(0, 100);
-        await openTicketForGuild(user, state.content, state.attachments, state.guildEntry, client, subject);
-        return;
+        const state = await store.takePending('subjectText', user.id);
+        if (state) {
+          const subject = content.replace(/\s+/g, ' ').slice(0, 100);
+          await openTicketInGuild(user, state.content, state.attachments, state.guildId, client, subject);
+          return;
+        }
       }
 
       // Intake form — step-by-step question reply
-      if (pendingIntakeForm.has(user.id)) {
-        const state = pendingIntakeForm.get(user.id);
-        state.answers.push(content);
-        state.step += 1;
+      // Taken then stored back: two quick answers never count for the same question
+      const intake = await store.takePending('intake', user.id);
+      if (intake) {
+        intake.answers.push(content);
+        intake.step += 1;
 
-        if (state.step < state.questions.length) {
-          await user.send({ embeds: [intakeFormStepEmbed(state.questions[state.step].label, state.step + 1, state.questions.length)] }).catch(() => null);
+        if (intake.step < intake.questions.length) {
+          const { expiresAt, ...rest } = intake;
+          await store.setPending('intake', user.id, rest, INTAKE_TTL_MS);
+          await user.send({ embeds: [intakeFormStepEmbed(intake.questions[intake.step], intake.step + 1, intake.questions.length)] }).catch(() => null);
         } else {
           // All questions answered — build intake summary and open ticket
-          pendingIntakeForm.delete(user.id);
-          const summary = state.questions.map((q, i) => `**${q.label}** : ${state.answers[i] || '—'}`).join('\n');
-          const enrichedContent = `${state.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
-          await openTicketForGuild(user, enrichedContent, state.attachments, state.guildEntry, client, state.subject ?? '');
+          const summary = intake.questions.map((label, i) => `**${label}** : ${intake.answers[i] || '—'}`).join('\n');
+          const enrichedContent = `${intake.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
+          await openTicketInGuild(user, enrichedContent, intake.attachments, intake.guildId, client, intake.subject ?? '');
         }
         return;
       }
@@ -303,7 +322,9 @@ module.exports = {
 
       // At least one open ticket: ask, for every message, which ticket it goes to (or a new ticket)
       if (openTickets.length) {
-        setPending(pendingRoute, user.id, { content, attachments, tickets: openTickets });
+        await store.setPending('route', user.id, {
+          content, attachments, tickets: openTickets.map(t => ({ guildId: t.guildId, ticketId: t.ticket.id })),
+        }, PENDING_TTL_MS);
         await user.send({ embeds: [ticketRouteEmbed(openTickets.length)], components: [buildTicketRouteMenu(openTickets, user.id)] }).catch(() => null);
         return;
       }
@@ -318,12 +339,9 @@ module.exports = {
     }
   },
 
-  pendingSubject,
-  pendingSubjectText,
-  pendingGuildSelect,
-  pendingRoute,
-  pendingIntakeForm,
   openTicketForGuild,
+  openTicketInGuild,
+  runPendingExpiry,
   startNewTicket,
   switchToTextSubject,
 };

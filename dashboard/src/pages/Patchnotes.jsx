@@ -10,6 +10,18 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.11',
+    date: '16 octobre 2026',
+    title: 'Fiabilité : automatismes, rétention des données et conversations persistantes',
+    changes: [
+      { type: 'tech', text: 'Tests d\'intégration versionnés et lancés automatiquement à chaque push (GitHub Actions avec MariaDB et Redis)' },
+      { type: 'impr', text: 'Tous les automatismes passent par des tâches planifiées BullMQ : une seule exécution même avec plusieurs instances, planning conservé aux redémarrages' },
+      { type: 'new',  text: 'Purge automatique des journaux anciens et des transcripts au-delà de la durée de conservation fixée par le super-admin' },
+      { type: 'fix',  text: 'La limite de staff (max_agents) fixée par le super-admin est maintenant appliquée' },
+      { type: 'fix',  text: 'Les conversations en MP (sujet, choix du serveur ou du ticket, formulaire) sont stockées dans Redis : une réponse envoyée pendant un redémarrage n\'est plus perdue' },
+    ]
+  },
+  {
     version: 'v2.10',
     date: '16 octobre 2026',
     title: 'Journal d\'activité complet, analytique et messages privés en embeds',
