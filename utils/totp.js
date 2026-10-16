@@ -1,19 +1,23 @@
 // TOTP verification with replay protection and recovery codes.
 const crypto = require('crypto');
-const { authenticator } = require('otplib');
+const { verifySync, generateSecret, generateURI, createGuardrails } = require('otplib');
 const { open } = require('./secretBox');
 
-authenticator.options = { window: 1 }; // tolerate ±30 s of clock drift
+// Secrets created before otplib 13 are 10 bytes; new ones are 20 bytes. Both must keep working.
+const guardrails = createGuardrails({ MIN_SECRET_BYTES: 10 });
+const TOLERANCE_SECONDS = 30; // ±1 step of clock drift
+
+const newTotpSecret = () => generateSecret();
+const totpUri = (label, issuer, secret) => generateURI({ issuer, label, secret });
 
 // Returns the accepted time step, or null when the code is invalid or was already used.
 function verifyTotp(code, storedSecret, lastStep = 0) {
   if (typeof code !== 'string') return null;
   const token = code.replace(/\s/g, '');
   if (!/^\d{6}$/.test(token)) return null;
-  const delta = authenticator.checkDelta(token, open(storedSecret));
-  if (delta === null) return null;
-  const step = Math.floor(Date.now() / 30000) + delta;
-  return step > Number(lastStep || 0) ? step : null;
+  // afterTimeStep: a code of an already accepted step is refused (anti-replay)
+  const result = verifySync({ secret: open(storedSecret), token, epochTolerance: TOLERANCE_SECONDS, afterTimeStep: Number(lastStep || 0), guardrails });
+  return result.valid ? result.timeStep : null;
 }
 
 const hashCode = c => crypto.createHash('sha256').update(c.replace(/[\s-]/g, '').toLowerCase()).digest('hex');
@@ -39,4 +43,4 @@ function consumeRecoveryCode(code, storedHashes) {
   return hashes;
 }
 
-module.exports = { verifyTotp, generateRecoveryCodes, consumeRecoveryCode };
+module.exports = { verifyTotp, newTotpSecret, totpUri, generateRecoveryCodes, consumeRecoveryCode };

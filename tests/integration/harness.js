@@ -253,7 +253,9 @@ async function main() {
   check('select-guild rejette un objet', r.status === 400, r.status);
 
   // ── Round 2: second audit fixes ──────────────────────────────────────────
-  const { authenticator } = require('otplib');
+  const { generateSync: otpGenerate, createGuardrails } = require('otplib');
+  const legacyRails = createGuardrails({ MIN_SECRET_BYTES: 10 });
+  const generateSync = o => otpGenerate({ ...o, guardrails: legacyRails });
   const bcrypt = require('bcrypt');
   const { seal } = app('./utils/secretBox');
   const { generateRecoveryCodes } = app('./utils/totp');
@@ -329,15 +331,23 @@ async function main() {
   check('H2 blacklist évaluée par serveur', (await isBlacklistedIn(db, u4.id)) && !(await isBlacklistedIn(db, u1.id)), '');
 
   // M4 — TOTP: encrypted secret, no replay, recovery codes
-  const secret = authenticator.generateSecret();
+  const secret = 'JBSWY3DPEHPK3PXP'; // 10 bytes, like the secrets created before otplib 13
   const { codes, hashes } = generateRecoveryCodes();
   await globalQuery('INSERT INTO user_totp (user_id, totp_secret, totp_enabled, recovery_codes) VALUES (?, ?, 1, ?)', [U.S2, seal(secret), JSON.stringify(hashes)]);
   const pend = async () => { await mk('P', { pendingTotp: { userId: U.S2, username: 'S2', avatar: null, discordAccessToken: 't' } }); return sessions.P; };
-  const code = authenticator.generate(secret);
+  const code = generateSync({ secret });
   r = await req('POST', '/api/auth/totp-verify-login', { sid: await pend(), body: { code } });
   check('M4 code TOTP valide (secret chiffré) accepté', r.status === 200, r.status + JSON.stringify(r.body));
   r = await req('POST', '/api/auth/totp-verify-login', { sid: await pend(), body: { code } });
   check('M4 rejeu du même code refusé', r.status === 400, r.status);
+  {
+    const totp = app('./utils/totp');
+    const fresh = totp.newTotpSecret();
+    const step = totp.verifyTotp(generateSync({ secret: fresh }), fresh);
+    check('TOTP: nouveaux secrets (20 octets) acceptés, anciens (10 octets) toujours valides', fresh.length === 32 && step > 0 && totp.verifyTotp(generateSync({ secret }), secret, 0) > 0, fresh);
+    check('TOTP: code d\'une étape déjà utilisée refusé', totp.verifyTotp(generateSync({ secret: fresh }), fresh, step) === null);
+    check('TOTP: URI otpauth', /^otpauth:\/\/totp\/TicketBot%20SA:root\?secret=[A-Z2-7]+&issuer=TicketBot%20SA$/.test(totp.totpUri('root', 'TicketBot SA', fresh)));
+  }
   r = await req('POST', '/api/auth/totp-verify-login', { sid: await pend(), body: { code: codes[0] } });
   check('M4 code de secours accepté', r.status === 200, r.status + JSON.stringify(r.body));
   r = await req('POST', '/api/auth/totp-verify-login', { sid: await pend(), body: { code: codes[0] } });

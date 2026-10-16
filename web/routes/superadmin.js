@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const { authenticator } = require('otplib');
-const { verifyTotp } = require('../../utils/totp');
+const { verifyTotp, newTotpSecret, totpUri } = require('../../utils/totp');
 const { seal, open, isSealed } = require('../../utils/secretBox');
 const QRCode = require('qrcode');
 const mysql = require('mysql2/promise');
@@ -93,9 +92,9 @@ router.post('/auth/login', async (req, res) => {
     if (!account.totp_secret || !account.totp_enabled) {
       // First login OR setup started but never confirmed — always generate a fresh secret.
       // Never return an existing DB secret in an API response.
-      const secret = authenticator.generateSecret();
+      const secret = newTotpSecret();
       req.session.saPendingLogin.tempSecret = secret;
-      const otpUri = authenticator.keyuri(account.username, 'TicketBot SA', secret);
+      const otpUri = totpUri(account.username, 'TicketBot SA', secret);
       const qrDataUrl = await QRCode.toDataURL(otpUri);
       return res.json({ needs_totp_setup: true, qrDataUrl, secret });
     }

@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticator } = require('otplib');
-const { verifyTotp, generateRecoveryCodes } = require('../../utils/totp');
+const { verifyTotp, newTotpSecret, totpUri, generateRecoveryCodes } = require('../../utils/totp');
 const { seal } = require('../../utils/secretBox');
 const QRCode = require('qrcode');
 const { globalQuery } = require('../../utils/globalDb');
@@ -167,8 +166,8 @@ router.post('/2fa/setup', requireAuth, async (req, res) => {
     const [row] = await globalQuery('SELECT totp_enabled FROM user_totp WHERE user_id = ?', [req.session.user.id]);
     if (row?.totp_enabled) return res.status(400).json({ error: '2FA déjà activé' });
 
-    const secret = authenticator.generateSecret();
-    const otpUri = authenticator.keyuri(req.session.user.username, 'TicketBot Dashboard', secret);
+    const secret = newTotpSecret();
+    const otpUri = totpUri(req.session.user.username, 'TicketBot Dashboard', secret);
     const qrDataUrl = await QRCode.toDataURL(otpUri);
 
     req.session.twoFaSetup = { secret, userId: req.session.user.id };
