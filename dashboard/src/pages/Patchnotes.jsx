@@ -19,6 +19,9 @@ const VERSIONS = [
       { type: 'new',  text: 'Purge automatique des journaux anciens et des transcripts au-delà de la durée de conservation fixée par le super-admin' },
       { type: 'fix',  text: 'La limite de staff (max_agents) fixée par le super-admin est maintenant appliquée' },
       { type: 'fix',  text: 'Les conversations en MP (sujet, choix du serveur ou du ticket, formulaire) sont stockées dans Redis : une réponse envoyée pendant un redémarrage n\'est plus perdue' },
+      { type: 'new',  text: 'Panel super-admin : page « Vue d\'ensemble » (activité de tous les serveurs, tickets par jour, utilisation des limites)' },
+      { type: 'new',  text: 'Panel super-admin : modification des limites par serveur (tickets, staff, conservation des transcripts)' },
+      { type: 'new',  text: 'Panel super-admin : page « Erreurs » alimentée par toutes les erreurs du bot, du dashboard et des automatismes' },
     ]
   },
   {

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   Building2, CheckCircle, Clock, XCircle, RefreshCw,
-  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X
+  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X, Gauge
 } from 'lucide-react';
 import api from '../../api';
 import { useSA } from './SAApp';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/confirmToast';
+import SALimitsModal from './SALimitsModal';
 
 const STATUS = {
   active:    { label: 'Actif',    cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20', icon: CheckCircle },
@@ -174,6 +175,7 @@ export default function SAGuilds() {
   const [confirm, setConfirm]     = useState(null); // { action, guild }
   const [actioning, setActioning] = useState(null);
   const [foundersOf, setFoundersOf] = useState(null); // guild whose founders modal is open
+  const [limitsOf, setLimitsOf]   = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -231,6 +233,7 @@ export default function SAGuilds() {
       {foundersOf && (
         <FoundersModal guild={foundersOf} canEdit={isSA} onClose={() => setFoundersOf(null)} />
       )}
+      {limitsOf && <SALimitsModal guild={limitsOf} onClose={() => setLimitsOf(null)} onSaved={load} />}
       {confirm && (
         <ConfirmModal
           message={
@@ -355,6 +358,13 @@ export default function SAGuilds() {
                             icon={Crown} label="Fondateurs"
                             cls="text-amber-300 hover:bg-amber-400/10"
                             onClick={() => setFoundersOf(guild)}
+                          />
+                        )}
+                        {guild.status !== 'pending' && !isActioning && (
+                          <ActionBtn
+                            icon={Gauge} label="Limites"
+                            cls="text-ink-3 hover:text-ink-1 hover:bg-white/[0.05]"
+                            onClick={() => setLimitsOf(guild)}
                           />
                         )}
                         {isSA && (

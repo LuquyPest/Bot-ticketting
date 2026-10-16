@@ -19,7 +19,7 @@ export default function SALogin() {
   const [loading, setLoading]       = useState(false);
 
   useEffect(() => {
-    if (saUser) navigate('/sa/guilds', { replace: true });
+    if (saUser) navigate('/sa/overview', { replace: true });
   }, [saUser]);
 
   const handleLogin = async (e) => {

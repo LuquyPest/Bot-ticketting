@@ -10,5 +10,11 @@ function log(level, message, ctx = {}) {
 module.exports = {
   info:  (msg, ctx) => log('info',  msg, ctx),
   warn:  (msg, ctx) => log('warn',  msg, ctx),
-  error: (msg, ctx) => log('error', msg, ctx),
+  error: (msg, ctx = {}) => {
+    log('error', msg, ctx);
+    // Also kept in the error journal (super-admin "Erreurs" page)
+    const { guildId, err, ...rest } = ctx;
+    const text = err ? String(err) : msg;
+    require('./errorLog').logError(guildId, msg, { message: text.split('\n')[0], stack: err ? text : '' }, Object.keys(rest).length ? rest : null);
+  },
 };

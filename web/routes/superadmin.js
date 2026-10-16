@@ -639,20 +639,73 @@ router.delete('/managers/:id', requireSuperAdmin, async (req, res) => {
 
 // ─── GLOBAL STATS ────────────────────────────────────────────────────────────
 
-// GET /api/sa/stats
+// GET /api/sa/stats — overview of every guild the caller can see (managers: assigned guilds only)
 router.get('/stats', requireSuperAdmin, async (req, res) => {
   try {
-    const [[total], [active], [pending], [suspended], [managerCount]] = await Promise.all([
-      globalQuery('SELECT COUNT(*) as c FROM guilds'),
-      globalQuery('SELECT COUNT(*) as c FROM guilds WHERE status = "active"'),
-      globalQuery('SELECT COUNT(*) as c FROM guilds WHERE status = "pending"'),
-      globalQuery('SELECT COUNT(*) as c FROM guilds WHERE status = "suspended"'),
-      globalQuery('SELECT COUNT(*) as c FROM managers'),
+    let guilds = await globalQuery(
+      `SELECT guild_id, guild_name, guild_icon, status, maintenance_mode, member_count,
+              max_tickets, max_agents, transcript_retention_days FROM guilds ORDER BY guild_name`
+    );
+    if (req.saUser.type !== 'superadmin') {
+      const [mgr] = await globalQuery('SELECT assigned_guilds FROM managers WHERE id = ?', [req.saUser.id]);
+      const ids = new Set(parseJsonField(mgr?.assigned_guilds));
+      guilds = guilds.filter(g => ids.has(g.guild_id));
+    }
+
+    const DAYS = 30;
+    const daily = new Map();
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      daily.set(d, { day: d, opened: 0, closed: 0 });
+    }
+    const totals = { tickets: 0, openTickets: 0, opened30d: 0, closed30d: 0, staff: 0 };
+    const perGuild = [];
+
+    for (const g of guilds) {
+      const row = { ...g, maintenance_mode: !!g.maintenance_mode, tickets: null, openTickets: null, opened30d: null, staff: null, avgRating: null };
+      if (g.status !== 'pending') {
+        try {
+          const db = getTenantDb(g.guild_id);
+          const [[counts], opened, closed, [rating]] = await Promise.all([
+            db(`SELECT COUNT(*) AS total, SUM(status = 'open') AS open,
+                       SUM(created_at >= DATE_SUB(NOW(), INTERVAL ${DAYS} DAY)) AS opened30d,
+                       (SELECT COUNT(*) FROM dashboard_users WHERE role IN ('support', 'fondateur')) AS staff
+                FROM tickets`),
+            db(`SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, COUNT(*) AS n FROM tickets
+                WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ${DAYS - 1} DAY) GROUP BY d`),
+            db(`SELECT DATE_FORMAT(closed_at, '%Y-%m-%d') AS d, COUNT(*) AS n FROM tickets
+                WHERE closed_at >= DATE_SUB(CURDATE(), INTERVAL ${DAYS - 1} DAY) GROUP BY d`),
+            db('SELECT AVG(rating) AS avg FROM ticket_ratings'),
+          ]);
+          Object.assign(row, {
+            tickets: Number(counts.total) || 0, openTickets: Number(counts.open) || 0,
+            opened30d: Number(counts.opened30d) || 0, staff: Number(counts.staff) || 0,
+            avgRating: rating?.avg != null ? Math.round(rating.avg * 10) / 10 : null,
+          });
+          for (const r of opened) if (daily.has(r.d)) daily.get(r.d).opened += Number(r.n);
+          for (const r of closed) if (daily.has(r.d)) { daily.get(r.d).closed += Number(r.n); totals.closed30d += Number(r.n); }
+          totals.tickets += row.tickets; totals.openTickets += row.openTickets;
+          totals.opened30d += row.opened30d; totals.staff += row.staff;
+        } catch { /* tenant DB not ready */ }
+      }
+      perGuild.push(row);
+    }
+
+    const count = st => guilds.filter(g => g.status === st).length;
+    const [[managers], [errors24h]] = await Promise.all([
+      globalQuery('SELECT COUNT(*) AS c FROM managers'),
+      req.saUser.type === 'superadmin'
+        ? globalQuery('SELECT COUNT(*) AS c FROM error_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)')
+        : Promise.resolve([{ c: null }]),
     ]);
 
     res.json({
-      guilds: { total: total.c, active: active.c, pending: pending.c, suspended: suspended.c },
-      managers: managerCount.c
+      guilds: { total: guilds.length, active: count('active'), pending: count('pending'), suspended: count('suspended') },
+      managers: managers.c,
+      errors24h: errors24h.c,
+      totals,
+      daily: [...daily.values()],
+      perGuild,
     });
   } catch (err) {
     console.error(err);
@@ -686,24 +739,67 @@ router.patch('/guilds/:guildId/limits', requireSuperAdmin, async (req, res) => {
   }
 });
 
-// GET /api/sa/error-logs — centralized error log from all guilds
+// Filters shared by the error list and its deletion: guild, context, text, period (hours).
+function errorFilters(q) {
+  const where = [];
+  const params = [];
+  if (typeof q.guild_id === 'string' && q.guild_id) {
+    if (q.guild_id === 'none') where.push('e.guild_id IS NULL');
+    else { where.push('e.guild_id = ?'); params.push(q.guild_id); }
+  }
+  if (typeof q.context === 'string' && q.context) { where.push('e.context = ?'); params.push(q.context.slice(0, 100)); }
+  if (typeof q.q === 'string' && q.q.trim()) {
+    where.push('(e.message LIKE ? OR e.context LIKE ?)');
+    const like = `%${q.q.trim().slice(0, 100).replace(/[%_\\]/g, '\\$&')}%`;
+    params.push(like, like);
+  }
+  const hours = parseInt(q.hours);
+  if (hours > 0) { where.push('e.created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)'); params.push(Math.min(hours, 24 * 365)); }
+  return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+}
+
+// GET /api/sa/error-logs — centralized error journal (bot, dashboard, jobs)
 router.get('/error-logs', requireSuperAdmin, async (req, res) => {
   if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
-  const guild_id = typeof req.query.guild_id === 'string' ? req.query.guild_id : null;
-  const limit  = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
+  const limit  = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 500);
   const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+  const f = errorFilters(req.query);
   try {
-    const where  = guild_id ? 'WHERE guild_id = ?' : '';
-    const params = guild_id ? [guild_id, limit, offset] : [limit, offset];
-    const [rows, [{ total }]] = await Promise.all([
-      globalQuery(`SELECT id, guild_id, context, message, stack, created_at FROM error_logs ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, params),
-      globalQuery(`SELECT COUNT(*) as total FROM error_logs ${where}`, guild_id ? [guild_id] : []),
+    const [rows, [{ total }], contexts, hourly] = await Promise.all([
+      globalQuery(
+        `SELECT e.id, e.guild_id, g.guild_name, e.context, e.message, e.stack, e.created_at
+         FROM error_logs e LEFT JOIN guilds g ON g.guild_id = e.guild_id ${f.sql}
+         ORDER BY e.id DESC LIMIT ? OFFSET ?`, [...f.params, limit, offset]),
+      globalQuery(`SELECT COUNT(*) AS total FROM error_logs e ${f.sql}`, f.params),
+      // Most frequent sources over the last 7 days (filter shortcuts)
+      globalQuery(`SELECT context, COUNT(*) AS n, MAX(created_at) AS last FROM error_logs
+                   WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY context ORDER BY n DESC LIMIT 12`),
+      // Hours ago (0 = last hour): independent of the database and browser time zones
+      globalQuery(`SELECT TIMESTAMPDIFF(HOUR, created_at, NOW()) AS ago, COUNT(*) AS n FROM error_logs
+                   WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) GROUP BY ago`),
     ]);
-    res.json({ rows, total });
+    res.json({ rows, total: Number(total), contexts, hourly });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// DELETE /api/sa/error-logs/:id — dismiss one entry
+router.delete('/error-logs/:id', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID invalide' });
+  await globalQuery('DELETE FROM error_logs WHERE id = ?', [id]);
+  res.json({ ok: true });
+});
+
+// DELETE /api/sa/error-logs — clear every entry matching the current filters
+router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const f = errorFilters(req.query);
+  const r = await globalQuery(`DELETE e FROM error_logs e ${f.sql}`, f.params);
+  res.json({ ok: true, deleted: r.affectedRows || 0 });
 });
 
 module.exports = router;

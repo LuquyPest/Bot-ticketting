@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert } from 'lucide-react';
+import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert, LayoutDashboard, Bug } from 'lucide-react';
 import api from '../../api';
 
 const SALogin    = lazy(() => import('./SALogin'));
+const SAOverview = lazy(() => import('./SAOverview'));
+const SAErrors   = lazy(() => import('./SAErrors'));
 const SAGuilds   = lazy(() => import('./SAGuilds'));
 const SAManagers = lazy(() => import('./SAManagers'));
 const SABlocked  = lazy(() => import('./SABlocked'));
@@ -37,10 +39,12 @@ function SALayout({ children }) {
   };
 
   const nav = [
+    { to: '/sa/overview', label: 'Vue d\'ensemble', icon: LayoutDashboard },
     { to: '/sa/guilds',   label: 'Serveurs',  icon: Building2 },
     ...(saUser?.type === 'superadmin' ? [
       { to: '/sa/managers', label: 'Managers', icon: Users },
       { to: '/sa/blocked',  label: 'Blocages', icon: ShieldAlert },
+      { to: '/sa/errors',   label: 'Erreurs',  icon: Bug },
     ] : [])
   ];
 
@@ -132,6 +136,12 @@ export default function SAApp() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="login" element={<SALogin />} />
+          <Route path="overview" element={
+            <RequireSA><SALayout><SAOverview /></SALayout></RequireSA>
+          } />
+          <Route path="errors" element={
+            <RequireSA><SALayout><SAErrors /></SALayout></RequireSA>
+          } />
           <Route path="guilds" element={
             <RequireSA><SALayout><SAGuilds /></SALayout></RequireSA>
           } />
@@ -141,8 +151,8 @@ export default function SAApp() {
           <Route path="blocked" element={
             <RequireSA><SALayout><SABlocked /></SALayout></RequireSA>
           } />
-          <Route index element={<Navigate to="/sa/guilds" replace />} />
-          <Route path="*" element={<Navigate to="/sa/guilds" replace />} />
+          <Route index element={<Navigate to="/sa/overview" replace />} />
+          <Route path="*" element={<Navigate to="/sa/overview" replace />} />
         </Routes>
       </Suspense>
     </SACtx.Provider>

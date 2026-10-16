@@ -366,14 +366,16 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 
 | Section | Description |
 |---------|-------------|
+| **Vue d'ensemble** | Serveurs actifs / en attente, tickets ouverts, tickets ouverts et fermés par jour sur 30 jours, staff, erreurs des dernières 24 h, et tableau par serveur (utilisation par rapport aux limites, note moyenne, conservation des transcripts). Un manager ne voit que ses serveurs |
 | **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs (la suppression efface la base du serveur et fait quitter le serveur Discord au bot) |
+| **Limites** | Par serveur : tickets ouverts simultanés (`max_tickets`), membres du staff (`max_agents`), conservation des transcripts en jours (`transcript_retention_days`) — 0 = illimité |
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
 | **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
 | **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min), avec déblocage manuel — superadmin uniquement |
-| **Stats globales** | Vue d'ensemble de tous les serveurs actifs |
+| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement |
 
-Routes d'administration sans écran dédié (appelables avec une session SA) : `GET /api/sa/stats`, `PATCH /api/sa/guilds/:guildId/limits` (`max_tickets`, `max_agents`, `transcript_retention_days`) et `GET /api/sa/error-logs` (superadmin uniquement).
+Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les réponses HTTP 5xx (avec la route), les échecs des tâches planifiées et les rejets non gérés. Un même message n'est enregistré qu'une fois par minute (60 entrées / min au plus) ; la purge de rétention supprime les entrées de plus de 30 jours.
 
 ### Rôles dans le panel SA
 
@@ -661,6 +663,7 @@ Bot-ticketting/
 │   ├── redis.js                    # Client Redis lazy (ioredis)
 │   ├── jobQueue.js                 # Tâches planifiées BullMQ (tous les automatismes)
 │   ├── pendingStore.js             # États des conversations MP (Redis)
+│   ├── errorLog.js                 # Journal d'erreurs centralisé (error_logs)
 │   ├── logger.js                   # Logger JSON structuré (stdout)
 │   ├── inactiveTicketChecker.js    # Fermeture auto tickets inactifs
 │   ├── userInactiveChecker.js      # Fermeture auto si utilisateur inactif
@@ -678,7 +681,7 @@ Bot-ticketting/
 │   └── routes/
 │       ├── auth.js                 # OAuth Discord, TOTP login, select-guild
 │       ├── profile.js              # Profil utilisateur, 2FA TOTP
-│       ├── superadmin.js           # Panel SA (guilds, managers, stats)
+│       ├── superadmin.js           # Panel SA (guilds, managers, stats, limites, erreurs)
 │       ├── tickets.js              # CRUD tickets + SSE broadcast
 │       ├── dashboard.js            # Stats globales
 │       ├── staff.js                # Stats staff

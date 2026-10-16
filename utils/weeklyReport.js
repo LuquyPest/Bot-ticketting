@@ -75,7 +75,7 @@ async function sendWeeklyReport(client) {
       await sendWeeklyReportForGuild(client, guild_id);
     } catch (err) {
       console.error(`weeklyReport error [${guild_id}]:`, err);
-      try { require('../web/server').logError(guild_id, 'weeklyReport', err); } catch {}
+      try { require('./errorLog').logError(guild_id, 'weeklyReport', err); } catch {}
     }
   }
 }

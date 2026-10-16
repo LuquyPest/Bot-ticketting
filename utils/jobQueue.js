@@ -50,7 +50,7 @@ async function startWorkers(client) {
 
   worker.on('failed', (job, err) => {
     logger.error('job failed', { job: job?.name, err: err.message });
-    try { require('../web/server').logError(null, `job:${job?.name}`, err); } catch {}
+    try { require('./errorLog').logError(null, `job:${job?.name}`, err); } catch {}
   });
   logger.info('Automatismes planifiés (BullMQ)', { jobs: Object.keys(JOBS) });
   return worker;

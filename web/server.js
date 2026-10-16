@@ -7,13 +7,7 @@ const { pages } = require('../utils/transcriptServer');
 const { globalQuery } = require('../utils/globalDb');
 const logger = require('../utils/logger');
 
-// Centralized error logger — writes to error_logs global table
-function logError(guildId, context, err) {
-  globalQuery(
-    'INSERT INTO error_logs (guild_id, context, message, stack) VALUES (?, ?, ?, ?)',
-    [guildId || null, context || 'unknown', String(err?.message || err).slice(0, 2000), (err?.stack || '').slice(0, 5000)]
-  ).catch(() => null);
-}
+const { httpErrorMiddleware } = require('../utils/errorLog');
 
 const EXPIRED_HTML = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Expiré</title>
 <style>body{background:#0b0f16;color:#9aa8c7;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px}
@@ -101,6 +95,7 @@ app.use(session({
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
 app.use(auditLog);
+app.use(httpErrorMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -205,4 +200,4 @@ function startWebServer(client) {
   return server;
 }
 
-module.exports = { startWebServer, logError };
+module.exports = { startWebServer };

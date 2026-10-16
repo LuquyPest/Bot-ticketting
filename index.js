@@ -3,6 +3,7 @@ const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection, Events } = require('discord.js');
 const { config } = require('./utils/config');
 const logger = require('./utils/logger');
+require('./utils/errorLog').captureConsoleErrors();
 const { startWebServer } = require('./web/server');
 const { startWorkers }  = require('./utils/jobQueue');
 
@@ -84,6 +85,8 @@ async function shutdown(signal) {
   process.exit(0);
 }
 
+client.on(Events.Error, err => logger.error('Erreur client Discord', { err: err?.stack || String(err) }));
+
 // A stray rejection in an event handler must not take the whole bot down.
 process.on('unhandledRejection', err => {
   logger.error('unhandledRejection', { err: err?.stack || String(err) });
@@ -91,7 +94,7 @@ process.on('unhandledRejection', err => {
 // After an uncaught exception the process state is unknown: log and let Docker restart us.
 process.on('uncaughtException', err => {
   logger.error('uncaughtException', { err: err?.stack || String(err) });
-  process.exit(1);
+  setTimeout(() => process.exit(1), 500).unref(); // leaves time to write the error journal
 });
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));

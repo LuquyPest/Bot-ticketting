@@ -41,7 +41,8 @@ const U = { F: '100000000000000001', S1: '100000000000000002', S2: '100000000000
 let pass = 0, failed = 0;
 const check = (name, cond, extra = '') => { cond ? pass++ : failed++; console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '  ' + extra}`); };
 
-function req(method, path, { sid, body, headers = {} } = {}) {
+function req(method, path, { sid, body, headers = {}, query } = {}) {
+  if (query) path += '?' + new URLSearchParams(query);
   return new Promise((resolve, reject) => {
     const h = { ...headers };
     if (sid) h.Cookie = 'connect.sid=' + encodeURIComponent('s:' + sign(sid, config.dashboard.sessionSecret));
@@ -674,6 +675,47 @@ async function main() {
   r = await req('POST', '/api/sa/blocked/ips/unblock', { sid: sessions.SAnew, body: { limiter: ipBlock?.limiter, key: ipBlock?.key } });
   const after = await req('GET', '/api/auth/me');
   check('blocages: IP débloquée', r.status === 200 && after.status === 401, JSON.stringify([r.status, after.status]));
+
+  // ── SA: overview, limits, error journal ──
+  r = await req('GET', '/api/sa/stats', { sid: sessions.SAnew });
+  const gStat = r.body.perGuild?.find(g => g.guild_id === G);
+  check('SA stats: totaux et détail par serveur', r.status === 200 && r.body.totals.tickets > 0 && r.body.daily.length === 30 && gStat && typeof gStat.openTickets === 'number' && typeof gStat.staff === 'number', JSON.stringify(gStat));
+  r = await req('GET', '/api/sa/stats', { sid: sessions.MGR });
+  check('SA stats: manager sans le compteur d\'erreurs', r.status === 200 && r.body.errors24h === null, JSON.stringify(r.body.errors24h));
+  r = await req('PATCH', `/api/sa/guilds/${G}/limits`, { sid: sessions.SAnew, body: { max_tickets: 40, max_agents: 0, transcript_retention_days: 120 } });
+  const lim = (await req('GET', '/api/sa/stats', { sid: sessions.SAnew })).body.perGuild.find(g => g.guild_id === G);
+  check('SA limites: enregistrées et visibles', r.status === 200 && lim.max_tickets === 40 && lim.transcript_retention_days === 120, JSON.stringify(lim));
+  r = await req('PATCH', `/api/sa/guilds/${G}/limits`, { sid: sessions.SAnew, body: { max_tickets: -1 } });
+  check('SA limites: valeur négative refusée', r.status === 400, r.status);
+  await globalQuery('UPDATE guilds SET max_tickets = 0, transcript_retention_days = 0 WHERE guild_id = ?', [G]);
+
+  const errorLog = app('./utils/errorLog');
+  errorLog.logError(G, 'test-ctx', new Error('boom unique'));
+  errorLog.logError(G, 'test-ctx', new Error('boom unique')); // same message within a minute: ignored
+  errorLog.captureConsoleErrors();
+  console.error('capture-test:', new Error('message capturé'));
+  const { EventEmitter } = require('events');
+  const fakeRes = Object.assign(new EventEmitter(), { statusCode: 500 });
+  errorLog.httpErrorMiddleware({ method: 'GET', baseUrl: '/api/tickets', route: { path: '/:id' }, path: '/9', session: { guildId: G } }, fakeRes, () => {});
+  fakeRes.emit('finish');
+  await new Promise(res => setTimeout(res, 150));
+  r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'test-ctx' } });
+  check('erreurs: enregistrée avec le serveur, doublon ignoré', r.status === 200 && r.body.total === 1 && !!r.body.rows[0].guild_name && r.body.rows[0].stack.includes('boom unique'), JSON.stringify(r.body.rows));
+  r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { q: 'message capturé', hours: 1 } });
+  check('erreurs: console.error capturé', r.body.rows?.some(e => e.context === 'capture-test'), JSON.stringify(r.body.rows));
+  r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'http' } });
+  check('erreurs: réponse HTTP 500 enregistrée avec la route', r.body.rows?.some(e => e.message === 'GET /api/tickets/:id → 500' && e.guild_id === G), JSON.stringify(r.body.rows));
+  check('erreurs: sources fréquentes et activité horaire', r.body.contexts?.some(c => c.context === 'test-ctx') && Array.isArray(r.body.hourly), JSON.stringify(r.body.contexts));
+  const errId = r.body.rows?.[0]?.id;
+  r = await req('DELETE', `/api/sa/error-logs/${errId}`, { sid: sessions.MGR });
+  check('erreurs: suppression réservée au superadmin', r.status === 403, r.status);
+  r = await req('DELETE', `/api/sa/error-logs/${errId}`, { sid: sessions.SAnew });
+  const [gone] = await globalQuery('SELECT COUNT(*) AS n FROM error_logs WHERE id = ?', [errId]);
+  check('erreurs: suppression d\'une entrée', r.status === 200 && Number(gone.n) === 0, JSON.stringify(gone));
+  r = await req('DELETE', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'test-ctx' } });
+  const [left] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'test-ctx'");
+  const [captured] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'capture-test'");
+  check('erreurs: vider selon les filtres uniquement', r.body.deleted === 1 && Number(left.n) === 0 && Number(captured.n) >= 1, JSON.stringify([r.body, left, captured]));
 
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
