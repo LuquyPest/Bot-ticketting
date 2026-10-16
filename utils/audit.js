@@ -42,6 +42,7 @@ const ACTIONS = {
   founder_remove:           ['Fondateur retiré', 'equipe'],
   staff_access_granted:     ['Accès staff accordé (rôle Discord)', 'equipe'],
   staff_access_revoked:     ['Accès staff retiré (rôle Discord)', 'equipe'],
+  agent_limit_reached:      ['Limite de staff atteinte', 'equipe'],
   // Configuration
   config_update:            ['Paramètres modifiés', 'config'],
   bot_identity_update:      ['Identité du bot modifiée', 'config'],

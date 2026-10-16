@@ -3,12 +3,6 @@ const path = require('path');
 const { Client, GatewayIntentBits, Partials, Collection, Events } = require('discord.js');
 const { config } = require('./utils/config');
 const logger = require('./utils/logger');
-const { startInactiveChecker } = require('./utils/inactiveTicketChecker');
-const { startWeeklyReport } = require('./utils/weeklyReport');
-const { startScheduledMessages } = require('./utils/scheduledMessages');
-const { startEscalationChecker } = require('./utils/escalationChecker');
-const { startStaffReminderChecker } = require('./utils/staffReminderChecker');
-const { startUserInactiveChecker } = require('./utils/userInactiveChecker');
 const { startWebServer } = require('./web/server');
 const { startWorkers }  = require('./utils/jobQueue');
 
@@ -75,13 +69,9 @@ client.login(config.token);
 
 client.once(Events.ClientReady, () => {
   logger.info('Bot connecté', { tag: client.user.tag });
-  startWorkers(client);
-  startInactiveChecker(client);
-  startWeeklyReport(client);
-  startScheduledMessages(client);
-  startEscalationChecker(client);
-  startStaffReminderChecker(client);
-  startUserInactiveChecker(client);
+  // All recurring automations (inactivity, escalation, reminders, scheduled messages,
+  // weekly report, retention purge) are BullMQ job schedulers — see utils/jobQueue.js
+  startWorkers(client).catch(err => logger.error('startWorkers failed', { err: err.message }));
 });
 
 async function shutdown(signal) {

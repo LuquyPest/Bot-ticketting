@@ -73,13 +73,4 @@ async function processPending(client) {
   }
 }
 
-let running = false;
-function startScheduledMessages(client) {
-  setInterval(async () => {
-    if (running) return; // previous run still sending
-    running = true;
-    try { await processPending(client); } catch (err) { console.error(err); } finally { running = false; }
-  }, 60 * 1000);
-}
-
-module.exports = { startScheduledMessages };
+module.exports = { processPending };

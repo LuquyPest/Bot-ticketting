@@ -20,6 +20,14 @@
     "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
   },
 
+  "retention": {
+    "loginLogsDays": 90,
+    "saAuthLogsDays": 90,
+    "errorLogsDays": 30,
+    "auditLogDays": 365,
+    "sessionsDays": 7
+  },
+
   "database": {
     "host": "db",
     "port": 3306,

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { logAudit } = require('../../utils/gradePermissions');
+const { canAddAgent, limitMessage } = require('../../utils/limits');
 
 // A non-fondateur may only hand out grades whose permissions they already hold.
 async function gradeExceedsOwnPerms(req, gradeId) {
@@ -56,6 +57,12 @@ router.patch('/:id/role', async (req, res) => {
     if ([req.guild?.owner_discord_id, req.guild?.inviter_discord_id].includes(req.params.id)) {
       return res.status(400).json({ error: 'Impossible de modifier le rôle du fondateur du serveur' });
     }
+    const [current] = await req.guildDb('SELECT role FROM dashboard_users WHERE user_id = ?', [req.params.id]);
+    const becomesStaff = role !== 'nouveau' && !['support', 'fondateur'].includes(current?.role);
+    if (becomesStaff) {
+      const limit = await canAddAgent(req.guildDb, req.guildId);
+      if (!limit.ok) return res.status(400).json({ error: limitMessage(limit) });
+    }
     await req.guildDb('UPDATE dashboard_users SET role = ? WHERE user_id = ?', [role, req.params.id]);
 
     await logAudit(
@@ -105,6 +112,10 @@ router.post('/:id/grades', async (req, res) => {
 
     const [targetUser] = await req.guildDb('SELECT user_id, role FROM dashboard_users WHERE user_id = ?', [req.params.id]);
     if (!targetUser) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (targetUser.role === 'nouveau') { // the grade promotes them to support
+      const limit = await canAddAgent(req.guildDb, req.guildId);
+      if (!limit.ok) return res.status(400).json({ error: limitMessage(limit) });
+    }
 
     await req.guildDb(
       'INSERT IGNORE INTO user_grades (user_id, grade_id, assigned_by_id, assigned_by_tag) VALUES (?, ?, ?, ?)',

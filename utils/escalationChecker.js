@@ -107,12 +107,4 @@ async function runEscalationCheck(client) {
   }
 }
 
-function startEscalationChecker(client) {
-  const intervalMs = 30 * 60 * 1000;
-  setTimeout(async () => {
-    await runEscalationCheck(client);
-    setInterval(() => runEscalationCheck(client), intervalMs);
-  }, 8 * 60 * 1000);
-}
-
-module.exports = { startEscalationChecker };
+module.exports = { runEscalationCheck };

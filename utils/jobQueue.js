@@ -1,38 +1,58 @@
+// Every recurring automation runs as a BullMQ job scheduler: the schedule lives in Redis, so each
+// run happens once even with several bot instances, and survives restarts.
 const { Queue, Worker } = require('bullmq');
-const { getRedis } = require('./redis');
+const logger = require('./logger');
 
-const connection = { connection: getRedis() };
+const QUEUE = 'bot-jobs';
+const TZ = 'Europe/Paris';
 
-const jobQueue = new Queue('bot-jobs', connection);
+// name → schedule (every: ms, or pattern: cron) + runner
+const JOBS = {
+  'scheduled-messages':  { every: 60 * 1000,      run: client => require('./scheduledMessages').processPending(client) },
+  'escalation-check':    { every: 30 * 60 * 1000, run: client => require('./escalationChecker').runEscalationCheck(client) },
+  'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },
+  'user-inactive-check': { every: 60 * 60 * 1000, run: client => require('./userInactiveChecker').runUserInactiveCheck(client) },
+  'staff-reminder':      { every: 60 * 60 * 1000, run: client => require('./staffReminderChecker').runStaffReminderCheck(client) },
+  'weekly-report':       { pattern: '0 9 * * 1',  run: client => require('./weeklyReport').sendWeeklyReport(client) },
+  'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
+};
 
-function startWorkers(client) {
-  const worker = new Worker('bot-jobs', async job => {
-    if (job.name === 'weekly-report') {
-      const { sendWeeklyReportForGuild } = require('./weeklyReport');
-      await sendWeeklyReportForGuild(client, job.data.guildId);
-    }
-  }, { ...connection, concurrency: 3 });
+// BullMQ gets its own connections: closing it must not cut the shared client (sessions, pending states)
+let queue = null;
+const connection = () => ({
+  host: process.env.REDIS_HOST || 'redis',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  maxRetriesPerRequest: null,
+});
+const getQueue = () => (queue ||= new Queue(QUEUE, { connection: connection() }));
+
+async function startWorkers(client) {
+  const q = getQueue();
+  // Upsert the schedules and drop the ones that no longer exist (renamed/removed jobs)
+  for (const [name, job] of Object.entries(JOBS)) {
+    const repeat = job.every ? { every: job.every } : { pattern: job.pattern, tz: TZ };
+    await q.upsertJobScheduler(name, repeat, { name, opts: { removeOnComplete: 50, removeOnFail: 100 } });
+  }
+  for (const s of await q.getJobSchedulers()) {
+    if (!JOBS[s.key] && !JOBS[s.id] && !JOBS[s.name]) await q.removeJobScheduler(s.key || s.id).catch(() => null);
+  }
+
+  const worker = new Worker(QUEUE, async job => {
+    const def = JOBS[job.name];
+    if (!def) return;
+    await def.run(client);
+  }, { connection: connection(), concurrency: 3 });
+
+  // Without an 'error' listener, a Redis disconnect would crash the whole process
+  worker.on('error', err => logger.error('job worker error', { err: err.message }));
+  q.on('error', err => logger.error('job queue error', { err: err.message }));
 
   worker.on('failed', (job, err) => {
-    console.error(`[queue] job ${job?.name} [${job?.data?.guildId}] failed:`, err.message);
-    try { require('../web/server').logError(job?.data?.guildId || null, `queue:${job?.name}`, err); } catch {}
+    logger.error('job failed', { job: job?.name, err: err.message });
+    try { require('../web/server').logError(null, `job:${job?.name}`, err); } catch {}
   });
-
+  logger.info('Automatismes planifiés (BullMQ)', { jobs: Object.keys(JOBS) });
   return worker;
 }
 
-async function enqueue(name, data = {}, opts = {}) {
-  try {
-    await jobQueue.add(name, data, {
-      removeOnComplete: 200,
-      removeOnFail: 100,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      ...opts,
-    });
-  } catch (err) {
-    console.error(`[queue] enqueue ${name} failed (Redis down?):`, err.message);
-  }
-}
-
-module.exports = { jobQueue, startWorkers, enqueue };
+module.exports = { startWorkers, JOBS, getQueue };

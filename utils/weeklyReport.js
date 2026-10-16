@@ -70,35 +70,14 @@ async function sendWeeklyReportForGuild(client, guildId) {
 
 async function sendWeeklyReport(client) {
   const guilds = await getActiveGuilds();
-  let { enqueue } = (() => { try { return require('./jobQueue'); } catch { return { enqueue: null }; } })();
-
   for (const { guild_id } of guilds) {
-    if (enqueue) {
-      await enqueue('weekly-report', { guildId: guild_id }).catch(() => null);
-    } else {
-      try {
-        await sendWeeklyReportForGuild(client, guild_id);
-      } catch (err) {
-        console.error(`weeklyReport error [${guild_id}]:`, err);
-        try { require('../web/server').logError(guild_id, 'weeklyReport', err); } catch {}
-      }
+    try {
+      await sendWeeklyReportForGuild(client, guild_id);
+    } catch (err) {
+      console.error(`weeklyReport error [${guild_id}]:`, err);
+      try { require('../web/server').logError(guild_id, 'weeklyReport', err); } catch {}
     }
   }
 }
 
-function startWeeklyReport(client) {
-  function scheduleNext() {
-    const now = new Date();
-    const next = new Date();
-    const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
-    next.setDate(now.getDate() + daysUntilMonday);
-    next.setHours(9, 0, 0, 0);
-    setTimeout(() => {
-      sendWeeklyReport(client).catch(console.error);
-      setInterval(() => sendWeeklyReport(client).catch(console.error), 7 * 24 * 60 * 60 * 1000);
-    }, next - now);
-  }
-  scheduleNext();
-}
-
-module.exports = { startWeeklyReport, sendWeeklyReportForGuild };
+module.exports = { sendWeeklyReport, sendWeeklyReportForGuild };

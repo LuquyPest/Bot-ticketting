@@ -93,6 +93,8 @@ Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans 
 
 ### Automatismes
 
+Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune s'exécute une seule fois même avec plusieurs instances du bot, et le planning survit aux redémarrages (`utils/jobQueue.js`).
+
 | Mécanisme | Description |
 |-----------|-------------|
 | Inactivité ticket | Avertissement puis fermeture auto si le membre ne répond plus |
@@ -100,7 +102,8 @@ Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans 
 | Rappel staff | DM au staff si un ticket réclamé n'a pas eu de réponse depuis N heures |
 | Escalade | Alerte + fermeture auto des tickets urgents sans réponse prolongée |
 | Messages programmés | Envoi différé à une date/heure précise |
-| Rapport hebdomadaire | Embed Discord automatique chaque semaine (stats + classement) |
+| Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
+| Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et des transcripts au-delà de la durée fixée par le super-admin |
 
 ---
 
@@ -222,6 +225,7 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 | `dashboard.encryptionKey` | Clé AES-256 (64 caractères hex, `openssl rand -hex 32`) qui chiffre les secrets 2FA en base. Optionnelle : à défaut, dérivée de `sessionSecret` — **changer l'une ou l'autre rend les 2FA existantes inutilisables** |
 | `dashboard.discordClientSecret` | Secret OAuth2 depuis le portail développeur Discord |
 | `dashboard.discordCallbackUrl` | Doit correspondre exactement à l'URL configurée dans le portail Discord |
+| `retention.*` | Optionnel. Durées de conservation en jours (0 = jamais purgé) : `loginLogsDays` (90), `saAuthLogsDays` (90), `errorLogsDays` (30), `auditLogDays` (365), `sessionsDays` (7). Purge chaque nuit à 4 h 30 ; les transcripts suivent la limite `transcript_retention_days` de chaque serveur |
 | `database.host` | Doit être `db` (nom du service Docker Compose, pas `localhost`) |
 | `database.password` | Doit correspondre à `DB_PASSWORD` dans `.env` |
 

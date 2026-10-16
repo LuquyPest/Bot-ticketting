@@ -49,12 +49,4 @@ async function runInactiveCheck(client) {
   }
 }
 
-function startInactiveChecker(client) {
-  const intervalMs = 60 * 60 * 1000;
-  setTimeout(async () => {
-    await runInactiveCheck(client);
-    setInterval(() => runInactiveCheck(client), intervalMs);
-  }, 5 * 60 * 1000);
-}
-
-module.exports = { startInactiveChecker };
+module.exports = { runInactiveCheck };

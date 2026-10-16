@@ -39,12 +39,4 @@ async function runStaffReminderCheck(client) {
   }
 }
 
-function startStaffReminderChecker(client) {
-  const intervalMs = 60 * 60 * 1000;
-  setTimeout(async () => {
-    await runStaffReminderCheck(client);
-    setInterval(() => runStaffReminderCheck(client), intervalMs);
-  }, 7 * 60 * 1000);
-}
-
-module.exports = { startStaffReminderChecker };
+module.exports = { runStaffReminderCheck };

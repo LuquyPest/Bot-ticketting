@@ -69,12 +69,4 @@ async function runUserInactiveCheck(client) {
   }
 }
 
-function startUserInactiveChecker(client) {
-  const intervalMs = 60 * 60 * 1000;
-  setTimeout(async () => {
-    await runUserInactiveCheck(client);
-    setInterval(() => runUserInactiveCheck(client), intervalMs);
-  }, 9 * 60 * 1000);
-}
-
-module.exports = { startUserInactiveChecker };
+module.exports = { runUserInactiveCheck };

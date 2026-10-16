@@ -602,6 +602,35 @@ async function main() {
   const opts2 = lastDm()?.components?.[0]?.components?.[0]?.options?.map(o => o.data.label) || [];
   check('MP: le menu liste les deux tickets', opts2.filter(l => l.startsWith('#')).length === 2, JSON.stringify(opts2));
 
+  // ── Limite max_agents ──
+  const { agentCount } = app('./utils/limits');
+  await globalQuery('UPDATE guilds SET max_agents = ? WHERE guild_id = ?', [await agentCount(db), G]);
+  r = await req('PATCH', '/api/users/300000000000000001/role', { sid: sessions.F, body: { role: 'support' } });
+  check('max_agents: promotion refusée quand la limite est atteinte', r.status === 400 && /Limite/.test(r.body.error), JSON.stringify(r.body));
+  await globalQuery('UPDATE guilds SET max_agents = 0 WHERE guild_id = ?', [G]);
+  r = await req('PATCH', '/api/users/300000000000000001/role', { sid: sessions.F, body: { role: 'support' } });
+  check('max_agents: 0 = illimité', r.status === 200, r.status + JSON.stringify(r.body));
+
+  // ── Rétention ──
+  const { runRetentionPurge } = app('./utils/retention');
+  await globalQuery("INSERT INTO login_logs (user_id, username, ip, user_agent, status, created_at) VALUES ('1', 'old', '1.1.1.1', 'ua', 'success', DATE_SUB(NOW(), INTERVAL 400 DAY))");
+  await db("INSERT INTO audit_log (actor_id, actor_tag, action, created_at) VALUES ('1', 'old', 'config_update', DATE_SUB(NOW(), INTERVAL 400 DAY))");
+  await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt, created_at) VALUES (?, 'x', '1', 'x', 0, '', '', DATE_SUB(NOW(), INTERVAL 10 DAY))", [st1.id]);
+  await globalQuery('UPDATE guilds SET transcript_retention_days = 5 WHERE guild_id = ?', [G]);
+  const beforeRecent = (await db('SELECT COUNT(*) AS n FROM audit_log WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)'))[0].n;
+  const purged = await runRetentionPurge();
+  const afterRecent = (await db('SELECT COUNT(*) AS n FROM audit_log WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)'))[0].n;
+  check('rétention: anciens journaux et transcripts purgés', purged.login_logs >= 1 && purged.audit_log >= 1 && purged.transcripts >= 1, JSON.stringify(purged));
+  check('rétention: données récentes conservées', Number(afterRecent) === Number(beforeRecent), `${beforeRecent} -> ${afterRecent}`);
+
+  // ── Automatismes BullMQ ──
+  const { startWorkers, getQueue, JOBS } = app('./utils/jobQueue');
+  const worker = await startWorkers(fakeClient);
+  const schedulers = await getQueue().getJobSchedulers();
+  check('BullMQ: toutes les tâches planifiées', Object.keys(JOBS).every(n => schedulers.some(x => (x.key || x.id || x.name) === n)), JSON.stringify(schedulers.map(x => x.key || x.id)));
+  await worker.close();
+  await getQueue().close();
+
   // ── SA: blocked accounts / IPs ──
   r = await req('GET', '/api/sa/blocked', { sid: sessions.SAnew });
   const lockedRoot = (r.body.accounts || []).find(a => a.username === 'root');
