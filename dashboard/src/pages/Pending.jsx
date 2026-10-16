@@ -36,16 +36,16 @@ export default function Pending() {
           </p>
 
           {user && (
-            <div className="flex items-center gap-3 bg-surface border border-white/[0.06] rounded-xl p-3 mb-6 text-left">
+            <div className="flex items-center gap-3 bg-surface border border-white/6 rounded-xl p-3 mb-6 text-left">
               {avatarUrl
-                ? <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full flex-shrink-0 ring-1 ring-white/10" />
-                : <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-sm font-bold flex-shrink-0 text-white">{user.username?.[0]?.toUpperCase()}</div>
+                ? <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full shrink-0 ring-1 ring-white/10" />
+                : <div className="w-10 h-10 rounded-full bg-linear-to-br from-primary to-indigo-600 flex items-center justify-center text-sm font-bold shrink-0 text-white">{user.username?.[0]?.toUpperCase()}</div>
               }
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink-1 truncate">{user.username}</p>
                 <p className="text-xs text-ink-4 font-mono">ID : {user.id}</p>
               </div>
-              <span className="ml-auto px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold flex-shrink-0">
+              <span className="ml-auto px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold shrink-0">
                 nouveau
               </span>
             </div>

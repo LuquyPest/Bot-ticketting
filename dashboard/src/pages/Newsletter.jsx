@@ -57,7 +57,7 @@ export default function Newsletter() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Compose form */}
-        <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 space-y-4">
+        <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-ink-2">Rédaction</h3>
 
           <div>
@@ -68,8 +68,8 @@ export default function Newsletter() {
               onChange={e => setSubject(e.target.value)}
               placeholder="ex: Nouvelles règles de modération"
               maxLength={100}
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2
-                         text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-ink-4"
+              className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2
+                         text-sm focus:outline-hidden focus:border-primary transition-colors placeholder:text-ink-4"
             />
           </div>
 
@@ -81,8 +81,8 @@ export default function Newsletter() {
               placeholder="Ton message ici..."
               maxLength={MAX_CHARS}
               rows={8}
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2
-                         text-sm focus:outline-none focus:border-primary transition-colors resize-none
+              className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2
+                         text-sm focus:outline-hidden focus:border-primary transition-colors resize-none
                          placeholder:text-ink-4 leading-relaxed"
             />
             <p className="text-[10px] text-ink-4 text-right mt-1">{message.length}/{MAX_CHARS}</p>
@@ -100,7 +100,7 @@ export default function Newsletter() {
         </div>
 
         {/* Preview */}
-        <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 space-y-3">
+        <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-ink-2">Aperçu Discord</h3>
             <Users size={12} className="text-ink-4" />
@@ -115,9 +115,9 @@ export default function Newsletter() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-sm font-semibold text-white">Bot Ticket</span>
-                  <span className="text-[10px] text-[#949cf7] bg-[#949cf7]/20 rounded px-1 py-0.5">BOT</span>
+                  <span className="text-[10px] text-[#949cf7] bg-[#949cf7]/20 rounded-sm px-1 py-0.5">BOT</span>
                 </div>
-                <div className="text-sm text-[#dbdee1] leading-relaxed whitespace-pre-wrap break-words">
+                <div className="text-sm text-[#dbdee1] leading-relaxed whitespace-pre-wrap wrap-break-word">
                   {message.trim()
                     ? preview.replace(/\*\*(.*?)\*\*/g, '**$1**')
                     : <span className="text-[#6d757d] italic">Ton message apparaîtra ici</span>

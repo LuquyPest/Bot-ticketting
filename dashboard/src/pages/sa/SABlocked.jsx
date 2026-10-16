@@ -14,8 +14,8 @@ const fmt = d => new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2
 
 function Section({ icon: Icon, title, hint, count, children }) {
   return (
-    <div className="glass-dark rounded-2xl border border-white/[0.08] overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2.5">
+    <div className="glass-dark rounded-2xl border border-white/8 overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/6 flex items-center gap-2.5">
         <Icon size={15} className="text-red-400" />
         <div className="flex-1">
           <h2 className="text-sm font-semibold text-ink-1">{title} <span className="text-ink-4 font-normal">({count})</span></h2>
@@ -80,7 +80,7 @@ export default function SABlocked() {
           <h1 className="text-lg font-bold text-ink-1">Blocages</h1>
           <p className="text-sm text-ink-3">Comptes et adresses bloqués après trop de tentatives — actualisé toutes les 30 s</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/[0.05]" title="Actualiser">
+        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/5" title="Actualiser">
           <RefreshCw size={15} />
         </button>
       </div>
@@ -94,7 +94,7 @@ export default function SABlocked() {
             {data.accounts.length === 0 ? (
               <p className="px-5 py-6 text-xs text-ink-4 text-center">Aucun compte verrouillé</p>
             ) : (
-              <ul className="divide-y divide-white/[0.04]">
+              <ul className="divide-y divide-white/4">
                 {data.accounts.map(a => (
                   <li key={`${a.type}:${a.id}`} className="px-5 py-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
@@ -113,7 +113,7 @@ export default function SABlocked() {
             {data.ips.length === 0 ? (
               <p className="px-5 py-6 text-xs text-ink-4 text-center">Aucune adresse bloquée</p>
             ) : (
-              <ul className="divide-y divide-white/[0.04]">
+              <ul className="divide-y divide-white/4">
                 {data.ips.map(b => (
                   <li key={`${b.limiter}:${b.key}`} className="px-5 py-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">

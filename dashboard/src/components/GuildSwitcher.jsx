@@ -11,14 +11,14 @@ function GuildIcon({ guild, size = 'sm' }) {
       <img
         src={`https://cdn.discordapp.com/icons/${guild.guild_id}/${guild.guild_icon}.webp?size=32`}
         alt=""
-        className={`${cls} ring-1 ring-white/10 object-cover flex-shrink-0`}
+        className={`${cls} ring-1 ring-white/10 object-cover shrink-0`}
         onError={() => setError(true)}
       />
     );
   }
   return (
-    <div className={`${cls} bg-gradient-to-br from-violet-500 to-indigo-600
-                    flex items-center justify-center flex-shrink-0`}>
+    <div className={`${cls} bg-linear-to-br from-violet-500 to-indigo-600
+                    flex items-center justify-center shrink-0`}>
       <Building2 size={size === 'sm' ? 10 : 13} className="text-white" />
     </div>
   );
@@ -64,25 +64,25 @@ export default function GuildSwitcher() {
         onClick={handleOpen}
         className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl w-full
                    text-xs font-medium text-ink-2 hover:text-ink-1
-                   hover:bg-white/[0.05] transition-all duration-150 group"
+                   hover:bg-white/5 transition-all duration-150 group"
         title="Changer de serveur"
       >
         {currentGuild
           ? <GuildIcon guild={currentGuild} size="sm" />
-          : <div className="w-5 h-5 rounded-md bg-primary/20 flex items-center justify-center flex-shrink-0">
+          : <div className="w-5 h-5 rounded-md bg-primary/20 flex items-center justify-center shrink-0">
               <Building2 size={10} className="text-primary-light" />
             </div>
         }
         <span className="flex-1 truncate text-left">{currentName}</span>
         <ChevronDown
           size={12}
-          className={`flex-shrink-0 text-ink-4 group-hover:text-ink-3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-ink-4 group-hover:text-ink-3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
         <div className="absolute bottom-full left-0 mb-1.5 w-full z-50
-                        glass-dark rounded-xl border border-white/[0.1] shadow-xl shadow-black/50
+                        glass-dark rounded-xl border border-white/10 shadow-xl shadow-black/50
                         overflow-hidden py-1">
           {!loaded && (
             <div className="flex items-center justify-center py-4">
@@ -101,15 +101,15 @@ export default function GuildSwitcher() {
                             text-xs transition-all duration-100
                             ${isActive
                               ? 'text-ink-1 bg-primary/10 cursor-default'
-                              : 'text-ink-3 hover:text-ink-1 hover:bg-white/[0.05]'}
+                              : 'text-ink-3 hover:text-ink-1 hover:bg-white/5'}
                             disabled:opacity-60`}
               >
                 <GuildIcon guild={guild} size="sm" />
                 <span className="flex-1 truncate text-left font-medium">{guild.guild_name}</span>
                 {isSwitching
-                  ? <Loader2 size={11} className="animate-spin text-primary-light flex-shrink-0" />
+                  ? <Loader2 size={11} className="animate-spin text-primary-light shrink-0" />
                   : isActive
-                    ? <Check size={11} className="text-primary-light flex-shrink-0" />
+                    ? <Check size={11} className="text-primary-light shrink-0" />
                     : null
                 }
               </button>

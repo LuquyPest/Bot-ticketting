@@ -49,7 +49,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       <p className="text-ink-3 mb-2 font-medium">{label}</p>
       {payload.map(p => (
         <p key={p.name} className="flex items-center gap-1.5 py-0.5" style={{ color: p.color }}>
-          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: p.color }} />
           <span className="text-ink-2">{p.name}</span>
           <span className="font-bold ml-auto pl-3 tabular-nums text-ink-1">{p.value}</span>
         </p>
@@ -135,7 +135,7 @@ export default function Dashboard() {
   const heatMax = Math.max(1, ...heatmap.map(h => h.count));
 
   /* ─── Shared card class ─────────────────────────────────────── */
-  const card = 'bg-surface-card border border-white/[0.06] rounded-2xl shadow-card';
+  const card = 'bg-surface-card border border-white/6 rounded-2xl shadow-card';
 
   return (
     <div className="p-6 space-y-5">
@@ -197,7 +197,7 @@ export default function Dashboard() {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl
                              hover:bg-amber-500/8 text-left transition-colors">
                   <span className="text-sm text-ink-2 truncate">{t.owner_tag} — {t.subject || 'Sans sujet'}</span>
-                  <span className={`text-xs font-bold ml-2 flex-shrink-0 tabular-nums
+                  <span className={`text-xs font-bold ml-2 shrink-0 tabular-nums
                                    ${hrs >= 24 ? 'text-red-400' : 'text-amber-400'}`}>
                     {hrs}h
                   </span>
@@ -220,12 +220,12 @@ export default function Dashboard() {
                 Ouvertures · Fermetures · Non claim
               </p>
             </div>
-            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/[0.06]">
+            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/6">
               {[7, 14, 30].map(d => (
                 <button key={d} onClick={() => setDays(d)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
                               ${days === d
-                                ? 'bg-surface-elevated text-ink-1 shadow-sm'
+                                ? 'bg-surface-elevated text-ink-1 shadow-xs'
                                 : 'text-ink-3 hover:text-ink-2'}`}>
                   {d}j
                 </button>
@@ -286,7 +286,7 @@ export default function Dashboard() {
                 {donutData.map(d => (
                   <div key={d.key} className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PRIO_COLORS[d.key] }} />
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIO_COLORS[d.key] }} />
                       <span className="text-ink-2">{d.name}</span>
                     </span>
                     <span className="font-semibold text-ink-1 tabular-nums">{d.value}</span>
@@ -318,13 +318,13 @@ export default function Dashboard() {
                   'bg-amber-500/20 text-amber-300 border-amber-500/30',
                   'bg-slate-400/15 text-slate-300 border-slate-400/25',
                   'bg-orange-600/15 text-orange-400 border-orange-600/25',
-                ][i] || 'bg-white/[0.04] text-ink-4 border-white/[0.06]';
+                ][i] || 'bg-white/4 text-ink-4 border-white/6';
                 return (
                   <div key={s.admin_id}
                     className="flex items-center gap-3 p-2.5 rounded-xl bg-surface hover:bg-surface-hover
-                               border border-white/[0.04] transition-colors">
+                               border border-white/4 transition-colors">
                     <span className={`w-6 h-6 rounded-full text-[10px] font-bold border
-                                     flex items-center justify-center flex-shrink-0 ${rankCls}`}>
+                                     flex items-center justify-center shrink-0 ${rankCls}`}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -347,12 +347,12 @@ export default function Dashboard() {
         <div className={`xl:col-span-2 ${card} p-5`}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-ink-1">Tickets récents</h2>
-            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/[0.06]">
+            <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/6">
               {[['', 'Tous'], ['open', 'Ouverts'], ['closed', 'Fermés']].map(([v, l]) => (
                 <button key={v} onClick={() => setStatusFilter(v)}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
                               ${statusFilter === v
-                                ? 'bg-surface-elevated text-ink-1 shadow-sm'
+                                ? 'bg-surface-elevated text-ink-1 shadow-xs'
                                 : 'text-ink-3 hover:text-ink-2'}`}>
                   {l}
                 </button>
@@ -363,14 +363,14 @@ export default function Dashboard() {
             {recent.map(t => (
               <button key={t.id} onClick={() => navigate(`/tickets/${t.id}`)}
                 className="w-full flex items-center justify-between p-2.5 rounded-xl
-                           hover:bg-white/[0.03] transition-colors text-left group">
+                           hover:bg-white/3 transition-colors text-left group">
                 <div className="min-w-0 flex-1 mr-3">
                   <p className="text-sm text-ink-2 truncate font-medium group-hover:text-ink-1 transition-colors">
                     {t.owner_tag}
                   </p>
                   <p className="text-xs text-ink-4 truncate mt-0.5">{t.subject || 'Sans sujet'}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {t.priority && t.priority !== 'normal' && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md
                                      ${t.priority === 'urgent'
@@ -428,7 +428,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-4">
         <div className={`${card} p-5 flex items-center gap-4`}>
           <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary-light
-                          flex items-center justify-center flex-shrink-0">
+                          flex items-center justify-center shrink-0">
             <TrendingUp size={18} />
           </div>
           <div>
@@ -440,7 +440,7 @@ export default function Dashboard() {
         </div>
         <div className={`${card} p-5 flex items-center gap-4`}>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400
-                          flex items-center justify-center flex-shrink-0">
+                          flex items-center justify-center shrink-0">
             <TrendingDown size={18} />
           </div>
           <div>
@@ -479,11 +479,11 @@ export default function Dashboard() {
               <div className="space-y-1.5">
                 {leaderboard.staff.slice(0, 5).map((s, i) => (
                   <div key={s.userId} className="flex items-center gap-3">
-                    <span className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0
+                    <span className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0
                                      ${i === 0 ? 'bg-amber-500/20 text-amber-300' :
                                        i === 1 ? 'bg-slate-400/20 text-slate-300' :
                                        i === 2 ? 'bg-orange-600/20 text-orange-400' :
-                                       'bg-white/[0.04] text-ink-4'}`}>
+                                       'bg-white/4 text-ink-4'}`}>
                       {i + 1}
                     </span>
                     <p className="text-xs text-ink-2 truncate flex-1">{s.username}</p>
@@ -510,7 +510,7 @@ export default function Dashboard() {
                 <p className="text-2xl font-bold text-ink-1 tabular-nums">{myGoal.achieved}</p>
                 <p className="text-xs text-ink-4">/ {myGoal.target} tickets</p>
               </div>
-              <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-white/6 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{

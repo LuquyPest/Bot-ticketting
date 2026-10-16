@@ -34,8 +34,8 @@ function AddModal({ onClose, onAdded }) {
   const minDt = new Date(soon.getTime() - soon.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-surface-card border border-white/[0.08] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="bg-surface-card border border-white/8 rounded-2xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-ink-1">Programmer un message</h2>
           <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
@@ -48,7 +48,7 @@ function AddModal({ onClose, onAdded }) {
               value={form.ticket_id}
               onChange={e => setForm(f => ({ ...f, ticket_id: e.target.value }))}
               placeholder="123"
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary"
             />
           </div>
           <div>
@@ -58,7 +58,7 @@ function AddModal({ onClose, onAdded }) {
               value={form.content}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
               placeholder="Contenu du message..."
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+              className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary resize-none"
             />
           </div>
           <div>
@@ -68,7 +68,7 @@ function AddModal({ onClose, onAdded }) {
               min={minDt}
               value={form.send_at}
               onChange={e => setForm(f => ({ ...f, send_at: e.target.value }))}
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary"
             />
           </div>
           <div className="flex gap-2 pt-2">
@@ -138,11 +138,11 @@ export default function Messages() {
         {loading ? (
           <div className="text-center py-8 text-ink-4 text-sm">Chargement...</div>
         ) : pending.length === 0 ? (
-          <div className="bg-surface-card border border-white/[0.06] rounded-xl p-8 text-center text-ink-4 text-sm">
+          <div className="bg-surface-card border border-white/6 rounded-xl p-8 text-center text-ink-4 text-sm">
             Aucun message programmé
           </div>
         ) : (
-          <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
             {pending.map((m, i) => (
               <div key={m.id} className={`flex items-start gap-4 px-4 py-3 ${i < pending.length - 1 ? 'border-b border-white/[0.06]/50' : ''}`}>
                 <div className="flex-1 min-w-0">
@@ -151,9 +151,9 @@ export default function Messages() {
                     <span className="text-[10px] text-ink-4">·</span>
                     <span className="text-xs text-ink-3">par {m.sender_tag}</span>
                   </div>
-                  <p className="text-sm text-ink-2 whitespace-pre-wrap break-words">{m.content}</p>
+                  <p className="text-sm text-ink-2 whitespace-pre-wrap wrap-break-word">{m.content}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
                     <p className="text-xs text-primary-light font-medium">{fmtDate(m.send_at, { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })}</p>
                     <p className="text-[10px] text-ink-4">envoi prévu</p>
@@ -173,7 +173,7 @@ export default function Messages() {
       {sent.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Envoyés récemment</h2>
-          <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden opacity-60">
+          <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden opacity-60">
             {sent.slice(0, 10).map((m, i) => (
               <div key={m.id} className={`flex items-start gap-4 px-4 py-3 ${i < sent.slice(0, 10).length - 1 ? 'border-b border-white/[0.06]/50' : ''}`}>
                 <div className="flex-1 min-w-0">
@@ -183,7 +183,7 @@ export default function Messages() {
                   </div>
                   <p className="text-sm text-ink-3 line-clamp-1">{m.content}</p>
                 </div>
-                <p className="text-xs text-ink-4 flex-shrink-0">{fmtDate(m.send_at)}</p>
+                <p className="text-xs text-ink-4 shrink-0">{fmtDate(m.send_at)}</p>
               </div>
             ))}
           </div>

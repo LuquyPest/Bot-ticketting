@@ -32,8 +32,8 @@ function PersonalKPI({ label, value, icon: Icon, color }) {
   };
   const c = colors[color] || colors.violet;
   return (
-    <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 shadow-card
-                    hover:border-white/[0.1] transition-colors">
+    <div className="bg-surface-card border border-white/6 rounded-2xl p-5 shadow-card
+                    hover:border-white/10 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <p className="text-[10px] text-ink-4 uppercase tracking-wider font-semibold">{label}</p>
         <div className={`w-8 h-8 rounded-xl ${c.bg} border ${c.border}
@@ -139,12 +139,12 @@ export default function Staff() {
         </div>
         <div className="flex items-center gap-2">
           {/* Period toggle */}
-          <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/[0.06]">
+          <div className="flex gap-0.5 bg-surface rounded-xl p-0.5 border border-white/6">
             {[['all', 'Tout'], ['month', 'Ce mois']].map(([v, l]) => (
               <button key={v} onClick={() => setPeriod(v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
                             ${period === v
-                              ? 'bg-surface-elevated text-ink-1 shadow-sm'
+                              ? 'bg-surface-elevated text-ink-1 shadow-xs'
                               : 'text-ink-3 hover:text-ink-2'}`}>
                 {l}
               </button>
@@ -155,7 +155,7 @@ export default function Staff() {
               value={sort}
               onChange={e => setSort(e.target.value)}
               className="bg-surface border border-white/[0.07] text-ink-2 rounded-xl px-3 py-1.5 text-xs
-                         focus:outline-none focus:border-primary/50 transition-all hover:border-white/[0.12]"
+                         focus:outline-hidden focus:border-primary/50 transition-all hover:border-white/12"
             >
               <option value="tickets_closed">Trier par fermetures</option>
               <option value="tickets_claimed">Trier par claims</option>
@@ -213,12 +213,12 @@ export default function Staff() {
             const pct  = Math.round(((sorted.length - rank) / (sorted.length - 1)) * 100);
             const delta = rankDeltas[user?.id];
             return (
-              <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 shadow-card">
+              <div className="bg-surface-card border border-white/6 rounded-2xl p-5 shadow-card">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Award size={14} className="text-primary-light" />
                     <span className="text-sm font-semibold text-ink-1">Classement équipe</span>
-                    {period === 'month' && <span className="text-[10px] text-ink-4 bg-surface px-2 py-0.5 rounded-md border border-white/[0.06]">Ce mois</span>}
+                    {period === 'month' && <span className="text-[10px] text-ink-4 bg-surface px-2 py-0.5 rounded-md border border-white/6">Ce mois</span>}
                   </div>
                   <div className="flex items-center gap-2">
                     {period === 'month' && <RankDelta delta={delta} />}
@@ -229,7 +229,7 @@ export default function Staff() {
                 </div>
                 <div className="h-2 bg-surface rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all"
+                    className="h-full bg-linear-to-r from-primary to-primary-light rounded-full transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -245,19 +245,19 @@ export default function Staff() {
       {/* Section divider label for fondateur */}
       {!isSupport && (
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/[0.04]" />
+          <div className="flex-1 h-px bg-white/4" />
           <span className="text-[10px] text-ink-4 uppercase tracking-wider font-semibold">
             {period === 'month' ? 'Classement mensuel' : 'Classement complet'}
           </span>
-          <div className="flex-1 h-px bg-white/[0.04]" />
+          <div className="flex-1 h-px bg-white/4" />
         </div>
       )}
 
       {/* Table */}
-      <div className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden shadow-card">
+      <div className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden shadow-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-white/6">
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">#</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Membre</th>
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermetures</th>
@@ -289,7 +289,7 @@ export default function Staff() {
               <tr>
                 <td colSpan={period === 'month' ? 8 : 7}>
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-surface border border-white/[0.06]
+                    <div className="w-12 h-12 rounded-2xl bg-surface border border-white/6
                                     flex items-center justify-center">
                       <Users size={20} className="text-ink-4" />
                     </div>
@@ -306,8 +306,8 @@ export default function Staff() {
               const delta = rankDeltas[s.admin_id];
               return (
                 <tr key={s.admin_id}
-                  className={`border-b border-white/[0.04] last:border-0 transition-colors
-                              ${isMe ? 'bg-primary/5 hover:bg-primary/8' : 'hover:bg-white/[0.025]'}`}>
+                  className={`border-b border-white/4 last:border-0 transition-colors
+                              ${isMe ? 'bg-primary/5 hover:bg-primary/8' : 'hover:bg-white/2.5'}`}>
                   <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">
                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                   </td>

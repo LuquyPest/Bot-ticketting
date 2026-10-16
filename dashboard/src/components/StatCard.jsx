@@ -39,7 +39,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'indigo', s
       <div className="flex items-start justify-between gap-3">
         {/* Text block */}
         <div className="min-w-0 flex-1 pt-0.5">
-          <p className="text-[10px] font-semibold text-ink-3 uppercase tracking-[0.1em] leading-none mb-2.5">
+          <p className="text-[10px] font-semibold text-ink-3 uppercase tracking-widest leading-none mb-2.5">
             {label}
           </p>
           <div className="flex items-baseline gap-2.5">
@@ -59,7 +59,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'indigo', s
 
         {/* Icon */}
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5
+          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5
                       transition-transform duration-200 group-hover:scale-110 ${c.icon}`}
           style={{ boxShadow: `0 0 16px ${c.ring}` }}
         >

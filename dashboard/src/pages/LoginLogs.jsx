@@ -64,7 +64,7 @@ export default function LoginLogs() {
             className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
               filter === val
                 ? 'bg-primary text-white'
-                : 'bg-surface-card border border-white/[0.06] text-ink-3 hover:text-ink-1'
+                : 'bg-surface-card border border-white/6 text-ink-3 hover:text-ink-1'
             }`}
           >
             {label}
@@ -75,8 +75,8 @@ export default function LoginLogs() {
           <select
             value={limit}
             onChange={e => setLimit(Number(e.target.value))}
-            className="bg-surface border border-white/[0.08] text-ink-2 rounded-lg px-2 py-1
-                       text-xs focus:outline-none focus:border-primary transition-colors"
+            className="bg-surface border border-white/8 text-ink-2 rounded-lg px-2 py-1
+                       text-xs focus:outline-hidden focus:border-primary transition-colors"
           >
             {[25, 50, 100, 200].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -85,7 +85,7 @@ export default function LoginLogs() {
       </div>
 
       {/* Table */}
-      <div className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden">
         {loading ? (
           <div className="text-sm text-ink-3 text-center py-10">Chargement...</div>
         ) : filtered.length === 0 ? (
@@ -94,7 +94,7 @@ export default function LoginLogs() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.04] text-[11px] text-ink-4 uppercase tracking-wider">
+                <tr className="border-b border-white/4 text-[11px] text-ink-4 uppercase tracking-wider">
                   <th className="text-left px-5 py-3 font-medium">Utilisateur</th>
                   <th className="text-left px-4 py-3 font-medium">Statut</th>
                   <th className="text-left px-4 py-3 font-medium hidden md:table-cell">IP</th>
@@ -102,9 +102,9 @@ export default function LoginLogs() {
                   <th className="text-left px-4 py-3 font-medium">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.03]">
+              <tbody className="divide-y divide-white/3">
                 {filtered.map((log, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                  <tr key={i} className="hover:bg-white/2 transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         {log.status === 'blocked'

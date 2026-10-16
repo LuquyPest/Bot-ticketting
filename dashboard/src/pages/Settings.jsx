@@ -5,8 +5,8 @@ import toast from 'react-hot-toast';
 
 function Section({ title, description, children }) {
   return (
-    <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 space-y-4">
-      <div className="border-b border-white/[0.06] pb-3">
+    <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-4">
+      <div className="border-b border-white/6 pb-3">
         <h2 className="text-sm font-semibold text-ink-2">{title}</h2>
         {description && <p className="text-xs text-ink-4 mt-0.5">{description}</p>}
       </div>
@@ -25,13 +25,13 @@ function Field({ label, hint, children }) {
   );
 }
 
-const BASE = "w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors";
+const BASE = "w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors";
 const NUM_INPUT = BASE + " w-32";
 
 function DiscordPickerSkeleton() {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-white/[0.08]">
-      <Loader2 size={12} className="animate-spin text-ink-4 flex-shrink-0" />
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-white/8">
+      <Loader2 size={12} className="animate-spin text-ink-4 shrink-0" />
       <span className="text-xs text-ink-4">Chargement…</span>
     </div>
   );
@@ -78,7 +78,7 @@ function CategoryPicker({ value, onChange, categories, loading }) {
 function FeatureToggle({ label, hint, checked, onChange, children }) {
   const on = !!checked;
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
+    <div className="flex items-start gap-3 py-2.5 border-b border-white/4 last:border-0">
       <div className="flex-1 min-w-0">
         <p className="text-sm text-ink-2 font-medium">{label}</p>
         {hint && <p className="text-xs text-ink-4 mt-0.5">{hint}</p>}
@@ -87,7 +87,7 @@ function FeatureToggle({ label, hint, checked, onChange, children }) {
       <button
         type="button"
         onClick={() => onChange(!on)}
-        className={`flex-shrink-0 mt-0.5 transition-colors ${on ? 'text-primary-light' : 'text-ink-4 hover:text-ink-3'}`}
+        className={`shrink-0 mt-0.5 transition-colors ${on ? 'text-primary-light' : 'text-ink-4 hover:text-ink-3'}`}
         title={on ? 'Désactiver' : 'Activer'}
       >
         {on ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
@@ -113,12 +113,12 @@ function RoleMultiPicker({ value, onChange, roles, loading }) {
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all
                      ${selected.includes(role.id)
                        ? 'bg-primary/10 border border-primary/20 text-ink-1'
-                       : 'text-ink-3 hover:bg-white/[0.04] border border-transparent'}`}>
+                       : 'text-ink-3 hover:bg-white/4 border border-transparent'}`}>
           {selected.includes(role.id)
-            ? <Check size={12} className="text-primary-light flex-shrink-0" />
-            : <div className="w-3 h-3 rounded border border-white/[0.15] flex-shrink-0" />
+            ? <Check size={12} className="text-primary-light shrink-0" />
+            : <div className="w-3 h-3 rounded-sm border border-white/15 shrink-0" />
           }
-          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          <span className="w-2.5 h-2.5 rounded-full shrink-0"
             style={{ backgroundColor: role.color && role.color !== '#000000' ? role.color : '#6366f1' }} />
           <span className="truncate">{role.name}</span>
         </button>
@@ -314,7 +314,7 @@ export default function Settings() {
       >
         <div className="flex items-start gap-5">
           {/* Avatar */}
-          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+          <div className="flex flex-col items-center gap-2 shrink-0">
             <div className="relative group">
               <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/10 bg-surface">
                 {avatarPreview
@@ -389,7 +389,7 @@ export default function Settings() {
           <Field label="Couleur des embeds" hint="Hexadécimal — ex: #6366f1">
             <div className="flex items-center gap-2">
               <input type="color" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
-                className="w-10 h-9 rounded-lg border border-white/[0.08] bg-transparent cursor-pointer p-0.5 flex-shrink-0" />
+                className="w-10 h-9 rounded-lg border border-white/8 bg-transparent cursor-pointer p-0.5 shrink-0" />
               <input type="text" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
                 pattern="^#[0-9a-fA-F]{6}$" placeholder="#6366f1" className={BASE + " font-mono"} />
             </div>
@@ -419,7 +419,7 @@ export default function Settings() {
           <div className="space-y-2">
             {(cfg.ticketSubjects || []).map((s, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="flex-1 bg-surface border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-ink-2">{s}</span>
+                <span className="flex-1 bg-surface border border-white/8 rounded-lg px-3 py-2 text-sm text-ink-2">{s}</span>
                 <button onClick={() => removeSubject(i)}
                   className="p-1.5 text-ink-4 hover:text-red-400 transition-colors">
                   <X size={14} />
@@ -431,7 +431,7 @@ export default function Settings() {
                 onKeyDown={e => e.key === 'Enter' && addSubject()}
                 placeholder="Ajouter un sujet…" className={BASE + " flex-1"} />
               <button onClick={addSubject}
-                className="px-3 py-2 rounded-lg bg-surface border border-white/[0.08] text-ink-2
+                className="px-3 py-2 rounded-lg bg-surface border border-white/8 text-ink-2
                            hover:text-ink-1 transition-colors">
                 <Plus size={15} />
               </button>
@@ -456,7 +456,7 @@ export default function Settings() {
           {[['supportGradeId', 'Grade des rôles support'], ['chiefGradeId', 'Grade des rôles chef support']].map(([key, label]) => (
             <Field key={key} label={label} hint="Créé automatiquement à la première connexion si aucun n'est choisi">
               <select value={cfg[key] || ''} onChange={e => set(key, e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary">
                 <option value="">Automatique</option>
                 {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>

@@ -23,8 +23,8 @@ function TicketCard({ ticket, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-surface border border-white/[0.06] rounded-xl p-3 space-y-2
-                 transition-all hover:border-white/[0.12] hover:bg-surface-hover
+      className="w-full text-left bg-surface border border-white/6 rounded-xl p-3 space-y-2
+                 transition-all hover:border-white/12 hover:bg-surface-hover
                  hover:shadow-card-hover group"
     >
       <div className="flex items-start justify-between gap-2">
@@ -89,8 +89,8 @@ export default function Kanban() {
           </div>
         </div>
         <button onClick={load}
-          className="p-2 rounded-xl text-ink-3 hover:text-ink-1 hover:bg-white/[0.06]
-                     border border-white/[0.06] transition-all">
+          className="p-2 rounded-xl text-ink-3 hover:text-ink-1 hover:bg-white/6
+                     border border-white/6 transition-all">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
@@ -101,13 +101,13 @@ export default function Kanban() {
           const s = COL_STYLES[col.color];
           return (
             <div key={col.key}
-              className="flex flex-col bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden shadow-card">
+              className="flex flex-col bg-surface-card border border-white/6 rounded-2xl overflow-hidden shadow-card">
               <div className={`flex items-center justify-between px-4 py-3 border-b ${s.header}`}>
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${s.dot}`} />
                   <h3 className="text-sm font-semibold text-ink-1">{col.label}</h3>
                 </div>
-                <span className="text-xs font-bold text-ink-4 bg-white/[0.05] px-2 py-0.5 rounded-full tabular-nums">
+                <span className="text-xs font-bold text-ink-4 bg-white/5 px-2 py-0.5 rounded-full tabular-nums">
                   {items.length}
                 </span>
               </div>

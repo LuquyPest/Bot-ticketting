@@ -29,16 +29,16 @@ export default function RecoveryCodes({ codes, onDone }) {
         Garde-les en lieu sûr : chacun permet <strong>une</strong> connexion si tu perds ton téléphone.
         Ils ne seront plus jamais affichés.
       </p>
-      <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-black/20 border border-white/[0.06] p-3 font-mono text-xs text-ink-1 select-all">
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-black/20 border border-white/6 p-3 font-mono text-xs text-ink-1 select-all">
         {codes.map(c => <span key={c}>{c}</span>)}
       </div>
       <div className="flex gap-2">
         <button type="button" onClick={copy}
-          className="flex-1 py-2 rounded-xl text-xs text-ink-2 border border-white/[0.08] hover:bg-white/[0.05] transition-all flex items-center justify-center gap-1.5">
+          className="flex-1 py-2 rounded-xl text-xs text-ink-2 border border-white/8 hover:bg-white/5 transition-all flex items-center justify-center gap-1.5">
           <Copy size={12} /> Copier
         </button>
         <button type="button" onClick={download}
-          className="flex-1 py-2 rounded-xl text-xs text-ink-2 border border-white/[0.08] hover:bg-white/[0.05] transition-all flex items-center justify-center gap-1.5">
+          className="flex-1 py-2 rounded-xl text-xs text-ink-2 border border-white/8 hover:bg-white/5 transition-all flex items-center justify-center gap-1.5">
           <Download size={12} /> Télécharger
         </button>
       </div>

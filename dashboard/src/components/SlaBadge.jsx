@@ -31,8 +31,8 @@ export default function SlaBadge({ sla, bar = false }) {
         <Icon size={10} aria-hidden="true" /> {label}
       </span>
       {bar && (
-        <span className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden" aria-hidden="true">
-          <span className={`block h-full rounded-full ${sla.state === 'breached' ? 'bg-red-400' : sla.state === 'warning' ? 'bg-amber-400' : 'bg-[var(--viz-1)]'}`}
+        <span className="h-1.5 w-full rounded-full bg-white/6 overflow-hidden" aria-hidden="true">
+          <span className={`block h-full rounded-full ${sla.state === 'breached' ? 'bg-red-400' : sla.state === 'warning' ? 'bg-amber-400' : 'bg-(--viz-1)'}`}
             style={{ width: `${Math.min(100, (sla.elapsedMinutes / limit) * 100)}%` }} />
         </span>
       )}

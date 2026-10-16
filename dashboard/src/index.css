@@ -1,287 +1,338 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-/* ─── Design Tokens — Dark (default) ────────────────────────────── */
-:root {
-  /* Surface scale */
-  --color-base:             #08080e;
-  --color-surface:          #0d0d18;
-  --color-surface-card:     #111120;
-  --color-surface-hover:    #18182a;
-  --color-surface-elevated: #1c1c30;
+/* Colors backed by the design tokens defined below (:root, light/dark themes). Tailwind also
+   declares them in @layer theme (as var(--self)); the unlayered tokens take precedence. */
+@theme inline {
+  --color-base: var(--color-base);
+  --color-surface: var(--color-surface);
+  --color-surface-card: var(--color-surface-card);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+  --color-danger: var(--color-danger);
+  --color-danger-light: var(--color-danger-light);
+  --color-ink-1: var(--color-ink-1);
+  --color-ink-2: var(--color-ink-2);
+  --color-ink-3: var(--color-ink-3);
+  --color-ink-4: var(--color-ink-4);
+}
 
-  /* Text scale — WCAG AA on dark */
-  --color-ink-1:  #f0efff;   /* ≈ 15:1 on base — headings, values */
-  --color-ink-2:  #a8a8c8;   /* ≈  7:1 on base — body text */
-  --color-ink-3:  #7878a0;   /* ≈  5:1 on base — secondary labels */
-  --color-ink-4:  #484868;   /* ≈  3:1 on base — borders, placeholders, decorative */
+@theme {
 
-  /* Semantic / brand */
-  --color-primary:       #7c6ef3;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-border-focus: rgba(124, 110, 243, 0.5);
+
+  --color-primary: #7c6ef3;
   --color-primary-light: #a78bfa;
-  --color-primary-dark:  #5b4fe8;
+  --color-primary-dark: #5b4fe8;
+  --color-primary-muted: rgba(124, 110, 243, 0.15);
+  --color-primary-glow: rgba(124, 110, 243, 0.3);
 
-  /* Semantic states */
-  --color-success:       #10b981;
-  --color-success-light: #34d399;
-  --color-warning:       #f59e0b;
-  --color-warning-light: #fbbf24;
-  --color-danger:        #ef4444;
-  --color-danger-light:  #f87171;
+  --color-success-muted: rgba(16, 185, 129, 0.15);
 
-  /* Radii */
-  --radius-sm:  8px;
-  --radius-md:  12px;
-  --radius-lg:  16px;
-  --radius-xl:  20px;
-  --radius-2xl: 24px;
+  --color-warning-muted: rgba(245, 158, 11, 0.15);
 
-  /* Legacy aliases — needed by some components and toasts */
-  --bg:           var(--color-base);
-  --surface-1:    var(--color-surface);
-  --surface-2:    var(--color-surface-card);
-  --surface-3:    var(--color-surface-hover);
-  --border:       rgba(255, 255, 255, 0.07);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --border-focus: rgba(124, 110, 243, 0.5);
-  --primary:      var(--color-primary);
-  --primary-light:var(--color-primary-light);
-  --text-1:       var(--color-ink-1);
-  --text-2:       var(--color-ink-2);
-  --text-3:       var(--color-ink-3);
+  --color-danger-muted: rgba(239, 68, 68, 0.15);
 
-  /* Chart categorical slots (fixed order) — validated against --color-surface-card (dataviz validator) */
-  --viz-1: #3987e5;
-  --viz-2: #d95926;
-  --viz-3: #199e70;
-  --viz-4: #c98500;
-  --viz-5: #d55181;
-}
+  --font-sans: Inter var, Inter, system-ui, sans-serif;
 
-/* ─── Design Tokens — Light ──────────────────────────────────────── */
-html.light {
-  /* Light steps of the same hues; 3–5 sit under 3:1 on white → charts ship visible values / a table view */
-  --viz-1: #2a78d6;
-  --viz-2: #eb6834;
-  --viz-3: #1baf7a;
-  --viz-4: #eda100;
-  --viz-5: #e87ba4;
-  --color-base:             #f0f0f8;
-  --color-surface:          #f9f9fd;
-  --color-surface-card:     #ffffff;
-  --color-surface-hover:    #eaeaf4;
-  --color-surface-elevated: #ffffff;
+  --animate-fade-in: fadeIn 0.18s ease-out;
+  --animate-slide-up: slideUp 0.2s ease-out;
+  --animate-slide-down: slideDown 0.2s ease-out;
+  --animate-glow-pulse: glowPulse 4s ease-in-out infinite;
+  --animate-mesh-drift: meshDrift 12s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 1.8s linear infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-scale-in: scaleIn 0.15s ease-out;
 
-  /* Text scale — WCAG AA on light */
-  --color-ink-1: #14142a;   /* ≈ 14:1 */
-  --color-ink-2: #3c3c5e;   /* ≈  8:1 */
-  --color-ink-3: #62628a;   /* ≈  5:1 */
-  --color-ink-4: #9898b8;   /* ≈  3:1 */
+  --background-image-mesh-violet:
+    radial-gradient(at 20% 30%, rgba(124, 110, 243, 0.18) 0px, transparent 55%),
+    radial-gradient(at 80% 10%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+    radial-gradient(at 5% 80%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(79, 70, 229, 0.08) 0px, transparent 50%);
 
-  --bg:       var(--color-base);
-  --surface-1:var(--color-surface);
-  --surface-2:var(--color-surface-card);
-  --surface-3:var(--color-surface-hover);
-  --border:       rgba(20, 20, 42, 0.09);
-  --border-hover: rgba(20, 20, 42, 0.15);
-  --text-1:   var(--color-ink-1);
-  --text-2:   var(--color-ink-2);
-  --text-3:   var(--color-ink-3);
-}
+  --shadow-card:
+    0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.055);
+  --shadow-card-hover:
+    0 4px 24px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --shadow-card-lg:
+    0 8px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-primary: 0 0 24px rgba(124, 110, 243, 0.38);
+  --shadow-primary-sm: 0 0 14px rgba(124, 110, 243, 0.26);
+  --shadow-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --shadow-glow: 0 0 40px rgba(124, 110, 243, 0.16);
+  --shadow-success-sm: 0 0 14px rgba(16, 185, 129, 0.2);
+  --shadow-danger-sm: 0 0 14px rgba(239, 68, 68, 0.2);
 
-/* ─── Base ───────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
-
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text-1);
-  line-height: 1.5;
-  font-feature-settings: "cv02","cv03","cv04","cv11","ss01";
-  font-variation-settings: "opsz" 32;
-}
-
-/* ─── Accessibility — Reduced Motion (CRITICAL) ──────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration:       0.01ms !important;
-    animation-iteration-count: 1     !important;
-    transition-duration:      0.01ms !important;
-    scroll-behavior:          auto   !important;
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes glowPulse {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+  @keyframes meshDrift {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+    100% {
+      transform: translate(-4%, -4%) scale(1.08);
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 }
 
-/* ─── Scrollbar ──────────────────────────────────────────────────── */
-::-webkit-scrollbar              { width: 4px; height: 4px; }
-::-webkit-scrollbar-track        { background: transparent; }
-::-webkit-scrollbar-thumb        { background: rgba(255,255,255,0.08); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover  { background: rgba(255,255,255,0.14); }
-html.light ::-webkit-scrollbar-thumb       { background: rgba(20,20,42,0.12); }
-html.light ::-webkit-scrollbar-thumb:hover { background: rgba(20,20,42,0.22); }
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-/* ─── Selection ──────────────────────────────────────────────────── */
-::selection { background: rgba(124,110,243,0.3); color: #f0efff; }
-html.light ::selection { background: rgba(124,110,243,0.2); color: #14142a; }
-
-/* ─── Focus ring (global) ────────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid rgba(124,110,243,0.65);
-  outline-offset: 2px;
-  border-radius: 4px;
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
-/* ─── Component layer ────────────────────────────────────────────── */
-@layer components {
+/* Tailwind v4 no longer gives buttons a pointer cursor: keep the v3 behavior. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
+@utility glass {
   /* ── Glass surfaces ─────────────────────────────────── */
-  .glass {
-    background: rgba(13, 13, 24, 0.72);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-  }
+  background: rgba(13, 13, 24, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
 
-  .glass-dark {
-    background: rgba(8, 8, 14, 0.88);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-  }
+@utility glass-dark {
+  background: rgba(8, 8, 14, 0.88);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
 
-  .glass-card {
-    background: rgba(17, 17, 32, 0.82);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
+@utility glass-card {
+  background: rgba(17, 17, 32, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 
+@utility card {
   /* ── Cards ──────────────────────────────────────────── */
-  .card {
-    @apply bg-surface-card rounded-2xl shadow-card transition-all duration-200;
-    border: 1px solid rgba(255,255,255,0.06);
+  @apply bg-surface-card rounded-2xl shadow-card transition-all duration-200;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.09);
   }
-  .card:hover { border-color: rgba(255,255,255,0.09); }
+}
 
+@utility input-base {
   /* ── Inputs ─────────────────────────────────────────── */
-  .input-base {
-    @apply w-full bg-surface text-ink-1 placeholder-ink-4 rounded-xl px-3.5
-           focus:outline-none focus:ring-1 focus:ring-primary/20
-           hover:border-white/[0.12]
+  @apply w-full bg-surface text-ink-1 placeholder-ink-4 rounded-xl px-3.5
+           focus:outline-hidden focus:ring-1 focus:ring-primary/20
+           hover:border-white/12
            transition-all duration-150;
-    border: 1px solid rgba(255,255,255,0.07);
-    min-height: 44px;       /* touch target */
-    font-size: 0.875rem;
-    line-height: 1.5;
-    padding-top:    0.5rem;
-    padding-bottom: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  min-height: 44px; /* touch target */
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  &:focus {
+    border-color: rgba(124, 110, 243, 0.5);
   }
-  .input-base:focus { border-color: rgba(124,110,243,0.5); }
+}
 
+@utility btn {
   /* ── Buttons ────────────────────────────────────────── */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium
+  @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium
            select-none cursor-pointer transition-all duration-150
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1
+           focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1
            disabled:opacity-50 disabled:cursor-not-allowed;
-    min-height: 40px;
-    padding: 0.5rem 1rem;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
-  .btn:active:not(:disabled) { transform: scale(0.98); }
+}
 
-  .btn-primary {
-    @apply btn bg-primary text-white hover:bg-primary-light;
-    box-shadow: 0 0 22px rgba(124,110,243,0.28);
-    --tw-ring-color: rgba(124,110,243,0.5);
+@utility btn-primary {
+  @apply btn bg-primary text-white hover:bg-primary-light;
+  box-shadow: 0 0 22px rgba(124, 110, 243, 0.28);
+  --tw-ring-color: rgba(124, 110, 243, 0.5);
+  &:hover {
+    box-shadow: 0 0 32px rgba(124, 110, 243, 0.42);
   }
-  .btn-primary:hover { box-shadow: 0 0 32px rgba(124,110,243,0.42); }
+}
 
-  .btn-secondary {
-    @apply btn text-ink-2 hover:text-ink-1 hover:bg-white/[0.07];
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    --tw-ring-color: rgba(124,110,243,0.35);
-  }
+@utility btn-secondary {
+  @apply btn text-ink-2 hover:text-ink-1 hover:bg-white/[0.07];
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  --tw-ring-color: rgba(124, 110, 243, 0.35);
+}
 
-  .btn-danger {
-    @apply btn text-red-400 hover:bg-red-500/20;
-    background: rgba(239,68,68,0.08);
-    border: 1px solid rgba(239,68,68,0.2);
-    --tw-ring-color: rgba(239,68,68,0.4);
-  }
+@utility btn-danger {
+  @apply btn text-red-400 hover:bg-red-500/20;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  --tw-ring-color: rgba(239, 68, 68, 0.4);
+}
 
-  .btn-ghost {
-    @apply btn text-ink-3 hover:text-ink-1 hover:bg-white/[0.05];
-    --tw-ring-color: rgba(124,110,243,0.3);
-  }
+@utility btn-ghost {
+  @apply btn text-ink-3 hover:text-ink-1 hover:bg-white/5;
+  --tw-ring-color: rgba(124, 110, 243, 0.3);
+}
 
+@utility data-table {
   /* ── Table ──────────────────────────────────────────── */
-  .data-table { @apply w-full text-sm; }
-  .data-table thead tr { border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .data-table th {
+  @apply w-full text-sm;
+  & thead tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  & th {
     @apply text-left px-4 py-3 text-[10px] font-semibold text-ink-3 uppercase tracking-wider;
   }
-  .data-table tbody tr {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+  & tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     @apply transition-colors cursor-pointer;
   }
-  .data-table tbody tr:last-child { border-bottom: none; }
-  .data-table tbody tr:hover { background: rgba(255,255,255,0.025); }
-  .data-table td { @apply px-4 py-3; }
+  & tbody tr:last-child {
+    border-bottom: none;
+  }
+  & tbody tr:hover {
+    background: rgba(255, 255, 255, 0.025);
+  }
+  & td {
+    @apply px-4 py-3;
+  }
+}
 
+@utility page-header {
   /* ── Page header ────────────────────────────────────── */
-  .page-header h1 {
+  & h1 {
     @apply text-xl font-bold text-ink-1 tracking-tight;
   }
-  .page-header p {
+  & p {
     @apply text-sm text-ink-3 mt-0.5;
     line-height: 1.5;
   }
 }
 
 /* ─── Utilities ──────────────────────────────────────────────────── */
-@layer utilities {
+
+@utility noise {
   /* Noise texture for premium feel */
-  .noise::after {
+  &::after {
     content: '';
-    position: absolute; inset: 0;
+    position: absolute;
+    inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
     pointer-events: none;
     border-radius: inherit;
     opacity: 0.4;
   }
+}
 
+@utility glow-top {
   /* Gradient top border */
-  .glow-top {
-    position: relative;
-  }
-  .glow-top::before {
+  position: relative;
+  &::before {
     content: '';
     position: absolute;
-    top: 0; left: 16px; right: 16px; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(124,110,243,0.5), transparent);
-    border-radius: 99px;
-  }
-
-  /* Shimmer skeleton */
-  .shimmer {
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1px;
     background: linear-gradient(
       90deg,
-      rgba(255,255,255,0.03) 0%,
-      rgba(255,255,255,0.08) 50%,
-      rgba(255,255,255,0.03) 100%
+      transparent,
+      rgba(124, 110, 243, 0.5),
+      transparent
     );
-    background-size: 200% 100%;
-    animation: shimmer 1.8s linear infinite;
+    border-radius: 99px;
   }
+}
 
+@utility shimmer {
+  /* Shimmer skeleton */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@utility dot-pulse {
   /* Status pulse dot */
-  .dot-pulse {
-    position: relative;
-  }
-  .dot-pulse::after {
+  position: relative;
+  &::after {
     content: '';
     position: absolute;
     inset: -2px;
@@ -290,6 +341,171 @@ html.light ::selection { background: rgba(124,110,243,0.2); color: #14142a; }
     opacity: 0;
     animation: dotPulse 2.4s ease-out infinite;
   }
+}
+
+@layer utilities {
+  /* ─── Design Tokens — Dark (default) ────────────────────────────── */
+  :root {
+    /* Surface scale */
+    --color-base: #08080e;
+    --color-surface: #0d0d18;
+    --color-surface-card: #111120;
+    --color-surface-hover: #18182a;
+    --color-surface-elevated: #1c1c30;
+
+    /* Text scale — WCAG AA on dark */
+    --color-ink-1: #f0efff; /* ≈ 15:1 on base — headings, values */
+    --color-ink-2: #a8a8c8; /* ≈  7:1 on base — body text */
+    --color-ink-3: #7878a0; /* ≈  5:1 on base — secondary labels */
+    --color-ink-4: #484868; /* ≈  3:1 on base — borders, placeholders, decorative */
+
+    /* Semantic / brand */
+    --color-primary: #7c6ef3;
+    --color-primary-light: #a78bfa;
+    --color-primary-dark: #5b4fe8;
+
+    /* Semantic states */
+    --color-success: #10b981;
+    --color-success-light: #34d399;
+    --color-warning: #f59e0b;
+    --color-warning-light: #fbbf24;
+    --color-danger: #ef4444;
+    --color-danger-light: #f87171;
+
+    /* Radii */
+    /* Not --radius-*: Tailwind v4 reads that namespace for its rounded-* utilities */
+    --ui-radius-sm: 8px;
+    --ui-radius-md: 12px;
+    --ui-radius-lg: 16px;
+    --ui-radius-xl: 20px;
+    --ui-radius-2xl: 24px;
+
+    /* Legacy aliases — needed by some components and toasts */
+    --bg: var(--color-base);
+    --surface-1: var(--color-surface);
+    --surface-2: var(--color-surface-card);
+    --surface-3: var(--color-surface-hover);
+    --border: rgba(255, 255, 255, 0.07);
+    --border-hover: rgba(255, 255, 255, 0.12);
+    --border-focus: rgba(124, 110, 243, 0.5);
+    --primary: var(--color-primary);
+    --primary-light: var(--color-primary-light);
+    --text-1: var(--color-ink-1);
+    --text-2: var(--color-ink-2);
+    --text-3: var(--color-ink-3);
+
+    /* Chart categorical slots (fixed order) — validated against --color-surface-card (dataviz validator) */
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-4: #c98500;
+    --viz-5: #d55181;
+  }
+
+  /* ─── Design Tokens — Light ──────────────────────────────────────── */
+  html.light {
+    /* Light steps of the same hues; 3–5 sit under 3:1 on white → charts ship visible values / a table view */
+    --viz-1: #2a78d6;
+    --viz-2: #eb6834;
+    --viz-3: #1baf7a;
+    --viz-4: #eda100;
+    --viz-5: #e87ba4;
+    --color-base: #f0f0f8;
+    --color-surface: #f9f9fd;
+    --color-surface-card: #ffffff;
+    --color-surface-hover: #eaeaf4;
+    --color-surface-elevated: #ffffff;
+
+    /* Text scale — WCAG AA on light */
+    --color-ink-1: #14142a; /* ≈ 14:1 */
+    --color-ink-2: #3c3c5e; /* ≈  8:1 */
+    --color-ink-3: #62628a; /* ≈  5:1 */
+    --color-ink-4: #9898b8; /* ≈  3:1 */
+
+    --bg: var(--color-base);
+    --surface-1: var(--color-surface);
+    --surface-2: var(--color-surface-card);
+    --surface-3: var(--color-surface-hover);
+    --border: rgba(20, 20, 42, 0.09);
+    --border-hover: rgba(20, 20, 42, 0.15);
+    --text-1: var(--color-ink-1);
+    --text-2: var(--color-ink-2);
+    --text-3: var(--color-ink-3);
+  }
+
+  /* ─── Base ───────────────────────────────────────────────────────── */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+    line-height: 1.5;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+  }
+
+  /* ─── Accessibility — Reduced Motion (CRITICAL) ──────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ─── Scrollbar ──────────────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+  html.light ::-webkit-scrollbar-thumb {
+    background: rgba(20, 20, 42, 0.12);
+  }
+  html.light ::-webkit-scrollbar-thumb:hover {
+    background: rgba(20, 20, 42, 0.22);
+  }
+
+  /* ─── Selection ──────────────────────────────────────────────────── */
+  ::selection {
+    background: rgba(124, 110, 243, 0.3);
+    color: #f0efff;
+  }
+  html.light ::selection {
+    background: rgba(124, 110, 243, 0.2);
+    color: #14142a;
+  }
+
+  /* ─── Focus ring (global) ────────────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid rgba(124, 110, 243, 0.65);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ─── Component layer ────────────────────────────────────────────── */
 }
 
 /* ─── Keyframes ──────────────────────────────────────────────────── */
@@ -369,7 +585,7 @@ html.light ::selection { background: rgba(124,110,243,0.2); color: #14142a; }
   background: var(--surface-2) !important;
   color: var(--text-1) !important;
   border: 1px solid var(--border) !important;
-  border-radius: var(--radius-lg) !important;
+  border-radius: var(--ui-radius-lg) !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
 }
 

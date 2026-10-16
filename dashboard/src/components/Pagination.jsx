@@ -9,7 +9,7 @@ export default function Pagination({ page, pages, onChange }) {
       <button
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/[0.06]
+        className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/6
                    disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
       >
         <ChevronLeft size={16} />
@@ -24,7 +24,7 @@ export default function Pagination({ page, pages, onChange }) {
       <button
         onClick={() => onChange(page + 1)}
         disabled={page >= pages}
-        className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/[0.06]
+        className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-white/6
                    disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
       >
         <ChevronRight size={16} />

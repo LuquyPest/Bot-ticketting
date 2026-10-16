@@ -19,7 +19,7 @@ function CopyButton({ text }) {
   };
   return (
     <button onClick={copy} title="Copier"
-      className="p-1 rounded text-ink-4 hover:text-ink-1 transition-colors">
+      className="p-1 rounded-sm text-ink-4 hover:text-ink-1 transition-colors">
       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
     </button>
   );
@@ -130,14 +130,14 @@ export default function ApiKeys() {
 
       {/* Create form */}
       {showForm && (
-        <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-5 space-y-4">
+        <div className="bg-surface-card border border-white/6 rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-ink-2">Nouvelle clé API</h3>
           <div>
             <label className="text-xs text-ink-3 block mb-1">Nom de la clé</label>
             <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="ex: Mon intégration webhook" maxLength={100}
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2
-                         text-sm focus:outline-none focus:border-primary transition-colors" />
+              className="w-full bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2
+                         text-sm focus:outline-hidden focus:border-primary transition-colors" />
           </div>
           <div>
             <label className="text-xs text-ink-3 block mb-1.5">Permissions</label>
@@ -155,8 +155,8 @@ export default function ApiKeys() {
           <div>
             <label className="text-xs text-ink-3 block mb-1">Expiration (optionnel)</label>
             <input type="datetime-local" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
-              className="bg-surface border border-white/[0.08] text-ink-1 rounded-lg px-3 py-2
-                         text-sm focus:outline-none focus:border-primary transition-colors" />
+              className="bg-surface border border-white/8 text-ink-1 rounded-lg px-3 py-2
+                         text-sm focus:outline-hidden focus:border-primary transition-colors" />
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowForm(false)}
@@ -174,16 +174,16 @@ export default function ApiKeys() {
       )}
 
       {/* Keys list */}
-      <div className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden">
         {data.keys.length === 0 ? (
           <p className="text-sm text-ink-4 text-center py-10">Aucune clé API créée</p>
         ) : (
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-white/4">
             {data.keys.map(k => {
               let perms = [];
               try { perms = Array.isArray(k.permissions) ? k.permissions : JSON.parse(k.permissions || '[]'); } catch {}
               return (
-                <div key={k.id} className="flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                <div key={k.id} className="flex items-center gap-4 px-5 py-3 hover:bg-white/2 transition-colors">
                   <Key size={14} className={k.active ? 'text-primary-light' : 'text-ink-4'} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-ink-1 flex items-center gap-2">

@@ -62,9 +62,9 @@ function GradeModal({ grade, grades, onClose, onSave }) {
   const available = grades.filter(g => !grade || g.id !== grade.id);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-surface-card border border-white/[0.08] rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="bg-surface-card border border-white/8 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
           <h2 className="font-bold text-ink-1">{grade ? 'Modifier le grade' : 'Nouveau grade'}</h2>
           <button onClick={onClose} className="text-ink-3 hover:text-ink-2 p-1 rounded-lg hover:bg-surface transition-colors">
             <X size={16} />
@@ -78,7 +78,7 @@ function GradeModal({ grade, grades, onClose, onSave }) {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex : Chef Support"
-              className="w-full bg-surface border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-none focus:border-primary"
+              className="w-full bg-surface border border-white/8 rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-hidden focus:border-primary"
             />
           </div>
 
@@ -109,7 +109,7 @@ function GradeModal({ grade, grades, onClose, onSave }) {
             <select
               value={parentId}
               onChange={e => setParentId(e.target.value)}
-              className="w-full bg-surface border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-ink-2 focus:outline-none focus:border-primary"
+              className="w-full bg-surface border border-white/8 rounded-lg px-3 py-2 text-sm text-ink-2 focus:outline-hidden focus:border-primary"
             >
               <option value="">— Aucun parent (grade racine)</option>
               {available.map(g => (
@@ -132,11 +132,11 @@ function GradeModal({ grade, grades, onClose, onSave }) {
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors border ${
                     perms.has(p.id)
                       ? 'bg-primary/15 border-primary/30 text-ink-1'
-                      : 'bg-surface/50 border-white/[0.05] text-ink-3 hover:text-ink-2 hover:bg-surface'
+                      : 'bg-surface/50 border-white/5 text-ink-3 hover:text-ink-2 hover:bg-surface'
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                    perms.has(p.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/[0.1]'
+                  <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${
+                    perms.has(p.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/10'
                   }`}>
                     {perms.has(p.id) && <Check size={10} className="text-white" />}
                   </div>
@@ -153,7 +153,7 @@ function GradeModal({ grade, grades, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/[0.06]">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-white/6">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm text-ink-2 hover:text-ink-1 hover:bg-surface transition-colors"
@@ -177,15 +177,15 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
   const parentGrade = grade.parent_id ? grades.find(g => g.id === grade.parent_id) : null;
 
   return (
-    <div className="bg-surface-card border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3 hover:border-white/[0.08] transition-colors">
+    <div className="bg-surface-card border border-white/6 rounded-2xl p-4 flex flex-col gap-3 hover:border-white/8 transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: grade.color }} />
+          <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: grade.color }} />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-ink-1 truncate">{grade.name}</p>
               {grade.is_default === 1 && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-600/20 border border-amber-600/30 text-amber-400 flex-shrink-0">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-600/20 border border-amber-600/30 text-amber-400 shrink-0">
                   <Star size={8} fill="currentColor" /> Défaut
                 </span>
               )}
@@ -193,7 +193,7 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
             <div className="flex items-center gap-1 mt-0.5">
               {parentGrade && (
                 <>
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: parentGrade.color }} />
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: parentGrade.color }} />
                   <p className="text-xs text-ink-4">{parentGrade.name}</p>
                   <ChevronRight size={10} className="text-ink-4" />
                 </>
@@ -202,7 +202,7 @@ function GradeCard({ grade, grades, onEdit, onDelete, onToggleDefault }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => onToggleDefault(grade)}
             title={grade.is_default ? 'Retirer le grade par défaut' : 'Définir comme grade par défaut'}
@@ -360,7 +360,7 @@ export default function Grades() {
         </div>
       )}
 
-      <div className="bg-surface-card/50 border border-white/[0.06] rounded-2xl p-4 space-y-1.5">
+      <div className="bg-surface-card/50 border border-white/6 rounded-2xl p-4 space-y-1.5">
         <p className="text-xs text-ink-3 leading-relaxed">
           <span className="text-primary-light font-medium">Hiérarchie</span> — Un grade peut avoir un parent.
           Les membres d'un grade parent voient les tickets visibles par ses grades enfants.

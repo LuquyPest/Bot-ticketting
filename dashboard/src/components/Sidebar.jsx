@@ -104,7 +104,7 @@ export default function Sidebar() {
         aria-label={sidebarOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         aria-expanded={sidebarOpen}
         aria-controls="main-sidebar"
-        className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-surface-card border border-white/[0.08]
+        className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-surface-card border border-white/8
                    text-ink-3 hover:text-ink-1 transition-all lg:hidden shadow-card"
         onClick={() => setSidebarOpen(o => !o)}
       >
@@ -116,7 +116,7 @@ export default function Sidebar() {
         role="navigation"
         aria-label="Navigation principale"
         className={`
-          w-56 flex-shrink-0 flex flex-col glass-dark border-r border-white/[0.06]
+          w-56 shrink-0 flex flex-col glass-dark border-r border-white/6
           transition-transform duration-200 ease-out
           fixed inset-y-0 left-0 z-40 lg:relative lg:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -124,9 +124,9 @@ export default function Sidebar() {
       >
 
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/[0.06]">
-          <div className="relative w-9 h-9 flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 via-primary to-indigo-600
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/6">
+          <div className="relative w-9 h-9 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
                             flex items-center justify-center shadow-lg shadow-primary/30">
               <Bot size={17} className="text-white" />
             </div>
@@ -148,8 +148,8 @@ export default function Sidebar() {
             onClick={() => setCmdOpen(true)}
             aria-label="Ouvrir la palette de commandes (⌘K)"
             title="Recherche (⌘K)"
-            className="p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-white/[0.06]
-                       transition-all flex-shrink-0"
+            className="p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-white/6
+                       transition-all shrink-0"
           >
             <Command size={13} aria-hidden="true" />
           </button>
@@ -170,22 +170,22 @@ export default function Sidebar() {
                   transition-all duration-150 cursor-pointer group
                   ${isActive
                     ? 'bg-primary/10 text-ink-1'
-                    : 'text-ink-3 hover:text-ink-2 hover:bg-white/[0.04]'}
+                    : 'text-ink-3 hover:text-ink-2 hover:bg-white/4'}
                 `}>
                   {isActive && (
-                    <span className="absolute left-0 h-5 w-[3px] bg-gradient-to-b from-primary-light to-primary
+                    <span className="absolute left-0 h-5 w-[3px] bg-linear-to-b from-primary-light to-primary
                                      rounded-r-full shadow-[0_0_10px_rgba(124,110,243,0.7)]" />
                   )}
                   <Icon
                     size={15}
-                    className={`flex-shrink-0 transition-colors ${
+                    className={`shrink-0 transition-colors ${
                       isActive ? 'text-primary-light' : 'text-ink-4 group-hover:text-ink-3'
                     }`}
                   />
                   <span className="truncate flex-1">{label}</span>
                   {/* Unclaimed badge on Tickets */}
                   {to === '/tickets' && unclaimedCount > 0 && (
-                    <span className="ml-auto flex-shrink-0 min-w-[18px] h-[18px] px-1
+                    <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1
                                      rounded-full bg-amber-500/20 border border-amber-500/30
                                      text-amber-300 text-[10px] font-bold
                                      flex items-center justify-center tabular-nums
@@ -200,26 +200,26 @@ export default function Sidebar() {
         </nav>
 
         {/* Guild switcher */}
-        <div className="px-2 pb-1 border-t border-white/[0.06] pt-2">
+        <div className="px-2 pb-1 border-t border-white/6 pt-2">
           <GuildSwitcher />
         </div>
 
         {/* User footer */}
         <div className="px-2 pb-3 pt-2">
           <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl
-                          bg-white/[0.03] border border-white/[0.05]">
+                          bg-white/3 border border-white/5">
             {/* Avatar — link to profile page */}
             <button
               onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
               aria-label="Mon profil"
               title="Mon profil"
-              className="relative flex-shrink-0 rounded-full hover:ring-2 hover:ring-primary/50
-                         transition-all focus:outline-none"
+              className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/50
+                         transition-all focus:outline-hidden"
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full ring-1 ring-white/10" />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600
+                <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-500 to-indigo-600
                                 flex items-center justify-center text-xs font-bold text-white">
                   {user?.username?.[0]?.toUpperCase()}
                 </div>
@@ -251,7 +251,7 @@ export default function Sidebar() {
               aria-label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
               title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
               className="text-ink-4 hover:text-primary-light hover:bg-primary/10 p-1.5 rounded-lg
-                         transition-all duration-150 flex-shrink-0"
+                         transition-all duration-150 shrink-0"
             >
               {theme === 'dark' ? <Sun size={13} aria-hidden="true" /> : <Moon size={13} aria-hidden="true" />}
             </button>
@@ -262,7 +262,7 @@ export default function Sidebar() {
               aria-label="Déconnexion"
               title="Déconnexion"
               className="text-ink-4 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg
-                         transition-all duration-150 flex-shrink-0"
+                         transition-all duration-150 shrink-0"
             >
               <LogOut size={13} aria-hidden="true" />
             </button>

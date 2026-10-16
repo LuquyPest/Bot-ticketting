@@ -39,7 +39,7 @@ export default function TotpVerify() {
 
         {/* Icon + title */}
         <div className="text-center space-y-3">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-linear-to-br from-violet-500 to-indigo-600
                           flex items-center justify-center shadow-xl shadow-primary/30">
             <ShieldCheck size={26} className="text-white" />
           </div>
@@ -54,7 +54,7 @@ export default function TotpVerify() {
         </div>
 
         {/* Form */}
-        <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 space-y-4">
+        <div className="glass-dark rounded-2xl border border-white/8 p-6 space-y-4">
           <p className="text-xs text-ink-3 text-center">
             Entre le code généré par ton application d'authentification pour accéder au dashboard,
             ou l'un de tes codes de secours (format <span className="font-mono">xxxxx-xxxxx</span>).
@@ -71,8 +71,8 @@ export default function TotpVerify() {
                 maxLength={11}
                 autoComplete="one-time-code"
                 autoFocus
-                className="w-full px-3 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                           text-base text-ink-1 placeholder-ink-4 outline-none
+                className="w-full px-3 py-3 rounded-xl bg-white/4 border border-white/8
+                           text-base text-ink-1 placeholder-ink-4 outline-hidden
                            focus:border-primary/50 text-center tracking-[0.4em] font-mono transition-colors"
               />
             </div>

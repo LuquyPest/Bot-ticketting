@@ -77,27 +77,27 @@ export default function CommandPalette({ open, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4
-                 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-100 flex items-start justify-center pt-[15vh] px-4
+                 bg-black/60 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-surface-card border border-white/[0.12] rounded-2xl
+        className="w-full max-w-lg bg-surface-card border border-white/12 rounded-2xl
                    shadow-[0_32px_80px_rgba(0,0,0,0.8)] overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
       >
         {/* Input */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.06]">
-          <Search size={15} className="text-ink-4 flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/6">
+          <Search size={15} className="text-ink-4 shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Rechercher une page..."
-            className="flex-1 bg-transparent text-ink-1 placeholder-ink-4 text-sm focus:outline-none"
+            className="flex-1 bg-transparent text-ink-1 placeholder-ink-4 text-sm focus:outline-hidden"
           />
           <kbd className="flex items-center px-1.5 py-0.5 rounded-md bg-surface text-ink-4
-                          text-[10px] font-mono border border-white/[0.08]">
+                          text-[10px] font-mono border border-white/8">
             ESC
           </kbd>
         </div>
@@ -115,9 +115,9 @@ export default function CommandPalette({ open, onClose }) {
                 onClick={() => execute(cmd)}
                 onMouseEnter={() => setSelected(i)}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
-                            ${active ? 'bg-primary/10 text-ink-1' : 'text-ink-2 hover:bg-white/[0.03]'}`}
+                            ${active ? 'bg-primary/10 text-ink-1' : 'text-ink-2 hover:bg-white/3'}`}
               >
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0
                                  transition-colors ${active ? 'bg-primary/20' : 'bg-surface'}`}>
                   <Icon size={14} className={active ? 'text-primary-light' : 'text-ink-4'} />
                 </div>
@@ -129,7 +129,7 @@ export default function CommandPalette({ open, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-white/[0.04]
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-white/4
                         text-[10px] text-ink-4">
           <span>↑↓ naviguer</span>
           <span>↵ ouvrir</span>

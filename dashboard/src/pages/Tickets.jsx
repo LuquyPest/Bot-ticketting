@@ -56,14 +56,14 @@ function QuickView({ ticket, x, y, messages }) {
 
   return createPortal(
     <div
-      className="fixed z-50 w-[320px] bg-surface-elevated border border-white/[0.12] rounded-2xl p-5
+      className="fixed z-50 w-[320px] bg-surface-elevated border border-white/12 rounded-2xl p-5
                  shadow-[0_16px_60px_rgba(0,0,0,0.8)] animate-fade-in pointer-events-none"
       style={{ left, top }}
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20
-                        flex items-center justify-center flex-shrink-0">
+                        flex items-center justify-center shrink-0">
           <FileText size={13} className="text-primary-light" />
         </div>
         <div className="min-w-0">
@@ -76,15 +76,15 @@ function QuickView({ ticket, x, y, messages }) {
 
       {/* Meta */}
       <div className="space-y-0 text-xs">
-        <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between py-1.5 border-b border-white/4">
           <span className="text-ink-4 flex items-center gap-1.5"><User size={10} /> Utilisateur</span>
           <span className="text-ink-2 font-medium">{ticket.owner_tag}</span>
         </div>
-        <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between py-1.5 border-b border-white/4">
           <span className="text-ink-4">Statut</span>
           <Badge label={ticket.status} variant={ticket.status} />
         </div>
-        <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between py-1.5 border-b border-white/4">
           <span className="text-ink-4">Priorité</span>
           <span className="flex items-center gap-1.5 text-ink-2">
             <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[ticket.priority] || 'bg-ink-4'}`} />
@@ -92,14 +92,14 @@ function QuickView({ ticket, x, y, messages }) {
           </span>
         </div>
         {ticket.status === 'open' && (
-          <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04]">
+          <div className="flex items-center justify-between py-1.5 border-b border-white/4">
             <span className="text-ink-4">Étape</span>
             <span className={STAGE_CLS[ticket.stage] || 'text-ink-2'}>{STAGE_LABELS[ticket.stage] || '—'}</span>
           </div>
         )}
         {ticket.assignees?.length > 0 && (
-          <div className="flex items-center justify-between gap-3 py-1.5 border-b border-white/[0.04]">
-            <span className="text-ink-4 flex-shrink-0">Attribué à</span>
+          <div className="flex items-center justify-between gap-3 py-1.5 border-b border-white/4">
+            <span className="text-ink-4 shrink-0">Attribué à</span>
             <span className="text-emerald-400 font-medium truncate">{assigneeNames(ticket)}</span>
           </div>
         )}
@@ -112,7 +112,7 @@ function QuickView({ ticket, x, y, messages }) {
       </div>
 
       {/* Last 2 messages */}
-      <div className="mt-3 pt-3 border-t border-white/[0.06]">
+      <div className="mt-3 pt-3 border-t border-white/6">
         <p className="text-[10px] text-ink-4 uppercase tracking-wider font-semibold mb-2">
           Derniers messages
         </p>
@@ -129,17 +129,17 @@ function QuickView({ ticket, x, y, messages }) {
             {messages.map((m, i) => {
               const s = MSG_SOURCE_STYLE[m.source] || MSG_SOURCE_STYLE.reply;
               return (
-                <div key={i} className="bg-surface/60 border border-white/[0.05] rounded-xl px-3 py-2">
+                <div key={i} className="bg-surface/60 border border-white/5 rounded-xl px-3 py-2">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
                     <span className={`text-[10px] font-semibold truncate ${s.label}`}>
                       {m.author_tag || 'Système'}
                     </span>
-                    <span className="text-[10px] text-ink-4 ml-auto flex-shrink-0 tabular-nums">
+                    <span className="text-[10px] text-ink-4 ml-auto shrink-0 tabular-nums">
                       {fmtDate(m.created_at, { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-[11px] text-ink-3 leading-snug line-clamp-2 break-words">
+                  <p className="text-[11px] text-ink-3 leading-snug line-clamp-2 wrap-break-word">
                     {m.content || <span className="italic text-ink-4">—</span>}
                   </p>
                 </div>
@@ -388,7 +388,7 @@ export default function Tickets() {
           <a
             href="/api/tickets/export"
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.07]
-                       text-ink-3 hover:text-ink-1 hover:border-white/[0.12] text-xs font-medium
+                       text-ink-3 hover:text-ink-1 hover:border-white/12 text-xs font-medium
                        transition-all duration-150"
           >
             <Download size={13} /> Export CSV
@@ -405,13 +405,13 @@ export default function Tickets() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-150 select-none
                           ${isActive
                             ? 'bg-primary/15 text-primary-light border-primary/40 shadow-[0_0_12px_rgba(124,110,243,0.15)]'
-                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}>
-              {v.dot && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${v.dot}`} />}
+                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/12'}`}>
+              {v.dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${v.dot}`} />}
               {v.label}
             </button>
           );
         })}
-        {savedViews.length > 0 && <span className="w-px h-5 bg-white/[0.08] mx-1" />}
+        {savedViews.length > 0 && <span className="w-px h-5 bg-white/8 mx-1" />}
         {savedViews.map(v => {
           const isActive = activeView === `saved:${v.id}`;
           return (
@@ -420,19 +420,19 @@ export default function Tickets() {
                           ${isActive ? 'bg-violet-500/15 text-violet-200 border-violet-400/40' : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1'}`}>
               <button onClick={() => applyView(`saved:${v.id}`, v.filters)} className="py-0.5">{v.name}</button>
               <button onClick={() => toggleDefaultView(v)} title={v.is_default ? 'Vue par défaut' : 'Définir comme vue par défaut'}
-                className={`p-0.5 rounded ${v.is_default ? 'text-amber-400' : 'text-ink-4 opacity-0 group-hover:opacity-100 hover:text-amber-400'}`}>
+                className={`p-0.5 rounded-sm ${v.is_default ? 'text-amber-400' : 'text-ink-4 opacity-0 group-hover:opacity-100 hover:text-amber-400'}`}>
                 <Star size={11} fill={v.is_default ? 'currentColor' : 'none'} />
               </button>
               <button onClick={() => deleteView(v)} title="Supprimer la vue"
-                className="p-0.5 rounded text-ink-4 opacity-0 group-hover:opacity-100 hover:text-red-400">
+                className="p-0.5 rounded-sm text-ink-4 opacity-0 group-hover:opacity-100 hover:text-red-400">
                 <X size={11} />
               </button>
             </span>
           );
         })}
         <button onClick={saveCurrentView} title="Enregistrer les filtres actuels comme vue"
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-white/[0.12]
-                     text-ink-3 hover:text-ink-1 hover:border-white/[0.2] transition-all">
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium border border-dashed border-white/12
+                     text-ink-3 hover:text-ink-1 hover:border-white/20 transition-all">
           <BookmarkPlus size={12} /> Enregistrer la vue
         </button>
       </div>
@@ -440,15 +440,15 @@ export default function Tickets() {
       {/* Keyboard hint */}
       <div className="flex items-center gap-3 text-[10px] text-ink-4">
         <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">J/K</kbd>
+          <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-white/8 font-mono">J/K</kbd>
           <span>naviguer</span>
         </span>
         <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">↵</kbd>
+          <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-white/8 font-mono">↵</kbd>
           <span>ouvrir</span>
         </span>
         <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-white/[0.08] font-mono">/</kbd>
+          <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-white/8 font-mono">/</kbd>
           <span>rechercher</span>
         </span>
       </div>
@@ -465,8 +465,8 @@ export default function Tickets() {
             onChange={e => setFilter('subject', e.target.value)}
             className="w-full bg-surface border border-white/[0.07] text-ink-1 placeholder-ink-4
                        rounded-xl pl-9 pr-3.5 py-2 text-sm
-                       focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20
-                       hover:border-white/[0.12] transition-all duration-150"
+                       focus:outline-hidden focus:border-primary/50 focus:ring-1 focus:ring-primary/20
+                       hover:border-white/12 transition-all duration-150"
           />
         </div>
         <Select
@@ -513,7 +513,7 @@ export default function Tickets() {
                           border transition-all duration-150
                           ${filters.assignee
                             ? 'bg-primary/10 text-primary-light border-primary/30'
-                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
+                            : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/12'}`}
             >
               <User size={13} />
               {filters.assignee
@@ -529,12 +529,12 @@ export default function Tickets() {
               )}
             </button>
             {showStaffFilter && (
-              <div className="absolute top-full mt-1 left-0 bg-surface-elevated border border-white/[0.1]
+              <div className="absolute top-full mt-1 left-0 bg-surface-elevated border border-white/10
                               rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-44
                               max-h-52 overflow-y-auto z-20">
                 <button
                   onClick={() => { setFilter('assignee', ''); setActiveView(''); setShowStaffFilter(false); }}
-                  className="w-full flex items-center px-3.5 py-2.5 text-xs text-ink-3 hover:bg-white/[0.05] transition-colors"
+                  className="w-full flex items-center px-3.5 py-2.5 text-xs text-ink-3 hover:bg-white/5 transition-colors"
                 >
                   Tout le monde
                 </button>
@@ -543,7 +543,7 @@ export default function Tickets() {
                     key={s.user_id}
                     onClick={() => { setFilter('assignee', s.user_id); setActiveView(''); setShowStaffFilter(false); }}
                     className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-ink-2
-                               hover:bg-white/[0.05] hover:text-ink-1 transition-colors"
+                               hover:bg-white/5 hover:text-ink-1 transition-colors"
                   >
                     {s.username}
                   </button>
@@ -560,7 +560,7 @@ export default function Tickets() {
                       border transition-all duration-150
                       ${(showDateFilter || hasDateFilter)
                         ? 'bg-primary/10 text-primary-light border-primary/30'
-                        : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/[0.12]'}`}
+                        : 'bg-surface border-white/[0.07] text-ink-3 hover:text-ink-1 hover:border-white/12'}`}
         >
           <Calendar size={13} />
           Date
@@ -574,25 +574,25 @@ export default function Tickets() {
       {showDateFilter && (
         <div className="flex items-center gap-3 animate-fade-in">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-ink-3 flex-shrink-0">Du</label>
+            <label className="text-xs text-ink-3 shrink-0">Du</label>
             <input
               type="date"
               value={filters.dateFrom}
               onChange={e => setFilter('dateFrom', e.target.value)}
               className="bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-3 py-2 text-xs
-                         focus:outline-none focus:border-primary/50 transition-all
-                         [color-scheme:dark]"
+                         focus:outline-hidden focus:border-primary/50 transition-all
+                         scheme-dark"
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-ink-3 flex-shrink-0">Au</label>
+            <label className="text-xs text-ink-3 shrink-0">Au</label>
             <input
               type="date"
               value={filters.dateTo}
               onChange={e => setFilter('dateTo', e.target.value)}
               className="bg-surface border border-white/[0.07] text-ink-1 rounded-xl px-3 py-2 text-xs
-                         focus:outline-none focus:border-primary/50 transition-all
-                         [color-scheme:dark]"
+                         focus:outline-hidden focus:border-primary/50 transition-all
+                         scheme-dark"
             />
           </div>
           {hasDateFilter && (
@@ -609,11 +609,11 @@ export default function Tickets() {
       {/* Table */}
       <div
         ref={tableRef}
-        className="bg-surface-card border border-white/[0.06] rounded-2xl overflow-hidden shadow-card"
+        className="bg-surface-card border border-white/6 rounded-2xl overflow-hidden shadow-card"
       >
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-white/6">
               {user?.role === 'fondateur' && (
                 <th className="px-3.5 py-3.5 w-10 text-left">
                   <button onClick={toggleAll} className="text-ink-4 hover:text-ink-2 transition-colors">
@@ -642,7 +642,7 @@ export default function Tickets() {
                 <td colSpan={colCount}>
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-surface flex items-center justify-center
-                                    border border-white/[0.06]">
+                                    border border-white/6">
                       <Inbox size={20} className="text-ink-4" />
                     </div>
                     <p className="text-sm text-ink-3 font-medium">Aucun ticket trouvé</p>
@@ -681,11 +681,11 @@ export default function Tickets() {
                   onMouseMove={e => { mousePosRef.current = { x: e.clientX, y: e.clientY }; }}
                   onMouseLeave={() => { clearTimeout(hoverTimer.current); setQuickView(null); }}
                   className={`
-                    border-b border-white/[0.04] last:border-0 cursor-pointer transition-colors
+                    border-b border-white/4 last:border-0 cursor-pointer transition-colors
                     ${t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''}
                     ${isSelected  ? 'bg-primary/5' : ''}
-                    ${isFocused && !isSelected ? 'bg-white/[0.025]' : ''}
-                    ${!isFocused && !isSelected ? 'hover:bg-white/[0.015]' : ''}
+                    ${isFocused && !isSelected ? 'bg-white/2.5' : ''}
+                    ${!isFocused && !isSelected ? 'hover:bg-white/1.5' : ''}
                   `}
                 >
                   {user?.role === 'fondateur' && (
@@ -717,7 +717,7 @@ export default function Tickets() {
                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border"
                             style={{ backgroundColor: `${tag.color}18`, color: tag.color, borderColor: `${tag.color}35` }}
                           >
-                            <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                            <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
                             {tag.name}
                           </span>
                         ))}
@@ -745,7 +745,7 @@ export default function Tickets() {
                   </td>
                   <td className="px-4 py-3.5">
                     <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
                       {PRIORITY_LABELS[t.priority] || t.priority}
                     </span>
                   </td>
@@ -770,19 +770,19 @@ export default function Tickets() {
       {/* Bulk action bar */}
       {someSelected && user?.role === 'fondateur' && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slide-up
-                        flex items-center gap-3 bg-surface-elevated border border-white/[0.1]
+                        flex items-center gap-3 bg-surface-elevated border border-white/10
                         rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] px-4 py-3">
           <span className="text-sm font-semibold text-ink-1 tabular-nums">
             {selected.size} sélectionné(s)
           </span>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-white/8" />
 
           {/* Priority */}
           <div className="relative">
             <button
               onClick={() => { setShowBulkPriority(p => !p); setShowBulkStaff(false); setShowBulkTag(false); }}
               disabled={bulkLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/8
                          text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
                          transition-all disabled:opacity-50"
             >
@@ -790,14 +790,14 @@ export default function Tickets() {
               <ChevronDown size={11} className={showBulkPriority ? 'rotate-180 transition-transform' : 'transition-transform'} />
             </button>
             {showBulkPriority && (
-              <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+              <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/10
                               rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-36 animate-in">
                 {[['low','Faible','text-sky-400'],['normal','Normal','text-amber-400'],['urgent','Urgent','text-red-400']].map(([val, label, cls]) => (
                   <button
                     key={val}
                     onClick={() => { bulkAction('priority', val); setShowBulkPriority(false); }}
                     className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-xs
-                                hover:bg-white/[0.05] transition-colors ${cls}`}
+                                hover:bg-white/5 transition-colors ${cls}`}
                   >
                     {label}
                   </button>
@@ -812,7 +812,7 @@ export default function Tickets() {
               <button
                 onClick={() => { setShowBulkStaff(p => !p); setShowBulkPriority(false); setShowBulkTag(false); }}
                 disabled={bulkLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/8
                            text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
                            transition-all disabled:opacity-50"
               >
@@ -820,7 +820,7 @@ export default function Tickets() {
                 <ChevronDown size={11} className={showBulkStaff ? 'rotate-180 transition-transform' : 'transition-transform'} />
               </button>
               {showBulkStaff && (
-                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/10
                                 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-44
                                 max-h-48 overflow-y-auto animate-in">
                   {staffList.map(s => (
@@ -828,7 +828,7 @@ export default function Tickets() {
                       key={s.user_id}
                       onClick={() => { bulkAction('assign', s.user_id); setShowBulkStaff(false); }}
                       className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-ink-2
-                                 hover:bg-white/[0.05] hover:text-ink-1 transition-colors"
+                                 hover:bg-white/5 hover:text-ink-1 transition-colors"
                     >
                       {s.username}
                     </button>
@@ -844,7 +844,7 @@ export default function Tickets() {
               <button
                 onClick={() => { setShowBulkTag(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); }}
                 disabled={bulkLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/8
                            text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
                            transition-all disabled:opacity-50"
               >
@@ -852,17 +852,17 @@ export default function Tickets() {
                 <ChevronDown size={11} className={showBulkTag ? 'rotate-180 transition-transform' : 'transition-transform'} />
               </button>
               {showBulkTag && (
-                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/10
                                 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-40
                                 max-h-48 overflow-y-auto animate-in">
                   {tagList.map(t => (
                     <button
                       key={t.id}
                       onClick={() => { bulkAction('add_tag', t.id); setShowBulkTag(false); }}
-                      className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs hover:bg-white/[0.05] transition-colors"
+                      className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs hover:bg-white/5 transition-colors"
                     >
                       <span
-                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        className="w-2 h-2 rounded-full shrink-0"
                         style={{ background: t.color || '#7c6ef3' }}
                       />
                       <span className="text-ink-2 hover:text-ink-1">{t.name}</span>
@@ -880,7 +880,7 @@ export default function Tickets() {
               <button
                 onClick={() => { setShowBulkTemplate(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); setShowBulkTag(false); }}
                 disabled={bulkLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/[0.08]
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-white/8
                            text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
                            transition-all disabled:opacity-50"
               >
@@ -888,7 +888,7 @@ export default function Tickets() {
                 <ChevronDown size={11} className={showBulkTemplate ? 'rotate-180 transition-transform' : 'transition-transform'} />
               </button>
               {showBulkTemplate && (
-                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/[0.1]
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-white/10
                                 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-48
                                 max-h-56 overflow-y-auto animate-in">
                   <p className="px-3.5 pt-2.5 pb-1 text-[10px] text-ink-4 uppercase tracking-wider font-semibold">
@@ -902,9 +902,9 @@ export default function Tickets() {
                         if (ok) { bulkAction('send_template', tpl.id); setShowBulkTemplate(false); }
                       }}
                       className="w-full flex items-start gap-2 px-3.5 py-2.5 text-xs
-                                 hover:bg-white/[0.05] transition-colors text-left"
+                                 hover:bg-white/5 transition-colors text-left"
                     >
-                      <FileText size={11} className="text-primary-light mt-0.5 flex-shrink-0" />
+                      <FileText size={11} className="text-primary-light mt-0.5 shrink-0" />
                       <div className="min-w-0">
                         <p className="text-ink-2 font-medium truncate">{tpl.name}</p>
                         <p className="text-ink-4 truncate mt-0.5">{tpl.content?.slice(0, 40)}…</p>

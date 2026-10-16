@@ -74,7 +74,7 @@ export default function SALogin() {
       <div className="w-full max-w-sm space-y-6">
 
         <div className="text-center space-y-3">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-red-500 to-orange-600
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-linear-to-br from-red-500 to-orange-600
                           flex items-center justify-center shadow-xl shadow-red-500/30">
             <Bot size={26} className="text-white" />
           </div>
@@ -88,7 +88,7 @@ export default function SALogin() {
           </div>
         </div>
 
-        <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 space-y-4">
+        <div className="glass-dark rounded-2xl border border-white/8 p-6 space-y-4">
 
           {/* Step 1 — credentials */}
           {step === 'credentials' && (
@@ -101,8 +101,8 @@ export default function SALogin() {
                   onChange={e => setUsername(e.target.value)}
                   placeholder="superadmin"
                   autoComplete="username"
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                             text-sm text-ink-1 placeholder-ink-4 outline-none
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/4 border border-white/8
+                             text-sm text-ink-1 placeholder-ink-4 outline-hidden
                              focus:border-red-500/50 transition-colors"
                   required
                 />
@@ -116,8 +116,8 @@ export default function SALogin() {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    className="w-full px-3 py-2.5 pr-10 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                               text-sm text-ink-1 placeholder-ink-4 outline-none
+                    className="w-full px-3 py-2.5 pr-10 rounded-xl bg-white/4 border border-white/8
+                               text-sm text-ink-1 placeholder-ink-4 outline-hidden
                                focus:border-red-500/50 transition-colors"
                     required
                   />
@@ -147,7 +147,7 @@ export default function SALogin() {
               {qrDataUrl && (
                 <div className="flex justify-center">
                   <img src={qrDataUrl} alt="QR TOTP"
-                    className="w-44 h-44 rounded-xl border border-white/[0.1] p-2 bg-white" />
+                    className="w-44 h-44 rounded-xl border border-white/10 p-2 bg-white" />
                 </div>
               )}
               {totpSecret && (
@@ -206,8 +206,8 @@ function TotpInput({ value, onChange, autoFocus }) {
         placeholder="000 000"
         maxLength={7}
         autoFocus={autoFocus}
-        className="w-full px-3 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                   text-base text-ink-1 placeholder-ink-4 outline-none focus:border-red-500/50
+        className="w-full px-3 py-3 rounded-xl bg-white/4 border border-white/8
+                   text-base text-ink-1 placeholder-ink-4 outline-hidden focus:border-red-500/50
                    text-center tracking-[0.4em] font-mono transition-colors"
       />
     </div>

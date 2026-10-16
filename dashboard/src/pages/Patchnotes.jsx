@@ -5,7 +5,7 @@ const TAG = {
   new:  { label: 'Nouveau',     cls: 'bg-indigo-600/20 text-primary-light border-primary/30' },
   fix:  { label: 'Correction',  cls: 'bg-red-600/20    text-red-400    border-red-600/30' },
   impr: { label: 'Amélioration',cls: 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' },
-  tech: { label: 'Technique',   cls: 'bg-white/[0.06] text-ink-2 border-white/[0.08]' },
+  tech: { label: 'Technique',   cls: 'bg-white/6 text-ink-2 border-white/8' },
 };
 
 const VERSIONS = [
@@ -110,7 +110,7 @@ const VERSIONS = [
       { type: 'impr', text: 'Tokens sémantiques ajoutés : --color-success, --color-warning, --color-danger avec variantes light — mappés dans Tailwind (success, warning, danger)' },
       { type: 'impr', text: 'prefers-reduced-motion : bloc @media complet désactivant toutes les animations pour les utilisateurs qui le demandent' },
       { type: 'impr', text: 'Classes réutilisables dans @layer components : .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .card, .input-base (min-height 44px touch target)' },
-      { type: 'impr', text: 'StatCard redesignée : ligne accent 2px dégradée en haut, nombre en text-2rem, icône avec ring lumineux, glow dynamique au survol via onMouseEnter/Leave' },
+      { type: 'impr', text: 'StatCard redesignée : ligne accent 2px dégradée en haut, nombre en text-2rem, icône avec ring-3 lumineux, glow dynamique au survol via onMouseEnter/Leave' },
       { type: 'impr', text: 'Badge avec animation pulse (dot-pulse keyframe) sur le statut ouvert uniquement, role="status" et aria-label pour les lecteurs d\'écran' },
       { type: 'impr', text: 'Dashboard : médailles emoji (🥇🥈🥉) remplacées par des badges numérotés HTML avec classes de couleur or/argent/bronze — conforme P4 no-emoji-icons' },
       { type: 'impr', text: 'Tooltips des graphiques : couleurs de fond et de texte remplacées par des variables CSS (var(--color-surface-elevated), var(--color-ink-1)) pour s\'adapter au mode clair/sombre' },
@@ -405,29 +405,29 @@ function VersionCard({ v }) {
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="bg-surface-card border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-surface-card border border-white/6 rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-surface/40 transition-colors text-left"
       >
-        <span className="px-2.5 py-1 rounded-lg bg-indigo-600/20 border border-primary/30 text-primary-light text-xs font-bold font-mono flex-shrink-0">
+        <span className="px-2.5 py-1 rounded-lg bg-indigo-600/20 border border-primary/30 text-primary-light text-xs font-bold font-mono shrink-0">
           {v.version}
         </span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-ink-1">{v.title}</p>
           <p className="text-xs text-ink-3 mt-0.5">{v.date}</p>
         </div>
-        <span className="text-xs text-ink-4 flex-shrink-0">{v.changes.length} changement(s)</span>
-        {open ? <ChevronUp size={15} className="text-ink-4 flex-shrink-0" /> : <ChevronDown size={15} className="text-ink-4 flex-shrink-0" />}
+        <span className="text-xs text-ink-4 shrink-0">{v.changes.length} changement(s)</span>
+        {open ? <ChevronUp size={15} className="text-ink-4 shrink-0" /> : <ChevronDown size={15} className="text-ink-4 shrink-0" />}
       </button>
 
       {open && (
-        <div className="border-t border-white/[0.06] px-5 py-4 space-y-2">
+        <div className="border-t border-white/6 px-5 py-4 space-y-2">
           {v.changes.map((c, i) => {
             const tag = TAG[c.type];
             return (
               <div key={i} className="flex items-start gap-3">
-                <span className={`mt-0.5 flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-medium border ${tag.cls}`}>
+                <span className={`mt-0.5 shrink-0 px-1.5 py-0.5 rounded-sm text-xs font-medium border ${tag.cls}`}>
                   {tag.label}
                 </span>
                 <p className="text-sm text-ink-2 leading-relaxed">{c.text}</p>
@@ -444,7 +444,7 @@ export default function Patchnotes() {
   return (
     <div className="p-6 space-y-5 max-w-3xl">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/15 text-primary-light flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-primary/15 text-primary-light flex items-center justify-center shrink-0">
           <ScrollText size={20} />
         </div>
         <div>

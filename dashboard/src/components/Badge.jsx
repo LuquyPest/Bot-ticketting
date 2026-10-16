@@ -8,7 +8,7 @@ const VARIANTS = {
     label: 'Ouvert',
   },
   closed: {
-    cls: 'bg-white/[0.05] text-ink-3 border-white/[0.08]',
+    cls: 'bg-white/5 text-ink-3 border-white/8',
     dot: 'bg-ink-4',
     pulse: false,
     label: 'Fermé',
@@ -32,7 +32,7 @@ const VARIANTS = {
     label: 'Urgent',
   },
   default: {
-    cls: 'bg-white/[0.05] text-ink-2 border-white/[0.08]',
+    cls: 'bg-white/5 text-ink-2 border-white/8',
     dot: 'bg-ink-3',
     pulse: false,
     label: null,
@@ -48,7 +48,7 @@ export default function Badge({ label, variant }) {
       role="status"
       aria-label={label || v.label || variant}
     >
-      <span className="relative flex-shrink-0 w-1.5 h-1.5">
+      <span className="relative shrink-0 w-1.5 h-1.5">
         <span className={`block w-1.5 h-1.5 rounded-full ${v.dot}`} />
         {v.pulse && (
           <span

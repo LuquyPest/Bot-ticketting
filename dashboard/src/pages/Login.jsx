@@ -29,7 +29,7 @@ export default function Login() {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="animate-orb-1 absolute -top-32 -left-32 w-96 h-96
                         rounded-full bg-primary/20 blur-[80px]" />
-        <div className="animate-orb-2 absolute -bottom-32 -right-32 w-[28rem] h-[28rem]
+        <div className="animate-orb-2 absolute -bottom-32 -right-32 w-md h-112
                         rounded-full bg-violet-600/15 blur-[100px]" />
         <div className="animate-orb-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                         w-80 h-80 rounded-full bg-indigo-600/10 blur-[90px]" />
@@ -50,12 +50,12 @@ export default function Login() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <div className="relative mb-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-primary to-indigo-600
+            <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
                             flex items-center justify-center shadow-primary">
               <Bot size={38} className="text-white" />
             </div>
             {/* Glow ring */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600
+            <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-violet-500 to-indigo-600
                             opacity-30 blur-xl -z-10 animate-glow-pulse" />
           </div>
           <h1 className="text-2xl font-bold text-ink-1 tracking-tight">Ticket Dashboard</h1>
@@ -66,7 +66,7 @@ export default function Login() {
         {error && (
           <div className="flex items-start gap-2.5 bg-red-500/8 border border-red-500/20
                           text-red-400 text-sm px-4 py-3 rounded-xl mb-4 animate-fade-in">
-            <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+            <AlertCircle size={15} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
@@ -76,7 +76,7 @@ export default function Login() {
                         shadow-[0_8px_48px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)]">
           {/* Top glow line */}
           <div className="absolute top-0 left-8 right-8 h-px
-                          bg-gradient-to-r from-transparent via-primary/40 to-transparent rounded-full" />
+                          bg-linear-to-r from-transparent via-primary/40 to-transparent rounded-full" />
 
           <a
             href="/api/auth/discord"
@@ -95,9 +95,9 @@ export default function Login() {
           </a>
 
           <div className="flex items-center gap-2 mt-5">
-            <div className="h-px flex-1 bg-white/[0.06]" />
+            <div className="h-px flex-1 bg-white/6" />
             <span className="text-[10px] text-ink-4 font-medium uppercase tracking-wider">Accès restreint</span>
-            <div className="h-px flex-1 bg-white/[0.06]" />
+            <div className="h-px flex-1 bg-white/6" />
           </div>
 
           <div className="flex items-center justify-center gap-1.5 mt-4">

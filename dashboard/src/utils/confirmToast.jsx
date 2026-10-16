@@ -10,14 +10,14 @@ export function confirmToast(message) {
           <button
             onClick={() => { toast.dismiss(t.id); resolve(true); }}
             className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20
-                       text-xs font-semibold hover:bg-red-500/20 transition-colors flex-shrink-0"
+                       text-xs font-semibold hover:bg-red-500/20 transition-colors shrink-0"
           >
             Confirmer
           </button>
           <button
             onClick={() => { toast.dismiss(t.id); resolve(false); }}
-            className="px-3 py-1.5 rounded-lg bg-surface text-ink-3 border border-white/[0.08]
-                       text-xs font-semibold hover:bg-surface-hover transition-colors flex-shrink-0"
+            className="px-3 py-1.5 rounded-lg bg-surface text-ink-3 border border-white/8
+                       text-xs font-semibold hover:bg-surface-hover transition-colors shrink-0"
           >
             Annuler
           </button>

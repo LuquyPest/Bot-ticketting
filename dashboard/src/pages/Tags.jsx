@@ -26,8 +26,8 @@ function TagModal({ tag, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-surface-card border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="bg-surface-card border border-white/8 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-semibold text-ink-1">{tag ? 'Modifier le tag' : 'Nouveau tag'}</h2>
           <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={16} /></button>
@@ -38,7 +38,7 @@ function TagModal({ tag, onClose, onSave }) {
             <input
               value={name} onChange={e => setName(e.target.value)}
               placeholder="Ex : Bug, Facturation..."
-              className="w-full bg-surface border border-white/[0.08] text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              className="w-full bg-surface border border-white/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary"
             />
           </div>
           <div>
@@ -145,7 +145,7 @@ export default function Tags() {
         <div className="flex flex-wrap gap-3">
           {tags.map(tag => (
             <div key={tag.id}
-              className="group flex items-center gap-3 bg-surface-card border border-white/[0.06] hover:border-white/[0.08] rounded-xl px-4 py-3 transition-colors">
+              className="group flex items-center gap-3 bg-surface-card border border-white/6 hover:border-white/8 rounded-xl px-4 py-3 transition-colors">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
                 style={{ backgroundColor: `${tag.color}20`, color: tag.color, borderColor: `${tag.color}40` }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
@@ -153,11 +153,11 @@ export default function Tags() {
               </span>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => setModal({ mode: 'edit', tag })}
-                  className="p-1 rounded text-ink-4 hover:text-ink-2 hover:bg-surface transition-colors">
+                  className="p-1 rounded-sm text-ink-4 hover:text-ink-2 hover:bg-surface transition-colors">
                   <Pencil size={12} />
                 </button>
                 <button onClick={() => remove(tag)}
-                  className="p-1 rounded text-ink-4 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                  className="p-1 rounded-sm text-ink-4 hover:text-red-400 hover:bg-red-400/10 transition-colors">
                   <Trash2 size={12} />
                 </button>
               </div>
@@ -166,7 +166,7 @@ export default function Tags() {
         </div>
       )}
 
-      <div className="bg-surface-card/50 border border-white/[0.06] rounded-2xl p-4">
+      <div className="bg-surface-card/50 border border-white/6 rounded-2xl p-4">
         <p className="text-xs text-ink-3 leading-relaxed">
           Les tags peuvent être assignés à n'importe quel ticket depuis la page de détail du ticket.
           Ils permettent de catégoriser les tickets librement (ex : Bug, Facturation, Urgent, VIP...).

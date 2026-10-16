@@ -6,10 +6,10 @@ import toast from 'react-hot-toast';
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 w-full max-w-md shadow-2xl space-y-4">
+      <div className="glass-dark rounded-2xl border border-white/8 p-6 w-full max-w-md shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-ink-1">{title}</h2>
-          <button onClick={onClose} className="text-ink-4 hover:text-ink-1 p-1 rounded-lg hover:bg-white/[0.05]">
+          <button onClick={onClose} className="text-ink-4 hover:text-ink-1 p-1 rounded-lg hover:bg-white/5">
             <X size={16} />
           </button>
         </div>
@@ -42,8 +42,8 @@ function ManagerForm({ initial, allGuilds, onSubmit, onCancel, loading }) {
         <label className="text-xs font-medium text-ink-3">Identifiant</label>
         <input type="text" value={username} onChange={e => setUsername(e.target.value)}
           placeholder="manager01" disabled={isEdit}
-          className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                     text-sm text-ink-1 placeholder-ink-4 outline-none focus:border-primary/50
+          className="w-full px-3 py-2.5 rounded-xl bg-white/4 border border-white/8
+                     text-sm text-ink-1 placeholder-ink-4 outline-hidden focus:border-primary/50
                      disabled:opacity-50 transition-colors"
           required={!isEdit}
         />
@@ -54,8 +54,8 @@ function ManagerForm({ initial, allGuilds, onSubmit, onCancel, loading }) {
         </label>
         <input type="password" value={password} onChange={e => setPassword(e.target.value)}
           placeholder="••••••••" minLength={isEdit ? 0 : 8}
-          className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                     text-sm text-ink-1 placeholder-ink-4 outline-none focus:border-primary/50 transition-colors"
+          className="w-full px-3 py-2.5 rounded-xl bg-white/4 border border-white/8
+                     text-sm text-ink-1 placeholder-ink-4 outline-hidden focus:border-primary/50 transition-colors"
           required={!isEdit}
         />
       </div>
@@ -70,20 +70,20 @@ function ManagerForm({ initial, allGuilds, onSubmit, onCancel, loading }) {
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs
                          transition-all ${assignedGuilds.includes(g.guild_id)
                            ? 'bg-primary/10 text-ink-1 border border-primary/20'
-                           : 'text-ink-3 hover:bg-white/[0.04] border border-transparent'}`}>
+                           : 'text-ink-3 hover:bg-white/4 border border-transparent'}`}>
               {assignedGuilds.includes(g.guild_id)
-                ? <Check size={12} className="text-primary-light flex-shrink-0" />
-                : <div className="w-3 h-3 rounded border border-white/[0.15] flex-shrink-0" />
+                ? <Check size={12} className="text-primary-light shrink-0" />
+                : <div className="w-3 h-3 rounded-sm border border-white/15 shrink-0" />
               }
               <span className="truncate">{g.guild_name}</span>
-              <span className="ml-auto text-[10px] text-ink-4 font-mono flex-shrink-0">{g.guild_id}</span>
+              <span className="ml-auto text-[10px] text-ink-4 font-mono shrink-0">{g.guild_id}</span>
             </button>
           ))}
         </div>
       </div>
       <div className="flex gap-2 justify-end pt-1">
         <button type="button" onClick={onCancel}
-          className="px-4 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1 hover:bg-white/[0.05] transition-all">
+          className="px-4 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1 hover:bg-white/5 transition-all">
           Annuler
         </button>
         <button type="submit" disabled={loading}
@@ -197,7 +197,7 @@ export default function SAManagers() {
         </button>
       </div>
 
-      <div className="glass-dark rounded-2xl border border-white/[0.08] overflow-hidden">
+      <div className="glass-dark rounded-2xl border border-white/8 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={22} className="animate-spin text-primary-light" />
@@ -207,7 +207,7 @@ export default function SAManagers() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/[0.06]">
+              <tr className="border-b border-white/6">
                 {['Manager', 'Serveurs assignés', 'Créé le', 'Actions'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide">
                     {h}
@@ -215,13 +215,13 @@ export default function SAManagers() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody className="divide-y divide-white/4">
               {managers.map(mgr => (
-                <tr key={mgr.id} className="hover:bg-white/[0.02] transition-colors">
+                <tr key={mgr.id} className="hover:bg-white/2 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600
-                                      flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-500 to-indigo-600
+                                      flex items-center justify-center text-xs font-bold text-white shrink-0">
                         {mgr.username[0].toUpperCase()}
                       </div>
                       <div>
@@ -236,8 +236,8 @@ export default function SAManagers() {
                         const g = guilds.find(x => x.guild_id === gId);
                         return (
                           <span key={gId}
-                            className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.06]
-                                       border border-white/[0.08] text-ink-3">
+                            className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/6
+                                       border border-white/8 text-ink-3">
                             {g?.guild_name || gId}
                           </span>
                         );

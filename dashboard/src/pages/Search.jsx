@@ -21,7 +21,7 @@ function highlight(text, q) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-amber-400/20 text-amber-300 rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
+      <mark className="bg-amber-400/20 text-amber-300 rounded-sm px-0.5">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </>
   );
@@ -69,8 +69,8 @@ export default function Search() {
           onKeyDown={handleKey}
           placeholder="Rechercher un ticket, un message, un utilisateur…"
           autoFocus
-          className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-card border border-white/[0.08]
-                     text-sm text-ink-1 placeholder-ink-4 outline-none focus:border-primary/50
+          className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-card border border-white/8
+                     text-sm text-ink-1 placeholder-ink-4 outline-hidden focus:border-primary/50
                      transition-colors"
         />
         <button
@@ -110,11 +110,11 @@ export default function Search() {
               <button
                 key={ticket.id}
                 onClick={() => navigate(`/tickets/${ticket.id}`)}
-                className="w-full text-left bg-surface-card border border-white/[0.06] rounded-xl p-4
-                           hover:border-primary/30 hover:bg-white/[0.02] transition-all space-y-2">
+                className="w-full text-left bg-surface-card border border-white/6 rounded-xl p-4
+                           hover:border-primary/30 hover:bg-white/2 transition-all space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Ticket size={13} className="text-ink-4 flex-shrink-0" />
+                    <Ticket size={13} className="text-ink-4 shrink-0" />
                     <span className="text-sm font-medium text-ink-1">
                       #{ticket.id} · {highlight(ticket.ownerTag, query)}
                     </span>
@@ -124,7 +124,7 @@ export default function Search() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${ss.cls}`}>
                       {ss.label}
                     </span>
@@ -137,7 +137,7 @@ export default function Search() {
                 {/* Matched notes snippets */}
                 {ticket.matches?.slice(0, 2).map((m, i) => (
                   <div key={i} className="flex items-start gap-2 pl-5">
-                    <span className="text-[10px] text-ink-4 font-medium mt-0.5 flex-shrink-0">{m.author}</span>
+                    <span className="text-[10px] text-ink-4 font-medium mt-0.5 shrink-0">{m.author}</span>
                     <p className="text-[11px] text-ink-3 line-clamp-2">
                       {highlight(m.content, query)}
                     </p>

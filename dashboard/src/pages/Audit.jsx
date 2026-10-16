@@ -14,7 +14,7 @@ const CATEGORY_COLOR = { tickets: 'var(--viz-1)', moderation: 'var(--viz-2)', eq
 const SOURCE_STYLE = {
   dashboard: 'text-primary-light bg-primary/10 border-primary/25',
   discord:   'text-indigo-300 bg-indigo-500/10 border-indigo-500/25',
-  system:    'text-ink-3 bg-white/[0.04] border-white/[0.1]',
+  system:    'text-ink-3 bg-white/4 border-white/10',
   api:       'text-amber-300 bg-amber-500/10 border-amber-500/25',
   sa:        'text-red-300 bg-red-500/10 border-red-500/25',
 };
@@ -70,7 +70,7 @@ function describe(row) {
 
 function FilterBar({ filters, setFilter, meta, reset }) {
   const actions = Object.entries(meta.actions || {}).filter(([, a]) => !filters.category || a.category === filters.category);
-  const field = 'bg-surface border border-white/[0.07] text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary/50';
+  const field = 'bg-surface border border-white/[0.07] text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-primary/50';
   const active = Object.values(filters).some(Boolean);
   return (
     <div className="flex flex-wrap gap-2 items-center">
@@ -78,7 +78,7 @@ function FilterBar({ filters, setFilter, meta, reset }) {
         <option value="">Toutes catégories</option>
         {CATEGORY_ORDER.map(c => <option key={c} value={c}>{meta.categories?.[c] || c}</option>)}
       </select>
-      <select value={filters.action} onChange={e => setFilter('action', e.target.value)} className={`${field} max-w-[14rem]`}>
+      <select value={filters.action} onChange={e => setFilter('action', e.target.value)} className={`${field} max-w-56`}>
         <option value="">Toutes actions</option>
         {actions.map(([k, a]) => <option key={k} value={k}>{a.label}</option>)}
       </select>
@@ -92,7 +92,7 @@ function FilterBar({ filters, setFilter, meta, reset }) {
       <input type="date" value={filters.from} onChange={e => setFilter('from', e.target.value)} className={field} title="Du" />
       <input type="date" value={filters.to} onChange={e => setFilter('to', e.target.value)} className={field} title="Au" />
       {active && (
-        <button onClick={reset} className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs text-ink-3 hover:text-ink-1 hover:bg-white/[0.05]">
+        <button onClick={reset} className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs text-ink-3 hover:text-ink-1 hover:bg-white/5">
           <X size={12} /> Réinitialiser
         </button>
       )}
@@ -104,12 +104,12 @@ function ChartTooltip({ active, payload, label, meta }) {
   if (!active || !payload?.length) return null;
   const rows = payload.filter(p => p.value > 0);
   return (
-    <div className="bg-surface-elevated border border-white/[0.1] rounded-xl px-3 py-2 text-xs shadow-xl">
+    <div className="bg-surface-elevated border border-white/10 rounded-xl px-3 py-2 text-xs shadow-xl">
       <p className="text-ink-1 font-semibold mb-1">{label}</p>
       {rows.length === 0 && <p className="text-ink-4">Aucune action</p>}
       {rows.map(p => (
         <p key={p.dataKey} className="flex items-center gap-2 text-ink-2">
-          <span className="w-2 h-2 rounded-sm" style={{ background: p.color }} />
+          <span className="w-2 h-2 rounded-xs" style={{ background: p.color }} />
           {meta.categories?.[p.dataKey] || p.name} <span className="ml-auto pl-3 text-ink-1 tabular-nums">{p.value}</span>
         </p>
       ))}
@@ -125,7 +125,7 @@ function RankList({ items, max }) {
       {items.map(it => (
         <li key={it.key} className="grid grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 text-xs">
           <span className="text-ink-2 truncate" title={it.label}>{it.label}</span>
-          <span className="h-2 rounded-r-[4px] bg-[var(--viz-1)]" style={{ width: `${Math.max(2, (it.n / max) * 100)}%` }} />
+          <span className="h-2 rounded-r-[4px] bg-(--viz-1)" style={{ width: `${Math.max(2, (it.n / max) * 100)}%` }} />
           <span className="text-ink-1 tabular-nums">{it.n}</span>
         </li>
       ))}
@@ -144,7 +144,7 @@ function Analytics({ filters, meta }) {
 
   const timeline = useMemo(() => (stats?.timeline || []).map(t => ({ ...t, label: t.day.slice(8, 10) + '/' + t.day.slice(5, 7) })), [stats]);
   const usedCategories = CATEGORY_ORDER.filter(c => timeline.some(t => t[c] > 0));
-  const card = 'bg-white/[0.025] rounded-2xl border border-white/[0.06] p-5';
+  const card = 'bg-white/2.5 rounded-2xl border border-white/6 p-5';
 
   if (!stats) return <div className="flex justify-center py-16"><RefreshCw size={18} className="animate-spin text-ink-4" /></div>;
 
@@ -263,7 +263,7 @@ export default function Audit() {
           <p className="text-sm text-ink-3 mt-0.5">Toutes les actions du serveur : dashboard, Discord, API, automatismes et super-admin</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-0.5 bg-surface rounded-xl p-1 border border-white/[0.06]">
+          <div className="flex gap-0.5 bg-surface rounded-xl p-1 border border-white/6">
             {[['journal', 'Journal', ListTree], ['analytics', 'Analytique', BarChart3]].map(([id, label, Icon]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${tab === id ? 'bg-primary/15 text-primary-light' : 'text-ink-3 hover:text-ink-1'}`}>
@@ -287,17 +287,17 @@ export default function Audit() {
       {tab === 'analytics' ? <Analytics filters={params} meta={meta} /> : (
         <>
           <p className="text-xs text-ink-4">{data.total} action(s)</p>
-          <div className="bg-white/[0.02] rounded-2xl border border-white/[0.06] overflow-hidden">
+          <div className="bg-white/2 rounded-2xl border border-white/6 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06] text-[10px] uppercase tracking-wider text-ink-4">
+                <tr className="border-b border-white/6 text-[10px] uppercase tracking-wider text-ink-4">
                   <th className="text-left px-4 py-3 font-semibold w-36">Date</th>
                   <th className="text-left px-4 py-3 font-semibold w-48">Acteur</th>
                   <th className="text-left px-4 py-3 font-semibold">Action</th>
                   <th className="text-left px-4 py-3 font-semibold w-20">Ticket</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-white/4">
                 {loading ? (
                   <tr><td colSpan={4} className="px-4 py-10 text-center text-ink-4 text-xs">Chargement…</td></tr>
                 ) : data.rows.length === 0 ? (
@@ -306,7 +306,7 @@ export default function Audit() {
                   const a = meta.actions?.[row.action];
                   const detail = describe(row);
                   return (
-                    <tr key={row.id} className="hover:bg-white/[0.02] align-top">
+                    <tr key={row.id} className="hover:bg-white/2 align-top">
                       <td className="px-4 py-3 text-xs text-ink-3 tabular-nums whitespace-nowrap">{fmtDate(row.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                       <td className="px-4 py-3">
                         <p className="text-xs text-ink-1 font-medium truncate">{row.actor_tag}</p>
@@ -316,10 +316,10 @@ export default function Audit() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-xs text-ink-1 font-semibold flex items-center gap-2">
-                          {a && <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: CATEGORY_COLOR[a.category] }} title={meta.categories?.[a.category]} />}
+                          {a && <span className="w-2 h-2 rounded-xs shrink-0" style={{ background: CATEGORY_COLOR[a.category] }} title={meta.categories?.[a.category]} />}
                           {a?.label || row.action}
                         </p>
-                        {detail && <p className="text-xs text-ink-3 mt-0.5 break-words">{detail}</p>}
+                        {detail && <p className="text-xs text-ink-3 mt-0.5 wrap-break-word">{detail}</p>}
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {row.ticket_id
@@ -334,9 +334,9 @@ export default function Audit() {
           </div>
           {data.pages > 1 && (
             <div className="flex items-center justify-center gap-3 text-xs text-ink-3">
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="p-1.5 rounded-lg hover:bg-white/[0.05] disabled:opacity-40"><ChevronLeft size={14} /></button>
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="p-1.5 rounded-lg hover:bg-white/5 disabled:opacity-40"><ChevronLeft size={14} /></button>
               Page {data.page} / {data.pages}
-              <button disabled={page >= data.pages} onClick={() => setPage(p => p + 1)} className="p-1.5 rounded-lg hover:bg-white/[0.05] disabled:opacity-40"><ChevronRight size={14} /></button>
+              <button disabled={page >= data.pages} onClick={() => setPage(p => p + 1)} className="p-1.5 rounded-lg hover:bg-white/5 disabled:opacity-40"><ChevronRight size={14} /></button>
             </div>
           )}
         </>

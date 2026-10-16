@@ -24,14 +24,14 @@ function GuildIcon({ guild }) {
     return (
       <img
         src={`https://cdn.discordapp.com/icons/${guild.guild_id}/${guild.guild_icon}.webp?size=32`}
-        alt="" className="w-8 h-8 rounded-lg ring-1 ring-white/10 object-cover flex-shrink-0"
+        alt="" className="w-8 h-8 rounded-lg ring-1 ring-white/10 object-cover shrink-0"
         onError={() => setErr(true)}
       />
     );
   }
   return (
-    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600
-                    flex items-center justify-center flex-shrink-0">
+    <div className="w-8 h-8 rounded-lg bg-linear-to-br from-violet-500 to-indigo-600
+                    flex items-center justify-center shrink-0">
       <Building2 size={13} className="text-white" />
     </div>
   );
@@ -40,16 +40,16 @@ function GuildIcon({ guild }) {
 function ConfirmModal({ message, onConfirm, onCancel, danger }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 w-full max-w-sm space-y-4
+      <div className="glass-dark rounded-2xl border border-white/8 p-6 w-full max-w-sm space-y-4
                       shadow-2xl">
         <div className="flex items-start gap-3">
-          <AlertTriangle size={20} className={danger ? 'text-red-400 flex-shrink-0 mt-0.5' : 'text-amber-400 flex-shrink-0 mt-0.5'} />
+          <AlertTriangle size={20} className={danger ? 'text-red-400 shrink-0 mt-0.5' : 'text-amber-400 shrink-0 mt-0.5'} />
           <p className="text-sm text-ink-2">{message}</p>
         </div>
         <div className="flex gap-2 justify-end">
           <button onClick={onCancel}
             className="px-4 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1
-                       hover:bg-white/[0.05] transition-all">
+                       hover:bg-white/5 transition-all">
             Annuler
           </button>
           <button onClick={onConfirm}
@@ -105,7 +105,7 @@ function FoundersModal({ guild, canEdit, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="glass-dark rounded-2xl border border-white/[0.08] p-6 w-full max-w-md space-y-4 shadow-2xl">
+      <div className="glass-dark rounded-2xl border border-white/8 p-6 w-full max-w-md space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink-1 flex items-center gap-2">
             <Crown size={15} className="text-amber-400" /> Fondateurs — {guild.guild_name}
@@ -120,12 +120,12 @@ function FoundersModal({ guild, canEdit, onClose }) {
         ) : (
           <ul className="space-y-1.5 max-h-64 overflow-y-auto">
             {founders.map(f => (
-              <li key={f.user_id} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+              <li key={f.user_id} className="flex items-center justify-between gap-2 rounded-lg bg-white/3 border border-white/6 px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-sm text-ink-1 truncate">{f.username || f.user_id}</p>
                   <p className="text-[10px] font-mono text-ink-4">{f.user_id}</p>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   {f.isInviter && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-indigo-300 bg-indigo-500/10 border-indigo-500/20">Invitant</span>}
                   {f.isOwner && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20">Propriétaire</span>}
                   {canEdit && founders.length > 1 && (
@@ -141,13 +141,13 @@ function FoundersModal({ guild, canEdit, onClose }) {
         )}
 
         {canEdit && (
-          <form onSubmit={add} className="space-y-2 pt-2 border-t border-white/[0.06]">
+          <form onSubmit={add} className="space-y-2 pt-2 border-t border-white/6">
             <label className="text-xs font-medium text-ink-3">Ajouter un fondateur (ID Discord)</label>
             <div className="flex gap-2">
               <input value={discordId} onChange={e => setDiscordId(e.target.value)}
                 placeholder="123456789012345678" inputMode="numeric" maxLength={20}
-                className="flex-1 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-ink-1
-                           placeholder-ink-4 outline-none focus:border-primary/50 font-mono" />
+                className="flex-1 px-3 py-2 rounded-xl bg-white/4 border border-white/8 text-sm text-ink-1
+                           placeholder-ink-4 outline-hidden focus:border-primary/50 font-mono" />
               <button type="submit" disabled={saving}
                 className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-light
                            disabled:opacity-60 flex items-center gap-1.5">
@@ -257,7 +257,7 @@ export default function SAGuilds() {
         </div>
         <button onClick={load} disabled={loading}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-ink-3
-                     hover:text-ink-1 hover:bg-white/[0.05] transition-all border border-white/[0.06]">
+                     hover:text-ink-1 hover:bg-white/5 transition-all border border-white/6">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Actualiser
         </button>
@@ -265,7 +265,7 @@ export default function SAGuilds() {
 
       {/* Tabs + search */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+        <div className="flex gap-1 p-1 rounded-xl bg-white/4 border border-white/6">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
@@ -273,23 +273,23 @@ export default function SAGuilds() {
               {TAB_LABEL[t]}
               {counts[t] > 0 && (
                 <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full
-                                 ${tab === t ? 'bg-primary/20 text-primary-light' : 'bg-white/[0.06] text-ink-4'}`}>
+                                 ${tab === t ? 'bg-primary/20 text-primary-light' : 'bg-white/6 text-ink-4'}`}>
                   {counts[t]}
                 </span>
               )}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/4 border border-white/6
                         flex-1 max-w-xs">
-          <Search size={13} className="text-ink-4 flex-shrink-0" />
+          <Search size={13} className="text-ink-4 shrink-0" />
           <input type="text" placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
-            className="flex-1 bg-transparent text-xs text-ink-1 placeholder-ink-4 outline-none" />
+            className="flex-1 bg-transparent text-xs text-ink-1 placeholder-ink-4 outline-hidden" />
         </div>
       </div>
 
       {/* Table */}
-      <div className="glass-dark rounded-2xl border border-white/[0.08] overflow-hidden">
+      <div className="glass-dark rounded-2xl border border-white/8 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={22} className="animate-spin text-primary-light" />
@@ -300,7 +300,7 @@ export default function SAGuilds() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-white/6">
                   {['Serveur', 'Propriétaire', 'Statut', 'Membres', 'Créé le', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide">
                       {h}
@@ -308,13 +308,13 @@ export default function SAGuilds() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-white/4">
                 {filtered.map(guild => {
                   const st = STATUS[guild.status] || STATUS.pending;
                   const Icon = st.icon;
                   const isActioning = actioning?.startsWith(guild.guild_id);
                   return (
-                    <tr key={guild.guild_id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={guild.guild_id} className="hover:bg-white/2 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <GuildIcon guild={guild} />
@@ -363,7 +363,7 @@ export default function SAGuilds() {
                         {guild.status !== 'pending' && !isActioning && (
                           <ActionBtn
                             icon={Gauge} label="Limites"
-                            cls="text-ink-3 hover:text-ink-1 hover:bg-white/[0.05]"
+                            cls="text-ink-3 hover:text-ink-1 hover:bg-white/5"
                             onClick={() => setLimitsOf(guild)}
                           />
                         )}

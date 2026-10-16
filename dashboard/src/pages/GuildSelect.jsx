@@ -10,15 +10,15 @@ function GuildIcon({ guild }) {
       <img
         src={guild.iconUrl}
         alt=""
-        className="w-12 h-12 rounded-xl ring-1 ring-white/10 object-cover flex-shrink-0"
+        className="w-12 h-12 rounded-xl ring-1 ring-white/10 object-cover shrink-0"
         onError={() => setError(true)}
       />
     );
   }
   const initial = guild.name?.charAt(0)?.toUpperCase() || '?';
   return (
-    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600
-                    flex items-center justify-center flex-shrink-0 text-white font-bold text-lg select-none">
+    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600
+                    flex items-center justify-center shrink-0 text-white font-bold text-lg select-none">
       {initial}
     </div>
   );
@@ -94,7 +94,7 @@ export default function GuildSelect() {
 
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 via-primary to-indigo-600
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
                           flex items-center justify-center shadow-xl shadow-primary/30">
             <Bot size={26} className="text-white" />
           </div>
@@ -112,7 +112,7 @@ export default function GuildSelect() {
         )}
 
         {/* Guild list */}
-        <div className="glass-dark rounded-2xl border border-white/[0.08] overflow-hidden divide-y divide-white/[0.04]">
+        <div className="glass-dark rounded-2xl border border-white/8 overflow-hidden divide-y divide-white/4">
           {loading && (
             <div className="flex items-center justify-center py-14">
               <Loader2 size={22} className="animate-spin text-primary-light" />
@@ -165,7 +165,7 @@ export default function GuildSelect() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
                                bg-primary/20 text-primary-light border border-primary/30
                                hover:bg-primary/30 transition-colors
-                               disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                               disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     {isSel
                       ? <Loader2 size={13} className="animate-spin" />
@@ -178,7 +178,7 @@ export default function GuildSelect() {
                 {/* pending → attente */}
                 {guild.status === 'pending' && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                                   text-amber-300/60 border border-amber-500/20 flex-shrink-0 cursor-default select-none">
+                                   text-amber-300/60 border border-amber-500/20 shrink-0 cursor-default select-none">
                     <Clock size={13} />
                     En attente
                   </span>
@@ -187,7 +187,7 @@ export default function GuildSelect() {
                 {/* suspended → suspendu */}
                 {guild.status === 'suspended' && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                                   text-red-400/60 border border-red-500/20 flex-shrink-0 cursor-default select-none">
+                                   text-red-400/60 border border-red-500/20 shrink-0 cursor-default select-none">
                     <Ban size={13} />
                     Suspendu
                   </span>
@@ -201,7 +201,7 @@ export default function GuildSelect() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
                                bg-indigo-500/20 text-indigo-300 border border-indigo-500/30
                                hover:bg-indigo-500/30 transition-colors
-                               disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                               disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     {isInv
                       ? <Loader2 size={13} className="animate-spin" />
