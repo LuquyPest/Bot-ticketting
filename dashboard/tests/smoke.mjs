@@ -15,9 +15,9 @@ const ticket = (id, o = {}) => ({ id, owner_id: '2000000000000000' + String(id).
   status: 'open', stage: 'open', stage_changed_at: iso(30 * id), subject: 'Problème de paiement ' + id, priority: id % 3 ? 'normal' : 'urgent',
   last_message_at: iso(10 * id), created_at: iso(60 * id), closed_at: null, assignees: [{ user_id: '1', username: 'Daryu', avatar: null }],
   sla: id % 2 ? { hours: 2, elapsedMinutes: 150, state: 'breached', since: iso(150) } : { hours: 4, elapsedMinutes: 60, state: 'ok', since: iso(60) }, ...o });
+const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(now - (n - 1 - i) * 864e5).toISOString().slice(0, 10), count: (i * 7) % 5 + 1 }));
 const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [] },
-  '/api/dashboard/stats': { unclaimedTickets: 3, openTickets: 8, closedToday: 4, avgRating: 4.6, totalTickets: 120 },
   '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i)), total: 6, page: 1, pages: 1 },
   '/api/tickets/1': { ...ticket(1), participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
     rating: { rating: 4, comment: 'Très rapide, merci !', rated_at: iso(5) } },
@@ -26,6 +26,15 @@ const MOCK = {
     { id: 2, ticket_id: 1, author_id: '1', author_tag: 'Daryu', content: 'On regarde ça tout de suite.', source: 'reply', created_at: iso(40) },
     { id: 3, ticket_id: 1, author_id: '1', author_tag: 'Daryu', content: 'Note interne : vérifier Stripe', source: 'web', created_at: iso(30) }],
   '/api/templates': [{ id: 1, name: 'Remboursement', content: 'Bonjour {{username}}', subject: 'paiement', scope: 'shared', suggested: true, mine: true, created_by_id: '1', created_by_tag: 'Daryu', use_count: 3 }],
+  '/api/dashboard/stats': { unclaimedTickets: 3, openTickets: 8, closedToday: 4, avgRating: 4.6, totalTickets: 120, priorityBreakdown: { low: 2, normal: 5, urgent: 1 } },
+  '/api/dashboard/activity': { opened: days(14), closed: days(14), unclaimed: days(14) },
+  '/api/dashboard/heatmap': Array.from({ length: 24 }, (_, hour) => ({ hour, count: (hour * 3) % 7 })),
+  '/api/analytics/volume': { opened: days(30), closed: days(30) },
+  '/api/analytics/hourly': Array.from({ length: 24 }, (_, hour) => ({ hour, count: (hour * 5) % 9 })),
+  '/api/analytics/subjects': [{ subject: 'Paiement', count: 12 }, { subject: 'Connexion', count: 7 }, { subject: 'Autre', count: 3 }],
+  '/api/analytics/response-trend': days(30).map(d => ({ date: d.date, avgMinutes: d.count * 4 })),
+  '/api/audit': { rows: [{ id: 1, actor_id: '1', actor_tag: 'Daryu', action: 'ticket_close', source: 'dashboard', ticket_id: 1, details: { reason: 'résolu' }, created_at: iso(5) }], total: 1, page: 1, pages: 1 },
+  '/api/audit/meta': { actions: { ticket_close: { label: 'Ticket fermé', category: 'tickets' } }, categories: { tickets: 'Tickets' }, sources: { dashboard: 'Dashboard' } },
   '/api/sa/auth/me': { id: 1, username: 'root', type: 'superadmin' },
   '/api/sa/stats': { guilds: { total: 3, active: 2, pending: 1, suspended: 0 }, managers: 1, errors24h: 4,
     totals: { tickets: 340, openTickets: 12, opened30d: 80, closed30d: 75, staff: 9 },
@@ -40,6 +49,9 @@ const PAGES = [
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Ticket #1'],
   ['settings', '/settings', 'Paramètres'],
+  ['analytics', '/analytics', 'Analytiques'],
+  ['audit', '/audit', "Journal d'activité"],
+  ['equipe', '/equipe', 'Équipe'],
   ['sa', '/sa/overview', "Vue d'ensemble"],
 ];
 // EventSource has no mock: its connection errors are expected
@@ -65,6 +77,7 @@ for (const theme of ['dark', 'light']) {
   for (const [name, p, text, anon = false] of PAGES) {
     anonymous = anon;
     await page.goto(base + p, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1600); // chart entry animations (1.5 s)
     const visible = await page.getByText(text, { exact: false }).first().isVisible().catch(() => false);
     if (!visible) failures.push(`[${theme}] ${name}: « ${text} » introuvable`);
     await page.screenshot({ path: path.join(OUT, `${theme}-${name}.png`) });
