@@ -17,9 +17,10 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import toast from 'react-hot-toast';
+import SlaBadge from '../components/SlaBadge';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '' };
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '' };
 
 /* ── Built-in views (the default one shows open tickets) ─────── */
 const BUILTIN_VIEWS = [
@@ -29,6 +30,7 @@ const BUILTIN_VIEWS = [
   { id: 'waiting',     label: 'En attente',    filters: { status: 'open', stage: 'waiting' } },
   { id: 'in_progress', label: 'En cours',      filters: { status: 'open', stage: 'in_progress' } },
   { id: 'urgent',      label: 'Urgents',       filters: { status: 'open', priority: 'urgent' }, dot: 'bg-red-400' },
+  { id: 'sla',         label: 'Hors délai',    filters: { status: 'open', sla: 'breached' }, dot: 'bg-red-400' },
   { id: 'closed',      label: 'Fermés',        filters: { status: 'closed' } },
   { id: 'all',         label: 'Tous',          filters: {} },
 ];
@@ -739,6 +741,7 @@ export default function Tickets() {
                         <span className={`text-[10px] font-medium ${STAGE_CLS[t.stage]}`}>{STAGE_LABELS[t.stage]}</span>
                       )}
                     </div>
+                    <SlaBadge sla={t.sla} />
                   </td>
                   <td className="px-4 py-3.5">
                     <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">

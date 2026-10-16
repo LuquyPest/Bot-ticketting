@@ -28,6 +28,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Bouton « Fermer mon ticket » dans les MP du membre (bienvenue et réponses du staff), avec confirmation' },
       { type: 'new',  text: 'Modèles de réponse personnels ou partagés : tout le staff peut en enregistrer, et ceux liés au sujet du ticket sont suggérés au-dessus de la zone de réponse' },
       { type: 'new',  text: 'Notification quand on t\'attribue un ticket : dashboard, push et MP Discord (désactivable dans le profil)' },
+      { type: 'new',  text: 'SLA par étape : délai maximal configurable pour Ouvert / En attente / En cours, temps restant dans la liste et la fiche, vue « Hors délai »' },
     ]
   },
   {

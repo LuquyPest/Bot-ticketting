@@ -234,6 +234,9 @@ export default function Settings() {
         ticketCategoryId:         sn(cfg.ticketCategoryId),
         waitingCategoryId:        sn(cfg.waitingCategoryId),
         inProgressCategoryId:     sn(cfg.inProgressCategoryId),
+        slaOpenHours:             cfg.slaOpenHours ?? 0,
+        slaWaitingHours:          cfg.slaWaitingHours ?? 0,
+        slaInProgressHours:       cfg.slaInProgressHours ?? 0,
         supportRoleIds:           cfg.supportRoleIds || [],
         chiefRoleIds:             cfg.chiefRoleIds || [],
         supportGradeId:           cfg.supportGradeId || null,
@@ -469,6 +472,18 @@ export default function Settings() {
             <Field key={key} label={label} hint={hint}>
               <CategoryPicker value={cfg[key]} onChange={v => set(key, v)}
                 categories={categories} loading={discordLoading} />
+            </Field>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {[
+            ['slaOpenHours', 'Délai « Ouvert » (heures)'],
+            ['slaWaitingHours', 'Délai « En attente » (heures)'],
+            ['slaInProgressHours', 'Délai « En cours » (heures)'],
+          ].map(([key, label]) => (
+            <Field key={key} label={label} hint="Temps maximal dans l'étape avant d'être signalé hors délai — 0 = aucun">
+              <input type="number" min={0} max={720} value={cfg[key] ?? 0}
+                onChange={e => set(key, Math.max(0, Math.min(720, parseInt(e.target.value) || 0)))} className={NUM_INPUT} />
             </Field>
           ))}
         </div>

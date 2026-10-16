@@ -430,6 +430,12 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE reply_templates ADD COLUMN IF NOT EXISTS use_count INT NOT NULL DEFAULT 0`,
       // Discord DM when someone else assigns you a ticket (profile setting)
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS notify_assign_dm TINYINT(1) NOT NULL DEFAULT 1`,
+      // Per-stage SLA: time in the current stage counts from stage_changed_at (utils/sla.js)
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS stage_changed_at DATETIME DEFAULT NULL`,
+      `UPDATE tickets SET stage_changed_at = created_at WHERE stage_changed_at IS NULL`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS sla_open_hours INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS sla_waiting_hours INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS sla_in_progress_hours INT NOT NULL DEFAULT 0`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

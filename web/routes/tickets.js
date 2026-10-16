@@ -4,6 +4,7 @@ const { createManager } = require('../../utils/ticketManager');
 const { broadcast } = require('../../utils/sse');
 const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, logAudit } = require('../../utils/gradePermissions');
 const { syncTicketChannel } = require('../../utils/channelVisibility');
+const { slaStatus, breachedSql } = require('../../utils/sla');
 const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
@@ -85,6 +86,7 @@ router.get('/', async (req, res) => {
     const stage = str('stage'), claimed = str('claimed'), dateFrom = str('dateFrom'), dateTo = str('dateTo');
     const assignee = str('assignee') === 'me' ? req.session.user.id : str('assignee');
     const tag = parseInt(str('tag')) || null;
+    const sla = str('sla');
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
     if (stage    && !VALID_STAGE.has(stage))       return res.status(400).json({ error: 'Étape invalide' });
@@ -111,18 +113,21 @@ router.get('/', async (req, res) => {
     if (dateFrom) { where.push('created_at >= ?'); params.push(dateFrom); }
     if (dateTo)   { where.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(dateTo); }
     if (tag)      { where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta WHERE ta.ticket_id = tickets.id AND ta.tag_id = ?)'); params.push(tag); }
+    const [slaCfg] = await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
+    if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(b.sql); params.push(...b.params); }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
     ]);
 
-    res.json({ tickets: await attachAssignees(req, tickets), total, page, pages: Math.ceil(total / limit) });
+    const withSla = tickets.map(t => ({ ...t, sla: slaStatus(t, slaCfg) }));
+    res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -190,13 +195,14 @@ router.get('/:id', async (req, res) => {
       })
     );
 
-    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id FROM guild_config WHERE id = 1');
+    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
     res.json({
       ...ticket,
       participants,
       assignees: await getManager(req).getAssignees(ticket.id),
       // Stages whose Discord category is configured (Paramètres)
       stages: { open: !!cfg?.ticket_category_id, waiting: !!cfg?.waiting_category_id, in_progress: !!cfg?.in_progress_category_id },
+      sla: slaStatus(ticket, cfg),
       transcript: transcript[0] || null,
       rating: rating[0] || null
     });

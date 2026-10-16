@@ -333,7 +333,7 @@ Chaque message privé lié à un ticket (réponse du staff, message programmé, 
 
 ### Vues de la liste des tickets
 
-La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes tickets, Non attribués, En attente, En cours, Urgents, Fermés, Tous. Chaque membre peut enregistrer ses propres vues (filtres statut, priorité, étape, attribué à, dates, tag, recherche), en définir une comme vue par défaut, et les supprimer — elles sont personnelles.
+La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes tickets, Non attribués, En attente, En cours, Urgents, Hors délai, Fermés, Tous. Chaque membre peut enregistrer ses propres vues (filtres statut, priorité, étape, attribué à, dates, tag, recherche, hors délai), en définir une comme vue par défaut, et les supprimer — elles sont personnelles.
 
 ### Fonctionnalités dans la vue ticket
 
@@ -343,6 +343,7 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 - **Modèles de réponse** : réponses prédéfinies insérables en un clic, avec variables (`{{username}}`, `{{ticket_id}}`, `{{date}}`, `{{staff_name}}`, `{{subject}}`). Tout membre ayant `reply_ticket` peut enregistrer le texte en cours **pour lui seul** ou **pour tout le staff**, et le lier au sujet du ticket : il est alors **suggéré** au-dessus de la zone de réponse sur les tickets dont le sujet correspond (sans tenir compte des accents ni de la casse). Les modèles les plus utilisés remontent en tête. Seul l'auteur (ou un fondateur) peut modifier ou supprimer un modèle
 - **Attribué à** : un ticket peut être attribué à plusieurs membres du staff ; « M'attribuer », attribuer quelqu'un d'autre, retirer (permission `claim_ticket`). La première personne assignée reste le responsable principal (stats, rappels, notation). Quand quelqu'un d'autre t'attribue un ticket, tu es prévenu : notification sur le dashboard (cloche + bandeau), push navigateur si activé, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
 - **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon
+- **SLA par étape** : un délai maximal (en heures, 0 = aucun) peut être fixé pour chaque étape dans les paramètres. Le temps compte depuis le dernier changement d'étape ; la liste et la fiche affichent le temps restant (orange à 75 %), puis « Hors délai » avec le dépassement, et la vue **Hors délai** regroupe les tickets en retard
 - **Priorité** : Faible / Normal / Urgent — met à jour le topic du salon Discord
 - **Participants** : ajout/retrait d'utilisateurs liés en DM
 - **Titre** : modifiable dans l'en-tête ; le salon Discord est renommé pareil (Discord limite à 2 renommages par 10 minutes : au-delà, le renommage du salon est différé)

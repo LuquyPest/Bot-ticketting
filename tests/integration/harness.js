@@ -633,6 +633,35 @@ async function main() {
   for (const st of Object.values(streams)) st.req.destroy();
   await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ta, ta2]]);
 
+  // ── Per-stage SLA ──
+  r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { slaOpenHours: 2, slaWaitingHours: 0, slaInProgressHours: 24 } });
+  check('SLA: délais par étape enregistrés', r.status === 200, JSON.stringify(r.body));
+  r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { slaOpenHours: -1 } });
+  check('SLA: délai négatif refusé', r.status === 400, r.status);
+  const tsLate = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage, stage_changed_at) VALUES ('14','u14','cs1','open','SLA retard','open', NOW() - INTERVAL 3 HOUR)")).insertId;
+  const tsWarn = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage, stage_changed_at) VALUES ('15','u15','cs2','open','SLA bientôt','open', NOW() - INTERVAL 100 MINUTE)")).insertId;
+  const tsWait = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage, stage_changed_at) VALUES ('16','u16','cs3','open','SLA attente','waiting', NOW() - INTERVAL 30 DAY)")).insertId;
+  r = await req('GET', `/api/tickets/${tsLate}`, { sid: sessions.FV });
+  check('SLA: dépassé dans la fiche', r.body.sla?.state === 'breached' && r.body.sla.hours === 2 && r.body.sla.elapsedMinutes >= 180, JSON.stringify(r.body.sla));
+  r = await req('GET', `/api/tickets/${tsWarn}`, { sid: sessions.FV });
+  check('SLA: proche de l\'échéance (75 %)', r.body.sla?.state === 'warning', JSON.stringify(r.body.sla));
+  r = await req('GET', `/api/tickets/${tsWait}`, { sid: sessions.FV });
+  check('SLA: pas de délai pour une étape à 0', r.body.sla === null, JSON.stringify(r.body.sla));
+  r = await req('GET', '/api/tickets', { sid: sessions.FV, query: { status: 'open', sla: 'breached' } });
+  const breachedIds = (r.body.tickets || []).map(t => t.id);
+  check('SLA: filtre « hors délai »', breachedIds.includes(tsLate) && !breachedIds.includes(tsWarn) && !breachedIds.includes(tsWait), JSON.stringify(breachedIds));
+  check('SLA: état fourni dans la liste', r.body.tickets?.find(t => t.id === tsLate)?.sla?.state === 'breached');
+  const tmS = createManager(db, fakeClient, G);
+  await db('UPDATE guild_config SET in_progress_category_id = ? WHERE id = 1', [CAT_WAIT]);
+  const SLA_CH = '900000000000000080';
+  channels.set(SLA_CH, mkChannel(SLA_CH, G));
+  await db('UPDATE tickets SET channel_id = ? WHERE id = ?', [SLA_CH, tsLate]);
+  const moved = await tmS.moveToStage(tsLate, 'in_progress', { id: U.F, username: 'F' });
+  const [afterMove] = await db('SELECT TIMESTAMPDIFF(MINUTE, stage_changed_at, NOW()) AS m FROM tickets WHERE id = ?', [tsLate]);
+  check('SLA: le compteur repart au changement d\'étape', moved.ok && Number(afterMove.m) <= 1, JSON.stringify([moved, afterMove]));
+  await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tsLate, tsWarn, tsWait]]);
+  await db('UPDATE guild_config SET sla_open_hours = 0, sla_in_progress_hours = 0, in_progress_category_id = NULL WHERE id = 1');
+
   // ── Stages ── (the founder's session was rotated by the select-guild test above)
   await mk('F', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
   r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketCategoryId: CAT_OPEN, waitingCategoryId: CAT_WAIT, inProgressCategoryId: null } });

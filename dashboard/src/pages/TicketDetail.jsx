@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
+import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 
 const TEMPLATE_VAR_RE = /\{\{(username|ticket_id|date|staff_name|subject)\}\}/gi;
 
@@ -341,6 +342,7 @@ export default function TicketDetail() {
     try {
       const { data } = await api.patch(`/tickets/${id}/move`, { stage });
       setTicket(t => ({ ...t, stage: data.stage }));
+      loadTicket(); // SLA restarts in the new stage
       toast.success(`Ticket passé en « ${data.label} »`);
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setMovingTicket(false); }
@@ -1088,6 +1090,13 @@ export default function TicketDetail() {
                   );
                 })}
               </div>
+              {ticket.stage_changed_at && (
+                <p className="text-[10px] text-ink-4 mt-2">
+                  Dans cette étape depuis {fmtMinutes(Math.max(0, Math.floor((Date.now() - new Date(ticket.stage_changed_at).getTime()) / 60000)))}
+                  {ticket.sla ? ` · délai ${ticket.sla.hours} h` : ''}
+                </p>
+              )}
+              {ticket.sla && <div className="mt-1.5"><SlaBadge sla={ticket.sla} bar /></div>}
             </div>
           )}
 

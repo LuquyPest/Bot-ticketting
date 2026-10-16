@@ -93,7 +93,7 @@ function createManager(db, client, guildId) {
 
   async function createTicketDb(channelId, user, subject = null) {
     const result = await db(
-      'INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, last_message_at) VALUES (?, ?, ?, ?, NOW())',
+      'INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, last_message_at, stage_changed_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
       [channelId, user.id, user.tag, subject]
     );
     return { id: result.insertId, channel_id: channelId, owner_id: user.id, owner_tag: user.tag, subject };
@@ -345,7 +345,7 @@ function createManager(db, client, guildId) {
   async function reopenTicket(ticket, reopenedByUser) {
     const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag }, ticket.subject);
     await db(
-      `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, stage='open', warned_inactive=0, last_message_at=NOW() WHERE id=?`,
+      `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, stage='open', stage_changed_at=NOW(), warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
     );
     const reopenEmbed = new EmbedBuilder()
@@ -486,7 +486,9 @@ function createManager(db, client, guildId) {
     if (!channel) return { ok: false, error: 'Salon Discord introuvable' };
     await channel.setParent(category.id, { lockPermissions: false });
     const [before] = await db('SELECT stage FROM tickets WHERE id = ?', [ticketId]);
-    await db('UPDATE tickets SET stage = ? WHERE id = ?', [stage, ticketId]);
+    // The SLA clock restarts only when the stage actually changes (SET runs left to right:
+    // stage_changed_at must be computed before stage is overwritten)
+    await db('UPDATE tickets SET stage_changed_at = IF(stage = ?, stage_changed_at, NOW()), stage = ? WHERE id = ?', [stage, stage, ticketId]);
     await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
     await logMoveTicket(ticketId, `${STAGE_LABEL[stage]} (${category.name})`, byUser);
     await channel.send(`📂 Ticket passé en **${STAGE_LABEL[stage]}** par **${byUser.username || byUser.tag}**.`).catch(() => null);
