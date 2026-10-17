@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef} from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
@@ -127,6 +127,10 @@ export default function TicketDetail() {
   // Below lg the information column is a drawer
   const [infoOpen, setInfoOpen] = useState(false);
   useEffect(() => setInfoOpen(false), [id]);
+  // ?note=<id> (from the message search): scroll to that message and highlight it
+  const [searchParams] = useSearchParams();
+  const focusNote = parseInt(searchParams.get('note')) || null;
+  const [flashNote, setFlashNote] = useState(null);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [notes, setNotes] = useState([]);
@@ -196,9 +200,19 @@ export default function TicketDetail() {
     api.get('/templates', { params: ticket?.subject ? { subject: ticket.subject } : {} }).then(r => setTemplates(r.data)).catch(() => {});
   }, [ticketLoaded, ticket?.subject]);
 
+  const focusedOnce = useRef(null);
   useEffect(() => {
+    // Opened from a search result: show that message once, then follow new messages as usual
+    const target = focusNote && focusedOnce.current !== `${id}:${focusNote}` && document.getElementById(`note-${focusNote}`);
+    if (target) {
+      focusedOnce.current = `${id}:${focusNote}`;
+      target.scrollIntoView({ block: 'center' });
+      setFlashNote(focusNote);
+      setTimeout(() => setFlashNote(null), 3000);
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [notes]);
+  }, [notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tell colleagues I am writing (at most every 4 s while the text changes); stop when emptied
   const typingSentAt = useRef(0);
@@ -826,7 +840,7 @@ export default function TicketDetail() {
             // Automatic event (merge, closed by the member…): a discreet line, not a message
             if (align === 'event') {
               return (
-                <div key={note.id} className="flex items-center gap-3 animate-fade-in" role="note">
+                <div key={note.id} id={`note-${note.id}`} className="flex items-center gap-3 animate-fade-in" role="note">
                   <span className="h-px flex-1 bg-overlay/8" />
                   <p className="text-[11px] text-ink-3 text-center max-w-md">
                     {note.content} <span className="text-ink-4">· {fmtDate(note.created_at)}</span>
@@ -837,9 +851,9 @@ export default function TicketDetail() {
             }
             if (align === 'center') {
               return (
-                <div key={note.id} className="flex justify-center group animate-fade-in">
-                  <div className="flex items-start gap-2 max-w-md px-4 py-2.5 rounded-xl
-                                  bg-surface border border-dashed border-overlay/8">
+                <div key={note.id} id={`note-${note.id}`} className="flex justify-center group animate-fade-in">
+                  <div className={`flex items-start gap-2 max-w-md px-4 py-2.5 rounded-xl
+                                  bg-surface border border-dashed border-overlay/8 ${flashNote === note.id ? 'ring-2 ring-amber-400' : ''}`}>
                     <Lock size={10} className="text-ink-4 mt-0.5 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-ink-2 leading-relaxed whitespace-pre-wrap wrap-break-word">
@@ -865,8 +879,9 @@ export default function TicketDetail() {
             const isLeft = align === 'left';
 
             return (
-              <div key={note.id}
-                className={`flex items-end gap-2.5 group animate-fade-in
+              <div key={note.id} id={`note-${note.id}`}
+                className={`flex items-end gap-2.5 group animate-fade-in rounded-2xl transition-shadow
+                            ${flashNote === note.id ? 'ring-2 ring-amber-400 ring-offset-4 ring-offset-base' : ''}
                             ${isLeft ? 'mr-16' : 'ml-16 flex-row-reverse'}`}>
                 {/* Avatar — Discord avatar when available */}
                 <DiscordAvatar

@@ -38,6 +38,8 @@ const MOCK = {
   '/api/analytics/subjects': [{ subject: 'Paiement', count: 12 }, { subject: 'Connexion', count: 7 }, { subject: 'Autre', count: 3 }],
   '/api/analytics/response-trend': days(30).map(d => ({ date: d.date, avgMinutes: d.count * 4 })),
   '/api/audit': { rows: [{ id: 1, actor_id: '1', actor_tag: 'Daryu', action: 'ticket_close', source: 'dashboard', ticket_id: 1, details: { reason: 'résolu' }, created_at: iso(5) }], total: 1, page: 1, pages: 1 },
+  '/api/tickets/search': { results: [{ ticket: { id: 1, owner_tag: 'membre1', subject: 'Problème de paiement 1', status: 'open' }, hits: 2,
+    match: { id: 11, author_tag: 'membre1', source: 'user', created_at: iso(30), snippet: 'Mon remboursement n’est pas arrivé' } }], total: 1, page: 1, pages: 1, terms: ['rembours'] },
   '/api/audit/meta': { actions: { ticket_close: { label: 'Ticket fermé', category: 'tickets' } }, categories: { tickets: 'Tickets' }, sources: { dashboard: 'Dashboard' } },
   '/api/sa/auth/me': { id: 1, username: 'root', type: 'superadmin' },
   '/api/sa/stats': { guilds: { total: 3, active: 2, pending: 1, suspended: 0 }, managers: 1, errors24h: 4,
@@ -101,6 +103,20 @@ for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
       .map(v => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.slice(0, 4).map(n => `${n.target.join(' ')} ${(n.any[0]?.message || '').replace(/\s+/g, ' ').slice(0, 140)}`) })));
     for (const v of violations.filter(x => A11Y_IMPACTS.has(x.impact))) failures.push(`[${theme}] ${name} a11y ${v.impact} ${v.id} — ${v.help} : ${v.nodes.join(' | ')}`);
     console.log(`${visible ? 'PASS' : 'FAIL'}  ${theme} ${name}`);
+  }
+
+  // Searching inside messages shows the matching excerpt
+  if (theme === 'dark') {
+    anonymous = false;
+    await page.goto(base + '/tickets', { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: 'Messages', exact: true }).click();
+    await page.getByLabel('Rechercher dans les messages').fill('rembours');
+    const found = await page.getByText('n’est pas arrivé').first().isVisible({ timeout: 3000 }).catch(() => false)
+      || await page.getByText('n’est pas arrivé').first().waitFor({ timeout: 3000 }).then(() => true).catch(() => false);
+    if (!found) failures.push(`[${theme}] recherche dans les messages : extrait introuvable`);
+    await page.screenshot({ path: path.join(OUT, `${theme}-search.png`) });
+    await page.getByRole('button', { name: 'Sujets', exact: true }).click();
+    console.log(`${found ? 'PASS' : 'FAIL'}  ${theme} recherche messages`);
   }
 
   // A reply typed on a ticket is still there after leaving the page

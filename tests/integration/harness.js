@@ -196,10 +196,10 @@ async function main() {
   check('priorité: support avec reply_ticket autorisé', r.status === 200, r.status + JSON.stringify(r.body));
   r = await req('PATCH', `/api/tickets/${t1}/status`, { sid: sessions.S1, body: { status: 'closed' } });
   check('fermeture: support sans close_ticket refusé', r.status === 403, r.status);
-  r = await req('GET', '/api/analytics/search?q=secret', { sid: sessions.S1 });
-  check('recherche ne fuit pas le ticket restreint', r.status === 200 && r.body.length === 0, JSON.stringify(r.body));
-  r = await req('GET', '/api/analytics/search?q=secret', { sid: sessions.F });
-  check('fondateur trouve le ticket restreint', r.status === 200 && r.body.length === 1, JSON.stringify(r.body));
+  r = await req('GET', '/api/tickets/search', { sid: sessions.S1, query: { q: 'secret' } });
+  check('recherche ne fuit pas le ticket restreint', r.status === 200 && r.body.results.length === 0, JSON.stringify(r.body));
+  r = await req('GET', '/api/tickets/search', { sid: sessions.F, query: { q: 'secret' } });
+  check('fondateur trouve le ticket restreint', r.status === 200 && r.body.results.length === 1, JSON.stringify(r.body));
   r = await req('GET', '/api/transcripts', { sid: sessions.S1 });
   check('transcripts sans view_transcripts -> 403', r.status === 403, r.status);
 
@@ -943,6 +943,31 @@ async function main() {
     check('ma file: onglet non attribués', r.body.tickets.some(x => x.id === qD) && !r.body.tickets.some(x => x.id === qA), JSON.stringify(r.body.tickets.map(x => x.id)));
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[qA, qB, qC, qD]]);
     await db('UPDATE guild_config SET sla_open_hours = 0 WHERE id = 1');
+  }
+
+  // ── Full-text search in conversations ──
+  {
+    const mk = async (subject, ch, grade = null) => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('31','u31',?,'open',?,?)", [ch, subject, grade])).insertId;
+    const s1 = await mk('question', 'csr1'), s2 = await mk('autre', 'csr2', g2), s3 = await mk('Problème xyzsujet', 'csr3');
+    await db(`INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES
+      (?, '31', 'u31', 'Bonjour, mon remboursement zorglub n est jamais arrivé depuis lundi', 'user'),
+      (?, '1', 'F', 'Vérifier le remboursement zorglub côté banque', 'web')`, [s1, s2]);
+    r = await req('GET', '/api/tickets/search', { sid: sessions.FV, query: { q: 'zorglub rembours' } });
+    const ids = r.body.results?.map(x => x.ticket.id) || [];
+    const h1 = r.body.results?.find(x => x.ticket.id === s1);
+    check('recherche: trouve les messages par mots (préfixe, plusieurs mots)', r.status === 200 && ids.includes(s1) && ids.includes(s2), JSON.stringify(r.body));
+    check('recherche: extrait du message trouvé', h1?.match?.source === 'user' && /remboursement zorglub/.test(h1.match.snippet) && h1.hits === 1, JSON.stringify(h1));
+    r = await req('GET', '/api/tickets/search', { sid: sessions.FV, query: { q: 'zorglub', source: 'member' } });
+    check('recherche: filtre par auteur (membre)', r.body.results?.length === 1 && r.body.results[0].ticket.id === s1, JSON.stringify(r.body.results?.map(x => x.ticket.id)));
+    r = await req('GET', '/api/tickets/search', { sid: sessions.S3T, query: { q: 'zorglub' } });
+    check('recherche: un ticket restreint reste invisible', r.status === 200 && r.body.results.some(x => x.ticket.id === s1) && !r.body.results.some(x => x.ticket.id === s2), JSON.stringify(r.body));
+    r = await req('GET', '/api/tickets/search', { sid: sessions.FV, query: { q: 'xyzsujet' } });
+    check('recherche: les sujets sont aussi cherchés', r.body.results?.length === 1 && r.body.results[0].ticket.id === s3 && r.body.results[0].match === null, JSON.stringify(r.body));
+    r = await req('GET', '/api/tickets/search', { sid: sessions.FV, query: { q: 'n' } });
+    check('recherche: 2 caractères minimum', r.status === 400);
+    r = await req('GET', '/api/tickets/search', { sid: sessions.FV, query: { q: 'u31' } });
+    check('recherche: par pseudo du membre', r.body.results?.length === 3, JSON.stringify(r.body.results?.map(x => x.ticket.id)));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[s1, s2, s3]]);
   }
 
   // ── Linked tickets ──

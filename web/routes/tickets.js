@@ -21,6 +21,7 @@ const { ticketDmComponents } = require('../../utils/components');
 const { t, sendToMember } = require('../../utils/i18n');
 const { parseJsonField } = require('../../utils/jsonField');
 const { escapeHtml } = require('../../utils/transcript');
+const { searchMessages, SOURCES } = require('../../utils/messageSearch');
 
 async function checkAccess(req, ticketId) {
   const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticketId]);
@@ -135,6 +136,25 @@ router.get('/', async (req, res) => {
 
     const withSla = tickets.map(t => ({ ...t, sla: slaStatus(t, slaCfg) }));
     res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/tickets/search?q=…&source=member|staff|notes&status=&page= — full-text search in
+// conversations and subjects, limited to the tickets the user can see
+router.get('/search', async (req, res) => {
+  if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
+    if (q.length < 2) return res.status(400).json({ error: 'Saisis au moins 2 caractères' });
+    const source = typeof req.query.source === 'string' && SOURCES[req.query.source] ? req.query.source : '';
+    const status = typeof req.query.status === 'string' ? req.query.status : '';
+    if (status && !VALID_STATUS.has(status)) return res.status(400).json({ error: 'Statut invalide' });
+    const page = Math.max(1, Math.min(500, parseInt(req.query.page) || 1));
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    res.json(await searchMessages(req.guildDb, { q, source, status, vis, page }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

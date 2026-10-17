@@ -191,6 +191,11 @@ const MIGRATIONS = [
     name: 'Salon du rapport mensuel',
     statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS monthly_report_channel_id VARCHAR(32) DEFAULT NULL'],
   },
+  {
+    version: 12,
+    name: 'Recherche plein texte dans les messages',
+    statements: ['ALTER TABLE ticket_notes ADD FULLTEXT INDEX IF NOT EXISTS ft_tn_content (content)'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

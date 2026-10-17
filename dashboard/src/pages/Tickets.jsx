@@ -19,6 +19,7 @@ import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import toast from 'react-hot-toast';
 import SlaBadge from '../components/SlaBadge';
+import MessageSearch from '../components/MessageSearch';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
 const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '' };
@@ -212,11 +213,16 @@ export default function Tickets() {
   const [focusedRow, setFocusedRow] = useState(-1);
 
   const searchRef    = useRef(null);
+  // Search in subjects (list filter) or in every message (full-text results)
+  const [searchMode, setSearchModeState] = useState(() => { try { return localStorage.getItem('ticketSearchMode') || 'subject'; } catch { return 'subject'; } });
+  const setSearchMode = m => { setSearchModeState(m); try { localStorage.setItem('ticketSearchMode', m); } catch { /* storage unavailable */ } };
+  const messageSearch = searchMode === 'messages' && filters.subject.trim().length > 0;
   const tableRef     = useRef(null);
   const hoverTimer   = useRef(null);
   const mousePosRef  = useRef({ x: 0, y: 0 });
 
   const load = useCallback(async () => {
+    if (messageSearch) return; // the full-text results replace the list
     setLoading(true);
     try {
       const params = {
@@ -228,7 +234,7 @@ export default function Tickets() {
     } finally {
       setLoading(false);
     }
-  }, [page, filters]);
+  }, [page, filters, messageSearch]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setSelected(new Set()); setFocusedRow(-1); }, [page, filters]);
@@ -385,7 +391,7 @@ export default function Tickets() {
       <div className="flex items-start justify-between">
         <div className="page-header">
           <h1>Tickets</h1>
-          <p>{data.total} ticket(s) trouvé(s)</p>
+          <p>{messageSearch ? "Recherche dans les messages" : `${data.total} ticket(s) trouvé(s)`}</p>
         </div>
         {user?.role === 'fondateur' && (
           <a
@@ -463,14 +469,24 @@ export default function Tickets() {
           <input
             ref={searchRef}
             type="text"
-            placeholder="Rechercher par sujet... (/)"
+            aria-label={searchMode === 'messages' ? 'Rechercher dans les messages' : 'Rechercher par sujet'}
+            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages... (/)' : 'Rechercher par sujet... (/)'}
             value={filters.subject}
             onChange={e => setFilter('subject', e.target.value)}
             className="w-full bg-surface border border-overlay/[0.07] text-ink-1 placeholder-ink-4
-                       rounded-xl pl-9 pr-3.5 py-2 text-sm
+                       rounded-xl pl-9 pr-44 py-2 text-sm
                        focus:outline-hidden focus:border-primary/50 focus:ring-1 focus:ring-primary/20
                        hover:border-overlay/12 transition-all duration-150"
           />
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex rounded-lg bg-overlay/4 p-0.5" role="group" aria-label="Où chercher">
+            {[['subject', 'Sujets'], ['messages', 'Messages']].map(([m, label]) => (
+              <button key={m} onClick={() => setSearchMode(m)} aria-pressed={searchMode === m}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all
+                            ${searchMode === m ? 'bg-surface-elevated text-ink-1 shadow-card' : 'text-ink-3 hover:text-ink-1'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <Select
           className="w-40"
@@ -623,6 +639,7 @@ export default function Tickets() {
         </div>
       )}
 
+      {messageSearch ? <MessageSearch q={filters.subject} status={filters.status} /> : (<>
       {/* Cards on phones */}
       <div className="md:hidden space-y-2">
         {loading && !data.tickets.length ? (
@@ -826,6 +843,7 @@ export default function Tickets() {
       </div>
 
       <Pagination page={page} pages={data.pages} onChange={setPage} />
+      </>)}
 
       {/* Bulk action bar */}
       {someSelected && user?.role === 'fondateur' && (
