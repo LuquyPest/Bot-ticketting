@@ -481,8 +481,6 @@ router.post('/:id/reply-file', (req, res, next) => uploadOne(req, res, err => {
 // POST /api/tickets/:id/apply-template { templateId, content, anonymous } — macro: sends the
 // (possibly edited) reply, then applies the template's actions. Each action needs its own
 // permission; refused or impossible actions are reported, not fatal.
-const STAGE_NAMES = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
-const PRIORITY_NAMES = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 router.post('/:id/apply-template', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');
@@ -497,42 +495,10 @@ router.post('/:id/apply-template', async (req, res) => {
     await sendStaffReply(req, ticket, { content, anonymous: !!req.body.anonymous });
     await req.guildDb('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
 
-    const actions = tpl.actions || {};
     const tm = getManager(req);
-    const me = dashboardActor(req);
-    const applied = [], warnings = [];
-    if (actions.assignSelf) {
-      if (!hasPerm(req, 'claim_ticket')) warnings.push('Attribution : permission claim_ticket manquante');
-      else if (await tm.addAssignee(ticket.id, me, me)) applied.push('Attribué à toi');
-    }
-    if (actions.priority) {
-      if (actions.priority !== ticket.priority) {
-        await tm.setPriority(ticket.id, actions.priority, me);
-        applied.push(`Priorité ${PRIORITY_NAMES[actions.priority]}`);
-      }
-    }
-    if (actions.tagId) {
-      const [tag] = await req.guildDb('SELECT id, name FROM ticket_tags WHERE id = ?', [actions.tagId]);
-      if (!tag) warnings.push('Tag introuvable');
-      else if ((await req.guildDb('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [ticket.id, tag.id])).affectedRows) {
-        await recordEvent(req.guildDb, { actor: me, action: 'ticket_tag_add', ticketId: ticket.id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } });
-        applied.push(`Tag ${tag.name}`);
-      }
-    }
-    if (actions.stage && actions.stage !== (ticket.stage || 'open') && !actions.close) {
-      const moved = await tm.moveToStage(ticket.id, actions.stage, me);
-      if (moved.ok) applied.push(`Étape ${STAGE_NAMES[actions.stage]}`); else warnings.push(`Étape : ${moved.error}`);
-    }
-    if (actions.close) {
-      if (!hasPerm(req, 'close_ticket')) warnings.push('Fermeture : permission close_ticket manquante');
-      else {
-        const client = req.app.locals.client;
-        const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
-        if (channel) { await tm.closeTicketWithTranscript(channel, me); applied.push('Ticket fermé'); }
-        else warnings.push('Fermeture : salon Discord introuvable');
-      }
-    }
-    await tm.updateChannelTopic(ticket.id).catch(() => null);
+    const { applied, warnings } = await require('../../utils/macroActions').applyMacroActions({
+      client: req.app.locals.client, db: req.guildDb, tm, ticket, actions: tpl.actions, actor: dashboardActor(req), can: p => hasPerm(req, p),
+    });
     const [fresh] = await req.guildDb('SELECT status, stage, priority FROM tickets WHERE id = ?', [ticket.id]);
     broadcast('ticket', { id: ticket.id, ...fresh, assignees: await tm.getAssignees(ticket.id) }, req.guildId);
     res.json({ ok: true, applied, warnings, ticket: fresh });

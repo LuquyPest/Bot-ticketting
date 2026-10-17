@@ -1,13 +1,9 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 const { checkRateLimit } = require('../utils/rateLimit');
-const { broadcast } = require('../utils/sse');
-const { recordEvent } = require('../utils/audit');
-const { staffReplyDmEmbed } = require('../utils/dmEmbeds');
-const { ticketDmComponents } = require('../utils/components');
-const { sendToMember } = require('../utils/i18n');
+const { sendDiscordReply } = require('../utils/discordReply');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -35,33 +31,11 @@ module.exports = {
     const file    = interaction.options.getAttachment('fichier');
     if (!content && !file) return interaction.reply({ content: 'Message ou fichier requis.', flags: MessageFlags.Ephemeral });
 
-    const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
-    const replyEmbed = new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setAuthor({ name: `${interaction.user.username} · Staff` })
-      .setDescription(content || '​')
-      .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
-    if (file) replyEmbed.addFields({ name: '📎 Fichier', value: file.url });
-
-    // Each member receives the reply in their language
-    for (const userId of linkedUserIds) {
-      await sendToMember(client, userId, interaction.guildId, () => ({ embeds: [staffReplyDmEmbed(client, interaction.guildId, ticket, { sender: interaction.user.username, content, fileUrl: file?.url })], components: ticketDmComponents(ticket, interaction.guildId, userId) }));
-    }
-    await recordEvent(db, { actor: interaction.user, action: 'ticket_reply', ticketId: ticket.id, details: { anonymous: false, excerpt: (content || file?.url || '').slice(0, 120) } });
-
-    await tm.recordStaffResponse(ticket.id, interaction.user);
-    await tm.updateLastMessage(ticket.id);
-    await interaction.reply({ content: 'Envoyé.', flags: MessageFlags.Ephemeral });
-    await interaction.channel.send({ embeds: [replyEmbed] });
-
-    const noteContent = [content, file?.url].filter(Boolean).join('\n');
-    const result = await db(
-      'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
-      [ticket.id, interaction.user.id, interaction.user.username, noteContent]
-    ).catch(() => null);
-
-    if (result) {
-      broadcast('note', { ticketId: ticket.id, note: { id: result.insertId, ticket_id: ticket.id, author_id: interaction.user.id, author_tag: interaction.user.username, content: noteContent, source: 'reply', created_at: new Date() } }, interaction.guildId);
-    }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await sendDiscordReply({
+      client, db, tm, guildId: interaction.guildId, ticket, author: interaction.user, channel: interaction.channel,
+      content, fileUrl: file?.url || null, anonymous: false,
+    });
+    await interaction.editReply({ content: 'Envoyé.' });
   }
 };

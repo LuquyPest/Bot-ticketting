@@ -17,7 +17,7 @@ process.env.REDIS_PORT = process.env.REDIS_PORT || '63791';
 
 // Test configuration written to a temp file — the production config.json is never read
 const config = {
-  token: 'test-token', clientId: '1', webEnabled: true, webServerPort: Number(process.env.TEST_HTTP_PORT || 39123),
+  token: 'test-token', clientId: '1', webEnabled: true, rateLimits: { apiPerMinute: 100000 }, webServerPort: Number(process.env.TEST_HTTP_PORT || 39123),
   webServerBaseUrl: 'http://localhost:39123',
   dashboard: {
     sessionSecret: crypto.randomBytes(32).toString('hex'),
@@ -826,6 +826,46 @@ async function main() {
     await db('UPDATE guild_config SET sla_waiting_hours = 0 WHERE id = 1');
   }
 
+  // ── Discord: /template (autocomplete + macro) and /merge ──
+  {
+    const DCH = '900000000000000086', DCH2 = '900000000000000087';
+    let dch1Deleted = false;
+    channels.set(DCH, Object.assign(mkChannel(DCH, G), { delete: async () => { dch1Deleted = true; } }));
+    channels.set(DCH2, mkChannel(DCH2, G));
+    const MD = '200000000000000020';
+    const td1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member20', ?, 'open', 'Problème de paiement')", [MD, DCH])).insertId;
+    const td2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member20', ?, 'open', 'Autre')", [MD, DCH2])).insertId;
+    await req('POST', '/api/templates', { sid: sessions.FV, body: { name: 'Paiement reçu', content: 'Bonjour {{username}}, paiement reçu pour #{{ticket_id}}.', subject: 'paiement', scope: 'shared', actions: { priority: 'low' } } });
+    const fake = (extra) => {
+      const out = {};
+      return { out, i: { guildId: G, channelId: DCH, guild: guildObj, channel: channels.get(DCH), user: { id: U.F, username: 'F', tag: 'F' },
+        reply: async p => { out.reply = p; }, deferReply: async () => {}, editReply: async p => { out.edit = p; }, followUp: async p => { out.follow = p; },
+        respond: async list => { out.respond = list; }, ...extra } };
+    };
+    let f = fake({ options: { getFocused: () => '' } });
+    await app('./commands/template').autocomplete(fakeClient, f.i);
+    check('/template: modèles suggérés selon le sujet en tête', f.out.respond?.[0]?.name.startsWith('⭐ Paiement reçu (macro)'), JSON.stringify(f.out.respond?.slice(0, 3)));
+    const tplId = f.out.respond?.[0]?.value;
+    sent.length = 0; memberDms.length = 0;
+    f = fake({ options: { getString: () => tplId, getBoolean: () => false } });
+    await app('./commands/template').execute(fakeClient, f.i);
+    const dmT = memberDms.find(m => m.id === MD)?.p?.embeds?.[0]?.data;
+    const [prT] = await db('SELECT priority FROM tickets WHERE id = ?', [td1]);
+    check('/template: réponse envoyée avec variables résolues', dmT?.description === `Bonjour member20, paiement reçu pour #${td1}.`, JSON.stringify(dmT));
+    check('/template: actions de la macro appliquées', prT.priority === 'low' && /Priorité Faible/.test(f.out.edit?.content), JSON.stringify([prT, f.out.edit]));
+    f = fake({ options: { getFocused: () => 0 } });
+    await app('./commands/merge').autocomplete(fakeClient, f.i);
+    check('/merge: propose les autres tickets du membre', f.out.respond?.length === 1 && f.out.respond[0].value === td2, JSON.stringify(f.out.respond));
+    f = fake({ options: { getInteger: () => td2 } });
+    await app('./commands/merge').execute(fakeClient, f.i);
+    const [srcD] = await db('SELECT status, merged_into FROM tickets WHERE id = ?', [td1]);
+    check('/merge: ticket fusionné depuis Discord', srcD.status === 'closed' && srcD.merged_into === td2 && dch1Deleted, JSON.stringify([srcD, f.out]));
+    f = fake({ user: { id: '400000000000000003', username: 'none', tag: 'none' }, options: { getFocused: () => '' }, channelId: DCH2 });
+    await app('./commands/template').autocomplete(fakeClient, f.i);
+    check('/template: aucune suggestion pour un non-membre du staff', Array.isArray(f.out.respond) && f.out.respond.length === 0);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [td2]);
+  }
+
   // ── @mentions in internal notes ──
   {
     const tMen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('21','u21','cmen','open','mentions')")).insertId;
@@ -967,7 +1007,7 @@ async function main() {
   const [sysNote] = await db("SELECT source FROM ticket_notes WHERE ticket_id = ? AND content LIKE '🔀%'", [mB]);
   check('fusion: note de type système', sysNote?.source === 'system', JSON.stringify(sysNote));
   check('fusion: le membre est prévenu', mergeDm?.title?.includes('regroupés') && mergeDm.author.name.includes(`#${mB}`), JSON.stringify(mergeDm));
-  const [mev] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_merge'");
+  const [mev] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_merge' AND ticket_id IN (?)", [[mA, mB]]);
   check('fusion: journalisée sur les deux tickets', Number(mev.n) === 2, JSON.stringify(mev));
   r = await req('POST', `/api/tickets/${mA}/merge`, { sid: sessions.FV, body: { into: mB } });
   check('fusion: impossible depuis un ticket déjà fermé', r.status === 400, JSON.stringify(r.body));
@@ -1319,8 +1359,6 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [otherTicket]);
   }
 
-  // The suite sends far more than 200 API requests a minute: reset the (Redis) API counter
-  for (const k of await redis.keys('rl:api:*')) await redis.del(k);
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
   r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });

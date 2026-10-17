@@ -66,4 +66,14 @@ async function ensureChiefSupport(interaction, client, db) {
   return true;
 }
 
-module.exports = { ensureSupport, ensureChiefSupport };
+// Grade permission checker for a staff member (founders hold every permission).
+async function staffPermissionChecker(db, userId) {
+  const { getUserPermissions } = require('./gradePermissions');
+  const [u] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [userId]);
+  if (u?.role === 'fondateur') return () => true;
+  if (u?.role !== 'support') return () => false;
+  const perms = await getUserPermissions(userId, db);
+  return p => perms.has(p);
+}
+
+module.exports = { ensureSupport, ensureChiefSupport, staffPermissionChecker };

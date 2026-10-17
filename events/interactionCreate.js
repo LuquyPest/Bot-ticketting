@@ -57,6 +57,14 @@ module.exports = {
 
 async function handleInteraction(client, interaction) {
     try {
+      // Slash command option suggestions (/template, /merge)
+      if (interaction.isAutocomplete?.()) {
+        if (!interaction.guildId || !(await isGuildOperational(interaction.guildId))) return interaction.respond([]).catch(() => {});
+        const command = client.commands?.get(interaction.commandName);
+        if (!command?.autocomplete) return interaction.respond([]).catch(() => {});
+        return command.autocomplete(client, interaction).catch(() => interaction.respond([]).catch(() => {}));
+      }
+
       // Pending, suspended or maintenance guilds: the bot stays inert (commands, buttons, panels, modals)
       if (interaction.guildId && !(await isGuildOperational(interaction.guildId))) {
         if (interaction.isRepliable()) {

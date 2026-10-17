@@ -28,6 +28,10 @@
     "sessionsDays": 7
   },
 
+  "rateLimits": {
+    "apiPerMinute": 200
+  },
+
   "database": {
     "host": "db",
     "port": 3306,

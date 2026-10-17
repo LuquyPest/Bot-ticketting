@@ -4,6 +4,9 @@ const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { getRedis } = require('../utils/redis');
 
+// API requests per minute and IP (config.json → rateLimits.apiPerMinute)
+const API_PER_MINUTE = parseInt(require('../utils/config').config.rateLimits?.apiPerMinute) || 200;
+
 const BLOCKED_KEY = 'rl:blocked'; // hash `${limiter}:${key}` -> JSON { limiter, key, ip, path, since, resetAt, hits }
 
 function createLimiter(name, { windowMs, limit, error, label }) {
@@ -38,7 +41,7 @@ function createLimiter(name, { windowMs, limit, error, label }) {
 
 const limiters = {
   auth: createLimiter('auth', { windowMs: 15 * 60 * 1000, limit: 20, error: 'Trop de tentatives, réessaye dans 15 minutes', label: 'Connexion (20 / 15 min)' }),
-  api:  createLimiter('api',  { windowMs: 60 * 1000, limit: 200, error: 'Trop de requêtes', label: 'API (200 / min)' }),
+  api:  createLimiter('api',  { windowMs: 60 * 1000, limit: API_PER_MINUTE, error: 'Trop de requêtes', label: `API (${API_PER_MINUTE} / min)` }),
 };
 
 // Currently blocked IPs (expired entries are dropped).
