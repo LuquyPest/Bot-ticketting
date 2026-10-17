@@ -25,7 +25,8 @@
     "saAuthLogsDays": 90,
     "errorLogsDays": 30,
     "auditLogDays": 365,
-    "sessionsDays": 7
+    "sessionsDays": 7,
+    "saAuditDays": 730
   },
 
   "rateLimits": {

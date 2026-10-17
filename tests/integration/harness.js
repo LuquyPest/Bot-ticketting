@@ -1345,6 +1345,22 @@ async function main() {
     check('alerte erreurs: désactivée → aucun envoi', res.skipped === 'disabled', JSON.stringify(res));
   }
 
+  // ── Journal of the super-admin panel ──
+  {
+    await new Promise(res => setTimeout(res, 200));
+    r = await req('GET', '/api/sa/audit', { sid: sessions.MGR });
+    check('journal SA: réservé au superadmin', r.status === 403, r.status);
+    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'guild_limits' } });
+    const lim = r.body.rows?.find(x => x.guild_id === G);
+    check('journal SA: modification de limites enregistrée avec le serveur', r.status === 200 && lim && lim.actor_name === 'root' && JSON.stringify(lim.details).includes('max_tickets'), JSON.stringify(r.body.rows?.slice(0, 2)));
+    check('journal SA: action refusée (400) non enregistrée', !r.body.rows.some(x => JSON.stringify(x.details).includes('-1')));
+    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'error_alert_update' } });
+    const al = JSON.stringify((r.body.rows || []).find(x => x.details?.webhookUrl)?.details || {});
+    check('journal SA: URL de webhook réduite à son origine', al.includes('https://127.0.0.1/…') && !al.includes('/hook'), al);
+    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'founder_add' } });
+    check('journal SA: nomination de fondateur enregistrée', r.body.rows?.length >= 1 && r.body.rows[0].guild_id === G, JSON.stringify(r.body.rows?.[0]));
+  }
+
   // ── Mandatory 2FA per server ──
   {
     await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [U.F]);

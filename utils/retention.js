@@ -11,6 +11,7 @@ const DEFAULTS = {
   errorLogsDays: 30,
   auditLogDays: 365,    // per-guild activity journal
   sessionsDays: 7,      // session tracking rows (sessions themselves expire after 24 h)
+  saAuditDays: 730,     // super-admin panel journal
 };
 
 function retentionSettings() {
@@ -31,6 +32,7 @@ async function runRetentionPurge() {
     sa_auth_logs: await purge(globalQuery, 'sa_auth_logs', 'created_at', s.saAuthLogsDays),
     error_logs:   await purge(globalQuery, 'error_logs', 'created_at', s.errorLogsDays),
     user_sessions: await purge(globalQuery, 'user_sessions', 'last_seen_at', s.sessionsDays),
+    sa_audit_log: await purge(globalQuery, 'sa_audit_log', 'created_at', s.saAuditDays),
     audit_log: 0,
     transcripts: 0,
   };

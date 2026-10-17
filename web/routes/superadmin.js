@@ -10,6 +10,10 @@ const { getTenantDb, getDbName } = require('../../utils/tenantDb');
 const { ensureTenantSchema } = require('../../utils/tenantSchema');
 const { logAudit } = require('../../utils/gradePermissions');
 const requireSuperAdmin = require('../middleware/superadmin');
+const { saAuditMiddleware } = require('../../utils/saAudit');
+
+// Every successful change made from the panel is journaled (sa_audit_log)
+router.use(saAuditMiddleware);
 const { parseJsonField } = require('../../utils/jsonField');
 
 function logSaAuth(req, username, status) {
@@ -799,6 +803,26 @@ router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
   const f = errorFilters(req.query);
   const r = await globalQuery(`DELETE e FROM error_logs e ${f.sql}`, f.params);
   res.json({ ok: true, deleted: r.affectedRows || 0 });
+});
+
+// ─── SA JOURNAL ──────────────────────────────────────────────────────────────
+
+// GET /api/sa/audit?actor=&action=&guild_id=&page= — journal of the panel (superadmin only)
+router.get('/audit', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const where = [], params = [];
+  const q = k => (typeof req.query[k] === 'string' && req.query[k] ? req.query[k].slice(0, 100) : null);
+  if (q('actor')) { where.push('a.actor_name = ?'); params.push(q('actor')); }
+  if (q('action')) { where.push('a.action = ?'); params.push(q('action')); }
+  if (q('guild_id')) { where.push('a.guild_id = ?'); params.push(q('guild_id')); }
+  const sql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const [rows, [{ total }], actors] = await Promise.all([
+    globalQuery(`SELECT a.*, g.guild_name FROM sa_audit_log a LEFT JOIN guilds g ON g.guild_id = a.guild_id ${sql} ORDER BY a.id DESC LIMIT 50 OFFSET ?`, [...params, (page - 1) * 50]),
+    globalQuery(`SELECT COUNT(*) AS total FROM sa_audit_log a ${sql}`, params),
+    globalQuery('SELECT DISTINCT actor_name FROM sa_audit_log ORDER BY actor_name'),
+  ]);
+  res.json({ rows, total: Number(total), page, pages: Math.max(1, Math.ceil(total / 50)), actors: actors.map(a => a.actor_name) });
 });
 
 // ─── ERROR ALERT ─────────────────────────────────────────────────────────────

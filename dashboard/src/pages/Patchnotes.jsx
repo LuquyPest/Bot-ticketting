@@ -34,6 +34,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Commandes Discord /template (avec autocomplétion des modèles) et /merge' },
       { type: 'new',  text: 'Indicateur « X est en train d\'écrire » quand un collègue rédige sur le même ticket' },
       { type: 'new',  text: '2FA obligatoire par serveur, pour les fondateurs ou pour tout le staff' },
+      { type: 'new',  text: 'Panel super-admin : journal de toutes les actions des super-admins et managers' },
     ]
   },
   {
