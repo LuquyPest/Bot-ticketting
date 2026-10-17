@@ -29,6 +29,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Rapport mensuel en PDF : téléchargeable dans Analytique et envoyé le 1er du mois dans un salon' },
       { type: 'new',  text: 'Panel super-admin : page « Santé » (Discord, base, Redis, tâches planifiées, mémoire, versions de schéma)' },
       { type: 'new',  text: 'Panel super-admin : annonces aux fondateurs (bandeau sur le dashboard et/ou MP)' },
+      { type: 'tech', text: 'Rotation de la clé de chiffrement des secrets 2FA sans les rendre inutilisables (script de rechiffrement)' },
     ]
   },
   {

@@ -383,7 +383,7 @@ async function main() {
   r = await req('POST', '/api/auth/totp-verify-login', { sid: await pend(), body: { code: codes[0] } });
   check('M4 code de secours à usage unique', r.status === 400, r.status);
   const [tr] = await globalQuery('SELECT totp_secret FROM user_totp WHERE user_id = ?', [U.S2]);
-  check('M4 secret stocké chiffré', tr.totp_secret.startsWith('enc:v1:') && !tr.totp_secret.includes(secret), tr.totp_secret.slice(0, 20));
+  check('M4 secret stocké chiffré', /^enc:v[12]:/.test(tr.totp_secret) && !tr.totp_secret.includes(secret), tr.totp_secret.slice(0, 20));
 
   // M5 — per-account lockout for superadmin login
   await globalQuery('INSERT INTO superadmins (username, password_hash) VALUES (?, ?)', ['root', await bcrypt.hash('correct-horse-battery', 4)]);
@@ -1736,6 +1736,40 @@ async function main() {
     tm.MIGRATIONS.pop();
     const [v9999] = await db('SELECT COUNT(*) AS n FROM schema_migrations WHERE version = 9999');
     check('migrations: une erreur arrête la migration et n\'est pas enregistrée', /9999/.test(migErr || '') && Number(v9999.n) === 0, JSON.stringify([migErr, v9999]));
+  }
+
+  // ── Encryption key rotation ──
+  {
+    const box = app('./utils/secretBox');
+    const cfgD = app('./utils/config').config.dashboard;
+    const oldKey = cfgD.encryptionKey, oldPrev = cfgD.previousEncryptionKeys;
+    box.resetKeys();
+    const legacyV1 = 'enc:v1:' + (() => {   // a value written before rotation existed (v1, current key)
+      const k = require('crypto').hkdfSync('sha256', cfgD.sessionSecret, 'ticketbot', 'secret-box-v1', 32);
+      const key = oldKey && /^[0-9a-f]{64}$/i.test(oldKey) ? Buffer.from(oldKey, 'hex') : Buffer.from(k);
+      const iv = require('crypto').randomBytes(12); const c = require('crypto').createCipheriv('aes-256-gcm', key, iv);
+      const ct = Buffer.concat([c.update('JBSWY3DPEHPK3PXP', 'utf8'), c.final()]);
+      return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
+    })();
+    const before = box.seal('KRSXG5CTMVRXEZLU');
+    const k1 = require('crypto').randomBytes(32).toString('hex');
+    cfgD.previousEncryptionKeys = oldKey ? [oldKey] : [];
+    cfgD.encryptionKey = k1;
+    box.resetKeys();
+    check('rotation: anciens secrets lisibles avec la nouvelle clé configurée', box.open(before) === 'KRSXG5CTMVRXEZLU' && box.open(legacyV1) === 'JBSWY3DPEHPK3PXP');
+    await globalQuery("INSERT INTO user_totp (user_id, totp_secret, totp_enabled) VALUES ('100000000000000077', ?, 1), ('100000000000000078', ?, 1)", [before, legacyV1]);
+    const rep = await require(path.join(ROOT, 'scripts/rotate-encryption-key.js')).rotate();
+    const rows = await globalQuery("SELECT totp_secret FROM user_totp WHERE user_id IN ('100000000000000077', '100000000000000078') ORDER BY user_id");
+    check('rotation: secrets rechiffrés avec la nouvelle clé', rep.user_totp.rewritten >= 2 && rep.user_totp.failed === 0 && rows.every(r => box.isCurrent(r.totp_secret)) && box.open(rows[0].totp_secret) === 'KRSXG5CTMVRXEZLU' && box.open(rows[1].totp_secret) === 'JBSWY3DPEHPK3PXP', JSON.stringify(rep));
+    const rep2 = await require(path.join(ROOT, 'scripts/rotate-encryption-key.js')).rotate();
+    check('rotation: relancer ne réécrit rien', rep2.user_totp.rewritten === 0, JSON.stringify(rep2));
+    let unknownErr = null;
+    try { box.open('enc:v2:deadbeef:AAAA'); } catch (e) { unknownErr = e.message; }
+    check('rotation: clé inconnue signalée clairement', /deadbeef/.test(unknownErr || ''), unknownErr);
+    // The new key stays current for the rest of the run (secrets rewritten with it)
+    cfgD.previousEncryptionKeys = [...(oldKey ? [oldKey] : []), ...(oldPrev || [])];
+    box.resetKeys();
+    await globalQuery("DELETE FROM user_totp WHERE user_id IN ('100000000000000077', '100000000000000078')");
   }
 
   // ── Multi-instance: limits and creation lock shared through Redis ──

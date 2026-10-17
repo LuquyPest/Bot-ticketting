@@ -16,6 +16,7 @@
   "dashboard": {
     "sessionSecret": "GENERE_AVEC_openssl_rand_-hex_32",
     "encryptionKey": "GENERE_AVEC_openssl_rand_-hex_32",
+    "previousEncryptionKeys": [],
     "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
     "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
   },
