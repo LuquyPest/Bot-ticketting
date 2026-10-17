@@ -135,6 +135,52 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/tickets/queue?scope=mine|unassigned — personal work queue sorted by urgency:
+// SLA breached (most overdue first), SLA close to expiry, member waiting for an answer
+// (oldest first), then priority. Each ticket carries the reasons shown in the dashboard.
+const PRIORITY_RANK = { urgent: 2, normal: 1, low: 0 };
+router.get('/queue', async (req, res) => {
+  if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const scope = req.query.scope === 'unassigned' ? 'unassigned' : 'mine';
+    const vis = await visibilityFilter(req);
+    const where = scope === 'mine'
+      ? 'EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id AND a.user_id = ?)'
+      : 'NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)';
+    const rows = await req.guildDb(
+      `SELECT id, owner_id, owner_tag, channel_id, status, stage, stage_changed_at, subject, priority, created_at, last_message_at,
+              (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source = 'user') AS last_member_at,
+              (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source IN ('reply', 'scheduled')) AS last_staff_at
+       FROM tickets WHERE status = 'open' AND ${where} AND ${vis.sql} LIMIT 300`,
+      [...(scope === 'mine' ? [req.session.user.id] : []), ...vis.params]
+    );
+    const [slaCfg] = await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
+    const now = Date.now();
+    const queue = rows.map(t => {
+      const sla = slaStatus(t, slaCfg, now);
+      const waitingSince = t.last_member_at && (!t.last_staff_at || new Date(t.last_member_at) > new Date(t.last_staff_at)) ? new Date(t.last_member_at) : null;
+      const reasons = [];
+      if (sla?.state === 'breached') reasons.push({ type: 'breached', minutes: sla.elapsedMinutes - sla.hours * 60 });
+      else if (sla?.state === 'warning') reasons.push({ type: 'warning', minutes: sla.hours * 60 - sla.elapsedMinutes });
+      if (waitingSince) reasons.push({ type: 'member_waiting', minutes: Math.floor((now - waitingSince.getTime()) / 60000) });
+      if (t.priority === 'urgent') reasons.push({ type: 'urgent' });
+      const overdue = sla?.state === 'breached' ? sla.elapsedMinutes - sla.hours * 60 : 0;
+      return {
+        ...t, sla, waitingSince, reasons,
+        _rank: [sla?.state === 'breached' ? 3 : sla?.state === 'warning' ? 2 : waitingSince ? 1 : 0, overdue, waitingSince ? now - waitingSince.getTime() : 0, PRIORITY_RANK[t.priority] ?? 1],
+      };
+    });
+    queue.sort((a, b) => {
+      for (let i = 0; i < a._rank.length; i++) if (a._rank[i] !== b._rank[i]) return b._rank[i] - a._rank[i];
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
+    res.json({ scope, tickets: await attachAssignees(req, queue.map(({ _rank, ...t }) => t)) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/export', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   try {

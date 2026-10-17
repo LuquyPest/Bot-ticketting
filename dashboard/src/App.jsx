@@ -26,6 +26,7 @@ const Equipe      = lazy(() => import('./pages/Equipe'));
 const Tags        = lazy(() => import('./pages/Tags'));
 const Faq         = lazy(() => import('./pages/Faq'));
 const Members     = lazy(() => import('./pages/Members'));
+const Queue       = lazy(() => import('./pages/Queue'));
 const TotpVerify  = lazy(() => import('./pages/TotpVerify'));
 const Profile     = lazy(() => import('./pages/Profile'));
 const Analytics   = lazy(() => import('./pages/Analytics'));
@@ -178,6 +179,7 @@ export default function App() {
                         <Route path="equipe"     element={
                           <RequireRole role="fondateur"><ErrorBoundary><Equipe /></ErrorBoundary></RequireRole>
                         } />
+                        <Route path="queue"      element={<ErrorBoundary><Queue /></ErrorBoundary>} />
                         <Route path="members"    element={
                           <RequireRole role="fondateur"><ErrorBoundary><Members /></ErrorBoundary></RequireRole>
                         } />

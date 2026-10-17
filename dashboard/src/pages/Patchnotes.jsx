@@ -18,6 +18,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Le membre peut rouvrir son ticket depuis le MP de fermeture pendant quelques jours, avec tout son historique' },
       { type: 'new',  text: 'Option : le membre est prévenu en MP quand son ticket change d\'étape' },
       { type: 'new',  text: 'Note basse : fondateurs et chefs support prévenus, bouton « Recontacter le membre » dans la fiche' },
+      { type: 'new',  text: 'Page « Ma file » : tes tickets triés par urgence, avec la raison de chaque position' },
     ]
   },
   {

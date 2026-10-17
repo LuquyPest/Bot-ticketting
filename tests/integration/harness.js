@@ -924,6 +924,27 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [td2]);
   }
 
+  // ── « Ma file »: personal queue sorted by urgency ──
+  {
+    await db('UPDATE guild_config SET sla_open_hours = 1 WHERE id = 1');
+    let qn = 0;
+    const mkT = async (subject, extra = '') => (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, stage, stage_changed_at) VALUES ('25','u25',?,'open',?, 'normal', 'open', ${extra || 'NOW()'})`, [`cqu${++qn}`, subject])).insertId;
+    const qA = await mkT('file calme'), qB = await mkT('file membre attend'), qC = await mkT('file hors délai', 'NOW() - INTERVAL 3 HOUR');
+    for (const id of [qA, qB, qC]) await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [id, U.F]);
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, created_at) VALUES (?, '1', 'F', 'réponse', 'reply', NOW() - INTERVAL 2 HOUR), (?, '25', 'u25', 'toujours là ?', 'user', NOW() - INTERVAL 1 HOUR)", [qB, qB]);
+    const qD = await mkT('file non attribuée');
+    r = await req('GET', '/api/tickets/queue', { sid: sessions.FV });
+    const order = r.body.tickets.map(x => x.id).filter(id => [qA, qB, qC].includes(id));
+    const tB = r.body.tickets.find(x => x.id === qB), tC = r.body.tickets.find(x => x.id === qC);
+    check('ma file: hors délai, puis membre en attente, puis le reste', order.join() === [qC, qB, qA].join(), JSON.stringify(order));
+    check('ma file: raisons fournies', tC?.reasons.some(x => x.type === 'breached') && tB?.reasons.some(x => x.type === 'member_waiting' && x.minutes >= 59), JSON.stringify([tC?.reasons, tB?.reasons]));
+    check('ma file: uniquement mes tickets', !r.body.tickets.some(x => x.id === qD));
+    r = await req('GET', '/api/tickets/queue', { sid: sessions.FV, query: { scope: 'unassigned' } });
+    check('ma file: onglet non attribués', r.body.tickets.some(x => x.id === qD) && !r.body.tickets.some(x => x.id === qA), JSON.stringify(r.body.tickets.map(x => x.id)));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[qA, qB, qC, qD]]);
+    await db('UPDATE guild_config SET sla_open_hours = 0 WHERE id = 1');
+  }
+
   // ── @mentions in internal notes ──
   {
     const tMen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('21','u21','cmen','open','mentions')")).insertId;

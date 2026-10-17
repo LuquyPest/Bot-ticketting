@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 
 const ALL_NAV = [
   { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true, roles: ['support','fondateur'] },
+  { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
   { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
   { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
   { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
