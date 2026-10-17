@@ -1374,6 +1374,17 @@ async function main() {
     await db('UPDATE ticket_fields SET active = 0 WHERE id = ?', [fid]);
   }
 
+  // ── Public API documentation (generated from the routes) ──
+  {
+    r = await req('GET', '/api/v1/openapi.json');
+    const paths = Object.keys(r.body?.paths || {});
+    check('doc API: description OpenAPI publique', r.status === 200 && r.body.openapi === '3.0.3' && ['/tickets', '/tickets/{id}', '/tickets/{id}/close', '/stats'].every(p => paths.includes(p)), JSON.stringify(paths));
+    check('doc API: permissions et exemples', r.body.paths['/tickets/{id}/close'].post['x-permission'] === 'close_tickets' && r.body.paths['/stats'].get.responses[200].content['application/json'].example.tickets, '');
+    const routes = app('./web/routes/apiV1').stack.filter(l => l.route).map(l => `${Object.keys(l.route.methods)[0]} ${l.route.path}`).filter(x => !x.endsWith('/openapi.json'));
+    const documented = Object.entries(r.body.paths).flatMap(([p, m]) => Object.keys(m).map(k => `${k} ${p.replace(/\{(\w+)\}/g, ':$1')}`));
+    check('doc API: chaque route est documentée', routes.length > 0 && routes.every(x => documented.includes(x)), JSON.stringify({ routes, documented }));
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

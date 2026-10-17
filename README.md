@@ -622,6 +622,8 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `POST` | `/api/v1/tickets/:id/close` | `close_tickets` |
 | `GET` | `/api/v1/stats` | `read_stats` |
 
+**Documentation** : la description OpenAPI 3 est publique sur `GET /api/v1/openapi.json`, et la page **Documentation API** du dashboard (lien depuis « Clés API », `/docs-api`) l'affiche avec, pour chaque route, ses paramètres, la permission requise, un exemple `curl` et un exemple de réponse. Les deux sont générés depuis la déclaration des routes dans `web/routes/apiV1.js` (helper `endpoint()`), et un test vérifie que chaque route y est décrite.
+
 ---
 
 ## Base de données

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Key, Plus, Trash2, Copy, Check, Loader2, RefreshCw, ShieldOff } from 'lucide-react';
+import { Key, Plus, Trash2, Copy, Check, Loader2, RefreshCw, ShieldOff, BookOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -96,6 +97,7 @@ export default function ApiKeys() {
           <p className="text-sm text-ink-3 mt-0.5">Accès externe sécurisé par clé pour intégrations tierces</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/docs-api" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1"><BookOpen size={13} /> Documentation</Link>
           <button onClick={load} className="p-2 text-ink-3 hover:text-ink-1 hover:bg-surface rounded-lg transition-colors">
             <RefreshCw size={15} />
           </button>

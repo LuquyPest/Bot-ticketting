@@ -52,10 +52,33 @@ async function apiKeyAuth(req, res, next) {
 const requirePerm = perm => (req, res, next) =>
   req.apiKey.permissions.has(perm) ? next() : res.status(403).json({ error: `Permission requise : ${perm}` });
 
+// Every endpoint is declared with its documentation: the OpenAPI description (GET /api/v1/openapi.json)
+// and the dashboard's « Documentation API » page are generated from this list.
+const ENDPOINTS = [];
+function endpoint(doc, handler) {
+  ENDPOINTS.push(doc);
+  router[doc.method](doc.path.replace(/\{(\w+)\}/g, ':$1'), requirePerm(doc.perm), handler);
+}
+
+const TICKET_EXAMPLE = {
+  id: 42, owner_id: '123456789012345678', owner_tag: 'membre', claimed_by: '234567890123456789', status: 'open',
+  subject: 'Paiement', priority: 'normal', created_at: '2026-10-18T09:12:00.000Z', closed_at: null, closed_by_tag: null,
+};
+
+// Public, no key needed: the description of this API
+router.get('/openapi.json', (req, res) => res.json(buildOpenApi()));
+
 router.use(apiKeyAuth);
 
-// GET /api/v1/tickets?status=open|closed&page=1
-router.get('/tickets', requirePerm('read_tickets'), async (req, res) => {
+endpoint({
+  method: 'get', path: '/tickets', perm: 'read_tickets', summary: 'Lister les tickets',
+  description: 'Tickets du serveur de la clé, du plus récent au plus ancien, 50 par page.',
+  query: [
+    { name: 'status', enum: ['open', 'closed'], description: 'Filtrer par statut' },
+    { name: 'page', type: 'integer', description: 'Page (à partir de 1)' },
+  ],
+  example: { tickets: [TICKET_EXAMPLE], total: 1, page: 1, pages: 1 },
+}, async (req, res) => {
   const { status } = req.query;
   if (status && status !== 'open' && status !== 'closed') return res.status(400).json({ error: 'Statut invalide' });
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -78,8 +101,13 @@ router.get('/tickets', requirePerm('read_tickets'), async (req, res) => {
   }
 });
 
-// GET /api/v1/tickets/:id — ticket + messages
-router.get('/tickets/:id', requirePerm('read_tickets'), async (req, res) => {
+endpoint({
+  method: 'get', path: '/tickets/{id}', perm: 'read_tickets', summary: 'Détail d\'un ticket et ses messages',
+  description: 'Le ticket et tous ses messages dans l\'ordre : `user` (membre), `reply` (réponse du staff), `web` (note interne), `discord` (message dans le salon), `scheduled`, `system`.',
+  params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
+  example: { ...TICKET_EXAMPLE, messages: [{ author_id: '123456789012345678', author_tag: 'membre', content: 'Mon paiement est refusé', source: 'user', created_at: '2026-10-18T09:12:00.000Z' }] },
+  errors: [404],
+}, async (req, res) => {
   try {
     const [ticket] = await req.guildDb(
       `SELECT id, owner_id, owner_tag, claimed_by, status, subject, priority, created_at, closed_at, closed_by_tag
@@ -98,8 +126,13 @@ router.get('/tickets/:id', requirePerm('read_tickets'), async (req, res) => {
   }
 });
 
-// POST /api/v1/tickets/:id/close
-router.post('/tickets/:id/close', requirePerm('close_tickets'), async (req, res) => {
+endpoint({
+  method: 'post', path: '/tickets/{id}/close', perm: 'close_tickets', summary: 'Fermer un ticket',
+  description: 'Ferme le ticket comme depuis le dashboard (transcript, MP de fermeture et demande de note au membre). La fermeture est tracée au nom de la clé et n\'entre pas dans les statistiques du staff.',
+  params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
+  example: { ok: true },
+  errors: [400, 404],
+}, async (req, res) => {
   try {
     const [ticket] = await req.guildDb('SELECT id, channel_id, status FROM tickets WHERE id = ?', [parseInt(req.params.id)]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
@@ -126,8 +159,11 @@ router.post('/tickets/:id/close', requirePerm('close_tickets'), async (req, res)
   }
 });
 
-// GET /api/v1/stats
-router.get('/stats', requirePerm('read_stats'), async (req, res) => {
+endpoint({
+  method: 'get', path: '/stats', perm: 'read_stats', summary: 'Statistiques globales',
+  description: 'Nombre de tickets (total, ouverts, fermés) et note moyenne donnée par les membres.',
+  example: { tickets: { total: 340, open: 12, closed: 328 }, ratings: { count: 120, average: 4.42 } },
+}, async (req, res) => {
   try {
     const [[counts], [rating]] = await Promise.all([
       req.guildDb(
@@ -145,4 +181,37 @@ router.get('/stats', requirePerm('read_stats'), async (req, res) => {
   }
 });
 
+const ERROR_TEXT = { 400: 'Requête invalide', 401: 'Clé manquante, invalide, révoquée ou expirée', 403: 'Permission manquante ou API désactivée', 404: 'Introuvable', 429: 'Trop de requêtes' };
+
+function buildOpenApi() {
+  const { config } = require('../../utils/config');
+  let server = '/api/v1';
+  try { server = new URL('/api/v1', config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { /* relative */ }
+  const paths = {};
+  for (const e of ENDPOINTS) {
+    const parameters = [
+      ...(e.params || []).map(p => ({ name: p.name, in: 'path', required: true, description: p.description, schema: { type: p.type || 'string' } })),
+      ...(e.query || []).map(q => ({ name: q.name, in: 'query', required: false, description: q.description, schema: q.enum ? { type: 'string', enum: q.enum } : { type: q.type || 'string' } })),
+    ];
+    const responses = { 200: { description: 'Succès', content: { 'application/json': { example: e.example } } } };
+    for (const code of [401, 403, ...(e.errors || []), 429]) responses[code] = { description: ERROR_TEXT[code], content: { 'application/json': { example: { error: ERROR_TEXT[code] } } } };
+    (paths[e.path] ||= {})[e.method] = {
+      summary: e.summary, description: `${e.description}\n\nPermission de la clé : \`${e.perm}\`.`,
+      'x-permission': e.perm, parameters, responses, security: [{ bearer: [] }],
+    };
+  }
+  return {
+    openapi: '3.0.3',
+    info: {
+      title: 'Ticket Bot — API publique', version: '1',
+      description: 'Accès aux tickets d\'un serveur avec une clé API créée dans le dashboard (page « Clés API »). La clé désigne le serveur et porte ses permissions. Envoie-la dans l\'en-tête `Authorization: Bearer <clé>`. Limite : celle de l\'API du dashboard, par adresse IP.',
+    },
+    servers: [{ url: server }],
+    components: { securitySchemes: { bearer: { type: 'http', scheme: 'bearer', description: 'Clé au format tb_<id du serveur>_<64 caractères hexadécimaux>' } } },
+    paths,
+  };
+}
+
 module.exports = router;
+module.exports.ENDPOINTS = ENDPOINTS;
+module.exports.buildOpenApi = buildOpenApi;

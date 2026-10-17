@@ -42,6 +42,7 @@ const Forms       = lazy(() => import('./pages/Forms'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 const Activity    = lazy(() => import('./pages/Activity'));
 const Incidents   = lazy(() => import('./pages/Incidents'));
+const ApiDocs     = lazy(() => import('./pages/ApiDocs'));
 
 function PageLoader() {
   return (
@@ -225,6 +226,9 @@ export default function App() {
                         } />
                         <Route path="patchnotes" element={
                           <RequireRole role="fondateur"><ErrorBoundary><Patchnotes /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="docs-api" element={
+                          <RequireRole role="fondateur"><ErrorBoundary><ApiDocs /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="api-keys" element={
                           <RequireRole role="fondateur"><ErrorBoundary><ApiKeys /></ErrorBoundary></RequireRole>
