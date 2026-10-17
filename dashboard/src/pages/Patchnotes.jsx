@@ -24,6 +24,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Statut de disponibilité (disponible, occupé, absent) visible quand on attribue un ticket' },
       { type: 'new',  text: 'Champs personnalisés demandés au membre (n° de commande, pseudo…), visibles dans la fiche et filtrables' },
       { type: 'fix',  text: 'Le formulaire d\'intake ne se relance plus en boucle une fois rempli' },
+      { type: 'new',  text: 'Règles automatiques par sujet : tag, priorité ou grade appliqués dès l\'ouverture du ticket' },
     ]
   },
   {

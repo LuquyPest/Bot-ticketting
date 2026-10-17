@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import SubjectRules from '../components/SubjectRules';
 
 function Section({ title, description, children }) {
   return (
@@ -450,6 +451,7 @@ export default function Settings() {
             </div>
           </div>
         </Field>
+        <SubjectRules subjects={cfg.ticketSubjects || []} />
       </Section>
 
       {/* Access roles + category */}

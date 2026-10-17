@@ -169,6 +169,7 @@ app.use('/api/tags',        withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/faq',         withGuild(['support', 'fondateur']), require('./routes/faq'));
 app.use('/api/members',     withGuild(['fondateur']),            require('./routes/members'));
 app.use('/api/fields',      withGuild(['support', 'fondateur']), require('./routes/fields'));
+app.use('/api/subject-rules', withGuild(['support', 'fondateur']), require('./routes/subjectRules'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
 app.use('/api/analytics',   withGuild(['support', 'fondateur']), require('./routes/analytics'));
 app.use('/api/goals',       withGuild(['support', 'fondateur']), require('./routes/goals'));

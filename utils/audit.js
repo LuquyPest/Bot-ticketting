@@ -67,6 +67,8 @@ const ACTIONS = {
   template_create:          ['Modèle de réponse créé', 'config'],
   template_update:          ['Modèle de réponse modifié', 'config'],
   template_delete:          ['Modèle de réponse supprimé', 'config'],
+  subject_rule_create:      ['Règle par sujet créée', 'config'],
+  subject_rule_delete:      ['Règle par sujet supprimée', 'config'],
   field_create:             ['Champ personnalisé créé', 'config'],
   field_update:             ['Champ personnalisé modifié', 'config'],
   field_delete:             ['Champ personnalisé supprimé', 'config'],

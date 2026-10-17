@@ -178,6 +178,14 @@ const MIGRATIONS = [
         CONSTRAINT fk_tfv_field FOREIGN KEY (field_id) REFERENCES ticket_fields(id) ON DELETE CASCADE)`,
     ],
   },
+  {
+    version: 10,
+    name: 'Règles automatiques par sujet',
+    statements: [`CREATE TABLE IF NOT EXISTS subject_rules (
+      id INT AUTO_INCREMENT PRIMARY KEY, subject VARCHAR(100) NOT NULL,
+      tag_id INT DEFAULT NULL, priority ENUM('low','normal','urgent') DEFAULT NULL, visibility_grade_id INT DEFAULT NULL,
+      active TINYINT(1) NOT NULL DEFAULT 1, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

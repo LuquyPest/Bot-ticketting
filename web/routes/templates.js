@@ -13,12 +13,7 @@ const withActions = t => ({ ...t, actions: t.actions ? parseJsonField(t.actions,
 const canWrite = req => req.userIsFondateur || req.userPermissions?.has('reply_ticket');
 const canEdit = (req, tpl) => req.userIsFondateur || tpl.created_by_id === req.session.user.id;
 
-// Accent/case-insensitive comparison: "Problème de paiement" matches the subject "paiement".
-const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/[-_]+/g, ' ').trim();
-function matchesSubject(tplSubject, ticketSubject) {
-  const a = norm(tplSubject), b = norm(ticketSubject);
-  return !!a && !!b && (a.includes(b) || b.includes(a));
-}
+const { matchesSubject } = require('../../utils/subjectMatch');
 
 // Templates the current user may see and use.
 async function visibleTemplate(req, id) {

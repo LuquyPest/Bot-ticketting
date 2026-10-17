@@ -1007,6 +1007,27 @@ async function main() {
     for (const f of [fOrder, fAmount, fOther]) await req('DELETE', `/api/fields/${f.id}`, { sid: sessions.FV });
   }
 
+  // ── Automatic rules by subject ──
+  {
+    const tagR = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Facturation auto', '#22c55e')")).insertId;
+    r = await req('POST', '/api/subject-rules', { sid: sessions.FV, body: { subject: 'paiement', tagId: tagR, priority: 'urgent', gradeId: g2 } });
+    check('règles: règle créée', r.status === 200 && r.body.priority === 'urgent', JSON.stringify(r.body));
+    r = await req('POST', '/api/subject-rules', { sid: sessions.FV, body: { subject: 'vide' } });
+    check('règles: au moins une action', r.status === 400, r.status);
+    r = await req('POST', '/api/subject-rules', { sid: sessions.S3T, body: { subject: 'x', priority: 'low' } });
+    check('règles: réservées à manage_settings', r.status === 403, r.status);
+    const MRU = '200000000000000025';
+    const resR = await createManager(db, fakeClient, G).createTicket({ id: MRU, username: 'member25', tag: 'member25', send: async () => {} }, 'bonjour', [], 'Problème de Paiement', { forceNew: true });
+    const [tR] = await db('SELECT priority, visibility_grade_id FROM tickets WHERE id = ?', [resR.ticket.id]);
+    const tagsR = await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [resR.ticket.id]);
+    check('règles: appliquées à l\'ouverture (priorité, tag, grade)', tR.priority === 'urgent' && tR.visibility_grade_id === g2 && tagsR.some(x => x.tag_id === tagR), JSON.stringify([tR, tagsR]));
+    const resR2 = await createManager(db, fakeClient, G).createTicket({ id: MRU, username: 'member25', tag: 'member25', send: async () => {} }, 'bonjour', [], 'Connexion', { forceNew: true });
+    const [tR2] = await db('SELECT priority, visibility_grade_id FROM tickets WHERE id = ?', [resR2.ticket.id]);
+    check('règles: sans effet sur un autre sujet', tR2.priority === 'normal' && tR2.visibility_grade_id === null, JSON.stringify(tR2));
+    for (const rule of (await req('GET', '/api/subject-rules', { sid: sessions.FV })).body) await req('DELETE', `/api/subject-rules/${rule.id}`, { sid: sessions.FV });
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MRU]);
+  }
+
   // ── Staff availability ──
   {
     r = await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'away' } });
