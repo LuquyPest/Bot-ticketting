@@ -5,3 +5,5 @@ dashboard/dist/
 .env
 !.env.example
 !config.example.json
+tests/load/last-report.json
+tests/load/*.cpuprofile

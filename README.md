@@ -249,6 +249,7 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 | `retention.*` | Optionnel. Durées de conservation en jours (0 = jamais purgé) : `loginLogsDays` (90), `saAuthLogsDays` (90), `errorLogsDays` (30), `auditLogDays` (365), `sessionsDays` (7). Purge chaque nuit à 4 h 30 ; les transcripts suivent la limite `transcript_retention_days` de chaque serveur |
 | `database.host` | Doit être `db` (nom du service Docker Compose, pas `localhost`) |
 | `database.password` | Doit correspondre à `DB_PASSWORD` dans `.env` |
+| `database.tenantConnectionLimit` | Connexions MariaDB max par serveur Discord (5 par défaut ; voir le test de charge) |
 
 ### Configurer le bot Discord
 
@@ -847,6 +848,10 @@ cd dashboard && npm run build && npm run test:smoke   # pages principales du das
 ```
 
 Le test de fumée passe aussi chaque page, en thème sombre et clair, à **axe-core** (WCAG 2.1 A/AA) : toute violation grave ou critique (contraste, bouton sans nom, champ sans libellé…) fait échouer le test. Une troisième passe simule un téléphone (390 px) et échoue si une page déborde en largeur.
+
+**Test de charge** (`npm run test:load`, `tests/load/`) : sur une MariaDB et un Redis jetables (jamais ceux de production), avec le vrai serveur web dans un processus séparé et un faux client Discord, il mesure le volume de données (tickets et messages générés), la création de tickets en parallèle, les connexions temps réel ouvertes (et le délai de livraison d'un événement à toutes), puis la charge du dashboard (utilisateurs simultanés sur la liste, la fiche, les messages, la recherche, « Ma file » et les notes) : débit, latences p50/p95/p99, erreurs, CPU et mémoire du serveur, retard de la boucle d'événements. Réglages par variables : `TICKETS`, `MESSAGES`, `NEW_TICKETS`, `SSE`, `CONCURRENCY`, `DURATION`, `TENANT_POOL` ; `PROFILE=1` enregistre un profil CPU du serveur ; `MAX_P95_MS` et `MAX_ERROR_RATE` font échouer le test au-delà d'un seuil. Le rapport complet est écrit dans `tests/load/last-report.json`.
+
+Mesure du 18/10/2026 (5 000 tickets, 30 000 messages, 200 connexions temps réel, 50 utilisateurs simultanés sur un même serveur pendant 30 s) : aucune erreur ; création de 300 tickets à ~370/s ; événement temps réel livré aux 200 connexions en 12 ms (p95) ; dashboard ~155 requêtes/s, p95 ~460 ms. La limite vient d'abord des **5 connexions MariaDB par serveur** (les requêtes d'un serveur très actif attendent une connexion libre) : 15 connexions donnent ~190 req/s (p95 ~375 ms), 30 connexions ~205 req/s (p95 ~340 ms), où le processus Node atteint alors un cœur de CPU. Réglable avec `database.tenantConnectionLimit` (5 par défaut ; total = serveurs actifs × limite, à garder sous `max_connections` de MariaDB).
 
 La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG`) : le `config.json` de production n'est jamais lu. La même suite tourne à chaque push via **GitHub Actions** (`.github/workflows/ci.yml`), avec le build du dashboard et `npm audit`. **Dependabot** (`.github/dependabot.yml`) propose chaque lundi les mises à jour npm du bot et du dashboard (correctifs et mineures regroupés, majeures une par une), et chaque mois celles des actions GitHub et de l'image Docker : chaque proposition est une pull request testée par la même CI avant fusion.
 

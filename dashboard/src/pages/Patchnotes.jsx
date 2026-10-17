@@ -14,6 +14,7 @@ const VERSIONS = [
     date: '18 octobre 2026',
     title: 'Espace membre interactif, contexte des tickets et robustesse',
     changes: [
+      { type: 'tech', text: 'Test de charge (tickets, connexions temps réel, utilisateurs simultanés) pour mesurer les limites ; nombre de connexions à la base par serveur réglable' },
       { type: 'tech', text: 'Transcripts chiffrés en base (et compressés), avec la même rotation de clé que les secrets 2FA' },
       { type: 'tech', text: 'Alerte au super-admin quand le bot reste déconnecté de Discord plus de quelques minutes, puis à la reconnexion' },
       { type: 'tech', text: 'Les plantages JavaScript du dashboard et de l\'espace membre remontent dans la page Erreurs du super-admin' },

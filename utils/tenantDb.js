@@ -17,7 +17,10 @@ function _getPool(guildId) {
     password:         cfg.password,
     database:         getDbName(guildId),
     waitForConnections: true,
-    connectionLimit:  5,
+    // Per server: busy servers queue behind it (see the load test); total = servers × limit
+    connectionLimit:  Number(cfg.tenantConnectionLimit) > 0 ? Number(cfg.tenantConnectionLimit) : 5,
+    maxIdle:          2,      // idle connections closed beyond 2, after idleTimeout
+    idleTimeout:      60000,
     queueLimit:       0,
     charset:          'utf8mb4',
     stringifyObjects: true // objects in params must never expand to `col` = val (SQLi gadget)
