@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
+import AnnouncementBanner from './components/AnnouncementBanner';
 
 const SAApp       = lazy(() => import('./pages/sa/SAApp'));
 const Login       = lazy(() => import('./pages/Login'));
@@ -162,6 +163,7 @@ export default function App() {
                     />
                   )}
                   <main className="flex-1 overflow-y-auto min-w-0 pt-10 lg:pt-0">
+                    <AnnouncementBanner />
                     <Suspense fallback={<PageLoader />}>
                       <Routes>
                         <Route index element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />

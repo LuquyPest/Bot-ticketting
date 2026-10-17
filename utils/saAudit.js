@@ -24,6 +24,8 @@ const ACTIONS = {
   'DELETE /error-logs': 'errors_clear',
   'PUT /settings/error-alert': 'error_alert_update',
   'POST /settings/error-alert/test': 'error_alert_test',
+  'POST /announcements': 'announcement_create',
+  'DELETE /announcements/:id': 'announcement_delete',
   'POST /plans': 'plan_create',
   'PATCH /plans/:id': 'plan_update',
   'DELETE /plans/:id': 'plan_delete',

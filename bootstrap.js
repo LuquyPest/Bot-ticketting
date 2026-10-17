@@ -211,6 +211,19 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
+      // Announcements from the super-admin to every server's founders (DM and/or dashboard banner)
+      `CREATE TABLE IF NOT EXISTS announcements (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        title       VARCHAR(120) NOT NULL,
+        body        TEXT NOT NULL,
+        level       ENUM('info','warning') NOT NULL DEFAULT 'info',
+        show_banner TINYINT(1) NOT NULL DEFAULT 1,
+        send_dm     TINYINT(1) NOT NULL DEFAULT 0,
+        ends_at     DATETIME DEFAULT NULL,
+        dm_sent     INT NOT NULL DEFAULT 0,
+        created_by  VARCHAR(100) NOT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // Plans: preset limits assigned to guilds (copied into guilds.max_*)
       `CREATE TABLE IF NOT EXISTS plans (
         id                        INT AUTO_INCREMENT PRIMARY KEY,

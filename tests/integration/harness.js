@@ -1643,6 +1643,30 @@ async function main() {
     check('formules: suppression', r.status === 200, r.status);
   }
 
+  // ── Global announcements ──
+  {
+    r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'x', body: 'y', showBanner: false, sendDm: false } });
+    check('annonces: au moins un canal', r.status === 400, r.status);
+    r = await req('POST', '/api/sa/announcements', { sid: sessions.MGR, body: { title: 'x', body: 'y', showBanner: true } });
+    check('annonces: réservées au superadmin', r.status === 403, r.status);
+    memberDms.length = 0;
+    r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'Maintenance dimanche', body: 'Coupure de 22 h à 23 h.', level: 'warning', showBanner: true, sendDm: true } });
+    const ann = r.body;
+    await new Promise(res => setTimeout(res, 400));
+    const annDm = memberDms.find(m => m.id === U.F)?.p?.embeds?.[0]?.data;
+    const [annRow] = await globalQuery('SELECT dm_sent FROM announcements WHERE id = ?', [ann.id]);
+    check('annonces: MP aux fondateurs', r.status === 200 && ann.recipients >= 1 && annDm?.title === 'Maintenance dimanche' && annRow.dm_sent >= 1, JSON.stringify([ann.recipients, annDm?.title, annRow]));
+    r = await req('GET', '/api/announcements', { sid: sessions.FV });
+    check('annonces: bandeau pour les fondateurs', r.status === 200 && r.body.some(x => x.id === ann.id && x.level === 'warning'), JSON.stringify(r.body));
+    r = await req('GET', '/api/announcements', { sid: sessions.S3T });
+    check('annonces: pas de bandeau pour le support', r.status === 403, r.status);
+    await globalQuery('UPDATE announcements SET ends_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [ann.id]);
+    r = await req('GET', '/api/announcements', { sid: sessions.FV });
+    check('annonces: bandeau expiré masqué', !r.body.some(x => x.id === ann.id), JSON.stringify(r.body));
+    r = await req('DELETE', `/api/sa/announcements/${ann.id}`, { sid: sessions.SAnew });
+    check('annonces: suppression', r.status === 200, r.status);
+  }
+
   // ── SA health page ──
   {
     r = await req('GET', '/api/sa/health', { sid: sessions.MGR });

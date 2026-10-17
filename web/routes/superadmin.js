@@ -807,6 +807,38 @@ router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
   res.json({ ok: true, deleted: r.affectedRows || 0 });
 });
 
+// ─── ANNOUNCEMENTS ───────────────────────────────────────────────────────────
+
+const superadminOnly = (req, res, next) => (req.saUser.type === 'superadmin' ? next() : res.status(403).json({ error: 'Réservé au super-admin' }));
+
+router.get('/announcements', requireSuperAdmin, superadminOnly, async (req, res) => {
+  res.json(await globalQuery('SELECT * FROM announcements ORDER BY id DESC LIMIT 50'));
+});
+
+router.post('/announcements', requireSuperAdmin, superadminOnly, async (req, res) => {
+  const { title, body, level, showBanner, sendDm, endsAt } = req.body || {};
+  if (typeof title !== 'string' || !title.trim() || title.length > 120) return res.status(400).json({ error: 'Titre requis (120 caractères max)' });
+  if (typeof body !== 'string' || !body.trim() || body.length > 4000) return res.status(400).json({ error: 'Message requis (4000 caractères max)' });
+  if (!showBanner && !sendDm) return res.status(400).json({ error: 'Choisis au moins un canal : bandeau ou MP' });
+  const ends = endsAt ? new Date(endsAt) : null;
+  if (ends && (isNaN(ends) || ends < Date.now())) return res.status(400).json({ error: 'Date de fin invalide' });
+  const r = await globalQuery(
+    'INSERT INTO announcements (title, body, level, show_banner, send_dm, ends_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [title.trim(), body.trim(), level === 'warning' ? 'warning' : 'info', showBanner ? 1 : 0, sendDm ? 1 : 0, ends, req.saUser.username]
+  );
+  const [a] = await globalQuery('SELECT * FROM announcements WHERE id = ?', [r.insertId]);
+  // DMs go out in the background (many founders); the count is stored when done
+  if (sendDm) require('../../utils/announcements').sendAnnouncementDms(req.app.locals.client, a).catch(() => null);
+  res.json({ ...a, recipients: sendDm ? (await require('../../utils/announcements').founderIds()).length : 0 });
+});
+
+// DELETE /api/sa/announcements/:id — removes the banner (sent DMs stay)
+router.delete('/announcements/:id', requireSuperAdmin, superadminOnly, async (req, res) => {
+  const r = await globalQuery('DELETE FROM announcements WHERE id = ?', [parseInt(req.params.id)]);
+  if (!r.affectedRows) return res.status(404).json({ error: 'Annonce introuvable' });
+  res.json({ ok: true });
+});
+
 // ─── HEALTH ──────────────────────────────────────────────────────────────────
 
 const timed = async fn => { const t = Date.now(); try { await fn(); return { ok: true, ms: Date.now() - t }; } catch (err) { return { ok: false, ms: Date.now() - t, error: err.message }; } };
@@ -858,7 +890,6 @@ function cleanPlan(body, partial = false) {
   return { value: out };
 }
 
-const superadminOnly = (req, res, next) => (req.saUser.type === 'superadmin' ? next() : res.status(403).json({ error: 'Réservé au super-admin' }));
 
 router.get('/plans', requireSuperAdmin, async (req, res) => {
   const plans = await globalQuery(`SELECT p.*, (SELECT COUNT(*) FROM guilds g WHERE g.plan_id = p.id) AS guild_count FROM plans p ORDER BY p.name`);
