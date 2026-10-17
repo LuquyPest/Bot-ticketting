@@ -120,6 +120,11 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config DROP COLUMN IF EXISTS badges_enabled',
     ],
   },
+  {
+    version: 3,
+    name: 'Réouverture d\'un ticket par le membre (délai en jours, 0 = désactivée)',
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS member_reopen_days INT NOT NULL DEFAULT 7'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

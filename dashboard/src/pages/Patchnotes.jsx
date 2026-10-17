@@ -15,6 +15,7 @@ const VERSIONS = [
     title: 'Suivi des membres, organisation du staff et outils d\'administration',
     changes: [
       { type: 'tech', text: 'Migrations versionnées des bases des serveurs (appliquées une seule fois, erreurs visibles) ; tables des fonctionnalités retirées supprimées' },
+      { type: 'new',  text: 'Le membre peut rouvrir son ticket depuis le MP de fermeture pendant quelques jours, avec tout son historique' },
     ]
   },
   {

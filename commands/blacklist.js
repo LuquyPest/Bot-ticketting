@@ -46,9 +46,7 @@ module.exports = {
         flags: MessageFlags.Ephemeral
       });
 
-      await user.send(
-        `Tu as été bloqué et ne peux plus ouvrir de tickets.${raison ? `\nRaison : ${raison}` : ''}`
-      ).catch(() => null);
+      await sendToMember(client, user, interaction.guildId, () => [t('blacklisted.dm'), raison ? t('blacklisted.reason', { reason: raison }) : null].filter(Boolean).join('\n'));
       return;
     }
 

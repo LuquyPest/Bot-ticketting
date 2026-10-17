@@ -598,6 +598,38 @@ async function main() {
   check('notation: un seul commentaire par ticket', rc2.comment === 'Très rapide, merci !' && /déjà/.test(di.out.reply?.content), JSON.stringify([rc2, di.out]));
   r = await req('GET', `/api/tickets/${tm9}`, { sid: sessions.FV });
   check('notation: commentaire visible dans la fiche du ticket', r.body.rating?.comment === 'Très rapide, merci !', JSON.stringify(r.body.rating));
+  // Member reopen button on the closing DM
+  {
+    const MR = '200000000000000021';
+    const RCH = '900000000000000088';
+    channels.set(RCH, mkChannel(RCH, G));
+    const tr = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member21', ?, 'open', 'à rouvrir')", [MR, RCH])).insertId;
+    memberDms.length = 0;
+    await createManager(db, fakeClient, G).closeTicketWithTranscript(channels.get(RCH), { id: U.F, tag: 'F', username: 'F' });
+    const closeDm = memberDms.find(m => m.id === MR && m.p?.embeds?.[0]?.data?.title?.includes('fermé'))?.p;
+    const reopenId = closeDm?.components?.[0]?.components?.[0]?.data?.custom_id;
+    check('rouvrir: bouton dans le MP de fermeture', reopenId === `memberreopen_${tr}_${G}` && closeDm.embeds[0].data.footer?.text?.includes('7 jour'), JSON.stringify(closeDm?.components));
+    const clickR = async customId => { const out = {}; await app('./events/interactionCreate').execute(fakeClient, { customId, guildId: null, guild: null, channelId: 'dm', values: [], message: { embeds: [] },
+      user: { id: MR, username: 'member21', tag: 'member21', send: async p => memberDms.push({ id: MR, p }) },
+      isButton: () => true, isStringSelectMenu: () => false, isModalSubmit: () => false, isChatInputCommand: () => false, isRepliable: () => true,
+      reply: async p => { out.reply = p; }, update: async p => { out.update = p; } }); return out; };
+    let ro = await clickR(reopenId);
+    const [reo] = await db('SELECT status FROM tickets WHERE id = ?', [tr]);
+    const [rnote] = await db("SELECT source FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%rouvert par le membre%'", [tr]);
+    check('rouvrir: le membre rouvre son ticket', reo.status === 'open' && rnote?.source === 'system' && /rouvert/.test(ro.update?.embeds?.[0]?.data?.description), JSON.stringify([reo, ro.update]));
+    await db("UPDATE tickets SET status = 'closed', closed_at = NOW() - INTERVAL 10 DAY WHERE id = ?", [tr]);
+    ro = await clickR(reopenId);
+    const [reo2] = await db('SELECT status FROM tickets WHERE id = ?', [tr]);
+    check('rouvrir: refusé après le délai', reo2.status === 'closed' && /ne peut plus/.test(ro.update?.embeds?.[0]?.data?.description), JSON.stringify(ro.update));
+    await db('UPDATE guild_config SET member_reopen_days = 0 WHERE id = 1');
+    const tr2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status) VALUES (?, 'member21', ?, 'open')", [MR, RCH])).insertId;
+    memberDms.length = 0;
+    await createManager(db, fakeClient, G).closeTicketWithTranscript(channels.get(RCH), { id: U.F, tag: 'F', username: 'F' });
+    const closeDm2 = memberDms.find(m => m.id === MR && m.p?.embeds?.[0]?.data?.title?.includes(`#${tr2}`))?.p;
+    check('rouvrir: désactivable (0 jour)', closeDm2 && !(closeDm2.components || []).length, JSON.stringify(closeDm2?.components));
+    await db('UPDATE guild_config SET member_reopen_days = 7 WHERE id = 1');
+  }
+
   // /reopen works even when the member has another open ticket (several tickets per member)
   const tOpen9 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member09', 'co9', 'open', 'autre')", [M9])).insertId;
   {

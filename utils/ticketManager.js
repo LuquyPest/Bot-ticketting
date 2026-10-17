@@ -349,7 +349,17 @@ function createManager(db, client, guildId) {
           ? { name: t('closed.by'), value: t('closed.member', { tag: closedByUser.tag }), inline: true }
           : { name: t('closed.staff'), value: closedByUser.tag, inline: true }
       );
-    for (const uid of linkedIds) await sendToMember(client, uid, gid, () => ({ embeds: [closeDmEmbed()] }));
+    // The owner can reopen the ticket for a few days (guild setting member_reopen_days)
+    const reopenDays = Number(cfg.member_reopen_days ?? 7);
+    for (const uid of linkedIds) {
+      const canReopen = uid === ticket.owner_id && reopenDays > 0;
+      await sendToMember(client, uid, gid, () => {
+        const embed = closeDmEmbed();
+        if (canReopen) embed.setFooter({ text: t('reopen.hint', { days: reopenDays }) });
+        const { memberReopenButton } = require('./components');
+        return { embeds: [embed], components: canReopen ? [memberReopenButton(ticket.id, gid)] : [] };
+      });
+    }
 
     const { ratingButtons } = require('./components');
     await sendToMember(client, ticket.owner_id, gid, () => ({
@@ -405,16 +415,12 @@ function createManager(db, client, guildId) {
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
     await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
     await recordEvent(db, { actor: reopenedByUser, action: 'ticket_reopen', ticketId: ticket.id, details: reopenedByUser?.reason ? { reason: reopenedByUser.reason } : null });
-    const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
-    if (owner) {
-      const reopenDmEmbed = new EmbedBuilder()
-        .setColor(0x10b981)
-        .setAuthor(ticketContextAuthor(client, gid, ticket))
-        .setTitle(`🔄 Ticket #${ticket.id} réouvert`)
-        .setDescription('Ton ticket a été réouvert. Tu peux continuer à répondre en DM.')
-        .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
-      await owner.send({ embeds: [reopenDmEmbed] }).catch(() => null);
-    }
+    await sendToMember(client, ticket.owner_id, gid, () => ({ embeds: [new EmbedBuilder()
+      .setColor(0x10b981)
+      .setAuthor(ticketContextAuthor(client, gid, ticket))
+      .setTitle(t('reopened.title', { id: ticket.id }))
+      .setDescription(t('reopened.body'))
+      .setFooter({ text: t('welcome.footer') })] }));
     return channel;
   }
 

@@ -11,6 +11,7 @@ const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/e
 const {
   sessionExpiredEmbed, relayedToTicketEmbed, subjectAskEmbed, choiceEmbed,
   ticketCreatingEmbed, ratingConfirmEmbed, ratingCommentEmbed, memberCloseConfirmEmbed, alreadyRatedEmbed,
+  blacklistedEmbed, serverLimitEmbed,
 } = require('../utils/dmEmbeds');
 const { ratingCommentButton, memberCloseConfirmButtons } = require('../utils/components');
 
@@ -159,6 +160,37 @@ async function handleInteraction(client, interaction) {
                 .setRequired(true).setMinLength(2).setMaxLength(1000).setPlaceholder(t('rating.modalPlaceholder'))
             ));
           return interaction.showModal(modal);
+        }
+
+        // ── Rouvrir mon ticket (DM, propriétaire, quelques jours après la fermeture) ──
+        if (interaction.customId.startsWith('memberreopen_')) {
+          const [, ticketId, guildId] = interaction.customId.split('_');
+          const expired = () => interaction.update({ embeds: [choiceEmbed(t('reopen.expired'))], components: [] });
+          if (!(await isGuildOperational(guildId))) return expired();
+          const db = getTenantDb(guildId);
+          const [cfg] = await db('SELECT member_reopen_days FROM guild_config WHERE id = 1');
+          const days = Number(cfg?.member_reopen_days ?? 7);
+          const [ticket] = days > 0 ? await db(
+            `SELECT * FROM tickets WHERE id = ? AND owner_id = ? AND status = 'closed' AND merged_into IS NULL
+             AND closed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`, [parseInt(ticketId), interaction.user.id, days]) : [];
+          if (!ticket) return expired();
+          const { isBlacklistedIn } = require('../utils/guildScan');
+          if (await isBlacklistedIn(db, interaction.user.id)) return interaction.update({ embeds: [blacklistedEmbed()], components: [] });
+          // The server's open-ticket limit applies to reopened tickets too
+          const [lim] = await require('../utils/globalDb').globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]);
+          if (lim?.max_tickets > 0) {
+            const [{ n }] = await db("SELECT COUNT(*) AS n FROM tickets WHERE status = 'open'");
+            if (Number(n) >= lim.max_tickets) return interaction.update({ embeds: [serverLimitEmbed()], components: [] });
+          }
+          await interaction.update({ embeds: [choiceEmbed(t('reopen.done', { id: ticket.id }))], components: [] });
+          const tm = createManager(db, client, guildId);
+          const member = { id: interaction.user.id, tag: interaction.user.username, username: interaction.user.username, source: 'discord', member: true, reason: 'Rouvert par le membre' };
+          await tm.reopenTicket(ticket, member);
+          await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, '🔄 Ticket rouvert par le membre.', 'system')",
+            [ticket.id, interaction.user.id, interaction.user.username]).catch(() => null);
+          const { broadcast } = require('../utils/sse');
+          broadcast('ticket', { id: ticket.id, status: 'open' }, guildId);
+          return;
         }
 
         // ── Mes tickets (DM) ──

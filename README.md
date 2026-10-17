@@ -81,7 +81,7 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 6. Un salon privé est créé dans le serveur Discord, **nommé d'après le sujet**
 7. Les messages et fichiers suivants sont relayés dans le ticket choisi
 8. Le membre reçoit les réponses du staff en DM (embed indiquant le serveur et le ticket). Le message de bienvenue et les réponses portent un bouton **« Fermer mon ticket »** (propriétaire du ticket uniquement, avec confirmation) : le ticket est fermé avec transcript, et la fermeture n'est pas comptée dans les statistiques du staff
-9. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles), puis peut **ajouter un commentaire** libre (1 000 caractères), visible dans la fiche du ticket
+9. À la fermeture → le membre reçoit un **bouton de notation** (1–5 étoiles), puis peut **ajouter un commentaire** libre (1 000 caractères), visible dans la fiche du ticket. Le MP de fermeture porte aussi un bouton **« Rouvrir mon ticket »** valable quelques jours (7 par défaut, réglable dans les paramètres, 0 = désactivé) : le ticket est rouvert avec son historique, dans la limite de tickets ouverts du serveur
 
 Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans un salon (voir [Panels Discord](#panels-discord)). Un utilisateur blacklisté sur un serveur ne peut pas y ouvrir de ticket (la blacklist est propre à chaque serveur).
 

@@ -103,6 +103,12 @@ function memberCloseButton(ticketId, guildId) {
   );
 }
 
+function memberReopenButton(ticketId, guildId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`memberreopen_${ticketId}_${guildId}`).setLabel(t('reopen.button')).setStyle(ButtonStyle.Secondary)
+  );
+}
+
 function memberCloseConfirmButtons(ticketId, guildId) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`memberclose_confirm_${ticketId}_${guildId}`).setLabel(t('close.yes')).setStyle(ButtonStyle.Danger),
@@ -126,6 +132,7 @@ function faqButtons(matches) {
 }
 
 module.exports = {
+  memberReopenButton,
   faqButtons,
   ratingCommentButton,
   memberCloseButton,

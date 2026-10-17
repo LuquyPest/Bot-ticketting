@@ -227,6 +227,7 @@ export default function Settings() {
         botDisplayName:           cfg.botDisplayName || 'Ticket Bot',
         botLanguage:              cfg.botLanguage || 'fr',
         require2fa:               cfg.require2fa || 'none',
+        memberReopenDays:         cfg.memberReopenDays ?? 7,
         embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
@@ -511,6 +512,10 @@ export default function Settings() {
 
       <Section title="Limites et délais">
         <div className="grid grid-cols-2 gap-4">
+          <Field label="Réouverture par le membre (jours)" hint="Bouton « Rouvrir mon ticket » dans le MP de fermeture — 0 = désactivé">
+            <input type="number" min={0} max={90} value={cfg.memberReopenDays ?? 7}
+              onChange={e => set('memberReopenDays', Math.max(0, Math.min(90, parseInt(e.target.value) || 0)))} className={NUM_INPUT} />
+          </Field>
           <Field label="Tickets max / jour" hint="Par utilisateur">
             <input type="number" min={1} max={100} value={cfg.maxTicketsPerDay ?? 3}
               onChange={e => set('maxTicketsPerDay', parseInt(e.target.value))} className={NUM_INPUT} />
