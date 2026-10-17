@@ -10,6 +10,14 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.13',
+    date: '17 octobre 2026',
+    title: 'Suivi des membres, organisation du staff et outils d\'administration',
+    changes: [
+      { type: 'tech', text: 'Migrations versionnées des bases des serveurs (appliquées une seule fois, erreurs visibles) ; tables des fonctionnalités retirées supprimées' },
+    ]
+  },
+  {
     version: 'v2.12',
     date: '16 octobre 2026',
     title: 'Corrections, fiabilité et nouvelles fonctionnalités',

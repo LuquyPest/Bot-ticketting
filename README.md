@@ -778,6 +778,10 @@ Bot-ticketting/
 
 ---
 
+## Migrations des bases
+
+Chaque base de serveur enregistre les versions de schéma appliquées (table `schema_migrations`). Les migrations sont dans `utils/tenantMigrations.js` : elles s'appliquent une seule fois, dans l'ordre, au démarrage et à l'approbation d'un serveur ; une erreur arrête la migration (journalisée) au lieu d'être ignorée, et un verrou empêche deux instances de migrer la même base. Pour faire évoluer le schéma, ajouter une nouvelle version à la fin de la liste — ne jamais modifier une version déjà appliquée.
+
 ## Tests
 
 Suite d'intégration (`tests/integration/harness.js`) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, etc.

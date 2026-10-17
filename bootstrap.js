@@ -243,6 +243,8 @@ async function ensureGlobalTables(config) {
       )`,
       // 'bot_removed' (auto-reactivated on re-invite) vs 'admin' (manual suspension)
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS suspension_reason VARCHAR(32) DEFAULT NULL`,
+      // Old session table (sessions live in Redis)
+      `DROP TABLE IF EXISTS web_sessions`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

@@ -1423,6 +1423,26 @@ async function main() {
     check('2FA obligatoire: retirée → accès rétabli', r.status === 200, r.status);
   }
 
+  // ── Versioned tenant migrations ──
+  {
+    const tm = app('./utils/tenantMigrations');
+    const applied = await db('SELECT version FROM schema_migrations ORDER BY version');
+    check('migrations: versions appliquées et enregistrées', applied.map(x => x.version).join() === tm.MIGRATIONS.map(m => m.version).join() && (await tm.schemaVersion(db)) === tm.LATEST_VERSION, JSON.stringify(applied));
+    const [badgeT] = await db("SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('badge_definitions','user_badges','staff_roles','faq_rules')");
+    const [badgeC] = await db("SELECT COUNT(*) AS n FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'guild_config' AND column_name = 'badges_enabled'");
+    check('migrations: tables et colonnes inutilisées supprimées', Number(badgeT.n) === 0 && Number(badgeC.n) === 0, JSON.stringify([badgeT, badgeC]));
+    await app('./utils/tenantSchema').ensureTenantSchema(G);
+    const again = await db('SELECT COUNT(*) AS n FROM schema_migrations');
+    check('migrations: relancer ne rejoue rien', Number(again[0].n) === tm.MIGRATIONS.length, JSON.stringify(again));
+    // A failing migration stops the run and is not recorded
+    tm.MIGRATIONS.push({ version: 9999, name: 'test en échec', statements: ['ALTER TABLE table_inexistante ADD COLUMN x INT'] });
+    let migErr = null;
+    try { await app('./utils/tenantSchema').ensureTenantSchema(G); } catch (e) { migErr = e.message; }
+    tm.MIGRATIONS.pop();
+    const [v9999] = await db('SELECT COUNT(*) AS n FROM schema_migrations WHERE version = 9999');
+    check('migrations: une erreur arrête la migration et n\'est pas enregistrée', /9999/.test(migErr || '') && Number(v9999.n) === 0, JSON.stringify([migErr, v9999]));
+  }
+
   // ── Multi-instance: limits and creation lock shared through Redis ──
   {
     const rl = app('./utils/rateLimit');
