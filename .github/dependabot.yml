@@ -1,0 +1,40 @@
+# Mises à jour automatiques des dépendances : chaque proposition ouvre une pull request,
+# sur laquelle la CI (.github/workflows/ci.yml) lance la suite d'intégration, le build du
+# dashboard et le test de fumée. Les correctifs et versions mineures sont regroupés en une
+# seule PR par écosystème ; les versions majeures arrivent une par une.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Paris }
+    open-pull-requests-limit: 5
+    commit-message: { prefix: "chore(deps)" }
+    groups:
+      bot-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /dashboard
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Paris }
+    open-pull-requests-limit: 5
+    commit-message: { prefix: "chore(deps-dashboard)" }
+    groups:
+      dashboard-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    commit-message: { prefix: "chore(ci)" }
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: monthly }
+    commit-message: { prefix: "chore(docker)" }
+    ignore:
+      # On reste sur la LTS Node 22 : une nouvelle majeure se décide à la main
+      - dependency-name: node
+        update-types: [version-update:semver-major]

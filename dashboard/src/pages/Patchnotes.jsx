@@ -10,6 +10,14 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.14',
+    date: '17 octobre 2026',
+    title: 'Espace membre, recherche et travail à plusieurs',
+    changes: [
+      { type: 'tech', text: 'Mises à jour automatiques des dépendances (Dependabot) testées par la CI avant fusion' },
+    ]
+  },
+  {
     version: 'v2.13',
     date: '17 octobre 2026',
     title: 'Suivi des membres, organisation du staff et outils d\'administration',
