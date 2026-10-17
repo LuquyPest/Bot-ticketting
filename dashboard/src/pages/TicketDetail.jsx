@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight, Pin, PinOff
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -316,6 +316,10 @@ export default function TicketDetail() {
         return next;
       });
     },
+    note_update: (data) => {
+      if (data.ticketId !== ticketId) return;
+      setNotes(prev => prev.map(n => (n.id === data.note.id ? { ...n, ...data.note } : n)));
+    },
     note: (data) => {
       if (data.ticketId !== ticketId) return;
       setNotes(prev => {
@@ -614,6 +618,14 @@ export default function TicketDetail() {
     finally { setSavingSubject(false); }
   };
 
+  const togglePin = async (note) => {
+    try {
+      const { data } = await api.post(`/tickets/${id}/notes/${note.id}/pin`, { pinned: !note.pinned_at });
+      setNotes(n => n.map(x => (x.id === data.id ? { ...x, ...data } : x)));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const pinnedNotes = notes.filter(n => n.pinned_at).sort((a, b) => new Date(a.pinned_at) - new Date(b.pinned_at));
+
   const deleteNote = async (noteId) => {
     try {
       await api.delete(`/tickets/${id}/notes/${noteId}`);
@@ -907,6 +919,26 @@ export default function TicketDetail() {
             </div>
           )}
 
+          {/* Pinned internal notes: always visible at the top of the conversation */}
+          {pinnedNotes.length > 0 && (
+            <div className="sticky top-0 z-[5] -mt-2 rounded-xl border border-amber-500/25 bg-surface-elevated/95 backdrop-blur-xs p-3 space-y-2 shadow-card">
+              {pinnedNotes.map(n => (
+                <div key={n.id} className="flex items-start gap-2">
+                  <Pin size={12} className="text-amber-400 mt-0.5 shrink-0" />
+                  <button onClick={() => document.getElementById(`note-${n.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                    className="min-w-0 flex-1 text-left">
+                    <p className="text-xs text-ink-1 whitespace-pre-wrap wrap-break-word line-clamp-3">{n.content}</p>
+                    <p className="text-[10px] text-ink-4 mt-0.5">{n.author_tag} · épinglée par {n.pinned_by_tag}</p>
+                  </button>
+                  {can('reply_ticket') && (
+                    <button onClick={() => togglePin(n)} aria-label="Désépingler" title="Désépingler"
+                      className="text-ink-4 hover:text-ink-1 shrink-0"><PinOff size={12} /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {notes.map(note => {
             const align = getBubbleAlign(note.source);
 
@@ -937,6 +969,14 @@ export default function TicketDetail() {
                         {note.author_tag} · {fmtDate(note.created_at)}
                       </p>
                     </div>
+                    {can('reply_ticket') && (
+                      <button onClick={() => togglePin(note)} aria-label={note.pinned_at ? 'Désépingler la note' : 'Épingler la note'}
+                        title={note.pinned_at ? 'Désépingler' : 'Épingler en haut du ticket'}
+                        className={`${note.pinned_at ? 'text-amber-400' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-ink-1'}
+                                   transition-all shrink-0 mt-0.5`}>
+                        <Pin size={10} />
+                      </button>
+                    )}
                     {canDeleteNote(note) && (
                       <button onClick={() => deleteNote(note.id)} aria-label="Supprimer la note"
                         className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-red-400

@@ -419,10 +419,11 @@ router.get('/:id/notes', async (req, res) => {
     if (!ticket) return;
 
     const notes = await req.guildDb(
-      'SELECT id, author_id, author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
+      `SELECT id, author_id, author_tag, content, source, created_at, pinned_at, pinned_by_tag, edited_at, edit_history, deleted_at
+       FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC`,
       [ticket.id]
     );
-    res.json(notes);
+    res.json(notes.map(n => ({ ...n, edit_history: parseJsonField(n.edit_history, null) })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -1024,6 +1025,32 @@ router.get('/:id/history', async (req, res) => {
       [ticket.owner_id]
     );
     res.json(history);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/tickets/:id/notes/:noteId/pin { pinned } — pin an internal note at the top of the ticket
+const MAX_PINNED = 5;
+router.post('/:id/notes/:noteId/pin', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const [note] = await req.guildDb('SELECT id, source, pinned_at FROM ticket_notes WHERE id = ? AND ticket_id = ?', [parseInt(req.params.noteId) || 0, ticket.id]);
+    if (!note) return res.status(404).json({ error: 'Note introuvable' });
+    if (note.source !== 'web') return res.status(400).json({ error: 'Seules les notes internes peuvent être épinglées' });
+    const pinned = !!req.body?.pinned;
+    if (pinned && !note.pinned_at) {
+      const [{ n }] = await req.guildDb('SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id = ? AND pinned_at IS NOT NULL', [ticket.id]);
+      if (Number(n) >= MAX_PINNED) return res.status(400).json({ error: `${MAX_PINNED} notes épinglées au maximum` });
+    }
+    await req.guildDb('UPDATE ticket_notes SET pinned_at = ?, pinned_by_tag = ? WHERE id = ?',
+      [pinned ? new Date() : null, pinned ? req.session.user.username : null, note.id]);
+    const [updated] = await req.guildDb('SELECT id, author_id, author_tag, content, source, created_at, pinned_at, pinned_by_tag FROM ticket_notes WHERE id = ?', [note.id]);
+    broadcast('note_update', { ticketId: ticket.id, note: updated }, req.guildId);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: pinned ? 'note_pin' : 'note_unpin', ticketId: ticket.id, details: { excerpt: updated.content.slice(0, 120) } });
+    res.json(updated);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

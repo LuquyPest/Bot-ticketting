@@ -10,6 +10,14 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.15',
+    date: '18 octobre 2026',
+    title: 'Espace membre interactif, contexte des tickets et robustesse',
+    changes: [
+      { type: 'new',  text: 'Notes épinglées : jusqu\'à 5 notes internes toujours visibles en haut de la conversation' },
+    ]
+  },
+  {
     version: 'v2.14',
     date: '17 octobre 2026',
     title: 'Espace membre, recherche et travail à plusieurs',

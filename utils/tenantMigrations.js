@@ -213,6 +213,20 @@ const MIGRATIONS = [
     name: 'Espace membre web',
     statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS member_portal_enabled TINYINT(1) NOT NULL DEFAULT 1'],
   },
+  {
+    version: 15,
+    name: 'Notes épinglées, messages modifiés ou supprimés par le membre',
+    statements: [
+      `ALTER TABLE ticket_notes
+         ADD COLUMN IF NOT EXISTS pinned_at DATETIME DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS pinned_by_tag VARCHAR(100) DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS discord_message_id VARCHAR(32) DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS edited_at DATETIME DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS edit_history JSON DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS deleted_at DATETIME DEFAULT NULL`,
+      'ALTER TABLE ticket_notes ADD INDEX IF NOT EXISTS idx_tn_dmsg (discord_message_id)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

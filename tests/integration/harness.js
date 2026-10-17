@@ -1190,6 +1190,27 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tB, tC]]);
   }
 
+  // ── Pinned internal notes ──
+  {
+    const tp = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('33','u33','cpin1','open','épingle')")).insertId;
+    const ids = [];
+    for (const [c, src] of [['consigne importante', 'web'], ['message membre', 'user'], ['n2', 'web'], ['n3', 'web'], ['n4', 'web'], ['n5', 'web'], ['n6', 'web']]) {
+      ids.push((await db('INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, ?)', [tp, '1', 'F', c, src])).insertId);
+    }
+    r = await req('POST', `/api/tickets/${tp}/notes/${ids[0]}/pin`, { sid: sessions.FV, body: { pinned: true } });
+    check('épingle: note interne épinglée', r.status === 200 && r.body.pinned_at && r.body.pinned_by_tag, JSON.stringify(r.body));
+    r = await req('GET', `/api/tickets/${tp}/notes`, { sid: sessions.FV });
+    check('épingle: visible dans les messages', r.body.find(n => n.id === ids[0])?.pinned_at, JSON.stringify(r.body[0]));
+    r = await req('POST', `/api/tickets/${tp}/notes/${ids[1]}/pin`, { sid: sessions.FV, body: { pinned: true } });
+    check('épingle: message du membre refusé', r.status === 400, r.status);
+    for (const i of [2, 3, 4, 5]) await req('POST', `/api/tickets/${tp}/notes/${ids[i]}/pin`, { sid: sessions.FV, body: { pinned: true } });
+    r = await req('POST', `/api/tickets/${tp}/notes/${ids[6]}/pin`, { sid: sessions.FV, body: { pinned: true } });
+    check('épingle: 5 au maximum', r.status === 400, r.status);
+    r = await req('POST', `/api/tickets/${tp}/notes/${ids[0]}/pin`, { sid: sessions.FV, body: { pinned: false } });
+    check('épingle: désépinglée', r.status === 200 && r.body.pinned_at === null, JSON.stringify(r.body));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tp]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);
@@ -1511,7 +1532,7 @@ async function main() {
   const [sysClose] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_close' AND source = 'api'");
   check('journal: fermeture via API avec source API', Number(sysClose.n) >= 1, JSON.stringify(sysClose));
   r = await req('GET', '/api/audit?category=tickets', { sid: sessions.F });
-  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action === 'note_delete' || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
+  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
   r = await req('GET', `/api/audit?ticket=%23${st1.id}`, { sid: sessions.F });
   check('journal: filtre ticket', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.ticket_id === st1.id), r.body.total);
   r = await req('GET', '/api/audit?source=api', { sid: sessions.F });

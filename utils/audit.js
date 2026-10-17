@@ -56,6 +56,8 @@ const ACTIONS = {
   config_export:            ['Configuration exportée', 'config'],
   config_import:            ['Configuration importée', 'config'],
   config_restore:           ['Configuration restaurée', 'config'],
+  note_pin:                 ['Note épinglée', 'tickets'],
+  note_unpin:               ['Note désépinglée', 'tickets'],
   bot_identity_update:      ['Identité du bot modifiée', 'config'],
   panel_create:             ['Panel créé', 'config'],
   panel_update:             ['Panel modifié', 'config'],
