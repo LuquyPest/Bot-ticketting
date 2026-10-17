@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -411,6 +411,23 @@ export default function TicketDetail() {
       setTicket(t => ({ ...t, participants: t.participants.filter(p => p.id !== userId) }));
       toast.success('Participant retiré');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  // Personal reminders on this ticket
+  const [reminders, setReminders] = useState([]);
+  const [reminderNote, setReminderNote] = useState('');
+  useEffect(() => { api.get(`/tickets/${id}/reminders`).then(r => setReminders(r.data)).catch(() => {}); }, [id]);
+  const addReminder = async (delay) => {
+    try {
+      const { data } = await api.post(`/tickets/${id}/reminders`, { in: delay, note: reminderNote.trim() || undefined });
+      setReminders(r => [data, ...r]);
+      setReminderNote('');
+      toast.success(`Rappel prévu le ${fmtDate(data.remind_at, { dateStyle: 'medium', timeStyle: 'short' })}`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const removeReminder = async (rid) => {
+    try { await api.delete(`/tickets/reminders/${rid}`); setReminders(r => r.filter(x => x.id !== rid)); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
   // Follow-up after a low rating
@@ -1210,6 +1227,31 @@ export default function TicketDetail() {
               </div>
             </div>
           )}
+
+          {/* RAPPELS */}
+          <div className={panelCard}>
+            <SectionTitle>Me le rappeler</SectionTitle>
+            <input value={reminderNote} onChange={e => setReminderNote(e.target.value)} maxLength={200} placeholder="Note (optionnel)"
+              aria-label="Note du rappel"
+              className="w-full bg-surface border border-overlay/[0.07] text-ink-1 placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden focus:border-primary/50 mb-2" />
+            <div className="grid grid-cols-3 gap-1.5">
+              {[['1h', 'Dans 1 h'], ['4h', 'Dans 4 h'], ['1d', 'Demain'], ['2d', 'Dans 2 j'], ['1w', 'Dans 1 sem.']].map(([v, label]) => (
+                <button key={v} onClick={() => addReminder(v)}
+                  className="py-1.5 rounded-lg text-[11px] text-ink-3 border border-overlay/[0.07] hover:text-ink-1 hover:bg-overlay/4">{label}</button>
+              ))}
+            </div>
+            {reminders.filter(r => !r.sent_at).length > 0 && (
+              <ul className="mt-2.5 space-y-1">
+                {reminders.filter(r => !r.sent_at).map(r => (
+                  <li key={r.id} className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                    <AlarmClock size={11} className="text-primary-light shrink-0" />
+                    <span className="flex-1 truncate">{fmtDate(r.remind_at, { dateStyle: 'short', timeStyle: 'short' })}{r.note ? ` · ${r.note}` : ''}</span>
+                    <button onClick={() => removeReminder(r.id)} aria-label="Supprimer le rappel" className="text-ink-4 hover:text-red-400"><X size={11} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {/* FUSION */}
           {ticket.merged_into && (

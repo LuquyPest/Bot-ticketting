@@ -139,6 +139,16 @@ const MIGRATIONS = [
       'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS followup_by_tag VARCHAR(100) DEFAULT NULL',
     ],
   },
+  {
+    version: 6,
+    name: 'Rappels personnels sur les tickets',
+    statements: [`CREATE TABLE IF NOT EXISTS ticket_reminders (
+      id INT AUTO_INCREMENT PRIMARY KEY, ticket_id INT NOT NULL, user_id VARCHAR(32) NOT NULL,
+      remind_at DATETIME NOT NULL, note VARCHAR(200) DEFAULT NULL, sent_at DATETIME DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_tr_due (sent_at, remind_at), INDEX idx_tr_user (user_id),
+      CONSTRAINT fk_trm_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

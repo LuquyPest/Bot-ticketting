@@ -106,6 +106,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Escalade | Alerte + fermeture auto des tickets urgents sans réponse prolongée |
 | Messages programmés | Envoi différé à une date/heure précise |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
+| Rappels personnels | Toutes les minutes : envoie les rappels échus |
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
 | Limites des serveurs | Toutes les heures : prévient les fondateurs d'un serveur proche d'une limite (80 %) ou qui l'a atteinte |
 | Alerte d'erreurs | Toutes les 5 min : prévient le super-admin si les erreurs dépassent le seuil configuré |
@@ -359,6 +360,7 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 - **Répondre au membre** : mode *Répondre* (DM envoyé) ou *Note interne* (staff seulement)
 - **Réponse anonyme** : toggle "Anonyme/Identifié" masquant le pseudo du staff
 - **Modèles de réponse** : réponses prédéfinies insérables en un clic, avec variables (`{{username}}`, `{{ticket_id}}`, `{{date}}`, `{{staff_name}}`, `{{subject}}`). Tout membre ayant `reply_ticket` peut enregistrer le texte en cours **pour lui seul** ou **pour tout le staff**, et le lier au sujet du ticket : il est alors **suggéré** au-dessus de la zone de réponse sur les tickets dont le sujet correspond (sans tenir compte des accents ni de la casse). Les modèles les plus utilisés remontent en tête. Seul l'auteur (ou un fondateur) peut modifier ou supprimer un modèle.
+- **Rappels personnels** : « Me le rappeler » dans la fiche (dans 1 h, 4 h, demain, 2 jours, 1 semaine, avec une note) ; à l'échéance, notification, push et MP avec le lien. Chacun ne voit que ses rappels
 - **Rédaction en cours** : quand un collègue écrit une réponse ou une note sur le même ticket, un bandeau « X est en train d'écrire » s'affiche au-dessus de la zone de réponse (signal temps réel, limité à ceux qui voient le ticket)
 - **Mentions** : dans une note interne, `@pseudo` (suggestions à la frappe) prévient le collègue s'il peut voir le ticket : notification du dashboard, push, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
 - **Macros** : un modèle peut aussi porter des actions appliquées à l'envoi : m'attribuer le ticket, changer la priorité, ajouter un tag, changer d'étape, fermer le ticket. Le texte reste modifiable avant l'envoi ; chaque action exige sa permission (`claim_ticket` pour s'attribuer, `close_ticket` pour fermer) et une action refusée est signalée sans bloquer la réponse

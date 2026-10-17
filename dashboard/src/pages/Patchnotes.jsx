@@ -19,6 +19,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Option : le membre est prévenu en MP quand son ticket change d\'étape' },
       { type: 'new',  text: 'Note basse : fondateurs et chefs support prévenus, bouton « Recontacter le membre » dans la fiche' },
       { type: 'new',  text: 'Page « Ma file » : tes tickets triés par urgence, avec la raison de chaque position' },
+      { type: 'new',  text: 'Rappels personnels sur un ticket (« me le rappeler dans 2 jours ») par notification et MP' },
     ]
   },
   {

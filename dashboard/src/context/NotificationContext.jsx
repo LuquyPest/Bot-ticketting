@@ -31,6 +31,11 @@ function NotifListener({ add }) {
         : (data.ownerTag || 'Nouveau ticket'),
       href: data.id ? `/tickets/${data.id}` : null,
     }),
+    reminder: (data) => {
+      const body = `Ticket #${data.ticketId}${data.subject ? ` — ${data.subject}` : ''}${data.note ? ` · ${data.note}` : ''}`;
+      add({ type: 'reminder', title: '⏰ Rappel', body, href: `/tickets/${data.ticketId}` });
+      toast(`Rappel : ${body}`, { icon: '⏰', duration: 10000 });
+    },
     low_rating: (data) => {
       const body = `Note ${data.rating}/5 de ${data.ownerTag} sur le ticket #${data.ticketId} — à recontacter`;
       add({ type: 'low_rating', title: 'Note basse', body, href: `/tickets/${data.ticketId}` });

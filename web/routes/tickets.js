@@ -605,6 +605,36 @@ router.post('/:id/followup', async (req, res) => {
   }
 });
 
+// Personal reminders: GET/POST /api/tickets/:id/reminders, DELETE /api/tickets/reminders/:rid
+const REMINDER_DELAYS = { '1h': 60, '4h': 240, '1d': 1440, '2d': 2880, '1w': 10080 };
+router.get('/:id/reminders', async (req, res) => {
+  const ticket = await loadTicket(req, res);
+  if (!ticket) return;
+  res.json(await req.guildDb('SELECT id, remind_at, note, sent_at FROM ticket_reminders WHERE ticket_id = ? AND user_id = ? ORDER BY remind_at DESC LIMIT 20', [ticket.id, req.session.user.id]));
+});
+
+router.post('/:id/reminders', async (req, res) => {
+  const ticket = await loadTicket(req, res);
+  if (!ticket) return;
+  let remindAt = null;
+  if (REMINDER_DELAYS[req.body.in]) remindAt = new Date(Date.now() + REMINDER_DELAYS[req.body.in] * 60000);
+  else if (typeof req.body.at === 'string') remindAt = new Date(req.body.at);
+  if (!remindAt || isNaN(remindAt) || remindAt < Date.now() - 60000 || remindAt > Date.now() + 365 * 864e5) {
+    return res.status(400).json({ error: 'Date de rappel invalide (dans l\'année à venir)' });
+  }
+  const note = typeof req.body.note === 'string' ? req.body.note.trim().slice(0, 200) || null : null;
+  const [{ n }] = await req.guildDb('SELECT COUNT(*) AS n FROM ticket_reminders WHERE user_id = ? AND sent_at IS NULL', [req.session.user.id]);
+  if (Number(n) >= 100) return res.status(400).json({ error: 'Trop de rappels en attente (100 max)' });
+  const r = await req.guildDb('INSERT INTO ticket_reminders (ticket_id, user_id, remind_at, note) VALUES (?, ?, ?, ?)', [ticket.id, req.session.user.id, remindAt, note]);
+  res.json({ id: r.insertId, remind_at: remindAt, note, sent_at: null });
+});
+
+router.delete('/reminders/:rid', async (req, res) => {
+  const r = await req.guildDb('DELETE FROM ticket_reminders WHERE id = ? AND user_id = ?', [parseInt(req.params.rid), req.session.user.id]);
+  if (!r.affectedRows) return res.status(404).json({ error: 'Rappel introuvable' });
+  res.json({ ok: true });
+});
+
 router.post('/:id/reply', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');

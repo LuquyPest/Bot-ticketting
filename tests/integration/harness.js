@@ -945,6 +945,30 @@ async function main() {
     await db('UPDATE guild_config SET sla_open_hours = 0 WHERE id = 1');
   }
 
+  // ── Personal reminders ──
+  {
+    const trm = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('26','u26','crm','open','rappel')")).insertId;
+    r = await req('POST', `/api/tickets/${trm}/reminders`, { sid: sessions.FV, body: { in: '2d', note: 'relancer le membre' } });
+    const rem = r.body;
+    check('rappels: rappel créé dans 2 jours', r.status === 200 && Math.abs(new Date(rem.remind_at) - Date.now() - 2 * 864e5) < 60000, JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${trm}/reminders`, { sid: sessions.FV, body: { in: 'jamais' } });
+    check('rappels: délai invalide refusé', r.status === 400, r.status);
+    r = await req('GET', `/api/tickets/${trm}/reminders`, { sid: sessions.S3T });
+    check('rappels: personnels (invisibles pour les autres)', r.status === 200 && r.body.length === 0, JSON.stringify(r.body));
+    await db('UPDATE ticket_reminders SET remind_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [rem.id]);
+    memberDms.length = 0;
+    const nSent = await app('./utils/ticketReminders').sendDueReminders(fakeClient);
+    const remDm = memberDms.find(m => m.id === U.F)?.p?.embeds?.[0]?.data;
+    check('rappels: envoyé à l\'échéance (MP avec la note)', nSent >= 1 && remDm?.description?.includes('relancer le membre') && remDm.author.name.includes(`#${trm}`), JSON.stringify([nSent, remDm]));
+    check('rappels: envoyé une seule fois', (await app('./utils/ticketReminders').sendDueReminders(fakeClient)) === 0);
+    const r2 = (await req('POST', `/api/tickets/${trm}/reminders`, { sid: sessions.FV, body: { in: '1h' } })).body;
+    r = await req('DELETE', `/api/tickets/reminders/${r2.id}`, { sid: sessions.S3T });
+    check('rappels: un autre ne peut pas supprimer mon rappel', r.status === 404, r.status);
+    r = await req('DELETE', `/api/tickets/reminders/${r2.id}`, { sid: sessions.FV });
+    check('rappels: suppression', r.status === 200, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [trm]);
+  }
+
   // ── @mentions in internal notes ──
   {
     const tMen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('21','u21','cmen','open','mentions')")).insertId;
