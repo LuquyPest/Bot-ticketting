@@ -227,6 +227,25 @@ const MIGRATIONS = [
       'ALTER TABLE ticket_notes ADD INDEX IF NOT EXISTS idx_tn_dmsg (discord_message_id)',
     ],
   },
+  {
+    version: 16,
+    name: 'Annonces d\'incident',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS incidents (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(120) NOT NULL, message TEXT NOT NULL,
+        subjects JSON DEFAULT NULL,
+        notify_on_resolve TINYINT(1) NOT NULL DEFAULT 1, resolved_message TEXT DEFAULT NULL,
+        created_by_id VARCHAR(32) NOT NULL, created_by_tag VARCHAR(100) NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME DEFAULT NULL, resolved_by_tag VARCHAR(100) DEFAULT NULL)`,
+      `CREATE TABLE IF NOT EXISTS incident_tickets (
+        incident_id INT NOT NULL, ticket_id INT NOT NULL, owner_id VARCHAR(32) NOT NULL,
+        notified_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (incident_id, ticket_id), INDEX idx_it_owner (incident_id, owner_id),
+        CONSTRAINT fk_it_incident FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

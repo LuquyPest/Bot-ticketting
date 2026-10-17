@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
   ChevronDown, Calendar, AlertTriangle,
-  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine, Eye,
+  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine, Eye, Megaphone,
 } from 'lucide-react';
 import { hasDraft } from '../hooks/useDraft';
 import api from '../api';
@@ -252,6 +252,10 @@ export default function Tickets() {
     api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
   }, []);
 
+  // Known issues in progress (announced to new tickets)
+  const [incidents, setIncidents] = useState([]);
+  useEffect(() => { api.get('/incidents', { params: { active: 1 } }).then(r => setIncidents(r.data)).catch(() => {}); }, []);
+
   // Tickets a colleague has open right now: ticketId -> [viewers]
   const [presence, setPresence] = useState({});
   useEffect(() => { api.get('/tickets/presence').then(r => setPresence(r.data)).catch(() => {}); }, []);
@@ -457,6 +461,15 @@ export default function Tickets() {
           <BookmarkPlus size={12} /> Enregistrer la vue
         </button>
       </div>
+
+      {incidents.map(inc => (
+        <div key={inc.id} role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-sm">
+          <Megaphone size={14} className="text-amber-400 shrink-0" />
+          <span className="text-ink-1 font-medium">Incident en cours : {inc.title}</span>
+          <span className="text-ink-3 text-xs">annoncé aux nouveaux tickets{inc.subjects?.length ? ` (${inc.subjects.join(', ')})` : ''} · {inc.members} membre(s) touché(s)</span>
+          {user?.role === 'fondateur' && <a href="/incidents" className="ml-auto text-xs text-primary-light hover:underline">Gérer</a>}
+        </div>
+      ))}
 
       {/* Keyboard hint */}
       <div className="hidden md:flex items-center gap-3 text-[10px] text-ink-4">

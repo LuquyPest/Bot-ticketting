@@ -1295,6 +1295,38 @@ async function main() {
     check('mon activité: chacun voit ses propres chiffres', r.status === 200 && r.body.comments.every(c => c.comment !== 'Super aide'), JSON.stringify(r.body.comments));
   }
 
+  // ── Incident announcements ──
+  {
+    const MI1 = '200000000000000071', MI2 = '200000000000000072';
+    r = await req('POST', '/api/incidents', { sid: sessions.FV, body: { title: 'Paiements HS', message: 'Le prestataire est en panne.', subjects: ['Paiement'], notifyOnResolve: true } });
+    const incId = r.body?.id;
+    check('incident: ouvert', r.status === 200 && incId && r.body.members === 0, JSON.stringify(r.body));
+    r = await req('POST', '/api/incidents', { sid: sessions.S3T, body: { title: 'x', message: 'y' } });
+    check('incident: création réservée à manage_settings', r.status === 403, r.status);
+    const tmI = createManager(db, fakeClient, G);
+    const mkI = async (owner, ch, subject) => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'mi', ?, 'open', ?)", [owner, ch, subject])).insertId;
+    const ti1 = await mkI(MI1, 'cinc1', 'Paiement'), ti2 = await mkI(MI2, 'cinc2', 'Compte');
+    memberDms.length = 0;
+    await tmI.sendWelcomeDm(await fakeClient.users.fetch(MI1), true, 'Paiement', ti1);
+    await tmI.sendWelcomeDm(await fakeClient.users.fetch(MI2), true, 'Compte', ti2);
+    const dm1 = memberDms.filter(m => m.id === MI1).map(m => m.p?.embeds?.[0]?.data);
+    check('incident: annoncé après le message de bienvenue', dm1.length === 2 && /Paiements HS/.test(dm1[1]?.description) && /Problème connu/.test(dm1[1]?.title), JSON.stringify(dm1));
+    check('incident: pas annoncé hors des sujets concernés', memberDms.filter(m => m.id === MI2).length === 1, JSON.stringify(memberDms.filter(m => m.id === MI2)));
+    const [sysNote] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'system'", [ti1]);
+    check('incident: tracé dans le ticket', /Paiements HS/.test(sysNote?.content), JSON.stringify(sysNote));
+    await tmI.sendWelcomeDm(await fakeClient.users.fetch(MI1), true, 'Paiement', ti1); // same ticket again: no double notice
+    r = await req('GET', '/api/incidents', { sid: sessions.S3T, query: { active: 1 } });
+    check('incident: compteur visible par le staff', r.status === 200 && r.body.find(i => i.id === incId)?.members === 1 && r.body.find(i => i.id === incId)?.tickets === 1, JSON.stringify(r.body));
+    memberDms.length = 0;
+    r = await req('POST', `/api/incidents/${incId}/resolve`, { sid: sessions.FV, body: { message: 'Tout est rentré dans l ordre.' } });
+    check('incident: résolu et membres touchés prévenus', r.status === 200 && r.body.notified === 1 && memberDms.some(m => m.id === MI1 && /rentré/.test(m.p?.embeds?.[0]?.data?.description)), JSON.stringify([r.body, memberDms]));
+    memberDms.length = 0;
+    const ti3 = await mkI(MI1, 'cinc3', 'Paiement');
+    await tmI.sendWelcomeDm(await fakeClient.users.fetch(MI1), true, 'Paiement', ti3);
+    check('incident: plus annoncé une fois résolu', memberDms.length === 1, JSON.stringify(memberDms.length));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ti1, ti2, ti3]]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

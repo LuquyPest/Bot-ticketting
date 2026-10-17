@@ -45,6 +45,9 @@ const MOCK = {
     team: { closedPerMember: 14 },
     comments: [{ ticket_id: 7, rating: 5, comment: 'Très rapide, merci !', rated_at: iso(300) }],
     weekly: Array.from({ length: 12 }, (_, i) => ({ week: new Date(now - (11 - i) * 7 * 864e5).toISOString().slice(0, 10), replies: (i * 7) % 11, closed: i % 4, rating: i % 3 ? 4 + (i % 2) * 0.5 : null })) },
+  '/api/incidents': [{ id: 1, title: 'Paiements par carte indisponibles', message: 'Notre prestataire est en panne, ne réessaie pas pour l’instant.', subjects: ['Paiement'], notify_on_resolve: true, created_by_tag: 'Daryu', created_at: iso(90), resolved_at: null, members: 7, tickets: 8 },
+    { id: 2, title: 'Connexion lente', message: 'Résolu', subjects: null, notify_on_resolve: false, created_by_tag: 'Daryu', created_at: iso(5000), resolved_at: iso(4000), resolved_by_tag: 'Daryu', members: 3, tickets: 3 }],
+  '/api/config': { ticketSubjects: ['Paiement', 'Compte', 'Autre'] },
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
@@ -86,6 +89,7 @@ const PAGES = [
   ['audit', '/audit', "Journal d'activité"],
   ['equipe', '/equipe', 'Équipe'],
   ['activite', '/activite', 'Très rapide, merci'],
+  ['incidents', '/incidents', '7 membre(s) touché(s)'],
   ['sa', '/sa/overview', "Vue d'ensemble"],
   ['espace-login', '/espace', 'Se connecter avec Discord', true],
   ['espace', '/espace', 'Ancienne commande'],
