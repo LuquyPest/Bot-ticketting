@@ -120,6 +120,7 @@ export default function Profile() {
   const [photoUrl, setPhotoUrl]           = useState('');
   const [vacation, setVacation]           = useState(false);
   const [notifyAssignDm, setNotifyAssignDm] = useState(true);
+  const [notifyMentionDm, setNotifyMentionDm] = useState(true);
   const [editingPhoto, setEditingPhoto]   = useState(false);
 
   // Push notifications
@@ -175,6 +176,7 @@ export default function Profile() {
         setPhotoUrl(r.data.profile.profilePictureUrl || '');
         setVacation(r.data.profile.vacationMode || false);
         setNotifyAssignDm(r.data.profile.notifyAssignDm !== false);
+        setNotifyMentionDm(r.data.profile.notifyMentionDm !== false);
         setImgError(false);
       })
       .catch(() => toast.error('Erreur chargement du profil'))
@@ -197,6 +199,7 @@ export default function Profile() {
         profilePictureUrl: photoUrl || null,
         vacationMode:      vacation,
         notifyAssignDm,
+        notifyMentionDm,
       });
       toast.success('Profil sauvegardé');
       setEditingPhoto(false);
@@ -528,6 +531,21 @@ export default function Profile() {
                   MP Discord quand on m'attribue un ticket
                 </p>
                 <p className="text-xs text-ink-4">La notification du dashboard et le push restent actifs</p>
+              </div>
+            </label>
+
+            {/* Mention DM */}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div onClick={() => setNotifyMentionDm(v => !v)} role="switch" aria-checked={notifyMentionDm}
+                className={`w-10 h-5 rounded-full transition-colors shrink-0 ${notifyMentionDm ? 'bg-primary' : 'bg-overlay/10'}`}>
+                <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${notifyMentionDm ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              <div>
+                <p className="text-sm text-ink-2 font-medium flex items-center gap-1.5">
+                  <BellRing size={13} className={notifyMentionDm ? 'text-primary-light' : 'text-ink-4'} />
+                  MP Discord quand on me mentionne dans une note
+                </p>
+                <p className="text-xs text-ink-4">Mentionne un collègue avec @pseudo dans une note interne</p>
               </div>
             </label>
 

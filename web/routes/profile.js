@@ -28,7 +28,7 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
   try {
     const [user] = await db(
       `SELECT user_id, username, avatar, role, bio, banner_color, profile_picture_url,
-              vacation_mode, notify_assign_dm, first_login, last_login
+              vacation_mode, notify_assign_dm, notify_mention_dm, first_login, last_login
        FROM dashboard_users WHERE user_id = ?`,
       [userId]
     );
@@ -82,6 +82,7 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
         profilePictureUrl: user.profile_picture_url || null,
         vacationMode:      !!user.vacation_mode,
         notifyAssignDm:    !!user.notify_assign_dm,
+        notifyMentionDm:   !!user.notify_mention_dm,
         firstLogin:        user.first_login,
         lastLogin:         user.last_login,
       },
@@ -109,7 +110,7 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
 
 // PATCH /api/profile — mise à jour des infos de profil
 router.patch('/', requireAuthWithGuild, async (req, res) => {
-  const { bio, bannerColor, profilePictureUrl, vacationMode, notifyAssignDm } = req.body;
+  const { bio, bannerColor, profilePictureUrl, vacationMode, notifyAssignDm, notifyMentionDm } = req.body;
 
   if (bio !== undefined && bio !== null && (typeof bio !== 'string' || bio.length > 160))
     return res.status(400).json({ error: 'Bio trop longue (max 160 caractères)' });
@@ -136,6 +137,7 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
   if (profilePictureUrl !== undefined) { sets.push('profile_picture_url = ?'); params.push(profilePictureUrl || null); }
   if (vacationMode      !== undefined) { sets.push('vacation_mode = ?');       params.push(vacationMode ? 1 : 0); }
   if (notifyAssignDm    !== undefined) { sets.push('notify_assign_dm = ?');    params.push(notifyAssignDm ? 1 : 0); }
+  if (notifyMentionDm   !== undefined) { sets.push('notify_mention_dm = ?');   params.push(notifyMentionDm ? 1 : 0); }
 
   if (!sets.length) return res.json({ ok: true });
 

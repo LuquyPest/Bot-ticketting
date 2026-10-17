@@ -280,10 +280,21 @@ export default function TicketDetail() {
     if (!newNote.trim()) return;
     setSavingNote(true);
     try {
-      await api.post(`/tickets/${id}/notes`, { content: newNote.trim() });
+      const { data } = await api.post(`/tickets/${id}/notes`, { content: newNote.trim() });
       setNewNote('');
+      if (data.mentioned?.length) toast.success(`${data.mentioned.length} personne(s) mentionnée(s) prévenue(s)`);
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setSavingNote(false); }
+  };
+
+  // @mentions in internal notes: suggestions while typing "@abc"
+  const mentionQuery = composeMode === 'note' ? (/(?:^|\s)@([\w.]{0,32})$/.exec(newNote)?.[1] ?? null) : null;
+  const mentionMatches = mentionQuery === null ? [] : staff
+    .filter(m => m.user_id !== user?.id && m.username?.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+    .slice(0, 6);
+  const insertMention = (username) => {
+    setNewNote(n => n.replace(/@([\w.]{0,32})$/, `@${username} `));
+    replyRef.current?.focus();
   };
 
   // Real file sent with the reply (8 Mo max): attached to the member's DM and the channel
@@ -839,6 +850,18 @@ export default function TicketDetail() {
                   ].filter(Boolean).join(', ')}
                 </span>
                 <button onClick={() => setMacroTpl(null)} className="ml-auto hover:text-ink-1" aria-label="Envoyer sans les actions"><X size={11} /></button>
+              </div>
+            )}
+
+            {/* @mention suggestions (internal notes) */}
+            {mentionQuery !== null && mentionMatches.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5" role="listbox" aria-label="Mentionner un membre du staff">
+                {mentionMatches.map(m => (
+                  <button key={m.user_id} role="option" aria-selected="false" onClick={() => insertMention(m.username)}
+                    className="px-2 py-1 rounded-lg text-[11px] bg-surface border border-overlay/8 text-ink-2 hover:text-ink-1 hover:border-primary/40">
+                    @{m.username}
+                  </button>
+                ))}
               </div>
             )}
 

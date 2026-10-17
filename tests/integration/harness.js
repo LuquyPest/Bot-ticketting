@@ -806,6 +806,25 @@ async function main() {
   check('modèles: envoi groupé refusé avec le modèle personnel d\'un autre', r.status === 400, JSON.stringify([r.status, r.body]));
   await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tbulk]);
 
+  // ── @mentions in internal notes ──
+  {
+    const tMen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('21','u21','cmen','open','mentions')")).insertId;
+    memberDms.length = 0;
+    r = await req('POST', `/api/tickets/${tMen}/notes`, { sid: sessions.FV, body: { content: '@S3 peux-tu regarder ? cc @F et @inconnu' } });
+    const menDm = memberDms.find(m => m.id === U.S3)?.p?.embeds?.[0]?.data;
+    check('mentions: collègue mentionné prévenu (MP avec lien)', r.status === 200 && r.body.mentioned?.join() === U.S3 && menDm?.description?.includes("t'a mentionné") && menDm.author.name.includes(`#${tMen}`), JSON.stringify([r.body.mentioned, menDm]));
+    check('mentions: pas de notification pour soi-même ni un inconnu', !memberDms.some(m => m.id === U.F));
+    const tSecret = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('22','u22','csec','open','secret', ?)", [g2])).insertId;
+    r = await req('POST', `/api/tickets/${tSecret}/notes`, { sid: sessions.FV, body: { content: `<@${U.S3}> regarde ça` } });
+    check('mentions: personne qui ne voit pas le ticket non prévenue', r.body.mentioned?.length === 0, JSON.stringify(r.body.mentioned));
+    await db('UPDATE dashboard_users SET notify_mention_dm = 0 WHERE user_id = ?', [U.S3]);
+    memberDms.length = 0;
+    r = await req('POST', `/api/tickets/${tMen}/notes`, { sid: sessions.FV, body: { content: 'encore @s3' } });
+    check('mentions: MP désactivable (notification dashboard maintenue)', r.body.mentioned?.join() === U.S3 && !memberDms.some(m => m.id === U.S3), JSON.stringify(r.body));
+    await db('UPDATE dashboard_users SET notify_mention_dm = 1 WHERE user_id = ?', [U.S3]);
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tMen, tSecret]]);
+  }
+
   // ── Macros: template + actions applied on send ──
   {
     const tagM = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Facturation', '#22c55e')")).insertId;

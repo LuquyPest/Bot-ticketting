@@ -31,6 +31,11 @@ function NotifListener({ add }) {
         : (data.ownerTag || 'Nouveau ticket'),
       href: data.id ? `/tickets/${data.id}` : null,
     }),
+    mention: (data) => {
+      const body = `${data.by} t'a mentionné dans le ticket #${data.ticketId} : ${data.excerpt}`;
+      add({ type: 'mention', title: 'Mention', body, href: `/tickets/${data.ticketId}` });
+      toast(body.slice(0, 140), { icon: '💬', duration: 6000 });
+    },
     // Sent only to the staff member someone else assigned
     assigned: (data) => {
       const body = `${data.by} t'a attribué le ticket #${data.ticketId}${data.subject ? ` — ${data.subject}` : ''}`;

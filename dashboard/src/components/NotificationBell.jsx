@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, X, Ticket, UserPlus } from 'lucide-react';
+import { Bell, X, Ticket, UserPlus, AtSign } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 
-const ICON_MAP = { new_ticket: Ticket, assigned: UserPlus };
+const ICON_MAP = { new_ticket: Ticket, assigned: UserPlus, mention: AtSign };
 
 function timeAgo(ts) {
   const s = (Date.now() - ts) / 1000;

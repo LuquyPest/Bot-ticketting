@@ -374,7 +374,8 @@ router.post('/:id/notes', async (req, res) => {
       created_at: new Date()
     };
     broadcast('note', { ticketId: ticket.id, note }, req.guildId);
-    res.json(note);
+    const mentioned = await require('../../utils/mentions').notifyMentions(req.guildDb, client, req.guildId, ticket, trimmed, req.session.user);
+    res.json({ ...note, mentioned });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
