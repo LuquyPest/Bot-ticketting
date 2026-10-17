@@ -94,6 +94,7 @@ app.use(session({
 
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
+app.use('/api/config/import', express.json({ limit: '2mb' }));
 app.use(auditLog);
 app.use(httpErrorMiddleware);
 app.use(express.json());

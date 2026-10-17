@@ -3,6 +3,7 @@ import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Uplo
 import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
+import ConfigTransfer from '../components/ConfigTransfer';
 
 function Section({ title, description, children }) {
   return (
@@ -504,6 +505,10 @@ export default function Settings() {
       </Section>
 
       {/* Limits */}
+      <Section title="Sauvegarde et transfert">
+        <ConfigTransfer />
+      </Section>
+
       <Section title="Sécurité">
         <Field label="Double authentification obligatoire" hint="Les comptes concernés sans 2FA ne peuvent plus accéder au dashboard tant qu'ils ne l'ont pas activée (depuis leur profil). Active d'abord la tienne.">
           <select value={cfg.require2fa || 'none'} onChange={e => set('require2fa', e.target.value)} className={BASE}>

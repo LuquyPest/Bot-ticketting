@@ -53,6 +53,8 @@ const ACTIONS = {
   quota_warning:            ['Limite du serveur bientôt atteinte', 'config'],
   // Configuration
   config_update:            ['Paramètres modifiés', 'config'],
+  config_export:            ['Configuration exportée', 'config'],
+  config_import:            ['Configuration importée', 'config'],
   bot_identity_update:      ['Identité du bot modifiée', 'config'],
   panel_create:             ['Panel créé', 'config'],
   panel_update:             ['Panel modifié', 'config'],

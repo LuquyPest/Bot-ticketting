@@ -147,6 +147,37 @@ function dbRow2Api(row) {
   return out;
 }
 
+// GET /api/config/export — the whole configuration as a JSON file (no secrets)
+router.get('/export', async (req, res) => {
+  try {
+    const data = await require('../../utils/configTransfer').exportConfig(req.guildDb);
+    data.guildName = req.guild?.guild_name || null;
+    await logAudit(req.session.user.id, req.session.user.username, 'config_export', 'guild', req.guildId, null, req.guildDb);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="configuration-${req.guildId}.json"`);
+    res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/config/import { data, includeDiscordIds } — merges by name, never deletes
+router.post('/import', async (req, res) => {
+  try {
+    const report = await require('../../utils/configTransfer').importConfig(req.guildDb, req.body?.data, {
+      includeDiscordIds: !!req.body?.includeDiscordIds, actor: req.session.user,
+    });
+    require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
+    await logAudit(req.session.user.id, req.session.user.username, 'config_import', 'guild', req.guildId, { report, includeDiscordIds: !!req.body?.includeDiscordIds }, req.guildDb);
+    res.json({ ok: true, report });
+  } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const [cfg] = await req.guildDb('SELECT * FROM guild_config LIMIT 1');

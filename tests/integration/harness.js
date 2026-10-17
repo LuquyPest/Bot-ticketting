@@ -1028,6 +1028,41 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MRU]);
   }
 
+  // ── Configuration export / import ──
+  {
+    await db("UPDATE guild_config SET webhook_secret = 'super-secret-value-123', ticket_category_id = ?, welcome_message = 'Bienvenue export' WHERE id = 1", [CAT_OPEN]);
+    await db("INSERT IGNORE INTO ticket_tags (name, color) VALUES ('Export tag', '#ff0000')");
+    await db("INSERT INTO faq_entries (question, answer, keywords) VALUES ('Question exportée ?', 'Réponse', 'export')");
+    r = await req('GET', '/api/config/export', { sid: sessions.FV });
+    const exp = r.body;
+    check('config: export complet sans secret', r.status === 200 && exp.format === 'ticketbot-config' && exp.grades.some(g => g.name === 'Secret') && exp.tags.some(t => t.name === 'Export tag')
+      && exp.faq.some(q => q.question === 'Question exportée ?') && !JSON.stringify(exp).includes('super-secret-value-123'), JSON.stringify(Object.keys(exp || {})));
+    // Import into another server
+    const G3 = '323456789012345678';
+    await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G3', ?, 'f', 'active', ?)`, [G3, U.F, 'ticketbot_guild_' + G3]);
+    await app('./utils/tenantSchema').ensureTenantSchema(G3);
+    const db3 = getTenantDb(G3);
+    await db3("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'F', 'fondateur')", [U.F]);
+    await mk('F3', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G3 });
+    r = await req('POST', '/api/config/import', { sid: sessions.F3, body: { data: { format: 'autre' } } });
+    check('config: fichier invalide refusé', r.status === 400, r.status);
+    r = await req('POST', '/api/config/import', { sid: sessions.F3, body: { data: exp } });
+    const [c3] = await db3('SELECT welcome_message, ticket_category_id, webhook_secret FROM guild_config WHERE id = 1');
+    const g3 = await db3("SELECT name FROM grades WHERE name = 'Secret'");
+    const f3 = await db3("SELECT COUNT(*) AS n FROM faq_entries WHERE question = 'Question exportée ?'");
+    check('config: import sur un autre serveur', r.status === 200 && c3.welcome_message === 'Bienvenue export' && g3.length === 1 && Number(f3[0].n) === 1, JSON.stringify([r.body, c3]));
+    check('config: salons Discord et secrets non repris par défaut', c3.ticket_category_id === null && c3.webhook_secret === null, JSON.stringify(c3));
+    r = await req('POST', '/api/config/import', { sid: sessions.F3, body: { data: exp, includeDiscordIds: true } });
+    const [c3b] = await db3('SELECT ticket_category_id FROM guild_config WHERE id = 1');
+    const f3b = await db3("SELECT COUNT(*) AS n FROM faq_entries WHERE question = 'Question exportée ?'");
+    check('config: réimport sans doublon, salons repris sur demande', c3b.ticket_category_id === CAT_OPEN && Number(f3b[0].n) === 1 && r.body.report.faq.updated >= 1, JSON.stringify([c3b, r.body.report.faq]));
+    r = await req('GET', '/api/config/export', { sid: sessions.S3T });
+    check('config: export réservé au fondateur', r.status === 403, r.status);
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G3]);
+    await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G3);
+    await db("UPDATE guild_config SET webhook_secret = NULL WHERE id = 1");
+  }
+
   // ── Staff availability ──
   {
     r = await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'away' } });
