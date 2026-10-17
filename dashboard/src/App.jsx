@@ -40,6 +40,7 @@ const LoginLogs   = lazy(() => import('./pages/LoginLogs'));
 const Panels      = lazy(() => import('./pages/Panels'));
 const Forms       = lazy(() => import('./pages/Forms'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
+const Activity    = lazy(() => import('./pages/Activity'));
 
 function PageLoader() {
   return (
@@ -192,6 +193,7 @@ export default function App() {
                           <RequireRole role="fondateur"><ErrorBoundary><Equipe /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="queue"      element={<ErrorBoundary><Queue /></ErrorBoundary>} />
+                        <Route path="activite"   element={<ErrorBoundary><Activity /></ErrorBoundary>} />
                         <Route path="fields"     element={
                           <RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Fields /></ErrorBoundary></RequireRole>
                         } />

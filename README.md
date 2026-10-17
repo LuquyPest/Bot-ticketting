@@ -328,6 +328,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | Page | Accès | Description |
 |------|-------|-------------|
 | **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, objectif mensuel |
+| **Mon activité** | support, fondateur | Ses propres chiffres sur 7, 30 ou 90 jours : réponses envoyées, tickets fermés, temps de première réponse médian, note moyenne reçue et répartition, tickets ouverts attribués, chacun comparé à l'équipe ; évolution des réponses et de la note sur 12 semaines ; derniers commentaires des membres |
 | **Ma file** | `view_tickets` | Mes tickets du plus urgent au moins urgent (hors délai, proche de l'échéance, membre qui attend une réponse, priorité), avec la raison affichée ; onglet « Non attribués » avec bouton « Prendre » ; mise à jour en temps réel |
 | **Tickets** / **Kanban** | `view_tickets` | Liste filtrable (vue « Ouverts » par défaut, vues personnelles enregistrables) ou colonnes par étape, détail en temps réel |
 | **Mes stats** | support | Statistiques personnelles (claims, fermetures, temps de réponse) |

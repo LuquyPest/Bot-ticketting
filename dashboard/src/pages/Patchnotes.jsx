@@ -14,6 +14,7 @@ const VERSIONS = [
     date: '18 octobre 2026',
     title: 'Espace membre interactif, contexte des tickets et robustesse',
     changes: [
+      { type: 'new',  text: 'Page « Mon activité » : tes réponses, tickets fermés, temps de première réponse et notes reçues, comparés à l\'équipe, avec l\'évolution sur 12 semaines' },
       { type: 'new',  text: 'Tickets similaires dans la fiche : les tickets résolus qui parlent du même problème, avec la réponse qui les a clos et un bouton pour la reprendre' },
       { type: 'new',  text: 'Messages modifiés ou supprimés par le membre dans ses MP : la fiche affiche « modifié » avec les versions précédentes, ou « supprimé » (le contenu reste visible pour le staff), et le salon est prévenu' },
       { type: 'new',  text: 'Aperçu des pièces jointes : images et vidéos affichées dans la conversation (fiche ticket et espace membre), liens Discord expirés renouvelés automatiquement' },

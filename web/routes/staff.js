@@ -1,6 +1,17 @@
 const express = require('express');
 const router = express.Router();
 
+// GET /api/staff/me/activity?days=7|30|90 — the signed-in member's own figures
+router.get('/me/activity', async (req, res) => {
+  try {
+    const days = [7, 30, 90].includes(parseInt(req.query.days)) ? parseInt(req.query.days) : 30;
+    res.json(await require('../../utils/myActivity').myActivity(req.guildDb, req.session.user.id, days));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const user = req.session.user;

@@ -1279,6 +1279,22 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [cur]);
   }
 
+  // ── My activity ──
+  {
+    const ME = U.F;
+    const ta = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, created_at, closed_at, closed_by_id, closed_by_tag) VALUES ('39','u39','cact1','closed','activité', NOW() - INTERVAL 2 HOUR, NOW(), ?, 'F')", [ME])).insertId;
+    await db(`INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, created_at) VALUES
+      (?, '39', 'u39', 'aide', 'user', NOW() - INTERVAL 2 HOUR), (?, ?, 'F', 'réponse 1', 'reply', NOW() - INTERVAL 90 MINUTE), (?, ?, 'F', 'réponse 2', 'reply', NOW() - INTERVAL 1 HOUR), (?, ?, 'F', 'note', 'web', NOW())`, [ta, ta, ME, ta, ME, ta, ME]);
+    await db("INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating, comment) VALUES (?, '39', ?, 4, 'Super aide')", [ta, ME]);
+    r = await req('GET', '/api/staff/me/activity', { sid: sessions.FV, query: { days: 7 } });
+    const a = r.body;
+    check('mon activité: compteurs de la période', r.status === 200 && a.days === 7 && a.replies >= 2 && a.closed >= 1 && a.notes >= 1, JSON.stringify(a));
+    check('mon activité: temps de 1re réponse et notes', a.firstResponse?.count >= 1 && a.firstResponse.medianMinutes != null && a.rating.distribution.find(d => d.rating === 4)?.count >= 1 && a.comments.some(c => c.comment === 'Super aide'), JSON.stringify([a.firstResponse, a.rating, a.comments]));
+    check('mon activité: évolution sur 12 semaines', a.weekly?.length === 12 && a.weekly[11].replies >= 2 && a.weekly[11].rating >= 1, JSON.stringify(a.weekly?.slice(-2)));
+    r = await req('GET', '/api/staff/me/activity', { sid: sessions.S3T });
+    check('mon activité: chacun voit ses propres chiffres', r.status === 200 && r.body.comments.every(c => c.comment !== 'Super aide'), JSON.stringify(r.body.comments));
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);
