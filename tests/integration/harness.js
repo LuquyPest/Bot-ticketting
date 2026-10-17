@@ -1009,7 +1009,13 @@ async function main() {
   const SLA_CH = '900000000000000080';
   channels.set(SLA_CH, mkChannel(SLA_CH, G));
   await db('UPDATE tickets SET channel_id = ? WHERE id = ?', [SLA_CH, tsLate]);
+  await db('UPDATE guild_config SET notify_member_stage = 1 WHERE id = 1');
+  await db("UPDATE tickets SET owner_id = '200000000000000022' WHERE id = ?", [tsLate]);
+  memberDms.length = 0;
   const moved = await tmS.moveToStage(tsLate, 'in_progress', { id: U.F, username: 'F' });
+  const stageDm = memberDms.find(m => m.id === '200000000000000022')?.p?.embeds?.[0]?.data;
+  check('étapes: membre prévenu quand l\'option est active', stageDm?.title === '🛠️ Ton ticket est en cours de traitement', JSON.stringify(stageDm));
+  await db('UPDATE guild_config SET notify_member_stage = 0 WHERE id = 1');
   const [afterMove] = await db('SELECT TIMESTAMPDIFF(MINUTE, stage_changed_at, NOW()) AS m FROM tickets WHERE id = ?', [tsLate]);
   check('SLA: le compteur repart au changement d\'étape', moved.ok && Number(afterMove.m) <= 1, JSON.stringify([moved, afterMove]));
   await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tsLate, tsWarn, tsWait]]);

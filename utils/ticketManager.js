@@ -539,6 +539,15 @@ function createManager(db, client, guildId) {
     await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
     await logMoveTicket(ticketId, `${STAGE_LABEL[stage]} (${category.name})`, byUser);
     await channel.send(`📂 Ticket passé en **${STAGE_LABEL[stage]}** par **${byUser.username || byUser.tag}**.`).catch(() => null);
+    // Optional: tell the member (guild setting notify_member_stage)
+    if (cfg.notify_member_stage && before?.stage !== stage) {
+      const [t2] = await db('SELECT id, owner_id, subject FROM tickets WHERE id = ?', [ticketId]);
+      const { ticketNoticeDmEmbed } = require('./dmEmbeds');
+      await sendToMember(client, t2.owner_id, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, t2, {
+        title: t(`stage.${stage}.title`), description: t(`stage.${stage}.body`), footer: t('reply.footer', { id: t2.id }),
+        color: stage === 'waiting' ? 'warning' : 'primary',
+      })] }));
+    }
     return { ok: true, label: STAGE_LABEL[stage] };
   }
 

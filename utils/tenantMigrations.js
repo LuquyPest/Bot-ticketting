@@ -125,6 +125,11 @@ const MIGRATIONS = [
     name: 'Réouverture d\'un ticket par le membre (délai en jours, 0 = désactivée)',
     statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS member_reopen_days INT NOT NULL DEFAULT 7'],
   },
+  {
+    version: 4,
+    name: 'Notification du membre aux changements d\'étape (option)',
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS notify_member_stage TINYINT(1) NOT NULL DEFAULT 0'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

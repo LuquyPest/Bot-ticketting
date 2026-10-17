@@ -228,6 +228,7 @@ export default function Settings() {
         botLanguage:              cfg.botLanguage || 'fr',
         require2fa:               cfg.require2fa || 'none',
         memberReopenDays:         cfg.memberReopenDays ?? 7,
+        notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
         embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
@@ -604,6 +605,11 @@ export default function Settings() {
           label="Formulaires d'intake"
           hint="Affiche un questionnaire configurable avant l'ouverture du ticket"
           checked={cfg.intakeFormEnabled} onChange={v => set('intakeFormEnabled', v)}
+        />
+        <FeatureToggle
+          label="Prévenir le membre des changements d'étape"
+          hint="MP au membre quand son ticket passe en « En cours », « En attente » ou revient en « Ouvert »"
+          checked={!!cfg.notifyMemberStage} onChange={v => set('notifyMemberStage', v)}
         />
         <FeatureToggle
           label="Rappels staff automatiques"
