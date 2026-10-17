@@ -806,6 +806,37 @@ async function main() {
   check('modèles: envoi groupé refusé avec le modèle personnel d\'un autre', r.status === 400, JSON.stringify([r.status, r.body]));
   await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tbulk]);
 
+  // ── Macros: template + actions applied on send ──
+  {
+    const tagM = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Facturation', '#22c55e')")).insertId;
+    await db('UPDATE guild_config SET ticket_category_id = ?, waiting_category_id = ? WHERE id = 1', [CAT_OPEN, CAT_WAIT]);
+    r = await req('POST', '/api/templates', { sid: sessions.FV, body: { name: 'Attente facture', content: 'Merci, on revient vers toi.', scope: 'shared', actions: { stage: 'waiting', priority: 'urgent', tagId: tagM, assignSelf: true } } });
+    const macro = r.body;
+    check('macro: modèle avec actions enregistré', r.status === 200 && macro.actions?.stage === 'waiting' && macro.actions.tagId === tagM, JSON.stringify(r.body));
+    r = await req('POST', '/api/templates', { sid: sessions.FV, body: { name: 'x', content: 'y', actions: { stage: 'nulle-part' } } });
+    check('macro: action invalide refusée', r.status === 400, r.status);
+    const MCH = '900000000000000085';
+    channels.set(MCH, mkChannel(MCH, G));
+    const tm1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority) VALUES ('20','u20',?,'open','macro','normal')", [MCH])).insertId;
+    r = await req('POST', `/api/tickets/${tm1}/apply-template`, { sid: sessions.FV, body: { templateId: macro.id, content: 'Merci, on revient vers toi (modifié).' } });
+    const [after] = await db('SELECT stage, priority FROM tickets WHERE id = ?', [tm1]);
+    const tagsM = await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [tm1]);
+    const asgM = await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [tm1]);
+    const [replyM] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'reply'", [tm1]);
+    check('macro: réponse envoyée telle que modifiée', replyM?.content === 'Merci, on revient vers toi (modifié).', JSON.stringify(replyM));
+    check('macro: étape, priorité, tag et attribution appliqués', r.status === 200 && after.stage === 'waiting' && after.priority === 'urgent' && tagsM.some(x => x.tag_id === tagM) && asgM.some(x => x.user_id === U.F) && r.body.applied.length === 4,
+      JSON.stringify([r.body, after, tagsM, asgM]));
+    // A support without close_ticket / claim_ticket: the reply goes, refused actions are reported
+    const closeMacro = (await req('POST', '/api/templates', { sid: sessions.FV, body: { name: 'Clôture', content: 'Ticket résolu.', scope: 'shared', actions: { close: true, assignSelf: true } } })).body;
+    await mk('S1M', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
+    r = await req('POST', `/api/tickets/${tm1}/apply-template`, { sid: sessions.S1M, body: { templateId: closeMacro.id, content: 'Ticket résolu.' } });
+    const [still] = await db('SELECT status FROM tickets WHERE id = ?', [tm1]);
+    check('macro: actions non autorisées signalées, réponse envoyée', r.status === 200 && still.status === 'open' && r.body.warnings.length === 2, JSON.stringify([r.body, still]));
+    r = await req('POST', `/api/tickets/${tm1}/apply-template`, { sid: sessions.FV, body: { templateId: closeMacro.id, content: 'Ticket résolu.' } });
+    const [closedM] = await db('SELECT status FROM tickets WHERE id = ?', [tm1]);
+    check('macro: fermeture après envoi', r.status === 200 && closedM.status === 'closed' && r.body.applied.includes('Ticket fermé'), JSON.stringify([r.body, closedM]));
+  }
+
   // ── Assignment notification: live event + DM to the assignee, never for self-assignment ──
   const streams = {};
   for (const name of ['S1T', 'S3T']) {

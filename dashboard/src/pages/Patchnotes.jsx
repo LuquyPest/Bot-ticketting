@@ -28,6 +28,7 @@ const VERSIONS = [
       { type: 'fix',  text: 'Le message de fermeture personnalisé des paramètres est maintenant envoyé au membre' },
       { type: 'fix',  text: 'Panels : la confirmation ne renvoie plus vers le salon privé du ticket, invisible pour le membre' },
       { type: 'new',  text: 'Page « Données membres » (RGPD) : export et suppression de toutes les données d\'un membre, réservée aux fondateurs' },
+      { type: 'new',  text: 'Macros : un modèle de réponse peut aussi changer l\'étape, la priorité, ajouter un tag, t\'attribuer le ticket ou le fermer à l\'envoi' },
     ]
   },
   {

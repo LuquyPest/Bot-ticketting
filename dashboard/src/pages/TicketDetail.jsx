@@ -152,6 +152,7 @@ export default function TicketDetail() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateScope, setNewTemplateScope] = useState('personal');
+  const [newTemplateActions, setNewTemplateActions] = useState({});
   const [linkTemplateSubject, setLinkTemplateSubject] = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
@@ -287,6 +288,7 @@ export default function TicketDetail() {
 
   // Real file sent with the reply (8 Mo max): attached to the member's DM and the channel
   const [replyFile, setReplyFile] = useState(null);
+  const [macroTpl, setMacroTpl] = useState(null);
   const fileInputRef = useRef(null);
   const pickFile = (e) => {
     const f = e.target.files?.[0];
@@ -300,6 +302,15 @@ export default function TicketDetail() {
     if (!replyText.trim() && !replyFile) return;
     setSendingReply(true);
     try {
+      if (macroTpl && !replyFile) {
+        const { data } = await api.post(`/tickets/${id}/apply-template`, { templateId: macroTpl.id, content: replyText.trim(), anonymous });
+        setMacroTpl(null);
+        setReplyText('');
+        toast.success(['Réponse envoyée', ...data.applied].join(' · '));
+        data.warnings.forEach(w => toast.error(w, { duration: 6000 }));
+        loadTicket();
+        return;
+      }
       if (replyFile) {
         const form = new FormData();
         form.append('file', replyFile);
@@ -416,7 +427,9 @@ export default function TicketDetail() {
       const { data } = await api.post('/templates', {
         name: newTemplateName.trim(), content: composeText.trim(),
         subject: linked ? ticket.subject : null, scope: newTemplateScope,
+        actions: Object.values(newTemplateActions).some(Boolean) ? newTemplateActions : null,
       });
+      setNewTemplateActions({});
       setTemplates(t => [...t, { ...data, suggested: !!linked }]);
       setNewTemplateName('');
       toast.success(newTemplateScope === 'shared' ? 'Modèle partagé avec le staff' : 'Modèle enregistré pour toi');
@@ -428,7 +441,9 @@ export default function TicketDetail() {
     setComposeText(resolveVars(tpl.content, ticket, user?.username));
     setShowTemplates(false);
     replyRef.current?.focus();
-    api.post(`/templates/${tpl.id}/use`).catch(() => {});
+    // Macro: its actions run when the reply is sent (the use is counted then)
+    if (tpl.actions && composeMode === 'reply') setMacroTpl(tpl);
+    else api.post(`/templates/${tpl.id}/use`).catch(() => {});
   };
 
   const deleteTemplate = async (tplId, e) => {
@@ -811,6 +826,22 @@ export default function TicketDetail() {
               </div>
             )}
 
+            {macroTpl && composeMode === 'reply' && (
+              <div className="flex items-center gap-2 mb-2 px-2.5 py-1.5 rounded-lg text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-200">
+                <span className="font-semibold">Macro « {macroTpl.name} »</span>
+                <span className="text-amber-200/80 truncate">
+                  à l'envoi : {[
+                    macroTpl.actions.assignSelf && 'm\'attribuer',
+                    macroTpl.actions.priority && `priorité ${({ low: 'faible', normal: 'normale', urgent: 'urgente' })[macroTpl.actions.priority]}`,
+                    macroTpl.actions.tagId && `tag ${allTags.find(tg => tg.id === macroTpl.actions.tagId)?.name || ''}`,
+                    macroTpl.actions.stage && !macroTpl.actions.close && `étape ${STAGES.find(st => st.value === macroTpl.actions.stage)?.label}`,
+                    macroTpl.actions.close && 'fermer le ticket',
+                  ].filter(Boolean).join(', ')}
+                </span>
+                <button onClick={() => setMacroTpl(null)} className="ml-auto hover:text-ink-1" aria-label="Envoyer sans les actions"><X size={11} /></button>
+              </div>
+            )}
+
             {/* Textarea */}
             <textarea
               ref={replyRef}
@@ -878,6 +909,9 @@ export default function TicketDetail() {
                                       {tpl.scope === 'personal' && tpl.suggested && (
                                         <span className="text-[9px] font-bold px-1 py-0.5 rounded-sm bg-overlay/6 text-ink-3 border border-overlay/8 shrink-0">perso</span>
                                       )}
+                                      {tpl.actions && (
+                                        <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/20 shrink-0">macro</span>
+                                      )}
                                       {hasVars(tpl.content) && (
                                         <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-violet-500/20
                                                          text-violet-300 border border-violet-500/20 shrink-0">
@@ -919,6 +953,28 @@ export default function TicketDetail() {
                               </button>
                             ))}
                           </div>
+                          <details className="text-[11px] text-ink-3">
+                            <summary className="cursor-pointer select-none">Actions à l'envoi (macro)</summary>
+                            <div className="mt-2 grid grid-cols-2 gap-1.5">
+                              <select value={newTemplateActions.stage || ''} onChange={e => setNewTemplateActions(a => ({ ...a, stage: e.target.value || undefined }))}
+                                className="bg-surface border border-overlay/8 rounded-lg px-2 py-1.5 text-[11px] text-ink-1" aria-label="Étape">
+                                <option value="">Étape inchangée</option>
+                                {STAGES.map(st => <option key={st.value} value={st.value}>{st.label}</option>)}
+                              </select>
+                              <select value={newTemplateActions.priority || ''} onChange={e => setNewTemplateActions(a => ({ ...a, priority: e.target.value || undefined }))}
+                                className="bg-surface border border-overlay/8 rounded-lg px-2 py-1.5 text-[11px] text-ink-1" aria-label="Priorité">
+                                <option value="">Priorité inchangée</option>
+                                <option value="low">Faible</option><option value="normal">Normal</option><option value="urgent">Urgent</option>
+                              </select>
+                              <select value={newTemplateActions.tagId || ''} onChange={e => setNewTemplateActions(a => ({ ...a, tagId: e.target.value ? parseInt(e.target.value) : undefined }))}
+                                className="bg-surface border border-overlay/8 rounded-lg px-2 py-1.5 text-[11px] text-ink-1 col-span-2" aria-label="Tag">
+                                <option value="">Aucun tag</option>
+                                {allTags.map(tg => <option key={tg.id} value={tg.id}>{tg.name}</option>)}
+                              </select>
+                              <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!newTemplateActions.assignSelf} onChange={e => setNewTemplateActions(a => ({ ...a, assignSelf: e.target.checked || undefined }))} /> M'attribuer</label>
+                              <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!newTemplateActions.close} onChange={e => setNewTemplateActions(a => ({ ...a, close: e.target.checked || undefined }))} /> Fermer le ticket</label>
+                            </div>
+                          </details>
                           {ticket?.subject && (
                             <label className="flex items-center gap-2 text-[11px] text-ink-3 cursor-pointer">
                               <input type="checkbox" checked={linkTemplateSubject} onChange={e => setLinkTemplateSubject(e.target.checked)} className="accent-primary" />
