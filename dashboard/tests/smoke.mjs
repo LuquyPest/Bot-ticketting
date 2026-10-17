@@ -38,6 +38,7 @@ const MOCK = {
   '/api/analytics/subjects': [{ subject: 'Paiement', count: 12 }, { subject: 'Connexion', count: 7 }, { subject: 'Autre', count: 3 }],
   '/api/analytics/response-trend': days(30).map(d => ({ date: d.date, avgMinutes: d.count * 4 })),
   '/api/audit': { rows: [{ id: 1, actor_id: '1', actor_tag: 'Daryu', action: 'ticket_close', source: 'dashboard', ticket_id: 1, details: { reason: 'résolu' }, created_at: iso(5) }], total: 1, page: 1, pages: 1 },
+  '/api/tickets/presence': { 1: [{ userId: '2', username: 'Collègue', avatar: null, since: now }] },
   '/api/tickets/search': { results: [{ ticket: { id: 1, owner_tag: 'membre1', subject: 'Problème de paiement 1', status: 'open' }, hits: 2,
     match: { id: 11, author_tag: 'membre1', source: 'user', created_at: iso(30), snippet: 'Mon remboursement n’est pas arrivé' } }], total: 1, page: 1, pages: 1, terms: ['rembours'] },
   '/api/audit/meta': { actions: { ticket_close: { label: 'Ticket fermé', category: 'tickets' } }, categories: { tickets: 'Tickets' }, sources: { dashboard: 'Dashboard' } },
@@ -84,7 +85,9 @@ for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
   await page.route('**/api/**', route => {
     const u = new URL(route.request().url());
     if (anonymous && u.pathname.endsWith('/auth/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
-    const body = MOCK[u.pathname] ?? (route.request().method() === 'GET' ? [] : { ok: true });
+    const body = u.pathname.endsWith('/presence') && route.request().method() === 'POST'
+      ? { viewers: [{ userId: '2', username: 'Collègue', avatar: null, since: now }] }
+      : MOCK[u.pathname] ?? (route.request().method() === 'GET' ? [] : { ok: true });
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
   for (const [name, p, text, anon = false] of PAGES) {

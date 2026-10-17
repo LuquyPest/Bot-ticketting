@@ -92,6 +92,33 @@ function getBubbleStyle(source) {
   return null;
 }
 
+// Colleagues who have this ticket open right now (avatars, names on hover)
+function Viewers({ viewers }) {
+  if (!viewers.length) return null;
+  const names = viewers.map(v => v.username).join(', ');
+  const label = `${names} ${viewers.length > 1 ? 'ont' : 'a'} aussi ce ticket ouvert`;
+  return (
+    <div className="flex items-center gap-1.5" title={label} aria-label={label} role="status">
+      <Eye size={12} className="text-amber-400" />
+      <div className="flex -space-x-1.5">
+        {viewers.slice(0, 4).map(v => (
+          v.avatar
+            ? <img key={v.userId} src={`https://cdn.discordapp.com/avatars/${v.userId}/${v.avatar}.webp?size=32`} alt=""
+                className="w-5 h-5 rounded-full ring-2 ring-base object-cover" />
+            : <span key={v.userId} className="w-5 h-5 rounded-full ring-2 ring-base bg-primary/40 text-[9px] font-bold text-white flex items-center justify-center">
+                {v.username?.[0]?.toUpperCase() || '?'}
+              </span>
+        ))}
+      </div>
+      <span className="text-[11px] text-amber-400 font-medium hidden sm:inline">
+        {viewers.length === 1 ? viewers[0].username : `${viewers.length} collègues`}
+      </span>
+    </div>
+  );
+}
+
+const STAFF_REPLY_SOURCES = new Set(['reply', 'scheduled', 'discord']);
+
 function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
   const avatarUrl = authorId && authorAvatar
     ? `https://cdn.discordapp.com/avatars/${authorId}/${authorAvatar}.webp?size=64`
@@ -228,6 +255,26 @@ export default function TicketDetail() {
     api.post(`/tickets/${id}/typing`, { mode: composeMode }).catch(() => {});
   }, [draft, composeMode, id, ticketId]);
 
+  // Last message seen when I started this reply (to spot a colleague answering meanwhile)
+  // (null = not known yet: draft restored before the messages loaded)
+  const replyStartNote = useRef(null);
+  const replyWasEmpty = useRef(true);
+  const lastNoteId = () => (notes.length ? notes.reduce((m, n) => Math.max(m, n.id), 0) : null);
+  const replyForTicket = useRef(id);
+  useEffect(() => {
+    const empty = !replyText.trim();
+    if (replyForTicket.current !== id) {
+      // Other ticket: the loaded messages are still the previous ticket's, wait for the new ones
+      replyForTicket.current = id;
+      replyStartNote.current = null;
+      setNotes([]);
+    } else if (replyWasEmpty.current && !empty) replyStartNote.current = lastNoteId();
+    replyWasEmpty.current = empty;
+  }, [replyText, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (replyStartNote.current === null && !replyWasEmpty.current) replyStartNote.current = lastNoteId();
+  }, [notes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Colleagues writing in this ticket right now: userId -> { username, mode, at }
   const [typers, setTypers] = useState({});
   useEffect(() => {
@@ -238,7 +285,27 @@ export default function TicketDetail() {
     return () => clearInterval(t);
   }, []);
 
+  // Presence: heartbeat every 20 s while the page is open, departure signal when leaving
+  const [viewers, setViewers] = useState([]);
+  useEffect(() => {
+    if (!ticketId) return;
+    let alive = true;
+    const beat = () => api.post(`/tickets/${ticketId}/presence`).then(r => { if (alive) setViewers(Array.isArray(r.data?.viewers) ? r.data.viewers : []); }).catch(() => {});
+    // keepalive: still delivered while the tab closes (custom header kept, unlike sendBeacon)
+    const leave = () => fetch(`/api/tickets/${ticketId}/presence`, {
+      method: 'POST', keepalive: true, credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ leave: true }),
+    }).catch(() => {});
+    beat();
+    const t = setInterval(beat, 20000);
+    window.addEventListener('pagehide', leave);
+    return () => { alive = false; clearInterval(t); window.removeEventListener('pagehide', leave); leave(); setViewers([]); };
+  }, [ticketId]);
+  const otherViewers = viewers.filter(v => v.userId !== user?.id);
+
   useSSE({
+    presence: (data) => { if (data.ticketId === ticketId) setViewers(Array.isArray(data.viewers) ? data.viewers : []); },
     availability: (data) => setStaff(list => list.map(m => (m.user_id === data.userId ? { ...m, availability: data.availability } : m))),
     typing: (data) => {
       if (data.ticketId !== ticketId || data.userId === user?.id) return;
@@ -366,6 +433,12 @@ export default function TicketDetail() {
 
   const sendReply = async () => {
     if (!replyText.trim() && !replyFile) return;
+    // Avoid double answers: a colleague replied since I started writing, or is writing a reply now
+    const since = replyStartNote.current ?? Infinity;
+    const answered = notes.filter(n => n.id > since && STAFF_REPLY_SOURCES.has(n.source) && n.author_id !== user?.id);
+    const writing = Object.values(typers).filter(t => t.mode === 'reply').map(t => t.username);
+    if (answered.length && !await confirmToast(`${answered.at(-1).author_tag} a répondu au membre pendant que tu écrivais. Envoyer quand même ?`)) return;
+    if (!answered.length && writing.length && !await confirmToast(`${writing.join(', ')} ${writing.length > 1 ? 'écrivent' : 'écrit'} aussi une réponse. Envoyer quand même ?`)) return;
     setSendingReply(true);
     try {
       if (macroTpl && !replyFile) {
@@ -795,6 +868,7 @@ export default function TicketDetail() {
           )}
 
           <div className="ml-auto flex items-center gap-2 shrink-0">
+            <Viewers viewers={otherViewers} />
             <button onClick={loadUserHistory} aria-label="Historique du membre"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
                          text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07]

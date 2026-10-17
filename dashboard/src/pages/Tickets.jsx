@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
   ChevronDown, Calendar, AlertTriangle,
-  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine,
+  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine, Eye,
 } from 'lucide-react';
 import { hasDraft } from '../hooks/useDraft';
 import api from '../api';
@@ -252,7 +252,19 @@ export default function Tickets() {
     api.get('/templates').then(r => setTemplates(r.data)).catch(() => {});
   }, []);
 
+  // Tickets a colleague has open right now: ticketId -> [viewers]
+  const [presence, setPresence] = useState({});
+  useEffect(() => { api.get('/tickets/presence').then(r => setPresence(r.data)).catch(() => {}); }, []);
+  const viewersOf = id => (presence[id] || []).filter(v => v.userId !== user?.id);
+  const viewersMark = id => {
+    const v = viewersOf(id);
+    if (!v.length) return null;
+    const label = `Ouvert par ${v.map(x => x.username).join(', ')}`;
+    return <span className="inline-flex items-center gap-0.5 text-amber-400" title={label} role="img" aria-label={label}><Eye size={11} />{v.length > 1 && <span className="text-[10px]">{v.length}</span>}</span>;
+  };
+
   useSSE({
+    presence: (d) => setPresence(p => ({ ...p, [d.ticketId]: d.viewers })),
     ticket: (d) => {
       setData(prev => ({
         ...prev,
@@ -657,6 +669,7 @@ export default function Tickets() {
                 {unread && <span className="w-1.5 h-1.5 rounded-full bg-primary-light shrink-0" title="Nouveau message" />}
                 <span className="font-mono text-ink-4 tabular-nums">#{t.id}</span>
                 {hasDraft(`${user?.id}:${user?.guildId}:${t.id}:`) && <PenLine size={11} className="text-amber-400 shrink-0" aria-label="Brouillon" />}
+                {viewersMark(t.id)}
                 <span className="text-ink-1 font-medium truncate">{t.owner_tag}</span>
                 <span className="ml-auto shrink-0"><Badge label={t.status} variant={t.status} /></span>
               </div>
@@ -779,6 +792,7 @@ export default function Tickets() {
                   <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">
                     <span className="inline-flex items-center gap-1">#{t.id}
                       {hasDraft(`${user?.id}:${user?.guildId}:${t.id}:`) && <PenLine size={11} className="text-amber-400" aria-label="Brouillon non envoyé" />}
+                      {viewersMark(t.id)}
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>

@@ -22,6 +22,7 @@ const { t, sendToMember } = require('../../utils/i18n');
 const { parseJsonField } = require('../../utils/jsonField');
 const { escapeHtml } = require('../../utils/transcript');
 const { searchMessages, SOURCES } = require('../../utils/messageSearch');
+const presence = require('../../utils/ticketPresence');
 
 async function checkAccess(req, ticketId) {
   const [ticket] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticketId]);
@@ -155,6 +156,22 @@ router.get('/search', async (req, res) => {
     const page = Math.max(1, Math.min(500, parseInt(req.query.page) || 1));
     const vis = await visibilityFilter(req, 't.visibility_grade_id');
     res.json(await searchMessages(req.guildDb, { q, source, status, vis, page }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/tickets/presence — { ticketId: [viewers] } for the visible tickets open in a dashboard
+router.get('/presence', async (req, res) => {
+  if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const all = await presence.allViewers(req.guildId);
+    const ids = Object.keys(all).map(Number);
+    if (!ids.length) return res.json({});
+    const vis = await visibilityFilter(req);
+    const visible = await req.guildDb(`SELECT id FROM tickets WHERE id IN (?) AND ${vis.sql}`, [ids, ...vis.params]);
+    res.json(Object.fromEntries(visible.map(t => [t.id, all[t.id]])));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -595,6 +612,22 @@ router.post('/:id/typing', async (req, res) => {
       mode, stop: !!req.body.stop,
     }, req.guildId);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/tickets/:id/presence { leave } — heartbeat of an open ticket page (every 20 s) and
+// departure signal; returns who else has the ticket open
+router.post('/:id/presence', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    const me = req.session.user;
+    if (req.body?.leave) { await presence.leave(req.guildId, ticket.id, me.id); return res.json({ viewers: [] }); }
+    const viewers = await presence.touch(req.guildId, ticket.id, { id: me.id, username: me.username, avatar: me.avatar });
+    res.json({ viewers });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

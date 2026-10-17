@@ -970,6 +970,28 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[s1, s2, s3]]);
   }
 
+  // ── Presence: who has a ticket open ──
+  {
+    const p1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('32','u32','cpr1','open','présence')")).insertId;
+    const p2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('32','u32','cpr2','open','présence secrète', ?)", [g2])).insertId;
+    r = await req('POST', `/api/tickets/${p1}/presence`, { sid: sessions.FV });
+    check('présence: battement enregistré', r.status === 200 && r.body.viewers.length === 1 && r.body.viewers[0].userId === U.F, JSON.stringify(r.body));
+    await req('POST', `/api/tickets/${p2}/presence`, { sid: sessions.FV });
+    r = await req('POST', `/api/tickets/${p1}/presence`, { sid: sessions.S3T });
+    check('présence: le second voit le premier', r.body.viewers?.length === 2 && r.body.viewers.some(v => v.userId === U.F), JSON.stringify(r.body));
+    r = await req('GET', '/api/tickets/presence', { sid: sessions.S3T });
+    check('présence: liste filtrée par visibilité', r.status === 200 && r.body[p1]?.length === 2 && !r.body[p2], JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${p2}/presence`, { sid: sessions.S3T });
+    check('présence: ticket restreint refusé', r.status === 403, r.status);
+    await req('POST', `/api/tickets/${p1}/presence`, { sid: sessions.FV, body: { leave: true } });
+    r = await req('GET', '/api/tickets/presence', { sid: sessions.S3T });
+    check('présence: départ pris en compte', r.body[p1]?.length === 1 && r.body[p1][0].userId !== U.F, JSON.stringify(r.body));
+    await redis.hset(`presence:${G}`, `${p1}:999`, JSON.stringify({ username: 'vieux', at: Date.now() - 60000, since: 0 }));
+    r = await req('POST', `/api/tickets/${p1}/presence`, { sid: sessions.S3T });
+    check('présence: entrée expirée ignorée', !r.body.viewers.some(v => v.userId === '999'), JSON.stringify(r.body));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[p1, p2]]);
+  }
+
   // ── Linked tickets ──
   {
     const l1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('27','u27','cl1','open','bug paiement A')")).insertId;

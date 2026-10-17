@@ -16,6 +16,7 @@ const VERSIONS = [
     changes: [
       { type: 'tech', text: 'Mises à jour automatiques des dépendances (Dependabot) testées par la CI avant fusion' },
       { type: 'new',  text: 'Recherche dans tous les messages des tickets (membre, staff, notes internes) avec extrait surligné et ouverture sur le message trouvé ; aussi depuis la liste des tickets (bouton « Messages »)' },
+      { type: 'new',  text: 'Qui regarde ce ticket : les collègues qui ont la fiche ouverte sont affichés en direct (fiche et liste), et une confirmation évite les doubles réponses' },
       { type: 'new',  text: 'Brouillons : une réponse commencée sur une fiche est gardée si tu changes de page, avec un crayon dans la liste' },
     ]
   },
