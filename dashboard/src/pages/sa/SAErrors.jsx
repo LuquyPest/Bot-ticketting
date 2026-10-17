@@ -36,7 +36,7 @@ function AlertSettings() {
 
   const payload = () => ({
     ...cfg,
-    threshold: Number(cfg.threshold), windowMinutes: Number(cfg.windowMinutes),
+    threshold: Number(cfg.threshold), windowMinutes: Number(cfg.windowMinutes), discordDownMinutes: Number(cfg.discordDownMinutes ?? 5),
     discordUserIds: ids.split(/[\s,;]+/).filter(Boolean),
     webhookUrl: cfg.webhookUrl?.trim() || null,
   });
@@ -84,6 +84,9 @@ function AlertSettings() {
               <input type="number" min={1} value={cfg.windowMinutes} onChange={e => setCfg(c => ({ ...c, windowMinutes: e.target.value }))} className={input} />
             </label>
           </div>
+          <label className="block space-y-1 text-[11px] text-ink-3">Prévenir aussi si le bot est déconnecté de Discord depuis plus de (minutes, 0 = jamais) — indépendant de la case ci-dessus, aux mêmes destinataires ; pendant une coupure, seul le webhook est fiable
+            <input type="number" min={0} max={1440} value={cfg.discordDownMinutes ?? 5} onChange={e => setCfg(c => ({ ...c, discordDownMinutes: e.target.value }))} className={input} />
+          </label>
           <label className="block space-y-1 text-[11px] text-ink-3">IDs Discord à prévenir en MP (séparés par des virgules)
             <input value={ids} onChange={e => setIds(e.target.value)} placeholder="123456789012345678" className={`${input} font-mono`} />
           </label>

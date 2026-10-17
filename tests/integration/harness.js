@@ -1397,6 +1397,39 @@ async function main() {
     check('erreurs navigateur: protection CSRF', r.status === 403, r.status);
   }
 
+  // ── Discord disconnection alert ──
+  {
+    const { setSetting, getSetting } = app('./utils/saSettings');
+    const { runDiscordWatch } = app('./utils/discordWatch');
+    const before = await getSetting('error_alert', {});
+    await setSetting('error_alert', { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: ['200000000000000099'], webhookUrl: null, discordDownMinutes: 5 });
+    const os = require('os');
+    await redis.del(`discord:down_since:${os.hostname()}`, `discord:down_alerted:${os.hostname()}`);
+    const down = { isReady: () => false, ws: { status: 5 }, users: fakeClient.users };
+    const up = { isReady: () => true, ws: { status: 0 }, users: fakeClient.users };
+    const t0 = Date.now();
+    memberDms.length = 0;
+    let w = await runDiscordWatch(down, t0);
+    check('discord: coupure détectée sans alerte immédiate', w.connected === false && !w.alertSent && memberDms.length === 0, JSON.stringify(w));
+    w = await runDiscordWatch(down, t0 + 3 * 60000);
+    check('discord: pas d alerte avant le délai', !w.alertSent, JSON.stringify(w));
+    w = await runDiscordWatch(down, t0 + 6 * 60000);
+    check('discord: alerte après le délai', w.alertSent && memberDms.some(m => m.id === '200000000000000099' && /déconnecté/.test(m.p?.embeds?.[0]?.title)), JSON.stringify([w, memberDms]));
+    w = await runDiscordWatch(down, t0 + 8 * 60000);
+    check('discord: une seule alerte par coupure', !w.alertSent && memberDms.length === 1, JSON.stringify(w));
+    w = await runDiscordWatch(up, t0 + 9 * 60000);
+    check('discord: reconnexion signalée', w.recovered && memberDms.some(m => /reconnecté/.test(m.p?.embeds?.[0]?.title) && /9 min/.test(m.p.embeds[0].description)), JSON.stringify([w, memberDms.map(m => m.p?.embeds?.[0])]));
+    await setSetting('error_alert', { ...before, discordUserIds: ['200000000000000099'], discordDownMinutes: 0 });
+    memberDms.length = 0;
+    await runDiscordWatch(down, t0); await runDiscordWatch(down, t0 + 60 * 60000);
+    check('discord: alerte désactivable (0)', memberDms.length === 0, JSON.stringify(memberDms));
+    await redis.del(`discord:down_since:${os.hostname()}`, `discord:down_alerted:${os.hostname()}`);
+    await setSetting('error_alert', before);
+    await mk('SAdw', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
+    r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAdw, body: { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null, discordDownMinutes: -1 } });
+    check('discord: délai validé', r.status === 400 && /déconnexion/.test(r.body.error), JSON.stringify(r.body));
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

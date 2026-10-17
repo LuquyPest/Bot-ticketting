@@ -7,7 +7,8 @@ const { getRedis } = require('./redis');
 const logger = require('./logger');
 
 const KEY = 'error_alert';
-const DEFAULTS = { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null };
+// discordDownMinutes: alert when the bot has been disconnected from Discord that long (0 = never)
+const DEFAULTS = { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null, discordDownMinutes: 5 };
 const COOLDOWN_KEY = 'alert:errors:cooldown';
 const COOLDOWN_S = 3600;
 
@@ -30,22 +31,31 @@ function alertText({ count, top }, settings, test) {
   };
 }
 
-async function sendAlert(client, settings, summary, test = false) {
-  const { title, description } = alertText(summary, settings, test);
+// Delivers an alert to the configured recipients: Discord DMs and/or webhook (embed for a Discord
+// webhook, `data` as JSON otherwise)
+async function deliver(client, settings, { title, description, color = 0xed4245, event, data = {} }) {
   const results = { dm: 0, webhook: null };
   for (const id of settings.discordUserIds || []) {
     const user = await client?.users.fetch(id).catch(() => null);
-    if (user && await user.send({ embeds: [{ title, description, color: 0xed4245, timestamp: new Date().toISOString() }] }).catch(() => null)) results.dm++;
+    if (user && await user.send({ embeds: [{ title, description, color, timestamp: new Date().toISOString() }] }).catch(() => null)) results.dm++;
   }
   if (settings.webhookUrl) {
     const { safePostJson } = require('./webhookEmitter');
     const isDiscord = /^https:\/\/(?:\w+\.)?discord(?:app)?\.com\/api\/webhooks\//.test(settings.webhookUrl);
     const body = isDiscord
-      ? { username: 'Ticket Bot — alertes', embeds: [{ title, description, color: 0xed4245, timestamp: new Date().toISOString() }] }
-      : { event: 'error_spike', test, count: summary.count, windowMinutes: settings.windowMinutes, threshold: settings.threshold, top: summary.top, timestamp: new Date().toISOString() };
+      ? { username: 'Ticket Bot — alertes', embeds: [{ title, description, color, timestamp: new Date().toISOString() }] }
+      : { event, ...data, timestamp: new Date().toISOString() };
     results.webhook = await safePostJson(settings.webhookUrl, body);
   }
   return results;
+}
+
+async function sendAlert(client, settings, summary, test = false) {
+  const { title, description } = alertText(summary, settings, test);
+  return deliver(client, settings, {
+    title, description, event: 'error_spike',
+    data: { test, count: summary.count, windowMinutes: settings.windowMinutes, threshold: settings.threshold, top: summary.top },
+  });
 }
 
 // BullMQ job 'error-alert'
@@ -61,4 +71,4 @@ async function runErrorAlertCheck(client) {
   return { count: summary.count, sent: results };
 }
 
-module.exports = { runErrorAlertCheck, sendAlert, errorSummary, DEFAULTS, KEY };
+module.exports = { runErrorAlertCheck, sendAlert, deliver, errorSummary, DEFAULTS, KEY };

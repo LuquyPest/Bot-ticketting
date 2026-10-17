@@ -972,7 +972,7 @@ router.get('/audit', requireSuperAdmin, async (req, res) => {
 // ─── ERROR ALERT ─────────────────────────────────────────────────────────────
 
 function cleanErrorAlert(body) {
-  const { enabled, threshold, windowMinutes, discordUserIds, webhookUrl } = body || {};
+  const { enabled, threshold, windowMinutes, discordUserIds, webhookUrl, discordDownMinutes = 5 } = body || {};
   if (typeof enabled !== 'boolean') return { error: 'enabled doit être un booléen' };
   if (!Number.isInteger(threshold) || threshold < 1 || threshold > 10000) return { error: 'Seuil invalide (1 à 10 000)' };
   if (!Number.isInteger(windowMinutes) || windowMinutes < 1 || windowMinutes > 1440) return { error: 'Fenêtre invalide (1 à 1 440 minutes)' };
@@ -980,7 +980,8 @@ function cleanErrorAlert(body) {
     return { error: 'IDs Discord invalides (10 au plus)' };
   if (webhookUrl !== null && (typeof webhookUrl !== 'string' || webhookUrl.length > 500 || !/^https:\/\/.{3,}/.test(webhookUrl)))
     return { error: 'URL de webhook invalide (https uniquement)' };
-  return { value: { enabled, threshold, windowMinutes, discordUserIds: [...new Set(discordUserIds)], webhookUrl } };
+  if (!Number.isInteger(discordDownMinutes) || discordDownMinutes < 0 || discordDownMinutes > 1440) return { error: 'Délai de déconnexion invalide (0 à 1 440 minutes)' };
+  return { value: { enabled, threshold, windowMinutes, discordUserIds: [...new Set(discordUserIds)], webhookUrl, discordDownMinutes } };
 }
 
 // GET /api/sa/settings/error-alert
