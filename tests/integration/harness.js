@@ -806,6 +806,26 @@ async function main() {
   check('modèles: envoi groupé refusé avec le modèle personnel d\'un autre', r.status === 400, JSON.stringify([r.status, r.body]));
   await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tbulk]);
 
+  // ── Quality analytics: first response, stage SLA compliance, comments ──
+  {
+    await db('UPDATE guild_config SET sla_waiting_hours = 1 WHERE id = 1');
+    const q0 = (await req('GET', '/api/analytics/quality', { sid: sessions.FV, query: { days: 30 } })).body;
+    const w0 = q0.stages.find(x => x.stage === 'waiting');
+    // Closed ticket: open 30 min, waiting 4 h (over the 1 h SLA), answered after 20 min, rated with a comment
+    const tq = (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, created_at, first_response_at, closed_at)
+      VALUES ('23','u23','cq','closed','qualité', NOW() - INTERVAL 300 MINUTE, NOW() - INTERVAL 280 MINUTE, NOW() - INTERVAL 30 MINUTE)`)).insertId;
+    await db(`INSERT INTO audit_log (actor_id, actor_tag, action, source, ticket_id, details, created_at) VALUES ('1','F','ticket_stage','dashboard',?, '{"from":"open","to":"waiting"}', NOW() - INTERVAL 270 MINUTE)`, [tq]);
+    await db("INSERT INTO ticket_ratings (ticket_id, owner_id, rating, comment) VALUES (?, '23', 2, 'Trop long à mon goût')", [tq]);
+    const q1 = (await req('GET', '/api/analytics/quality', { sid: sessions.FV, query: { days: 30 } })).body;
+    const w1 = q1.stages.find(x => x.stage === 'waiting');
+    check('qualité: passage hors délai compté pour l\'étape', w1.measured === w0.measured + 1 && w1.breached === w0.breached + 1 && w1.slaHours === 1, JSON.stringify([w0, w1]));
+    check('qualité: première réponse comptée', q1.firstResponse.answered === q0.firstResponse.answered + 1 && q1.firstResponse.within1h !== null, JSON.stringify(q1.firstResponse));
+    check('qualité: commentaire de satisfaction listé', q1.satisfaction.comments.some(c => c.ticket_id === tq && c.comment === 'Trop long à mon goût') && q1.satisfaction.distribution.find(d => d.rating === 2).n >= 1, JSON.stringify(q1.satisfaction.comments.slice(0, 2)));
+    r = await req('GET', '/api/analytics/quality', { sid: sessions.S1F || sessions.FV, query: { days: 9999 } });
+    check('qualité: période bornée', r.status === 200 && r.body.days === 365, r.body.days);
+    await db('UPDATE guild_config SET sla_waiting_hours = 0 WHERE id = 1');
+  }
+
   // ── @mentions in internal notes ──
   {
     const tMen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('21','u21','cmen','open','mentions')")).insertId;
@@ -1299,6 +1319,8 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [otherTicket]);
   }
 
+  // The suite sends far more than 200 API requests a minute: reset the (Redis) API counter
+  for (const k of await redis.keys('rl:api:*')) await redis.del(k);
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
   r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   BarChart2, Activity, Users, Shield, Clock, AlertTriangle,
-  TrendingUp, CheckCircle, RefreshCw} from 'lucide-react';
+  TrendingUp, CheckCircle, RefreshCw, Star } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line
@@ -10,6 +10,7 @@ import api from '../api';
 import {} from '../utils/format';
 import Badge from '../components/Badge';
 import { SkeletonCard } from '../components/Skeleton';
+import { fmtMinutes } from '../components/SlaBadge';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -381,11 +382,124 @@ function TabStaff() {
   );
 }
 
+// ── Quality: first response, per-stage SLA compliance, satisfaction ──────────
+
+const STAGE_NAME = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
+const qcard = 'bg-surface-card border border-overlay/6 rounded-2xl p-5';
+
+function Metric({ label, value, sub }) {
+  return (
+    <div className={qcard}>
+      <p className="text-[11px] text-ink-4">{label}</p>
+      <p className="text-2xl font-bold text-ink-1 tabular-nums mt-1">{value ?? '—'}</p>
+      {sub && <p className="text-[11px] text-ink-3 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function TabQuality() {
+  const [days, setDays] = useState(30);
+  const [q, setQ] = useState(null);
+  useEffect(() => { setQ(null); api.get('/analytics/quality', { params: { days } }).then(r => setQ(r.data)).catch(() => setQ(false)); }, [days]);
+  if (q === null) return <div className="space-y-4">{[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}</div>;
+  if (q === false) return <p className="text-sm text-ink-4">Impossible de charger les statistiques.</p>;
+  const fr = q.firstResponse;
+  const maxN = Math.max(1, ...q.satisfaction.distribution.map(d => d.n));
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        {[7, 30, 90].map(d => (
+          <button key={d} onClick={() => setDays(d)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${days === d ? 'bg-primary/15 text-primary-light border-primary/40' : 'bg-surface border-overlay/[0.07] text-ink-3 hover:text-ink-1'}`}>
+            {d} jours
+          </button>
+        ))}
+      </div>
+
+      <h2 className="text-sm font-semibold text-ink-1">Temps de première réponse</h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Metric label="Médiane" value={fr.medianMinutes != null ? fmtMinutes(fr.medianMinutes) : null} sub={fr.avgMinutes != null ? `moyenne ${fmtMinutes(fr.avgMinutes)}` : null} />
+        <Metric label="Répondus en moins d'1 h" value={fr.within1h != null ? `${fr.within1h} %` : null} sub={fr.within4h != null ? `${fr.within4h} % en moins de 4 h` : null} />
+        <Metric label="Répondus en moins de 24 h" value={fr.within24h != null ? `${fr.within24h} %` : null} />
+        <Metric label="Sans réponse" value={fr.unanswered} sub={`sur ${fr.tickets} ticket(s) ouverts sur la période`} />
+      </div>
+
+      <div className={`${qcard} overflow-x-auto`}>
+        <h2 className="text-sm font-semibold text-ink-1 mb-1">Respect des délais par étape</h2>
+        <p className="text-[11px] text-ink-4 mb-3">Délais définis dans Paramètres ; temps reconstitué à partir des changements d'étape. Les passages en cours et encore dans les délais ne sont pas comptés.</p>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-left text-[11px] text-ink-4 border-b border-overlay/6">
+              {['Étape', 'Délai', 'Passages mesurés', 'Durée médiane', 'Hors délai', 'Respect'].map(h => <th key={h} className="py-2 pr-4 font-semibold">{h}</th>)}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-overlay/4">
+            {q.stages.map(s => (
+              <tr key={s.stage}>
+                <td className="py-2.5 pr-4 text-ink-1 font-medium">{STAGE_NAME[s.stage]}</td>
+                <td className="py-2.5 pr-4 text-ink-2">{s.slaHours ? `${s.slaHours} h` : 'aucun'}</td>
+                <td className="py-2.5 pr-4 text-ink-2 tabular-nums">{s.measured}{s.ongoing ? <span className="text-ink-4"> (+{s.ongoing} en cours)</span> : null}</td>
+                <td className="py-2.5 pr-4 text-ink-2 tabular-nums">{s.medianMinutes != null ? fmtMinutes(s.medianMinutes) : '—'}</td>
+                <td className="py-2.5 pr-4 tabular-nums text-ink-2">{s.slaHours ? s.breached : '—'}</td>
+                <td className="py-2.5 pr-4">
+                  {s.compliance == null ? <span className="text-ink-4">—</span> : (
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-24 rounded-full bg-overlay/6 overflow-hidden">
+                        <span className="block h-full rounded-r-[4px] bg-[var(--viz-1)]" style={{ width: `${s.compliance}%` }} />
+                      </span>
+                      <span className="text-ink-1 tabular-nums">{s.compliance} %</span>
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4">
+        <div className={qcard}>
+          <h2 className="text-sm font-semibold text-ink-1 mb-1">Satisfaction</h2>
+          <p className="text-[11px] text-ink-4 mb-3">{q.satisfaction.total} note(s){q.satisfaction.average != null ? ` · moyenne ${q.satisfaction.average} / 5` : ''}</p>
+          <ul className="space-y-2">
+            {[...q.satisfaction.distribution].reverse().map(d => (
+              <li key={d.rating} className="grid grid-cols-[3rem_1fr_2rem] items-center gap-2 text-xs">
+                <span className="text-ink-2 flex items-center gap-0.5">{d.rating} <Star size={10} className="text-amber-400" fill="currentColor" /></span>
+                <span className="h-2 rounded-r-[4px] bg-[var(--viz-1)]" style={{ width: `${Math.max(2, (d.n / maxN) * 100)}%` }} />
+                <span className="text-ink-1 tabular-nums text-right">{d.n}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className={qcard}>
+          <h2 className="text-sm font-semibold text-ink-1 mb-3">Commentaires des membres</h2>
+          {q.satisfaction.comments.length === 0 ? (
+            <p className="text-xs text-ink-4">Aucun commentaire sur la période.</p>
+          ) : (
+            <ul className="space-y-3 max-h-80 overflow-y-auto">
+              {q.satisfaction.comments.map(c => (
+                <li key={`${c.ticket_id}-${c.rated_at}`} className="text-xs">
+                  <p className="text-ink-2 whitespace-pre-wrap break-words">« {c.comment} »</p>
+                  <p className="text-[10px] text-ink-4 mt-0.5">
+                    {'★'.repeat(c.rating)}{'☆'.repeat(5 - c.rating)} · {c.owner_tag} ·{' '}
+                    <a href={`/tickets/${c.ticket_id}`} className="hover:text-primary-light">#{c.ticket_id}{c.subject ? ` — ${c.subject}` : ''}</a> · {fmtDate(c.rated_at)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const TABS = [
   { id: 'volume', label: 'Volume & Tendances', icon: BarChart2 },
   { id: 'sla',    label: 'Vue SLA',            icon: Shield },
+  { id: 'quality', label: 'Qualité',            icon: Star },
   { id: 'staff',  label: 'Comparatif Staff',   icon: Users },
 ];
 
@@ -417,6 +531,7 @@ export default function Analytics() {
       {/* Tab content */}
       {tab === 'volume' && <TabVolume period={period} onPeriodChange={setPeriod} />}
       {tab === 'sla'    && <TabSLA />}
+      {tab === 'quality' && <TabQuality />}
       {tab === 'staff'  && <TabStaff />}
     </div>
   );

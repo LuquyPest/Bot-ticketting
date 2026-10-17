@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Kanban as KanbanIcon, RefreshCw } from 'lucide-react';
 import api from '../api';
 import { useSSE } from '../hooks/useSSE';
+import SlaBadge from '../components/SlaBadge';
 
 const COLUMNS = [
   // Columns follow the ticket stages (Paramètres → catégories Ouvert / En attente / En cours)
@@ -42,6 +43,7 @@ function TicketCard({ ticket, onClick }) {
       {ticket.assignees?.length > 0 && (
         <p className="text-[10px] text-ink-4 truncate">👥 {ticket.assignees.map(a => a.username).join(', ')}</p>
       )}
+      <SlaBadge sla={ticket.sla} />
     </button>
   );
 }
