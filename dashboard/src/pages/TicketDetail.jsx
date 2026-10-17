@@ -619,6 +619,15 @@ export default function TicketDetail() {
     finally { setSavingSubject(false); }
   };
 
+  // Closed tickets about the same problem (open tickets only, refreshed when the member writes)
+  const [similar, setSimilar] = useState(null);
+  const memberMsgCount = notes.filter(n => n.source === 'user').length;
+  useEffect(() => {
+    if (!ticket || ticket.status !== 'open') { setSimilar(null); return; }
+    api.get(`/tickets/${id}/similar`).then(r => setSimilar(r.data)).catch(() => setSimilar(null));
+  }, [id, ticket?.status, ticket?.subject, Math.min(memberMsgCount, 5)]); // eslint-disable-line react-hooks/exhaustive-deps
+  const reuseReply = text => { setComposeMode('reply'); setReplyText(text); toast.success('Réponse reprise dans la zone de saisie : adapte-la avant d\'envoyer'); };
+
   const togglePin = async (note) => {
     try {
       const { data } = await api.post(`/tickets/${id}/notes/${note.id}/pin`, { pinned: !note.pinned_at });
@@ -1459,6 +1468,35 @@ export default function TicketDetail() {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TICKETS SIMILAIRES */}
+          {similar?.tickets?.length > 0 && (
+            <div className={panelCard}>
+              <SectionTitle>Tickets similaires</SectionTitle>
+              <ul className="space-y-3">
+                {similar.tickets.map(s => (
+                  <li key={s.id} className="rounded-lg border border-overlay/6 bg-overlay/2 p-2.5 space-y-1.5">
+                    <button onClick={() => navigate(`/tickets/${s.id}`)} className="text-left w-full">
+                      <p className="text-xs font-medium text-ink-1 truncate"><span className="font-mono text-ink-4">#{s.id}</span> {s.subject || '—'}</p>
+                      <p className="text-[10px] text-ink-4">
+                        Résolu {s.closed_at ? `le ${fmtDate(s.closed_at, { dateStyle: 'short' })}` : ''}{s.closed_by_tag ? ` par ${s.closed_by_tag}` : ''}
+                        {s.rating ? ` · ${'★'.repeat(s.rating)}` : ''}
+                      </p>
+                    </button>
+                    {s.reply && (
+                      <>
+                        <p className="text-[11px] text-ink-2 line-clamp-3 whitespace-pre-wrap border-l-2 border-primary/40 pl-2">{s.reply.content}</p>
+                        {ticket.status === 'open' && can('reply_ticket') && (
+                          <button onClick={() => reuseReply(s.reply.content)}
+                            className="text-[11px] font-medium text-primary-light hover:underline">Reprendre cette réponse</button>
+                        )}
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

@@ -1256,6 +1256,29 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [te]);
   }
 
+  // ── Similar tickets ──
+  {
+    const mkS = async (subject, ch, status, grade = null) => (await db('INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES (?, ?, ?, ?, ?, ?)', ['34', 'u34', ch, status, subject, grade])).insertId;
+    const cur = await mkS('Paiement', 'csim0', 'open');
+    const old1 = await mkS('Paiement', 'csim1', 'closed'), old2 = await mkS('Autre', 'csim2', 'closed'), secret = await mkS('Paiement', 'csim3', 'closed', g2), unrelated = await mkS('Jeu', 'csim4', 'closed');
+    await db(`INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES
+      (?, '34', 'u34', 'Mon virement bancaire est refusé par la plateforme quokka', 'user'),
+      (?, '35', 'u35', 'Virement bancaire refusé sur quokka depuis hier', 'user'),
+      (?, '1', 'Daryu (anonyme)', 'Il faut valider ton IBAN dans les réglages quokka', 'reply'),
+      (?, '36', 'u36', 'Quokka refuse mon virement aussi', 'user'),
+      (?, '37', 'u37', 'Virement bancaire quokka refusé encore', 'user'),
+      (?, '38', 'u38', 'Le jeu plante au lancement', 'user')`, [cur, old1, old1, old2, secret, unrelated]);
+    await db('INSERT INTO ticket_ratings (ticket_id, owner_id, rating) VALUES (?, ?, 5)', [old1, '35']);
+    r = await req('GET', `/api/tickets/${cur}/similar`, { sid: sessions.FV });
+    const ids = r.body.tickets?.map(x => x.id) || [];
+    check('similaires: le ticket résolu le plus proche en tête, avec sa réponse', r.status === 200 && ids[0] === old1 && /IBAN/.test(r.body.tickets[0].reply?.content) && r.body.tickets[0].reply.author_tag === 'Daryu' && r.body.tickets[0].rating === 5, JSON.stringify(r.body));
+    check('similaires: sans ticket sans rapport', !ids.includes(unrelated) && !ids.includes(cur), JSON.stringify(ids));
+    r = await req('GET', `/api/tickets/${cur}/similar`, { sid: sessions.S3T });
+    check('similaires: respecte la visibilité', r.status === 200 && !r.body.tickets.some(x => x.id === secret), JSON.stringify(r.body.tickets?.map(x => x.id)));
+    check('similaires: mots-clés sans mots courants', !r.body.keywords.includes('dans') && r.body.keywords.includes('quokka'), JSON.stringify(r.body.keywords));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [cur]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

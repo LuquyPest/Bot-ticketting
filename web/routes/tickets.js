@@ -1031,6 +1031,19 @@ router.get('/:id/history', async (req, res) => {
   }
 });
 
+// GET /api/tickets/:id/similar — closed tickets about the same problem, with the reply that closed them
+router.get('/:id/similar', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    res.json(await require('../../utils/similarTickets').findSimilarTickets(req.guildDb, ticket, vis));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // POST /api/tickets/:id/notes/:noteId/pin { pinned } — pin an internal note at the top of the ticket
 const MAX_PINNED = 5;
 router.post('/:id/notes/:noteId/pin', async (req, res) => {
