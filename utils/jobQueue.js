@@ -22,6 +22,27 @@ const JOBS = {
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
 };
 
+// Last run of each job (Redis hash jobs:last), shown on the super-admin « Santé » page
+const LAST_RUNS = 'jobs:last';
+async function recordRun(name, started, ok, error = null) {
+  await require('./redis').getRedis().hset(LAST_RUNS, name, JSON.stringify({ at: Date.now(), durationMs: Date.now() - started, ok, error })).catch(() => {});
+}
+async function jobsStatus() {
+  const q = getQueue();
+  const [schedulers, counts, lastRaw] = await Promise.all([
+    q.getJobSchedulers(), q.getJobCounts('waiting', 'active', 'delayed', 'failed'), require('./redis').getRedis().hgetall(LAST_RUNS),
+  ]);
+  const byName = new Map(schedulers.map(s => [s.key || s.id || s.name, s]));
+  return {
+    counts,
+    jobs: Object.entries(JOBS).map(([name, def]) => {
+      const s = byName.get(name);
+      const last = lastRaw?.[name] ? JSON.parse(lastRaw[name]) : null;
+      return { name, schedule: def.every ? `toutes les ${Math.round(def.every / 1000)} s` : def.pattern, next: s?.next || null, last };
+    }),
+  };
+}
+
 // BullMQ gets its own connections: closing it must not cut the shared client (sessions, pending states)
 let queue = null;
 const connection = () => ({
@@ -29,7 +50,8 @@ const connection = () => ({
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   maxRetriesPerRequest: null,
 });
-const getQueue = () => (queue ||= new Queue(QUEUE, { connection: connection() }));
+// A closed queue (shutdown, tests) is recreated on the next use
+const getQueue = () => { if (queue?.closing) queue = null; return (queue ||= new Queue(QUEUE, { connection: connection() })); };
 
 async function startWorkers(client) {
   const q = getQueue();
@@ -45,7 +67,14 @@ async function startWorkers(client) {
   const worker = new Worker(QUEUE, async job => {
     const def = JOBS[job.name];
     if (!def) return;
-    await def.run(client);
+    const started = Date.now();
+    try {
+      await def.run(client);
+      await recordRun(job.name, started, true);
+    } catch (err) {
+      await recordRun(job.name, started, false, err.message);
+      throw err;
+    }
   }, { connection: connection(), concurrency: 3 });
 
   // Without an 'error' listener, a Redis disconnect would crash the whole process
@@ -60,4 +89,4 @@ async function startWorkers(client) {
   return worker;
 }
 
-module.exports = { startWorkers, JOBS, getQueue };
+module.exports = { startWorkers, JOBS, getQueue, jobsStatus };

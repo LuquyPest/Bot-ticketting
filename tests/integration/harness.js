@@ -1643,6 +1643,17 @@ async function main() {
     check('formules: suppression', r.status === 200, r.status);
   }
 
+  // ── SA health page ──
+  {
+    r = await req('GET', '/api/sa/health', { sid: sessions.MGR });
+    check('santé: réservée au superadmin', r.status === 403, r.status);
+    r = await req('GET', '/api/sa/health', { sid: sessions.SAnew });
+    const tm2 = app('./utils/tenantMigrations');
+    check('santé: base et Redis joignables', r.status === 200 && r.body.database.ok && r.body.redis.ok && typeof r.body.process.uptimeS === 'number', JSON.stringify([r.body.database, r.body.redis]));
+    check('santé: tâches planifiées listées', r.body.jobs?.jobs?.length === Object.keys(app('./utils/jobQueue').JOBS).length && r.body.jobs.jobs.every(j => j.schedule), JSON.stringify(r.body.jobs).slice(0, 300));
+    check('santé: versions de schéma', r.body.schemas.latest === tm2.LATEST_VERSION && r.body.schemas.guilds.some(g => g.guildId === G && g.version === tm2.LATEST_VERSION), JSON.stringify(r.body.schemas));
+  }
+
   // ── Journal of the super-admin panel ──
   {
     await new Promise(res => setTimeout(res, 200));

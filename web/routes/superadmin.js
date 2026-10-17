@@ -807,6 +807,33 @@ router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
   res.json({ ok: true, deleted: r.affectedRows || 0 });
 });
 
+// ─── HEALTH ──────────────────────────────────────────────────────────────────
+
+const timed = async fn => { const t = Date.now(); try { await fn(); return { ok: true, ms: Date.now() - t }; } catch (err) { return { ok: false, ms: Date.now() - t, error: err.message }; } };
+
+// GET /api/sa/health — Discord, database, Redis, scheduled jobs, process, schema versions
+router.get('/health', requireSuperAdmin, async (req, res) => {
+  if (req.saUser.type !== 'superadmin') return res.status(403).json({ error: 'Réservé au super-admin' });
+  const client = req.app.locals.client;
+  const { getRedis } = require('../../utils/redis');
+  const [database, redis] = await Promise.all([timed(() => globalQuery('SELECT 1')), timed(() => getRedis().ping())]);
+  let jobs = null;
+  try { jobs = await require('../../utils/jobQueue').jobsStatus(); } catch (err) { jobs = { error: err.message }; }
+  const { schemaVersion, LATEST_VERSION } = require('../../utils/tenantMigrations');
+  const guilds = await globalQuery("SELECT guild_id, guild_name FROM guilds WHERE status IN ('active', 'suspended')");
+  const schemas = [];
+  for (const g of guilds) schemas.push({ guildId: g.guild_id, name: g.guild_name, version: await schemaVersion(getTenantDb(g.guild_id)).catch(() => null) });
+  const mem = process.memoryUsage();
+  const WS_STATUS = ['prêt', 'connexion', 'reconnexion', 'inactif', 'presque prêt', 'déconnecté', 'en attente des serveurs', 'identification', 'reprise'];
+  res.json({
+    now: Date.now(),
+    discord: client ? { ok: client.ws?.status === 0, status: WS_STATUS[client.ws?.status] ?? String(client.ws?.status), pingMs: client.ws?.ping ?? null, guilds: client.guilds?.cache?.size ?? 0, user: client.user?.tag || null } : { ok: false, status: 'client absent' },
+    database, redis, jobs,
+    process: { uptimeS: Math.round(process.uptime()), node: process.version, rssMb: Math.round(mem.rss / 1048576), heapMb: Math.round(mem.heapUsed / 1048576), pid: process.pid },
+    schemas: { latest: LATEST_VERSION, guilds: schemas },
+  });
+});
+
 // ─── PLANS ───────────────────────────────────────────────────────────────────
 // A plan is a set of limits; assigning it copies the limits into the guild (the existing
 // enforcement keeps working), and editing it updates every guild on that plan.
