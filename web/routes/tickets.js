@@ -196,7 +196,7 @@ router.get('/:id', async (req, res) => {
       })
     );
 
-    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
+    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours, low_rating_threshold FROM guild_config WHERE id = 1');
     res.json({
       ...ticket,
       participants,
@@ -204,6 +204,7 @@ router.get('/:id', async (req, res) => {
       // Stages whose Discord category is configured (Paramètres)
       stages: { open: !!cfg?.ticket_category_id, waiting: !!cfg?.waiting_category_id, in_progress: !!cfg?.in_progress_category_id },
       sla: slaStatus(ticket, cfg),
+      lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       transcript: transcript[0] || null,
       rating: rating[0] || null
     });
@@ -519,6 +520,38 @@ router.post('/:id/typing', async (req, res) => {
       ticketId: ticket.id, userId: req.session.user.id, username: req.session.user.username,
       mode, stop: !!req.body.stop,
     }, req.guildId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/tickets/:id/followup { content } — get back to the member of a closed ticket (after a
+// low rating): DM with the reopen button when still allowed, history note, follow-up recorded.
+router.post('/:id/followup', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    if (ticket.status !== 'closed') return res.status(400).json({ error: 'Le ticket est encore ouvert : réponds-y normalement' });
+    const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+    if (!content || content.length > 2000) return res.status(400).json({ error: 'Message requis (2000 caractères max)' });
+    const client = req.app.locals.client;
+    const [cfg] = await req.guildDb('SELECT member_reopen_days FROM guild_config WHERE id = 1');
+    const days = Number(cfg?.member_reopen_days ?? 7);
+    const canReopen = days > 0 && !ticket.merged_into && ticket.closed_at && (Date.now() - new Date(ticket.closed_at).getTime()) < days * 864e5;
+    const { memberReopenButton } = require('../../utils/components');
+    const sent = await sendToMember(client, ticket.owner_id, req.guildId, () => ({
+      embeds: [staffReplyDmEmbed(client, req.guildId, ticket, { sender: req.session.user.username, content })],
+      components: canReopen ? [memberReopenButton(ticket.id, req.guildId)] : [],
+    }));
+    if (!sent) return res.status(502).json({ error: 'Impossible d\'envoyer le MP au membre (MP fermés ?)' });
+    await req.guildDb('UPDATE tickets SET followup_at = NOW(), followup_by_tag = ? WHERE id = ?', [req.session.user.username, ticket.id]);
+    const r = await req.guildDb('INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
+      [ticket.id, req.session.user.id, req.session.user.username, content]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_followup', ticketId: ticket.id, details: { excerpt: content.slice(0, 120) } });
+    broadcast('note', { ticketId: ticket.id, note: { id: r.insertId, ticket_id: ticket.id, author_id: req.session.user.id, author_tag: req.session.user.username, content, source: 'reply', created_at: new Date() } }, req.guildId);
+    broadcast('ticket', { id: ticket.id, followup_at: new Date(), followup_by_tag: req.session.user.username }, req.guildId);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

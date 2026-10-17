@@ -229,6 +229,7 @@ export default function Settings() {
         require2fa:               cfg.require2fa || 'none',
         memberReopenDays:         cfg.memberReopenDays ?? 7,
         notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
+        lowRatingThreshold:       cfg.lowRatingThreshold ?? 2,
         embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
@@ -513,6 +514,10 @@ export default function Settings() {
 
       <Section title="Limites et délais">
         <div className="grid grid-cols-2 gap-4">
+          <Field label="Alerte note basse (étoiles)" hint="Une note inférieure ou égale prévient les fondateurs et chefs support — 0 = désactivé">
+            <input type="number" min={0} max={4} value={cfg.lowRatingThreshold ?? 2}
+              onChange={e => set('lowRatingThreshold', Math.max(0, Math.min(4, parseInt(e.target.value) || 0)))} className={NUM_INPUT} />
+          </Field>
           <Field label="Réouverture par le membre (jours)" hint="Bouton « Rouvrir mon ticket » dans le MP de fermeture — 0 = désactivé">
             <input type="number" min={0} max={90} value={cfg.memberReopenDays ?? 7}
               onChange={e => set('memberReopenDays', Math.max(0, Math.min(90, parseInt(e.target.value) || 0)))} className={NUM_INPUT} />

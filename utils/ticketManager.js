@@ -636,6 +636,7 @@ function createManager(db, client, guildId) {
   async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
     await db('INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating) VALUES (?, ?, ?, ?)', [ticketId, ownerId, closedById, rating]);
     await recordEvent(db, { actor: { id: ownerId, tag: ownerId, source: 'discord' }, action: 'ticket_rating', ticketId, details: { rating, staff: closedByTag || null } });
+    require('./lowRating').notifyLowRating(db, client, gid, ticketId, rating).catch(() => null);
     if (!closedById) return;
     await db(
       `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed, total_ratings, total_rating_score)

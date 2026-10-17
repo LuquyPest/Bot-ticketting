@@ -31,6 +31,11 @@ function NotifListener({ add }) {
         : (data.ownerTag || 'Nouveau ticket'),
       href: data.id ? `/tickets/${data.id}` : null,
     }),
+    low_rating: (data) => {
+      const body = `Note ${data.rating}/5 de ${data.ownerTag} sur le ticket #${data.ticketId} — à recontacter`;
+      add({ type: 'low_rating', title: 'Note basse', body, href: `/tickets/${data.ticketId}` });
+      toast(body, { icon: '⚠️', duration: 8000 });
+    },
     mention: (data) => {
       const body = `${data.by} t'a mentionné dans le ticket #${data.ticketId} : ${data.excerpt}`;
       add({ type: 'mention', title: 'Mention', body, href: `/tickets/${data.ticketId}` });

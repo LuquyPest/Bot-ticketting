@@ -413,6 +413,20 @@ export default function TicketDetail() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
+  // Follow-up after a low rating
+  const [followupText, setFollowupText] = useState('');
+  const [sendingFollowup, setSendingFollowup] = useState(false);
+  const sendFollowup = async () => {
+    setSendingFollowup(true);
+    try {
+      await api.post(`/tickets/${id}/followup`, { content: followupText.trim() });
+      setFollowupText('');
+      toast.success('Message envoyé au membre');
+      loadTicket();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setSendingFollowup(false); }
+  };
+
   // Merge: other open tickets of the same member
   const [mergeCandidates, setMergeCandidates] = useState(null);
   const [mergeTarget, setMergeTarget] = useState('');
@@ -1411,6 +1425,24 @@ export default function TicketDetail() {
                 <blockquote className="mt-2.5 pl-2.5 border-l-2 border-amber-400/40 text-xs text-ink-2 whitespace-pre-wrap wrap-break-word">
                   {ticket.rating.comment}
                 </blockquote>
+              )}
+              {ticket.status === 'closed' && ticket.lowRatingThreshold > 0 && ticket.rating.rating <= ticket.lowRatingThreshold && can('reply_ticket') && (
+                ticket.followup_at ? (
+                  <p className="text-[10px] text-emerald-400 mt-2.5">
+                    Membre recontacté par {ticket.followup_by_tag} · {fmtDate(ticket.followup_at, { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] text-amber-300">Note basse : recontacte le membre (MP, avec le bouton « Rouvrir » s'il est encore possible).</p>
+                    <textarea value={followupText} onChange={e => setFollowupText(e.target.value)} rows={3} maxLength={2000}
+                      placeholder="Bonjour, nous avons vu ta note…" aria-label="Message de suivi"
+                      className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-primary/50 resize-none" />
+                    <button onClick={sendFollowup} disabled={!followupText.trim() || sendingFollowup}
+                      className="w-full py-2 text-xs rounded-xl font-semibold border bg-primary/10 text-primary-light border-primary/20 hover:bg-primary/20 disabled:opacity-50">
+                      {sendingFollowup ? 'Envoi…' : 'Recontacter le membre'}
+                    </button>
+                  </div>
+                )
               )}
             </div>
           )}

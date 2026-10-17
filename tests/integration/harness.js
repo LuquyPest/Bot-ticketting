@@ -630,6 +630,32 @@ async function main() {
     await db('UPDATE guild_config SET member_reopen_days = 7 WHERE id = 1');
   }
 
+  // Low rating: founders and chief support alerted, follow-up from the dashboard
+  {
+    const ML3 = '200000000000000023';
+    const tl = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, closed_at) VALUES (?, 'member23', 'clr', 'closed', 'note basse', NOW())", [ML3])).insertId;
+    memberDms.length = 0;
+    const tmL = createManager(db, fakeClient, G);
+    await tmL.saveRating(tl, ML3, null, 1, null);
+    await new Promise(res => setTimeout(res, 200));
+    const lowDm = memberDms.find(m => m.id === U.F)?.p?.embeds?.[0]?.data;
+    const recips = await app('./utils/lowRating').notifyLowRating(db, fakeClient, G, tl, 1);
+    check('note basse: fondateurs et chefs support prévenus', lowDm?.description?.includes('**1/5**') && recips.includes(U.F) && recips.includes('400000000000000002'), JSON.stringify([lowDm, recips]));
+    const tl2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, closed_at) VALUES (?, 'member23', 'clr2', 'closed', NOW())", [ML3])).insertId;
+    check('note basse: rien au-dessus du seuil', (await app('./utils/lowRating').notifyLowRating(db, fakeClient, G, tl2, 4)).length === 0);
+    memberDms.length = 0;
+    r = await req('POST', `/api/tickets/${tl}/followup`, { sid: sessions.FV, body: { content: 'Désolé pour ton expérience, on peut en parler ?' } });
+    const fu = memberDms.find(m => m.id === ML3)?.p;
+    const [fuRow] = await db('SELECT followup_at, followup_by_tag FROM tickets WHERE id = ?', [tl]);
+    check('note basse: membre recontacté avec le bouton Rouvrir', r.status === 200 && fu?.embeds?.[0]?.data?.description?.includes('Désolé') && fu.components?.[0]?.components?.[0]?.data?.custom_id === `memberreopen_${tl}_${G}` && fuRow.followup_at && fuRow.followup_by_tag === 'F', JSON.stringify([r.body, fuRow]));
+    r = await req('GET', `/api/tickets/${tl}`, { sid: sessions.FV });
+    check('note basse: suivi visible dans la fiche', r.body.followup_by_tag === 'F' && r.body.lowRatingThreshold === 2, JSON.stringify([r.body.followup_by_tag, r.body.lowRatingThreshold]));
+    const topen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status) VALUES (?, 'member23', 'clr3', 'open')", [ML3])).insertId;
+    r = await req('POST', `/api/tickets/${topen}/followup`, { sid: sessions.FV, body: { content: 'x' } });
+    check('note basse: recontact réservé aux tickets fermés', r.status === 400, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [topen]);
+  }
+
   // /reopen works even when the member has another open ticket (several tickets per member)
   const tOpen9 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member09', 'co9', 'open', 'autre')", [M9])).insertId;
   {

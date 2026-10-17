@@ -130,6 +130,15 @@ const MIGRATIONS = [
     name: 'Notification du membre aux changements d\'étape (option)',
     statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS notify_member_stage TINYINT(1) NOT NULL DEFAULT 0'],
   },
+  {
+    version: 5,
+    name: 'Suivi des notes basses (seuil, date de recontact)',
+    statements: [
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS low_rating_threshold TINYINT NOT NULL DEFAULT 2',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS followup_at DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS followup_by_tag VARCHAR(100) DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

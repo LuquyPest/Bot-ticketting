@@ -17,6 +17,7 @@ const VERSIONS = [
       { type: 'tech', text: 'Migrations versionnées des bases des serveurs (appliquées une seule fois, erreurs visibles) ; tables des fonctionnalités retirées supprimées' },
       { type: 'new',  text: 'Le membre peut rouvrir son ticket depuis le MP de fermeture pendant quelques jours, avec tout son historique' },
       { type: 'new',  text: 'Option : le membre est prévenu en MP quand son ticket change d\'étape' },
+      { type: 'new',  text: 'Note basse : fondateurs et chefs support prévenus, bouton « Recontacter le membre » dans la fiche' },
     ]
   },
   {
