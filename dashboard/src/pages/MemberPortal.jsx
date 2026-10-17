@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket } from 'lucide-react';
 import api from '../api';
+import MessageContent from '../components/MessageContent';
 
 // Member web space: a member signs in with Discord and reads their own tickets (no staff data).
 // French by default, English when the browser asks for it.
@@ -49,13 +50,6 @@ function GuildIcon({ guild }) {
   return guild.icon
     ? <img src={guild.icon} alt="" className="w-7 h-7 rounded-lg object-cover" />
     : <span className="w-7 h-7 rounded-lg bg-primary/20 text-primary-light text-xs font-bold flex items-center justify-center">{guild.name?.[0] || '?'}</span>;
-}
-
-// Links in messages (attachments are sent as URLs)
-function Linkified({ text }) {
-  return String(text).split(/(https?:\/\/\S+)/g).map((part, i) => (/^https?:\/\//.test(part)
-    ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline break-all">{part}</a>
-    : part));
 }
 
 function Shell({ me, onLogout, children }) {
@@ -195,7 +189,7 @@ function TicketView({ guildId, ticketId, me }) {
               <p className={`text-[11px] font-semibold ${m.kind === 'staff' ? 'text-primary-light' : 'text-white'}`}>
                 {m.kind === 'me' ? STR.you : m.author || STR.member}
               </p>
-              <p className="text-sm whitespace-pre-wrap wrap-break-word mt-0.5"><Linkified text={m.content} /></p>
+              <p className="text-sm whitespace-pre-wrap wrap-break-word mt-0.5"><MessageContent text={m.content} light={m.kind !== 'staff'} /></p>
               <p className={`text-[10px] mt-1 ${m.kind === 'staff' ? 'text-ink-4' : 'text-white'}`}>{fmt(m.created_at)}</p>
             </div>
           </li>

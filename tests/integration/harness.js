@@ -1211,6 +1211,19 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tp]);
   }
 
+  // ── Attachment previews (re-signed Discord links) ──
+  {
+    const fresh = `https://cdn.discordapp.com/attachments/111111111111111111/222222222222222222/a.png?ex=${Math.floor(Date.now() / 1000 + 3600).toString(16)}&is=1&hm=2`;
+    r = await req('GET', '/api/attachment', { query: { u: fresh } });
+    check('pièce jointe: réservée aux connectés', r.status === 401, r.status);
+    r = await req('GET', '/api/attachment', { sid: sessions.FV, query: { u: 'https://evil.example/attachments/1/2/a.png' } });
+    check('pièce jointe: seuls les liens Discord sont relayés', r.status === 400, r.status);
+    r = await req('GET', '/api/attachment', { sid: sessions.FV, query: { u: fresh } });
+    check('pièce jointe: lien encore valide redirigé tel quel', r.status === 302 && r.headers.location === fresh, r.status + ' ' + r.headers.location);
+    r = await req('GET', '/api/attachment', { sid: sessions.MEM, query: { u: 'https://cdn.discordapp.com/attachments/1/2/b.png?ex=1' } });
+    check('pièce jointe: lien expiré inconnu de Discord', r.status === 404 || r.status === 401, r.status);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

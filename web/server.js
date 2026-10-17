@@ -36,6 +36,7 @@ app.use(helmet({
       scriptSrc:   ["'self'"],
       styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       imgSrc:      ["'self'", 'data:', 'https://cdn.discordapp.com', 'https://media.discordapp.net'],
+      mediaSrc:    ["'self'", 'https://cdn.discordapp.com', 'https://media.discordapp.net'],
       fontSrc:     ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
       connectSrc:  ["'self'"],
       frameSrc:    ["'none'"],
@@ -147,6 +148,18 @@ app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/push',     require('./routes/push'));
 app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
+
+// GET /api/attachment?u=<Discord attachment link> — redirects to a working (re-signed) link, for
+// the previews in the ticket view and the member space. Signed-in staff or members only.
+app.get('/api/attachment', async (req, res) => {
+  if (!req.session?.user && !req.session?.member) return res.status(401).json({ error: 'Non connecté' });
+  const { parseAttachment, freshAttachmentUrl } = require('../utils/discordAttachments');
+  if (!parseAttachment(req.query.u)) return res.status(400).json({ error: 'Lien de pièce jointe invalide' });
+  const url = await freshAttachmentUrl(app.locals.client, req.query.u).catch(() => null);
+  if (!url) return res.status(404).json({ error: 'Pièce jointe introuvable ou expirée' });
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  res.redirect(302, url);
+});
 
 const requireRole    = require('./middleware/role');
 const guildMiddleware = require('./middleware/guild');

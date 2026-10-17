@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
 import useDraft from '../hooks/useDraft';
+import MessageContent from '../components/MessageContent';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 import { confirmToast } from '../utils/confirmToast';
@@ -963,7 +964,7 @@ export default function TicketDetail() {
                     <Lock size={10} className="text-ink-4 mt-0.5 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-ink-2 leading-relaxed whitespace-pre-wrap wrap-break-word">
-                        {note.content}
+                        <MessageContent text={note.content} />
                       </p>
                       <p className="text-[10px] text-ink-4 mt-1.5">
                         {note.author_tag} · {fmtDate(note.created_at)}
@@ -1019,7 +1020,7 @@ export default function TicketDetail() {
                   <div className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed
                                    whitespace-pre-wrap wrap-break-word max-w-sm ${style.bubble}
                                    ${isLeft ? 'rounded-tl-md' : 'rounded-tr-md'}`}>
-                    {note.content}
+                    <MessageContent text={note.content} light={!isLeft} />
                   </div>
 
                   <div className={`flex items-center gap-2 px-0.5 ${isLeft ? '' : 'flex-row-reverse'}`}>

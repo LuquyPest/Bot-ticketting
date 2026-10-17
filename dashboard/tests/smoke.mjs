@@ -28,7 +28,8 @@ const MOCK = {
   '/api/tickets/1/notes': [
     { id: 1, ticket_id: 1, author_id: '20', author_tag: 'membre1', content: 'Bonjour, je n\'arrive pas à payer.', source: 'user', created_at: iso(50) },
     { id: 2, ticket_id: 1, author_id: '1', author_tag: 'Daryu', content: 'On regarde ça tout de suite.', source: 'reply', created_at: iso(40) },
-    { id: 3, ticket_id: 1, author_id: '1', author_tag: 'Daryu', content: 'Note interne : vérifier Stripe', source: 'web', created_at: iso(30) }],
+    { id: 3, ticket_id: 1, author_id: '1', author_tag: 'Daryu', content: 'Note interne : vérifier Stripe', source: 'web', created_at: iso(30), pinned_at: iso(20), pinned_by_tag: 'Daryu' },
+    { id: 4, ticket_id: 1, author_id: '2', author_tag: 'membre1', content: 'Voici la capture\nhttps://cdn.discordapp.com/attachments/111111111111111111/222222222222222222/capture.png?ex=ffffffff', source: 'user', created_at: iso(10) }],
   '/api/templates': [{ id: 1, name: 'Remboursement', content: 'Bonjour {{username}}', subject: 'paiement', scope: 'shared', suggested: true, mine: true, created_by_id: '1', created_by_tag: 'Daryu', use_count: 3 }],
   '/api/dashboard/stats': { unclaimedTickets: 3, openTickets: 8, closedToday: 4, avgRating: 4.6, totalTickets: 120, priorityBreakdown: { low: 2, normal: 5, urgent: 1 } },
   '/api/dashboard/activity': { opened: days(14), closed: days(14), unclaimed: days(14) },
@@ -65,12 +66,15 @@ const MOCK = {
     perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, max_tickets: 10, staff: 5, max_agents: 0, opened30d: 50, avgRating: 4.5, transcript_retention_days: 90 }] },
 };
 
+// 1×1 image served for attachment previews
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+
 // [name, path, text that must be visible, anonymous visitor]
 const PAGES = [
   ['login', '/login', 'Discord', true],
   ['dashboard', '/', 'Dashboard'],
   ['tickets', '/tickets', 'Problème de paiement 1'],
-  ['ticket', '/tickets/1', 'Ticket #1'],
+  ['ticket', '/tickets/1', 'Voici la capture'],
   ['settings', '/settings', 'Paramètres'],
   ['analytics', '/analytics', 'Analytiques'],
   ['audit', '/audit', "Journal d'activité"],
@@ -104,6 +108,7 @@ for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
   await page.route('**/api/**', route => {
     const u = new URL(route.request().url());
     if (anonymous && (u.pathname.endsWith('/auth/me') || u.pathname === '/api/member/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
+    if (u.pathname === '/api/attachment') return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
     const body = u.pathname.endsWith('/presence') && route.request().method() === 'POST'
       ? { viewers: [{ userId: '2', username: 'Collègue', avatar: null, since: now }] }
       : MOCK[u.pathname] ?? (route.request().method() === 'GET' ? [] : { ok: true });
