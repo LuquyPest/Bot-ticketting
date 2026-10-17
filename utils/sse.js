@@ -15,6 +15,7 @@ const TICKET_ID_OF = {
   note:               d => d.ticketId,
   participant_add:    d => d.ticketId,
   participant_remove: d => d.ticketId,
+  typing:             d => d.ticketId,
 };
 
 const MAX_STREAMS_PER_USER = 5;

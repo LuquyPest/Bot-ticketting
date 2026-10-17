@@ -944,6 +944,13 @@ async function main() {
   await req('POST', `/api/tickets/${ta2}/assignees`, { sid: sessions.FV, body: { user_id: U.S1 } });
   await new Promise(res => setTimeout(res, 300));
   check('attribution: MP désactivable depuis le profil (le temps réel reste)', r.status === 200 && !memberDms.some(m => m.id === U.S1) && /event: assigned/.test(streams.S1T.data), JSON.stringify([r.status, memberDms]));
+  // "X is writing": relayed live to the others who see the ticket
+  streams.S3T.data = '';
+  r = await req('POST', `/api/tickets/${ta2}/typing`, { sid: sessions.FV, body: { mode: 'reply' } });
+  await new Promise(res => setTimeout(res, 300));
+  check('brouillons: « en train d\'écrire » relayé aux collègues', r.status === 200 && /event: typing/.test(streams.S3T.data) && streams.S3T.data.includes('"username":"F"') && streams.S3T.data.includes(`"ticketId":${ta2}`), streams.S3T.data.slice(-200));
+  r = await req('POST', `/api/tickets/${ta2}/typing`, { sid: sessions.RD, body: { mode: 'reply' } });
+  check('brouillons: réservé à reply_ticket', r.status === 403, r.status);
   for (const st of Object.values(streams)) st.req.destroy();
   await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ta, ta2]]);
 

@@ -508,6 +508,24 @@ router.post('/:id/apply-template', async (req, res) => {
   }
 });
 
+// POST /api/tickets/:id/typing { mode: 'reply' | 'note', stop } — "X is writing" signal, sent by
+// the dashboard every few seconds while composing; relayed live to the others seeing the ticket.
+router.post('/:id/typing', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const mode = req.body.mode === 'note' ? 'note' : 'reply';
+    broadcast('typing', {
+      ticketId: ticket.id, userId: req.session.user.id, username: req.session.user.username,
+      mode, stop: !!req.body.stop,
+    }, req.guildId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.post('/:id/reply', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');

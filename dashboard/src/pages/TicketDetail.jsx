@@ -193,7 +193,40 @@ export default function TicketDetail() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [notes]);
 
+  // Tell colleagues I am writing (at most every 4 s while the text changes); stop when emptied
+  const typingSentAt = useRef(0);
+  const draft = composeMode === 'note' ? newNote : replyText;
+  useEffect(() => {
+    if (!ticketId) return;
+    if (!draft.trim()) {
+      if (typingSentAt.current) { typingSentAt.current = 0; api.post(`/tickets/${id}/typing`, { mode: composeMode, stop: true }).catch(() => {}); }
+      return;
+    }
+    if (Date.now() - typingSentAt.current < 4000) return;
+    typingSentAt.current = Date.now();
+    api.post(`/tickets/${id}/typing`, { mode: composeMode }).catch(() => {});
+  }, [draft, composeMode, id, ticketId]);
+
+  // Colleagues writing in this ticket right now: userId -> { username, mode, at }
+  const [typers, setTypers] = useState({});
+  useEffect(() => {
+    const t = setInterval(() => setTypers(prev => {
+      const fresh = Object.fromEntries(Object.entries(prev).filter(([, v]) => Date.now() - v.at < 8000));
+      return Object.keys(fresh).length === Object.keys(prev).length ? prev : fresh;
+    }), 2000);
+    return () => clearInterval(t);
+  }, []);
+
   useSSE({
+    typing: (data) => {
+      if (data.ticketId !== ticketId || data.userId === user?.id) return;
+      setTypers(prev => {
+        const next = { ...prev };
+        if (data.stop) delete next[data.userId];
+        else next[data.userId] = { username: data.username, mode: data.mode, at: Date.now() };
+        return next;
+      });
+    },
     note: (data) => {
       if (data.ticketId !== ticketId) return;
       setNotes(prev => {
@@ -851,6 +884,15 @@ export default function TicketDetail() {
                 </span>
                 <button onClick={() => setMacroTpl(null)} className="ml-auto hover:text-ink-1" aria-label="Envoyer sans les actions"><X size={11} /></button>
               </div>
+            )}
+
+            {Object.keys(typers).length > 0 && (
+              <p className="mb-2 text-[11px] text-amber-300 flex items-center gap-1.5" role="status" aria-live="polite">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
+                {Object.values(typers).map(t => t.username).join(', ')}{' '}
+                {Object.keys(typers).length > 1 ? 'sont' : 'est'} en train d'écrire
+                {Object.values(typers).every(t => t.mode === 'note') ? ' une note' : ' une réponse'} sur ce ticket
+              </p>
             )}
 
             {/* @mention suggestions (internal notes) */}
