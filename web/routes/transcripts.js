@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { visibilityFilter } = require('../../utils/gradePermissions');
+const { openTranscript } = require('../../utils/transcriptCrypto');
 
 router.use((req, res, next) => {
   if (!req.userIsFondateur && !req.userPermissions.has('view_transcripts')) {
@@ -60,7 +61,7 @@ router.get('/:id/html', async (req, res) => {
     const snap = await findSnapshot(req, 'ts.html');
     if (!snap) return res.status(404).send('Introuvable');
     res.setHeader('Content-Security-Policy', TRANSCRIPT_CSP);
-    res.type('html').send(snap.html);
+    res.type('html').send(openTranscript(snap.html));
   } catch (err) {
     console.error(err);
     res.status(500).send('Erreur');
@@ -72,7 +73,7 @@ router.get('/:id/txt', async (req, res) => {
     const snap = await findSnapshot(req, 'ts.txt, ts.ticket_id');
     if (!snap) return res.status(404).send('Introuvable');
     res.setHeader('Content-Disposition', `attachment; filename="transcript-${snap.ticket_id}.txt"`);
-    res.type('text/plain').send(snap.txt);
+    res.type('text/plain').send(openTranscript(snap.txt));
   } catch (err) {
     console.error(err);
     res.status(500).send('Erreur');

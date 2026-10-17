@@ -5,11 +5,14 @@
 // scripts/rotate-encryption-key.js (re-encrypts everything), then drop the old key.
 //
 // Formats: enc:v2:<keyId>:<base64(iv|tag|ciphertext)> (keyId = first 8 hex of sha256(key));
+// enc:v2z:<keyId>:<…> same, the text being gzipped before encryption (large texts: transcripts);
 // enc:v1:<…> written before rotation existed (tried with every known key); plain base32 legacy.
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const V1 = 'enc:v1:';
 const V2 = 'enc:v2:';
+const V2Z = 'enc:v2z:';
 let _keys = null; // [{ id, key }], current first
 
 const keyId = k => crypto.createHash('sha256').update(k).digest('hex').slice(0, 8);
@@ -30,27 +33,38 @@ function keys() {
   return _keys;
 }
 
-function seal(plain) {
+// compress: gzip first (much smaller for long, repetitive texts such as HTML transcripts)
+function seal(plain, { compress = false } = {}) {
   const { id, key } = keys()[0];
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const ct = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
-  return `${V2}${id}:${Buffer.concat([iv, cipher.getAuthTag(), ct]).toString('base64')}`;
+  const input = compress ? zlib.gzipSync(Buffer.from(String(plain), 'utf8')) : Buffer.from(String(plain), 'utf8');
+  const ct = Buffer.concat([cipher.update(input), cipher.final()]);
+  return `${compress ? V2Z : V2}${id}:${Buffer.concat([iv, cipher.getAuthTag(), ct]).toString('base64')}`;
 }
 
-function decrypt(key, buf) {
+function decryptBuffer(key, buf) {
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, buf.subarray(0, 12));
   decipher.setAuthTag(buf.subarray(12, 28));
-  return Buffer.concat([decipher.update(buf.subarray(28)), decipher.final()]).toString('utf8');
+  return Buffer.concat([decipher.update(buf.subarray(28)), decipher.final()]);
+}
+const decrypt = (key, buf) => decryptBuffer(key, buf).toString('utf8');
+
+function keyFor(id) {
+  const k = keys().find(x => x.id === id);
+  if (!k) throw new Error(`Clé de chiffrement ${id} inconnue (ajoute-la à dashboard.previousEncryptionKeys)`);
+  return k.key;
 }
 
 function open(stored) {
   if (typeof stored !== 'string') return stored;
+  if (stored.startsWith(V2Z)) {
+    const [id, data] = stored.slice(V2Z.length).split(':');
+    return zlib.gunzipSync(decryptBuffer(keyFor(id), Buffer.from(data, 'base64'))).toString('utf8');
+  }
   if (stored.startsWith(V2)) {
     const [id, data] = stored.slice(V2.length).split(':');
-    const k = keys().find(x => x.id === id);
-    if (!k) throw new Error(`Clé de chiffrement ${id} inconnue (ajoute-la à dashboard.previousEncryptionKeys)`);
-    return decrypt(k.key, Buffer.from(data, 'base64'));
+    return decrypt(keyFor(id), Buffer.from(data, 'base64'));
   }
   if (stored.startsWith(V1)) {
     const buf = Buffer.from(stored.slice(V1.length), 'base64');
@@ -60,9 +74,9 @@ function open(stored) {
   return stored; // legacy plaintext
 }
 
-const isSealed = stored => typeof stored === 'string' && (stored.startsWith(V2) || stored.startsWith(V1));
+const isSealed = stored => typeof stored === 'string' && (stored.startsWith(V2Z) || stored.startsWith(V2) || stored.startsWith(V1));
 // Sealed with the current key (nothing to re-encrypt)
-const isCurrent = stored => typeof stored === 'string' && stored.startsWith(`${V2}${keys()[0].id}:`);
+const isCurrent = stored => typeof stored === 'string' && (stored.startsWith(`${V2}${keys()[0].id}:`) || stored.startsWith(`${V2Z}${keys()[0].id}:`));
 
 // Tests and the rotation script reload the configuration
 const resetKeys = () => { _keys = null; };

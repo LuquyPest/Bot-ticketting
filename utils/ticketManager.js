@@ -3,6 +3,7 @@ const { t, sendToMember } = require('./i18n');
 const { parseJsonField } = require('./jsonField');
 const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
+const { sealTranscript, openTranscript } = require('./transcriptCrypto');
 const { sanitizeChannelName } = require('./sanitize');
 const { broadcast } = require('./sse');
 const { fireTicketWebhook } = require('./webhookEmitter');
@@ -303,7 +304,7 @@ function createManager(db, client, guildId) {
     const { html, txt, messageCount } = await buildTranscripts(channel, ticketInfo);
     const result = await db(
       'INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [ticket.id, channel.id, createdByUser.id, createdByUser.tag, messageCount, html, txt]
+      [ticket.id, channel.id, createdByUser.id, createdByUser.tag, messageCount, sealTranscript(html), sealTranscript(txt)]
     );
     return { transcriptId: result.insertId, ticketId: ticket.id, html, txt, messageCount };
   }
@@ -771,7 +772,7 @@ function createManager(db, client, guildId) {
        FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id WHERE ts.id = ?`,
       [id]
     );
-    return row || null;
+    return row ? { ...row, html: openTranscript(row.html), txt: openTranscript(row.txt) } : null;
   }
 
   async function setPriority(ticketId, priority, byUser = null) {

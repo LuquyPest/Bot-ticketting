@@ -71,7 +71,8 @@ function req(method, path, { sid, body, headers = {}, query } = {}) {
     if (payload !== null) { h['Content-Type'] = 'application/json'; h['Content-Length'] = Buffer.byteLength(payload); }
     if (method !== 'GET' && h['X-Requested-With'] === undefined && !path.startsWith('/api/v1')) h['X-Requested-With'] = 'XMLHttpRequest';
     const r = http.request({ host: '127.0.0.1', port: config.webServerPort, method, path, headers: h }, res => {
-      let d = ''; res.on('data', c => d += c); res.on('end', () => {
+      const chunks = []; res.on('data', c => chunks.push(c)); res.on('end', () => {
+        const d = Buffer.concat(chunks).toString('utf8'); // decoded once: a chunk may end mid-character
         let json = null; try { json = JSON.parse(d); } catch {}
         resolve({ status: res.statusCode, body: json ?? d, headers: res.headers });
       });
@@ -2119,6 +2120,15 @@ async function main() {
       return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
     })();
     const before = box.seal('KRSXG5CTMVRXEZLU');
+    // Transcripts: one written before encryption (clear), one encrypted with the old key
+    const { sealTranscript, openTranscript } = app('./utils/transcriptCrypto');
+    const [anyClosed] = await db("SELECT html FROM transcript_snapshots ORDER BY id DESC LIMIT 1");
+    check('transcripts: stockés chiffrés', !anyClosed || /^enc:v2z:/.test(anyClosed.html), String(anyClosed?.html).slice(0, 30));
+    const tTr = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('41','u41','ctr1','closed','transcripts')")).insertId;
+    const trClear = (await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt) VALUES (?, 'ctr1', '1', 'F', 1, '<p>en clair</p>', 'en clair')", [tTr])).insertId;
+    const trOld = (await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt) VALUES (?, 'ctr1', '1', 'F', 1, ?, ?)", [tTr, sealTranscript('<p>ancienne clé</p>'), sealTranscript('ancienne clé')])).insertId;
+    let rTr = await req('GET', `/api/transcripts/${trClear}/html`, { sid: sessions.FV });
+    check('transcripts: anciens transcripts en clair toujours lisibles', rTr.status === 200 && rTr.body === '<p>en clair</p>', String(rTr.body).slice(0, 60));
     const k1 = require('crypto').randomBytes(32).toString('hex');
     cfgD.previousEncryptionKeys = oldKey ? [oldKey] : [];
     cfgD.encryptionKey = k1;
@@ -2128,8 +2138,13 @@ async function main() {
     const rep = await require(path.join(ROOT, 'scripts/rotate-encryption-key.js')).rotate();
     const rows = await globalQuery("SELECT totp_secret FROM user_totp WHERE user_id IN ('100000000000000077', '100000000000000078') ORDER BY user_id");
     check('rotation: secrets rechiffrés avec la nouvelle clé', rep.user_totp.rewritten >= 2 && rep.user_totp.failed === 0 && rows.every(r => box.isCurrent(r.totp_secret)) && box.open(rows[0].totp_secret) === 'KRSXG5CTMVRXEZLU' && box.open(rows[1].totp_secret) === 'JBSWY3DPEHPK3PXP', JSON.stringify(rep));
+    const trRows = await db('SELECT id, html, txt FROM transcript_snapshots WHERE id IN (?) ORDER BY id', [[trClear, trOld]]);
+    check('rotation: transcripts chiffrés avec la nouvelle clé (y compris ceux en clair)', rep.transcripts.rewritten >= 2 && rep.transcripts.failed === 0 && trRows.every(r => box.isCurrent(r.html) && box.isCurrent(r.txt))
+      && openTranscript(trRows[0].html) === '<p>en clair</p>' && openTranscript(trRows[1].txt) === 'ancienne clé', JSON.stringify(rep.transcripts));
+    rTr = await req('GET', `/api/transcripts/${trOld}/txt`, { sid: sessions.FV });
+    check('transcripts: lisibles après rotation', rTr.status === 200 && rTr.body === 'ancienne clé', String(rTr.body).slice(0, 60));
     const rep2 = await require(path.join(ROOT, 'scripts/rotate-encryption-key.js')).rotate();
-    check('rotation: relancer ne réécrit rien', rep2.user_totp.rewritten === 0, JSON.stringify(rep2));
+    check('rotation: relancer ne réécrit rien', rep2.user_totp.rewritten === 0 && rep2.transcripts.rewritten === 0, JSON.stringify(rep2));
     let unknownErr = null;
     try { box.open('enc:v2:deadbeef:AAAA'); } catch (e) { unknownErr = e.message; }
     check('rotation: clé inconnue signalée clairement', /deadbeef/.test(unknownErr || ''), unknownErr);

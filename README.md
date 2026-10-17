@@ -242,7 +242,7 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 | `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |
 | `trustProxyHops` | Nombre de reverse proxies devant l'app (défaut `1` = Traefik ; `2` si Cloudflare + Traefik). Sert à déterminer la vraie IP client (rate limiting, allowlist IP, logs) |
 | `dashboard.sessionSecret` | Clé secrète sessions — **min. 32 chars**, générer avec `openssl rand -hex 32` |
-| `dashboard.encryptionKey` | Clé AES-256 (64 caractères hex, `openssl rand -hex 32`) qui chiffre les secrets 2FA en base. Optionnelle : à défaut, dérivée de `sessionSecret`. Pour la changer, suivre la procédure de rotation ci-dessous |
+| `dashboard.encryptionKey` | Clé AES-256 (64 caractères hex, `openssl rand -hex 32`) qui chiffre les secrets 2FA et les transcripts en base. Optionnelle : à défaut, dérivée de `sessionSecret`. Pour la changer, suivre la procédure de rotation ci-dessous |
 | `dashboard.previousEncryptionKeys` | Anciennes clés encore acceptées en lecture pendant une rotation (liste, optionnelle) |
 | `dashboard.discordClientSecret` | Secret OAuth2 depuis le portail développeur Discord |
 | `dashboard.discordCallbackUrl` | Doit correspondre exactement à l'URL configurée dans le portail Discord |
@@ -824,11 +824,11 @@ Bot-ticketting/
 
 ## Rotation de la clé de chiffrement
 
-Les secrets 2FA sont chiffrés avec `dashboard.encryptionKey` et portent l'identifiant de la clé utilisée. Pour changer de clé sans casser les 2FA :
+Les secrets 2FA **et les transcripts** sont chiffrés (AES-256-GCM, les transcripts compressés avant) avec `dashboard.encryptionKey` et portent l'identifiant de la clé utilisée. Les messages des tickets restent en clair : les chiffrer rendrait impossibles la recherche plein texte et les tickets similaires. Pour changer de clé sans rien rendre illisible :
 
 1. Générer une clé : `docker compose exec bot node scripts/rotate-encryption-key.js --generate`
 2. Dans `config.json`, mettre l'ancienne clé dans `dashboard.previousEncryptionKeys` et la nouvelle dans `dashboard.encryptionKey`, puis redémarrer le bot
-3. Rechiffrer tous les secrets : `docker compose exec bot node scripts/rotate-encryption-key.js` (rapport par table, relançable sans risque)
+3. Rechiffrer tous les secrets et tous les transcripts de tous les serveurs : `docker compose exec bot node scripts/rotate-encryption-key.js` (rapport par table, relançable sans risque ; chaque transcript est relu avant d'être réécrit). Le même script chiffre aussi les transcripts écrits avant le chiffrement
 4. Retirer l'ancienne clé de `previousEncryptionKeys` et redémarrer
 
 La clé dérivée de `sessionSecret` (utilisée quand aucune clé n'est configurée) reste toujours acceptée en lecture.

@@ -30,7 +30,8 @@ async function collect(db, userId) {
     db('SELECT reason, added_at, expires_at FROM blacklist WHERE user_id = ?', [userId]),
     db('SELECT action, source, ticket_id, details, created_at FROM audit_log WHERE actor_id = ? OR target_id = ? ORDER BY id', [userId, userId]),
   ]);
-  return { tickets, notes, ratings, transcripts, participations, otherMessages, blacklist, journal };
+  const { openTranscript } = require('../../utils/transcriptCrypto');
+  return { tickets, notes, ratings, transcripts: transcripts.map(t => ({ ...t, txt: openTranscript(t.txt) })), participations, otherMessages, blacklist, journal };
 }
 
 // GET /api/members/:userId — what the server holds about this member

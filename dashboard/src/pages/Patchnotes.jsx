@@ -14,6 +14,7 @@ const VERSIONS = [
     date: '18 octobre 2026',
     title: 'Espace membre interactif, contexte des tickets et robustesse',
     changes: [
+      { type: 'tech', text: 'Transcripts chiffrés en base (et compressés), avec la même rotation de clé que les secrets 2FA' },
       { type: 'tech', text: 'Alerte au super-admin quand le bot reste déconnecté de Discord plus de quelques minutes, puis à la reconnexion' },
       { type: 'tech', text: 'Les plantages JavaScript du dashboard et de l\'espace membre remontent dans la page Erreurs du super-admin' },
       { type: 'new',  text: 'Documentation de l\'API publique dans le dashboard et en OpenAPI, générée depuis le code (paramètres, permissions, exemples curl et réponses)' },
