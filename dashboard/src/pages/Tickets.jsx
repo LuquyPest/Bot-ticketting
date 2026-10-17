@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
   ChevronDown, Calendar, AlertTriangle,
-  FolderOpen, FileText, User, Star, BookmarkPlus,
+  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine,
 } from 'lucide-react';
+import { hasDraft } from '../hooks/useDraft';
 import api from '../api';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
@@ -638,6 +639,7 @@ export default function Tickets() {
               <div className="flex items-center gap-2 text-xs">
                 {unread && <span className="w-1.5 h-1.5 rounded-full bg-primary-light shrink-0" title="Nouveau message" />}
                 <span className="font-mono text-ink-4 tabular-nums">#{t.id}</span>
+                {hasDraft(`${user?.id}:${user?.guildId}:${t.id}:`) && <PenLine size={11} className="text-amber-400 shrink-0" aria-label="Brouillon" />}
                 <span className="text-ink-1 font-medium truncate">{t.owner_tag}</span>
                 <span className="ml-auto shrink-0"><Badge label={t.status} variant={t.status} /></span>
               </div>
@@ -757,7 +759,11 @@ export default function Tickets() {
                                        shadow-[0_0_6px_rgba(167,139,250,0.8)]" title="Nouveau message" />
                     )}
                   </td>
-                  <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">#{t.id}</td>
+                  <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">
+                    <span className="inline-flex items-center gap-1">#{t.id}
+                      {hasDraft(`${user?.id}:${user?.guildId}:${t.id}:`) && <PenLine size={11} className="text-amber-400" aria-label="Brouillon non envoyé" />}
+                    </span>
+                  </td>
                   <td className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>
                   <td className="px-4 py-3.5 text-ink-2 max-w-xs">
                     <div className="truncate">{t.subject || <span className="italic text-ink-4">—</span>}</div>

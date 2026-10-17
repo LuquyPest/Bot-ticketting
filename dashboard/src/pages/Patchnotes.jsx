@@ -15,6 +15,7 @@ const VERSIONS = [
     title: 'Espace membre, recherche et travail à plusieurs',
     changes: [
       { type: 'tech', text: 'Mises à jour automatiques des dépendances (Dependabot) testées par la CI avant fusion' },
+      { type: 'new',  text: 'Brouillons : une réponse commencée sur une fiche est gardée si tu changes de page, avec un crayon dans la liste' },
     ]
   },
   {

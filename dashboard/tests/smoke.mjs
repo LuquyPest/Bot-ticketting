@@ -102,6 +102,19 @@ for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
     for (const v of violations.filter(x => A11Y_IMPACTS.has(x.impact))) failures.push(`[${theme}] ${name} a11y ${v.impact} ${v.id} — ${v.help} : ${v.nodes.join(' | ')}`);
     console.log(`${visible ? 'PASS' : 'FAIL'}  ${theme} ${name}`);
   }
+
+  // A reply typed on a ticket is still there after leaving the page
+  if (theme === 'dark') {
+    anonymous = false;
+    const DRAFT = 'Brouillon de test 42';
+    await page.goto(base + '/tickets/1', { waitUntil: 'networkidle' });
+    await page.locator('textarea').first().fill(DRAFT);
+    await page.goto(base + '/tickets', { waitUntil: 'networkidle' });
+    await page.goto(base + '/tickets/1', { waitUntil: 'networkidle' });
+    const kept = await page.locator('textarea').first().inputValue().catch(() => '');
+    if (kept !== DRAFT) failures.push(`[${theme}] brouillon perdu (« ${kept} »)`);
+    console.log(`${kept === DRAFT ? 'PASS' : 'FAIL'}  ${theme} brouillon`);
+  }
   await page.close();
 }
 

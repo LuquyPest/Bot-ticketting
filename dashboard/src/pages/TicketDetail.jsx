@@ -11,6 +11,7 @@ import Select from '../components/Select';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
+import useDraft from '../hooks/useDraft';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 import { confirmToast } from '../utils/confirmToast';
@@ -129,9 +130,11 @@ export default function TicketDetail() {
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [notes, setNotes] = useState([]);
-  const [newNote, setNewNote] = useState('');
+  // Unsent texts survive leaving the page (per user, server and ticket)
+  const draftKey = user ? `${user.id}:${user.guildId}:${id}` : null;
+  const [newNote, setNewNote, noteRestored] = useDraft(draftKey && `${draftKey}:note`);
   const [savingNote, setSavingNote] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText, replyRestored] = useDraft(draftKey && `${draftKey}:reply`);
   const [sendingReply, setSendingReply] = useState(false);
   const [anonymous, setAnonymous] = useState(false);
   const [claimLoading, setClaimLoading] = useState(false);
@@ -1002,6 +1005,12 @@ export default function TicketDetail() {
             <div className="flex flex-wrap items-center justify-between gap-2 mt-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] text-ink-4 tabular-nums">{composeText.length}/2000</span>
+                {(composeMode === 'note' ? noteRestored : replyRestored) && (
+                  <span className="text-[10px] text-amber-400 font-medium">
+                    Brouillon restauré ·{' '}
+                    <button onClick={() => setComposeText('')} className="underline hover:text-amber-300">effacer</button>
+                  </span>
+                )}
                 <span className="text-[10px] text-ink-4 hidden sm:block">
                   <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">R</kbd> répondre ·{' '}
                   <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">N</kbd> note ·{' '}
