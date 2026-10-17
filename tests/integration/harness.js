@@ -1063,6 +1063,27 @@ async function main() {
     await db("UPDATE guild_config SET webhook_secret = NULL WHERE id = 1");
   }
 
+  // ── Monthly PDF report ──
+  {
+    const month = new Date().toISOString().slice(0, 7);
+    r = await req('GET', '/api/reports/monthly', { sid: sessions.FV, query: { month, format: 'json' } });
+    check('rapport: statistiques du mois', r.status === 200 && r.body.opened > 0 && r.body.daily.length >= 28 && r.body.stages.length === 3 && Array.isArray(r.body.staff), JSON.stringify({ opened: r.body.opened, closed: r.body.closed, staff: r.body.staff?.length }));
+    r = await req('GET', '/api/reports/monthly', { sid: sessions.FV, query: { month } });
+    check('rapport: PDF généré', r.status === 200 && r.headers['content-type'] === 'application/pdf' && String(r.body).startsWith('%PDF'), r.headers['content-type']);
+    r = await req('GET', '/api/reports/monthly', { sid: sessions.FV, query: { month: '2026-13' } });
+    check('rapport: mois invalide refusé', r.status === 400, r.status);
+    r = await req('GET', '/api/reports/monthly', { sid: sessions.S3T, query: { month } });
+    check('rapport: réservé au fondateur / view_audit', r.status === 403, r.status);
+    const REP = '900000000000000089';
+    channels.set(REP, mkChannel(REP, G));
+    await db('UPDATE guild_config SET monthly_report_channel_id = ? WHERE id = 1', [REP]);
+    sent.length = 0;
+    const nRep = await app('./utils/monthlyReport').sendMonthlyReports(fakeClient);
+    const repMsg = sent.find(x => x.id === REP)?.p;
+    check('rapport: envoyé dans le salon configuré', nRep >= 1 && repMsg?.files?.[0]?.name?.endsWith('.pdf') && repMsg.files[0].attachment.subarray(0, 4).toString() === '%PDF', JSON.stringify(repMsg && { content: repMsg.content, file: repMsg.files?.[0]?.name }));
+    await db('UPDATE guild_config SET monthly_report_channel_id = NULL WHERE id = 1');
+  }
+
   // ── Staff availability ──
   {
     r = await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'away' } });

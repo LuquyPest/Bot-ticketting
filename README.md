@@ -108,6 +108,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Rappel staff | DM au staff si un ticket réclamé n'a pas eu de réponse depuis N heures |
 | Escalade | Alerte + fermeture auto des tickets urgents sans réponse prolongée |
 | Messages programmés | Envoi différé à une date/heure précise |
+| Rapport mensuel | Le 1er du mois à 9 h : PDF du mois écoulé (volume, délais, respect des délais par étape, satisfaction, classement du staff, sujets fréquents) dans le salon choisi |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
 | Rappels personnels | Toutes les minutes : envoie les rappels échus |
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
@@ -327,7 +328,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Ma file** | `view_tickets` | Mes tickets du plus urgent au moins urgent (hors délai, proche de l'échéance, membre qui attend une réponse, priorité), avec la raison affichée ; onglet « Non attribués » avec bouton « Prendre » ; mise à jour en temps réel |
 | **Tickets** / **Kanban** | `view_tickets` | Liste filtrable (vue « Ouverts » par défaut, vues personnelles enregistrables) ou colonnes par étape, détail en temps réel |
 | **Mes stats** | support | Statistiques personnelles (claims, fermetures, temps de réponse) |
-| **Analytiques** / **Recherche** | support, fondateur | Volume, SLA, satisfaction ; onglet **Qualité** : temps de première réponse (médiane, part sous 1 h / 4 h / 24 h, sans réponse), respect des délais par étape (passages mesurés, durée médiane, hors délai, taux de respect), répartition des notes et commentaires des membres ; recherche plein texte (respecte la visibilité) |
+| **Analytiques** / **Recherche** | support, fondateur | Volume, SLA, satisfaction ; bouton **Rapport mensuel** (PDF d'un mois au choix, fondateurs et `view_audit`) ; onglet **Qualité** : temps de première réponse (médiane, part sous 1 h / 4 h / 24 h, sans réponse), respect des délais par étape (passages mesurés, durée médiane, hors délai, taux de respect), répartition des notes et commentaires des membres ; recherche plein texte (respecte la visibilité) |
 | **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
 | **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
 | **Grades** | fondateur, `manage_grades` | Hiérarchie de grades et permissions |

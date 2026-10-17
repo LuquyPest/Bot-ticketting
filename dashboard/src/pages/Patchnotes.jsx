@@ -26,6 +26,7 @@ const VERSIONS = [
       { type: 'fix',  text: 'Le formulaire d\'intake ne se relance plus en boucle une fois rempli' },
       { type: 'new',  text: 'Règles automatiques par sujet : tag, priorité ou grade appliqués dès l\'ouverture du ticket' },
       { type: 'new',  text: 'Export et import de la configuration d\'un serveur (sauvegarde ou copie vers un autre serveur)' },
+      { type: 'new',  text: 'Rapport mensuel en PDF : téléchargeable dans Analytique et envoyé le 1er du mois dans un salon' },
     ]
   },
   {

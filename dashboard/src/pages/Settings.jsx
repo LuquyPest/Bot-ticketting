@@ -254,6 +254,7 @@ export default function Settings() {
         addUserLogChannelId:      sn(cfg.addUserLogChannelId),
         removeUserLogChannelId:   sn(cfg.removeUserLogChannelId),
         weeklyReportChannelId:    sn(cfg.weeklyReportChannelId),
+        monthlyReportChannelId:   sn(cfg.monthlyReportChannelId),
         spamAlertChannelId:       sn(cfg.spamAlertChannelId),
         escalationAlertChannelId: sn(cfg.escalationAlertChannelId),
         escalationAlertHours:     cfg.escalationAlertHours,
@@ -571,6 +572,10 @@ export default function Settings() {
         <div className="space-y-3">
           <Field label="Rapport hebdomadaire" hint="Envoyé chaque lundi à 9h — leaderboard staff de la semaine">
             <ChannelPicker value={cfg.weeklyReportChannelId} onChange={v => set('weeklyReportChannelId', v)}
+              channels={channels} loading={discordLoading} />
+          </Field>
+          <Field label="Rapport mensuel (PDF)" hint="Envoyé le 1er de chaque mois à 9h — volume, délais, satisfaction, classement du staff">
+            <ChannelPicker value={cfg.monthlyReportChannelId} onChange={v => set('monthlyReportChannelId', v)}
               channels={channels} loading={discordLoading} />
           </Field>
           <Field label="Alertes anti-spam" hint="Notifié quand un utilisateur dépasse la limite quotidienne">

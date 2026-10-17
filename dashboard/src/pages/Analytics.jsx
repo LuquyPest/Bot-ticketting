@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   BarChart2, Activity, Users, Shield, Clock, AlertTriangle,
-  TrendingUp, CheckCircle, RefreshCw, Star } from 'lucide-react';
+  TrendingUp, CheckCircle, RefreshCw, Star, Download } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 import api from '../api';
+import { useAuth } from '../App';
 import {} from '../utils/format';
 import Badge from '../components/Badge';
 import { SkeletonCard } from '../components/Skeleton';
@@ -494,6 +495,25 @@ function TabQuality() {
   );
 }
 
+// Monthly PDF report (founders and view_audit)
+function MonthlyReportDownload() {
+  const { user } = useAuth();
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const [month, setMonth] = useState(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`);
+  if (!(user?.role === 'fondateur' || user?.permissions?.includes('view_audit'))) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-ink-3">Rapport mensuel :</span>
+      <input type="month" value={month} max={`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`} onChange={e => setMonth(e.target.value)}
+        aria-label="Mois du rapport" className="bg-surface border border-overlay/[0.07] text-ink-1 rounded-lg px-2 py-1.5 text-xs" />
+      <a href={`/api/reports/monthly?month=${month}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-primary-light bg-primary/10 border border-primary/20 hover:bg-primary/20">
+        <Download size={12} /> Télécharger le PDF
+      </a>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -513,6 +533,8 @@ export default function Analytics() {
         <h1 className="text-xl font-bold text-ink-1">Analytiques</h1>
         <p className="text-sm text-ink-3 mt-0.5">Performance, SLA et comparatif staff</p>
       </div>
+
+      <MonthlyReportDownload />
 
       {/* Tab bar */}
       <div className="flex gap-1 p-1 bg-surface-card border border-overlay/6 rounded-xl w-fit">

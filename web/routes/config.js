@@ -5,7 +5,7 @@ const { logAudit } = require('../../utils/gradePermissions');
 const { foreignChannels, foreignRoles } = require('../../utils/discordGuard');
 
 const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCategoryId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
-  'removeUserLogChannelId', 'weeklyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
+  'removeUserLogChannelId', 'weeklyReportChannelId', 'monthlyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
 const ROLE_FIELDS = ['supportRoleIds', 'chiefRoleIds'];
 // Never written to the audit log in clear
 const SECRET_FIELDS = new Set(['webhookSecret']);
@@ -36,6 +36,7 @@ const FIELD_MAP = {
   addUserLogChannelId:       'add_user_log_channel_id',
   removeUserLogChannelId:    'remove_user_log_channel_id',
   weeklyReportChannelId:     'weekly_report_channel_id',
+  monthlyReportChannelId:    'monthly_report_channel_id',
   spamAlertChannelId:        'spam_alert_channel_id',
   escalationAlertChannelId:  'escalation_alert_channel_id',
   escalationAlertHours:      'escalation_alert_hours',
@@ -95,6 +96,7 @@ const VALIDATORS = {
   addUserLogChannelId:      SNOWFLAKE,
   removeUserLogChannelId:   SNOWFLAKE,
   weeklyReportChannelId:    SNOWFLAKE,
+  monthlyReportChannelId:   SNOWFLAKE,
   spamAlertChannelId:       SNOWFLAKE,
   escalationAlertChannelId: SNOWFLAKE,
   escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,

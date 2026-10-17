@@ -186,6 +186,11 @@ const MIGRATIONS = [
       tag_id INT DEFAULT NULL, priority ENUM('low','normal','urgent') DEFAULT NULL, visibility_grade_id INT DEFAULT NULL,
       active TINYINT(1) NOT NULL DEFAULT 1, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`],
   },
+  {
+    version: 11,
+    name: 'Salon du rapport mensuel',
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS monthly_report_channel_id VARCHAR(32) DEFAULT NULL'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

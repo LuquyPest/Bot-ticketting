@@ -119,8 +119,7 @@ router.get('/sla', async (req, res) => {
 // ── Quality: first response time, per-stage SLA compliance, satisfaction comments ──
 // Stage durations are rebuilt from the journal (ticket_stage events): each ticket starts in
 // "open" at creation, then follows its stage changes until closing (or now when still open).
-const median = arr => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); };
-const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
+const { stageCompliance, median, avg } = require('../../utils/stageStats');
 
 router.get('/quality', async (req, res) => {
   try {
@@ -147,47 +146,7 @@ router.get('/quality', async (req, res) => {
       `SELECT t.id, t.created_at, t.closed_at FROM tickets t
        WHERE (t.closed_at IS NULL OR t.closed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AND t.created_at <= NOW() AND ${vis.sql}
        ORDER BY t.id DESC LIMIT 3000`, [days, ...vis.params]);
-    const stageStats = { open: [], waiting: [], in_progress: [] };
-    const breached = { open: 0, waiting: 0, in_progress: 0 };
-    const ongoing = { open: 0, waiting: 0, in_progress: 0 };
-    if (tickets.length) {
-      const events = await db(
-        "SELECT ticket_id, details, created_at FROM audit_log WHERE action = 'ticket_stage' AND ticket_id IN (?) ORDER BY created_at ASC, id ASC",
-        [tickets.map(t => t.id)]);
-      const byTicket = new Map();
-      for (const e of events) {
-        if (!byTicket.has(e.ticket_id)) byTicket.set(e.ticket_id, []);
-        const d = typeof e.details === 'string' ? JSON.parse(e.details || '{}') : (e.details || {});
-        byTicket.get(e.ticket_id).push({ to: d.to, at: new Date(e.created_at).getTime() });
-      }
-      const now = Date.now();
-      for (const t of tickets) {
-        let stage = 'open', since = new Date(t.created_at).getTime();
-        const end = t.closed_at ? new Date(t.closed_at).getTime() : now;
-        const close = (until, finished) => {
-          if (!stageStats[stage]) return;
-          const minutes = Math.max(0, Math.round((until - since) / 60000));
-          if (finished) stageStats[stage].push(minutes);
-          else if (slaMin[stage] && minutes > slaMin[stage]) { stageStats[stage].push(minutes); }
-          else ongoing[stage]++;
-          if (slaMin[stage] && minutes > slaMin[stage]) breached[stage]++;
-        };
-        for (const ev of byTicket.get(t.id) || []) {
-          if (ev.at > end || !stageStats[ev.to]) continue;
-          close(ev.at, true);
-          stage = ev.to; since = ev.at;
-        }
-        close(end, !!t.closed_at);
-      }
-    }
-    const stages = Object.keys(stageStats).map(key => {
-      const list = stageStats[key];
-      return {
-        stage: key, slaHours: slaMin[key] / 60, measured: list.length, ongoing: ongoing[key],
-        avgMinutes: avg(list), medianMinutes: median(list), breached: breached[key],
-        compliance: slaMin[key] && list.length ? Math.round(((list.length - breached[key]) / list.length) * 100) : null,
-      };
-    });
+    const stages = await stageCompliance(db, tickets, slaMin);
 
     // Satisfaction
     const [ratingRows, comments] = await Promise.all([

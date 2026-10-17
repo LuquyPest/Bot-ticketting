@@ -15,6 +15,7 @@ const JOBS = {
   'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },
   'user-inactive-check': { every: 60 * 60 * 1000, run: client => require('./userInactiveChecker').runUserInactiveCheck(client) },
   'staff-reminder':      { every: 60 * 60 * 1000, run: client => require('./staffReminderChecker').runStaffReminderCheck(client) },
+  'monthly-report':      { pattern: '0 9 1 * *',  run: client => require('./monthlyReport').sendMonthlyReports(client) },
   'weekly-report':       { pattern: '0 9 * * 1',  run: client => require('./weeklyReport').sendWeeklyReport(client) },
   'error-alert':         { every: 5 * 60 * 1000,  run: client => require('./errorAlert').runErrorAlertCheck(client) },
   'quota-check':         { every: 60 * 60 * 1000, run: client => require('./quotaAlert').runQuotaCheck(client) },
