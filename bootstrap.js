@@ -211,6 +211,17 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
+      // Plans: preset limits assigned to guilds (copied into guilds.max_*)
+      `CREATE TABLE IF NOT EXISTS plans (
+        id                        INT AUTO_INCREMENT PRIMARY KEY,
+        name                      VARCHAR(60) NOT NULL UNIQUE,
+        description               VARCHAR(255) DEFAULT NULL,
+        max_tickets               INT NOT NULL DEFAULT 0,
+        max_agents                INT NOT NULL DEFAULT 0,
+        transcript_retention_days INT NOT NULL DEFAULT 0,
+        created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS plan_id INT DEFAULT NULL`,
       // Journal of the super-admin panel (utils/saAudit.js)
       `CREATE TABLE IF NOT EXISTS sa_audit_log (
         id         BIGINT AUTO_INCREMENT PRIMARY KEY,

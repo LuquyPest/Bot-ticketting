@@ -111,14 +111,14 @@ export default function SAOverview() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-overlay/6">
-                {['Serveur', 'Statut', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.', 'Transcripts', ''].map(h => (
+                {['Serveur', 'Statut', 'Formule', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.', 'Transcripts', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-overlay/4">
               {stats.perGuild.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-4">Aucun serveur</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-ink-4">Aucun serveur</td></tr>
               )}
               {stats.perGuild.map(g => (
                 <tr key={g.guild_id} className="hover:bg-overlay/2">
@@ -130,6 +130,7 @@ export default function SAOverview() {
                     {STATUS_LABEL[g.status] || g.status}
                     {g.maintenance_mode && <WrenchIcon size={11} className="inline ml-1.5 text-orange-300" aria-label="Maintenance" />}
                   </td>
+                  <td className="px-4 py-3 text-ink-2 whitespace-nowrap">{g.plan_name || <span className="text-ink-4">Personnalisée</span>}</td>
                   <td className="px-4 py-3"><Usage used={g.openTickets} max={g.max_tickets} /></td>
                   <td className="px-4 py-3"><Usage used={g.staff} max={g.max_agents} /></td>
                   <td className="px-4 py-3 tabular-nums text-ink-2">{g.opened30d ?? '—'}</td>

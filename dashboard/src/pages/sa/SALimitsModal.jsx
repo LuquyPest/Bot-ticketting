@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Gauge, Loader2, X } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -13,6 +13,23 @@ const FIELDS = [
 export default function SALimitsModal({ guild, onClose, onSaved }) {
   const [values, setValues] = useState(() => Object.fromEntries(FIELDS.map(f => [f.key, String(guild[f.key] ?? 0)])));
   const [saving, setSaving] = useState(false);
+  const [plans, setPlans] = useState([]);
+  const [planId, setPlanId] = useState(guild.plan_id ? String(guild.plan_id) : '');
+  useEffect(() => { api.get('/sa/plans').then(r => setPlans(r.data)).catch(() => {}); }, []);
+
+  // Choosing a plan applies its limits; editing a value by hand makes the server "custom"
+  const applyPlan = async (id) => {
+    setPlanId(id);
+    if (!id) return;
+    setSaving(true);
+    try {
+      const { data } = await api.put(`/sa/guilds/${guild.guild_id}/plan`, { planId: parseInt(id) });
+      toast.success(`Formule « ${data.plan.name} » appliquée à ${guild.guild_name}`);
+      onSaved?.();
+      onClose();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setSaving(false);
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -43,7 +60,17 @@ export default function SALimitsModal({ guild, onClose, onSaved }) {
           </h2>
           <button type="button" onClick={onClose} className="text-ink-3 hover:text-ink-1"><X size={16} /></button>
         </div>
-        <p className="text-[11px] text-ink-4">0 = illimité.</p>
+        {plans.length > 0 && (
+          <label className="block space-y-1">
+            <span className="text-xs font-medium text-ink-2">Formule</span>
+            <select value={planId} onChange={e => applyPlan(e.target.value)} disabled={saving}
+              className="w-full px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-sm text-ink-1 outline-hidden focus:border-primary/50">
+              <option value="">Personnalisée (valeurs ci-dessous)</option>
+              {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+        )}
+        <p className="text-[11px] text-ink-4">0 = illimité. Enregistrer des valeurs à la main détache le serveur de sa formule.</p>
         {FIELDS.map(f => (
           <label key={f.key} className="block space-y-1">
             <span className="text-xs font-medium text-ink-2">{f.label}</span>

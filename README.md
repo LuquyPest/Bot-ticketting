@@ -107,6 +107,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Messages programmés | Envoi différé à une date/heure précise |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
+| Limites des serveurs | Toutes les heures : prévient les fondateurs d'un serveur proche d'une limite (80 %) ou qui l'a atteinte |
 | Alerte d'erreurs | Toutes les 5 min : prévient le super-admin si les erreurs dépassent le seuil configuré |
 | Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et des transcripts au-delà de la durée fixée par le super-admin |
 
@@ -391,6 +392,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 |---------|-------------|
 | **Vue d'ensemble** | Serveurs actifs / en attente, tickets ouverts, tickets ouverts et fermés par jour sur 30 jours, staff, erreurs des dernières 24 h, et tableau par serveur (utilisation par rapport aux limites, note moyenne, conservation des transcripts). Un manager ne voit que ses serveurs |
 | **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs (la suppression efface la base du serveur et fait quitter le serveur Discord au bot) |
+| **Formules** | Jeux de limites nommés (tickets, staff, conservation des transcripts) à attribuer aux serveurs depuis la fenêtre « Limites » : l'attribution copie les limites, modifier une formule met à jour tous ses serveurs, modifier les valeurs à la main repasse le serveur en « personnalisé ». Les fondateurs d'un serveur reçoivent un MP à 80 % puis à 100 % d'une limite (une fois par jour au plus, événement dans le journal du serveur) — superadmin uniquement |
 | **Limites** | Par serveur : tickets ouverts simultanés (`max_tickets`), membres du staff (`max_agents`), conservation des transcripts en jours (`transcript_retention_days`) — 0 = illimité |
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
 | **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
