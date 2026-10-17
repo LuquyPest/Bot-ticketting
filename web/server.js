@@ -127,6 +127,7 @@ app.get('/api/health', async (req, res) => {
 const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs are listed in the SA panel
 
 app.use('/api/auth', authLimiter);
+app.use('/api/member/auth', authLimiter);
 app.use('/api/sa/auth', authLimiter);
 app.use('/api', apiLimiter);
 
@@ -145,6 +146,7 @@ app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/push',     require('./routes/push'));
 app.use('/api/profile',  require('./routes/profile'));
+app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
 
 const requireRole    = require('./middleware/role');
 const guildMiddleware = require('./middleware/guild');

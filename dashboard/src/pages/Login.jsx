@@ -107,6 +107,9 @@ export default function Login() {
             </p>
           </div>
         </div>
+        <p className="text-xs text-ink-3 text-center mt-5">
+          Tu cherches tes tickets ? <a href="/espace" className="text-primary-light underline">Espace membre</a>
+        </p>
       </div>
     </div>
   );

@@ -20,7 +20,7 @@ export const FIELD_LABELS = {
   escalationAlertHours: 'Escalade — alerte (h)', escalationCloseHours: 'Escalade — fermeture (h)',
   embedColor: 'Couleur des embeds', botLanguage: 'Langue du bot', require2fa: '2FA obligatoire',
   memberReopenDays: 'Réouverture par le membre (jours)', notifyMemberStage: 'Membre prévenu des changements d\'étape',
-  lowRatingThreshold: 'Seuil de note basse', botDisplayName: 'Nom du bot', webhookUrl: 'URL du webhook', webhookSecret: 'Secret du webhook',
+  lowRatingThreshold: 'Seuil de note basse', memberPortalEnabled: 'Espace membre web', botDisplayName: 'Nom du bot', webhookUrl: 'URL du webhook', webhookSecret: 'Secret du webhook',
   intakeFormEnabled: 'Formulaire d\'ouverture', staffReminderEnabled: 'Rappels au staff', staffReminderHours: 'Rappel au staff (h)',
   userInactiveEnabled: 'Membre inactif', userInactiveWarnHours: 'Membre inactif — avertissement (h)', userInactiveCloseHours: 'Membre inactif — fermeture (h)',
   internalNotesEnabled: 'Notes internes', monthlyGoalsEnabled: 'Objectifs mensuels', leaderboardEnabled: 'Classement',

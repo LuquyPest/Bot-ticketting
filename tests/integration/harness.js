@@ -1142,6 +1142,54 @@ async function main() {
     await db('UPDATE guild_config SET webhook_secret = NULL WHERE id = 1');
   }
 
+  // ── Member web space ──
+  {
+    const MEM = '500000000000000077', OTHER = '500000000000000078';
+    await mk('MEM', { member: { id: MEM, username: 'membre77', avatar: null } });
+    const ins = async (owner, ch, subject, status = 'open') => (await db('INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, ?, ?, ?, ?)', [owner, owner === MEM ? 'membre77' : 'autre', ch, status, subject])).insertId;
+    const tA = await ins(MEM, 'cmp1', 'Commande perdue', 'closed'), tB = await ins(OTHER, 'cmp2', 'Ticket partagé'), tC = await ins(OTHER, 'cmp3', 'Pas à moi');
+    await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [tB, MEM]);
+    await db(`INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES
+      (?, ?, 'membre77', 'Ma commande n est jamais arrivée', 'user'),
+      (?, '1', 'Daryu (anonyme)', 'Nous regardons', 'reply'),
+      (?, '1', 'Daryu', 'Colis renvoyé', 'reply'),
+      (?, '1', 'Daryu', 'NOTE-INTERNE-SECRETE', 'web'),
+      (?, '1', 'Daryu', 'BAVARDAGE-SALON-STAFF', 'discord'),
+      (?, '0', 'Système', 'Ticket fermé', 'system')`, [tA, MEM, tA, tA, tA, tA, tA]);
+
+    r = await req('GET', '/api/member/me');
+    check('espace membre: non connecté refusé', r.status === 401, r.status);
+    r = await req('GET', '/api/member/auth/discord');
+    check('espace membre: connexion Discord (identité seule)', r.status === 302 && /scope=identify(&|$)/.test(r.headers.location), r.headers.location);
+    r = await req('GET', '/api/member/me', { sid: sessions.MEM });
+    check('espace membre: identité', r.status === 200 && r.body.id === MEM, JSON.stringify(r.body));
+    r = await req('GET', '/api/member/tickets', { sid: sessions.MEM });
+    const mine = r.body.find?.(g => g.guild.id === G)?.tickets || [];
+    check('espace membre: ses tickets et ceux où il participe, pas les autres', mine.some(x => x.id === tA) && mine.find(x => x.id === tB)?.participant === true && !mine.some(x => x.id === tC), JSON.stringify(mine.map(x => x.id)));
+    r = await req('GET', `/api/member/tickets/${G}/${tA}`, { sid: sessions.MEM });
+    const body = JSON.stringify(r.body);
+    const kinds = r.body.messages?.map(m => m.kind).join();
+    check('espace membre: conversation sans notes internes ni salon staff', r.status === 200 && !body.includes('NOTE-INTERNE-SECRETE') && !body.includes('BAVARDAGE-SALON-STAFF') && kinds === 'me,staff,staff,event', kinds + body);
+    check('espace membre: réponse anonyme signée « Support »', r.body.messages?.[1]?.author === 'Support' && r.body.messages?.[2]?.author === 'Daryu' && !body.includes('anonyme'), body);
+    r = await req('GET', `/api/member/tickets/${G}/${tC}`, { sid: sessions.MEM });
+    check('espace membre: ticket d un autre introuvable', r.status === 404, r.status);
+    r = await req('GET', `/api/member/tickets/${G}/${tA}/transcript`, { sid: sessions.MEM });
+    check('espace membre: transcript de sa conversation', r.status === 200 && /attachment/.test(r.headers['content-disposition']) && r.body.includes('jamais arrivée') && !r.body.includes('NOTE-INTERNE-SECRETE'), r.status);
+    r = await req('GET', '/api/tickets', { sid: sessions.MEM });
+    check('espace membre: aucun accès au dashboard', r.status >= 400 && r.status < 500, r.status);
+    await db('UPDATE guild_config SET member_portal_enabled = 0 WHERE id = 1');
+    r = await req('GET', '/api/member/tickets', { sid: sessions.MEM });
+    const off = await req('GET', `/api/member/tickets/${G}/${tA}`, { sid: sessions.MEM });
+    check('espace membre: désactivable par serveur', !r.body.some(g => g.guild.id === G) && off.status === 404, JSON.stringify([r.body, off.status]));
+    await db('UPDATE guild_config SET member_portal_enabled = 1 WHERE id = 1');
+    r = await req('GET', `/api/member/tickets/${G}/${tA}`, { sid: sessions.FV });
+    check('espace membre: un membre du staff connecté voit seulement ses propres tickets', r.status === 404, r.status);
+    await req('POST', '/api/member/logout', { sid: sessions.MEM });
+    r = await req('GET', '/api/member/me', { sid: sessions.MEM });
+    check('espace membre: déconnexion', r.status === 401, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tB, tC]]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

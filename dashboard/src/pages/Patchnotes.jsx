@@ -15,6 +15,7 @@ const VERSIONS = [
     title: 'Espace membre, recherche et travail à plusieurs',
     changes: [
       { type: 'tech', text: 'Mises à jour automatiques des dépendances (Dependabot) testées par la CI avant fusion' },
+      { type: 'new',  text: 'Espace membre web (/espace) : le membre se connecte avec Discord et retrouve ses tickets, leur statut et ses échanges ; option par serveur, activée par défaut' },
       { type: 'new',  text: 'Recherche dans tous les messages des tickets (membre, staff, notes internes) avec extrait surligné et ouverture sur le message trouvé ; aussi depuis la liste des tickets (bouton « Messages »)' },
       { type: 'new',  text: 'Qui regarde ce ticket : les collègues qui ont la fiche ouverte sont affichés en direct (fiche et liste), et une confirmation évite les doubles réponses' },
       { type: 'new',  text: 'Historique des paramètres : qui a changé quel réglage (avant → après), avec retour à l\'état d\'avant un changement' },

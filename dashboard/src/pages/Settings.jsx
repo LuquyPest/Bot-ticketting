@@ -238,6 +238,7 @@ export default function Settings() {
         require2fa:               cfg.require2fa || 'none',
         memberReopenDays:         cfg.memberReopenDays ?? 7,
         notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
+        memberPortalEnabled:      cfg.memberPortalEnabled === undefined || cfg.memberPortalEnabled ? 1 : 0,
         lowRatingThreshold:       cfg.lowRatingThreshold ?? 2,
         embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
@@ -639,6 +640,11 @@ export default function Settings() {
           label="Prévenir le membre des changements d'étape"
           hint="MP au membre quand son ticket passe en « En cours », « En attente » ou revient en « Ouvert »"
           checked={!!cfg.notifyMemberStage} onChange={v => set('notifyMemberStage', v)}
+        />
+        <FeatureToggle
+          label="Espace membre web"
+          hint={`Les membres se connectent avec Discord sur ${window.location.origin}/espace pour retrouver leurs tickets, leur statut et l'historique de leurs échanges (jamais les notes internes)`}
+          checked={cfg.memberPortalEnabled === undefined || !!cfg.memberPortalEnabled} onChange={v => set('memberPortalEnabled', v)}
         />
         <FeatureToggle
           label="Rappels staff automatiques"

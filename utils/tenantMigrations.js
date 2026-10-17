@@ -208,6 +208,11 @@ const MIGRATIONS = [
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_ch_created (created_at))`],
   },
+  {
+    version: 14,
+    name: 'Espace membre web',
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS member_portal_enabled TINYINT(1) NOT NULL DEFAULT 1'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

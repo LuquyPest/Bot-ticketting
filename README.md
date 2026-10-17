@@ -459,6 +459,15 @@ Les commandes sont réservées au staff et utilisables uniquement sur un serveur
 
 Boutons du salon : **Transcript** demande `view_transcripts`, **Fermer** demande `close_ticket`.
 
+### Espace membre web
+
+Les membres se connectent sur **`/espace`** (ex. `https://ticket.sunset-fa.fr/espace`) avec Discord et retrouvent tous leurs tickets, ouverts et fermés, sur chaque serveur : statut formulé pour eux (« en attente de ta réponse », « pris en charge »…), conversation avec le staff, note donnée, et téléchargement de l'échange en HTML. Ils voient aussi les tickets où ils ont été ajoutés comme participants.
+
+- **Ce qui est montré** : uniquement ce que le membre a reçu ou envoyé en MP (ses messages, les réponses du staff, les messages programmés, les événements). Jamais les notes internes, les messages tapés par le staff dans le salon Discord du ticket, ni le nom derrière une réponse anonyme (affichée « Support »). Le transcript du salon Discord n'est pas proposé, puisqu'il contient les échanges internes.
+- **Connexion** : Discord avec le seul scope `identify`, via la même URL de retour que le dashboard (rien à ajouter dans le portail développeur). La session membre ne donne aucun accès au dashboard ; un membre du staff déjà connecté au dashboard est reconnu directement.
+- **Option par serveur** : « Espace membre web » dans Paramètres → Fonctionnalités, **activée par défaut**. Désactivée, les tickets du serveur disparaissent de l'espace.
+- **Lien** : donné dans le MP de fermeture d'un ticket et dans `/mestickets`, et depuis la page de connexion du dashboard.
+
 ### Topic du salon Discord
 
 Le topic est mis à jour automatiquement à chaque changement d'état :

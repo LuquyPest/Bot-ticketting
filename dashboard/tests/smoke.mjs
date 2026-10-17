@@ -38,6 +38,18 @@ const MOCK = {
   '/api/analytics/subjects': [{ subject: 'Paiement', count: 12 }, { subject: 'Connexion', count: 7 }, { subject: 'Autre', count: 3 }],
   '/api/analytics/response-trend': days(30).map(d => ({ date: d.date, avgMinutes: d.count * 4 })),
   '/api/audit': { rows: [{ id: 1, actor_id: '1', actor_tag: 'Daryu', action: 'ticket_close', source: 'dashboard', ticket_id: 1, details: { reason: 'résolu' }, created_at: iso(5) }], total: 1, page: 1, pages: 1 },
+  '/api/member/me': { id: '9', username: 'membre9', avatar: null },
+  '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
+    { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
+    { id: 2, subject: 'Ancienne commande', status: 'closed', stage: 'open', created_at: iso(9000), closed_at: iso(8000), assigned: true, participant: false, rating: 5 },
+  ] }],
+  '/api/member/tickets/123456789012345678/1': { guild: { id: '123456789012345678', name: 'Sunset FA', icon: null },
+    ticket: { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), assigned: true, participant: false },
+    messages: [
+      { id: 1, kind: 'me', author: null, content: 'Bonjour, je n’arrive pas à payer.', created_at: iso(120) },
+      { id: 2, kind: 'staff', author: 'Support', content: 'Colis renvoyé, voici le suivi : https://example.com/suivi', created_at: iso(60) },
+      { id: 3, kind: 'event', author: null, content: 'Ticket mis en attente', created_at: iso(50) },
+    ] },
   '/api/config/history': { entries: [
     { id: 2, actor_id: '1', actor_tag: 'Daryu', source: 'settings', created_at: iso(10), changes: { maxTicketsPerDay: { before: 3, after: 5 }, webhookSecret: { secret: true } } },
     { id: 1, actor_id: '1', actor_tag: 'Daryu', source: 'import', created_at: iso(60), changes: { welcomeMessage: { before: null, after: 'Bienvenue !' } } },
@@ -64,6 +76,9 @@ const PAGES = [
   ['audit', '/audit', "Journal d'activité"],
   ['equipe', '/equipe', 'Équipe'],
   ['sa', '/sa/overview', "Vue d'ensemble"],
+  ['espace-login', '/espace', 'Se connecter avec Discord', true],
+  ['espace', '/espace', 'Ancienne commande'],
+  ['espace-ticket', '/espace/123456789012345678/1', 'Colis renvoyé'],
 ];
 // EventSource has no mock: its connection errors are expected
 const IGNORED = /EventSource|text\/event-stream|MIME type|\/api\/events|status of 401/;
@@ -81,14 +96,14 @@ const RUNS = [
 ];
 
 for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
-  const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile });
+  const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile, locale: 'fr-FR' });
   await page.addInitScript(t => localStorage.setItem('theme', t), colorTheme);
   page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text())) failures.push(`[${theme}] console: ${m.text()}`); });
   page.on('pageerror', e => failures.push(`[${theme}] page: ${e.message}`));
   let anonymous = false;
   await page.route('**/api/**', route => {
     const u = new URL(route.request().url());
-    if (anonymous && u.pathname.endsWith('/auth/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
+    if (anonymous && (u.pathname.endsWith('/auth/me') || u.pathname === '/api/member/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
     const body = u.pathname.endsWith('/presence') && route.request().method() === 'POST'
       ? { viewers: [{ userId: '2', username: 'Collègue', avatar: null, since: now }] }
       : MOCK[u.pathname] ?? (route.request().method() === 'GET' ? [] : { ok: true });

@@ -39,6 +39,7 @@ const Newsletter  = lazy(() => import('./pages/Newsletter'));
 const LoginLogs   = lazy(() => import('./pages/LoginLogs'));
 const Panels      = lazy(() => import('./pages/Panels'));
 const Forms       = lazy(() => import('./pages/Forms'));
+const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 
 function PageLoader() {
   return (
@@ -126,6 +127,14 @@ export default function App() {
                 <ErrorBoundary><SAApp /></ErrorBoundary>
               </Suspense>
             } />
+            {/* Member web space: own tickets, outside the staff dashboard */}
+            {['/espace', '/espace/:guildId/:ticketId'].map(p => (
+              <Route key={p} path={p} element={
+                <Suspense fallback={<PageLoader />}>
+                  <ErrorBoundary><MemberPortal /></ErrorBoundary>
+                </Suspense>
+              } />
+            ))}
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>
                 <ErrorBoundary><Login /></ErrorBoundary>

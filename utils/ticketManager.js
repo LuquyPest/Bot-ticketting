@@ -357,6 +357,9 @@ function createManager(db, client, guildId) {
       await sendToMember(client, uid, gid, () => {
         const embed = closeDmEmbed();
         if (canReopen) embed.setFooter({ text: t('reopen.hint', { days: reopenDays }) });
+        // Member web space: where to find this conversation later
+        const portal = Number(cfg.member_portal_enabled ?? 1) === 1 && require('./memberPortal').portalUrl();
+        if (portal) embed.addFields({ name: t('portal.title'), value: t('portal.body', { url: portal }) });
         const { memberReopenButton } = require('./components');
         return { embeds: [embed], components: canReopen ? [memberReopenButton(ticket.id, gid)] : [] };
       });

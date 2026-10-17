@@ -10,7 +10,7 @@ api.interceptors.response.use(
   r => r,
   err => {
     const path = window.location.pathname;
-    if (err.response?.status === 401 && path !== '/login' && !path.startsWith('/sa')) {
+    if (err.response?.status === 401 && path !== '/login' && !path.startsWith('/sa') && !path.startsWith('/espace')) {
       window.location.href = '/login';
     }
     // The server requires 2FA for this account: only the profile (to turn it on) is reachable

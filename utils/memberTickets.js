@@ -22,6 +22,8 @@ async function myTicketsEmbed(user, client) {
       value: `${memberStatus(tk.ticket, Number(n) > 0)}\n${t('myTickets.last', { when: last })}${tk.ticket.owner_id === user.id ? '' : t('route.participant')}`,
     });
   }
+  const portal = require('./memberPortal').portalUrl();
+  if (portal) embed.setDescription(t('portal.list', { url: portal }));
   return embed.setFooter({ text: t('myTickets.footer') });
 }
 

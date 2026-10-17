@@ -249,6 +249,7 @@ router.get('/discord', (req, res) => {
   const config = cfg();
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
+  delete req.session.oauthPurpose; // dashboard sign-in, even after an unfinished member sign-in
   const url = new URL('https://discord.com/oauth2/authorize');
   url.searchParams.set('client_id', config.clientId);
   url.searchParams.set('redirect_uri', config.dashboard.discordCallbackUrl);
@@ -262,9 +263,13 @@ router.get('/discord', (req, res) => {
 router.get('/discord/callback', async (req, res) => {
   const config = cfg();
   const { code, state } = req.query;
-  if (!code) return res.redirect('/login?error=no_code');
-  if (!state || state !== req.session.oauthState) return res.redirect('/login?error=invalid_state');
+  // Sign-in started from the member space (/espace) rather than the dashboard
+  const forMember = req.session.oauthPurpose === 'member';
+  const fail = reason => res.redirect(`${forMember ? '/espace' : '/login'}?error=${reason}`);
+  if (!code) return fail('no_code');
+  if (!state || state !== req.session.oauthState) return fail('invalid_state');
   delete req.session.oauthState;
+  delete req.session.oauthPurpose;
 
   try {
     const { data: token } = await axios.post(
@@ -283,6 +288,19 @@ router.get('/discord/callback', async (req, res) => {
       'https://discord.com/api/users/@me',
       { headers: { Authorization: `Bearer ${token.access_token}` } }
     );
+
+    // Member space: identity only, no dashboard rights. The rest of the session (an open
+    // dashboard session in the same browser) is kept across the ID regeneration.
+    if (forMember) {
+      const keep = Object.fromEntries(Object.entries(req.session).filter(([k]) => k !== 'cookie'));
+      req.session.regenerate(err => {
+        if (err) return fail('oauth_failed');
+        Object.assign(req.session, keep);
+        req.session.member = { id: discordUser.id, username: discordUser.global_name || discordUser.username, avatar: discordUser.avatar || null };
+        res.redirect('/espace');
+      });
+      return;
+    }
 
     const [totpRow] = await globalQuery(
       'SELECT totp_enabled FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
@@ -321,7 +339,7 @@ router.get('/discord/callback', async (req, res) => {
     });
   } catch (err) {
     console.error('OAuth error:', err.response?.data || err.message);
-    res.redirect('/login?error=oauth_failed');
+    fail('oauth_failed');
   }
 });
 
