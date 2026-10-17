@@ -178,7 +178,7 @@ export default function GuildSelect() {
                 {/* pending → attente */}
                 {guild.status === 'pending' && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                                   text-amber-300/60 border border-amber-500/20 shrink-0 cursor-default select-none">
+                                   text-amber-300 border border-amber-500/20 shrink-0 cursor-default select-none">
                     <Clock size={13} />
                     En attente
                   </span>
@@ -187,7 +187,7 @@ export default function GuildSelect() {
                 {/* suspended → suspendu */}
                 {guild.status === 'suspended' && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                                   text-red-400/60 border border-red-500/20 shrink-0 cursor-default select-none">
+                                   text-red-400 border border-red-500/20 shrink-0 cursor-default select-none">
                     <Ban size={13} />
                     Suspendu
                   </span>

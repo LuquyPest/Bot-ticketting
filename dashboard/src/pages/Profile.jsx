@@ -771,7 +771,7 @@ export default function Profile() {
           ))}
           {!sessionsLoading && sessions.filter(s => !s.isCurrent).length > 0 && (
             <button onClick={revokeAll} disabled={revokingAll}
-              className="w-full py-2 text-xs text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-50">
+              className="w-full py-2 text-xs text-red-400 hover:text-red-400 transition-colors disabled:opacity-50">
               {revokingAll ? 'Révocation…' : 'Révoquer toutes les autres sessions'}
             </button>
           )}

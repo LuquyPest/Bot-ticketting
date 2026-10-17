@@ -48,7 +48,7 @@ export default function Newsletter() {
           <CheckCircle2 size={16} className="text-emerald-400 mt-0.5 shrink-0" />
           <div className="text-sm">
             <p className="font-semibold text-emerald-300">Envoi terminé</p>
-            <p className="text-emerald-400/70 mt-0.5">
+            <p className="text-emerald-400 mt-0.5">
               {result.sent} envoyés &bull; {result.failed} échecs &bull; {result.total} destinataires au total
             </p>
           </div>

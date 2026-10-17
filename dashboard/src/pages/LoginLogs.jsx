@@ -109,7 +109,7 @@ export default function LoginLogs() {
                       <div className="flex items-center gap-2">
                         {log.status === 'blocked'
                           ? <ShieldAlert size={13} className="text-red-400 shrink-0" />
-                          : <ShieldCheck size={13} className="text-emerald-400/60 shrink-0" />
+                          : <ShieldCheck size={13} className="text-emerald-400 shrink-0" />
                         }
                         <div>
                           <p className="font-medium text-ink-1">{log.username || '—'}</p>

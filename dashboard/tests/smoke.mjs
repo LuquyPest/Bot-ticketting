@@ -4,10 +4,14 @@
 //   npm run build && npm run test:smoke
 import { chromium } from 'playwright-core';
 import { preview } from 'vite';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const OUT = path.resolve('tests/screenshots');
+// Accessibility audit (axe-core, WCAG 2.1 A/AA): serious and critical violations fail the test
+const AXE = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
+const A11Y_IMPACTS = new Set(['serious', 'critical']);
 mkdirSync(OUT, { recursive: true });
 
 const now = Date.now(), iso = d => new Date(now - d * 60000).toISOString();
@@ -81,6 +85,10 @@ for (const theme of ['dark', 'light']) {
     const visible = await page.getByText(text, { exact: false }).first().isVisible().catch(() => false);
     if (!visible) failures.push(`[${theme}] ${name}: « ${text} » introuvable`);
     await page.screenshot({ path: path.join(OUT, `${theme}-${name}.png`) });
+    await page.addScriptTag({ content: AXE });
+    const violations = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] })).violations
+      .map(v => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.slice(0, 4).map(n => `${n.target.join(' ')} ${(n.any[0]?.message || '').replace(/\s+/g, ' ').slice(0, 140)}`) })));
+    for (const v of violations.filter(x => A11Y_IMPACTS.has(x.impact))) failures.push(`[${theme}] ${name} a11y ${v.impact} ${v.id} — ${v.help} : ${v.nodes.join(' | ')}`);
     console.log(`${visible ? 'PASS' : 'FAIL'}  ${theme} ${name}`);
   }
   await page.close();

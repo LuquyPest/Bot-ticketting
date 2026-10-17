@@ -28,7 +28,7 @@
   --color-border-hover: rgba(255, 255, 255, 0.12);
   --color-border-focus: rgba(124, 110, 243, 0.5);
 
-  --color-primary: #7c6ef3;
+  --color-primary: #6c5ce7; /* white text on it ≈ 4.9:1 (AA) */
   --color-primary-light: #a78bfa;
   --color-primary-dark: #5b4fe8;
   --color-primary-muted: rgba(124, 110, 243, 0.15);
@@ -358,12 +358,13 @@
 
     /* Text scale — WCAG AA on dark */
     --color-ink-1: #f0efff; /* ≈ 15:1 on base — headings, values */
-    --color-ink-2: #a8a8c8; /* ≈  7:1 on base — body text */
-    --color-ink-3: #7878a0; /* ≈  5:1 on base — secondary labels */
-    --color-ink-4: #484868; /* ≈  3:1 on base — borders, placeholders, decorative */
+    /* Text greys meet WCAG AA (≥ 4.5:1) on every surface, including surface-elevated */
+    --color-ink-2: #b8b8d6; /* ≥ 8.6:1 — body text */
+    --color-ink-3: #9c9cc2; /* ≥ 6.3:1 — secondary labels */
+    --color-ink-4: #8282a8; /* ≥ 4.5:1 — hints, placeholders, timestamps */
 
     /* Semantic / brand */
-    --color-primary: #7c6ef3;
+    --color-primary: #6c5ce7;
     --color-primary-light: #a78bfa;
     --color-primary-dark: #5b4fe8;
 
@@ -423,8 +424,22 @@
     /* Text scale — WCAG AA on light */
     --color-ink-1: #14142a; /* ≈ 14:1 */
     --color-ink-2: #3c3c5e; /* ≈  8:1 */
-    --color-ink-3: #62628a; /* ≈  5:1 */
-    --color-ink-4: #9898b8; /* ≈  3:1 */
+    --color-ink-3: #52527a; /* ≥ 6.1:1 */
+    --color-ink-4: #66668c; /* ≥ 4.5:1 */
+    --color-primary-light: #5546c8; /* violet used as text: ≥ 5.6:1 on light surfaces */
+    /* Status colors (Tailwind 200–400 shades, made for dark backgrounds): darker shades on light
+       surfaces so that text keeps ≥ 4.5:1 */
+    --color-red-200: #b91c1c; --color-red-300: #b91c1c; --color-red-400: #b91c1c;
+    --color-emerald-300: #065f46; --color-emerald-400: #065f46;
+    --color-green-400: #15803d;
+    --color-amber-200: #92400e; --color-amber-300: #92400e; --color-amber-400: #92400e;
+    --color-orange-300: #c2410c; --color-orange-400: #c2410c;
+    --color-yellow-400: #a16207;
+    --color-sky-300: #0369a1; --color-sky-400: #0369a1;
+    --color-blue-400: #1d4ed8;
+    --color-teal-400: #0f766e;
+    --color-indigo-300: #4338ca;
+    --color-violet-200: #6d28d9; --color-violet-300: #6d28d9; --color-violet-400: #6d28d9;
 
     --bg: var(--color-base);
     --surface-1: var(--color-surface);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
 import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
@@ -17,12 +17,17 @@ function Section({ title, description, children }) {
   );
 }
 
+// A lone input/select/textarea gets the label through its id; anything else is a labelled group
 function Field({ label, hint, children }) {
+  const id = useId();
+  const single = isValidElement(children) && ['input', 'select', 'textarea'].includes(children.type);
   return (
     <div>
-      <label className="text-sm text-ink-2 font-medium block mb-1">{label}</label>
+      <label id={`${id}-l`} htmlFor={single ? (children.props.id || id) : undefined} className="text-sm text-ink-2 font-medium block mb-1">{label}</label>
       {hint && <p className="text-xs text-ink-4 mb-2">{hint}</p>}
-      {children}
+      {single
+        ? (children.props.id ? children : cloneElement(children, { id }))
+        : <div role="group" aria-labelledby={`${id}-l`}>{children}</div>}
     </div>
   );
 }
@@ -396,7 +401,7 @@ export default function Settings() {
           </Field>
           <Field label="Couleur des embeds" hint="Hexadécimal — ex: #6366f1">
             <div className="flex items-center gap-2">
-              <input type="color" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
+              <input type="color" aria-label="Couleur des embeds" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
                 className="w-10 h-9 rounded-lg border border-overlay/8 bg-transparent cursor-pointer p-0.5 shrink-0" />
               <input type="text" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
                 pattern="^#[0-9a-fA-F]{6}$" placeholder="#6366f1" className={BASE + " font-mono"} />
@@ -435,7 +440,7 @@ export default function Settings() {
             {(cfg.ticketSubjects || []).map((s, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="flex-1 bg-surface border border-overlay/8 rounded-lg px-3 py-2 text-sm text-ink-2">{s}</span>
-                <button onClick={() => removeSubject(i)}
+                <button onClick={() => removeSubject(i)} aria-label={`Retirer le sujet ${s}`}
                   className="p-1.5 text-ink-4 hover:text-red-400 transition-colors">
                   <X size={14} />
                 </button>
@@ -444,8 +449,8 @@ export default function Settings() {
             <div className="flex gap-2">
               <input type="text" value={newSubject} onChange={e => setNewSubject(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addSubject()}
-                placeholder="Ajouter un sujet…" className={BASE + " flex-1"} />
-              <button onClick={addSubject}
+                placeholder="Ajouter un sujet…" aria-label="Nouveau sujet" className={BASE + " flex-1"} />
+              <button onClick={addSubject} aria-label="Ajouter le sujet"
                 className="px-3 py-2 rounded-lg bg-surface border border-overlay/8 text-ink-2
                            hover:text-ink-1 transition-colors">
                 <Plus size={15} />

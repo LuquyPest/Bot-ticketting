@@ -112,7 +112,7 @@ export default function ApiKeys() {
       {newKey && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
           <p className="text-sm font-semibold text-emerald-300">Clé créée — copie-la maintenant !</p>
-          <p className="text-xs text-emerald-400/70">Elle ne sera plus affichée après rechargement de la page.</p>
+          <p className="text-xs text-emerald-400">Elle ne sera plus affichée après rechargement de la page.</p>
           <p className="text-xs text-ink-3">
             Utilisation : en-tête <code className="font-mono">Authorization: Bearer &lt;clé&gt;</code> sur{' '}
             <code className="font-mono">/api/v1/tickets</code>, <code className="font-mono">/api/v1/tickets/:id</code>,{' '}

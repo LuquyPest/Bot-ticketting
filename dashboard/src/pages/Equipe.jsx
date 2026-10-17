@@ -112,7 +112,7 @@ function GestionTab({ me }) {
           {users.length} utilisateur(s)
           {pendingCount > 0 && <span className="ml-2 text-amber-400">· {pendingCount} en attente</span>}
         </p>
-        <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors">
+        <button onClick={load} aria-label="Actualiser" className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>

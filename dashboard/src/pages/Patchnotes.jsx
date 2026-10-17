@@ -30,6 +30,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Panel super-admin : page « Santé » (Discord, base, Redis, tâches planifiées, mémoire, versions de schéma)' },
       { type: 'new',  text: 'Panel super-admin : annonces aux fondateurs (bandeau sur le dashboard et/ou MP)' },
       { type: 'tech', text: 'Rotation de la clé de chiffrement des secrets 2FA sans les rendre inutilisables (script de rechiffrement)' },
+      { type: 'impr', text: 'Accessibilité : contrastes renforcés dans les deux thèmes, libellés sur les boutons-icônes et les champs ; audit axe automatique dans le test de fumée' },
     ]
   },
   {

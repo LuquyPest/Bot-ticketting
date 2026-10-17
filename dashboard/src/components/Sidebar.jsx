@@ -154,7 +154,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-ink-1 leading-tight tracking-tight">Ticket Bot</p>
-            <p className="text-[9px] text-primary-light/60 font-semibold uppercase tracking-[0.15em]">
+            <p className="text-[9px] text-primary-light font-semibold uppercase tracking-[0.15em]">
               Dashboard
             </p>
           </div>

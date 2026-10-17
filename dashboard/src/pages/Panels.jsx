@@ -68,7 +68,7 @@ function ButtonRow({ btn, index, total, forms, onChange, onRemove, onMove }) {
         <button onClick={() => onMove(index, 1)} disabled={index === total - 1} className="p-1 text-ink-4 hover:text-ink-2 disabled:opacity-30">
           <ChevronDown size={13} />
         </button>
-        <button onClick={() => onRemove(index)} className="p-1 text-red-400/60 hover:text-red-400">
+        <button onClick={() => onRemove(index)} className="p-1 text-red-400 hover:text-red-400">
           <X size={13} />
         </button>
       </div>
@@ -469,7 +469,7 @@ export default function Panels() {
                     Modifier
                   </button>
                   <button onClick={() => deletePanel(p)}
-                    className="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                    className="p-1.5 rounded-lg text-red-400 hover:text-red-400 hover:bg-red-400/10 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>

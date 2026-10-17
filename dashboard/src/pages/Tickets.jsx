@@ -632,7 +632,7 @@ export default function Tickets() {
             <tr className="border-b border-overlay/6">
               {user?.role === 'fondateur' && (
                 <th className="px-3.5 py-3.5 w-10 text-left">
-                  <button onClick={toggleAll} className="text-ink-4 hover:text-ink-2 transition-colors">
+                  <button onClick={toggleAll} aria-label="Tout sélectionner" className="text-ink-4 hover:text-ink-2 transition-colors">
                     {allSelected
                       ? <CheckSquare size={14} className="text-primary-light" />
                       : <Square size={14} />}
@@ -706,7 +706,7 @@ export default function Tickets() {
                 >
                   {user?.role === 'fondateur' && (
                     <td className="px-3.5 py-3.5" onClick={e => toggleOne(t.id, e)}>
-                      <button className="text-ink-4 hover:text-primary-light transition-colors">
+                      <button aria-label={`Sélectionner le ticket #${t.id}`} aria-pressed={isSelected} className="text-ink-4 hover:text-primary-light transition-colors">
                         {isSelected
                           ? <CheckSquare size={13} className="text-primary-light" />
                           : <Square size={13} />}

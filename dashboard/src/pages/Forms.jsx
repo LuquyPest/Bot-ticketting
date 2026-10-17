@@ -21,7 +21,7 @@ function FieldEditor({ field, index, total, onChange, onRemove, onMove }) {
           className="p-1 text-ink-4 hover:text-ink-2 disabled:opacity-30 transition-colors">
           <ChevronDown size={14} />
         </button>
-        <button onClick={() => onRemove(index)} className="p-1 text-red-400/60 hover:text-red-400 transition-colors">
+        <button onClick={() => onRemove(index)} className="p-1 text-red-400 hover:text-red-400 transition-colors">
           <X size={14} />
         </button>
       </div>
@@ -262,7 +262,7 @@ export default function Forms() {
                     Modifier
                   </button>
                   <button onClick={() => deleteForm(f)}
-                    className="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                    className="p-1.5 rounded-lg text-red-400 hover:text-red-400 hover:bg-red-400/10 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>

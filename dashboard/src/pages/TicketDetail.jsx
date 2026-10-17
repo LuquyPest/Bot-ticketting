@@ -735,7 +735,7 @@ export default function TicketDetail() {
         {/* Sticky header */}
         <div className="sticky top-0 z-10 glass-dark border-b border-overlay/6
                         px-5 py-3 flex items-center gap-3 shrink-0">
-          <button onClick={() => navigate('/tickets')}
+          <button onClick={() => navigate('/tickets')} aria-label="Retour aux tickets"
             className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6
                        transition-all shrink-0">
             <ArrowLeft size={16} />
@@ -839,8 +839,8 @@ export default function TicketDetail() {
                       </p>
                     </div>
                     {canDeleteNote(note) && (
-                      <button onClick={() => deleteNote(note.id)}
-                        className="opacity-0 group-hover:opacity-100 text-ink-4 hover:text-red-400
+                      <button onClick={() => deleteNote(note.id)} aria-label="Supprimer la note"
+                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-red-400
                                    transition-all shrink-0 mt-0.5">
                         <X size={10} />
                       </button>
@@ -885,8 +885,8 @@ export default function TicketDetail() {
                   <div className={`flex items-center gap-2 px-0.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
                     <span className="text-[10px] text-ink-4 tabular-nums">{fmtDate(note.created_at)}</span>
                     {canDeleteNote(note) && (
-                      <button onClick={() => deleteNote(note.id)}
-                        className="opacity-0 group-hover:opacity-100 text-ink-4 hover:text-red-400
+                      <button onClick={() => deleteNote(note.id)} aria-label="Supprimer la note"
+                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-red-400
                                    transition-all">
                         <X size={10} />
                       </button>
@@ -938,7 +938,7 @@ export default function TicketDetail() {
             {macroTpl && composeMode === 'reply' && (
               <div className="flex items-center gap-2 mb-2 px-2.5 py-1.5 rounded-lg text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-200">
                 <span className="font-semibold">Macro « {macroTpl.name} »</span>
-                <span className="text-amber-200/80 truncate">
+                <span className="text-amber-200 truncate">
                   à l'envoi : {[
                     macroTpl.actions.assignSelf && 'm\'attribuer',
                     macroTpl.actions.priority && `priorité ${({ low: 'faible', normal: 'normale', urgent: 'urgente' })[macroTpl.actions.priority]}`,
@@ -1222,7 +1222,7 @@ export default function TicketDetail() {
                     <Select className="flex-1 min-w-0" value={assigneeToAdd} onChange={setAssigneeToAdd}
                       placeholder="Attribuer à…"
                       options={[{ value: '', label: 'Attribuer à…' }, ...assignable.map(s => ({ value: s.user_id, label: `${s.username} · ${availabilityLabel(s)}` }))]} />
-                    <button onClick={() => addAssignee(assigneeToAdd)} disabled={!assigneeToAdd || claimLoading} title="Attribuer"
+                    <button onClick={() => addAssignee(assigneeToAdd)} disabled={!assigneeToAdd || claimLoading} title="Attribuer" aria-label="Attribuer"
                       className="p-2 rounded-xl bg-surface border border-overlay/[0.07] text-ink-3 hover:text-ink-1
                                  hover:bg-surface-hover transition-all disabled:opacity-50 shrink-0">
                       <UserPlus size={14} />
@@ -1422,8 +1422,8 @@ export default function TicketDetail() {
                     <p className="text-[10px] text-ink-4 font-mono mt-0.5">{p.id}</p>
                   </div>
                   {ticket.status === 'open' && can('manage_participants') && (
-                    <button onClick={() => removeParticipant(p.id)}
-                      className="text-ink-4 hover:text-red-400 transition-colors
+                    <button onClick={() => removeParticipant(p.id)} aria-label="Retirer le participant"
+                      className="focus-visible:opacity-100 text-ink-4 hover:text-red-400 transition-colors
                                  opacity-0 group-hover:opacity-100 ml-2 shrink-0">
                       <X size={12} />
                     </button>
@@ -1440,7 +1440,7 @@ export default function TicketDetail() {
                   className="flex-1 min-w-0 bg-surface border border-overlay/[0.07] text-ink-1
                              placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden
                              focus:border-primary/50 font-mono transition-all" />
-                <button onClick={addParticipant}
+                <button onClick={addParticipant} aria-label="Ajouter le participant"
                   disabled={!newParticipantId.trim() || addingParticipant}
                   className="p-2 rounded-xl bg-surface border border-overlay/[0.07] text-ink-3
                              hover:text-ink-1 hover:bg-surface-hover hover:border-overlay/12
@@ -1495,7 +1495,7 @@ export default function TicketDetail() {
                 ))}
               </select>
               {ticket.visibility_grade_id && (
-                <p className="text-[10px] text-amber-400/80 mt-2">
+                <p className="text-[10px] text-amber-400 mt-2">
                   Ticket restreint — visible uniquement par certains grades, sur le dashboard comme sur Discord.
                 </p>
               )}

@@ -67,7 +67,7 @@ function SALayout({ children }) {
           </div>
           <div>
             <p className="text-xs font-bold text-ink-1 leading-tight">Super Admin</p>
-            <p className="text-[9px] text-red-400/60 font-semibold uppercase tracking-[0.15em]">Panel</p>
+            <p className="text-[9px] text-red-400 font-semibold uppercase tracking-[0.15em]">Panel</p>
           </div>
         </div>
 

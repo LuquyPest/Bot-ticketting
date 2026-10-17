@@ -74,20 +74,20 @@ function FilterBar({ filters, setFilter, meta, reset }) {
   const active = Object.values(filters).some(Boolean);
   return (
     <div className="flex flex-wrap gap-2 items-center">
-      <select value={filters.category} onChange={e => { setFilter('category', e.target.value); setFilter('action', ''); }} className={field}>
+      <select value={filters.category} onChange={e => { setFilter('category', e.target.value); setFilter('action', ''); }} aria-label="Catégorie" className={field}>
         <option value="">Toutes catégories</option>
         {CATEGORY_ORDER.map(c => <option key={c} value={c}>{meta.categories?.[c] || c}</option>)}
       </select>
-      <select value={filters.action} onChange={e => setFilter('action', e.target.value)} className={`${field} max-w-56`}>
+      <select value={filters.action} onChange={e => setFilter('action', e.target.value)} aria-label="Action" className={`${field} max-w-56`}>
         <option value="">Toutes actions</option>
         {actions.map(([k, a]) => <option key={k} value={k}>{a.label}</option>)}
       </select>
-      <select value={filters.source} onChange={e => setFilter('source', e.target.value)} className={field}>
+      <select value={filters.source} onChange={e => setFilter('source', e.target.value)} aria-label="Source" className={field}>
         <option value="">Toutes sources</option>
         {Object.entries(meta.sources || {}).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select>
-      <input value={filters.actor} onChange={e => setFilter('actor', e.target.value)} placeholder="Acteur (nom ou ID)" className={`${field} w-40`} />
-      <input value={filters.ticket} onChange={e => setFilter('ticket', e.target.value)} placeholder="Ticket #" className={`${field} w-24`} />
+      <input value={filters.actor} onChange={e => setFilter('actor', e.target.value)} placeholder="Acteur (nom ou ID)" aria-label="Acteur" className={`${field} w-40`} />
+      <input value={filters.ticket} onChange={e => setFilter('ticket', e.target.value)} placeholder="Ticket #" aria-label="Numéro de ticket" className={`${field} w-24`} />
       <input value={filters.q} onChange={e => setFilter('q', e.target.value)} placeholder="Rechercher dans les détails" className={`${field} w-48`} />
       <input type="date" value={filters.from} onChange={e => setFilter('from', e.target.value)} className={field} title="Du" />
       <input type="date" value={filters.to} onChange={e => setFilter('to', e.target.value)} className={field} title="Au" />
