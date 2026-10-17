@@ -418,6 +418,17 @@ export default function TicketDetail() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
+  // Custom fields (editable by the staff)
+  const [fieldEdits, setFieldEdits] = useState({});
+  const saveFields = async () => {
+    try {
+      const { data } = await api.put(`/tickets/${id}/fields`, { values: fieldEdits });
+      setTicket(t => ({ ...t, fields: data.fields }));
+      setFieldEdits({});
+      toast.success('Informations enregistrées');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
   // Linked tickets
   const [linkInput, setLinkInput] = useState('');
   const addLink = async () => {
@@ -1245,6 +1256,32 @@ export default function TicketDetail() {
                                disabled:opacity-50 border bg-emerald-500/10 text-emerald-400
                                border-emerald-500/20 hover:bg-emerald-500/20">
                     {actionLoading ? 'En cours...' : 'Réouvrir le ticket'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CHAMPS PERSONNALISÉS */}
+          {ticket.fields?.length > 0 && (
+            <div className={panelCard}>
+              <SectionTitle>Informations</SectionTitle>
+              <div className="space-y-2">
+                {ticket.fields.map(f => (
+                  <label key={f.id} className="block">
+                    <span className="text-[10px] text-ink-4">{f.label}</span>
+                    {can('reply_ticket') ? (
+                      <input value={fieldEdits[f.id] ?? f.value ?? ''} onChange={e => setFieldEdits(v => ({ ...v, [f.id]: e.target.value }))}
+                        inputMode={f.type === 'number' ? 'decimal' : undefined} maxLength={200}
+                        className="w-full bg-surface border border-overlay/[0.07] text-ink-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden focus:border-primary/50" />
+                    ) : (
+                      <p className="text-xs text-ink-2">{f.value || '—'}</p>
+                    )}
+                  </label>
+                ))}
+                {Object.keys(fieldEdits).length > 0 && (
+                  <button onClick={saveFields} className="w-full py-1.5 text-xs rounded-lg font-semibold bg-primary/10 text-primary-light border border-primary/20 hover:bg-primary/20">
+                    Enregistrer
                   </button>
                 )}
               </div>

@@ -77,6 +77,7 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 3. Nouveau ticket : si le membre est dans plusieurs serveurs utilisant le bot → choix du serveur
 3 bis. Si la **FAQ automatique** est activée et que le message correspond à des entrées (mots-clés, mots de la question), le bot propose jusqu'à 3 réponses avec « ✅ La réponse N m'a aidé » (aucun ticket n'est ouvert) ou « 📩 Ouvrir un ticket quand même ». Un nouveau message à ce moment ouvre aussi le ticket
 4. Le bot demande ensuite le **sujet du ticket** : boutons si des sujets sont configurés (+ « Autre sujet »), sinon réponse libre. Sans réponse sous 10 minutes, le ticket est ouvert sans sujet. Les conversations en cours (sujet, choix du serveur ou du ticket, formulaire) sont gardées dans Redis : un redémarrage du bot ne fait perdre aucune réponse
+4 bis. Si des **champs personnalisés** sont définis (page **Champs** : n° de commande, pseudo en jeu… ; texte ou nombre, obligatoire ou non, pour tous les sujets ou un sujet précis), le bot les demande un par un ; les valeurs sont enregistrées, rappelées dans le salon, modifiables dans la fiche et utilisables comme filtre dans la liste des tickets
 5. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
 6. Un salon privé est créé dans le serveur Discord, **nommé d'après le sujet**
 7. Les messages et fichiers suivants sont relayés dans le ticket choisi
@@ -621,6 +622,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `admin_stats` | Statistiques cumulées par agent |
 | `blacklist` | Utilisateurs bannis (avec expiration optionnelle) |
 | `dashboard_users` | Comptes dashboard avec rôles et profil |
+| `ticket_fields` / `ticket_field_values` | Champs personnalisés et leurs valeurs par ticket |
 | `faq_entries` | FAQ automatique (question, réponse, mots-clés, compteurs) |
 | `reply_templates` | Modèles de réponse (personnels ou partagés, sujet associé, compteur d'utilisation) |
 | `grades` | Hiérarchie de rôles personnalisée |

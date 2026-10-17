@@ -7,13 +7,14 @@ const { parseJsonField } = require('../utils/jsonField');
 const { fetchGuildChannel } = require('../utils/discordGuard');
 const { subjectButtons, faqButtons } = require('../utils/components');
 const { findFaqMatches } = require('../utils/faq');
+const { applicableFields, parseFieldAnswer, saveFieldValues, fieldsForTicket } = require('../utils/ticketFields');
 const { broadcast } = require('../utils/sse');
 const { globalQuery } = require('../utils/globalDb');
 const {
   emptyMessageEmbed, blacklistedEmbed, notInGuildEmbed,
   serverLimitEmbed, dailyLimitEmbed, serverSelectEmbed,
   subjectSelectEmbed, subjectAskEmbed, ticketRouteEmbed,
-  intakeFormStartEmbed, intakeFormStepEmbed, faqSuggestEmbed,
+  intakeFormStartEmbed, intakeFormStepEmbed, faqSuggestEmbed, fieldQuestionEmbed,
 } = require('../utils/dmEmbeds');
 
 // DM conversation states, per user, kept in Redis (utils/pendingStore.js) so an answer sent
@@ -53,7 +54,7 @@ const DM_MAX = 8;
 const DM_WINDOW_MS = 30 * 1000;
 
 // Starts intake form questioning sequence, returns true if form was triggered
-async function checkIntakeForm(user, content, attachments, guildEntry, client, subject) {
+async function checkIntakeForm(user, content, attachments, guildEntry, client, subject, fieldValues = null) {
   const { db, config } = guildEntry;
   if (!config.intake_form_enabled) return false;
 
@@ -77,7 +78,7 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   if (!questions.length) return false;
 
   await store.setPending('intake', user.id, {
-    guildId: guildEntry.guildId, content, attachments, subject,
+    guildId: guildEntry.guildId, content, attachments, subject, fieldValues,
     questions: questions.map(q => q.label), step: 0, answers: [],
   }, INTAKE_TTL_MS);
 
@@ -159,10 +160,28 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
   }
 
   // Intake form check before creating the ticket
-  const intakeHandled = await checkIntakeForm(user, content, attachments, { guildId, db, tm, config }, client, subject);
-  if (intakeHandled) return;
+  // Custom fields (asked once, after the subject)
+  if (!opts.fieldsDone) {
+    const fields = await applicableFields(db, subject);
+    if (fields.length) {
+      await store.setPending('fields', user.id, { guildId, content, attachments, subject, fields, step: 0, values: {} }, INTAKE_TTL_MS);
+      await user.send({ embeds: [fieldQuestionEmbed(fields[0], 1, fields.length)] }).catch(() => null);
+      return;
+    }
+  }
+
+  // Intake form check before creating the ticket
+  if (!opts.intakeDone) {
+    const intakeHandled = await checkIntakeForm(user, content, attachments, { guildId, db, tm, config }, client, subject, opts.fieldValues || null);
+    if (intakeHandled) return;
+  }
 
   const result = await tm.createTicket(user, content, attachments, subject || null, { forceNew: true });
+  if (result.created && opts.fieldValues) {
+    await saveFieldValues(db, result.ticket.id, opts.fieldValues);
+    const lines = (await fieldsForTicket(db, result.ticket.id)).filter(f => f.value).map(f => `**${f.label}** : ${f.value}`);
+    if (lines.length) await result.channel?.send(`📋 **Informations du membre**\n${lines.join('\n')}`.slice(0, 2000)).catch(() => null);
+  }
   await tm.sendWelcomeDm(user, result.created, subject || null, result.ticket?.id);
   if (result.created) {
     broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
@@ -276,6 +295,30 @@ async function handleDm(client, user, data) {
   }
 
   // Intake form — step-by-step question reply
+  // Custom fields — one answer per message, validated
+  const fstate = await store.takePending('fields', user.id);
+  if (fstate) {
+    const field = fstate.fields[fstate.step];
+    const parsed = parseFieldAnswer(field, content, [t('fields.skip'), 'passer', 'skip']);
+    if (parsed.error) {
+      const { expiresAt, ...rest } = fstate;
+      await store.setPending('fields', user.id, rest, INTAKE_TTL_MS);
+      await user.send(t(parsed.error === 'number' ? 'fields.number' : 'fields.empty')).catch(() => null);
+      return;
+    }
+    fstate.values[field.id] = parsed.value;
+    fstate.step += 1;
+    if (fstate.step < fstate.fields.length) {
+      const { expiresAt, ...rest } = fstate;
+      await store.setPending('fields', user.id, rest, INTAKE_TTL_MS);
+      await user.send({ embeds: [fieldQuestionEmbed(fstate.fields[fstate.step], fstate.step + 1, fstate.fields.length)] }).catch(() => null);
+    } else {
+      await openTicketInGuild(user, fstate.content, fstate.attachments, fstate.guildId, client, fstate.subject ?? '',
+        { skipFaq: true, fieldsDone: true, fieldValues: fstate.values });
+    }
+    return;
+  }
+
   // Taken then stored back: two quick answers never count for the same question
   const intake = await store.takePending('intake', user.id);
   if (intake) {
@@ -290,7 +333,8 @@ async function handleDm(client, user, data) {
       // All questions answered — build intake summary and open ticket
       const summary = intake.questions.map((label, i) => `**${label}** : ${intake.answers[i] || '—'}`).join('\n');
       const enrichedContent = `${intake.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
-      await openTicketInGuild(user, enrichedContent, intake.attachments, intake.guildId, client, intake.subject ?? '');
+      await openTicketInGuild(user, enrichedContent, intake.attachments, intake.guildId, client, intake.subject ?? '',
+        { skipFaq: true, fieldsDone: true, intakeDone: true, fieldValues: intake.fieldValues || null });
     }
     return;
   }

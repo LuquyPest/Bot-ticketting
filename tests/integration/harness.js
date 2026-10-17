@@ -964,6 +964,49 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[l1, l2, lsec]]);
   }
 
+  // ── Custom ticket fields (asked in DM, stored, filterable) + intake form after them ──
+  {
+    r = await req('POST', '/api/fields', { sid: sessions.S1F || sessions.S3T, body: { label: 'x' } });
+    check('champs: création réservée à manage_settings', r.status === 403, r.status);
+    const fOrder = (await req('POST', '/api/fields', { sid: sessions.FV, body: { label: 'N° de commande', type: 'text', required: true } })).body;
+    const fAmount = (await req('POST', '/api/fields', { sid: sessions.FV, body: { label: 'Montant', type: 'number', required: false, subject: 'Facturation' } })).body;
+    const fOther = (await req('POST', '/api/fields', { sid: sessions.FV, body: { label: 'Pseudo en jeu', subject: 'Jeu' } })).body;
+    check('champs: champs créés', fOrder.id && fAmount.id && fOther.id, JSON.stringify([fOrder, fAmount]));
+    // One-question intake form: must run once after the fields (used to loop forever)
+    await db('UPDATE guild_config SET intake_form_enabled = 1 WHERE id = 1');
+    const formId = (await db("INSERT INTO intake_forms (name) VALUES ('Général')")).insertId;
+    await db("INSERT INTO intake_form_fields (form_id, label, position) VALUES (?, 'Depuis quand ?', 0)", [formId]);
+    const MFD = '200000000000000024';
+    memberRoles.set(MFD, new Map());
+    const msgF = app('./events/messageCreate');
+    const dmFD = text => msgF.execute(fakeClient, { t: 'MESSAGE_CREATE', d: { author: { id: MFD, bot: false }, content: text, attachments: [] } });
+    const lastFD = () => memberDms.filter(m => m.id === MFD).slice(-1)[0]?.p;
+    await dmFD('Je n\'ai pas reçu ma facture');
+    await dmFD('Facturation');
+    check('champs: demandés après le sujet', lastFD()?.embeds?.[0]?.data?.description?.includes('N° de commande') && lastFD().embeds[0].data.author.name.includes('1 sur 2'), JSON.stringify(lastFD()?.embeds?.[0]?.data));
+    await dmFD('A-1234');
+    await dmFD('pas un nombre');
+    check('champs: nombre attendu', lastFD() === 'Réponds avec un nombre.', JSON.stringify(lastFD()));
+    await dmFD('42,5');
+    check('champs: puis le formulaire d\'intake', lastFD()?.embeds?.[0]?.data?.description?.includes('Depuis quand'), JSON.stringify(lastFD()?.embeds?.[0]?.data));
+    sent.length = 0;
+    await dmFD('Hier');
+    const tFD = await db('SELECT id, channel_id FROM tickets WHERE owner_id = ?', [MFD]);
+    const vals = tFD[0] ? await db('SELECT field_id, value FROM ticket_field_values WHERE ticket_id = ?', [tFD[0].id]) : [];
+    check('champs: un seul ticket créé (plus de boucle du formulaire)', tFD.length === 1 && !(await redis.get(`pending:intake:${MFD}`)), JSON.stringify(tFD));
+    check('champs: valeurs enregistrées', vals.find(v => v.field_id === fOrder.id)?.value === 'A-1234' && vals.find(v => v.field_id === fAmount.id)?.value === '42.5' && !vals.some(v => v.field_id === fOther.id), JSON.stringify(vals));
+    check('champs: rappelés dans le salon', sent.some(x => typeof x.p === 'string' && x.p.includes('Informations du membre') && x.p.includes('A-1234')), JSON.stringify(sent.map(x => x.p).filter(p => typeof p === 'string').slice(-3)));
+    r = await req('GET', '/api/tickets', { sid: sessions.FV, query: { field: fOrder.id, fieldValue: 'A-12' } });
+    check('champs: filtre de la liste', r.body.tickets?.map(x => x.id).join() === String(tFD[0].id), JSON.stringify(r.body.tickets?.map(x => x.id)));
+    r = await req('PUT', `/api/tickets/${tFD[0].id}/fields`, { sid: sessions.FV, body: { values: { [fAmount.id]: 'abc' } } });
+    check('champs: modification validée (nombre)', r.status === 400, r.status);
+    r = await req('PUT', `/api/tickets/${tFD[0].id}/fields`, { sid: sessions.FV, body: { values: { [fOrder.id]: 'B-9', [fAmount.id]: '' } } });
+    check('champs: modification par le staff', r.status === 200 && r.body.fields.find(f => f.id === fOrder.id)?.value === 'B-9' && !r.body.fields.find(f => f.id === fAmount.id)?.value, JSON.stringify(r.body));
+    await db('UPDATE guild_config SET intake_form_enabled = 0 WHERE id = 1');
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MFD]);
+    for (const f of [fOrder, fAmount, fOther]) await req('DELETE', `/api/fields/${f.id}`, { sid: sessions.FV });
+  }
+
   // ── Staff availability ──
   {
     r = await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'away' } });

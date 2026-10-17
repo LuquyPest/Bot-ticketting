@@ -5,6 +5,7 @@ const { broadcast } = require('../../utils/sse');
 const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, logAudit } = require('../../utils/gradePermissions');
 const { syncTicketChannel } = require('../../utils/channelVisibility');
 const { slaStatus, breachedSql } = require('../../utils/sla');
+const { fieldsForTicket, saveFieldValues } = require('../../utils/ticketFields');
 const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
@@ -88,6 +89,7 @@ router.get('/', async (req, res) => {
     const assignee = str('assignee') === 'me' ? req.session.user.id : str('assignee');
     const tag = parseInt(str('tag')) || null;
     const sla = str('sla');
+    const fieldId = parseInt(str('field')) || null, fieldValue = str('fieldValue').slice(0, 100);
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
     if (stage    && !VALID_STAGE.has(stage))       return res.status(400).json({ error: 'Étape invalide' });
@@ -116,6 +118,10 @@ router.get('/', async (req, res) => {
     if (tag)      { where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta WHERE ta.ticket_id = tickets.id AND ta.tag_id = ?)'); params.push(tag); }
     const [slaCfg] = await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
     if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(b.sql); params.push(...b.params); }
+    if (fieldId && fieldValue) {
+      where.push('EXISTS (SELECT 1 FROM ticket_field_values fv WHERE fv.ticket_id = tickets.id AND fv.field_id = ? AND fv.value LIKE ?)');
+      params.push(fieldId, `%${fieldValue.replace(/[%_\\]/g, '\\$&')}%`);
+    }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
@@ -252,6 +258,7 @@ router.get('/:id', async (req, res) => {
       sla: slaStatus(ticket, cfg),
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
+      fields: await fieldsForTicket(req.guildDb, ticket.id),
       transcript: transcript[0] || null,
       rating: rating[0] || null
     });
@@ -684,6 +691,30 @@ router.delete('/:id/links/:otherId', async (req, res) => {
       }
     }
     res.json({ links: await linkedTickets(req, ticket.id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/tickets/:id/fields { values: { fieldId: value } } — staff edit of the custom fields
+router.put('/:id/fields', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const values = req.body.values && typeof req.body.values === 'object' ? req.body.values : null;
+    if (!values) return res.status(400).json({ error: 'values requis' });
+    const known = new Map((await req.guildDb('SELECT id, type FROM ticket_fields')).map(f => [String(f.id), f]));
+    for (const [id, v] of Object.entries(values)) {
+      const f = known.get(String(id));
+      if (!f) return res.status(400).json({ error: `Champ ${id} inconnu` });
+      if (v !== '' && v !== null && (typeof v !== 'string' || v.length > 200)) return res.status(400).json({ error: 'Valeur invalide (200 caractères max)' });
+      if (v && f.type === 'number' && !Number.isFinite(Number(String(v).replace(',', '.')))) return res.status(400).json({ error: 'Ce champ attend un nombre' });
+      if (v === '' || v === null) await req.guildDb('DELETE FROM ticket_field_values WHERE ticket_id = ? AND field_id = ?', [ticket.id, f.id]);
+    }
+    await saveFieldValues(req.guildDb, ticket.id, Object.fromEntries(Object.entries(values).filter(([, v]) => v)));
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_fields_update', ticketId: ticket.id, details: { fields: Object.keys(values) } });
+    res.json({ fields: await fieldsForTicket(req.guildDb, ticket.id) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

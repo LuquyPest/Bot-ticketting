@@ -22,6 +22,8 @@ const VERSIONS = [
       { type: 'new',  text: 'Rappels personnels sur un ticket (« me le rappeler dans 2 jours ») par notification et MP' },
       { type: 'new',  text: 'Tickets liés : relier deux tickets sans les fusionner, lien visible des deux côtés' },
       { type: 'new',  text: 'Statut de disponibilité (disponible, occupé, absent) visible quand on attribue un ticket' },
+      { type: 'new',  text: 'Champs personnalisés demandés au membre (n° de commande, pseudo…), visibles dans la fiche et filtrables' },
+      { type: 'fix',  text: 'Le formulaire d\'intake ne se relance plus en boucle une fois rempli' },
     ]
   },
   {

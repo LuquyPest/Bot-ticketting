@@ -163,6 +163,21 @@ const MIGRATIONS = [
     name: 'Statut de disponibilité du staff',
     statements: ["ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS availability ENUM('available','busy','away') NOT NULL DEFAULT 'available'"],
   },
+  {
+    version: 9,
+    name: 'Champs personnalisés des tickets',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_fields (
+        id INT AUTO_INCREMENT PRIMARY KEY, label VARCHAR(80) NOT NULL, type ENUM('text','number') NOT NULL DEFAULT 'text',
+        required TINYINT(1) NOT NULL DEFAULT 0, subject VARCHAR(100) DEFAULT NULL, position INT NOT NULL DEFAULT 0,
+        active TINYINT(1) NOT NULL DEFAULT 1, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+      `CREATE TABLE IF NOT EXISTS ticket_field_values (
+        ticket_id INT NOT NULL, field_id INT NOT NULL, value VARCHAR(200) NOT NULL,
+        PRIMARY KEY (ticket_id, field_id), INDEX idx_tfv_field (field_id, value),
+        CONSTRAINT fk_tfv_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+        CONSTRAINT fk_tfv_field FOREIGN KEY (field_id) REFERENCES ticket_fields(id) ON DELETE CASCADE)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

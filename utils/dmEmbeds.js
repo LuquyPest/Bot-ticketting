@@ -103,6 +103,14 @@ function intakeFormStepEmbed(question, step, total) {
     .setFooter({ text: t('intake.footer') });
 }
 
+function fieldQuestionEmbed(field, step, total) {
+  return new EmbedBuilder()
+    .setColor(C.primary)
+    .setAuthor({ name: t('fields.title', { step, total }) })
+    .setDescription(`**${field.label}**${field.required ? '' : `\n${t('fields.optional')}`}${field.type === 'number' ? `\n${t('fields.number')}` : ''}`)
+    .setFooter({ text: t('intake.footer') });
+}
+
 function sessionExpiredEmbed() {
   return new EmbedBuilder().setColor(C.neutral).setDescription(t('expired'));
 }
@@ -204,6 +212,7 @@ module.exports = {
   ratingConfirmEmbed,
   ratingCommentEmbed,
   faqSuggestEmbed,
+  fieldQuestionEmbed,
   memberCloseConfirmEmbed,
   alreadyRatedEmbed,
 };

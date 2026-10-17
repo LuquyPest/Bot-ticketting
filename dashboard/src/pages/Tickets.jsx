@@ -20,7 +20,7 @@ import toast from 'react-hot-toast';
 import SlaBadge from '../components/SlaBadge';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '' };
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '' };
 
 /* ── Built-in views (the default one shows open tickets) ─────── */
 const BUILTIN_VIEWS = [
@@ -202,6 +202,8 @@ export default function Tickets() {
   const [showBulkTag,      setShowBulkTag]       = useState(false);
   const [showBulkTemplate, setShowBulkTemplate] = useState(false);
   const [templates, setTemplates] = useState([]);
+  const [customFields, setCustomFields] = useState([]);
+  useEffect(() => { api.get('/fields').then(r => setCustomFields(r.data.filter(f => f.active))).catch(() => {}); }, []);
   const [showDateFilter,   setShowDateFilter]   = useState(false);
   const [showStaffFilter,  setShowStaffFilter]  = useState(false);
   const [staffList,  setStaffList]  = useState([]);
@@ -504,6 +506,20 @@ export default function Tickets() {
             { value: 'in_progress', label: 'En cours' },
           ]}
         />
+        {/* Custom field filter */}
+        {customFields.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <select value={filters.field} onChange={e => { setFilter('field', e.target.value); setActiveView(''); }} aria-label="Champ personnalisé"
+              className="bg-surface border border-overlay/[0.07] text-ink-2 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden">
+              <option value="">Champ…</option>
+              {customFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+            </select>
+            {filters.field && (
+              <input value={filters.fieldValue} onChange={e => { setFilter('fieldValue', e.target.value); setActiveView(''); }} placeholder="Valeur" aria-label="Valeur du champ"
+                className="w-28 bg-surface border border-overlay/[0.07] text-ink-1 placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden focus:border-primary/50" />
+            )}
+          </div>
+        )}
         {/* Staff filter */}
         {staffList.length > 0 && (
           <div className="relative">
