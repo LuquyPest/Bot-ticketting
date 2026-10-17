@@ -468,11 +468,14 @@ Boutons du salon : **Transcript** demande `view_transcripts`, **Fermer** demande
 
 ### Espace membre web
 
-Les membres se connectent sur **`/espace`** (ex. `https://ticket.sunset-fa.fr/espace`) avec Discord et retrouvent tous leurs tickets, ouverts et fermés, sur chaque serveur : statut formulé pour eux (« en attente de ta réponse », « pris en charge »…), conversation avec le staff, note donnée, et téléchargement de l'échange en HTML. Ils voient aussi les tickets où ils ont été ajoutés comme participants.
+Les membres se connectent sur **`/espace`** (ex. `https://ticket.sunset-fa.fr/espace`) avec Discord et retrouvent tous leurs tickets, ouverts et fermés, sur chaque serveur ; ils peuvent aussi y répondre, ouvrir un ticket et consulter l'aide : statut formulé pour eux (« en attente de ta réponse », « pris en charge »…), conversation avec le staff, note donnée, et téléchargement de l'échange en HTML. Ils voient aussi les tickets où ils ont été ajoutés comme participants.
 
 - **Ce qui est montré** : uniquement ce que le membre a reçu ou envoyé en MP (ses messages, les réponses du staff, les messages programmés, les événements). Jamais les notes internes, les messages tapés par le staff dans le salon Discord du ticket, ni le nom derrière une réponse anonyme (affichée « Support »). Le transcript du salon Discord n'est pas proposé, puisqu'il contient les échanges internes.
 - **Connexion** : Discord avec le seul scope `identify`, via la même URL de retour que le dashboard (rien à ajouter dans le portail développeur). La session membre ne donne aucun accès au dashboard ; un membre du staff déjà connecté au dashboard est reconnu directement.
 - **Option par serveur** : « Espace membre web » dans Paramètres → Fonctionnalités, **activée par défaut**. Désactivée, les tickets du serveur disparaissent de l'espace.
+- **Répondre depuis le web** : sur un ticket ouvert, une zone de réponse envoie le message au staff exactement comme un MP (même salon, même historique, mêmes limites anti-flood et blacklist). La conversation se met à jour toute seule toutes les 15 s.
+- **Ouvrir un ticket** : onglet « Ouvrir un ticket » : serveur (ceux dont le membre fait partie), sujet, champs personnalisés et questions du formulaire d'ouverture de ce sujet, puis la demande. Le ticket suit le même parcours qu'en MP (message de bienvenue en MP, règles par sujet, incidents…) avec les mêmes limites (par jour, par serveur, blacklist). Pendant la saisie, les entrées de FAQ qui ressemblent à la demande sont proposées.
+- **Aide** : la FAQ de chaque serveur, consultable et cherchable (sans accent ni casse), avec un lien pour ouvrir un ticket si la réponse n'y est pas.
 - **Lien** : donné dans le MP de fermeture d'un ticket et dans `/mestickets`, et depuis la page de connexion du dashboard.
 
 ### Topic du salon Discord

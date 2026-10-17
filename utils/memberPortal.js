@@ -113,4 +113,48 @@ function portalUrl() {
   try { return new URL('/espace', config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { return null; }
 }
 
-module.exports = { listMemberTickets, memberTicket, memberTranscriptHtml, portalEnabled, portalUrl, MEMBER_SOURCES };
+// Servers where the member is on Discord and the member space is on (cached 5 min)
+async function memberGuilds(userId, client) {
+  const redis = require('./redis').getRedis();
+  const key = `memberguilds:${userId}`;
+  const cached = await redis.get(key).catch(() => null);
+  if (cached) return JSON.parse(cached);
+  const out = [];
+  for (const { guild_id, guild_name } of await getActiveGuilds()) {
+    try {
+      const g = client?.guilds?.cache?.get(guild_id);
+      if (!g || !(await g.members.fetch(userId).catch(() => null))) continue;
+      if (!(await portalEnabled(getTenantDb(guild_id)))) continue;
+      out.push({ id: guild_id, name: g.name || guild_name || guild_id, icon: g.iconURL?.({ size: 64 }) || null });
+    } catch { /* tenant DB unavailable */ }
+  }
+  await redis.set(key, JSON.stringify(out), 'EX', 300).catch(() => null);
+  return out;
+}
+
+async function isMemberGuild(userId, guildId, client) {
+  return (await memberGuilds(userId, client)).find(g => g.id === guildId) || null;
+}
+
+// Public help: active FAQ entries of a server
+async function guildFaq(guildId) {
+  return getTenantDb(guildId)('SELECT id, question, answer FROM faq_entries WHERE active = 1 ORDER BY solved_count DESC, id ASC LIMIT 200');
+}
+
+// What the web form asks before opening a ticket: subjects, then (for a subject) custom fields
+// and the opening form questions
+async function openingForm(guildId, subject) {
+  const db = getTenantDb(guildId);
+  const [cfg] = await db('SELECT ticket_subjects, intake_form_enabled FROM guild_config WHERE id = 1');
+  const subjects = require('./jsonField').parseJsonField(cfg?.ticket_subjects, []);
+  if (subject === undefined) return { subjects };
+  const fields = await require('./ticketFields').applicableFields(db, subject);
+  let questions = [];
+  if (cfg?.intake_form_enabled) {
+    const [form] = await db('SELECT id FROM intake_forms WHERE active = 1 AND (subject = ? OR subject IS NULL) ORDER BY subject IS NULL ASC LIMIT 1', [subject || null]).catch(() => []);
+    if (form) questions = (await db('SELECT label FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC', [form.id])).map(q => q.label);
+  }
+  return { subjects, fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type, required: !!f.required })), questions };
+}
+
+module.exports = { listMemberTickets, memberTicket, memberTranscriptHtml, portalEnabled, portalUrl, MEMBER_SOURCES, memberGuilds, isMemberGuild, guildFaq, openingForm };

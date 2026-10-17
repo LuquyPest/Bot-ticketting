@@ -14,6 +14,7 @@ const VERSIONS = [
     date: '18 octobre 2026',
     title: 'Espace membre interactif, contexte des tickets et robustesse',
     changes: [
+      { type: 'new',  text: 'Espace membre : répondre à un ticket et en ouvrir un depuis le web (sujet, champs, formulaire), et page d\'aide avec la FAQ de chaque serveur' },
       { type: 'new',  text: 'Annonces d\'incident : un problème connu est annoncé en MP à chaque nouveau ticket concerné, avec le nombre de membres touchés, et ceux-ci sont prévenus à la résolution' },
       { type: 'new',  text: 'Page « Mon activité » : tes réponses, tickets fermés, temps de première réponse et notes reçues, comparés à l\'équipe, avec l\'évolution sur 12 semaines' },
       { type: 'new',  text: 'Tickets similaires dans la fiche : les tickets résolus qui parlent du même problème, avec la réponse qui les a clos et un bouton pour la reprendre' },

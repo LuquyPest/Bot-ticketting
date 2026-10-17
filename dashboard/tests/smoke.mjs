@@ -48,6 +48,11 @@ const MOCK = {
   '/api/incidents': [{ id: 1, title: 'Paiements par carte indisponibles', message: 'Notre prestataire est en panne, ne réessaie pas pour l’instant.', subjects: ['Paiement'], notify_on_resolve: true, created_by_tag: 'Daryu', created_at: iso(90), resolved_at: null, members: 7, tickets: 8 },
     { id: 2, title: 'Connexion lente', message: 'Résolu', subjects: null, notify_on_resolve: false, created_by_tag: 'Daryu', created_at: iso(5000), resolved_at: iso(4000), resolved_by_tag: 'Daryu', members: 3, tickets: 3 }],
   '/api/config': { ticketSubjects: ['Paiement', 'Compte', 'Autre'] },
+  '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null }],
+  '/api/member/guilds/123456789012345678/faq': [
+    { id: 1, question: 'Comment changer mon mot de passe ?', answer: 'Va dans Réglages > Sécurité.' },
+    { id: 2, question: 'Mon paiement est refusé', answer: 'Vérifie que ta carte autorise les paiements en ligne.' }],
+  '/api/member/guilds/123456789012345678/form': { subjects: ['Paiement', 'Compte'], fields: [{ id: 1, label: 'N° de commande', type: 'number', required: true }], questions: ['Moyen de paiement ?'] },
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
@@ -94,6 +99,8 @@ const PAGES = [
   ['espace-login', '/espace', 'Se connecter avec Discord', true],
   ['espace', '/espace', 'Ancienne commande'],
   ['espace-ticket', '/espace/123456789012345678/1', 'Colis renvoyé'],
+  ['espace-aide', '/espace/aide', 'Comment changer mon mot de passe'],
+  ['espace-nouveau', '/espace/nouveau', 'Ouvrir le ticket'],
 ];
 // EventSource has no mock: its connection errors are expected
 const IGNORED = /EventSource|text\/event-stream|MIME type|\/api\/events|status of 401/;

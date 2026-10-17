@@ -148,6 +148,7 @@ async function main() {
     ['400000000000000003', new Map()],
     ['200000000000000005', new Map()],
     ['200000000000000006', new Map()],
+    ['200000000000000081', new Map()],
   ]);
   const memberDms = [];
   const G2 = '223456789012345678';
@@ -168,7 +169,7 @@ async function main() {
   };
   const fakeClient = {
     isReady: () => true, user: { id: '1' },
-    guilds: { fetch: async id => (id === G ? guildObj : id === G2 ? g2Discord : null), cache: new Map([[G, { name: 'Serveur Test', iconURL: () => null }]]) },
+    guilds: { fetch: async id => (id === G ? guildObj : id === G2 ? g2Discord : null), cache: new Map([[G, { name: 'Serveur Test', iconURL: () => null, members: guildObj.members }]]) },
     channels: { fetch: async id => channels.get(id) || null },
     users: { fetch: async id => {
       if (/^30000000000000000[12]$/.test(id)) return { id, username: 'founder' + id.slice(-1), avatar: null, bot: false, send: async () => {} };
@@ -1325,6 +1326,52 @@ async function main() {
     await tmI.sendWelcomeDm(await fakeClient.users.fetch(MI1), true, 'Paiement', ti3);
     check('incident: plus annoncé une fois résolu', memberDms.length === 1, JSON.stringify(memberDms.length));
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ti1, ti2, ti3]]);
+  }
+
+  // ── Member space: help, opening and answering from the web ──
+  {
+    const MW = '200000000000000081';
+    await redis.del(`memberguilds:${MW}`);
+    await mk('MW', { member: { id: MW, username: 'member81', avatar: null } });
+    await db("INSERT INTO faq_entries (question, answer, keywords) VALUES ('Comment changer mon mot de passe ?', 'Va dans Réglages > Sécurité.', 'mot de passe')");
+    r = await req('GET', '/api/member/guilds', { sid: sessions.MW });
+    check('espace membre: serveurs dont il est membre', r.status === 200 && r.body.some(g => g.id === G), JSON.stringify(r.body));
+    r = await req('GET', `/api/member/guilds/${G}/faq`, { sid: sessions.MW });
+    check('espace membre: aide publique (FAQ)', r.status === 200 && r.body.some(e => /mot de passe/.test(e.question)), JSON.stringify(r.body));
+    r = await req('GET', `/api/member/guilds/${G2}/faq`, { sid: sessions.MW });
+    check('espace membre: aide d un serveur dont il n est pas membre refusée', r.status === 404, r.status);
+    const [cfgBefore] = await db('SELECT ticket_subjects, intake_form_enabled, max_tickets_per_day FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_subjects = ?, intake_form_enabled = 1, max_tickets_per_day = 10 WHERE id = 1", [JSON.stringify(['Paiement', 'Compte'])]);
+    const fid = (await db("INSERT INTO ticket_fields (label, type, required, subject) VALUES ('N° de commande', 'number', 1, 'Paiement')")).insertId;
+    const formId = (await db("INSERT INTO intake_forms (name, subject, active) VALUES ('Paiement web', 'Paiement', 1)")).insertId;
+    await db("INSERT INTO intake_form_fields (form_id, label, position) VALUES (?, 'Moyen de paiement ?', 0)", [formId]);
+    r = await req('GET', `/api/member/guilds/${G}/form`, { sid: sessions.MW, query: { subject: 'Paiement' } });
+    check('espace membre: formulaire d ouverture (sujets, champs, questions)', r.body.subjects?.includes('Paiement') && r.body.fields?.some(f => f.id === fid && f.required) && r.body.questions?.[0] === 'Moyen de paiement ?', JSON.stringify(r.body));
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, body: { subject: 'Paiement', fields: { [fid]: 'abc' }, answers: ['Carte'], content: 'Paiement bloqué' } });
+    check('espace membre: champ invalide refusé', r.status === 400 && /nombre/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: [], content: 'Paiement bloqué' } });
+    check('espace membre: questions obligatoires', r.status === 400, JSON.stringify(r.body));
+    memberDms.length = 0;
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: ['Carte'], content: 'Paiement bloqué depuis le web' } });
+    const wt = r.body.ticketId;
+    const [wTicket] = wt ? await db('SELECT * FROM tickets WHERE id = ?', [wt]) : [];
+    const [wNote] = wt ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user'", [wt]) : [];
+    const [wField] = wt ? await db('SELECT value FROM ticket_field_values WHERE ticket_id = ? AND field_id = ?', [wt, fid]) : [];
+    check('espace membre: ticket ouvert depuis le web', r.status === 200 && wTicket?.owner_id === MW && wTicket.subject === 'Paiement' && /depuis le web/.test(wNote?.content) && /Moyen de paiement \? \*\* : Carte|Moyen de paiement \?\*\* : Carte/.test(wNote?.content) && wField?.value === '1234', JSON.stringify([r.body, wTicket?.subject, wNote, wField]));
+    check('espace membre: message de bienvenue reçu en MP', memberDms.some(m => m.id === MW), JSON.stringify(memberDms.map(m => m.id)));
+    r = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.MW, body: { content: 'Réponse écrite sur le site' } });
+    const webMsgs = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id", [wt]);
+    check('espace membre: réponse depuis le web transmise comme un MP', r.status === 200 && webMsgs.some(n => n.content === 'Réponse écrite sur le site') && sent.some(x => x.id === wTicket.channel_id), JSON.stringify(webMsgs));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [wt]);
+    r = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.MW, body: { content: 'trop tard' } });
+    check('espace membre: pas de réponse sur un ticket fermé', r.status === 400, r.status);
+    await db("INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag) VALUES (?, 'm81', 'test', '1', 'F')", [MW]).catch(() => null);
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, body: { subject: 'Compte', content: 'encore' } });
+    check('espace membre: membre blacklisté refusé', r.status === 403, JSON.stringify(r.body));
+    await db('DELETE FROM blacklist WHERE user_id = ?', [MW]);
+    await db('UPDATE guild_config SET ticket_subjects = ?, intake_form_enabled = ?, max_tickets_per_day = ? WHERE id = 1', [cfgBefore.ticket_subjects == null || typeof cfgBefore.ticket_subjects === 'string' ? cfgBefore.ticket_subjects : JSON.stringify(cfgBefore.ticket_subjects), cfgBefore.intake_form_enabled, cfgBefore.max_tickets_per_day]);
+    await db('UPDATE intake_forms SET active = 0 WHERE id = ?', [formId]);
+    await db('UPDATE ticket_fields SET active = 0 WHERE id = ?', [fid]);
   }
 
   // ── Monthly PDF report ──

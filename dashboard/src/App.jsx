@@ -130,10 +130,10 @@ export default function App() {
               </Suspense>
             } />
             {/* Member web space: own tickets, outside the staff dashboard */}
-            {['/espace', '/espace/:guildId/:ticketId'].map(p => (
+            {[['/espace'], ['/espace/nouveau', 'nouveau'], ['/espace/aide', 'aide'], ['/espace/:guildId/:ticketId']].map(([p, page]) => (
               <Route key={p} path={p} element={
                 <Suspense fallback={<PageLoader />}>
-                  <ErrorBoundary><MemberPortal /></ErrorBoundary>
+                  <ErrorBoundary><MemberPortal page={page} /></ErrorBoundary>
                 </Suspense>
               } />
             ))}
