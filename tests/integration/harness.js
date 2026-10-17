@@ -627,6 +627,15 @@ async function main() {
     const tF = await db('SELECT id FROM tickets WHERE owner_id = ?', [MF]);
     const nF = tF[0] ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user'", [tF[0].id]) : [];
     check('FAQ: le ticket contient le message d\'origine', tF.length === 1 && nF.some(n => n.content.includes('Toujours un souci')), JSON.stringify(nF));
+    // « Mes tickets »: the member sees each open ticket with its stage in their words
+    await db("UPDATE tickets SET stage = 'waiting' WHERE owner_id = ?", [MF]);
+    out = await clickF('my_tickets');
+    const mt = out.reply?.embeds?.[0]?.data;
+    check('mes tickets: état du ticket formulé pour le membre', mt?.fields?.length === 1 && mt.fields[0].value.includes('En attente de ta réponse') && mt.fields[0].name.includes(`#${tF[0].id}`), JSON.stringify(mt));
+    const cmdOut = {};
+    await app('./commands/mestickets').execute(fakeClient, { user: { id: MF }, reply: async p => { cmdOut.reply = p; } });
+    check('mes tickets: commande /mestickets en MP', cmdOut.reply?.embeds?.[0]?.data?.fields?.length === 1);
+    check('mes tickets: commande déclarée pour les MP', app('./commands/mestickets').dm === true);
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MF]);
     await req('PUT', '/api/faq/enabled', { sid: sessions.FV, body: { enabled: false } });
   }

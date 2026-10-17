@@ -48,7 +48,7 @@ module.exports = {
         }
         return;
       }
-      if (interaction.isChatInputCommand() && !interaction.guildId) {
+      if (interaction.isChatInputCommand() && !interaction.guildId && !client.commands?.get(interaction.commandName)?.dm) {
         return interaction.reply({ content: 'Cette commande s\'utilise uniquement sur un serveur.', flags: MessageFlags.Ephemeral });
       }
 
@@ -135,6 +135,12 @@ module.exports = {
                 .setRequired(true).setMinLength(2).setMaxLength(1000).setPlaceholder('Ce qui t\'a plu, ce qui pourrait être amélioré…')
             ));
           return interaction.showModal(modal);
+        }
+
+        // ── Mes tickets (DM) ──
+        if (interaction.customId === 'my_tickets') {
+          const { myTicketsEmbed } = require('../utils/memberTickets');
+          return interaction.reply({ embeds: [await myTicketsEmbed(interaction.user, client)], flags: MessageFlags.Ephemeral });
         }
 
         // ── Fermer mon ticket (DM, propriétaire du ticket) ──

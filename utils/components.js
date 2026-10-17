@@ -94,10 +94,11 @@ function ratingCommentButton(ticketId, guildId) {
   );
 }
 
-// On the member's ticket DMs (owner only): close the ticket themselves
+// On the member's ticket DMs (owner only): close the ticket themselves, see all their tickets
 function memberCloseButton(ticketId, guildId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`memberclose_${ticketId}_${guildId}`).setLabel('🔒 Fermer mon ticket').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`memberclose_${ticketId}_${guildId}`).setLabel('🔒 Fermer mon ticket').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('my_tickets').setLabel('📋 Mes tickets').setStyle(ButtonStyle.Secondary)
   );
 }
 

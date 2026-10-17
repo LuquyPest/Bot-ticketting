@@ -422,6 +422,7 @@ Les commandes sont réservées au staff et utilisables uniquement sur un serveur
 | `/note` | `reply_ticket` | Ajoute une note interne (non envoyée au membre, exclue des transcripts) |
 | `/blacklist` | Rôle Chef Support | Gestion de la liste noire (add / remove / list) |
 | `/staffstats` | Rôle Chef Support | Statistiques détaillées par agent |
+| `/mestickets` | Membre, en MP avec le bot | État de ses tickets ouverts sur tous les serveurs (« en attente de ta réponse », « en cours de traitement »…). Aussi accessible par le bouton **📋 Mes tickets** des MP |
 
 Boutons du salon : **Transcript** demande `view_transcripts`, **Fermer** demande `close_ticket`.
 

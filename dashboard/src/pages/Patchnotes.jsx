@@ -22,6 +22,7 @@ const VERSIONS = [
       { type: 'tech', text: 'Dépendances à jour : Vite 8, recharts 3, lucide-react 1, connect-redis 9 ; test de fumée du dashboard en CI' },
       { type: 'new',  text: 'Panel super-admin : alerte en cas de pic d\'erreurs (MP Discord et/ou webhook)' },
       { type: 'new',  text: 'FAQ automatique : avant d\'ouvrir un ticket, le bot propose les réponses qui correspondent au message du membre (page FAQ pour les gérer)' },
+      { type: 'new',  text: 'Le membre suit ses tickets : commande /mestickets en MP et bouton « Mes tickets » (état formulé pour lui)' },
     ]
   },
   {
