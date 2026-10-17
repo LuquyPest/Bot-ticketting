@@ -20,6 +20,7 @@
     "express-session": "^1.19.0",
     "helmet": "^8.3.0",
     "ioredis": "^6.0.0",
+    "multer": "^2.4.0",
     "mysql2": "^3.24.6",
     "otplib": "^13.5.0",
     "qrcode": "^1.5.4",

@@ -41,6 +41,27 @@ const U = { F: '100000000000000001', S1: '100000000000000002', S2: '100000000000
 let pass = 0, failed = 0;
 const check = (name, cond, extra = '') => { cond ? pass++ : failed++; console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '  ' + extra}`); };
 
+// multipart/form-data request: fields { k: v } + one file { field, name, content(Buffer) }
+function reqMultipart(path, { sid, fields = {}, file }) {
+  const boundary = '----harness' + crypto.randomBytes(8).toString('hex');
+  const parts = [];
+  for (const [k, v] of Object.entries(fields)) parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
+  if (file) {
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${file.field}"; filename="${file.name}"\r\nContent-Type: application/octet-stream\r\n\r\n`));
+    parts.push(file.content, Buffer.from('\r\n'));
+  }
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
+  const payload = Buffer.concat(parts);
+  return new Promise((resolve, reject) => {
+    const r = http.request({ host: '127.0.0.1', port: config.webServerPort, method: 'POST', path, headers: {
+      Cookie: 'connect.sid=' + encodeURIComponent('s:' + sign(sid, config.dashboard.sessionSecret)),
+      'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': payload.length, 'X-Requested-With': 'XMLHttpRequest',
+    } }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => { let b = d; try { b = JSON.parse(d); } catch {} resolve({ status: res.statusCode, body: b }); }); });
+    r.on('error', reject);
+    r.end(payload);
+  });
+}
+
 function req(method, path, { sid, body, headers = {}, query } = {}) {
   if (query) path += '?' + new URLSearchParams(query);
   return new Promise((resolve, reject) => {
@@ -109,7 +130,11 @@ async function main() {
   const mkChannel = (id, guildId, type = 0, name = 'ticket') => ({
     id, guildId, type, name, isTextBased: () => true,
     setName: async function (n) { this.name = n; return this; },
-    send: async p => { sent.push({ id, p }); return { id: 'm' + sent.length }; },
+    send: async p => {
+      sent.push({ id, p });
+      const file = p?.files?.[0];
+      return { id: 'm' + sent.length, attachments: { first: () => (file ? { url: `https://cdn.discordapp.com/attachments/${id}/${file.name}` } : undefined) } };
+    },
     setTopic: async () => {}, delete: async () => {}, setParent: async () => {},
     // fetch({ limit }) → empty collection (transcripts); fetch(id) → unknown message
     messages: { fetch: async q => (q && typeof q === 'object' ? new Map() : null), delete: async () => {} },
@@ -638,6 +663,27 @@ async function main() {
     check('mes tickets: commande déclarée pour les MP', app('./commands/mestickets').dm === true);
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MF]);
     await req('PUT', '/api/faq/enabled', { sid: sessions.FV, body: { enabled: false } });
+  }
+
+  // ── Real file sent from the dashboard ──
+  {
+    const MFILE = '200000000000000016';
+    const FCH = '900000000000000083';
+    channels.set(FCH, mkChannel(FCH, G));
+    const tfile = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member16', ?, 'open', 'fichier')", [MFILE, FCH])).insertId;
+    memberDms.length = 0; sent.length = 0;
+    r = await reqMultipart(`/api/tickets/${tfile}/reply-file`, { sid: sessions.FV, fields: { content: 'Voici la facture', anonymous: 'false' }, file: { field: 'file', name: 'facture.pdf', content: Buffer.from('%PDF-1.4 test') } });
+    const fdm = memberDms.find(m => m.id === MFILE)?.p;
+    const fch = sent.find(x => x.id === FCH)?.p;
+    const [fnote] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'reply'", [tfile]);
+    check('fichier: joint au MP du membre', r.status === 200 && fdm?.files?.[0]?.name === 'facture.pdf' && Buffer.isBuffer(fdm.files[0].attachment) && fdm.embeds[0].data.description === 'Voici la facture', JSON.stringify([r.status, r.body, fdm?.files?.[0]?.name]));
+    check('fichier: joint dans le salon du ticket', fch?.files?.[0]?.name === 'facture.pdf', JSON.stringify(fch && Object.keys(fch)));
+    check('fichier: lien conservé dans l\'historique', fnote?.content.includes('📎 facture.pdf') && fnote.content.includes('cdn.discordapp.com'), JSON.stringify(fnote));
+    r = await reqMultipart(`/api/tickets/${tfile}/reply-file`, { sid: sessions.FV, file: { field: 'file', name: 'gros.bin', content: Buffer.alloc(8 * 1024 * 1024 + 1) } });
+    check('fichier: refusé au-delà de 8 Mo', r.status === 400 && /8 Mo/.test(r.body.error), JSON.stringify([r.status, r.body]));
+    r = await reqMultipart(`/api/tickets/${tfile}/reply-file`, { sid: sessions.FV, fields: { content: 'sans fichier' } });
+    check('fichier: fichier requis', r.status === 400, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tfile]);
   }
 
   // ── Reply templates: personal / shared, suggested by subject ──

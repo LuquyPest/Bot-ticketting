@@ -381,7 +381,9 @@ router.post('/:id/notes', async (req, res) => {
 });
 
 // Sends a staff reply to the ticket owner/participants and the Discord channel, records it and notifies.
-async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
+// upload: { buffer, name } — a real file sent from the dashboard (attached to the channel
+// message and to the member's DM; the history keeps the channel attachment URL).
+async function sendStaffReply(req, ticket, { content, file_url, anonymous, upload = null }) {
   const sender = anonymous ? 'Support' : req.session.user.username;
   let msg = `--- ${sender} : ${content || ''}`.trim();
   if (file_url) msg += `\nFichier : ${file_url}`;
@@ -390,16 +392,25 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
   const client = req.app.locals.client;
   const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
 
-  // DM: embed naming the server and the ticket (a member can have tickets on several servers)
-  const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: file_url });
-  for (const userId of linkedUserIds) {
-    const user = await client?.users.fetch(userId).catch(() => null);
-    if (user) await user.send({ embeds: [dmEmbed], components: ticketDmComponents(ticket, req.guildId, userId) }).catch(() => null);
+  const channel = client && ticket.channel_id ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+  if (upload) {
+    const sent = await channel?.send({ content: msg.slice(0, 2000), files: [{ attachment: upload.buffer, name: upload.name }] }).catch(() => null);
+    file_url = sent?.attachments?.first?.()?.url || null;
+  } else if (channel) {
+    await channel.send(msg).catch(() => null);
   }
 
-  if (client && ticket.channel_id) {
-    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
-    if (channel) await channel.send(msg).catch(() => null);
+  // DM: embed naming the server and the ticket (a member can have tickets on several servers)
+  const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: upload ? null : file_url });
+  if (upload) dmEmbed.addFields({ name: '📎 Fichier joint', value: upload.name.slice(0, 1024) });
+  for (const userId of linkedUserIds) {
+    const user = await client?.users.fetch(userId).catch(() => null);
+    if (user) {
+      await user.send({
+        embeds: [dmEmbed], components: ticketDmComponents(ticket, req.guildId, userId),
+        ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
+      }).catch(() => null);
+    }
   }
 
   const staffUser = dashboardActor(req);
@@ -408,10 +419,10 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
 
   await recordEvent(req.guildDb, {
     actor: dashboardActor(req), action: 'ticket_reply', ticketId: ticket.id,
-    details: { anonymous: !!anonymous, excerpt: (content || file_url || '').slice(0, 120) },
+    details: { anonymous: !!anonymous, excerpt: (content || upload?.name || file_url || '').slice(0, 120), ...(upload ? { file: upload.name } : {}) },
   });
   const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
-  const noteContent = [content, file_url].filter(Boolean).join('\n');
+  const noteContent = [content, upload ? `📎 ${upload.name}${file_url ? ` : ${file_url}` : ''}` : file_url].filter(Boolean).join('\n');
   const result = await req.guildDb(
     'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
     [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
@@ -435,6 +446,35 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous }) {
   }).catch(() => null);
   return replyNote;
 }
+
+// POST /api/tickets/:id/reply-file — multipart: file (8 Mo max) + optional content / anonymous
+const multer = require('multer');
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const uploadOne = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 4 } }).single('file');
+const cleanFileName = n => (String(n || 'fichier').normalize('NFC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || 'fichier').slice(0, 100);
+
+router.post('/:id/reply-file', (req, res, next) => uploadOne(req, res, err => {
+  if (!err) return next();
+  res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'Fichier trop volumineux (8 Mo max)' : 'Envoi du fichier invalide' });
+}), async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+    if (!req.file?.buffer?.length) return res.status(400).json({ error: 'Fichier requis' });
+    const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+    if (content.length > 2000) return res.status(400).json({ error: 'Contenu trop long (max 2000)' });
+    if (!req.app.locals.client) return res.status(503).json({ error: 'Bot Discord non disponible' });
+    const note = await sendStaffReply(req, ticket, {
+      content, anonymous: req.body.anonymous === 'true',
+      upload: { buffer: req.file.buffer, name: cleanFileName(req.file.originalname) },
+    });
+    res.json({ ok: true, note });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 
 router.post('/:id/reply', async (req, res) => {
   try {

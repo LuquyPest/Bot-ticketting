@@ -23,6 +23,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Panel super-admin : alerte en cas de pic d\'erreurs (MP Discord et/ou webhook)' },
       { type: 'new',  text: 'FAQ automatique : avant d\'ouvrir un ticket, le bot propose les réponses qui correspondent au message du membre (page FAQ pour les gérer)' },
       { type: 'new',  text: 'Le membre suit ses tickets : commande /mestickets en MP et bouton « Mes tickets » (état formulé pour lui)' },
+      { type: 'new',  text: 'Envoi de vrais fichiers depuis le dashboard (8 Mo max), reçus en pièce jointe par le membre' },
     ]
   },
   {

@@ -87,7 +87,7 @@ Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans 
 
 ### Côté staff
 
-- Répond via `/reply` (identifié), `/areply` (anonyme comme "Support") ou depuis le **dashboard web**
+- Répond via `/reply` (identifié), `/areply` (anonyme comme "Support") ou depuis le **dashboard web** ; depuis le dashboard, un **fichier** (8 Mo max) peut être joint : il arrive en pièce jointe dans le MP du membre et dans le salon
 - Les messages tapés directement dans le salon Discord sont enregistrés comme notes mais **ne sont pas envoyés** au membre
 - Le ticket se ferme via le bouton Discord ou depuis le dashboard (transcript généré automatiquement)
 - Tableau de bord en **temps réel** via SSE — les nouvelles notes apparaissent sans recharger la page

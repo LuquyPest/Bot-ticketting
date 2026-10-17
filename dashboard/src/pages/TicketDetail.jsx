@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -285,11 +285,31 @@ export default function TicketDetail() {
     finally { setSavingNote(false); }
   };
 
+  // Real file sent with the reply (8 Mo max): attached to the member's DM and the channel
+  const [replyFile, setReplyFile] = useState(null);
+  const fileInputRef = useRef(null);
+  const pickFile = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.size > 8 * 1024 * 1024) return toast.error('Fichier trop volumineux (8 Mo max)');
+    setReplyFile(f);
+  };
+
   const sendReply = async () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() && !replyFile) return;
     setSendingReply(true);
     try {
-      await api.post(`/tickets/${id}/reply`, { content: replyText.trim(), anonymous });
+      if (replyFile) {
+        const form = new FormData();
+        form.append('file', replyFile);
+        if (replyText.trim()) form.append('content', replyText.trim());
+        form.append('anonymous', anonymous ? 'true' : 'false');
+        await api.post(`/tickets/${id}/reply-file`, form);
+        setReplyFile(null);
+      } else {
+        await api.post(`/tickets/${id}/reply`, { content: replyText.trim(), anonymous });
+      }
       setReplyText('');
       toast.success('Réponse envoyée');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -927,9 +947,26 @@ export default function TicketDetail() {
                     {anonymous ? 'Anonyme' : 'Identifié'}
                   </button>
                 )}
+                {composeMode === 'reply' && (
+                  <>
+                    <input ref={fileInputRef} type="file" className="hidden" onChange={pickFile} />
+                    {replyFile ? (
+                      <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border bg-primary/10 text-primary-light border-primary/20 max-w-[14rem]">
+                        <Paperclip size={11} className="shrink-0" />
+                        <span className="truncate" title={replyFile.name}>{replyFile.name}</span>
+                        <button onClick={() => setReplyFile(null)} aria-label="Retirer le fichier" className="hover:text-ink-1"><X size={11} /></button>
+                      </span>
+                    ) : (
+                      <button onClick={() => fileInputRef.current?.click()} title="Joindre un fichier (8 Mo max)"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-surface text-ink-3 border-overlay/[0.07] hover:text-ink-1 hover:border-overlay/12">
+                        <Paperclip size={11} /> Fichier
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
 
-              <button onClick={handleSend} disabled={!composeText.trim() || composeSending}
+              <button onClick={handleSend} disabled={(!composeText.trim() && !(composeMode === 'reply' && replyFile)) || composeSending}
                 className={`flex items-center gap-2 py-2 px-4 text-xs rounded-xl text-white font-semibold
                             transition-all disabled:opacity-40 ${composeMode === 'reply'
                               ? 'bg-primary hover:bg-primary-light shadow-lg shadow-primary/25'
