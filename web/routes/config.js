@@ -42,6 +42,7 @@ const FIELD_MAP = {
   escalationCloseHours:      'escalation_close_hours',
   embedColor:                'embed_color',
   botLanguage:               'bot_language',
+  require2fa:                'require_2fa',
   botDisplayName:            'bot_display_name',
   webhookUrl:                'webhook_url',
   webhookSecret:             'webhook_secret',
@@ -97,6 +98,7 @@ const VALIDATORS = {
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
   embedColor:               v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
   botLanguage:              v => ['fr', 'en', 'auto'].includes(v),
+  require2fa:               v => ['none', 'founders', 'staff'].includes(v),
   botDisplayName:           v => typeof v === 'string' && v.length >= 1 && v.length <= 100,
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
   webhookSecret:            v => v === null || (typeof v === 'string' && v.length >= 16 && v.length <= 255),
@@ -157,6 +159,12 @@ router.patch('/', async (req, res) => {
     const updates = req.body;
     const setClauses = [];
     const params = [];
+
+    // Requiring 2FA: the founder setting it must have it, or they would lock themselves out
+    if (updates.require2fa && updates.require2fa !== 'none'
+        && !(await require('../../utils/twoFactorPolicy').hasTotp(req.session.user.id))) {
+      return res.status(400).json({ error: 'Active d\'abord la double authentification sur ton compte (Profil)' });
+    }
 
     for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
       if (!(apiKey in updates)) continue;

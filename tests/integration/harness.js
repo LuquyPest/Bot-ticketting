@@ -1345,6 +1345,30 @@ async function main() {
     check('alerte erreurs: désactivée → aucun envoi', res.skipped === 'disabled', JSON.stringify(res));
   }
 
+  // ── Mandatory 2FA per server ──
+  {
+    await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [U.F]);
+    await mk('F2', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
+    await mk('S3Z', { user: { id: U.S3, username: 'S3', role: null }, currentGuildId: G });
+    r = await req('PATCH', '/api/config', { sid: sessions.F2, body: { require2fa: 'founders' } });
+    check('2FA obligatoire: refusée si le fondateur n\'a pas lui-même la 2FA', r.status === 400 && /double authentification/.test(r.body.error), JSON.stringify(r.body));
+    await globalQuery("INSERT INTO user_totp (user_id, totp_secret, totp_enabled) VALUES (?, 'x', 1)", [U.F]);
+    r = await req('PATCH', '/api/config', { sid: sessions.F2, body: { require2fa: 'staff' } });
+    check('2FA obligatoire: activée par un fondateur protégé', r.status === 200, JSON.stringify(r.body));
+    r = await req('GET', '/api/tickets', { sid: sessions.S3Z });
+    check('2FA obligatoire: staff sans 2FA bloqué avec un code dédié', r.status === 403 && r.body.code === '2fa_required', JSON.stringify(r.body));
+    r = await req('GET', '/api/profile', { sid: sessions.S3Z });
+    check('2FA obligatoire: le profil reste accessible pour l\'activer', r.status === 200, r.status);
+    r = await req('GET', '/api/tickets', { sid: sessions.F2 });
+    check('2FA obligatoire: compte protégé accepté', r.status === 200, r.status);
+    r = await req('POST', '/api/profile/2fa/disable', { sid: sessions.F2, body: { code: '000000' } });
+    check('2FA obligatoire: désactivation refusée', r.status === 400 && /impose/.test(r.body.error), JSON.stringify(r.body));
+    await db("UPDATE guild_config SET require_2fa = 'none' WHERE id = 1");
+    await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [U.F]);
+    r = await req('GET', '/api/tickets', { sid: sessions.S3Z });
+    check('2FA obligatoire: retirée → accès rétabli', r.status === 200, r.status);
+  }
+
   // ── Multi-instance: limits and creation lock shared through Redis ──
   {
     const rl = app('./utils/rateLimit');

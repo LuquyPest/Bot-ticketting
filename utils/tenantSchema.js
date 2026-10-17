@@ -443,6 +443,8 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS merged_into INT DEFAULT NULL`,
       // Automatic events shown in the ticket history (merge, closed by the member…)
       `ALTER TABLE ticket_notes MODIFY source ENUM('web','discord','reply','user','scheduled','system') NOT NULL DEFAULT 'web'`,
+      // Mandatory 2FA for the staff of this server (utils/twoFactorPolicy.js)
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS require_2fa ENUM('none','founders','staff') NOT NULL DEFAULT 'none'`,
       // Language of the messages sent to members (utils/i18n.js)
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS bot_language ENUM('fr','en','auto') NOT NULL DEFAULT 'fr'`,
       // Automatic FAQ shown in DM before a ticket is opened (utils/faq.js)

@@ -308,6 +308,8 @@ Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur
 
 À l'activation, **10 codes de secours** à usage unique sont affichés une seule fois (format `xxxxx-xxxxx`) ; ils remplacent le code TOTP sur l'écran de vérification en cas de perte du téléphone. Ils peuvent être régénérés depuis le profil.
 
+**2FA obligatoire par serveur** (Paramètres → Sécurité) : non imposée, imposée aux fondateurs, ou à tout le staff. Un compte concerné sans 2FA est redirigé vers son profil pour l'activer et n'accède à rien d'autre ; il ne peut pas la désactiver tant que l'obligation est en place. Un fondateur doit avoir activé sa propre 2FA avant de l'imposer.
+
 Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de passe ou TOTP), déconnexion automatique après 30 min d'inactivité, mot de passe manager de 12 caractères minimum.
 
 ### Pages disponibles

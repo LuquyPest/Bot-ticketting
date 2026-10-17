@@ -226,6 +226,7 @@ export default function Settings() {
         closeMessage:             cfg.closeMessage || null,
         botDisplayName:           cfg.botDisplayName || 'Ticket Bot',
         botLanguage:              cfg.botLanguage || 'fr',
+        require2fa:               cfg.require2fa || 'none',
         embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
@@ -498,6 +499,16 @@ export default function Settings() {
       </Section>
 
       {/* Limits */}
+      <Section title="Sécurité">
+        <Field label="Double authentification obligatoire" hint="Les comptes concernés sans 2FA ne peuvent plus accéder au dashboard tant qu'ils ne l'ont pas activée (depuis leur profil). Active d'abord la tienne.">
+          <select value={cfg.require2fa || 'none'} onChange={e => set('require2fa', e.target.value)} className={BASE}>
+            <option value="none">Non imposée</option>
+            <option value="founders">Imposée aux fondateurs</option>
+            <option value="staff">Imposée à tout le staff</option>
+          </select>
+        </Field>
+      </Section>
+
       <Section title="Limites et délais">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Tickets max / jour" hint="Par utilisateur">

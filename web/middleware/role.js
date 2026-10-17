@@ -1,5 +1,6 @@
 const { getUserPermissions, PERMISSIONS } = require('../../utils/gradePermissions');
 const { syncDiscordStaff } = require('../../utils/staffSync');
+const { requiredFor, hasTotp, guildPolicy } = require('../../utils/twoFactorPolicy');
 
 // Accounts granted by a Discord role are re-checked at most this often (role removed → access revoked)
 const DISCORD_RESYNC_MS = 5 * 60 * 1000;
@@ -38,6 +39,14 @@ module.exports = function requireRole(...roles) {
 
       req.session.user.role = dbUser.role;
       const role = dbUser.role;
+
+      // Mandatory 2FA for this server (Paramètres → Sécurité)
+      if (role === 'fondateur' || role === 'support') {
+        const policy = await guildPolicy(db);
+        if (requiredFor(policy, role) && !(await hasTotp(req.session.user.id))) {
+          return res.status(403).json({ error: 'Ce serveur impose la double authentification : active-la depuis ton profil', code: '2fa_required' });
+        }
+      }
 
       if (role === 'fondateur') {
         req.userIsFondateur = true;

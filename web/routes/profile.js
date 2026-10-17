@@ -246,6 +246,15 @@ async function checkUserTotp(req, res) {
 
 router.post('/2fa/disable', requireAuth, async (req, res) => {
   try {
+    // Not allowed while the current server requires 2FA for this account
+    if (req.session.currentGuildId) {
+      const { requiredFor, guildPolicy } = require('../../utils/twoFactorPolicy');
+      const db = require('../../utils/tenantDb').getTenantDb(req.session.currentGuildId);
+      const [u] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [req.session.user.id]).catch(() => []);
+      if (u && requiredFor(await guildPolicy(db), u.role)) {
+        return res.status(400).json({ error: 'Ce serveur impose la double authentification : impossible de la désactiver' });
+      }
+    }
     if (!(await checkUserTotp(req, res))) return;
     await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [req.session.user.id]);
     res.json({ ok: true });

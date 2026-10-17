@@ -13,6 +13,10 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && path !== '/login' && !path.startsWith('/sa')) {
       window.location.href = '/login';
     }
+    // The server requires 2FA for this account: only the profile (to turn it on) is reachable
+    if (err.response?.status === 403 && err.response.data?.code === '2fa_required' && path !== '/profile') {
+      window.location.href = '/profile?2fa=required';
+    }
     return Promise.reject(err);
   }
 );

@@ -561,6 +561,11 @@ export default function Profile() {
         {/* Security / 2FA */}
         <Section title="Sécurité">
           <div className="space-y-3">
+            {new URLSearchParams(window.location.search).get('2fa') === 'required' && !twoFaEnabled && (
+              <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2" role="alert">
+                Ce serveur impose la double authentification : active-la ci-dessous pour accéder au dashboard.
+              </p>
+            )}
             <div className="flex items-center justify-between">
               <p className="text-sm text-ink-2 font-medium">Double authentification (2FA)</p>
               {twoFaLoading ? (
