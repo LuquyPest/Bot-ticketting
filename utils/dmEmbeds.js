@@ -1,4 +1,6 @@
+// Member-facing DM embeds. Texts come from utils/i18n.js in the current member's language.
 const { EmbedBuilder } = require('discord.js');
+const { t } = require('./i18n');
 
 const C = {
   primary: 0x5865f2,  // Discord blurple
@@ -9,102 +11,100 @@ const C = {
 };
 
 function emptyMessageEmbed() {
-  return new EmbedBuilder()
-    .setColor(C.neutral)
-    .setDescription('Envoie un message texte ou une pièce jointe pour contacter le support.');
+  return new EmbedBuilder().setColor(C.neutral).setDescription(t('empty'));
 }
 
 function blacklistedEmbed() {
   return new EmbedBuilder()
     .setColor(C.danger)
-    .setAuthor({ name: 'Accès refusé' })
-    .setDescription('Tu ne peux pas contacter le support pour le moment.\nSi tu penses qu\'il s\'agit d\'une erreur, contacte un administrateur.')
+    .setAuthor({ name: t('blacklisted.title') })
+    .setDescription(t('blacklisted.body'))
     .setTimestamp();
 }
 
 function notInGuildEmbed() {
-  return new EmbedBuilder()
-    .setColor(C.neutral)
-    .setDescription('Tu ne fais partie d\'aucun serveur utilisant ce bot.');
+  return new EmbedBuilder().setColor(C.neutral).setDescription(t('notInGuild'));
 }
 
 function serverLimitEmbed() {
   return new EmbedBuilder()
     .setColor(C.warning)
-    .setAuthor({ name: 'Serveur complet' })
-    .setDescription('Ce serveur a atteint sa limite de tickets simultanés.\nMerci de réessayer un peu plus tard.')
+    .setAuthor({ name: t('serverLimit.title') })
+    .setDescription(t('serverLimit.body'))
     .setTimestamp();
 }
 
 function dailyLimitEmbed(max) {
   return new EmbedBuilder()
     .setColor(C.warning)
-    .setAuthor({ name: 'Limite quotidienne atteinte' })
-    .setDescription(`Tu as déjà ouvert **${max}** ticket${max > 1 ? 's' : ''} aujourd'hui.\nTu pourras en ouvrir un nouveau demain.`)
+    .setAuthor({ name: t('dailyLimit.title') })
+    .setDescription(t('dailyLimit.body', { max }))
     .setTimestamp();
 }
 
 function serverSelectEmbed() {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: 'Choisir un serveur' })
-    .setDescription('Tu es membre de **plusieurs serveurs** utilisant ce bot.\nSur lequel souhaites-tu ouvrir un ticket ?')
-    .setFooter({ text: 'Cette sélection expire dans 10 minutes' });
+    .setAuthor({ name: t('serverSelect.title') })
+    .setDescription(t('serverSelect.body'))
+    .setFooter({ text: t('expires10') });
 }
+
+const newTicketAuthor = guildName => ({ name: guildName ? `${t('newTicket')} · ${guildName}` : t('newTicket') });
 
 function subjectSelectEmbed(guildName) {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: guildName ? `Nouveau ticket · ${guildName}` : 'Nouveau ticket' })
-    .setDescription('Ton message est bien noté. Quel est le **sujet de ton ticket** ?\nChoisis-le ci-dessous, ou « Autre sujet » pour l\'écrire toi-même.')
-    .setFooter({ text: 'Sans réponse sous 10 minutes, le ticket sera ouvert sans sujet' });
+    .setAuthor(newTicketAuthor(guildName))
+    .setDescription(t('subject.select'))
+    .setFooter({ text: t('subject.timeout') });
 }
 
 // Free-text subject question, sent after the member's first message.
 function subjectAskEmbed(guildName) {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: guildName ? `Nouveau ticket · ${guildName}` : 'Nouveau ticket' })
-    .setTitle('📝 Quel est le sujet de ton ticket ?')
-    .setDescription('Ton message est bien noté. Réponds avec **le sujet** en quelques mots (100 caractères max) — il servira de titre au ticket.')
-    .setFooter({ text: 'Sans réponse sous 10 minutes, le ticket sera ouvert sans sujet' });
+    .setAuthor(newTicketAuthor(guildName))
+    .setTitle(t('subject.ask.title'))
+    .setDescription(t('subject.ask.body'))
+    .setFooter({ text: t('subject.timeout') });
 }
 
 // Shown when the member has open tickets: pick the ticket for this message, or open a new one.
 function ticketRouteEmbed(count) {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: count > 1 ? `Tu as ${count} tickets ouverts` : 'Tu as un ticket ouvert' })
-    .setDescription('Dans quel ticket veux-tu envoyer ce message ? Tu peux aussi ouvrir un **nouveau ticket**.')
-    .setFooter({ text: 'Cette sélection expire dans 10 minutes' });
+    .setAuthor({ name: count > 1 ? t('route.many', { count }) : t('route.one') })
+    .setDescription(t('route.body'))
+    .setFooter({ text: t('expires10') });
 }
+
+const subjectSuffix = ticket => (ticket.subject ? ` — ${ticket.subject}` : '');
 
 function relayedToTicketEmbed(guildName, ticket) {
   return new EmbedBuilder()
     .setColor(C.success)
-    .setDescription(`✅ Message envoyé dans le ticket **#${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}** (${guildName}).`);
+    .setDescription(t('relayed', { id: ticket.id, subject: subjectSuffix(ticket), guild: guildName }));
 }
 
 function intakeFormStartEmbed(firstQuestion, step, total) {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: `Formulaire — Question ${step} sur ${total}` })
-    .setDescription(`Avant d'ouvrir ton ticket, nous avons besoin de quelques informations.\n\n**${firstQuestion}**`)
-    .setFooter({ text: 'Réponds simplement par message texte' });
+    .setAuthor({ name: t('intake.title', { step, total }) })
+    .setDescription(t('intake.start', { question: firstQuestion }))
+    .setFooter({ text: t('intake.footer') });
 }
 
 function intakeFormStepEmbed(question, step, total) {
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: `Formulaire — Question ${step} sur ${total}` })
+    .setAuthor({ name: t('intake.title', { step, total }) })
     .setDescription(`**${question}**`)
-    .setFooter({ text: 'Réponds simplement par message texte' });
+    .setFooter({ text: t('intake.footer') });
 }
 
 function sessionExpiredEmbed() {
-  return new EmbedBuilder()
-    .setColor(C.neutral)
-    .setDescription('Cette session a expiré.\nRenvoie un message pour recommencer.');
+  return new EmbedBuilder().setColor(C.neutral).setDescription(t('expired'));
 }
 
 // Short confirmation replacing a menu once the member has chosen.
@@ -113,12 +113,9 @@ function choiceEmbed(text) {
 }
 
 function ticketCreatingEmbed(guildName) {
-  const desc = guildName
-    ? `Création de ton ticket sur **${guildName}**…`
-    : 'Création de ton ticket en cours…';
   return new EmbedBuilder()
     .setColor(C.primary)
-    .setDescription(desc);
+    .setDescription(guildName ? t('creatingOn', { guild: guildName }) : t('creating'));
 }
 
 function ratingConfirmEmbed(rating) {
@@ -126,41 +123,39 @@ function ratingConfirmEmbed(rating) {
   const empty  = '☆'.repeat(5 - rating);
   return new EmbedBuilder()
     .setColor(C.success)
-    .setAuthor({ name: 'Merci pour ton retour !' })
-    .setDescription(`**${filled}${empty}** — ${rating} / 5\nTon avis nous aide à améliorer la qualité du support.`)
+    .setAuthor({ name: t('rating.thanks') })
+    .setDescription(`**${filled}${empty}** — ${rating} / 5\n${t('rating.body')}`)
     .setTimestamp();
 }
 
 function ratingCommentEmbed(rating, comment) {
-  return ratingConfirmEmbed(rating).addFields({ name: '💬 Ton commentaire', value: comment.slice(0, 1024) });
+  return ratingConfirmEmbed(rating).addFields({ name: t('rating.comment'), value: comment.slice(0, 1024) });
 }
 
 function memberCloseConfirmEmbed(ticket) {
   return new EmbedBuilder()
     .setColor(C.warning)
-    .setDescription(`Fermer le ticket **#${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}** ?\nLe staff ne pourra plus te répondre dans ce ticket.`);
+    .setDescription(t('close.confirm', { id: ticket.id, subject: subjectSuffix(ticket) }));
 }
 
 function faqSuggestEmbed(guildName, matches) {
   const embed = new EmbedBuilder()
     .setColor(C.primary)
-    .setAuthor({ name: `${guildName || 'Support'} · Avant d'ouvrir un ticket` })
-    .setDescription('Ces réponses pourraient t\'aider. Si ce n\'est pas le cas, ouvre un ticket : ton message sera transmis au staff.');
+    .setAuthor({ name: t('faq.title', { guild: guildName || 'Support' }) })
+    .setDescription(t('faq.body'));
   matches.forEach((m, i) => embed.addFields({ name: `${i + 1}. ${m.question}`.slice(0, 256), value: m.answer.slice(0, 1024) }));
   return embed;
 }
 
 function alreadyRatedEmbed() {
-  return new EmbedBuilder()
-    .setColor(C.neutral)
-    .setDescription('Tu as déjà noté ce ticket.');
+  return new EmbedBuilder().setColor(C.neutral).setDescription(t('rating.already'));
 }
 
 // ── Ticket DMs ── a member can have open tickets on several servers: every DM about a ticket
 // carries the server and the ticket it comes from.
 function ticketContextAuthor(client, guildId, ticket) {
   const guild = client?.guilds?.cache?.get(guildId);
-  const name = `${guild?.name || 'Support'} · Ticket #${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}`;
+  const name = `${guild?.name || 'Support'} · Ticket #${ticket.id}${subjectSuffix(ticket)}`;
   return { name: name.slice(0, 256), iconURL: guild?.iconURL({ size: 64 }) || undefined };
 }
 
@@ -168,11 +163,11 @@ function staffReplyDmEmbed(client, guildId, ticket, { sender, content, fileUrl, 
   const embed = new EmbedBuilder()
     .setColor(C.primary)
     .setAuthor(ticketContextAuthor(client, guildId, ticket))
-    .setTitle(`💬 ${sender}${scheduled ? ' · message programmé' : ''}`.slice(0, 256))
-    .setFooter({ text: `Réponds ici pour écrire dans le ticket #${ticket.id}` })
+    .setTitle(`💬 ${sender}${scheduled ? t('reply.scheduled') : ''}`.slice(0, 256))
+    .setFooter({ text: t('reply.footer', { id: ticket.id }) })
     .setTimestamp();
   if (content) embed.setDescription(String(content).slice(0, 4096));
-  if (fileUrl) embed.addFields({ name: '📎 Fichier', value: String(fileUrl).slice(0, 1024) });
+  if (fileUrl) embed.addFields({ name: t('reply.file'), value: String(fileUrl).slice(0, 1024) });
   return embed;
 }
 

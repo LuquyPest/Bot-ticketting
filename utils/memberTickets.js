@@ -2,26 +2,27 @@
 // with their stage worded for the member.
 const { EmbedBuilder } = require('discord.js');
 const { findAllOpenTickets } = require('./guildScan');
+const { t } = require('./i18n');
 
 function memberStatus(ticket, assigned) {
-  if (ticket.stage === 'waiting') return '⏳ En attente de ta réponse';
-  if (ticket.stage === 'in_progress') return '🛠️ En cours de traitement';
-  return assigned ? '👤 Pris en charge par le staff' : '📨 Reçu, bientôt pris en charge';
+  if (ticket.stage === 'waiting') return t('status.waiting');
+  if (ticket.stage === 'in_progress') return t('status.inProgress');
+  return assigned ? t('status.assigned') : t('status.received');
 }
 
 async function myTicketsEmbed(user, client) {
   const tickets = await findAllOpenTickets(user.id, client);
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle('📋 Mes tickets ouverts').setTimestamp();
-  if (!tickets.length) return embed.setDescription('Tu n\'as aucun ticket ouvert. Écris-moi pour en ouvrir un.');
-  for (const t of tickets.slice(0, 25)) {
-    const [{ n }] = await t.db('SELECT COUNT(*) AS n FROM ticket_assignees WHERE ticket_id = ?', [t.ticket.id]);
-    const last = t.ticket.last_message_at ? `<t:${Math.floor(new Date(t.ticket.last_message_at).getTime() / 1000)}:R>` : '—';
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle(t('myTickets.title')).setTimestamp();
+  if (!tickets.length) return embed.setDescription(t('myTickets.none'));
+  for (const tk of tickets.slice(0, 25)) {
+    const [{ n }] = await tk.db('SELECT COUNT(*) AS n FROM ticket_assignees WHERE ticket_id = ?', [tk.ticket.id]);
+    const last = tk.ticket.last_message_at ? `<t:${Math.floor(new Date(tk.ticket.last_message_at).getTime() / 1000)}:R>` : '—';
     embed.addFields({
-      name: `${t.guildName} · #${t.ticket.id} — ${t.ticket.subject || 'Sans sujet'}`.slice(0, 256),
-      value: `${memberStatus(t.ticket, Number(n) > 0)}\nDernier message ${last}${t.ticket.owner_id === user.id ? '' : ' · tu es participant'}`,
+      name: `${tk.guildName} · #${tk.ticket.id} — ${tk.ticket.subject || t('route.noSubject')}`.slice(0, 256),
+      value: `${memberStatus(tk.ticket, Number(n) > 0)}\n${t('myTickets.last', { when: last })}${tk.ticket.owner_id === user.id ? '' : t('route.participant')}`,
     });
   }
-  return embed.setFooter({ text: 'Écris-moi pour ajouter un message à l\'un de ces tickets' });
+  return embed.setFooter({ text: t('myTickets.footer') });
 }
 
 module.exports = { myTicketsEmbed, memberStatus };

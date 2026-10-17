@@ -26,6 +26,7 @@ const {
 //   route        { content, attachments, tickets: [{ guildId, ticketId }] } which ticket to write in
 //   intake       { guildId, content, attachments, subject, questions: [label], step, answers }
 const store = require('../utils/pendingStore');
+const { t, inMemberLang } = require('../utils/i18n');
 
 const PENDING_TTL_MS = 10 * 60 * 1000;
 const INTAKE_TTL_MS = 15 * 60 * 1000;
@@ -88,6 +89,11 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
 // '' = asked but none given (ticket opened without subject), otherwise the subject.
 // opts.skipFaq: the member already saw the FAQ suggestions and chose to open a ticket.
 async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null, opts = {}) {
+  // From here the server is known: its language setting applies
+  return inMemberLang(user.id, guildEntry.guildId, client, () => openTicketForGuildInLang(user, content, attachments, guildEntry, client, subject, opts));
+}
+
+async function openTicketForGuildInLang(user, content, attachments, guildEntry, client, subject, opts) {
   const { guildId, db, tm, config } = guildEntry;
 
   // Every entry point (DM, subject/guild buttons, timeouts) ends here, so the per-guild checks live here
@@ -202,31 +208,112 @@ async function startNewTicket(user, content, attachments, client) {
   }, PENDING_TTL_MS);
   const menu = new StringSelectMenuBuilder()
     .setCustomId('guild_select')
-    .setPlaceholder('Choisir un serveur…')
+    .setPlaceholder(t('serverSelect.placeholder'))
     .addOptions(candidateGuilds.slice(0, 25).map(g =>
       new StringSelectMenuOptionBuilder()
         .setLabel(g.discordGuild.name.slice(0, 100))
         .setValue(g.guildId)
-        .setDescription('Ouvrir un ticket sur ce serveur')
+        .setDescription(t('serverSelect.option'))
     ));
   await user.send({ embeds: [serverSelectEmbed()], components: [new ActionRowBuilder().addComponents(menu)] }).catch(() => null);
 }
 
 // Menu: one option per open ticket (server · #id — subject) + "new ticket".
 function buildTicketRouteMenu(tickets, userId) {
-  const options = tickets.slice(0, 24).map(t =>
+  const options = tickets.slice(0, 24).map(tk =>
     new StringSelectMenuOptionBuilder()
-      .setLabel(`#${t.ticket.id} — ${t.ticket.subject || 'Sans sujet'}`.slice(0, 100))
-      .setValue(`t:${t.guildId}:${t.ticket.id}`)
-      .setDescription(`${t.guildName}${t.ticket.owner_id === userId ? '' : ' · tu es participant'}`.slice(0, 100))
+      .setLabel(`#${tk.ticket.id} — ${tk.ticket.subject || t('route.noSubject')}`.slice(0, 100))
+      .setValue(`t:${tk.guildId}:${tk.ticket.id}`)
+      .setDescription(`${tk.guildName}${tk.ticket.owner_id === userId ? '' : t('route.participant')}`.slice(0, 100))
       .setEmoji('🎫')
   );
-  options.push(new StringSelectMenuOptionBuilder().setLabel('Ouvrir un nouveau ticket').setValue('new').setEmoji('➕'));
+  options.push(new StringSelectMenuOptionBuilder().setLabel(t('route.new')).setValue('new').setEmoji('➕'));
   const menu = new StringSelectMenuBuilder()
     .setCustomId('ticket_route')
-    .setPlaceholder('Choisir le ticket…')
+    .setPlaceholder(t('route.placeholder'))
     .addOptions(options);
   return new ActionRowBuilder().addComponents(menu);
+}
+
+// Private message from a member (runs in the member's language, see utils/i18n.js).
+async function handleDm(client, user, data) {
+  const content = data.content?.trim() || '';
+  const attachments = Array.isArray(data.attachments)
+    ? data.attachments.map(a => ({ url: a.url, name: a.filename }))
+    : [];
+
+  if (!content && attachments.length === 0) {
+    await user.send({ embeds: [emptyMessageEmbed()] }).catch(() => null);
+    return;
+  }
+
+  if (!(await allowBurst(`dm:${user.id}`, DM_MAX, DM_WINDOW_MS))) {
+    if (await firstOverflow(`dm:${user.id}`)) {
+      await user.send(t('flood')).catch(() => null);
+    }
+    return;
+  }
+
+  // New message while FAQ suggestions are shown: the member still needs help → open the ticket
+  const faq = await store.takePending('faq', user.id);
+  if (faq) {
+    await openTicketInGuild(user, [faq.content, content].filter(Boolean).join('\n'), [...(faq.attachments || []), ...attachments], faq.guildId, client, null, { skipFaq: true });
+    return;
+  }
+
+  // Answer to "what is the subject of your ticket?"
+  if (await store.hasPending('subjectText', user.id)) {
+    if (!content) {
+      await user.send(t('subject.textOnly')).catch(() => null);
+      return;
+    }
+    const state = await store.takePending('subjectText', user.id);
+    if (state) {
+      const subject = content.replace(/\s+/g, ' ').slice(0, 100);
+      await openTicketInGuild(user, state.content, state.attachments, state.guildId, client, subject);
+      return;
+    }
+  }
+
+  // Intake form — step-by-step question reply
+  // Taken then stored back: two quick answers never count for the same question
+  const intake = await store.takePending('intake', user.id);
+  if (intake) {
+    intake.answers.push(content);
+    intake.step += 1;
+
+    if (intake.step < intake.questions.length) {
+      const { expiresAt, ...rest } = intake;
+      await store.setPending('intake', user.id, rest, INTAKE_TTL_MS);
+      await user.send({ embeds: [intakeFormStepEmbed(intake.questions[intake.step], intake.step + 1, intake.questions.length)] }).catch(() => null);
+    } else {
+      // All questions answered — build intake summary and open ticket
+      const summary = intake.questions.map((label, i) => `**${label}** : ${intake.answers[i] || '—'}`).join('\n');
+      const enrichedContent = `${intake.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
+      await openTicketInGuild(user, enrichedContent, intake.attachments, intake.guildId, client, intake.subject ?? '');
+    }
+    return;
+  }
+
+  // Open tickets of the member (owner or participant), except on servers where they are blacklisted
+  const allOpen = await findAllOpenTickets(user.id, client);
+  const openTickets = [];
+  for (const t of allOpen) if (!(await isBlacklistedIn(t.db, user.id).catch(() => false))) openTickets.push(t);
+
+  // At least one open ticket: ask, for every message, which ticket it goes to (or a new ticket)
+  if (openTickets.length) {
+    await store.setPending('route', user.id, {
+      content, attachments, tickets: openTickets.map(t => ({ guildId: t.guildId, ticketId: t.ticket.id })),
+    }, PENDING_TTL_MS);
+    await user.send({ embeds: [ticketRouteEmbed(openTickets.length)], components: [buildTicketRouteMenu(openTickets, user.id)] }).catch(() => null);
+    return;
+  }
+  if (allOpen.length) {
+    await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
+    return;
+  }
+
+  await startNewTicket(user, content, attachments, client);
 }
 
 module.exports = {
@@ -278,83 +365,8 @@ module.exports = {
       const user = await client.users.fetch(data.author.id).catch(() => null);
       if (!user) return;
 
-      const content = data.content?.trim() || '';
-      const attachments = Array.isArray(data.attachments)
-        ? data.attachments.map(a => ({ url: a.url, name: a.filename }))
-        : [];
-
-      if (!content && attachments.length === 0) {
-        await user.send({ embeds: [emptyMessageEmbed()] }).catch(() => null);
-        return;
-      }
-
-      if (!(await allowBurst(`dm:${user.id}`, DM_MAX, DM_WINDOW_MS))) {
-        if (await firstOverflow(`dm:${user.id}`)) {
-          await user.send('⏳ Tu envoies trop de messages à la suite — attends quelques secondes avant de réessayer.').catch(() => null);
-        }
-        return;
-      }
-
-      // New message while FAQ suggestions are shown: the member still needs help → open the ticket
-      const faq = await store.takePending('faq', user.id);
-      if (faq) {
-        await openTicketInGuild(user, [faq.content, content].filter(Boolean).join('\n'), [...(faq.attachments || []), ...attachments], faq.guildId, client, null, { skipFaq: true });
-        return;
-      }
-
-      // Answer to "what is the subject of your ticket?"
-      if (await store.hasPending('subjectText', user.id)) {
-        if (!content) {
-          await user.send('📝 Envoie le sujet de ton ticket en texte (quelques mots).').catch(() => null);
-          return;
-        }
-        const state = await store.takePending('subjectText', user.id);
-        if (state) {
-          const subject = content.replace(/\s+/g, ' ').slice(0, 100);
-          await openTicketInGuild(user, state.content, state.attachments, state.guildId, client, subject);
-          return;
-        }
-      }
-
-      // Intake form — step-by-step question reply
-      // Taken then stored back: two quick answers never count for the same question
-      const intake = await store.takePending('intake', user.id);
-      if (intake) {
-        intake.answers.push(content);
-        intake.step += 1;
-
-        if (intake.step < intake.questions.length) {
-          const { expiresAt, ...rest } = intake;
-          await store.setPending('intake', user.id, rest, INTAKE_TTL_MS);
-          await user.send({ embeds: [intakeFormStepEmbed(intake.questions[intake.step], intake.step + 1, intake.questions.length)] }).catch(() => null);
-        } else {
-          // All questions answered — build intake summary and open ticket
-          const summary = intake.questions.map((label, i) => `**${label}** : ${intake.answers[i] || '—'}`).join('\n');
-          const enrichedContent = `${intake.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
-          await openTicketInGuild(user, enrichedContent, intake.attachments, intake.guildId, client, intake.subject ?? '');
-        }
-        return;
-      }
-
-      // Open tickets of the member (owner or participant), except on servers where they are blacklisted
-      const allOpen = await findAllOpenTickets(user.id, client);
-      const openTickets = [];
-      for (const t of allOpen) if (!(await isBlacklistedIn(t.db, user.id).catch(() => false))) openTickets.push(t);
-
-      // At least one open ticket: ask, for every message, which ticket it goes to (or a new ticket)
-      if (openTickets.length) {
-        await store.setPending('route', user.id, {
-          content, attachments, tickets: openTickets.map(t => ({ guildId: t.guildId, ticketId: t.ticket.id })),
-        }, PENDING_TTL_MS);
-        await user.send({ embeds: [ticketRouteEmbed(openTickets.length)], components: [buildTicketRouteMenu(openTickets, user.id)] }).catch(() => null);
-        return;
-      }
-      if (allOpen.length) {
-        await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
-        return;
-      }
-
-      await startNewTicket(user, content, attachments, client);
+      // Member's language (no server known yet: their Discord language when remembered)
+      await inMemberLang(user.id, null, client, () => handleDm(client, user, data));
     } catch (error) {
       console.error('Erreur RAW handler:', error);
     }

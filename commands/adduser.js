@@ -4,6 +4,7 @@ const { createManager } = require('../utils/ticketManager');
 const { ensureSupport } = require('../utils/permissions');
 const { broadcast } = require('../utils/sse');
 const { ticketNoticeDmEmbed } = require('../utils/dmEmbeds');
+const { t, sendToMember } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -48,11 +49,9 @@ module.exports = {
     await tm.logAddUser(ticket.id, user.id, interaction.user);
     broadcast('participant_add', { ticketId: ticket.id, userId: user.id, tag: user.username }, interaction.guildId);
 
-    await user.send({ embeds: [ticketNoticeDmEmbed(client, interaction.guildId, ticket, {
-        title: '👥 Tu as été ajouté à un ticket',
-        description: 'Tu peux suivre et participer à ce ticket : réponds à ce message privé pour écrire dedans.',
-        footer: `Réponds ici pour écrire dans le ticket #${ticket.id}`,
-      })] }).catch(() => null);
+    await sendToMember(client, user, interaction.guildId, () => ({ embeds: [ticketNoticeDmEmbed(client, interaction.guildId, ticket, {
+      title: t('added.title'), description: t('added.body'), footer: t('reply.footer', { id: ticket.id }),
+    })] }));
 
     await interaction.reply({ content: `Utilisateur ajoute en participant DM lie : ${user.username}`, flags: MessageFlags.Ephemeral });
     await interaction.channel.send(`--- ${interaction.user.username} : a ajoute ${user.username} comme participant DM lie au ticket`);

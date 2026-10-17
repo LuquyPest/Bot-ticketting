@@ -440,6 +440,8 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS merged_into INT DEFAULT NULL`,
       // Automatic events shown in the ticket history (merge, closed by the member…)
       `ALTER TABLE ticket_notes MODIFY source ENUM('web','discord','reply','user','scheduled','system') NOT NULL DEFAULT 'web'`,
+      // Language of the messages sent to members (utils/i18n.js)
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS bot_language ENUM('fr','en','auto') NOT NULL DEFAULT 'fr'`,
       // Automatic FAQ shown in DM before a ticket is opened (utils/faq.js)
       `CREATE TABLE IF NOT EXISTS faq_entries (
         id INT AUTO_INCREMENT PRIMARY KEY, question VARCHAR(200) NOT NULL, answer TEXT NOT NULL,

@@ -1,3 +1,4 @@
+const { t } = require('./i18n');
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -68,7 +69,7 @@ function subjectButtons(subjects) {
     count++;
   }
   if (count > 0 && count % 5 === 0) { rows.push(row); row = new ActionRowBuilder(); }
-  row.addComponents(new ButtonBuilder().setCustomId('subject_other').setLabel('✏️ Autre sujet').setStyle(ButtonStyle.Secondary));
+  row.addComponents(new ButtonBuilder().setCustomId('subject_other').setLabel(t('subject.other')).setStyle(ButtonStyle.Secondary));
   rows.push(row);
   return rows;
 }
@@ -90,22 +91,22 @@ function ratingButtons(ticketId, guildId) {
 // After a rating: optional free comment (customId ratecomment_<ticketId>_<guildId>)
 function ratingCommentButton(ticketId, guildId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`ratecomment_${ticketId}_${guildId}`).setLabel('💬 Ajouter un commentaire').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`ratecomment_${ticketId}_${guildId}`).setLabel(t('rating.addComment')).setStyle(ButtonStyle.Secondary)
   );
 }
 
 // On the member's ticket DMs (owner only): close the ticket themselves, see all their tickets
 function memberCloseButton(ticketId, guildId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`memberclose_${ticketId}_${guildId}`).setLabel('🔒 Fermer mon ticket').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('my_tickets').setLabel('📋 Mes tickets').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`memberclose_${ticketId}_${guildId}`).setLabel(t('close.button')).setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('my_tickets').setLabel(t('myTickets')).setStyle(ButtonStyle.Secondary)
   );
 }
 
 function memberCloseConfirmButtons(ticketId, guildId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`memberclose_confirm_${ticketId}_${guildId}`).setLabel('Oui, fermer le ticket').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('memberclose_cancel').setLabel('Annuler').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`memberclose_confirm_${ticketId}_${guildId}`).setLabel(t('close.yes')).setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('memberclose_cancel').setLabel(t('close.cancel')).setStyle(ButtonStyle.Secondary)
   );
 }
 
@@ -118,9 +119,9 @@ function ticketDmComponents(ticket, guildId, recipientId) {
 function faqButtons(matches) {
   const row = new ActionRowBuilder();
   matches.forEach((m, i) => row.addComponents(
-    new ButtonBuilder().setCustomId(`faq_solved_${m.id}`).setLabel(`✅ La réponse ${i + 1} m'a aidé`).setStyle(ButtonStyle.Success)
+    new ButtonBuilder().setCustomId(`faq_solved_${m.id}`).setLabel(t('faq.solved', { n: i + 1 })).setStyle(ButtonStyle.Success)
   ));
-  row.addComponents(new ButtonBuilder().setCustomId('faq_continue').setLabel('📩 Ouvrir un ticket quand même').setStyle(ButtonStyle.Primary));
+  row.addComponents(new ButtonBuilder().setCustomId('faq_continue').setLabel(t('faq.continue')).setStyle(ButtonStyle.Primary));
   return [row];
 }
 

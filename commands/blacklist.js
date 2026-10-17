@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js'
 const { getTenantDb } = require('../utils/tenantDb');
 const { createManager } = require('../utils/ticketManager');
 const { ensureChiefSupport } = require('../utils/permissions');
+const { t, sendToMember } = require('../utils/i18n');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -60,7 +61,7 @@ module.exports = {
       }
 
       await interaction.reply({ content: `${user.username} a été retiré de la blacklist.`, flags: MessageFlags.Ephemeral });
-      await user.send('Tu as été retiré de la blacklist et peux à nouveau ouvrir des tickets.').catch(() => null);
+      await sendToMember(client, user, interaction.guildId, () => t('unblacklisted'));
       return;
     }
 

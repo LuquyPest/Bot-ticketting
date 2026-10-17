@@ -41,6 +41,7 @@ const FIELD_MAP = {
   escalationAlertHours:      'escalation_alert_hours',
   escalationCloseHours:      'escalation_close_hours',
   embedColor:                'embed_color',
+  botLanguage:               'bot_language',
   botDisplayName:            'bot_display_name',
   webhookUrl:                'webhook_url',
   webhookSecret:             'webhook_secret',
@@ -95,6 +96,7 @@ const VALIDATORS = {
   escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
   embedColor:               v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
+  botLanguage:              v => ['fr', 'en', 'auto'].includes(v),
   botDisplayName:           v => typeof v === 'string' && v.length >= 1 && v.length <= 100,
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
   webhookSecret:            v => v === null || (typeof v === 'string' && v.length >= 16 && v.length <= 255),
@@ -190,6 +192,7 @@ router.patch('/', async (req, res) => {
 
     params.push(1); // WHERE id = 1
     await req.guildDb(`UPDATE guild_config SET ${setClauses.join(', ')} WHERE id = ?`, params);
+    require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
 
     await logAudit(
       req.session.user.id, req.session.user.username,

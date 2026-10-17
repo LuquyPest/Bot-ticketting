@@ -225,6 +225,7 @@ export default function Settings() {
         welcomeMessage:           cfg.welcomeMessage || null,
         closeMessage:             cfg.closeMessage || null,
         botDisplayName:           cfg.botDisplayName || 'Ticket Bot',
+        botLanguage:              cfg.botLanguage || 'fr',
         embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
@@ -393,6 +394,13 @@ export default function Settings() {
               <input type="text" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
                 pattern="^#[0-9a-fA-F]{6}$" placeholder="#6366f1" className={BASE + " font-mono"} />
             </div>
+          </Field>
+          <Field label="Langue des messages aux membres" hint="MP du bot : bienvenue, questions, notifications, boutons. Les textes personnalisés restent tels quels.">
+            <select value={cfg.botLanguage || 'fr'} onChange={e => set('botLanguage', e.target.value)} className={BASE}>
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="auto">Automatique (langue Discord du membre)</option>
+            </select>
           </Field>
         </div>
       </Section>

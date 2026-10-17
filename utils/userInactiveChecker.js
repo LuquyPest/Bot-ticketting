@@ -3,6 +3,7 @@ const { getTenantDb } = require('./tenantDb');
 const { createManager, getGuildConfig } = require('./ticketManager');
 const { recordEvent } = require('./audit');
 const { ticketNoticeDmEmbed } = require('./dmEmbeds');
+const { t, sendToMember } = require('./i18n');
 
 const SYSTEM_CLOSER = { id: 'system', tag: 'Système (inactivité utilisateur)', username: 'Système', source: 'system', reason: 'inactivité du membre' };
 
@@ -27,15 +28,12 @@ async function runUserInactiveCheck(client) {
       const { toWarn, toClose } = await tm.getTicketsForUserInactive(warnHours, closeHours);
 
       for (const ticket of toWarn) {
-        const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
-        if (owner) {
-          await owner.send({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
-            title: '⚠️ Ton ticket attend ta réponse',
-            description: `Le staff t'a répondu mais nous n'avons pas eu de nouvelle depuis ${warnHours}h.\nSans message de ta part dans les ${closeHours - warnHours}h, le ticket sera fermé automatiquement.`,
-            color: 'warning',
-            footer: `Réponds ici pour écrire dans le ticket #${ticket.id}`,
-          })] }).catch(() => null);
-        }
+        await sendToMember(client, ticket.owner_id, guild_id, () => ({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
+          title: t('inactive.warn.title'),
+          description: t('inactive.warn.body', { warn: warnHours, left: closeHours - warnHours }),
+          color: 'warning',
+          footer: t('reply.footer', { id: ticket.id }),
+        })] }));
         // Also warn in the ticket channel
         const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
         if (channel) {
@@ -54,13 +52,10 @@ async function runUserInactiveCheck(client) {
           continue;
         }
         // Notify user before close
-        const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
-        if (owner) {
-          await owner.send({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
-            title: '🔒 Ticket fermé automatiquement',
-            description: `Fermé après ${closeHours}h sans réponse de ta part. Tu peux en ouvrir un nouveau à tout moment.`,
-          })] }).catch(() => null);
-        }
+        await sendToMember(client, ticket.owner_id, guild_id, () => ({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
+          title: t('inactive.closed.title'),
+          description: t('inactive.closed.body', { hours: closeHours }),
+        })] }));
         await tm.closeTicketWithTranscript(channel, SYSTEM_CLOSER);
       }
     } catch (err) {

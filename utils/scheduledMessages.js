@@ -5,6 +5,7 @@ const { broadcast } = require('./sse');
 const { recordEvent } = require('./audit');
 const { staffReplyDmEmbed } = require('./dmEmbeds');
 const { ticketDmComponents } = require('./components');
+const { sendToMember } = require('./i18n');
 
 async function processPending(client) {
   let guilds;
@@ -32,11 +33,10 @@ async function processPending(client) {
 
           const text = `--- ${msg.sender_tag} (programmé) : ${msg.content}`;
 
-          const dmEmbed = staffReplyDmEmbed(client, guild_id, ticket, { sender: msg.sender_tag, content: msg.content, scheduled: true });
+          // Each member receives the reply in their language
           const linkedUserIds = await tm.getAllLinkedUserIds(msg.ticket_id);
           for (const userId of linkedUserIds) {
-            const user = await client.users.fetch(userId).catch(() => null);
-            if (user) await user.send({ embeds: [dmEmbed], components: ticketDmComponents(ticket, guild_id, userId) }).catch(() => null);
+            await sendToMember(client, userId, guild_id, () => ({ embeds: [staffReplyDmEmbed(client, guild_id, ticket, { sender: msg.sender_tag, content: msg.content, scheduled: true })], components: ticketDmComponents(ticket, guild_id, userId) }));
           }
           await recordEvent(db, {
             actor: { id: msg.sender_id, tag: msg.sender_tag, source: 'system' }, action: 'scheduled_sent', ticketId: msg.ticket_id,

@@ -24,6 +24,9 @@ const VERSIONS = [
       { type: 'new',  text: 'FAQ automatique : avant d\'ouvrir un ticket, le bot propose les réponses qui correspondent au message du membre (page FAQ pour les gérer)' },
       { type: 'new',  text: 'Le membre suit ses tickets : commande /mestickets en MP et bouton « Mes tickets » (état formulé pour lui)' },
       { type: 'new',  text: 'Envoi de vrais fichiers depuis le dashboard (8 Mo max), reçus en pièce jointe par le membre' },
+      { type: 'new',  text: 'Messages aux membres en français ou en anglais (par serveur, ou automatiquement selon la langue Discord du membre)' },
+      { type: 'fix',  text: 'Le message de fermeture personnalisé des paramètres est maintenant envoyé au membre' },
+      { type: 'fix',  text: 'Panels : la confirmation ne renvoie plus vers le salon privé du ticket, invisible pour le membre' },
     ]
   },
   {

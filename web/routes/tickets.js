@@ -17,6 +17,7 @@ const { csvCell: csvEscape } = require('../../utils/csv');
 const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { staffReplyDmEmbed, ticketNoticeDmEmbed } = require('../../utils/dmEmbeds');
 const { ticketDmComponents } = require('../../utils/components');
+const { t, sendToMember } = require('../../utils/i18n');
 const { parseJsonField } = require('../../utils/jsonField');
 const { escapeHtml } = require('../../utils/transcript');
 
@@ -401,16 +402,16 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
   }
 
   // DM: embed naming the server and the ticket (a member can have tickets on several servers)
-  const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: upload ? null : file_url });
-  if (upload) dmEmbed.addFields({ name: '📎 Fichier joint', value: upload.name.slice(0, 1024) });
+  // Each member receives the reply in their language
   for (const userId of linkedUserIds) {
-    const user = await client?.users.fetch(userId).catch(() => null);
-    if (user) {
-      await user.send({
+    await sendToMember(client, userId, req.guildId, () => {
+      const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: upload ? null : file_url });
+      if (upload) dmEmbed.addFields({ name: t('reply.fileAttached'), value: upload.name.slice(0, 1024) });
+      return {
         embeds: [dmEmbed], components: ticketDmComponents(ticket, req.guildId, userId),
         ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
-      }).catch(() => null);
-    }
+      };
+    });
   }
 
   const staffUser = dashboardActor(req);
@@ -594,11 +595,9 @@ router.post('/:id/participants', async (req, res) => {
     await tm.logAddUser(ticket.id, discord_id, staffUser);
     broadcast('participant_add', { ticketId: ticket.id, userId: discord_id, tag: discordUser.username }, req.guildId);
 
-    await discordUser.send({ embeds: [ticketNoticeDmEmbed(client, req.guildId, ticket, {
-        title: '👥 Tu as été ajouté à un ticket',
-        description: 'Tu peux suivre et participer à ce ticket : réponds à ce message privé pour écrire dedans.',
-        footer: `Réponds ici pour écrire dans le ticket #${ticket.id}`,
-      })] }).catch(() => null);
+    await sendToMember(client, discordUser, req.guildId, () => ({ embeds: [ticketNoticeDmEmbed(client, req.guildId, ticket, {
+      title: t('added.title'), description: t('added.body'), footer: t('reply.footer', { id: ticket.id }),
+    })] }));
 
     if (client && ticket.channel_id) {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);

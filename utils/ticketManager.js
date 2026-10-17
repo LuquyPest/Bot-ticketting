@@ -1,4 +1,5 @@
 const { ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { t, sendToMember } = require('./i18n');
 const { parseJsonField } = require('./jsonField');
 const { ticketButtons } = require('./components');
 const { buildTranscripts } = require('./transcript');
@@ -265,7 +266,7 @@ function createManager(db, client, guildId) {
     // ticketId is required for the DM header (server + ticket); kept optional for old callers
     if (!created) return;
     const cfg = await getGuildConfig(db);
-    let welcomeText = cfg.welcome_message || 'Ton ticket a été créé. Le support va te répondre bientôt.';
+    let welcomeText = cfg.welcome_message || t('welcome.default');
     if (subject) {
       try {
         const subjectMsgs = parseJsonField(cfg.subject_welcome_messages, {});
@@ -274,11 +275,11 @@ function createManager(db, client, guildId) {
     }
     const welcomeEmbed = new EmbedBuilder()
       .setColor(0x6366f1)
-      .setTitle(ticketId ? `🎫 Ticket #${ticketId} créé` : '🎫 Ticket créé')
+      .setTitle(ticketId ? t('welcome.title', { id: ticketId }) : t('welcome.titleNoId'))
       .setAuthor(ticketContextAuthor(client, gid, { id: ticketId ?? '?', subject }))
       .setDescription(welcomeText)
-      .setFooter({ text: 'Réponds ici pour envoyer un message au staff' });
-    if (subject) welcomeEmbed.addFields({ name: '📂 Sujet', value: subject, inline: true });
+      .setFooter({ text: t('welcome.footer') });
+    if (subject) welcomeEmbed.addFields({ name: t('welcome.subject'), value: subject, inline: true });
     const { ticketDmComponents } = require('./components');
     const components = ticketId ? ticketDmComponents({ id: ticketId, owner_id: user.id }, gid, user.id) : [];
     await user.send({ embeds: [welcomeEmbed], components }).catch(() => null);
@@ -336,30 +337,25 @@ function createManager(db, client, guildId) {
       actor: closedByUser, action: 'ticket_close', ticketId: ticket.id,
       details: { transcriptId: transcript?.transcriptId || null, ...(closedByUser.reason ? { reason: closedByUser.reason } : {}) },
     });
-    const closeDmEmbed = new EmbedBuilder()
+    // Each linked member gets the closing message in their language (custom close message if set)
+    const closeDmEmbed = () => new EmbedBuilder()
       .setColor(0x6366f1)
       .setAuthor(ticketContextAuthor(client, gid, ticket))
-      .setTitle(`🔒 Ticket #${ticket.id} fermé`)
-      .setDescription('Merci de nous avoir contactés. Ton ticket a été traité et fermé.')
+      .setTitle(t('closed.title', { id: ticket.id }))
+      .setDescription(cfg.close_message || t('closed.body'))
       .addFields(
-        { name: '⏱️ Durée', value: duration2, inline: true },
+        { name: t('closed.duration'), value: duration2, inline: true },
         closedByUser.member
-          ? { name: '🔒 Fermé par', value: `${closedByUser.tag} (membre)`, inline: true }
-          : { name: '🛡️ Staff', value: closedByUser.tag, inline: true }
+          ? { name: t('closed.by'), value: t('closed.member', { tag: closedByUser.tag }), inline: true }
+          : { name: t('closed.staff'), value: closedByUser.tag, inline: true }
       );
-    for (const uid of linkedIds) {
-      const u = await client.users.fetch(uid).catch(() => null);
-      if (u) await u.send({ embeds: [closeDmEmbed] }).catch(() => null);
-    }
+    for (const uid of linkedIds) await sendToMember(client, uid, gid, () => ({ embeds: [closeDmEmbed()] }));
 
-    const owner = await client.users.fetch(ticket.owner_id).catch(() => null);
-    if (owner) {
-      const { ratingButtons } = require('./components');
-      const ratingEmbed = new EmbedBuilder()
-        .setColor(0x6366f1)
-        .setDescription('**Comment s\'est passée ton expérience avec notre équipe ?**');
-      await owner.send({ embeds: [ratingEmbed], components: [ratingButtons(ticket.id, gid)] }).catch(() => null);
-    }
+    const { ratingButtons } = require('./components');
+    await sendToMember(client, ticket.owner_id, gid, () => ({
+      embeds: [new EmbedBuilder().setColor(0x6366f1).setDescription(t('rating.ask'))],
+      components: [ratingButtons(ticket.id, gid)],
+    }));
 
     if (cfg.close_log_channel_id) {
       const logCh = await fetchGuildChannel(client, gid, cfg.close_log_channel_id);
@@ -579,13 +575,11 @@ function createManager(db, client, guildId) {
 
     // The member (and participants) are told where the conversation continues
     const { ticketNoticeDmEmbed } = require('./dmEmbeds');
-    const embed = ticketNoticeDmEmbed(client, gid, target, {
-      title: `🔀 Tickets regroupés`,
-      description: `Ton ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} a été regroupé avec celui-ci. La conversation continue ici.`,
-    });
     for (const uid of await getAllLinkedUserIds(targetId)) {
-      const u = await client.users.fetch(uid).catch(() => null);
-      if (u) await u.send({ embeds: [embed] }).catch(() => null);
+      await sendToMember(client, uid, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, target, {
+        title: t('merged.title'),
+        description: t('merged.body', { from: sourceId, subject: source.subject ? ` « ${source.subject} »` : '' }),
+      })] }));
     }
     await updateChannelTopic(targetId).catch(() => null);
     return { ok: true, movedNotes: moved.affectedRows || 0, transcriptId: transcript?.transcriptId || null };

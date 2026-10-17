@@ -4,6 +4,7 @@ const { createManager } = require('../utils/ticketManager');
 const { getActiveGuilds, isGuildOperational } = require('../utils/guildScan');
 const { ensureSupport } = require('../utils/permissions');
 const { takePending } = require('../utils/pendingStore');
+const { t, inMemberLang, rememberLocale } = require('../utils/i18n');
 const { hostTranscript, buildUrl } = require('../utils/transcriptServer');
 const { closeConfirmationButtons, oldTicketsPaginationButtons } = require('../utils/components');
 const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/embeds');
@@ -37,9 +38,24 @@ async function findGuildForClosedTicket(ticketId, ownerId, guildId) {
   return null;
 }
 
+// Server referenced by a member button (…_<ticketId>_<guildId>), when there is one.
+function guildFromCustomId(customId) {
+  const m = /_(\d{17,20})$/.exec(customId || '');
+  return m ? m[1] : null;
+}
+
 module.exports = {
   name: Events.InteractionCreate,
+  // Member-facing replies use the member's language (utils/i18n.js); their Discord language is
+  // remembered for later DMs, which carry no locale.
   async execute(client, interaction) {
+    if (interaction.locale) rememberLocale(interaction.user?.id, interaction.locale).catch(() => {});
+    const guildId = interaction.guildId || guildFromCustomId(interaction.customId);
+    return inMemberLang(interaction.user?.id, guildId, client, () => handleInteraction(client, interaction));
+  },
+};
+
+async function handleInteraction(client, interaction) {
     try {
       // Pending, suspended or maintenance guilds: the bot stays inert (commands, buttons, panels, modals)
       if (interaction.guildId && !(await isGuildOperational(interaction.guildId))) {
@@ -80,7 +96,7 @@ module.exports = {
           const faq = await takePending('faq', interaction.user.id);
           if (!faq) return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
           if (interaction.customId === 'faq_continue') {
-            await interaction.update({ embeds: [interaction.message?.embeds?.[0], choiceEmbed('📩 Ouverture d\'un ticket…')].filter(Boolean), components: [] });
+            await interaction.update({ embeds: [interaction.message?.embeds?.[0], choiceEmbed(t('faq.opening'))].filter(Boolean), components: [] });
             const { openTicketInGuild } = require('./messageCreate');
             await openTicketInGuild(interaction.user, faq.content, faq.attachments, faq.guildId, client, null, { skipFaq: true });
             return;
@@ -92,7 +108,7 @@ module.exports = {
             const { recordEvent } = require('../utils/audit');
             await recordEvent(db, { actor: interaction.user, action: 'faq_solved', targetType: 'faq', targetId: entryId });
           }
-          return interaction.update({ embeds: [interaction.message?.embeds?.[0], choiceEmbed('✅ Super ! Aucun ticket n\'a été ouvert. Écris-moi si tu as encore besoin d\'aide.')].filter(Boolean), components: [] });
+          return interaction.update({ embeds: [interaction.message?.embeds?.[0], choiceEmbed(t('faq.great'))].filter(Boolean), components: [] });
         }
 
         // ── Notation (DM) ──
@@ -101,11 +117,11 @@ module.exports = {
           const rating = parseInt(parts[1]);
           const ticketId = parseInt(parts[2]);
           if (isNaN(rating) || rating < 1 || rating > 5 || isNaN(ticketId)) {
-            return interaction.reply({ content: 'Interaction invalide.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: t('invalidInteraction'), flags: MessageFlags.Ephemeral });
           }
           const found = await findGuildForClosedTicket(ticketId, interaction.user.id, parts[3]);
           if (!found) {
-            return interaction.reply({ content: 'Tu ne peux pas noter ce ticket.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: t('rating.cannot'), flags: MessageFlags.Ephemeral });
           }
           const { db, ticket, guildId } = found;
           const [existing] = await db(
@@ -129,10 +145,10 @@ module.exports = {
           const [, ticketId, guildId] = interaction.customId.split('_');
           const modal = new ModalBuilder()
             .setCustomId(`ratecomment_modal_${ticketId}_${guildId}`)
-            .setTitle('Ton avis sur le support')
+            .setTitle(t('rating.modalTitle'))
             .addComponents(new ActionRowBuilder().addComponents(
-              new TextInputBuilder().setCustomId('comment').setLabel('Commentaire').setStyle(TextInputStyle.Paragraph)
-                .setRequired(true).setMinLength(2).setMaxLength(1000).setPlaceholder('Ce qui t\'a plu, ce qui pourrait être amélioré…')
+              new TextInputBuilder().setCustomId('comment').setLabel(t('rating.modalLabel')).setStyle(TextInputStyle.Paragraph)
+                .setRequired(true).setMinLength(2).setMaxLength(1000).setPlaceholder(t('rating.modalPlaceholder'))
             ));
           return interaction.showModal(modal);
         }
@@ -145,22 +161,22 @@ module.exports = {
 
         // ── Fermer mon ticket (DM, propriétaire du ticket) ──
         if (interaction.customId === 'memberclose_cancel') {
-          return interaction.update({ embeds: [choiceEmbed('Fermeture annulée.')], components: [] });
+          return interaction.update({ embeds: [choiceEmbed(t('close.cancelled'))], components: [] });
         }
         if (interaction.customId.startsWith('memberclose_')) {
           const confirm = interaction.customId.startsWith('memberclose_confirm_');
           const [ticketId, guildId] = interaction.customId.split('_').slice(confirm ? 2 : 1);
           const found = await findOpenOwnedTicket(parseInt(ticketId), interaction.user.id, guildId);
           if (!found) {
-            const payload = { content: 'Ce ticket est déjà fermé.', embeds: [], components: [] };
+            const payload = { content: t('close.already'), embeds: [], components: [] };
             return confirm ? interaction.update(payload) : interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
           }
           if (!confirm) {
             return interaction.reply({ embeds: [memberCloseConfirmEmbed(found.ticket)], components: [memberCloseConfirmButtons(found.ticket.id, guildId)], flags: MessageFlags.Ephemeral });
           }
           const channel = await client.channels.fetch(found.ticket.channel_id).catch(() => null);
-          if (!channel) return interaction.update({ content: 'Impossible de fermer ce ticket pour le moment. Écris au staff pour qu\'il le ferme.', embeds: [], components: [] });
-          await interaction.update({ embeds: [choiceEmbed(`Fermeture du ticket #${found.ticket.id}…`)], components: [] });
+          if (!channel) return interaction.update({ content: t('close.unavailable'), embeds: [], components: [] });
+          await interaction.update({ embeds: [choiceEmbed(t('close.closing', { id: found.ticket.id }))], components: [] });
           const tm = createManager(found.db, client, guildId);
           await tm.closeTicketWithTranscript(channel, {
             id: interaction.user.id, tag: interaction.user.username, username: interaction.user.username,
@@ -179,7 +195,7 @@ module.exports = {
         if (interaction.customId.startsWith('panel_btn_')) {
           const btnId = parseInt(interaction.customId.slice('panel_btn_'.length));
           const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
-          if (!btn) return interaction.reply({ content: 'Bouton invalide ou expiré.', flags: MessageFlags.Ephemeral });
+          if (!btn) return interaction.reply({ content: t('invalidButton'), flags: MessageFlags.Ephemeral });
 
           // Modal: ticket subject (unless the button sets one) + the linked form's fields (5 inputs max)
           const fields = btn.form_id ? await db(
@@ -202,8 +218,8 @@ module.exports = {
             modal.addComponents(new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId('ticket_subject')
-                .setLabel('Sujet du ticket')
-                .setPlaceholder('En quelques mots — sert de titre au ticket')
+                .setLabel(t('panel.subject'))
+                .setPlaceholder(t('panel.subjectPlaceholder'))
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
                 .setMaxLength(100)
@@ -284,22 +300,22 @@ module.exports = {
         const value = interaction.values[0];
 
         if (value === 'new') {
-          await interaction.update({ embeds: [choiceEmbed('➕ Nouveau ticket')], components: [] });
+          await interaction.update({ embeds: [choiceEmbed(t('newTicketChosen'))], components: [] });
           await startNewTicket(interaction.user, pending.content, pending.attachments, client);
           return;
         }
         const [, guildId, ticketId] = value.split(':');
         const entry = pending.tickets.find(t => t.guildId === guildId && String(t.ticketId) === ticketId);
-        if (!entry || !(await isGuildOperational(guildId))) return interaction.update({ content: 'Ticket invalide.', embeds: [], components: [] });
+        if (!entry || !(await isGuildOperational(guildId))) return interaction.update({ content: t('ticketInvalid'), embeds: [], components: [] });
         const routeDb = getTenantDb(guildId);
         // Still open and still linked to this member?
         const [fresh] = await routeDb(
           `SELECT * FROM tickets WHERE id = ? AND status = 'open' AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))`,
           [entry.ticketId, interaction.user.id, interaction.user.id]
         );
-        if (!fresh) return interaction.update({ content: 'Ce ticket n\'est plus ouvert. Renvoie ton message pour choisir un autre ticket.', embeds: [], components: [] });
+        if (!fresh) return interaction.update({ content: t('ticketNotOpen'), embeds: [], components: [] });
         const relayed = await createManager(routeDb, client, guildId).relayToTicket(fresh, interaction.user, pending.content, pending.attachments);
-        if (!relayed) return interaction.update({ content: 'Impossible de joindre le salon de ce ticket. Réessaie plus tard.', embeds: [], components: [] });
+        if (!relayed) return interaction.update({ content: t('ticketUnreachable'), embeds: [], components: [] });
         const guildName = client.guilds.cache.get(guildId)?.name || guildId;
         await interaction.update({ embeds: [relayedToTicketEmbed(guildName, fresh)], components: [] });
         return;
@@ -314,8 +330,8 @@ module.exports = {
           return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
         }
         const choice = pending.guilds.find(g => g.guildId === guildId);
-        if (!choice) return interaction.update({ content: 'Serveur invalide.', components: [] });
-        await interaction.update({ embeds: [choiceEmbed(`Serveur choisi : **${choice.name || guildId}**`)], components: [] });
+        if (!choice) return interaction.update({ content: t('serverInvalid'), components: [] });
+        await interaction.update({ embeds: [choiceEmbed(t('serverChosen', { guild: choice.name || guildId }))], components: [] });
         await openTicketInGuild(interaction.user, pending.content, pending.attachments, guildId, client, null);
         return;
       }
@@ -325,10 +341,10 @@ module.exports = {
         const [ticketId, guildId] = interaction.customId.split('_').slice(2);
         const found = await findGuildForClosedTicket(parseInt(ticketId), interaction.user.id, guildId);
         const comment = interaction.fields.getTextInputValue('comment').trim().slice(0, 1000);
-        if (!found || !comment) return interaction.reply({ content: 'Impossible d\'enregistrer ce commentaire.', flags: MessageFlags.Ephemeral });
+        if (!found || !comment) return interaction.reply({ content: t('rating.commentError'), flags: MessageFlags.Ephemeral });
         const [rating] = await found.db('SELECT rating FROM ticket_ratings WHERE ticket_id = ? AND owner_id = ?', [found.ticket.id, interaction.user.id]);
         const saved = rating && await createManager(found.db, client, found.guildId).saveRatingComment(found.ticket.id, interaction.user.id, comment);
-        if (!saved) return interaction.reply({ content: 'Tu as déjà laissé un commentaire pour ce ticket.', flags: MessageFlags.Ephemeral });
+        if (!saved) return interaction.reply({ content: t('rating.commentSaved'), flags: MessageFlags.Ephemeral });
         return interaction.update({ embeds: [ratingCommentEmbed(rating.rating, comment)], components: [] });
       }
 
@@ -336,7 +352,7 @@ module.exports = {
         const btnId = parseInt(interaction.customId.slice('panel_form_'.length));
         const db = getTenantDb(interaction.guildId);
         const [btn] = await db('SELECT * FROM panel_buttons WHERE id = ?', [btnId]).catch(() => [null]);
-        if (!btn) return interaction.reply({ content: 'Bouton invalide.', flags: MessageFlags.Ephemeral });
+        if (!btn) return interaction.reply({ content: t('invalidButton'), flags: MessageFlags.Ephemeral });
 
         const fields = btn.form_id ? await db(
           'SELECT * FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC LIMIT 5',
@@ -361,10 +377,9 @@ module.exports = {
     } catch (error) {
       console.error('Erreur interactionCreate:', error);
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: 'Une erreur est survenue.', flags: MessageFlags.Ephemeral }).catch(() => null);
+        await interaction.followUp({ content: t('error'), flags: MessageFlags.Ephemeral }).catch(() => null);
       } else {
-        await interaction.reply({ content: 'Une erreur est survenue.', flags: MessageFlags.Ephemeral }).catch(() => null);
+        await interaction.reply({ content: t('error'), flags: MessageFlags.Ephemeral }).catch(() => null);
       }
     }
-  }
-};
+}

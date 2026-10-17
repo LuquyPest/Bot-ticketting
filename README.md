@@ -85,6 +85,8 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 
 Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans un salon (voir [Panels Discord](#panels-discord)). Un utilisateur blacklisté sur un serveur ne peut pas y ouvrir de ticket (la blacklist est propre à chaque serveur).
 
+**Langue des messages** (Paramètres → Identité du bot) : français, anglais, ou automatique (langue Discord du membre, mémorisée à sa dernière interaction avec le bot, sinon langue du serveur). Elle s'applique à tout ce que le bot envoie aux membres : questions, bienvenue, réponses du staff (cadre et boutons), notifications, fermeture, notation, FAQ, panels. Les textes personnalisés (bienvenue, fermeture, FAQ, réponses du staff) restent tels qu'écrits ; le dashboard et les messages destinés au staff restent en français. Le message de fermeture personnalisé des paramètres est désormais bien utilisé dans le MP de fermeture.
+
 ### Côté staff
 
 - Répond via `/reply` (identifié), `/areply` (anonyme comme "Support") ou depuis le **dashboard web** ; depuis le dashboard, un **fichier** (8 Mo max) peut être joint : il arrive en pièce jointe dans le MP du membre et dans le salon

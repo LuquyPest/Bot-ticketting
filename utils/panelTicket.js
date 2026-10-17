@@ -1,6 +1,7 @@
 const { createManager } = require('./ticketManager');
 const { globalQuery } = require('./globalDb');
 const { broadcast } = require('./sse');
+const { t } = require('./i18n');
 
 async function openTicketFromPanel(interaction, client, db, btn, formContent, subjectOverride = null) {
   const user = interaction.user;
@@ -13,7 +14,7 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent, su
   if (limits?.max_tickets > 0) {
     const [{ openCount }] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [{ openCount: 0 }]);
     if (openCount >= limits.max_tickets) {
-      return interaction.editReply({ content: '❌ Le serveur a atteint sa limite de tickets simultanés. Réessaie plus tard.' });
+      return interaction.editReply({ content: t('panel.serverLimit') });
     }
   }
 
@@ -22,18 +23,18 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent, su
   const [cfg] = await db('SELECT max_tickets_per_day FROM guild_config LIMIT 1').catch(() => [{}]);
   const maxPerDay = cfg?.max_tickets_per_day ?? 3;
   if (dailyCount >= maxPerDay) {
-    return interaction.editReply({ content: `❌ Tu as déjà ouvert ${maxPerDay} ticket(s) aujourd'hui. Réessaie demain.` });
+    return interaction.editReply({ content: t('panel.dailyLimit', { max: maxPerDay }) });
   }
 
   // Blacklist check
   const [bl] = await db('SELECT id FROM blacklist WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())', [user.id]).catch(() => [null]);
-  if (bl) return interaction.editReply({ content: '❌ Tu ne peux pas ouvrir de ticket.' });
+  if (bl) return interaction.editReply({ content: t('panel.blacklisted') });
 
   const userObj = { id: user.id, username: user.username, tag: user.tag || user.username };
   const subject = (subjectOverride || btn.subject || '').replace(/\s+/g, ' ').trim().slice(0, 100) || null;
 
   let content = '';
-  if (formContent) content = `📋 **Formulaire :**\n${formContent}`;
+  if (formContent) content = `${t('panel.form')}\n${formContent}`;
 
   try {
     // A member may have several tickets: a panel click always opens a new one (daily limit applies)
@@ -41,13 +42,14 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent, su
     if (result.created) {
       broadcast('new_ticket', { id: result.ticket.id, ownerTag: user.username, subject: result.ticket.subject }, guildId);
       await tm.sendWelcomeDm(user, true, subject, result.ticket.id).catch(() => null);
-      await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${result.channel.id}>` });
+      // The ticket channel is private to the staff: the member follows the ticket in DM
+      await interaction.editReply({ content: t('panel.created', { id: result.ticket.id }) });
     } else {
-      await interaction.editReply({ content: `ℹ️ Tu as déjà un ticket ouvert : <#${result.channel.id}>` });
+      await interaction.editReply({ content: t('panel.exists', { id: result.ticket.id }) });
     }
   } catch (err) {
     console.error('[panelTicket] error:', err);
-    await interaction.editReply({ content: '❌ Impossible de créer le ticket. Réessaie dans quelques instants.' });
+    await interaction.editReply({ content: t('panel.failed') });
   }
 }
 

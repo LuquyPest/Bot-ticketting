@@ -686,6 +686,40 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tfile]);
   }
 
+  // ── Language of the messages sent to members ──
+  {
+    const i18n = app('./utils/i18n');
+    const src = require('fs').readFileSync(path.join(ROOT, 'utils/i18n.js'), 'utf8');
+    const keysOf = l => new Set([...src.slice(src.indexOf(`  ${l}: {`), src.indexOf('\n  },', src.indexOf(`  ${l}: {`))).matchAll(/^    '([\w.]+)':/gm)].map(m => m[1]));
+    const fr = keysOf('fr'), en = keysOf('en');
+    check('langues: dictionnaire anglais complet', fr.size > 50 && [...fr].every(k => en.has(k)) && [...en].every(k => fr.has(k)), JSON.stringify([...fr].filter(k => !en.has(k))));
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'klingon' } });
+    check('langues: valeur inconnue refusée', r.status === 400, r.status);
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'en' } });
+    const ML2 = '200000000000000017';
+    memberRoles.set(ML2, new Map());
+    const msgL = app('./events/messageCreate');
+    await msgL.execute(fakeClient, { t: 'MESSAGE_CREATE', d: { author: { id: ML2, bot: false }, content: 'Hello, I need help', attachments: [] } });
+    const askEn = memberDms.filter(m => m.id === ML2).slice(-1)[0]?.p?.embeds?.[0]?.data;
+    check('langues: serveur en anglais → questions en anglais', r.status === 200 && askEn?.title === '📝 What is your ticket about?', JSON.stringify(askEn));
+    await msgL.execute(fakeClient, { t: 'MESSAGE_CREATE', d: { author: { id: ML2, bot: false }, content: 'Billing', attachments: [] } });
+    const welcomeEn = memberDms.filter(m => m.id === ML2).slice(-1)[0]?.p;
+    check('langues: bienvenue et boutons en anglais', /Ticket #\d+ created/.test(welcomeEn?.embeds?.[0]?.data?.title) && welcomeEn.components?.[0]?.components?.[0]?.data?.label === '🔒 Close my ticket', JSON.stringify([welcomeEn?.embeds?.[0]?.data?.title, welcomeEn?.components?.[0]?.components?.map(c => c.data.label)]));
+    const [tL] = await db('SELECT id FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [ML2]);
+    memberDms.length = 0;
+    await req('POST', `/api/tickets/${tL.id}/reply`, { sid: sessions.FV, body: { content: 'Bonjour' } });
+    check('langues: réponse du staff avec pied de page en anglais', memberDms.find(m => m.id === ML2)?.p?.embeds?.[0]?.data?.footer?.text === `Reply here to write in ticket #${tL.id}`);
+    // 'auto': the member's Discord language, remembered from an interaction
+    await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'auto' } });
+    await i18n.rememberLocale(ML2, 'fr');
+    check('langues: automatique → langue Discord du membre', (await i18n.memberLang(ML2, G)) === 'fr' && (await i18n.memberLang('299999999999999999', G)) === 'fr');
+    await i18n.rememberLocale(ML2, 'en-US');
+    check('langues: automatique → anglais pour un membre anglophone', (await i18n.memberLang(ML2, G)) === 'en');
+    await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'fr' } });
+    check('langues: français par défaut', (await i18n.memberLang(ML2, G)) === 'fr');
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [ML2]);
+  }
+
   // ── Reply templates: personal / shared, suggested by subject ──
   await mk('S1T', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
   await mk('S3T', { user: { id: U.S3, username: 'S3', role: null }, currentGuildId: G });
