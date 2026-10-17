@@ -1103,11 +1103,43 @@ async function main() {
     const [c3b] = await db3('SELECT ticket_category_id FROM guild_config WHERE id = 1');
     const f3b = await db3("SELECT COUNT(*) AS n FROM faq_entries WHERE question = 'Question exportée ?'");
     check('config: réimport sans doublon, salons repris sur demande', c3b.ticket_category_id === CAT_OPEN && Number(f3b[0].n) === 1 && r.body.report.faq.updated >= 1, JSON.stringify([c3b, r.body.report.faq]));
+    const imp = await db3("SELECT source, changes FROM config_history WHERE source = 'import'");
+    check('historique config: import tracé', imp.length >= 1 && JSON.stringify(imp[0].changes).includes('Bienvenue export'), JSON.stringify(imp));
     r = await req('GET', '/api/config/export', { sid: sessions.S3T });
     check('config: export réservé au fondateur', r.status === 403, r.status);
     await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G3]);
     await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G3);
     await db("UPDATE guild_config SET webhook_secret = NULL WHERE id = 1");
+  }
+
+  // ── Settings history and restore ──
+  {
+    const [orig] = await db('SELECT max_tickets_per_day, sla_open_hours, welcome_message FROM guild_config WHERE id = 1');
+    await db('DELETE FROM config_history');
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { maxTicketsPerDay: 7, slaOpenHours: 5 } });
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { welcomeMessage: 'Version B', maxTicketsPerDay: 9 } });
+    await req('PATCH', '/api/config', { sid: sessions.FV, body: { webhookSecret: 'un-secret-assez-long-42' } });
+    await req('PATCH', '/api/config', { sid: sessions.FV, body: { maxTicketsPerDay: 9 } }); // no change: no entry
+    r = await req('GET', '/api/config/history', { sid: sessions.FV });
+    const [eSecret, eB, eA] = r.body.entries || [];
+    check('historique config: une entrée par changement réel', r.status === 200 && r.body.total === 3, JSON.stringify(r.body));
+    check('historique config: avant/après et auteur', eA?.changes.maxTicketsPerDay?.before === orig.max_tickets_per_day && eA.changes.maxTicketsPerDay.after === 7
+      && eA.changes.slaOpenHours?.after === 5 && eA.actor_id === U.F && eB?.changes.welcomeMessage?.after === 'Version B', JSON.stringify([eA, eB]));
+    check('historique config: secret jamais en clair', eSecret?.changes.webhookSecret?.secret === true && !JSON.stringify(r.body).includes('un-secret-assez-long-42'), JSON.stringify(eSecret));
+    r = await req('POST', `/api/config/history/${eB.id}/restore`, { sid: sessions.FV });
+    let [c] = await db('SELECT max_tickets_per_day, sla_open_hours, welcome_message, webhook_secret FROM guild_config WHERE id = 1');
+    check('historique config: retour à l état d avant un changement', r.status === 200 && c.max_tickets_per_day === 7 && c.sla_open_hours === 5
+      && c.welcome_message === orig.welcome_message && c.webhook_secret === 'un-secret-assez-long-42' && r.body.skipped.includes('webhookSecret'), JSON.stringify([r.body, c]));
+    r = await req('POST', `/api/config/history/${eA.id}/restore`, { sid: sessions.FV });
+    [c] = await db('SELECT max_tickets_per_day, sla_open_hours FROM guild_config WHERE id = 1');
+    check('historique config: retour à la version d origine', c.max_tickets_per_day === orig.max_tickets_per_day && c.sla_open_hours === orig.sla_open_hours, JSON.stringify(c));
+    r = await req('GET', '/api/config/history', { sid: sessions.FV });
+    check('historique config: la restauration est elle-même tracée', r.body.entries[0].source === 'restore' && r.body.entries[0].restored_from === eA.id, JSON.stringify(r.body.entries[0]));
+    r = await req('GET', '/api/config/history', { sid: sessions.S3T });
+    check('historique config: réservé à manage_settings', r.status === 403, r.status);
+    r = await req('POST', '/api/config/history/999999/restore', { sid: sessions.FV });
+    check('historique config: version inconnue', r.status === 404, r.status);
+    await db('UPDATE guild_config SET webhook_secret = NULL WHERE id = 1');
   }
 
   // ── Monthly PDF report ──

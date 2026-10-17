@@ -38,6 +38,10 @@ const MOCK = {
   '/api/analytics/subjects': [{ subject: 'Paiement', count: 12 }, { subject: 'Connexion', count: 7 }, { subject: 'Autre', count: 3 }],
   '/api/analytics/response-trend': days(30).map(d => ({ date: d.date, avgMinutes: d.count * 4 })),
   '/api/audit': { rows: [{ id: 1, actor_id: '1', actor_tag: 'Daryu', action: 'ticket_close', source: 'dashboard', ticket_id: 1, details: { reason: 'résolu' }, created_at: iso(5) }], total: 1, page: 1, pages: 1 },
+  '/api/config/history': { entries: [
+    { id: 2, actor_id: '1', actor_tag: 'Daryu', source: 'settings', created_at: iso(10), changes: { maxTicketsPerDay: { before: 3, after: 5 }, webhookSecret: { secret: true } } },
+    { id: 1, actor_id: '1', actor_tag: 'Daryu', source: 'import', created_at: iso(60), changes: { welcomeMessage: { before: null, after: 'Bienvenue !' } } },
+  ], total: 2, page: 1, pages: 1 },
   '/api/tickets/presence': { 1: [{ userId: '2', username: 'Collègue', avatar: null, since: now }] },
   '/api/tickets/search': { results: [{ ticket: { id: 1, owner_tag: 'membre1', subject: 'Problème de paiement 1', status: 'open' }, hits: 2,
     match: { id: 11, author_tag: 'membre1', source: 'user', created_at: iso(30), snippet: 'Mon remboursement n’est pas arrivé' } }], total: 1, page: 1, pages: 1, terms: ['rembours'] },

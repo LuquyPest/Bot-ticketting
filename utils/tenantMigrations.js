@@ -196,6 +196,18 @@ const MIGRATIONS = [
     name: 'Recherche plein texte dans les messages',
     statements: ['ALTER TABLE ticket_notes ADD FULLTEXT INDEX IF NOT EXISTS ft_tn_content (content)'],
   },
+  {
+    version: 13,
+    name: 'Historique de la configuration',
+    statements: [`CREATE TABLE IF NOT EXISTS config_history (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      actor_id VARCHAR(40) NOT NULL, actor_tag VARCHAR(100) NOT NULL,
+      source ENUM('settings','import','restore') NOT NULL DEFAULT 'settings',
+      restored_from INT DEFAULT NULL,
+      changes JSON NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_ch_created (created_at))`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

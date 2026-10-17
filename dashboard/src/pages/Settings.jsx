@@ -4,6 +4,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
 import ConfigTransfer from '../components/ConfigTransfer';
+import ConfigHistory from '../components/ConfigHistory';
 
 function Section({ title, description, children }) {
   return (
@@ -143,6 +144,7 @@ export default function Settings() {
   const [categories, setCategories] = useState([]);
   const [roles, setRoles]           = useState([]);
   const [grades, setGrades] = useState([]);
+  const [historyKey, setHistoryKey] = useState(0);
   const [discordLoading, setDL]     = useState(true);
 
   // Bot identity (per-guild)
@@ -280,6 +282,7 @@ export default function Settings() {
         apiKeysEnabled:           cfg.apiKeysEnabled ? 1 : 0,
       });
       toast.success('Configuration sauvegardée !');
+      setHistoryKey(k => k + 1);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur lors de la sauvegarde');
     } finally {
@@ -513,6 +516,10 @@ export default function Settings() {
       {/* Limits */}
       <Section title="Sauvegarde et transfert">
         <ConfigTransfer />
+      </Section>
+
+      <Section title="Historique des modifications" description="Qui a changé quel réglage, avec l'ancienne et la nouvelle valeur. « Revenir à l'état d'avant » annule ce changement et tous les suivants.">
+        <ConfigHistory key={historyKey} channels={channels} categories={categories} roles={roles} grades={grades} onRestored={load} />
       </Section>
 
       <Section title="Sécurité">

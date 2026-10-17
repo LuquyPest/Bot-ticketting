@@ -3,6 +3,7 @@ const router = express.Router();
 const { parseJsonField } = require('../../utils/jsonField');
 const { logAudit } = require('../../utils/gradePermissions');
 const { foreignChannels, foreignRoles } = require('../../utils/discordGuard');
+const { diffConfig, recordHistory, listHistory, restorePlan } = require('../../utils/configHistory');
 
 const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCategoryId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
   'removeUserLogChannelId', 'weeklyReportChannelId', 'monthlyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
@@ -167,9 +168,11 @@ router.get('/export', async (req, res) => {
 // POST /api/config/import { data, includeDiscordIds } — merges by name, never deletes
 router.post('/import', async (req, res) => {
   try {
+    const before = await snapshot(req.guildDb);
     const report = await require('../../utils/configTransfer').importConfig(req.guildDb, req.body?.data, {
       includeDiscordIds: !!req.body?.includeDiscordIds, actor: req.session.user,
     });
+    await recordHistory(req.guildDb, req.session.user, diffConfig(before, await snapshot(req.guildDb), SECRET_FIELDS), { source: 'import' });
     require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
     await logAudit(req.session.user.id, req.session.user.username, 'config_import', 'guild', req.guildId, { report, includeDiscordIds: !!req.body?.includeDiscordIds }, req.guildDb);
     res.json({ ok: true, report });
@@ -190,65 +193,79 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.patch('/', async (req, res) => {
-  if (!req.userIsFondateur && !req.userPermissions?.has('manage_settings')) {
-    return res.status(403).json({ error: 'Permission insuffisante' });
+async function snapshot(db) {
+  const [cfg] = await db('SELECT * FROM guild_config WHERE id = 1');
+  return cfg ? dbRow2Api(cfg) : {};
+}
+
+// Validates and writes settings, then records the change in the history and the audit log.
+// Returns { error, status } on refusal, { ok, historyId } otherwise.
+async function applyConfigUpdates(req, updates, { source = 'settings', restoredFrom = null } = {}) {
+  const setClauses = [];
+  const params = [];
+
+  // Requiring 2FA: the founder setting it must have it, or they would lock themselves out
+  if (updates.require2fa && updates.require2fa !== 'none'
+      && !(await require('../../utils/twoFactorPolicy').hasTotp(req.session.user.id))) {
+    return { status: 400, error: 'Active d\'abord la double authentification sur ton compte (Profil)' };
   }
+
+  for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
+    if (!(apiKey in updates)) continue;
+    const validator = VALIDATORS[apiKey];
+    if (validator && !validator(updates[apiKey])) {
+      return { status: 400, error: `Valeur invalide pour le champ "${apiKey}"` };
+    }
+    const val = JSON_FIELDS.has(dbCol) ? JSON.stringify(updates[apiKey]) : (updates[apiKey] ?? null);
+    setClauses.push(`${dbCol} = ?`);
+    params.push(val);
+  }
+
+  if (!setClauses.length) return { ok: true, historyId: null };
+
+  for (const k of ['supportGradeId', 'chiefGradeId']) {
+    if (updates[k] && !(await req.guildDb('SELECT 1 FROM grades WHERE id = ?', [updates[k]])).length) {
+      return { status: 400, error: 'Grade introuvable' };
+    }
+  }
+
+  // Channel/role IDs must belong to this guild (the bot would otherwise post in another server)
+  const client = req.app.locals.client;
+  if (client) {
+    const channelIds = CHANNEL_FIELDS.filter(k => k in updates).map(k => updates[k]).filter(Boolean);
+    if ((await foreignChannels(client, req.guildId, channelIds)).length) {
+      return { status: 400, error: 'Un des salons choisis n\'appartient pas à ce serveur' };
+    }
+    const roleIds = ROLE_FIELDS.filter(k => k in updates).flatMap(k => updates[k]);
+    if ((await foreignRoles(client, req.guildId, roleIds)).length) {
+      return { status: 400, error: 'Un des rôles choisis n\'appartient pas à ce serveur' };
+    }
+  }
+
+  const before = await snapshot(req.guildDb);
+  params.push(1); // WHERE id = 1
+  await req.guildDb(`UPDATE guild_config SET ${setClauses.join(', ')} WHERE id = ?`, params);
+  require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
+  const changes = diffConfig(before, await snapshot(req.guildDb), SECRET_FIELDS);
+  const historyId = await recordHistory(req.guildDb, req.session.user, changes, { source, restoredFrom });
+
+  await logAudit(
+    req.session.user.id, req.session.user.username,
+    source === 'restore' ? 'config_restore' : 'config_update', 'guild_config', req.guildId,
+    Object.fromEntries(Object.keys(updates).filter(k => k in FIELD_MAP)
+      .map(k => [k, SECRET_FIELDS.has(k) && updates[k] ? '[modifié]' : updates[k]])),
+    req.guildDb
+  );
+  return { ok: true, historyId };
+}
+
+const canManage = req => req.userIsFondateur || req.userPermissions?.has('manage_settings');
+
+router.patch('/', async (req, res) => {
+  if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const updates = req.body;
-    const setClauses = [];
-    const params = [];
-
-    // Requiring 2FA: the founder setting it must have it, or they would lock themselves out
-    if (updates.require2fa && updates.require2fa !== 'none'
-        && !(await require('../../utils/twoFactorPolicy').hasTotp(req.session.user.id))) {
-      return res.status(400).json({ error: 'Active d\'abord la double authentification sur ton compte (Profil)' });
-    }
-
-    for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
-      if (!(apiKey in updates)) continue;
-      const validator = VALIDATORS[apiKey];
-      if (validator && !validator(updates[apiKey])) {
-        return res.status(400).json({ error: `Valeur invalide pour le champ "${apiKey}"` });
-      }
-      const val = JSON_FIELDS.has(dbCol) ? JSON.stringify(updates[apiKey]) : (updates[apiKey] ?? null);
-      setClauses.push(`${dbCol} = ?`);
-      params.push(val);
-    }
-
-    if (!setClauses.length) return res.json({ ok: true });
-
-    for (const k of ['supportGradeId', 'chiefGradeId']) {
-      if (updates[k] && !(await req.guildDb('SELECT 1 FROM grades WHERE id = ?', [updates[k]])).length) {
-        return res.status(400).json({ error: 'Grade introuvable' });
-      }
-    }
-
-    // Channel/role IDs must belong to this guild (the bot would otherwise post in another server)
-    const client = req.app.locals.client;
-    if (client) {
-      const channelIds = CHANNEL_FIELDS.filter(k => k in updates).map(k => updates[k]).filter(Boolean);
-      if ((await foreignChannels(client, req.guildId, channelIds)).length) {
-        return res.status(400).json({ error: 'Un des salons choisis n\'appartient pas à ce serveur' });
-      }
-      const roleIds = ROLE_FIELDS.filter(k => k in updates).flatMap(k => updates[k]);
-      if ((await foreignRoles(client, req.guildId, roleIds)).length) {
-        return res.status(400).json({ error: 'Un des rôles choisis n\'appartient pas à ce serveur' });
-      }
-    }
-
-    params.push(1); // WHERE id = 1
-    await req.guildDb(`UPDATE guild_config SET ${setClauses.join(', ')} WHERE id = ?`, params);
-    require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
-
-    await logAudit(
-      req.session.user.id, req.session.user.username,
-      'config_update', 'guild_config', req.guildId,
-      Object.fromEntries(Object.keys(updates).filter(k => k in FIELD_MAP)
-        .map(k => [k, SECRET_FIELDS.has(k) && updates[k] ? '[modifié]' : updates[k]])),
-      req.guildDb
-    );
-
+    const r = await applyConfigUpdates(req, req.body || {});
+    if (r.error) return res.status(r.status).json({ error: r.error });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -256,7 +273,38 @@ router.patch('/', async (req, res) => {
   }
 });
 
-// GET /api/config/bot-identity — pseudo + avatar actuel du bot sur ce serveur
+// GET /api/config/history?page= — who changed which setting, with before/after values
+router.get('/history', async (req, res) => {
+  if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const page = Math.max(1, Math.min(100, parseInt(req.query.page) || 1));
+    res.json(await listHistory(req.guildDb, { page }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/config/history/:id/restore — back to the state just before that change (undoes it
+// and every later change); secret fields are left as they are
+router.post('/history/:id/restore', async (req, res) => {
+  if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const id = parseInt(req.params.id);
+    const plan = id > 0 && await restorePlan(req.guildDb, id);
+    if (!plan) return res.status(404).json({ error: 'Version introuvable' });
+    const current = await snapshot(req.guildDb);
+    const updates = Object.fromEntries(Object.entries(plan.updates).filter(([k, v]) => k in FIELD_MAP && JSON.stringify(current[k] ?? null) !== JSON.stringify(v ?? null)));
+    if (!Object.keys(updates).length) return res.json({ ok: true, restored: [], skipped: plan.skipped, message: 'Les paramètres sont déjà dans cet état' });
+    const r = await applyConfigUpdates(req, updates, { source: 'restore', restoredFrom: id });
+    if (r.error) return res.status(r.status).json({ error: `Restauration impossible : ${r.error}` });
+    res.json({ ok: true, restored: Object.keys(updates), skipped: plan.skipped });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/bot-identity', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const client = req.app.get('botClient');

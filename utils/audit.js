@@ -55,6 +55,7 @@ const ACTIONS = {
   config_update:            ['Paramètres modifiés', 'config'],
   config_export:            ['Configuration exportée', 'config'],
   config_import:            ['Configuration importée', 'config'],
+  config_restore:           ['Configuration restaurée', 'config'],
   bot_identity_update:      ['Identité du bot modifiée', 'config'],
   panel_create:             ['Panel créé', 'config'],
   panel_update:             ['Panel modifié', 'config'],
