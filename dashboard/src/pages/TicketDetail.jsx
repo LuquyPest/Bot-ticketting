@@ -14,6 +14,7 @@ import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 import { confirmToast } from '../utils/confirmToast';
+import { availabilityLabel } from '../utils/availability';
 
 const TEMPLATE_VAR_RE = /\{\{(username|ticket_id|date|staff_name|subject)\}\}/gi;
 
@@ -218,6 +219,7 @@ export default function TicketDetail() {
   }, []);
 
   useSSE({
+    availability: (data) => setStaff(list => list.map(m => (m.user_id === data.userId ? { ...m, availability: data.availability } : m))),
     typing: (data) => {
       if (data.ticketId !== ticketId || data.userId === user?.id) return;
       setTypers(prev => {
@@ -373,6 +375,9 @@ export default function TicketDetail() {
 
   const addAssignee = async (userId) => {
     if (!userId) return;
+    const target = staff.find(s => s.user_id === userId);
+    if (target && userId !== user?.id && (target.vacation_mode || target.availability === 'away')
+        && !await confirmToast(`${target.username} est ${availabilityLabel(target).toLowerCase()}. L'attribuer quand même ?`)) return;
     setClaimLoading(true);
     try {
       const { data } = await api.post(`/tickets/${id}/assignees`, { user_id: userId });
@@ -1205,7 +1210,7 @@ export default function TicketDetail() {
                   <div className="flex gap-1.5">
                     <Select className="flex-1 min-w-0" value={assigneeToAdd} onChange={setAssigneeToAdd}
                       placeholder="Attribuer à…"
-                      options={[{ value: '', label: 'Attribuer à…' }, ...assignable.map(s => ({ value: s.user_id, label: s.username }))]} />
+                      options={[{ value: '', label: 'Attribuer à…' }, ...assignable.map(s => ({ value: s.user_id, label: `${s.username} · ${availabilityLabel(s)}` }))]} />
                     <button onClick={() => addAssignee(assigneeToAdd)} disabled={!assigneeToAdd || claimLoading} title="Attribuer"
                       className="p-2 rounded-xl bg-surface border border-overlay/[0.07] text-ink-3 hover:text-ink-1
                                  hover:bg-surface-hover transition-all disabled:opacity-50 shrink-0">

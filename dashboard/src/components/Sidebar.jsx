@@ -11,6 +11,7 @@ import { useSSECtx } from '../context/SSEContext';
 import { useSSE } from '../hooks/useSSE';
 import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
+import { AVAILABILITY } from '../utils/availability';
 import CommandPalette from './CommandPalette';
 import GuildSwitcher from './GuildSwitcher';
 import api from '../api';
@@ -86,6 +87,16 @@ export default function Sidebar() {
   });
 
   const roleStyle = ROLE_STYLES[user?.role] || ROLE_STYLES.nouveau;
+  const [availability, setAvailability] = useState('available');
+  useEffect(() => {
+    if (!user?.guildId || user.role === 'nouveau') return;
+    api.get('/profile/availability').then(r => setAvailability(r.data.availability)).catch(() => {});
+  }, [user?.guildId, user?.role]);
+  const changeAvailability = async (v) => {
+    setAvailability(v);
+    try { await api.put('/profile/availability', { availability: v }); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
   const dot = SSE_DOT[status] || SSE_DOT.connecting;
 
   /* ── keyboard shortcut ⌘K / Ctrl+K ──────────────────────────── */
@@ -227,23 +238,31 @@ export default function Sidebar() {
                   {user?.username?.[0]?.toUpperCase()}
                 </div>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full
-                               bg-emerald-400 border-2 border-base" />
+              <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base ${AVAILABILITY[availability]?.dot || 'bg-emerald-400'}`} />
             </button>
 
-            {/* Info — link to profile page */}
-            <button
-              onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
-              className="min-w-0 flex-1 text-left hover:opacity-80 transition-opacity"
-            >
-              <p className="text-xs text-ink-1 truncate font-semibold leading-tight">{user?.username}</p>
-              {user?.role && (
-                <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wide
-                                 px-1.5 py-0.5 rounded-md mt-0.5 ${roleStyle.bg} ${roleStyle.text}`}>
-                  {roleStyle.label}
-                </span>
+            {/* Info — link to profile page, availability selector */}
+            <div className="min-w-0 flex-1">
+              <button
+                onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
+                className="block max-w-full text-left hover:opacity-80 transition-opacity"
+              >
+                <p className="text-xs text-ink-1 truncate font-semibold leading-tight">{user?.username}</p>
+                {user?.role && (
+                  <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wide
+                                   px-1.5 py-0.5 rounded-md mt-0.5 ${roleStyle.bg} ${roleStyle.text}`}>
+                    {roleStyle.label}
+                  </span>
+                )}
+              </button>
+              {user?.role !== 'nouveau' && (
+                <select value={availability} onChange={e => changeAvailability(e.target.value)}
+                  aria-label="Ma disponibilité" title="Ma disponibilité (visible quand on attribue un ticket)"
+                  className="block mt-0.5 bg-transparent text-[10px] text-ink-3 hover:text-ink-1 focus:outline-hidden cursor-pointer">
+                  {Object.entries(AVAILABILITY).map(([v, av]) => <option key={v} value={v}>{av.label}</option>)}
+                </select>
               )}
-            </button>
+            </div>
 
             {/* Notification bell */}
             <NotificationBell />

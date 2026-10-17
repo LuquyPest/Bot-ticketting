@@ -214,7 +214,7 @@ router.get('/staff', async (req, res) => {
   if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const staff = await req.guildDb(
-      "SELECT user_id, username, avatar, role FROM dashboard_users WHERE role IN ('support', 'fondateur') ORDER BY username ASC"
+      "SELECT user_id, username, avatar, role, availability, vacation_mode FROM dashboard_users WHERE role IN ('support', 'fondateur') ORDER BY username ASC"
     );
     res.json(staff);
   } catch (err) {

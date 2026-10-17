@@ -158,6 +158,11 @@ const MIGRATIONS = [
       CONSTRAINT fk_tl_a FOREIGN KEY (ticket_a) REFERENCES tickets(id) ON DELETE CASCADE,
       CONSTRAINT fk_tl_b FOREIGN KEY (ticket_b) REFERENCES tickets(id) ON DELETE CASCADE)`],
   },
+  {
+    version: 8,
+    name: 'Statut de disponibilité du staff',
+    statements: ["ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS availability ENUM('available','busy','away') NOT NULL DEFAULT 'available'"],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

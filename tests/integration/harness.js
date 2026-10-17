@@ -964,6 +964,18 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[l1, l2, lsec]]);
   }
 
+  // ── Staff availability ──
+  {
+    r = await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'away' } });
+    check('disponibilité: statut enregistré', r.status === 200 && r.body.availability === 'away', JSON.stringify(r.body));
+    r = await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'en pause' } });
+    check('disponibilité: statut inconnu refusé', r.status === 400, r.status);
+    r = await req('GET', '/api/tickets/staff', { sid: sessions.FV });
+    const s3 = r.body.find(x => x.user_id === U.S3);
+    check('disponibilité: visible dans la liste du staff', s3?.availability === 'away' && 'vacation_mode' in s3, JSON.stringify(s3));
+    await req('PUT', '/api/profile/availability', { sid: sessions.S3T, body: { availability: 'available' } });
+  }
+
   // ── Personal reminders ──
   {
     const trm = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('26','u26','crm','open','rappel')")).insertId;

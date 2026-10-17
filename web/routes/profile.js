@@ -108,6 +108,19 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
   }
 });
 
+// GET/PUT /api/profile/availability — available / busy / away (shown when assigning tickets)
+const AVAILABILITY = ['available', 'busy', 'away'];
+router.get('/availability', requireAuthWithGuild, async (req, res) => {
+  const [u] = await req.guildDb('SELECT availability, vacation_mode FROM dashboard_users WHERE user_id = ?', [req.session.user.id]);
+  res.json({ availability: u?.availability || 'available', vacationMode: !!u?.vacation_mode });
+});
+router.put('/availability', requireAuthWithGuild, async (req, res) => {
+  if (!AVAILABILITY.includes(req.body.availability)) return res.status(400).json({ error: 'Statut invalide' });
+  await req.guildDb('UPDATE dashboard_users SET availability = ? WHERE user_id = ?', [req.body.availability, req.session.user.id]);
+  require('../../utils/sse').broadcast('availability', { userId: req.session.user.id, availability: req.body.availability }, req.session.currentGuildId);
+  res.json({ availability: req.body.availability });
+});
+
 // PATCH /api/profile — mise à jour des infos de profil
 router.patch('/', requireAuthWithGuild, async (req, res) => {
   const { bio, bannerColor, profilePictureUrl, vacationMode, notifyAssignDm, notifyMentionDm } = req.body;

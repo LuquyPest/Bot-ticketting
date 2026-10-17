@@ -21,6 +21,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Page « Ma file » : tes tickets triés par urgence, avec la raison de chaque position' },
       { type: 'new',  text: 'Rappels personnels sur un ticket (« me le rappeler dans 2 jours ») par notification et MP' },
       { type: 'new',  text: 'Tickets liés : relier deux tickets sans les fusionner, lien visible des deux côtés' },
+      { type: 'new',  text: 'Statut de disponibilité (disponible, occupé, absent) visible quand on attribue un ticket' },
     ]
   },
   {
