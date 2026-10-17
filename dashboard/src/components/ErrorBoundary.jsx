@@ -1,11 +1,16 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { reportError } from '../utils/reportError';
 
 export default class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    reportError(error, { kind: 'rendu', componentStack: info?.componentStack });
   }
 
   render() {

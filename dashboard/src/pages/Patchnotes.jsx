@@ -14,6 +14,7 @@ const VERSIONS = [
     date: '18 octobre 2026',
     title: 'Espace membre interactif, contexte des tickets et robustesse',
     changes: [
+      { type: 'tech', text: 'Les plantages JavaScript du dashboard et de l\'espace membre remontent dans la page Erreurs du super-admin' },
       { type: 'new',  text: 'Documentation de l\'API publique dans le dashboard et en OpenAPI, générée depuis le code (paramètres, permissions, exemples curl et réponses)' },
       { type: 'new',  text: 'Espace membre : répondre à un ticket et en ouvrir un depuis le web (sujet, champs, formulaire), et page d\'aide avec la FAQ de chaque serveur' },
       { type: 'new',  text: 'Annonces d\'incident : un problème connu est annoncé en MP à chaque nouveau ticket concerné, avec le nombre de membres touchés, et ceux-ci sont prévenus à la résolution' },

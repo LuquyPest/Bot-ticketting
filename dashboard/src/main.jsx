@@ -5,8 +5,10 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './index.css';
 import { purgeOldDrafts } from './hooks/useDraft';
+import { installErrorReporting } from './utils/reportError';
 
 purgeOldDrafts();
+installErrorReporting();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>

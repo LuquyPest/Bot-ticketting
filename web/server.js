@@ -149,6 +149,24 @@ app.use('/api/push',     require('./routes/push'));
 app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
 
+// POST /api/client-errors — crash report from the dashboard or the member space (utils/reportError.js
+// on the client), written to the error journal with context "navigateur". Open to signed-out
+// visitors (the login page can crash too), hence the size limits and the per-IP rate limit.
+app.post('/api/client-errors', async (req, res) => {
+  const { allowBurst } = require('../utils/rateLimit');
+  if (!(await allowBurst(`clienterr:${req.ip}`, 20, 10 * 60 * 1000))) return res.status(429).end();
+  const b = req.body || {};
+  const message = typeof b.message === 'string' ? b.message.trim().slice(0, 500) : '';
+  if (!message) return res.status(400).end();
+  const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+  const who = req.session?.user ? `staff:${req.session.user.id}` : req.session?.member ? `membre:${req.session.member.id}` : req.session?.superAdmin ? `sa:${req.session.superAdmin.id}` : 'anonyme';
+  const err = Object.assign(new Error(message), { stack: str(b.stack, 4000) || message });
+  require('../utils/errorLog').logError(req.session?.currentGuildId || null, 'navigateur', err, {
+    page: str(b.url, 300), type: str(b.kind, 20), user: who, agent: str(req.headers['user-agent'], 200), composant: str(b.component, 1500),
+  });
+  res.status(204).end();
+});
+
 // GET /api/attachment?u=<Discord attachment link> — redirects to a working (re-signed) link, for
 // the previews in the ticket view and the member space. Signed-in staff or members only.
 app.get('/api/attachment', async (req, res) => {

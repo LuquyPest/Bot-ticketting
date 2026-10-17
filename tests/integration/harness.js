@@ -1385,6 +1385,18 @@ async function main() {
     check('doc API: chaque route est documentée', routes.length > 0 && routes.every(x => documented.includes(x)), JSON.stringify({ routes, documented }));
   }
 
+  // ── Browser crashes reported to the super-admin error journal ──
+  {
+    r = await req('POST', '/api/client-errors', { sid: sessions.FV, body: { message: 'TypeError: x is undefined (test navigateur)', stack: 'at Tickets.jsx:10', url: '/tickets', kind: 'rendu', component: 'in Tickets' } });
+    await new Promise(res => setTimeout(res, 200));
+    const [row] = await globalQuery("SELECT * FROM error_logs WHERE context = 'navigateur' AND message LIKE '%test navigateur%' ORDER BY id DESC LIMIT 1");
+    check('erreurs navigateur: enregistrées pour le super-admin', r.status === 204 && row && /"page":"\/tickets"/.test(row.stack) && /staff:/.test(row.stack) && row.guild_id === G, JSON.stringify(row));
+    r = await req('POST', '/api/client-errors', { body: { message: '' } });
+    check('erreurs navigateur: message requis', r.status === 400, r.status);
+    r = await req('POST', '/api/client-errors', { body: { message: 'x' }, headers: { 'X-Requested-With': '' } });
+    check('erreurs navigateur: protection CSRF', r.status === 403, r.status);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);
