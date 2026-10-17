@@ -1019,9 +1019,29 @@ export default function TicketDetail() {
 
                   <div className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed
                                    whitespace-pre-wrap wrap-break-word max-w-sm ${style.bubble}
-                                   ${isLeft ? 'rounded-tl-md' : 'rounded-tr-md'}`}>
+                                   ${isLeft ? 'rounded-tl-md' : 'rounded-tr-md'} ${note.deleted_at ? 'opacity-60 border-dashed' : ''}`}>
                     <MessageContent text={note.content} light={!isLeft} />
                   </div>
+
+                  {/* Edited / deleted by the member in their DMs (previous versions kept for the staff) */}
+                  {(note.edited_at || note.deleted_at) && (
+                    <details className={`text-[10px] px-0.5 max-w-sm ${isLeft ? '' : 'text-right'}`}>
+                      <summary className={`cursor-pointer select-none font-medium ${note.deleted_at ? 'text-red-400' : 'text-amber-400'}`}>
+                        {note.deleted_at ? `Supprimé par le membre · ${fmtDate(note.deleted_at)}` : `Modifié · ${fmtDate(note.edited_at)}`}
+                        {note.edit_history?.length ? ` · ${note.edit_history.length} version(s) précédente(s)` : ''}
+                      </summary>
+                      {note.edit_history?.length > 0 && (
+                        <ol className="mt-1.5 space-y-1.5">
+                          {[...note.edit_history].reverse().map((h, i) => (
+                            <li key={i} className="rounded-lg border border-overlay/8 bg-overlay/2.5 px-2.5 py-1.5 text-left">
+                              <p className="text-ink-4">Avant {fmtDate(h.at)}</p>
+                              <p className="text-ink-2 whitespace-pre-wrap wrap-break-word">{h.content}</p>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </details>
+                  )}
 
                   <div className={`flex items-center gap-2 px-0.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
                     <span className="text-[10px] text-ink-4 tabular-nums">{fmtDate(note.created_at)}</span>

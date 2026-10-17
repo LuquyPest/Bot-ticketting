@@ -1224,6 +1224,38 @@ async function main() {
     check('pièce jointe: lien expiré inconnu de Discord', r.status === 404 || r.status === 401, r.status);
   }
 
+  // ── DMs edited / deleted by the member ──
+  {
+    const dmE = app('./utils/dmEdits');
+    const MEMB = '500000000000000090', CHE = '900000000000000090';
+    channels.set(CHE, mkChannel(CHE, G));
+    const te = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'membE', ?, 'open', 'édition')", [MEMB, CHE])).insertId;
+    const [tRow] = await db('SELECT * FROM tickets WHERE id = ?', [te]);
+    await dmE.rememberDm(MEMB, 'dm900001', 'premier texte');
+    await createManager(db, fakeClient, G).relayToTicket(tRow, { id: MEMB, tag: 'membE', username: 'membE' }, 'premier texte');
+    let [n] = await db('SELECT * FROM ticket_notes WHERE ticket_id = ? AND source = "user"', [te]);
+    check('MP modifié: message relié au MP d origine', n?.discord_message_id === 'dm900001', JSON.stringify(n));
+    sent.length = 0;
+    await dmE.handleDmEdit(fakeClient, { id: 'dm900001', content: 'texte corrigé', edited_timestamp: new Date().toISOString(), author: { id: MEMB } });
+    [n] = await db('SELECT * FROM ticket_notes WHERE id = ?', [n.id]);
+    const hist = typeof n.edit_history === 'string' ? JSON.parse(n.edit_history) : n.edit_history;
+    check('MP modifié: nouveau texte, ancienne version gardée', n.content === 'texte corrigé' && n.edited_at && hist?.[0]?.content === 'premier texte', JSON.stringify(n));
+    check('MP modifié: salon du ticket prévenu', sent.some(x => x.id === CHE && /modifié son message/.test(x.p?.content) && /premier texte/.test(x.p.content)), JSON.stringify(sent));
+    r = await req('GET', `/api/tickets/${te}/notes`, { sid: sessions.FV });
+    const apiNote = r.body.find(x => x.id === n.id);
+    check('MP modifié: historique visible dans la fiche', apiNote?.edited_at && apiNote.edit_history?.[0]?.content === 'premier texte', JSON.stringify(apiNote));
+    await dmE.handleDmEdit(fakeClient, { id: 'dm900001', content: 'texte corrigé', edited_timestamp: new Date().toISOString() }); // embed unfurl: same text
+    [n] = await db('SELECT * FROM ticket_notes WHERE id = ?', [n.id]);
+    check('MP modifié: mise à jour sans changement de texte ignorée', (typeof n.edit_history === 'string' ? JSON.parse(n.edit_history) : n.edit_history).length === 1);
+    sent.length = 0;
+    await dmE.handleDmDelete(fakeClient, { id: 'dm900001' });
+    [n] = await db('SELECT * FROM ticket_notes WHERE id = ?', [n.id]);
+    check('MP supprimé: marqué supprimé, contenu gardé pour le staff', n.deleted_at && n.content === 'texte corrigé' && sent.some(x => /supprimé ce message/.test(x.p?.content)), JSON.stringify(n));
+    await dmE.handleDmEdit(fakeClient, { id: 'inconnu', content: 'x', edited_timestamp: 'x' });
+    check('MP modifié: message non relié ignoré', true);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [te]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

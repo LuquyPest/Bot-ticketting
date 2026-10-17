@@ -266,6 +266,9 @@ async function handleDm(client, user, data) {
     return;
   }
 
+  // Remembered so that a later edit/deletion of this DM can be traced in the ticket
+  await require('../utils/dmEdits').rememberDm(user.id, data.id, require('../utils/dmEdits').noteText(content, attachments)).catch(() => null);
+
   if (!(await allowBurst(`dm:${user.id}`, DM_MAX, DM_WINDOW_MS))) {
     if (await firstOverflow(`dm:${user.id}`)) {
       await user.send(t('flood')).catch(() => null);

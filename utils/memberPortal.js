@@ -68,7 +68,7 @@ async function memberTicket(userId, guildId, ticketId, client) {
   );
   if (!ticket) return null;
   const notes = await db(
-    'SELECT id, author_id, author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? AND source IN (?) ORDER BY created_at ASC, id ASC',
+    'SELECT id, author_id, author_tag, content, source, created_at, edited_at, deleted_at FROM ticket_notes WHERE ticket_id = ? AND source IN (?) ORDER BY created_at ASC, id ASC',
     [ticketId, MEMBER_SOURCES]
   );
   const g = client?.guilds?.cache?.get(guildId);
@@ -80,7 +80,9 @@ async function memberTicket(userId, guildId, ticketId, client) {
       id: n.id,
       kind: n.source === 'user' ? (n.author_id === userId ? 'me' : 'member') : n.source === 'system' ? 'event' : 'staff',
       author: authorLabel(n, userId),
-      content: n.content,
+      content: n.deleted_at ? '' : n.content,
+      deleted: !!n.deleted_at,
+      edited: !!n.edited_at,
       created_at: n.created_at,
     })),
   };
@@ -90,7 +92,7 @@ const fmt = d => new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' 
 
 // Standalone HTML transcript of the member's conversation
 function memberTranscriptHtml({ guild, ticket, messages }, username) {
-  const rows = messages.map(m => m.kind === 'event'
+  const rows = messages.filter(m => !m.deleted).map(m => m.kind === 'event'
     ? `<p class="ev">${escapeHtml(m.content)} · ${fmt(m.created_at)}</p>`
     : `<div class="m ${m.kind === 'staff' ? 's' : 'u'}"><b>${escapeHtml(m.kind === 'me' ? username : m.author || 'Membre')}</b> <span>${fmt(m.created_at)}</span><p>${escapeHtml(m.content)}</p></div>`).join('\n');
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">

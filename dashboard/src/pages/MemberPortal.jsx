@@ -17,6 +17,7 @@ const STR = {
     error: { invalid_state: 'La connexion a expiré, réessaie.', oauth_failed: 'La connexion Discord a échoué, réessaie.', no_code: 'Connexion annulée.' },
     status: { closed: 'Fermé', merged: 'Regroupé avec un autre ticket', waiting: 'En attente de ta réponse', in_progress: 'En cours de traitement', assigned: 'Pris en charge', received: 'Reçu, en attente de prise en charge' },
     reply: 'Pour répondre, écris au bot en message privé sur Discord.',
+    deleted: 'Message supprimé', edited: 'modifié',
   },
   en: {
     title: 'My tickets', subtitle: 'Find your support requests, their status and your conversations.',
@@ -27,6 +28,7 @@ const STR = {
     error: { invalid_state: 'The sign-in expired, please try again.', oauth_failed: 'Discord sign-in failed, please try again.', no_code: 'Sign-in cancelled.' },
     status: { closed: 'Closed', merged: 'Merged with another ticket', waiting: 'Waiting for your answer', in_progress: 'Being handled', assigned: 'Taken in charge', received: 'Received, waiting to be taken in charge' },
     reply: 'To answer, message the bot privately on Discord.',
+    deleted: 'Message deleted', edited: 'edited',
   },
 }[LANG];
 
@@ -189,8 +191,10 @@ function TicketView({ guildId, ticketId, me }) {
               <p className={`text-[11px] font-semibold ${m.kind === 'staff' ? 'text-primary-light' : 'text-white'}`}>
                 {m.kind === 'me' ? STR.you : m.author || STR.member}
               </p>
-              <p className="text-sm whitespace-pre-wrap wrap-break-word mt-0.5"><MessageContent text={m.content} light={m.kind !== 'staff'} /></p>
-              <p className={`text-[10px] mt-1 ${m.kind === 'staff' ? 'text-ink-4' : 'text-white'}`}>{fmt(m.created_at)}</p>
+              <p className="text-sm whitespace-pre-wrap wrap-break-word mt-0.5">
+                {m.deleted ? <em className="opacity-80">{STR.deleted}</em> : <MessageContent text={m.content} light={m.kind !== 'staff'} />}
+              </p>
+              <p className={`text-[10px] mt-1 ${m.kind === 'staff' ? 'text-ink-4' : 'text-white'}`}>{fmt(m.created_at)}{m.edited && !m.deleted ? ` · ${STR.edited}` : ''}</p>
             </div>
           </li>
         ))}
