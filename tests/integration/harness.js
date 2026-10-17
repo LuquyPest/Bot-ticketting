@@ -585,6 +585,52 @@ async function main() {
   }
   await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tOpen9]]);
 
+  // ── Automatic FAQ before opening a ticket ──
+  {
+    await mk('S1F', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
+    r = await req('POST', '/api/faq', { sid: sessions.S1F, body: { question: 'x', answer: 'y' } });
+    check('FAQ: création réservée à manage_settings', r.status === 403, r.status);
+    r = await req('POST', '/api/faq', { sid: sessions.FV, body: { question: 'Comment changer mon mot de passe ?', answer: 'Va dans Profil > Sécurité.', keywords: 'mot de passe, mdp' } });
+    const faqId = r.body.id;
+    check('FAQ: entrée créée', r.status === 200 && faqId > 0, JSON.stringify(r.body));
+    await req('POST', '/api/faq', { sid: sessions.FV, body: { question: 'Horaires du support', answer: 'De 9 h à 18 h.', keywords: 'horaires' } });
+    r = await req('POST', '/api/faq/preview', { sid: sessions.FV, body: { message: "Bonjour, j'ai oublié mon mot de passe" } });
+    check('FAQ: correspondance par mot-clé', r.body.length === 1 && r.body[0].id === faqId, JSON.stringify(r.body));
+    r = await req('PUT', '/api/faq/enabled', { sid: sessions.FV, body: { enabled: true } });
+    check('FAQ: activation', r.status === 200, r.status);
+
+    const MF = '200000000000000015';
+    memberRoles.set(MF, new Map());
+    const msgM = app('./events/messageCreate'), interM = app('./events/interactionCreate');
+    const dmF = text => msgM.execute(fakeClient, { t: 'MESSAGE_CREATE', d: { author: { id: MF, bot: false }, content: text, attachments: [] } });
+    const lastF = () => memberDms.filter(m => m.id === MF).slice(-1)[0]?.p;
+    const clickF = async customId => {
+      const out = {};
+      await interM.execute(fakeClient, { customId, guildId: null, guild: null, channelId: 'dm', values: [], message: { embeds: [] },
+        user: { id: MF, username: 'member15', tag: 'member15', send: async p => memberDms.push({ id: MF, p }) },
+        isButton: () => true, isStringSelectMenu: () => false, isModalSubmit: () => false, isChatInputCommand: () => false, isRepliable: () => true,
+        reply: async p => { out.reply = p; }, update: async p => { out.update = p; } });
+      return out;
+    };
+    await dmF("J'ai perdu mon mdp, comment faire ?");
+    const sugg = lastF();
+    const btns = sugg?.components?.[0]?.components?.map(c => c.data.custom_id) || [];
+    check('FAQ: réponses proposées en MP avant le ticket', sugg?.embeds?.[0]?.data?.fields?.[0]?.value === 'Va dans Profil > Sécurité.' && btns.includes(`faq_solved_${faqId}`) && btns.includes('faq_continue'), JSON.stringify([sugg?.embeds?.[0]?.data, btns]));
+    let out = await clickF(`faq_solved_${faqId}`);
+    const [cntF] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [MF]);
+    const [stF] = await db('SELECT shown_count, solved_count FROM faq_entries WHERE id = ?', [faqId]);
+    check('FAQ: « ça m\'a aidé » → aucun ticket, compteur incrémenté', Number(cntF.n) === 0 && stF.solved_count === 1 && stF.shown_count === 1, JSON.stringify([cntF, stF, out]));
+    await dmF('Toujours un souci de mot de passe');
+    out = await clickF('faq_continue');
+    check('FAQ: « ouvrir un ticket quand même » → question du sujet', lastF()?.embeds?.[0]?.data?.title?.includes('sujet'), JSON.stringify(lastF()));
+    await dmF('Mot de passe');
+    const tF = await db('SELECT id FROM tickets WHERE owner_id = ?', [MF]);
+    const nF = tF[0] ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user'", [tF[0].id]) : [];
+    check('FAQ: le ticket contient le message d\'origine', tF.length === 1 && nF.some(n => n.content.includes('Toujours un souci')), JSON.stringify(nF));
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MF]);
+    await req('PUT', '/api/faq/enabled', { sid: sessions.FV, body: { enabled: false } });
+  }
+
   // ── Reply templates: personal / shared, suggested by subject ──
   await mk('S1T', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
   await mk('S3T', { user: { id: U.S3, username: 'S3', role: null }, currentGuildId: G });
@@ -831,7 +877,7 @@ async function main() {
   const [sysClose] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_close' AND source = 'api'");
   check('journal: fermeture via API avec source API', Number(sysClose.n) >= 1, JSON.stringify(sysClose));
   r = await req('GET', '/api/audit?category=tickets', { sid: sessions.F });
-  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action === 'note_delete'), JSON.stringify(r.body.rows.map(x => x.action)));
+  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action === 'note_delete' || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
   r = await req('GET', `/api/audit?ticket=%23${st1.id}`, { sid: sessions.F });
   check('journal: filtre ticket', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.ticket_id === st1.id), r.body.total);
   r = await req('GET', '/api/audit?source=api', { sid: sessions.F });

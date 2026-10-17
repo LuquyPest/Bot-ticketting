@@ -440,6 +440,12 @@ async function ensureTenantSchema(guildId) {
       `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS merged_into INT DEFAULT NULL`,
       // Automatic events shown in the ticket history (merge, closed by the member…)
       `ALTER TABLE ticket_notes MODIFY source ENUM('web','discord','reply','user','scheduled','system') NOT NULL DEFAULT 'web'`,
+      // Automatic FAQ shown in DM before a ticket is opened (utils/faq.js)
+      `CREATE TABLE IF NOT EXISTS faq_entries (
+        id INT AUTO_INCREMENT PRIMARY KEY, question VARCHAR(200) NOT NULL, answer TEXT NOT NULL,
+        keywords VARCHAR(500) NOT NULL DEFAULT '', active TINYINT(1) NOT NULL DEFAULT 1,
+        shown_count INT NOT NULL DEFAULT 0, solved_count INT NOT NULL DEFAULT 0,
+        created_by_tag VARCHAR(100) DEFAULT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     ];
     for (const m of migrations) await conn.query(m).catch(() => null);
 

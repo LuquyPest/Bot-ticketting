@@ -5,14 +5,15 @@ const { findAllOpenTickets, isBlacklistedIn, isGuildOperational, findGuildsForUs
 const { allowBurst, firstOverflow } = require('../utils/rateLimit');
 const { parseJsonField } = require('../utils/jsonField');
 const { fetchGuildChannel } = require('../utils/discordGuard');
-const { subjectButtons } = require('../utils/components');
+const { subjectButtons, faqButtons } = require('../utils/components');
+const { findFaqMatches } = require('../utils/faq');
 const { broadcast } = require('../utils/sse');
 const { globalQuery } = require('../utils/globalDb');
 const {
   emptyMessageEmbed, blacklistedEmbed, notInGuildEmbed,
   serverLimitEmbed, dailyLimitEmbed, serverSelectEmbed,
   subjectSelectEmbed, subjectAskEmbed, ticketRouteEmbed,
-  intakeFormStartEmbed, intakeFormStepEmbed,
+  intakeFormStartEmbed, intakeFormStepEmbed, faqSuggestEmbed,
 } = require('../utils/dmEmbeds');
 
 // DM conversation states, per user, kept in Redis (utils/pendingStore.js) so an answer sent
@@ -40,10 +41,10 @@ async function loadGuildEntry(guildId, client) {
 }
 
 // Continues the flow on a guild known by its id (states restored from Redis).
-async function openTicketInGuild(user, content, attachments, guildId, client, subject) {
+async function openTicketInGuild(user, content, attachments, guildId, client, subject, opts = {}) {
   const entry = await loadGuildEntry(guildId, client);
   if (!entry) return user.send({ embeds: [notInGuildEmbed()] }).catch(() => null);
-  return openTicketForGuild(user, content, attachments, entry, client, subject);
+  return openTicketForGuild(user, content, attachments, entry, client, subject, opts);
 }
 
 // DM flood protection: each DM scans every active guild, so cap it per user.
@@ -85,7 +86,8 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
 
 // Opens a new ticket on a guild. subject: null = not asked yet (the member is asked),
 // '' = asked but none given (ticket opened without subject), otherwise the subject.
-async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null) {
+// opts.skipFaq: the member already saw the FAQ suggestions and chose to open a ticket.
+async function openTicketForGuild(user, content, attachments, guildEntry, client, subject = null, opts = {}) {
   const { guildId, db, tm, config } = guildEntry;
 
   // Every entry point (DM, subject/guild buttons, timeouts) ends here, so the per-guild checks live here
@@ -124,6 +126,18 @@ async function openTicketForGuild(user, content, attachments, guildEntry, client
   }
 
   // Ask the subject after the first message; if nobody answers, open the ticket without subject
+  // Automatic FAQ: suggest answers before asking the subject (the member may not need a ticket)
+  if (subject === null && config.faq_enabled && !opts.skipFaq) {
+    const matches = await findFaqMatches(db, content);
+    if (matches.length) {
+      await db('UPDATE faq_entries SET shown_count = shown_count + 1 WHERE id IN (?)', [matches.map(m => m.id)]).catch(() => null);
+      await store.setPending('faq', user.id, { guildId, content, attachments, entryIds: matches.map(m => m.id) }, PENDING_TTL_MS);
+      const guildName = client.guilds.cache.get(guildId)?.name;
+      await user.send({ embeds: [faqSuggestEmbed(guildName, matches)], components: faqButtons(matches) }).catch(() => null);
+      return;
+    }
+  }
+
   if (subject === null) {
     // No answer within the TTL: the 'pending-expiry' job opens the ticket without subject
     const guildName = client.guilds.cache.get(guildId)?.name;
@@ -278,6 +292,13 @@ module.exports = {
         if (await firstOverflow(`dm:${user.id}`)) {
           await user.send('⏳ Tu envoies trop de messages à la suite — attends quelques secondes avant de réessayer.').catch(() => null);
         }
+        return;
+      }
+
+      // New message while FAQ suggestions are shown: the member still needs help → open the ticket
+      const faq = await store.takePending('faq', user.id);
+      if (faq) {
+        await openTicketInGuild(user, [faq.content, content].filter(Boolean).join('\n'), [...(faq.attachments || []), ...attachments], faq.guildId, client, null, { skipFaq: true });
         return;
       }
 

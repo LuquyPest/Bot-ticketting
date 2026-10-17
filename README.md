@@ -75,6 +75,7 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 1. Le membre envoie un **message privé** au bot
 2. S'il a déjà des tickets ouverts → le bot lui demande, **à chaque message**, dans quel ticket l'envoyer, ou s'il veut **ouvrir un nouveau ticket** (un membre peut avoir plusieurs tickets, dans la limite quotidienne)
 3. Nouveau ticket : si le membre est dans plusieurs serveurs utilisant le bot → choix du serveur
+3 bis. Si la **FAQ automatique** est activée et que le message correspond à des entrées (mots-clés, mots de la question), le bot propose jusqu'à 3 réponses avec « ✅ La réponse N m'a aidé » (aucun ticket n'est ouvert) ou « 📩 Ouvrir un ticket quand même ». Un nouveau message à ce moment ouvre aussi le ticket
 4. Le bot demande ensuite le **sujet du ticket** : boutons si des sujets sont configurés (+ « Autre sujet »), sinon réponse libre. Sans réponse sous 10 minutes, le ticket est ouvert sans sujet. Les conversations en cours (sujet, choix du serveur ou du ticket, formulaire) sont gardées dans Redis : un redémarrage du bot ne fait perdre aucune réponse
 5. Si un **formulaire d'intake** est activé → questionnaire étape par étape avant création
 6. Un salon privé est créé dans le serveur Discord, **nommé d'après le sujet**
@@ -321,6 +322,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV et onglet Analytique |
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances |
+| **FAQ** | fondateur, `manage_settings` | Entrées de la FAQ automatique (question, réponse, mots-clés), activation, test d'un message, statistiques (proposée / a résolu) |
 | **Tags** | fondateur | Tags pour organiser les tickets |
 | **Blacklist** | fondateur | Utilisateurs bloqués — propre à chaque serveur |
 | **Panels** / **Formulaires** | fondateur | Panels de boutons Discord et formulaires associés |
@@ -599,6 +601,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `admin_stats` | Statistiques cumulées par agent |
 | `blacklist` | Utilisateurs bannis (avec expiration optionnelle) |
 | `dashboard_users` | Comptes dashboard avec rôles et profil |
+| `faq_entries` | FAQ automatique (question, réponse, mots-clés, compteurs) |
 | `reply_templates` | Modèles de réponse (personnels ou partagés, sujet associé, compteur d'utilisation) |
 | `grades` | Hiérarchie de rôles personnalisée |
 | `grade_permissions` | Permissions par grade |

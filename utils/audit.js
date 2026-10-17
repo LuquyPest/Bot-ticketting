@@ -61,6 +61,10 @@ const ACTIONS = {
   template_create:          ['Modèle de réponse créé', 'config'],
   template_update:          ['Modèle de réponse modifié', 'config'],
   template_delete:          ['Modèle de réponse supprimé', 'config'],
+  faq_create:               ['Entrée de FAQ créée', 'config'],
+  faq_update:               ['Entrée de FAQ modifiée', 'config'],
+  faq_delete:               ['Entrée de FAQ supprimée', 'config'],
+  faq_solved:               ['Question résolue par la FAQ', 'tickets'],
   // Intégrations
   api_key_create:           ['Clé API créée', 'integrations'],
   api_key_revoke:           ['Clé API révoquée', 'integrations'],

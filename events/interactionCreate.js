@@ -75,6 +75,26 @@ module.exports = {
           return;
         }
 
+        // ── FAQ automatique (DM) ── solved, or open the ticket anyway
+        if (interaction.customId === 'faq_continue' || interaction.customId.startsWith('faq_solved_')) {
+          const faq = await takePending('faq', interaction.user.id);
+          if (!faq) return interaction.update({ embeds: [sessionExpiredEmbed()], components: [] });
+          if (interaction.customId === 'faq_continue') {
+            await interaction.update({ embeds: [interaction.message?.embeds?.[0], choiceEmbed('📩 Ouverture d\'un ticket…')].filter(Boolean), components: [] });
+            const { openTicketInGuild } = require('./messageCreate');
+            await openTicketInGuild(interaction.user, faq.content, faq.attachments, faq.guildId, client, null, { skipFaq: true });
+            return;
+          }
+          const entryId = parseInt(interaction.customId.slice('faq_solved_'.length));
+          if (faq.entryIds.includes(entryId) && await isGuildOperational(faq.guildId)) {
+            const db = getTenantDb(faq.guildId);
+            await db('UPDATE faq_entries SET solved_count = solved_count + 1 WHERE id = ?', [entryId]).catch(() => null);
+            const { recordEvent } = require('../utils/audit');
+            await recordEvent(db, { actor: interaction.user, action: 'faq_solved', targetType: 'faq', targetId: entryId });
+          }
+          return interaction.update({ embeds: [interaction.message?.embeds?.[0], choiceEmbed('✅ Super ! Aucun ticket n\'a été ouvert. Écris-moi si tu as encore besoin d\'aide.')].filter(Boolean), components: [] });
+        }
+
         // ── Notation (DM) ──
         if (interaction.customId.startsWith('rating_')) {
           const parts = interaction.customId.split('_');

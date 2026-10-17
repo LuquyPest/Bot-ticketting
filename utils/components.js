@@ -113,7 +113,18 @@ function ticketDmComponents(ticket, guildId, recipientId) {
   return ticket?.owner_id && ticket.owner_id === recipientId && ticket.id ? [memberCloseButton(ticket.id, guildId)] : [];
 }
 
+// FAQ suggestions: one "solved" button per answer + open a ticket anyway
+function faqButtons(matches) {
+  const row = new ActionRowBuilder();
+  matches.forEach((m, i) => row.addComponents(
+    new ButtonBuilder().setCustomId(`faq_solved_${m.id}`).setLabel(`✅ La réponse ${i + 1} m'a aidé`).setStyle(ButtonStyle.Success)
+  ));
+  row.addComponents(new ButtonBuilder().setCustomId('faq_continue').setLabel('📩 Ouvrir un ticket quand même').setStyle(ButtonStyle.Primary));
+  return [row];
+}
+
 module.exports = {
+  faqButtons,
   ratingCommentButton,
   memberCloseButton,
   memberCloseConfirmButtons,

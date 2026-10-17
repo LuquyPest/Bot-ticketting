@@ -141,6 +141,15 @@ function memberCloseConfirmEmbed(ticket) {
     .setDescription(`Fermer le ticket **#${ticket.id}${ticket.subject ? ` — ${ticket.subject}` : ''}** ?\nLe staff ne pourra plus te répondre dans ce ticket.`);
 }
 
+function faqSuggestEmbed(guildName, matches) {
+  const embed = new EmbedBuilder()
+    .setColor(C.primary)
+    .setAuthor({ name: `${guildName || 'Support'} · Avant d'ouvrir un ticket` })
+    .setDescription('Ces réponses pourraient t\'aider. Si ce n\'est pas le cas, ouvre un ticket : ton message sera transmis au staff.');
+  matches.forEach((m, i) => embed.addFields({ name: `${i + 1}. ${m.question}`.slice(0, 256), value: m.answer.slice(0, 1024) }));
+  return embed;
+}
+
 function alreadyRatedEmbed() {
   return new EmbedBuilder()
     .setColor(C.neutral)
@@ -199,6 +208,7 @@ module.exports = {
   ticketCreatingEmbed,
   ratingConfirmEmbed,
   ratingCommentEmbed,
+  faqSuggestEmbed,
   memberCloseConfirmEmbed,
   alreadyRatedEmbed,
 };
