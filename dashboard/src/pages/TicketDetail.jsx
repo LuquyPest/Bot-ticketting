@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -410,6 +410,24 @@ export default function TicketDetail() {
       await api.delete(`/tickets/${id}/participants/${userId}`);
       setTicket(t => ({ ...t, participants: t.participants.filter(p => p.id !== userId) }));
       toast.success('Participant retiré');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  // Linked tickets
+  const [linkInput, setLinkInput] = useState('');
+  const addLink = async () => {
+    const other = parseInt(linkInput.replace('#', ''));
+    if (!other) return toast.error('Numéro de ticket invalide');
+    try {
+      const { data } = await api.post(`/tickets/${id}/links`, { ticketId: other });
+      setTicket(t => ({ ...t, links: data.links }));
+      setLinkInput('');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const removeLink = async (otherId) => {
+    try {
+      const { data } = await api.delete(`/tickets/${id}/links/${otherId}`);
+      setTicket(t => ({ ...t, links: data.links }));
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
@@ -1225,6 +1243,34 @@ export default function TicketDetail() {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TICKETS LIÉS */}
+          {(ticket.links?.length > 0 || can('reply_ticket')) && (
+            <div className={panelCard}>
+              <SectionTitle>Tickets liés</SectionTitle>
+              {ticket.links?.length > 0 && (
+                <ul className="space-y-1 mb-2">
+                  {ticket.links.map(l => (
+                    <li key={l.id} className="flex items-center gap-1.5 text-xs">
+                      <Link2 size={11} className="text-ink-4 shrink-0" />
+                      <button onClick={() => navigate(`/tickets/${l.id}`)} className="flex-1 min-w-0 text-left truncate text-ink-2 hover:text-primary-light">
+                        #{l.id} — {l.subject || 'Sans sujet'} <span className="text-ink-4">· {l.owner_tag}{l.status === 'closed' ? ' · fermé' : ''}</span>
+                      </button>
+                      {can('reply_ticket') && <button onClick={() => removeLink(l.id)} aria-label={`Retirer le lien avec #${l.id}`} className="text-ink-4 hover:text-red-400"><X size={11} /></button>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {can('reply_ticket') && (
+                <div className="flex gap-1.5">
+                  <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()}
+                    placeholder="N° de ticket" inputMode="numeric" aria-label="Numéro du ticket à lier"
+                    className="flex-1 min-w-0 bg-surface border border-overlay/[0.07] text-ink-1 placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden focus:border-primary/50" />
+                  <button onClick={addLink} className="px-2.5 rounded-xl text-xs text-ink-3 border border-overlay/[0.07] hover:text-ink-1 hover:bg-overlay/4">Lier</button>
+                </div>
+              )}
             </div>
           )}
 

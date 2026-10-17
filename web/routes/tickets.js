@@ -251,6 +251,7 @@ router.get('/:id', async (req, res) => {
       stages: { open: !!cfg?.ticket_category_id, waiting: !!cfg?.waiting_category_id, in_progress: !!cfg?.in_progress_category_id },
       sla: slaStatus(ticket, cfg),
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
+      links: await linkedTickets(req, ticket.id),
       transcript: transcript[0] || null,
       rating: rating[0] || null
     });
@@ -633,6 +634,60 @@ router.delete('/reminders/:rid', async (req, res) => {
   const r = await req.guildDb('DELETE FROM ticket_reminders WHERE id = ? AND user_id = ?', [parseInt(req.params.rid), req.session.user.id]);
   if (!r.affectedRows) return res.status(404).json({ error: 'Rappel introuvable' });
   res.json({ ok: true });
+});
+
+// Linked tickets (same problem, other members): stored once per pair (smallest id first)
+async function linkedTickets(req, ticketId) {
+  const vis = await visibilityFilter(req, 't.visibility_grade_id');
+  return req.guildDb(
+    `SELECT t.id, t.subject, t.status, t.owner_tag FROM ticket_links l
+     JOIN tickets t ON t.id = IF(l.ticket_a = ?, l.ticket_b, l.ticket_a)
+     WHERE (l.ticket_a = ? OR l.ticket_b = ?) AND ${vis.sql} ORDER BY t.id DESC`,
+    [ticketId, ticketId, ticketId, ...vis.params]
+  );
+}
+
+router.post('/:id/links', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const otherId = parseInt(req.body.ticketId);
+    if (!otherId || otherId === ticket.id) return res.status(400).json({ error: 'Numéro de ticket invalide' });
+    const { ticket: other, denied } = await checkAccess(req, otherId);
+    if (!other || denied) return res.status(404).json({ error: 'Ticket introuvable' });
+    const [a, b] = [Math.min(ticket.id, other.id), Math.max(ticket.id, other.id)];
+    const r = await req.guildDb('INSERT IGNORE INTO ticket_links (ticket_a, ticket_b, created_by_tag) VALUES (?, ?, ?)', [a, b, req.session.user.username]);
+    if (r.affectedRows) {
+      for (const id of [ticket.id, other.id]) {
+        await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_link', ticketId: id, details: { with: id === ticket.id ? other.id : ticket.id } });
+        broadcast('ticket', { id }, req.guildId);
+      }
+    }
+    res.json({ links: await linkedTickets(req, ticket.id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.delete('/:id/links/:otherId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const otherId = parseInt(req.params.otherId);
+    const [a, b] = [Math.min(ticket.id, otherId), Math.max(ticket.id, otherId)];
+    const r = await req.guildDb('DELETE FROM ticket_links WHERE ticket_a = ? AND ticket_b = ?', [a, b]);
+    if (r.affectedRows) {
+      for (const id of [ticket.id, otherId]) {
+        await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_unlink', ticketId: id, details: { with: id === ticket.id ? otherId : ticket.id } });
+        broadcast('ticket', { id }, req.guildId);
+      }
+    }
+    res.json({ links: await linkedTickets(req, ticket.id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 router.post('/:id/reply', async (req, res) => {

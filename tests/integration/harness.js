@@ -945,6 +945,25 @@ async function main() {
     await db('UPDATE guild_config SET sla_open_hours = 0 WHERE id = 1');
   }
 
+  // ── Linked tickets ──
+  {
+    const l1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('27','u27','cl1','open','bug paiement A')")).insertId;
+    const l2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('28','u28','cl2','open','bug paiement B')")).insertId;
+    const lsec = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('29','u29','cl3','open','secret', ?)", [g2])).insertId;
+    r = await req('POST', `/api/tickets/${l1}/links`, { sid: sessions.FV, body: { ticketId: l2 } });
+    check('liens: tickets liés', r.status === 200 && r.body.links.some(x => x.id === l2), JSON.stringify(r.body));
+    r = await req('GET', `/api/tickets/${l2}`, { sid: sessions.FV });
+    check('liens: visible des deux côtés', r.body.links?.some(x => x.id === l1), JSON.stringify(r.body.links));
+    await req('POST', `/api/tickets/${l1}/links`, { sid: sessions.FV, body: { ticketId: lsec } });
+    r = await req('GET', `/api/tickets/${l1}`, { sid: sessions.S3T });
+    check('liens: un ticket restreint lié reste masqué', r.status === 200 && r.body.links.length === 1 && r.body.links[0].id === l2, JSON.stringify(r.body.links));
+    r = await req('POST', `/api/tickets/${l1}/links`, { sid: sessions.FV, body: { ticketId: l1 } });
+    check('liens: pas de lien vers soi-même', r.status === 400, r.status);
+    r = await req('DELETE', `/api/tickets/${l2}/links/${l1}`, { sid: sessions.FV });
+    check('liens: retrait depuis l\'autre ticket', r.status === 200 && !r.body.links.some(x => x.id === l1), JSON.stringify(r.body));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[l1, l2, lsec]]);
+  }
+
   // ── Personal reminders ──
   {
     const trm = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('26','u26','crm','open','rappel')")).insertId;

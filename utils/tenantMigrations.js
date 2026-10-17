@@ -149,6 +149,15 @@ const MIGRATIONS = [
       INDEX idx_tr_due (sent_at, remind_at), INDEX idx_tr_user (user_id),
       CONSTRAINT fk_trm_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`],
   },
+  {
+    version: 7,
+    name: 'Tickets liés (sans fusion)',
+    statements: [`CREATE TABLE IF NOT EXISTS ticket_links (
+      ticket_a INT NOT NULL, ticket_b INT NOT NULL, created_by_tag VARCHAR(100) DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (ticket_a, ticket_b), INDEX idx_tl_b (ticket_b),
+      CONSTRAINT fk_tl_a FOREIGN KEY (ticket_a) REFERENCES tickets(id) ON DELETE CASCADE,
+      CONSTRAINT fk_tl_b FOREIGN KEY (ticket_b) REFERENCES tickets(id) ON DELETE CASCADE)`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

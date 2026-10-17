@@ -20,6 +20,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Note basse : fondateurs et chefs support prévenus, bouton « Recontacter le membre » dans la fiche' },
       { type: 'new',  text: 'Page « Ma file » : tes tickets triés par urgence, avec la raison de chaque position' },
       { type: 'new',  text: 'Rappels personnels sur un ticket (« me le rappeler dans 2 jours ») par notification et MP' },
+      { type: 'new',  text: 'Tickets liés : relier deux tickets sans les fusionner, lien visible des deux côtés' },
     ]
   },
   {
