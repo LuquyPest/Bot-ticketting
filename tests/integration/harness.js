@@ -67,7 +67,8 @@ function req(method, path, { sid, body, headers = {}, query } = {}) {
   return new Promise((resolve, reject) => {
     const h = { ...headers };
     if (sid) h.Cookie = 'connect.sid=' + encodeURIComponent('s:' + sign(sid, config.dashboard.sessionSecret));
-    if (body !== undefined) { h['Content-Type'] = 'application/json'; }
+    const payload = body !== undefined ? JSON.stringify(body) : null;
+    if (payload !== null) { h['Content-Type'] = 'application/json'; h['Content-Length'] = Buffer.byteLength(payload); }
     if (method !== 'GET' && h['X-Requested-With'] === undefined && !path.startsWith('/api/v1')) h['X-Requested-With'] = 'XMLHttpRequest';
     const r = http.request({ host: '127.0.0.1', port: config.webServerPort, method, path, headers: h }, res => {
       let d = ''; res.on('data', c => d += c); res.on('end', () => {
@@ -76,7 +77,7 @@ function req(method, path, { sid, body, headers = {}, query } = {}) {
       });
     });
     r.on('error', reject);
-    if (body !== undefined) r.write(JSON.stringify(body));
+    if (payload !== null) r.write(payload);
     r.end();
   });
 }
@@ -718,6 +719,46 @@ async function main() {
     await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'fr' } });
     check('langues: français par défaut', (await i18n.memberLang(ML2, G)) === 'fr');
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [ML2]);
+  }
+
+  // ── GDPR: export / erase a member's data (founders only, never other people's tickets) ──
+  {
+    const MG = '200000000000000018', OTHER = '200000000000000019';
+    const GCH = '900000000000000084';
+    let gdel = false;
+    channels.set(GCH, Object.assign(mkChannel(GCH, G), { delete: async () => { gdel = true; } }));
+    const g1t = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member18', ?, 'open', 'rgpd ouvert')", [MG, GCH])).insertId;
+    const g2t = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member18', 'cg2', 'closed', 'rgpd fermé')", [MG])).insertId;
+    const ot = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member19', 'cg3', 'open', 'ticket autre membre')", [OTHER])).insertId;
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'member18', 'mes données', 'user'), (?, ?, 'member18', 'message chez un autre', 'user'), (?, ?, 'member19', 'message autre membre', 'user')", [g1t, MG, ot, MG, ot, OTHER]);
+    await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [ot, MG]);
+    await db('INSERT INTO ticket_ratings (ticket_id, owner_id, rating) VALUES (?, ?, 5)', [g2t, MG]);
+    await db("INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag) VALUES (?, 'member18', 'test', '1', 'F')", [MG]);
+    await db("INSERT INTO audit_log (actor_id, actor_tag, action, source, ticket_id, details) VALUES (?, 'member18', 'ticket_open', 'discord', ?, '{\"x\":1}')", [MG, g1t]);
+    await redis.set(`pending:route:${MG}`, '{}'); await redis.set(`locale:${MG}`, 'fr');
+
+    r = await req('GET', `/api/members/${MG}`, { sid: sessions.S3T || sessions.S1F });
+    check('RGPD: réservé au fondateur', r.status === 403, r.status);
+    r = await req('GET', `/api/members/${MG}`, { sid: sessions.FV });
+    check('RGPD: résumé des données', r.status === 200 && r.body.tickets === 2 && r.body.messages === 2 && r.body.participations === 1 && r.body.ratings === 1, JSON.stringify(r.body));
+    r = await req('GET', `/api/members/${MG}/export`, { sid: sessions.FV });
+    check('RGPD: export JSON complet', r.status === 200 && r.body.tickets?.length === 2 && r.body.otherMessages?.length === 1 && r.headers['content-disposition']?.includes('attachment'), JSON.stringify(Object.keys(r.body || {})));
+    r = await req('DELETE', `/api/members/${MG}`, { sid: sessions.FV, body: { confirm: 'non' } });
+    check('RGPD: confirmation obligatoire', r.status === 400, r.status);
+    r = await req('DELETE', `/api/members/${U.S1}`, { sid: sessions.FV, body: { confirm: U.S1 } });
+    check('RGPD: refusé pour un compte du staff', r.status === 400, JSON.stringify(r.body));
+    r = await req('DELETE', `/api/members/${MG}`, { sid: sessions.FV, body: { confirm: MG } });
+    const [left] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [MG]);
+    const [otherT] = await db('SELECT COUNT(*) AS n FROM tickets WHERE id = ?', [ot]);
+    const otherNotes = await db('SELECT author_id FROM ticket_notes WHERE ticket_id = ?', [ot]);
+    const [aud] = await db('SELECT actor_id, actor_tag, details FROM audit_log WHERE ticket_id = ? AND action = ?', [g1t, 'ticket_open']);
+    check('RGPD: tickets du membre supprimés, salon ouvert supprimé', r.status === 200 && Number(left.n) === 0 && gdel, JSON.stringify([r.status, r.body, left, gdel]));
+    check('RGPD: le ticket d\'un autre est conservé, sans les messages du membre', Number(otherT.n) === 1 && otherNotes.length === 1 && otherNotes[0].author_id === OTHER, JSON.stringify(otherNotes));
+    check('RGPD: journal anonymisé', aud?.actor_id === 'supprime' && aud.actor_tag === '[membre supprimé]' && aud.details === null, JSON.stringify(aud));
+    check('RGPD: états MP et langue effacés', !(await redis.get(`pending:route:${MG}`)) && !(await redis.get(`locale:${MG}`)));
+    const [ev] = await db("SELECT target_id FROM audit_log WHERE action = 'member_data_delete' ORDER BY id DESC LIMIT 1");
+    check('RGPD: suppression journalisée sans l\'identifiant', ev && ev.target_id !== MG && ev.target_id.length === 16, JSON.stringify(ev));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [ot]);
   }
 
   // ── Reply templates: personal / shared, suggested by subject ──

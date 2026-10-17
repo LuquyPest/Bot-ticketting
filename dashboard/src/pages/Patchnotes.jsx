@@ -27,6 +27,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Messages aux membres en français ou en anglais (par serveur, ou automatiquement selon la langue Discord du membre)' },
       { type: 'fix',  text: 'Le message de fermeture personnalisé des paramètres est maintenant envoyé au membre' },
       { type: 'fix',  text: 'Panels : la confirmation ne renvoie plus vers le salon privé du ticket, invisible pour le membre' },
+      { type: 'new',  text: 'Page « Données membres » (RGPD) : export et suppression de toutes les données d\'un membre, réservée aux fondateurs' },
     ]
   },
   {

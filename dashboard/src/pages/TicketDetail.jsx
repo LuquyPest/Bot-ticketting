@@ -988,6 +988,11 @@ export default function TicketDetail() {
           <div className={panelCard}>
             <SectionTitle>Informations</SectionTitle>
             <InfoRow icon={User}       label="Propriétaire"  value={ticket.owner_tag} />
+            {user?.role === 'fondateur' && (
+              <button onClick={() => navigate(`/members?id=${ticket.owner_id}`)} className="text-[10px] text-ink-4 hover:text-primary-light ml-9 -mt-1">
+                Données du membre (RGPD) →
+              </button>
+            )}
             <InfoRow icon={Clock}      label="Créé le"       value={fmtDate(ticket.created_at, { dateStyle: 'medium', timeStyle: 'short' })} />
             {ticket.closed_at   && <InfoRow icon={CheckCircle2} label="Fermé le"     value={fmtDate(ticket.closed_at, { dateStyle: 'medium', timeStyle: 'short' })} />}
             {ticket.closed_by_tag && <InfoRow icon={User}    label="Fermé par"       value={ticket.closed_by_tag} />}

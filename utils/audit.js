@@ -31,6 +31,8 @@ const ACTIONS = {
   // Modération
   blacklist_add:            ['Blacklist : ajout', 'moderation'],
   blacklist_remove:         ['Blacklist : retrait', 'moderation'],
+  member_data_export:       ['Données d\'un membre exportées (RGPD)', 'moderation'],
+  member_data_delete:       ['Données d\'un membre supprimées (RGPD)', 'moderation'],
   // Équipe
   dashboard_login:          ['Connexion au dashboard', 'equipe'],
   user_role_change:         ['Rôle modifié', 'equipe'],

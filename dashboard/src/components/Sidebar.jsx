@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -26,6 +26,7 @@ const ALL_NAV = [
   { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
   { to: '/audit',       label: 'Journal',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
   { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
+  { to: '/members',     label: 'Données membres', icon: UserSearch,   roles: ['fondateur'] },
   { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'], perm: 'view_transcripts' },
   { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
   { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
