@@ -440,7 +440,7 @@ export default function Tickets() {
       </div>
 
       {/* Keyboard hint */}
-      <div className="flex items-center gap-3 text-[10px] text-ink-4">
+      <div className="hidden md:flex items-center gap-3 text-[10px] text-ink-4">
         <span className="flex items-center gap-1">
           <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-overlay/8 font-mono">J/K</kbd>
           <span>naviguer</span>
@@ -622,10 +622,48 @@ export default function Tickets() {
         </div>
       )}
 
+      {/* Cards on phones */}
+      <div className="md:hidden space-y-2">
+        {loading && !data.tickets.length ? (
+          <div className="h-24 rounded-2xl bg-surface-card border border-overlay/6 animate-pulse" />
+        ) : !data.tickets.length ? (
+          <p className="text-sm text-ink-3 text-center py-10">Aucun ticket trouvé</p>
+        ) : data.tickets.map(t => {
+          const sla = slaInfo(t.last_message_at, t.created_at, t.status);
+          const unread = t.status === 'open' && isUnread(t.id, t.last_message_at);
+          return (
+            <button key={t.id} onClick={() => navigate(`/tickets/${t.id}`)}
+              className={`w-full text-left bg-surface-card border border-overlay/6 rounded-2xl p-3.5 shadow-card
+                          active:bg-overlay/2.5 ${t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''}`}>
+              <div className="flex items-center gap-2 text-xs">
+                {unread && <span className="w-1.5 h-1.5 rounded-full bg-primary-light shrink-0" title="Nouveau message" />}
+                <span className="font-mono text-ink-4 tabular-nums">#{t.id}</span>
+                <span className="text-ink-1 font-medium truncate">{t.owner_tag}</span>
+                <span className="ml-auto shrink-0"><Badge label={t.status} variant={t.status} /></span>
+              </div>
+              <p className="text-sm text-ink-2 mt-1.5 truncate">{t.subject || <span className="italic text-ink-4">—</span>}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-ink-3">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
+                  {PRIORITY_LABELS[t.priority] || t.priority}
+                </span>
+                {t.status === 'open' && t.stage && t.stage !== 'open' && (
+                  <span className={`font-medium ${STAGE_CLS[t.stage]}`}>{STAGE_LABELS[t.stage]}</span>
+                )}
+                <span className={t.assignees?.length ? 'text-emerald-400' : 'italic'}>{t.assignees?.length ? assigneeNames(t) : 'Non attribué'}</span>
+                {sla && <span className={`font-semibold ${sla.cls}`}>{sla.label} sans réponse</span>}
+                <span className="ml-auto tabular-nums">{fmtDate(t.created_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <SlaBadge sla={t.sla} />
+            </button>
+          );
+        })}
+      </div>
+
       {/* Table */}
       <div
         ref={tableRef}
-        className="bg-surface-card border border-overlay/6 rounded-2xl overflow-hidden shadow-card"
+        className="hidden md:block bg-surface-card border border-overlay/6 rounded-2xl overflow-hidden shadow-card"
       >
         <table className="w-full text-sm">
           <thead>

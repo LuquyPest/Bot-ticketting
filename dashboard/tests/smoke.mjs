@@ -66,9 +66,16 @@ const base = 'http://127.0.0.1:4175';
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const failures = [];
 
-for (const theme of ['dark', 'light']) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.addInitScript(t => localStorage.setItem('theme', t), theme);
+// Desktop in both themes, then a phone: on the phone no page may scroll sideways
+const RUNS = [
+  { run: 'dark', theme: 'dark', viewport: { width: 1440, height: 900 } },
+  { run: 'light', theme: 'light', viewport: { width: 1440, height: 900 } },
+  { run: 'mobile', theme: 'dark', viewport: { width: 390, height: 844 }, mobile: true },
+];
+
+for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
+  const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile });
+  await page.addInitScript(t => localStorage.setItem('theme', t), colorTheme);
   page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text())) failures.push(`[${theme}] console: ${m.text()}`); });
   page.on('pageerror', e => failures.push(`[${theme}] page: ${e.message}`));
   let anonymous = false;
@@ -82,8 +89,12 @@ for (const theme of ['dark', 'light']) {
     anonymous = anon;
     await page.goto(base + p, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1600); // chart entry animations (1.5 s)
-    const visible = await page.getByText(text, { exact: false }).first().isVisible().catch(() => false);
+    const visible = await page.getByText(text, { exact: false }).locator('visible=true').first().isVisible().catch(() => false);
     if (!visible) failures.push(`[${theme}] ${name}: « ${text} » introuvable`);
+    if (mobile) {
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      if (overflow > 1) failures.push(`[${theme}] ${name}: la page déborde de ${overflow} px en largeur`);
+    }
     await page.screenshot({ path: path.join(OUT, `${theme}-${name}.png`) });
     await page.addScriptTag({ content: AXE });
     const violations = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] })).violations

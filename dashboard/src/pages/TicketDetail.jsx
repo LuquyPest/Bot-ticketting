@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -123,6 +123,9 @@ export default function TicketDetail() {
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Below lg the information column is a drawer
+  const [infoOpen, setInfoOpen] = useState(false);
+  useEffect(() => setInfoOpen(false), [id]);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [notes, setNotes] = useState([]);
@@ -734,7 +737,7 @@ export default function TicketDetail() {
 
         {/* Sticky header */}
         <div className="sticky top-0 z-10 glass-dark border-b border-overlay/6
-                        px-5 py-3 flex items-center gap-3 shrink-0">
+                        pl-14 pr-3 sm:pr-5 lg:pl-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2 shrink-0">
           <button onClick={() => navigate('/tickets')} aria-label="Retour aux tickets"
             className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6
                        transition-all shrink-0">
@@ -775,11 +778,11 @@ export default function TicketDetail() {
           )}
 
           <div className="ml-auto flex items-center gap-2 shrink-0">
-            <button onClick={loadUserHistory}
+            <button onClick={loadUserHistory} aria-label="Historique du membre"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
                          text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07]
                          transition-all">
-              <History size={12} /> Historique
+              <History size={12} /> <span className="hidden sm:inline">Historique</span>
             </button>
             <a href={`/api/tickets/${id}/pdf`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
@@ -787,8 +790,13 @@ export default function TicketDetail() {
                          transition-all">
               <FileText size={12} /> PDF
             </a>
+            <button onClick={() => setInfoOpen(true)} aria-label="Infos du ticket" aria-expanded={infoOpen}
+              className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
+                         text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07] transition-all">
+              <PanelRight size={12} /> Infos
+            </button>
             {ticket.created_at && (
-              <span className="text-xs text-ink-4 tabular-nums">
+              <span className="hidden sm:inline text-xs text-ink-4 tabular-nums">
                 {fmtDate(ticket.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
@@ -796,7 +804,7 @@ export default function TicketDetail() {
         </div>
 
         {/* Chat area */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-6 space-y-5">
           {notes.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
               <div className="w-14 h-14 rounded-2xl bg-surface-card border border-overlay/[0.07]
@@ -991,8 +999,8 @@ export default function TicketDetail() {
             />
 
             {/* Footer */}
-            <div className="flex items-center justify-between mt-2.5">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] text-ink-4 tabular-nums">{composeText.length}/2000</span>
                 <span className="text-[10px] text-ink-4 hidden sm:block">
                   <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">R</kbd> répondre ·{' '}
@@ -1165,10 +1173,17 @@ export default function TicketDetail() {
         )}
       </div>
 
-      {/* ══════════════ Right column: sidebar ═════════════════ */}
-      <div className="w-72 shrink-0 sticky top-0 h-screen overflow-y-auto
-                      border-l border-overlay/6 bg-surface/60 backdrop-blur-xs">
+      {/* ══════════════ Right column: sidebar (drawer below lg) ═════ */}
+      {infoOpen && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setInfoOpen(false)} />}
+      <div className={`fixed inset-y-0 right-0 z-40 w-[85vw] max-w-sm bg-surface transition-transform
+                      lg:sticky lg:top-0 lg:z-auto lg:w-72 lg:max-w-none lg:translate-x-0 lg:visible lg:bg-surface/60
+                      shrink-0 h-screen overflow-y-auto border-l border-overlay/6 backdrop-blur-xs
+                      ${infoOpen ? 'translate-x-0' : 'translate-x-full invisible'}`}>
         <div className="p-5 space-y-4">
+          <div className="flex justify-end lg:hidden -mb-2">
+            <button onClick={() => setInfoOpen(false)} aria-label="Fermer le panneau"
+              className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6"><X size={16} /></button>
+          </div>
 
           {/* INFORMATIONS */}
           <div className={panelCard}>

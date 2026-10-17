@@ -31,6 +31,7 @@ const VERSIONS = [
       { type: 'new',  text: 'Panel super-admin : annonces aux fondateurs (bandeau sur le dashboard et/ou MP)' },
       { type: 'tech', text: 'Rotation de la clé de chiffrement des secrets 2FA sans les rendre inutilisables (script de rechiffrement)' },
       { type: 'impr', text: 'Accessibilité : contrastes renforcés dans les deux thèmes, libellés sur les boutons-icônes et les champs ; audit axe automatique dans le test de fumée' },
+      { type: 'impr', text: 'Dashboard sur mobile : liste des tickets en cartes, fiche ticket avec panneau d’informations escamotable et barre de réponse qui passe à la ligne' },
     ]
   },
   {
