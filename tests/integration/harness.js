@@ -164,9 +164,14 @@ async function main() {
   let chanSeq = 0;
   const guildObj = {
     id: G,
-    channels: { create: async opts => { const id = String(910000000000000000n + BigInt(++chanSeq)); const c = mkChannel(id, G, 0, opts?.name); channels.set(id, c); await new Promise(r => setTimeout(r, 50)); return c; } },
-    roles: { fetch: async () => new Map([['800000000000000001', {}]]) },
-    members: { fetch: async id => { const r = memberRoles.get(id); if (r) return { id, roles: { cache: r } }; throw new Error('Unknown Member'); } },
+    channels: {
+      fetch: async () => new (require('discord.js').Collection)([...channels].filter(([, c]) => c.guildId === G)),
+      create: async opts => { const id = String(910000000000000000n + BigInt(++chanSeq)); const c = mkChannel(id, G, 0, opts?.name); channels.set(id, c); await new Promise(r => setTimeout(r, 50)); return c; } },
+    roles: { fetch: async () => new (require('discord.js').Collection)([['800000000000000001', { id: '800000000000000001', name: 'Support', managed: false, hexColor: '#5865f2' }]]) },
+    members: {
+      fetch: async id => { const r = memberRoles.get(id); if (r) return { id, roles: { cache: r } }; throw new Error('Unknown Member'); },
+      me: { nickname: null, displayName: 'Ticket Bot', displayAvatarURL: () => null },
+    },
   };
   const fakeClient = {
     isReady: () => true, user: { id: '1' },
@@ -1392,6 +1397,14 @@ async function main() {
     await new Promise(res => setTimeout(res, 200));
     const [row] = await globalQuery("SELECT * FROM error_logs WHERE context = 'navigateur' AND message LIKE '%test navigateur%' ORDER BY id DESC LIMIT 1");
     check('erreurs navigateur: enregistrées pour le super-admin', r.status === 204 && row && /"page":"\/tickets"/.test(row.stack) && /staff:/.test(row.stack) && row.guild_id === G, JSON.stringify(row));
+    await req('POST', '/api/client-errors', { body: { message: 'anonyme (test navigateur)' } });
+    await new Promise(res => setTimeout(res, 200));
+    const [anon] = await globalQuery("SELECT context FROM error_logs WHERE message LIKE 'anonyme (test navigateur)%' ORDER BY id DESC LIMIT 1");
+    const { errorSummary } = app('./utils/errorAlert');
+    const summary = await errorSummary(60);
+    check('erreurs navigateur: rapports anonymes à part, hors alerte', anon?.context === 'navigateur-anonyme' && !summary.top.some(t => t.context === 'navigateur-anonyme'), JSON.stringify([anon, summary.top]));
+    r = await req('GET', '/api/tickets');
+    check('sécurité: route staff sans session → 401', r.status === 401, r.status);
     r = await req('POST', '/api/client-errors', { body: { message: '' } });
     check('erreurs navigateur: message requis', r.status === 400, r.status);
     r = await req('POST', '/api/client-errors', { body: { message: 'x' }, headers: { 'X-Requested-With': '' } });
@@ -1429,6 +1442,297 @@ async function main() {
     await mk('SAdw', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
     r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAdw, body: { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null, discordDownMinutes: -1 } });
     check('discord: délai validé', r.status === 400 && /déconnexion/.test(r.body.error), JSON.stringify(r.body));
+  }
+
+  // ── Full tour: every route not covered above answers correctly (allowed account) and refuses
+  //    an account without the right ──
+  {
+    const ok = (name, res, codes = [200, 201]) => check(`tour: ${name}`, codes.includes(res.status), `${res.status} ${JSON.stringify(res.body).slice(0, 200)}`);
+    const denied = (name, res) => check(`tour: ${name} refusé`, res.status === 403 || res.status === 401, `${res.status}`);
+    const F = sessions.FV, S = sessions.S3T;
+
+    // Dashboard home
+    for (const p of ['stats', 'activity', 'heatmap', 'top-staff', 'pending', 'recent', 'leaderboard']) ok(`dashboard/${p}`, await req('GET', `/api/dashboard/${p}`, { sid: F }));
+    ok('objectif du mois', await req('GET', '/api/goals', { sid: F }));
+    // Analytics
+    for (const p of ['volume', 'hourly', 'subjects', 'response-trend', 'sla', 'staff-compare']) ok(`analytics/${p}`, await req('GET', `/api/analytics/${p}`, { sid: F }));
+    // Staff, users, Discord lists
+    let r = await req('GET', '/api/staff', { sid: F }); ok('équipe', r);
+    ok('fiche agent', await req('GET', `/api/staff/${U.F}`, { sid: F }), [200, 404]);
+    ok('utilisateurs', await req('GET', '/api/users', { sid: F }));
+    ok('grades d un utilisateur', await req('GET', `/api/users/${U.S1}/grades`, { sid: F }));
+    ok('mode vacances', await req('PATCH', `/api/users/${U.F}/vacation`, { sid: F, body: { vacation_mode: false } }));
+    for (const p of ['categories', 'channels', 'roles']) ok(`discord/${p}`, await req('GET', `/api/discord/${p}`, { sid: F }), [200, 503]);
+    ok('configuration', await req('GET', '/api/config', { sid: F }));
+    ok('identité du bot', await req('GET', '/api/config/bot-identity', { sid: F }), [200, 503]);
+    denied('configuration pour un support', await req('GET', '/api/config', { sid: S }));
+
+    // Grades
+    r = await req('POST', '/api/grades', { sid: F, body: { name: 'Tour grade', color: '#123456', permissions: ['view_tickets'] } });
+    ok('créer un grade', r);
+    const gid = r.body?.id;
+    ok('lister les grades', await req('GET', '/api/grades', { sid: F }));
+    ok('modifier un grade', await req('PATCH', `/api/grades/${gid}`, { sid: F, body: { name: 'Tour grade 2' } }));
+    ok('permissions d un grade', await req('PUT', `/api/grades/${gid}/permissions`, { sid: F, body: { permissions: ['view_tickets', 'reply_ticket'] } }));
+    denied('créer un grade (support)', await req('POST', '/api/grades', { sid: S, body: { name: 'x' } }));
+    ok('supprimer un grade', await req('DELETE', `/api/grades/${gid}`, { sid: F }));
+
+    // Tags (catalogue and on a ticket)
+    const tt = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('42','u42','ctour1','open','tour')")).insertId;
+    r = await req('POST', '/api/tags', { sid: F, body: { name: 'Tour tag', color: '#00aa00' } }); ok('créer un tag', r);
+    const tagId = r.body?.id;
+    ok('lister les tags', await req('GET', '/api/tags', { sid: F }));
+    ok('modifier un tag', await req('PATCH', `/api/tags/${tagId}`, { sid: F, body: { color: '#00bb00' } }));
+    ok('tag sur un ticket', await req('POST', `/api/tags/ticket/${tt}`, { sid: F, body: { tag_id: tagId } }));
+    r = await req('GET', `/api/tags/ticket/${tt}`, { sid: F });
+    check('tour: tags du ticket', r.status === 200 && r.body.some(x => x.id === tagId), JSON.stringify(r.body));
+    ok('retirer un tag du ticket', await req('DELETE', `/api/tags/ticket/${tt}/${tagId}`, { sid: F }));
+    denied('créer un tag (support)', await req('POST', '/api/tags', { sid: S, body: { name: 'y', color: '#000000' } }));
+    ok('supprimer un tag', await req('DELETE', `/api/tags/${tagId}`, { sid: F }));
+
+    // Ticket actions not covered above
+    ok('historique du membre', await req('GET', `/api/tickets/${tt}/history`, { sid: F }));
+    r = await req('POST', `/api/tickets/${tt}/participants`, { sid: F, body: { discord_id: '200000000000000005' } });
+    ok('ajouter un participant', r, [200, 201]);
+    ok('retirer un participant', await req('DELETE', `/api/tickets/${tt}/participants/200000000000000005`, { sid: F }));
+    r = await req('POST', `/api/tickets/${tt}/notes`, { sid: F, body: { content: 'note à supprimer' } });
+    ok('supprimer une note', await req('DELETE', `/api/tickets/${tt}/notes/${r.body?.id}`, { sid: F }));
+    channels.set('ctour1', mkChannel('ctour1', G));
+    r = await reqMultipart(`/api/tickets/${tt}/reply-file`, { sid: F, fields: { content: 'voici le fichier' }, file: { field: 'file', name: 'a.txt', content: Buffer.from('bonjour') } });
+    ok('réponse avec fichier', r);
+
+    // Scheduled messages
+    r = await req('POST', '/api/messages', { sid: F, body: { ticket_id: tt, content: 'message programmé', send_at: new Date(Date.now() + 3600e3).toISOString() } });
+    ok('programmer un message', r);
+    ok('lister les messages programmés', await req('GET', '/api/messages', { sid: F }));
+    ok('annuler un message programmé', await req('DELETE', `/api/messages/${r.body?.id}`, { sid: F }));
+
+    // FAQ, fields, incidents (editing)
+    r = await req('POST', '/api/faq', { sid: F, body: { question: 'Tour question ?', answer: 'Réponse', keywords: 'tour' } });
+    ok('créer une entrée de FAQ', r);
+    ok('lister la FAQ', await req('GET', '/api/faq', { sid: F }));
+    ok('modifier la FAQ', await req('PATCH', `/api/faq/${r.body?.id}`, { sid: F, body: { answer: 'Réponse 2' } }));
+    ok('supprimer de la FAQ', await req('DELETE', `/api/faq/${r.body?.id}`, { sid: F }));
+    r = await req('POST', '/api/fields', { sid: F, body: { label: 'Tour champ', type: 'text' } });
+    ok('créer un champ', r);
+    ok('lister les champs', await req('GET', '/api/fields', { sid: F }));
+    ok('modifier un champ', await req('PATCH', `/api/fields/${r.body?.id}`, { sid: F, body: { active: false } }));
+    r = await req('POST', '/api/incidents', { sid: F, body: { title: 'Tour incident', message: 'm' } });
+    ok('modifier un incident', await req('PATCH', `/api/incidents/${r.body?.id}`, { sid: F, body: { message: 'm2' } }));
+    await req('POST', `/api/incidents/${r.body?.id}/resolve`, { sid: F, body: {} });
+
+    // Blacklist
+    ok('blacklister', await req('POST', '/api/blacklist', { sid: F, body: { userId: '200000000000000066', userTag: 'tour', reason: 'test', duration: '1d' } }));
+    r = await req('GET', '/api/blacklist', { sid: F });
+    check('tour: liste noire', r.status === 200 && r.body.some(x => x.user_id === '200000000000000066'), JSON.stringify(r.body).slice(0, 200));
+    denied('liste noire (support)', await req('GET', '/api/blacklist', { sid: S }));
+    ok('retirer de la liste noire', await req('DELETE', '/api/blacklist/200000000000000066', { sid: F }));
+
+    // Forms, panels
+    r = await req('POST', '/api/forms', { sid: F, body: { name: 'Tour formulaire', fields: [{ label: 'Question ?' }] } });
+    ok('créer un formulaire', r);
+    ok('lister les formulaires', await req('GET', '/api/forms', { sid: F }));
+    ok('modifier un formulaire', await req('PATCH', `/api/forms/${r.body?.id}`, { sid: F, body: { active: false } }));
+    ok('supprimer un formulaire', await req('DELETE', `/api/forms/${r.body?.id}`, { sid: F }));
+    r = await req('POST', '/api/panels', { sid: F, body: { name: 'Tour panel', title: 'Support', buttons: [{ label: 'Ouvrir', style: 'primary' }] } });
+    ok('créer un panel', r);
+    const panelId = r.body?.id;
+    ok('lister les panels', await req('GET', '/api/panels', { sid: F }));
+    ok('modifier un panel', await req('PATCH', `/api/panels/${panelId}`, { sid: F, body: { title: 'Support 2' } }));
+    ok('dépublier un panel', await req('DELETE', `/api/panels/${panelId}/publish`, { sid: F }), [200, 400, 404]);
+    ok('supprimer un panel', await req('DELETE', `/api/panels/${panelId}`, { sid: F }));
+
+    // API keys, newsletter, sessions, push, presence of real-time stream
+    await db('UPDATE guild_config SET api_keys_enabled = 1 WHERE id = 1');
+    r = await req('POST', '/api/api-keys', { sid: F, body: { name: 'Tour clé', permissions: ['read_stats'] } });
+    ok('créer une clé API', r);
+    const keyList = await req('GET', '/api/api-keys', { sid: F });
+    ok('lister les clés API', keyList);
+    r.body.id = keyList.body?.keys?.find(k => k.name === 'Tour clé')?.id;
+    if (r.body?.key) ok('clé API utilisable', await req('GET', '/api/v1/stats', { headers: { Authorization: `Bearer ${r.body.key}` } }));
+    ok('révoquer une clé API', await req('DELETE', `/api/api-keys/${r.body?.id}`, { sid: F }));
+    if (r.body?.key) denied('clé révoquée', await req('GET', '/api/v1/stats', { headers: { Authorization: `Bearer ${r.body.key}` } }));
+    memberDms.length = 0;
+    r = await req('POST', '/api/newsletter/send', { sid: F, body: { message: 'Message de la direction (tour)' } });
+    ok('newsletter au staff', r);
+    denied('newsletter (support)', await req('POST', '/api/newsletter/send', { sid: S, body: { message: 'xxxxxx' } }));
+    ok('mes sessions', await req('GET', '/api/sessions', { sid: F }));
+    ok('clé publique push (501 si non configuré)', await req('GET', '/api/push/vapid-public-key', { sid: F }), [200, 501]);
+    check('tour: abonnement push hors liste refusé', (await req('POST', '/api/push/subscribe', { sid: F, body: { endpoint: 'https://evil.example/x', keys: { p256dh: 'a', auth: 'b' } } })).status === 400);
+    ok('abonnement push', await req('POST', '/api/push/subscribe', { sid: F, body: { endpoint: 'https://fcm.googleapis.com/fcm/send/tour', keys: { p256dh: 'BPtour', auth: 'tour' } } }), [200, 201]);
+    ok('désabonnement push', await req('POST', '/api/push/unsubscribe', { sid: F, body: { endpoint: 'https://fcm.googleapis.com/fcm/send/tour' } }));
+    const sse = await new Promise(resolve => {
+      const rq = http.get({ host: '127.0.0.1', port: config.webServerPort, path: '/api/events', headers: { Cookie: 'connect.sid=' + encodeURIComponent('s:' + sign(F, config.dashboard.sessionSecret)) } }, res => { resolve({ status: res.statusCode, type: res.headers['content-type'] }); rq.destroy(); });
+      rq.on('error', () => resolve({ status: 0 }));
+    });
+    check('tour: flux temps réel (SSE)', sse.status === 200 && /event-stream/.test(sse.type), JSON.stringify(sse));
+
+    // Profile: availability and 2FA from the start (setup, enable, recovery codes)
+    await mk('TFA', { user: { id: '100000000000000055', username: 'tfa', role: null }, currentGuildId: G });
+    ok('ma disponibilité', await req('GET', '/api/profile/availability', { sid: F }));
+    r = await req('GET', '/api/profile/2fa', { sid: sessions.TFA });
+    check('tour: 2FA désactivée au départ', r.status === 200 && r.body.enabled === false, JSON.stringify(r.body));
+    r = await req('POST', '/api/profile/2fa/setup', { sid: sessions.TFA });
+    ok('2FA : préparation (QR code)', r);
+    const { generateSync } = require('otplib');
+    const totpCode = () => generateSync({ secret: r.body.secret });
+    const en = await req('POST', '/api/profile/2fa/enable', { sid: sessions.TFA, body: { code: totpCode() } });
+    check('tour: 2FA activée avec un code valide', en.status === 200 && Array.isArray(en.body.recoveryCodes) && en.body.recoveryCodes.length === 10, JSON.stringify(en.body).slice(0, 200));
+    await new Promise(res => setTimeout(res, 50));
+    const rc = await req('POST', '/api/profile/2fa/recovery-codes', { sid: sessions.TFA, body: { code: en.body.recoveryCodes?.[0] } });
+    ok('2FA : nouveaux codes de secours', rc, [200, 400]);
+    await globalQuery("DELETE FROM user_totp WHERE user_id = '100000000000000055'");
+
+    // Sign-in helpers
+    r = await req('GET', '/api/auth/invite-url', { sid: F, query: { guildId: G } });
+    check('tour: lien d invitation du bot', r.status === 200 && /permissions=268684432/.test(r.body.url) && r.body.url.includes(G), JSON.stringify(r.body));
+    r = await req('GET', '/api/auth/discord');
+    check('tour: connexion Discord (redirection avec état)', r.status === 302 && /state=[0-9a-f]{32}/.test(r.headers.location), r.headers.location);
+    r = await req('GET', '/api/auth/discord/callback', { query: { code: 'x', state: 'faux' } });
+    check('tour: retour OAuth avec mauvais état refusé', r.status === 302 && /invalid_state/.test(r.headers.location), r.headers.location);
+    r = await req('GET', '/api/auth/guilds', { sid: F });
+    check('tour: serveurs Discord sans jeton → reconnexion', r.status === 401, r.status);
+
+    // Super-admin: servers (approve, suspend, reactivate, maintenance), managers, plans, announcements
+    for (const k of await redis.keys('rl:*')) await redis.del(k); // earlier sign-in tests used up the limit
+    await mk('SAt', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
+    const SA = sessions.SAt;
+    ok('SA : identité', await req('GET', '/api/sa/auth/me', { sid: SA }));
+    ok('SA : serveurs', await req('GET', '/api/sa/guilds', { sid: SA }));
+    ok('SA : fiche serveur', await req('GET', `/api/sa/guilds/${G}`, { sid: SA }));
+    const G4 = '423456789012345678';
+    await globalQuery("INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'Tour', ?, 'f', 'pending', ?)", [G4, U.F, 'ticketbot_guild_' + G4]);
+    ok('SA : approuver un serveur', await req('POST', `/api/sa/guilds/${G4}/approve`, { sid: SA }));
+    const [g4] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [G4]);
+    const [v4] = await getTenantDb(G4)('SELECT MAX(version) AS v FROM schema_migrations');
+    check('tour: serveur approuvé avec sa base à jour', g4.status === 'active' && v4.v === app('./utils/tenantMigrations').LATEST_VERSION, JSON.stringify([g4, v4]));
+    ok('SA : suspendre', await req('PATCH', `/api/sa/guilds/${G4}/suspend`, { sid: SA, body: { reason: 'tour' } }));
+    ok('SA : réactiver', await req('PATCH', `/api/sa/guilds/${G4}/reactivate`, { sid: SA }));
+    ok('SA : maintenance', await req('PATCH', `/api/sa/guilds/${G4}/maintenance`, { sid: SA, body: { enabled: true } }));
+    r = await req('POST', '/api/sa/managers', { sid: SA, body: { username: 'tour-manager', password: 'un-mot-de-passe-long', assigned_guilds: [G4] } });
+    ok('SA : créer un manager', r);
+    const mid = r.body?.id;
+    ok('SA : managers', await req('GET', '/api/sa/managers', { sid: SA }));
+    ok('SA : modifier un manager', await req('PATCH', `/api/sa/managers/${mid}`, { sid: SA, body: { assigned_guilds: [] } }));
+    ok('SA : réinitialiser la 2FA d un manager', await req('POST', `/api/sa/managers/${mid}/reset-totp`, { sid: SA }));
+    ok('SA : supprimer un manager', await req('DELETE', `/api/sa/managers/${mid}`, { sid: SA }));
+    denied('SA : managers (manager)', await req('GET', '/api/sa/managers', { sid: sessions.MGR }));
+    for (const p of ['announcements', 'plans', 'settings/error-alert']) ok(`SA : ${p}`, await req('GET', `/api/sa/${p}`, { sid: SA }));
+    ok('SA : déconnexion', await req('POST', '/api/sa/auth/logout', { sid: SA }));
+    denied('SA : session terminée', await req('GET', '/api/sa/auth/me', { sid: SA }));
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G4]);
+    await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G4);
+
+    // Manager first sign-in: password, then 2FA set up by scanning the QR code
+    for (const k of await redis.keys('rl:*')) await redis.del(k);
+    const bcrypt = require('bcrypt');
+    await globalQuery("INSERT INTO managers (username, password_hash, assigned_guilds, created_by) VALUES ('tour-sa', ?, '[]', 1)", [await bcrypt.hash('mot-de-passe-du-tour', 4)]);
+    r = await req('POST', '/api/sa/auth/login', { body: { username: 'tour-sa', password: 'mot-de-passe-du-tour' } });
+    const saCookie = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
+    check('tour: SA première connexion → configuration 2FA', r.status === 200 && r.body.needs_totp_setup && r.body.secret, JSON.stringify(r.body).slice(0, 120));
+    const bad = await req('POST', '/api/sa/auth/totp-setup', { headers: saCookie, body: { code: '000000' } });
+    check('tour: SA code 2FA faux refusé', bad.status === 400, bad.status);
+    const good = await req('POST', '/api/sa/auth/totp-setup', { headers: saCookie, body: { code: require('otplib').generateSync({ secret: r.body.secret }) } });
+    const saCookie2 = good.headers['set-cookie'] ? { Cookie: String(good.headers['set-cookie'][0]).split(';')[0] } : saCookie;
+    const meSa = await req('GET', '/api/sa/auth/me', { headers: saCookie2 });
+    check('tour: SA 2FA configurée et connecté', good.status === 200 && meSa.status === 200 && meSa.body.username === 'tour-sa', JSON.stringify([good.status, meSa.body]));
+    const [mgr] = await globalQuery("SELECT totp_enabled, totp_secret FROM managers WHERE username = 'tour-sa'");
+    check('tour: SA secret 2FA stocké chiffré', mgr.totp_enabled === 1 && /^enc:v2:/.test(mgr.totp_secret), JSON.stringify(mgr).slice(0, 80));
+    r = await req('POST', '/api/sa/auth/login', { body: { username: 'tour-sa', password: 'mot-de-passe-du-tour' } });
+    const saCookie3 = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
+    check('tour: SA connexion suivante → code demandé', r.body.needs_totp_verify === true, JSON.stringify(r.body));
+    r = await req('POST', '/api/sa/auth/totp-verify', { headers: saCookie3, body: { code: '123456' } });
+    check('tour: SA code faux à la connexion refusé', r.status === 400 || r.status === 401, r.status);
+    await globalQuery("DELETE FROM managers WHERE username = 'tour-sa'");
+
+    // Revoking my other sessions
+    await mk('FVother', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
+    await globalQuery('INSERT INTO user_sessions (user_id, session_id, ip, user_agent) VALUES (?, ?, "x", "x")', [U.F, sessions.FVother]);
+    ok('révoquer mes autres sessions', await req('DELETE', '/api/sessions', { sid: F }));
+    check('tour: autre session révoquée', (await req('GET', '/api/tickets', { sid: sessions.FVother })).status === 401);
+    check('tour: session courante conservée', (await req('GET', '/api/tickets', { sid: F })).status === 200);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tt]);
+  }
+
+  // ── Discord slash commands (each one run in a ticket channel) ──
+  {
+    const CHC = '900000000000000177', MC = '200000000000000083';
+    channels.set(CHC, mkChannel(CHC, G));
+    await db("UPDATE guild_config SET internal_notes_enabled = 1 WHERE id = 1");
+    const tc = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member83', ?, 'open', 'Commandes')", [MC, CHC])).insertId;
+    const run = async (name, opts = {}, extra = {}) => {
+      const out = {};
+      const o = {
+        getString: (k) => opts[k] ?? null, getInteger: (k) => opts[k] ?? null, getUser: (k) => opts[k] ?? null,
+        getAttachment: () => null, getSubcommand: () => opts.sub, getBoolean: (k) => opts[k] ?? null,
+      };
+      const i = { guildId: G, channelId: CHC, guild: guildObj, channel: channels.get(CHC), user: { id: U.F, username: 'F', tag: 'F' }, member: { roles: { cache: new Map() } },
+        options: o, reply: async p => { out.reply = p; }, deferReply: async () => {}, editReply: async p => { out.edit = p; }, followUp: async p => { out.follow = p; }, ...extra };
+      await app(`./commands/${name}`).execute(fakeClient, i);
+      return out;
+    };
+    const txt = o => JSON.stringify(o.reply ?? o.edit ?? o.follow ?? null);
+    let out = await run('claim');
+    let [a] = await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [tc]);
+    check('/claim: prise en charge', a?.user_id === U.F, txt(out));
+    out = await run('unclaim');
+    [a] = await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ? AND user_id = ?', [tc, U.F]);
+    check('/unclaim: libération', !a, txt(out));
+    memberDms.length = 0;
+    out = await run('reply', { message: 'Réponse depuis Discord' });
+    check('/reply: réponse transmise au membre', memberDms.some(m => m.id === MC && /Réponse depuis Discord/.test(JSON.stringify(m.p))), txt(out));
+    memberDms.length = 0;
+    out = await run('areply', { message: 'Réponse anonyme' });
+    const anonDm = memberDms.find(m => m.id === MC);
+    check('/areply: réponse anonyme', anonDm && /Réponse anonyme/.test(JSON.stringify(anonDm.p)) && !/"F"/.test(JSON.stringify(anonDm.p?.embeds?.[0]?.data?.author || {})), txt(out));
+    out = await run('note', { message: 'Note via Discord' });
+    const [nt] = await db("SELECT source FROM ticket_notes WHERE ticket_id = ? AND content = 'Note via Discord'", [tc]);
+    check('/note: note interne visible dans la fiche', nt?.source === 'web', txt(out));
+    out = await run('priority', { niveau: 'urgent' });
+    let [tr] = await db('SELECT priority, stage, subject FROM tickets WHERE id = ?', [tc]);
+    check('/priority: priorité changée', tr.priority === 'urgent', txt(out));
+    const [catBefore] = await db('SELECT in_progress_category_id FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET in_progress_category_id = ? WHERE id = 1', [CAT_WAIT]);
+    out = await run('moveticket', { etape: 'in_progress' });
+    await db('UPDATE guild_config SET in_progress_category_id = ? WHERE id = 1', [catBefore.in_progress_category_id]);
+    [tr] = await db('SELECT stage FROM tickets WHERE id = ?', [tc]);
+    check('/moveticket: étape changée', tr.stage === 'in_progress', txt(out));
+    out = await run('rename', { name: 'Nouveau titre' });
+    [tr] = await db('SELECT subject FROM tickets WHERE id = ?', [tc]);
+    check('/rename: titre changé', tr.subject === 'Nouveau titre', txt(out));
+    out = await run('adduser', { utilisateur: { id: '200000000000000005', username: 'member05', tag: 'member05', bot: false, send: async p => memberDms.push({ id: '200000000000000005', p }) } });
+    let [pp] = await db('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [tc]);
+    check('/adduser: participant ajouté', pp?.user_id === '200000000000000005', txt(out));
+    out = await run('removeuser', { utilisateur: { id: '200000000000000005', username: 'member05', tag: 'member05', bot: false, send: async p => memberDms.push({ id: '200000000000000005', p }) } });
+    [pp] = await db('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [tc]);
+    check('/removeuser: participant retiré', !pp, txt(out));
+    await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, closed_at) VALUES (?, 'member83', 'cold83', 'closed', 'Ancien', NOW())", [MC]);
+    fakeClient.config = config; // set by index.js on the real client
+    out = await run('oldtickets', { userid: MC });
+    check('/oldtickets: historique du membre', /Commandes|Nouveau titre|#/.test(txt(out)), txt(out).slice(0, 200));
+    const [snap] = await db('SELECT id FROM transcript_snapshots ORDER BY id DESC LIMIT 1');
+    if (snap) {
+      out = await run('gettranscript', { transcriptid: snap.id });
+      check('/gettranscript: lien temporaire', /\/t\/[0-9a-f]+/.test(txt(out)), txt(out).slice(0, 200));
+    }
+    out = await run('staffstats');
+    check('/staffstats: statistiques (fondateur)', !/réservée/.test(txt(out)) && !!(out.reply || out.edit), txt(out).slice(0, 120));
+    out = await run('blacklist', { sub: 'add', utilisateur: { id: '200000000000000067', username: 'spam', tag: 'spam', bot: false, send: async () => ({}) }, raison: 'spam' });
+    let [bl] = await db("SELECT user_id FROM blacklist WHERE user_id = '200000000000000067'");
+    check('/blacklist add', !!bl, txt(out));
+    out = await run('blacklist', { sub: 'list' });
+    check('/blacklist list', /spam|200000000000000067/.test(txt(out)), txt(out).slice(0, 200));
+    out = await run('blacklist', { sub: 'remove', utilisateur: { id: '200000000000000067', username: 'spam', tag: 'spam', bot: false, send: async () => ({}) } });
+    [bl] = await db("SELECT user_id FROM blacklist WHERE user_id = '200000000000000067'");
+    check('/blacklist remove', !bl, txt(out));
+    // A member without staff rights is refused
+    const outsider = {};
+    const iOut = { guildId: G, channelId: CHC, guild: guildObj, channel: channels.get(CHC), user: { id: '400000000000000003', username: 'none', tag: 'none' },
+      options: { getString: () => 'x', getUser: () => null, getAttachment: () => null }, reply: async p => { outsider.reply = p; }, deferReply: async () => {}, editReply: async p => { outsider.edit = p; } };
+    memberDms.length = 0;
+    await app('./commands/reply').execute(fakeClient, iOut);
+    check('/reply: refusé sans droits staff', memberDms.length === 0 && /permission|accès|autoris|réservé/i.test(JSON.stringify(outsider)), JSON.stringify(outsider));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tc]);
   }
 
   // ── Monthly PDF report ──
