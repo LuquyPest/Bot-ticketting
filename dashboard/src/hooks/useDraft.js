@@ -32,6 +32,16 @@ export function purgeOldDrafts() {
   } catch { /* storage unavailable */ }
 }
 
+// Signing out wipes every draft (shared computer): unsent replies can hold private content
+export function clearAllDrafts() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(PREFIX)) localStorage.removeItem(k);
+    }
+  } catch { /* storage unavailable */ }
+}
+
 export function hasDraft(prefix) {
   try {
     for (let i = 0; i < localStorage.length; i++) if (localStorage.key(i)?.startsWith(PREFIX + prefix)) return true;

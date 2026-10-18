@@ -161,7 +161,8 @@ app.post('/api/client-errors', async (req, res) => {
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined);
   const who = req.session?.user ? `staff:${req.session.user.id}` : req.session?.member ? `membre:${req.session.member.id}` : req.session?.superAdmin ? `sa:${req.session.superAdmin.id}` : 'anonyme';
   const err = Object.assign(new Error(message), { stack: str(b.stack, 4000) || message });
-  require('../utils/errorLog').logError(req.session?.currentGuildId || null, 'navigateur', err, {
+  // Anonymous reports get their own source, left out of the error-spike alert (anyone can send them)
+  require('../utils/errorLog').logError(req.session?.currentGuildId || null, who === 'anonyme' ? 'navigateur-anonyme' : 'navigateur', err, {
     page: str(b.url, 300), type: str(b.kind, 20), user: who, agent: str(req.headers['user-agent'], 200), composant: str(b.component, 1500),
   });
   res.status(204).end();

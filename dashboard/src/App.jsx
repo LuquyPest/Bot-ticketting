@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import api from './api';
 import Sidebar from './components/Sidebar';
 import ErrorBoundary from './components/ErrorBoundary';
+import { clearAllDrafts } from './hooks/useDraft';
 import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -109,6 +110,7 @@ export default function App() {
   }, []);
 
   const logout = async () => {
+    clearAllDrafts();
     await api.post('/auth/logout');
     setUser(null);
   };

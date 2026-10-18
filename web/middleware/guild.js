@@ -33,6 +33,8 @@ function isAllowed(list, ip) {
 module.exports = async function guildMiddleware(req, res, next) {
   const guildId = req.session?.currentGuildId;
 
+  // Signed out (or member-space session only): 401, so the dashboard sends the user to the login page
+  if (!req.session?.user) return res.status(401).json({ error: 'Non authentifié' });
   if (!guildId) {
     return res.status(400).json({ error: 'Aucun serveur sélectionné' });
   }

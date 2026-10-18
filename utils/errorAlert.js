@@ -11,12 +11,14 @@ const KEY = 'error_alert';
 const DEFAULTS = { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null, discordDownMinutes: 5 };
 const COOLDOWN_KEY = 'alert:errors:cooldown';
 const COOLDOWN_S = 3600;
+// Browser crash reports sent without a session: anyone can post them, they must not raise alerts
+const UNTRUSTED = 'navigateur-anonyme';
 
 async function errorSummary(windowMinutes) {
   const [[{ n }], top] = await Promise.all([
-    globalQuery('SELECT COUNT(*) AS n FROM error_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)', [windowMinutes]),
-    globalQuery(`SELECT context, COUNT(*) AS n FROM error_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-                 GROUP BY context ORDER BY n DESC LIMIT 3`, [windowMinutes]),
+    globalQuery(`SELECT COUNT(*) AS n FROM error_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE) AND context <> ?`, [windowMinutes, UNTRUSTED]),
+    globalQuery(`SELECT context, COUNT(*) AS n FROM error_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE) AND context <> ?
+                 GROUP BY context ORDER BY n DESC LIMIT 3`, [windowMinutes, UNTRUSTED]),
   ]);
   return { count: Number(n), top };
 }
