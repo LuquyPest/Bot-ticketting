@@ -16,6 +16,7 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Dashboard web](#dashboard-web)
 - [Panel Superadmin](#panel-superadmin)
 - [Commandes Discord](#commandes-discord)
+- [Espace membre web](#espace-membre-web)
 - [Fonctionnalités avancées](#fonctionnalités-avancées)
 - [Panels Discord](#panels-discord)
 - [Push Notifications Web](#push-notifications-web)
@@ -25,6 +26,8 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Base de données](#base-de-données)
 - [Structure des fichiers](#structure-des-fichiers)
 - [Sécurité](#sécurité)
+- [Rotation de la clé de chiffrement](#rotation-de-la-clé-de-chiffrement)
+- [Migrations des bases](#migrations-des-bases)
 - [Tests](#tests)
 - [Problèmes fréquents](#problèmes-fréquents)
 
@@ -35,9 +38,9 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 ```
                     ┌─────────────────────────────────┐
                     │         ticketbot_global         │
-                    │  guilds · superadmins · managers │
-                    │  login_logs · user_totp          │
-                    │  sa_auth_logs · user_sessions    │
+                    │  guilds · plans · superadmins    │
+                    │  managers · user_totp · sessions │
+                    │  journaux · annonces · erreurs   │
                     └─────────────┬───────────────────┘
                                   │
               ┌───────────────────┼───────────────────┐
@@ -57,14 +60,15 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 | Couche | Technologies |
 |--------|-------------|
 | Bot Discord | Node.js 22, Discord.js 14 |
-| API / serveur web | Express 5, express-session, Helmet, express-rate-limit |
-| Base de données | MariaDB 11 (mysql2, architecture multi-tenant) |
-| Authentification | OAuth2 Discord, TOTP 2FA (otplib, secrets chiffrés AES-256-GCM), bcrypt |
-| Temps réel | Server-Sent Events (SSE) |
+| API / serveur web | Express 5, express-session, Helmet, express-rate-limit, multer (fichiers), pdfkit (rapports) |
+| Base de données | MariaDB 11 (mysql2, une base par serveur, migrations versionnées, index FULLTEXT) |
+| Authentification | OAuth2 Discord, TOTP 2FA (otplib), bcrypt ; secrets 2FA et transcripts chiffrés AES-256-GCM avec rotation de clé |
+| Temps réel | Server-Sent Events (SSE) relayés entre instances par Redis pub/sub |
 | Notifications push | Web Push API (VAPID, web-push) |
-| Sessions & jobs | Redis 7 (sessions express-session via connect-redis, file BullMQ) |
-| Dashboard frontend | React 18, React Router 7, Vite, Tailwind CSS |
-| Déploiement | Docker (multi-stage), Docker Compose, Traefik |
+| Sessions, état & jobs | Redis 7 (sessions via connect-redis, états des conversations MP, présence, BullMQ pour les tâches planifiées) |
+| Dashboard frontend | React 19, React Router 7, Vite 8, Tailwind CSS 4, Recharts 3, lucide-react |
+| Tests | Suite d'intégration (vrai serveur + faux client Discord), test de fumée Playwright + axe-core, test de charge |
+| Déploiement | Docker (multi-stage), Docker Compose, Traefik ; CI GitHub Actions, Dependabot |
 
 ---
 
@@ -331,11 +335,11 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 
 | Page | Accès | Description |
 |------|-------|-------------|
-| **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, objectif mensuel |
+| **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, classement, objectif mensuel (option) |
 | **Mon activité** | support, fondateur | Ses propres chiffres sur 7, 30 ou 90 jours : réponses envoyées, tickets fermés, temps de première réponse médian, note moyenne reçue et répartition, tickets ouverts attribués, chacun comparé à l'équipe ; évolution des réponses et de la note sur 12 semaines ; derniers commentaires des membres |
 | **Ma file** | `view_tickets` | Mes tickets du plus urgent au moins urgent (hors délai, proche de l'échéance, membre qui attend une réponse, priorité), avec la raison affichée ; onglet « Non attribués » avec bouton « Prendre » ; mise à jour en temps réel |
 | **Tickets** / **Kanban** | `view_tickets` | Liste filtrable (vue « Ouverts » par défaut, vues personnelles enregistrables) ou colonnes par étape, détail en temps réel |
-| **Mes stats** | support | Statistiques personnelles (claims, fermetures, temps de réponse) |
+| **Mes stats** | support | Compteurs cumulés (prises en charge, fermetures, temps de réponse) |
 | **Analytiques** / **Recherche** | support, fondateur | Volume, SLA, satisfaction ; bouton **Rapport mensuel** (PDF d'un mois au choix, fondateurs et `view_audit`) ; onglet **Qualité** : temps de première réponse (médiane, part sous 1 h / 4 h / 24 h, sans réponse), respect des délais par étape (passages mesurés, durée médiane, hors délai, taux de respect), répartition des notes et commentaires des membres ; **Recherche** : plein texte dans tous les messages (membre, réponses du staff, notes internes), les sujets et les pseudos — mots de 3 lettres ou plus cherchés par préfixe via un index FULLTEXT, filtre par auteur et par statut, extrait surligné, clic = fiche ouverte sur le message trouvé ; respecte la visibilité |
 | **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
 | **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
@@ -344,12 +348,14 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances |
 | **Données membres** | fondateur | RGPD : ce que le serveur conserve sur un membre (par ID Discord), export JSON complet, suppression définitive de ses tickets (messages, transcripts, notes, tags), de ses messages et participations dans les tickets d'autres personnes et de sa blacklist ; salons des tickets ouverts supprimés, journal anonymisé. Les tickets des autres membres ne sont jamais touchés ; impossible sur un compte du staff. Accessible aussi depuis la fiche ticket |
+| **Champs** | fondateur, `manage_settings` | Champs personnalisés demandés au membre (texte ou nombre, obligatoires ou non, par sujet) |
+| **Incidents** | fondateur, `manage_settings` | Problèmes connus annoncés aux nouveaux tickets, compteur de membres touchés, message de résolution |
 | **FAQ** | fondateur, `manage_settings` | Entrées de la FAQ automatique (question, réponse, mots-clés), activation, test d'un message, statistiques (proposée / a résolu) |
 | **Tags** | fondateur | Tags pour organiser les tickets |
 | **Blacklist** | fondateur | Utilisateurs bloqués — propre à chaque serveur |
 | **Panels** / **Formulaires** | fondateur | Panels de boutons Discord et formulaires associés |
 | **Paramètres** | fondateur | Configuration du serveur (salons, rôles, messages, automatismes, webhooks, allowlist IP…) |
-| **Clés API** | fondateur | Clés pour l'API publique v1 |
+| **Clés API** / **Documentation API** | fondateur | Clés pour l'API publique v1 ; documentation générée depuis le code (`/docs-api`) |
 | **Newsletter** | fondateur | DM groupé au staff |
 | **Patchnotes** | fondateur | Historique des versions |
 | **Profil** | tous | Bio, photo (CDN Discord), 2FA, codes de secours, sessions actives, notifications push |
@@ -428,7 +434,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 | **Journal** | Toutes les modifications faites depuis le panel (serveurs, limites, fondateurs, managers, blocages, erreurs, alertes, formules) : compte, action, serveur concerné, paramètres (secrets masqués, URL de webhook réduite à leur origine), IP ; filtres par compte, action et serveur — superadmin uniquement, conservé 2 ans |
 | **Annonces** | Message aux fondateurs de tous les serveurs : bandeau sur leur dashboard (jusqu'à une date choisie, masquable) et/ou MP Discord envoyé une fois par personne ; information ou avertissement — superadmin uniquement |
 | **Santé** | État de Discord (connexion, latence), de la base et de Redis (temps de réponse), des tâches planifiées (dernière exécution, durée, résultat, prochaine exécution, retards signalés), du processus (mémoire, durée de fonctionnement) et version de schéma de chaque base — superadmin uniquement, actualisé toutes les 15 s |
-| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes, et plantages JavaScript des navigateurs — source `navigateur`, avec la page, le type, le composant React, le compte et le navigateur ; bruit des extensions et erreurs réseau exclus, 10 rapports par page et 20 par IP toutes les 10 min au plus) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement. **Alerte** configurable : au-delà d'un seuil d'erreurs sur une fenêtre donnée, MP Discord aux IDs choisis et/ou webhook (embed pour un webhook Discord, JSON sinon), une alerte par heure au plus, bouton de test. **Déconnexion Discord** : vérifiée chaque minute ; si le bot reste déconnecté plus de N minutes (5 par défaut, 0 = jamais), les mêmes destinataires sont prévenus une fois, puis à la reconnexion avec la durée de la coupure (le webhook est le canal fiable pendant une panne de Discord) |
+| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes, et plantages JavaScript des navigateurs — source `navigateur`, ou `navigateur-anonyme` hors session et exclue des alertes, avec la page, le type, le composant React, le compte et le navigateur ; bruit des extensions et erreurs réseau exclus, 10 rapports par page et 20 par IP toutes les 10 min au plus) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement. **Alerte** configurable : au-delà d'un seuil d'erreurs sur une fenêtre donnée, MP Discord aux IDs choisis et/ou webhook (embed pour un webhook Discord, JSON sinon), une alerte par heure au plus, bouton de test. **Déconnexion Discord** : vérifiée chaque minute ; si le bot reste déconnecté plus de N minutes (5 par défaut, 0 = jamais), les mêmes destinataires sont prévenus une fois, puis à la reconnexion avec la durée de la coupure (le webhook est le canal fiable pendant une panne de Discord) |
 
 Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les réponses HTTP 5xx (avec la route), les échecs des tâches planifiées et les rejets non gérés. Les erreurs Discord attendues (membre aux MP fermés, interaction expirée ou déjà traitée, message déjà supprimé) sont ignorées. Un même message n'est enregistré qu'une fois par minute (60 entrées / min au plus) ; la purge de rétention supprime les entrées de plus de 30 jours.
 
@@ -459,9 +465,9 @@ Les commandes sont réservées au staff et utilisables uniquement sur un serveur
 | `/reopen` | `close_ticket` | Réouvre le dernier ticket fermé d'un utilisateur (même s'il a d'autres tickets ouverts) |
 | `/oldtickets` | `view_tickets` | Historique paginé des tickets d'un utilisateur |
 | `/gettranscript` | `view_transcripts` | Génère un lien temporaire (10 min) vers un transcript HTML |
-| `/note` | `reply_ticket` | Ajoute une note interne (non envoyée au membre, exclue des transcripts) |
-| `/blacklist` | Rôle Chef Support | Gestion de la liste noire (add / remove / list) |
-| `/staffstats` | Rôle Chef Support | Statistiques détaillées par agent |
+| `/note` | `reply_ticket` | Ajoute une note interne (non envoyée au membre, exclue des transcripts), visible dans la fiche du dashboard comme une note écrite depuis le site |
+| `/blacklist` | Rôle Chef Support ou fondateur | Gestion de la liste noire (add / remove / list) |
+| `/staffstats` | Rôle Chef Support ou fondateur | Statistiques détaillées par agent |
 | `/template` | `reply_ticket` | Envoie un modèle de réponse (autocomplétion : modèles du sujet du ticket en tête, partagés et personnels) ; variables résolues, actions appliquées si c'est une macro, option anonyme |
 | `/merge` | `close_ticket` + `reply_ticket` | Fusionne le ticket du salon dans un autre ticket ouvert du même membre (autocomplétion) |
 | `/mestickets` | Membre, en MP avec le bot | État de ses tickets ouverts sur tous les serveurs (« en attente de ta réponse », « en cours de traitement »…). Aussi accessible par le bouton **📋 Mes tickets** des MP |
@@ -510,7 +516,7 @@ Un grade peut avoir un `parent_id` — les membres d'un grade voient aussi les t
 
 ### Objectifs mensuels
 
-Quand l'option est activée dans les paramètres, chaque agent voit sur le dashboard sa progression vers un objectif de 50 tickets traités dans le mois.
+Quand l'option est activée dans les paramètres, chaque agent voit sur le dashboard sa progression vers 50 tickets traités dans le mois (tickets où il a répondu ou laissé une note).
 
 ### Escalade (tickets urgents)
 
@@ -634,47 +640,49 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 
 | Table | Description |
 |-------|-------------|
-| `guilds` | Registre de tous les serveurs (pending / active / suspended) |
-| `superadmins` | Comptes du panel SA (TOTP chiffré, compteur d'échecs) |
-| `managers` | Comptes managers avec guilds assignées |
-| `error_logs` | Erreurs centralisées (tous serveurs) |
-| `user_sessions` | Suivi des sessions actives par utilisateur (IP, user-agent, timestamps) |
+| `guilds` | Registre des serveurs (pending / active / suspended), maintenance, limites, formule |
+| `plans` | Formules (limites de tickets, d'agents, rétention) appliquées aux serveurs |
+| `superadmins` / `managers` | Comptes du panel SA (mot de passe bcrypt, TOTP chiffré, verrouillage) |
+| `sa_auth_logs` | Tentatives de connexion au panel SA |
+| `sa_audit_log` | Journal des actions du panel SA |
+| `sa_settings` | Réglages du panel SA (alerte d'erreurs, déconnexion Discord…) |
+| `announcements` | Annonces du super-admin aux fondateurs |
+| `error_logs` | Erreurs centralisées (bot, dashboard, tâches, navigateurs) |
+| `user_sessions` | Sessions actives par utilisateur (IP, user-agent) |
 | `user_totp` | Secrets TOTP chiffrés, dernier pas utilisé, codes de secours hachés |
-| `login_logs` | Historique des connexions OAuth Discord |
-| `sa_auth_logs` | Historique des tentatives d'auth superadmin |
-| `push_subscriptions` | Abonnements push navigateur (endpoint VAPID + clés par utilisateur/guild) |
+| `login_logs` | Historique des connexions au dashboard |
+| `push_subscriptions` | Abonnements push navigateur |
 
 ### Par serveur — `ticketbot_guild_{guildId}`
 
 | Table | Description |
 |-------|-------------|
-| `tickets` | Tickets (sujet, priorité, étape, responsable principal, timestamps) |
-| `ticket_assignees` | Membres du staff assignés à chaque ticket |
-| `ticket_views` | Vues de la liste des tickets enregistrées par utilisateur |
-| `ticket_participants` | Utilisateurs ajoutés via `/adduser` |
-| `ticket_notes` | Toutes les notes (DM entrants, réponses staff, notes internes, Discord) |
-| `transcript_snapshots` | Transcripts HTML + TXT archivés |
-| `ticket_ratings` | Notes de satisfaction (1–5 étoiles) et commentaire du membre |
-| `admin_stats` | Statistiques cumulées par agent |
-| `blacklist` | Utilisateurs bannis (avec expiration optionnelle) |
-| `dashboard_users` | Comptes dashboard avec rôles et profil |
-| `subject_rules` | Règles automatiques par sujet (tag, priorité, grade) |
-| `ticket_fields` / `ticket_field_values` | Champs personnalisés et leurs valeurs par ticket |
-| `faq_entries` | FAQ automatique (question, réponse, mots-clés, compteurs) |
-| `reply_templates` | Modèles de réponse (personnels ou partagés, sujet associé, compteur d'utilisation) |
-| `grades` | Hiérarchie de rôles personnalisée |
-| `grade_permissions` | Permissions par grade |
-| `user_grades` | Association utilisateurs ↔ grades |
-| `monthly_goals` | Objectifs mensuels par agent |
-| `api_keys` | Clés API (hash + permissions) |
-| `intake_forms` | Formulaires d'intake |
-| `intake_form_fields` | Champs des formulaires |
-| `scheduled_messages` | Messages planifiés |
-| `staff_notes` | Notes internes isolées (commande `/note`) |
+| `schema_migrations` | Versions de schéma appliquées (voir [Migrations des bases](#migrations-des-bases)) |
 | `guild_config` | Configuration complète du serveur |
-| `audit_log` | Journal de toutes les actions (acteur, source, ticket, détails) |
-| `ticket_panels` | Panels de boutons Discord (embed + métadonnées, message_id publié) |
-| `panel_buttons` | Boutons associés à un panel (label, emoji, style, sujet, formulaire) |
+| `config_history` | Historique des paramètres (avant/après, auteur, restauration) |
+| `tickets` | Tickets (sujet, priorité, étape, visibilité, fusion, suivi, timestamps) |
+| `ticket_assignees` / `ticket_participants` | Staff assigné / membres ajoutés à un ticket |
+| `ticket_notes` | Tous les messages : MP du membre, réponses, notes internes (épinglables), salon Discord, événements ; versions modifiées par le membre ; index FULLTEXT |
+| `transcript_snapshots` | Transcripts HTML + TXT, chiffrés |
+| `ticket_ratings` | Notes de satisfaction (1–5) et commentaires |
+| `ticket_tags` / `ticket_tag_assignments` | Tags et leur affectation |
+| `ticket_links` | Tickets liés entre eux |
+| `ticket_reminders` | Rappels personnels |
+| `ticket_views` | Vues enregistrées de la liste des tickets |
+| `ticket_fields` / `ticket_field_values` | Champs personnalisés et valeurs |
+| `subject_rules` | Règles automatiques par sujet |
+| `incidents` / `incident_tickets` | Incidents et tickets auxquels ils ont été annoncés |
+| `faq_entries` | FAQ (question, réponse, mots-clés, compteurs) |
+| `reply_templates` | Modèles de réponse et macros |
+| `intake_forms` / `intake_form_fields` | Formulaires d'ouverture |
+| `scheduled_messages` | Messages programmés |
+| `ticket_panels` / `panel_buttons` | Panels de boutons Discord |
+| `grades` / `grade_permissions` / `user_grades` | Grades, permissions et attributions |
+| `dashboard_users` | Comptes dashboard (rôle, profil, disponibilité, vacances) |
+| `admin_stats` | Statistiques cumulées par agent |
+| `blacklist` | Membres bloqués (expiration optionnelle) |
+| `api_keys` | Clés API (hash + permissions) |
+| `audit_log` | Journal de toutes les actions |
 
 ---
 
@@ -695,94 +703,83 @@ Bot-ticketting/
 │
 ├── commands/                       # Slash commands Discord
 │   ├── reply.js / areply.js        # Réponse identifiée / anonyme
+│   ├── template.js                 # Modèle de réponse ou macro (autocomplétion par sujet)
 │   ├── claim.js / unclaim.js       # Prise en charge
-│   ├── note.js                     # Note interne
+│   ├── note.js                     # Note interne (visible dans la fiche)
 │   ├── priority.js                 # Changement de priorité
 │   ├── adduser.js / removeuser.js  # Gestion des participants
+│   ├── merge.js                    # Fusion avec un autre ticket du membre
 │   ├── blacklist.js                # Liste noire
-│   ├── moveticket.js / rename.js   # Déplacement / renommage
-│   ├── reopen.js                   # Réouverture de ticket
-│   ├── oldtickets.js               # Historique paginé
+│   ├── moveticket.js / rename.js   # Étape / titre
+│   ├── reopen.js                   # Réouverture
+│   ├── oldtickets.js               # Historique paginé d'un membre
 │   ├── gettranscript.js            # Lien transcript temporaire
+│   ├── mestickets.js               # État de ses tickets (membre, en MP)
 │   └── staffstats.js               # Stats par agent
 │
 ├── events/                         # Handlers Discord
-│   ├── interactionCreate.js        # Boutons, slash commands, rating, oldtickets
-│   ├── messageCreate.js            # DM → ticket + intake + relay (limité par utilisateur)
-│   ├── panelTicket.js              # Ouverture de ticket depuis un bouton de panel Discord
-│   ├── guildCreate.js              # Enregistrement nouveau serveur
-│   ├── guildDelete.js              # Suspension serveur
+│   ├── interactionCreate.js        # Boutons, menus, slash commands, notes, réouverture
+│   ├── messageCreate.js            # MP → ticket (sujet, champs, formulaire, FAQ) + salon → historique
+│   ├── messageEdits.js             # MP modifiés ou supprimés par le membre
+│   ├── guildCreate.js / guildDelete.js  # Arrivée / départ d'un serveur
 │   └── ready.js                    # Synchro des serveurs + migrations au démarrage
 │
+├── scripts/
+│   └── rotate-encryption-key.js    # Rechiffrement des secrets 2FA et des transcripts
+│
 ├── utils/
-│   ├── globalDb.js                 # Pool global lazy + globalQuery()
-│   ├── tenantDb.js                 # Pool par guild + getTenantDb()
-│   ├── tenantSchema.js             # Schéma SQL complet des tables per-guild
-│   ├── ticketManager.js            # Toute la logique tickets (factory par guild)
-│   ├── guildScan.js                # Scan multi-guild pour un utilisateur
-│   ├── permissions.js              # Vérification rôles staff Discord
-│   ├── gradePermissions.js         # Système de grades + permissions + audit
-│   ├── components.js               # Boutons Discord (ActionRowBuilder)
-│   ├── embeds.js                   # Embeds réutilisables (staff)
-│   ├── dmEmbeds.js                 # Embeds DM centralisés via EmbedBuilder (membre)
-│   ├── transcript.js               # Génération HTML/TXT
-│   ├── transcriptServer.js         # Pages temporaires (TTL 10 min)
-│   ├── notePrefix.js               # Marqueurs des notes internes (exclues des transcripts)
-│   ├── jsonField.js                # Lecture tolérante des colonnes JSON
-│   ├── discordGuard.js             # Salons/rôles limités au serveur courant
-│   ├── secretBox.js                # Chiffrement AES-256-GCM des secrets
-│   ├── totp.js                     # TOTP anti-rejeu + codes de secours
-│   ├── csv.js                      # Échappement CSV (anti-formules)
-│   ├── sanitize.js                 # Sanitisation des noms de salons
-│   ├── rateLimit.js                # Cooldowns + limiteur de DM
-│   ├── sse.js                      # Registre SSE guild-aware
-│   ├── webhookEmitter.js           # Webhooks sortants + anti-SSRF
-│   ├── redis.js                    # Client Redis lazy (ioredis)
-│   ├── jobQueue.js                 # Tâches planifiées BullMQ (tous les automatismes)
-│   ├── pendingStore.js             # États des conversations MP (Redis)
-│   ├── errorLog.js                 # Journal d'erreurs centralisé (error_logs)
-│   ├── logger.js                   # Logger JSON structuré (stdout)
-│   ├── inactiveTicketChecker.js    # Fermeture auto tickets inactifs
-│   ├── userInactiveChecker.js      # Fermeture auto si utilisateur inactif
-│   ├── staffReminderChecker.js     # Rappel DM au staff
-│   ├── escalationChecker.js        # Escalade tickets urgents
-│   ├── scheduledMessages.js        # Envoi des messages planifiés
-│   └── weeklyReport.js             # Rapport hebdomadaire Discord
+│   │  — Bases et configuration
+│   ├── config.js                   # Chargement de config.json
+│   ├── globalDb.js / tenantDb.js   # Pool global / pool par serveur
+│   ├── tenantSchema.js             # Schéma de base des tables par serveur
+│   ├── tenantMigrations.js         # Migrations versionnées (schema_migrations)
+│   ├── redis.js / pendingStore.js  # Redis ; états des conversations MP
+│   │  — Tickets
+│   ├── ticketManager.js            # Logique des tickets (création, relais, fermeture, étapes…)
+│   ├── guildScan.js / panelTicket.js  # Tickets d'un membre sur tous les serveurs ; ouverture par panel
+│   ├── discordReply.js / macroActions.js  # Réponse depuis Discord ; actions des macros
+│   ├── ticketFields.js / subjectRules.js / subjectMatch.js  # Champs, règles et correspondance de sujet
+│   ├── sla.js / stageStats.js      # Délais par étape et leur respect
+│   ├── ticketPresence.js           # Qui a la fiche ouverte (Redis)
+│   ├── ticketReminders.js / mentions.js / assignNotify.js  # Rappels, @mentions, notification d'attribution
+│   ├── messageSearch.js / similarTickets.js  # Recherche plein texte ; tickets similaires
+│   ├── dmEdits.js / discordAttachments.js  # MP modifiés ; liens de pièces jointes renouvelés
+│   ├── incidents.js / lowRating.js / faq.js  # Incidents ; notes basses ; FAQ automatique
+│   ├── memberPortal.js / memberTickets.js  # Espace membre web ; /mestickets
+│   ├── i18n.js                     # Messages aux membres en français / anglais
+│   ├── transcript.js / transcriptServer.js / transcriptCrypto.js  # Transcripts : génération, liens, chiffrement
+│   ├── components.js / embeds.js / dmEmbeds.js / notePrefix.js  # Boutons et embeds
+│   │  — Staff, droits, sécurité
+│   ├── permissions.js / gradePermissions.js / staffSync.js / channelVisibility.js  # Droits, grades, rôles Discord, visibilité
+│   ├── twoFactorPolicy.js / totp.js / secretBox.js  # 2FA obligatoire, TOTP, chiffrement
+│   ├── discordGuard.js / sanitize.js / csv.js / jsonField.js / rateLimit.js / limits.js  # Garde-fous
+│   ├── audit.js / saAudit.js / configHistory.js / configTransfer.js  # Journaux, historique et export de la configuration
+│   ├── myActivity.js               # Chiffres de « Mon activité »
+│   │  — Automatismes et supervision
+│   ├── jobQueue.js                 # Tâches planifiées BullMQ
+│   ├── inactiveTicketChecker.js / userInactiveChecker.js / staffReminderChecker.js / escalationChecker.js
+│   ├── scheduledMessages.js / weeklyReport.js / monthlyReport.js / retention.js / quotaAlert.js
+│   ├── errorLog.js / errorAlert.js / discordWatch.js / logger.js  # Erreurs, alertes, surveillance Discord
+│   ├── announcements.js / saSettings.js  # Annonces et réglages du super-admin
+│   ├── sse.js / webhookEmitter.js  # Temps réel ; webhooks sortants (anti-SSRF)
 │
 ├── web/
-│   ├── server.js                   # Express : sessions, CSP, rate limit, routes
-│   ├── middleware/
-│   │   ├── guild.js                # Résolution guild depuis session → req.guildDb
-│   │   ├── role.js                 # Vérification rôle dashboard + permissions grade
-│   │   └── superadmin.js           # Auth SA
+│   ├── server.js                   # Express : sessions, CSP, CSRF, limites, routes, pièces jointes, erreurs navigateur
+│   ├── rateLimiters.js             # Limiteurs (Redis) et IP bloquées
+│   ├── middleware/                 # guild.js (serveur courant), role.js (rôle + grades), superadmin.js
 │   └── routes/
-│       ├── auth.js                 # OAuth Discord, TOTP login, select-guild
-│       ├── profile.js              # Profil utilisateur, 2FA TOTP
-│       ├── superadmin.js           # Panel SA (guilds, managers, stats, limites, erreurs)
-│       ├── tickets.js              # CRUD tickets + SSE broadcast
-│       ├── dashboard.js            # Stats globales
-│       ├── staff.js                # Stats staff
-│       ├── analytics.js            # Analytiques avancées
-│       ├── config.js               # Paramètres du serveur
-│       ├── users.js                # Membres du dashboard (page Équipe)
-│       ├── grades.js               # Grades et permissions
-│       ├── goals.js                # Objectif mensuel de l'utilisateur
-│       ├── blacklist.js            # Liste noire
-│       ├── transcripts.js          # Transcripts
-│       ├── templates.js            # Templates de réponse
-│       ├── tags.js                 # Tags sur tickets
-│       ├── messages.js             # Messages programmés
-│       ├── discord.js              # Catégories Discord
-│       ├── events.js               # Endpoint SSE
-│       ├── panels.js               # Panels Discord (CRUD + publish/unpublish)
-│       ├── forms.js                # Formulaires d'intake (CRUD champs)
-│       ├── push.js                 # Push notifications (VAPID, subscribe/unsubscribe)
-│       ├── sessions.js             # Gestion des sessions actives (liste + révocation)
-│       ├── loginLogs.js            # Journaux de connexion
-│       ├── audit.js                # Journal d'audit
-│       ├── apiKeys.js              # Gestion des clés API
-│       ├── apiV1.js                # API publique v1 (auth par clé)
-│       └── newsletter.js           # Envoi DM en masse
+│       ├── auth.js / profile.js / sessions.js / push.js  # Connexion, profil, 2FA, sessions, push
+│       ├── memberPortal.js         # Espace membre (/api/member)
+│       ├── tickets.js / ticketViews.js / templates.js / tags.js / messages.js / fields.js / subjectRules.js
+│       ├── dashboard.js / staff.js / analytics.js / reports.js / goals.js / audit.js / loginLogs.js
+│       ├── config.js / grades.js / users.js / members.js / blacklist.js / faq.js / incidents.js
+│       ├── panels.js / forms.js / discord.js / events.js / transcripts.js / newsletter.js
+│       ├── apiKeys.js / apiV1.js   # Clés API ; API publique v1 (+ openapi.json)
+│       └── superadmin.js           # Panel SA
+│
+├── tests/
+│   ├── integration/                # Suite d'intégration (npm run test:integration)
+│   └── load/                       # Test de charge (npm run test:load)
 │
 └── dashboard/                      # Frontend React + Vite + Tailwind
     ├── public/
@@ -791,10 +788,12 @@ Bot-ticketting/
         ├── pages/                  # Dashboard, Tickets, TicketDetail, Panels, Paramètres…
         ├── components/             # Composants UI réutilisables
         ├── hooks/
+        │   ├── useDraft.js         # Brouillons de réponse par ticket
         │   ├── useSSE.js           # Abonnement SSE
         │   ├── useAutoRefresh.js   # Rafraîchissement automatique des données
         │   └── usePushNotifications.js  # Abonnement / désabonnement push navigateur
-        └── utils/                  # Helpers frontend (dates, durées…)
+        └── utils/                  # Helpers frontend (dates, disponibilité, erreurs navigateur…)
+    └── tests/smoke.mjs             # Test de fumée Playwright + axe-core
 ```
 
 ---
@@ -810,7 +809,7 @@ Bot-ticketting/
 | **Contrôle d'accès** | Permissions de grade et visibilité par grade appliquées côté API, temps réel, push et commandes Discord |
 | **Isolation multi-tenant** | Base par serveur ; salons, rôles, blacklist et journaux de connexion ne débordent jamais sur un autre serveur |
 | **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR |
-| **Rate limiting** | 20 req/15 min sur les endpoints d'auth, 200 req/min sur l'API générale |
+| **Rate limiting** | 20 req/15 min sur les endpoints d'auth (dashboard, SA, espace membre), 200 req/min sur l'API générale ; limites propres aux MP, à l'ouverture de tickets depuis le web et aux rapports d'erreur |
 | **CSRF** | Toutes les mutations (POST/PATCH/DELETE/PUT) exigent `X-Requested-With: XMLHttpRequest` |
 | **SSRF** | Webhooks sortants : résolution DNS + blocage de tous les ranges privés/réservés |
 | **Audit SA** | Toutes les tentatives de connexion SA (succès, échec, TOTP) loguées dans `sa_auth_logs` |
@@ -819,6 +818,12 @@ Bot-ticketting/
 | **Docker** | Utilisateur `node` (non-root), `no-new-privileges`, `cap_drop: ALL`, `NODE_ENV=production` ; `botuser` limité aux bases `ticketbot_*` |
 | **Base de données** | Requêtes paramétrées, `stringifyObjects` activé (pas d'injection via objets JSON) |
 | **Maintenance / suspension** | Bloque l'API du serveur et rend le bot inactif sur ce serveur |
+| **Espace membre** | Session distincte (identité Discord seule, scope `identify`) sans aucun droit sur le dashboard ; chaque requête vérifie que le membre est propriétaire ou participant du ticket et membre du serveur ; jamais de note interne ni de message du salon staff |
+| **Chiffrement au repos** | Secrets 2FA et transcripts (AES-256-GCM, rotation de clé, script de rechiffrement vérifié) |
+| **Pièces jointes** | Relais `/api/attachment` limité aux liens de pièces jointes Discord et aux utilisateurs connectés |
+| **Erreurs navigateur** | Rapports limités en taille et en nombre ; ceux envoyés sans session vont dans une source à part, exclue des alertes |
+| **Postes partagés** | Les brouillons sont effacés à la déconnexion |
+| **Dépendances** | `npm audit` en CI, mises à jour Dependabot testées avant fusion |
 | **Push endpoint allowlist** | Les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — bloque tout endpoint arbitraire |
 
 ---
@@ -840,11 +845,12 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, etc.
+Suite d'intégration (`tests/integration/harness.js`, 616 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
-cd dashboard && npm run build && npm run test:smoke   # pages principales du dashboard dans Chromium headless (API simulée)
+cd dashboard && npm run build && npm run test:smoke   # pages du dashboard et de l'espace membre dans Chromium headless (API simulée)
+npm run test:load          # test de charge sur MariaDB + Redis jetables
 ```
 
 Le test de fumée passe aussi chaque page, en thème sombre et clair, à **axe-core** (WCAG 2.1 A/AA) : toute violation grave ou critique (contraste, bouton sans nom, champ sans libellé…) fait échouer le test. Une troisième passe simule un téléphone (390 px) et échoue si une page déborde en largeur.

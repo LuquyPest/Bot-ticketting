@@ -10,6 +10,20 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.16',
+    date: '18 octobre 2026',
+    title: 'Audit de sécurité, vérification complète et nettoyage',
+    changes: [
+      { type: 'fix',  text: 'Les notes ajoutées avec /note sur Discord apparaissent enfin dans la fiche du dashboard (les anciennes y ont été reprises)' },
+      { type: 'fix',  text: 'Les fondateurs peuvent utiliser /blacklist et /staffstats sur Discord, comme toutes les autres actions' },
+      { type: 'fix',  text: '/priority répond même si le bot ne peut pas écrire dans le salon ; la page d\'identité du bot ne plante plus juste après un redémarrage' },
+      { type: 'fix',  text: 'Sécurité : les brouillons sont effacés à la déconnexion (postes partagés) ; une route du dashboard appelée sans être connecté répond « non authentifié »' },
+      { type: 'fix',  text: 'Sécurité : les rapports d\'erreur envoyés sans être connecté ne peuvent plus déclencher l\'alerte du super-admin' },
+      { type: 'impr', text: 'Nettoyage : réglages « Nom d\'affichage » et « Couleur des embeds » retirés (ils n\'étaient utilisés nulle part), tables inutilisées supprimées' },
+      { type: 'tech', text: 'Tests : chaque route de l\'API et chaque commande Discord est maintenant vérifiée automatiquement (616 vérifications)' },
+    ]
+  },
+  {
     version: 'v2.15',
     date: '18 octobre 2026',
     title: 'Espace membre interactif, contexte des tickets et robustesse',
