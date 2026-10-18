@@ -6,6 +6,11 @@ async function getMember(guild, userId) {
 const { parseJsonField } = require('./jsonField');
 
 async function isChiefSupportMember(client, guild, userId, db) {
+  // Founders hold every permission, here as in the dashboard
+  if (db) {
+    const [u] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [userId]).catch(() => []);
+    if (u?.role === 'fondateur') return true;
+  }
   const member = await getMember(guild, userId);
   if (!member) return false;
 

@@ -246,6 +246,22 @@ const MIGRATIONS = [
         CONSTRAINT fk_it_incident FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE)`,
     ],
   },
+  {
+    version: 17,
+    name: 'Nettoyage : notes /note dans l\'historique, tables et réglages inutilisés',
+    statements: [
+      // /note used to write to staff_notes, which nothing displayed: those notes join the ticket history
+      // (the table no longer exists on new servers: created empty so the copy below always runs)
+      `CREATE TABLE IF NOT EXISTS staff_notes (id INT AUTO_INCREMENT PRIMARY KEY, ticket_id INT NOT NULL,
+         author_id VARCHAR(32) NOT NULL, author_tag VARCHAR(100) NOT NULL, content TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+      `INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, created_at)
+         SELECT ticket_id, author_id, author_tag, content, 'web', created_at FROM staff_notes`,
+      'DROP TABLE IF EXISTS staff_notes',
+      'DROP TABLE IF EXISTS monthly_goals', // never written: the monthly goal is a fixed 50 tickets
+      // Settings that nothing read (fixed embed colour; the bot's name is its Discord nickname)
+      'ALTER TABLE guild_config DROP COLUMN IF EXISTS embed_color, DROP COLUMN IF EXISTS bot_display_name',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

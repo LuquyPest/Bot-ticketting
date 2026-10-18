@@ -5,6 +5,7 @@ const { ensureSupport } = require('../utils/permissions');
 
 const { NOTE_EMBED_AUTHOR } = require('../utils/notePrefix');
 const { recordEvent } = require('../utils/audit');
+const { broadcast } = require('../utils/sse');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -28,10 +29,12 @@ module.exports = {
 
     const content = interaction.options.getString('message');
 
-    await db(
-      'INSERT INTO staff_notes (ticket_id, author_id, author_tag, content) VALUES (?, ?, ?, ?)',
+    // Same internal note as from the dashboard: shown in the ticket view, never to the member
+    const nr = await db(
+      "INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'web')",
       [ticket.id, interaction.user.id, interaction.user.username, content]
     );
+    broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: interaction.user.id, author_tag: interaction.user.username, content, source: 'web', created_at: new Date() } }, interaction.guildId);
     await recordEvent(db, { actor: interaction.user, action: 'ticket_note', ticketId: ticket.id, details: { excerpt: content.slice(0, 120) } });
 
     const noteEmbed = new EmbedBuilder()

@@ -233,14 +233,12 @@ export default function Settings() {
         ticketPrefix:             cfg.ticketPrefix,
         welcomeMessage:           cfg.welcomeMessage || null,
         closeMessage:             cfg.closeMessage || null,
-        botDisplayName:           cfg.botDisplayName || 'Ticket Bot',
         botLanguage:              cfg.botLanguage || 'fr',
         require2fa:               cfg.require2fa || 'none',
         memberReopenDays:         cfg.memberReopenDays ?? 7,
         notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
         memberPortalEnabled:      cfg.memberPortalEnabled === undefined || cfg.memberPortalEnabled ? 1 : 0,
         lowRatingThreshold:       cfg.lowRatingThreshold ?? 2,
-        embedColor:               cfg.embedColor || '#6366f1',
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
         inactiveWarningHours:     cfg.inactiveWarningHours,
@@ -396,21 +394,9 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* Bot embed identity */}
-      <Section title="Identité du bot">
+      {/* Language of the bot's messages to members */}
+      <Section title="Langue du bot">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Nom d'affichage" hint="Utilisé dans les embeds et messages">
-            <input type="text" value={cfg.botDisplayName || ''} onChange={e => set('botDisplayName', e.target.value)}
-              placeholder="Ticket Bot" className={BASE} />
-          </Field>
-          <Field label="Couleur des embeds" hint="Hexadécimal — ex: #6366f1">
-            <div className="flex items-center gap-2">
-              <input type="color" aria-label="Couleur des embeds" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
-                className="w-10 h-9 rounded-lg border border-overlay/8 bg-transparent cursor-pointer p-0.5 shrink-0" />
-              <input type="text" value={cfg.embedColor || '#6366f1'} onChange={e => set('embedColor', e.target.value)}
-                pattern="^#[0-9a-fA-F]{6}$" placeholder="#6366f1" className={BASE + " font-mono"} />
-            </div>
-          </Field>
           <Field label="Langue des messages aux membres" hint="MP du bot : bienvenue, questions, notifications, boutons. Les textes personnalisés restent tels quels.">
             <select value={cfg.botLanguage || 'fr'} onChange={e => set('botLanguage', e.target.value)} className={BASE}>
               <option value="fr">Français</option>

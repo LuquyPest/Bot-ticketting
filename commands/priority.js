@@ -49,8 +49,9 @@ module.exports = {
         { name: 'Modifié par', value: `<@${interaction.user.id}>`, inline: true },
         { name: 'Heure', value: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), inline: true }
       );
-    const msg = await interaction.channel.send({ embeds: [prioEmbed] });
-    await msg.pin().catch(() => null);
+    // Missing permission in the channel must not keep the command from answering
+    const msg = await interaction.channel.send({ embeds: [prioEmbed] }).catch(() => null);
+    await msg?.pin?.().catch(() => null);
 
     // Mention support roles when escalated to urgent
     if (priority === 'urgent') {

@@ -228,8 +228,6 @@ const TENANT_TABLES_SQL = `
     move_log_channel_id   VARCHAR(32) DEFAULT NULL,
     add_user_log_channel_id    VARCHAR(32) DEFAULT NULL,
     remove_user_log_channel_id VARCHAR(32) DEFAULT NULL,
-    embed_color           VARCHAR(7) NOT NULL DEFAULT '#6366f1',
-    bot_display_name      VARCHAR(100) NOT NULL DEFAULT 'Ticket Bot',
     max_tickets_per_day   INT NOT NULL DEFAULT 10,
     inactive_warning_hours INT NOT NULL DEFAULT 48,
     inactive_hours        INT NOT NULL DEFAULT 62,
@@ -277,24 +275,7 @@ const TENANT_TABLES_SQL = `
     CONSTRAINT fk_iff_form FOREIGN KEY (form_id) REFERENCES intake_forms(id) ON DELETE CASCADE
   );
 
-  CREATE TABLE IF NOT EXISTS staff_notes (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    ticket_id  INT NOT NULL,
-    author_id  VARCHAR(32) NOT NULL,
-    author_tag VARCHAR(100) NOT NULL,
-    content    TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_sn_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
-  );
 
-  CREATE TABLE IF NOT EXISTS monthly_goals (
-    id      INT AUTO_INCREMENT PRIMARY KEY,
-    user_id VARCHAR(32) NOT NULL,
-    year    SMALLINT NOT NULL,
-    month   TINYINT NOT NULL,
-    target  INT NOT NULL DEFAULT 50,
-    UNIQUE KEY uniq_goal (user_id, year, month)
-  );
 
   CREATE TABLE IF NOT EXISTS api_keys (
     id           INT AUTO_INCREMENT PRIMARY KEY,

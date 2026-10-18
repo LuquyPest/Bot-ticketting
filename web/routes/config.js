@@ -42,14 +42,12 @@ const FIELD_MAP = {
   escalationAlertChannelId:  'escalation_alert_channel_id',
   escalationAlertHours:      'escalation_alert_hours',
   escalationCloseHours:      'escalation_close_hours',
-  embedColor:                'embed_color',
   botLanguage:               'bot_language',
   require2fa:                'require_2fa',
   memberReopenDays:          'member_reopen_days',
   notifyMemberStage:         'notify_member_stage',
   lowRatingThreshold:        'low_rating_threshold',
   memberPortalEnabled:       'member_portal_enabled',
-  botDisplayName:            'bot_display_name',
   webhookUrl:                'webhook_url',
   webhookSecret:             'webhook_secret',
   // Phase 1 — feature flags
@@ -103,14 +101,12 @@ const VALIDATORS = {
   escalationAlertChannelId: SNOWFLAKE,
   escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
-  embedColor:               v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
   botLanguage:              v => ['fr', 'en', 'auto'].includes(v),
   require2fa:               v => ['none', 'founders', 'staff'].includes(v),
   memberReopenDays:         v => Number.isInteger(v) && v >= 0 && v <= 90,
   notifyMemberStage:        v => v === 0 || v === 1 || v === true || v === false,
   lowRatingThreshold:       v => Number.isInteger(v) && v >= 0 && v <= 4,
   memberPortalEnabled:      v => v === 0 || v === 1 || v === true || v === false,
-  botDisplayName:           v => typeof v === 'string' && v.length >= 1 && v.length <= 100,
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
   webhookSecret:            v => v === null || (typeof v === 'string' && v.length >= 16 && v.length <= 255),
   // Phase 1 — feature flags
@@ -314,7 +310,9 @@ router.get('/bot-identity', async (req, res) => {
   try {
     const guild = await client.guilds.fetch(req.guildId).catch(() => null);
     if (!guild) return res.status(404).json({ error: 'Serveur Discord introuvable' });
-    const me = guild.members.me;
+    // Not cached yet right after startup: fetched
+    const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+    if (!me) return res.status(503).json({ error: 'Bot introuvable sur ce serveur' });
     res.json({
       username:    client.user.username,
       nickname:    me.nickname || null,
