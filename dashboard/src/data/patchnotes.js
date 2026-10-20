@@ -12,6 +12,7 @@ export const VERSIONS = [
     date: '20 octobre 2026',
     title: 'Profils membres, procédures, accès invité et tableau de bord en anglais',
     changes: [
+      { type: 'new',  text: 'Accès invité temporaire : un lien en lecture seule vers des tickets choisis pour une personne extérieure, qui expire tout seul et dont chaque consultation est tracée' },
       { type: 'new',  text: 'Profils des membres : annuaire, statistiques, étiquettes (VIP…) et un fil de discussion du staff sur chaque membre, rappelé dans la fiche de ses tickets' },
       { type: 'new',  text: 'Ticket confidentiel : à l\'ouverture (MP ou espace membre), le membre peut demander que seuls les fondateurs voient son ticket, salon Discord compris' },
       { type: 'new',  text: 'Temps passé : chronomètre par ticket (et ajout manuel), cumulé par agent et par sujet dans Analytique et dans Mon activité' },

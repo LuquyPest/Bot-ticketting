@@ -130,6 +130,7 @@ const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs ar
 
 app.use('/api/auth', authLimiter);
 app.use('/api/member/auth', authLimiter);
+app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
 app.use('/api/sa/auth', authLimiter);
 app.use('/api', apiLimiter);
 
@@ -149,6 +150,7 @@ app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/push',     require('./routes/push'));
 app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
+app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 
 // POST /api/client-errors — crash report from the dashboard or the member space (utils/reportError.js
 // on the client), written to the error journal with context "navigateur". Open to signed-out
@@ -210,6 +212,7 @@ app.use('/api/reports',     withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./routes/incidents'));
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));
 app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./routes/profiles'));
+app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 // Super-admin announcements shown as a banner to founders
 app.use('/api/announcements', withGuild(['fondateur']), async (req, res) => {
   res.json(await require('../utils/announcements').activeBanners().catch(() => []));

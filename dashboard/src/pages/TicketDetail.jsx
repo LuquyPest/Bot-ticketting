@@ -1461,6 +1461,12 @@ export default function TicketDetail() {
               <div className="space-y-2">
                 {ticket.status === 'open' && (
                   <>
+                    {user?.role === 'fondateur' && (
+                      <button onClick={() => navigate(`/acces-invites?ticket=${ticket.id}`)}
+                        className="w-full py-2 px-3 text-xs rounded-xl font-medium border border-overlay/8 text-ink-2 hover:text-ink-1 hover:bg-overlay/4 transition-all">
+                        Partager avec un invité
+                      </button>
+                    )}
                     {can('close_ticket') && (
                       <button onClick={() => changeStatus('closed')} disabled={actionLoading}
                         className="w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all

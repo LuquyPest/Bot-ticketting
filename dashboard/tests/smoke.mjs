@@ -71,6 +71,9 @@ const MOCK = {
     tickets: [{ id: 1, subject: 'Problème de paiement 1', status: 'open' }] },
   '/api/profiles/200000000000000005/posts': [{ id: 1, member_id: '200000000000000005', author_id: '1', author_tag: 'Daryu', content: 'Déjà remboursé deux fois, vérifier avant tout geste commercial.', pinned: true, created_at: iso(500), replies: [
     { id: 2, member_id: '200000000000000005', parent_id: 1, author_id: '2', author_tag: 'Collègue', content: 'Noté, merci.', created_at: iso(400) }] }],
+  '/api/guest-invites': [{ id: 1, label: 'Maître Dupont', ticket_ids: [12, 45], include_notes: false, expires_at: new Date(now + 864e5).toISOString(), revoked_at: null, created_by_tag: 'Daryu', created_at: iso(60), last_used_at: iso(10), uses: 2, live: true }],
+  '/api/guest/me': { label: 'Maître Dupont', expiresAt: new Date(now + 864e5).toISOString(), includeNotes: false, guildName: 'Sunset FA' },
+  '/api/guest/tickets': [{ id: 12, subject: 'Litige commande', status: 'closed', owner_tag: 'membre1', created_at: iso(9000) }],
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
@@ -113,6 +116,8 @@ const PAGES = [
   ['equipe', '/equipe', 'Équipe'],
   ['activite', '/activite', 'Très rapide, merci'],
   ['incidents', '/incidents', '7 membre(s) touché(s)'],
+  ['acces-invites', '/acces-invites', 'Maître Dupont'],
+  ['invite', '/invite', 'Litige commande', true],
   ['profils', '/profils', 'Profils des membres'],
   ['profil', '/profils/200000000000000005', 'Déjà remboursé deux fois'],
   ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],

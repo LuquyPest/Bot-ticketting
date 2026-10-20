@@ -60,6 +60,10 @@ const ACTIONS = {
   incident_open:            ['Incident ouvert', 'config'],
   procedure_create:         ['Procédure créée', 'config'],
   member_note_add:          ['Note sur un membre', 'tickets'],
+  guest_invite_create:      ['Accès invité créé', 'config'],
+  guest_invite_revoke:      ['Accès invité révoqué', 'config'],
+  guest_session:            ['Connexion d\'un invité', 'tickets'],
+  guest_view:               ['Ticket consulté par un invité', 'tickets'],
   member_note_delete:       ['Note sur un membre supprimée', 'tickets'],
   member_labels:            ['Étiquettes d\'un membre', 'tickets'],
   procedure_update:         ['Procédure modifiée', 'config'],
@@ -100,7 +104,7 @@ const ACTIONS = {
 const CATEGORIES = {
   tickets: 'Tickets', moderation: 'Modération', equipe: 'Équipe', config: 'Configuration', integrations: 'Intégrations',
 };
-const SOURCES = { dashboard: 'Dashboard', discord: 'Discord', system: 'Automatique', api: 'API', sa: 'Super-admin' };
+const SOURCES = { dashboard: 'Dashboard', discord: 'Discord', system: 'Automatique', api: 'API', sa: 'Super-admin', guest: 'Invité' };
 
 const SYSTEM = { id: 'system', tag: 'Système', source: 'system' };
 

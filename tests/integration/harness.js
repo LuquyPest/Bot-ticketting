@@ -1985,6 +1985,51 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tpS]);
   }
 
+  // ── Temporary guest access ──
+  {
+    for (const k of await redis.keys('rl:*')) await redis.del(k);
+    const tg = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('47','u47','cguest1','closed','Litige')")).insertId;
+    const tOther = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('48','u48','cguest2','closed','Autre')")).insertId;
+    await db(`INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES
+      (?, '47', 'u47', 'Message du membre (litige)', 'user'), (?, '1', 'F', 'NOTE-INTERNE-LITIGE', 'web')`, [tg, tg]);
+    let r = await req('POST', '/api/guest-invites', { sid: sessions.S3T, body: { label: 'x', ticketIds: [tg], duration: '24h' } });
+    check('invités: création réservée aux fondateurs', r.status === 403, r.status);
+    r = await req('POST', '/api/guest-invites', { sid: sessions.FV, body: { label: 'Maître Dupont', ticketIds: [tg, 999999], duration: '24h' } });
+    check('invités: tickets inconnus refusés', r.status === 400, r.status);
+    r = await req('POST', '/api/guest-invites', { sid: sessions.FV, body: { label: 'Maître Dupont', ticketIds: [tg], duration: '24h' } });
+    const token = (r.body.link || '').split('#')[1];
+    check('invités: lien créé, jeton dans le fragment', r.status === 200 && /\/invite#gi_\d+_[0-9a-f]{64}$/.test(r.body.link), JSON.stringify(r.body));
+    const [stored] = await db('SELECT token_hash FROM guest_invites WHERE id = ?', [r.body.id]);
+    check('invités: seul le hachage du jeton est gardé', stored && !JSON.stringify(stored).includes(token.slice(-64)), '');
+    r = await req('POST', '/api/guest/session', { body: { token: token.slice(0, -1) + (token.endsWith('a') ? 'b' : 'a') } });
+    check('invités: jeton faux refusé', r.status === 401, r.status);
+    r = await req('POST', '/api/guest/session', { body: { token } });
+    const gCookie = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
+    check('invités: session ouverte avec le lien', r.status === 200, JSON.stringify(r.body));
+    r = await req('GET', '/api/guest/tickets', { headers: gCookie });
+    check('invités: seuls les tickets partagés', r.status === 200 && r.body.length === 1 && r.body[0].id === tg, JSON.stringify(r.body));
+    r = await req('GET', `/api/guest/tickets/${tg}`, { headers: gCookie });
+    check('invités: conversation sans notes internes (option non cochée)', r.status === 200 && r.body.messages.some(m => /litige/.test(m.content)) && !JSON.stringify(r.body).includes('NOTE-INTERNE-LITIGE'), JSON.stringify(r.body).slice(0, 200));
+    check('invités: autre ticket introuvable', (await req('GET', `/api/guest/tickets/${tOther}`, { headers: gCookie })).status === 404);
+    check('invités: aucun accès au dashboard', (await req('GET', '/api/tickets', { headers: gCookie })).status === 401);
+    const [ev] = await db("SELECT actor_tag, source FROM audit_log WHERE action = 'guest_view' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [tg]);
+    check('invités: consultation inscrite au journal', ev?.source === 'guest' && /Maître Dupont/.test(ev.actor_tag), JSON.stringify(ev));
+    const list = await req('GET', '/api/guest-invites', { sid: sessions.FV });
+    const inv = list.body.find(i => i.label === 'Maître Dupont');
+    check('invités: utilisation suivie', inv?.uses === 1 && inv.last_used_at && inv.live, JSON.stringify(inv));
+    await req('DELETE', `/api/guest-invites/${inv.id}`, { sid: sessions.FV });
+    check('invités: révocation immédiate', (await req('GET', '/api/guest/tickets', { headers: gCookie })).status === 401);
+    // With internal notes, then expiry
+    r = await req('POST', '/api/guest-invites', { sid: sessions.FV, body: { label: 'Modérateur partenaire', ticketIds: [tg], includeNotes: true, duration: '1h' } });
+    const token2 = r.body.link.split('#')[1];
+    r = await req('POST', '/api/guest/session', { body: { token: token2 } });
+    const gCookie2 = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
+    r = await req('GET', `/api/guest/tickets/${tg}`, { headers: gCookie2 });
+    check('invités: notes internes si autorisées', JSON.stringify(r.body).includes('NOTE-INTERNE-LITIGE'), '');
+    await db("UPDATE guest_invites SET expires_at = NOW() - INTERVAL 1 MINUTE WHERE label = 'Modérateur partenaire'");
+    check('invités: expiration automatique', (await req('GET', '/api/guest/tickets', { headers: gCookie2 })).status === 401);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);
@@ -2306,7 +2351,7 @@ async function main() {
   const [sysClose] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_close' AND source = 'api'");
   check('journal: fermeture via API avec source API', Number(sysClose.n) >= 1, JSON.stringify(sysClose));
   r = await req('GET', '/api/audit?category=tickets', { sid: sessions.F });
-  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action.startsWith('member_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
+  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action.startsWith('member_') || x.action.startsWith('guest_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
   r = await req('GET', `/api/audit?ticket=%23${st1.id}`, { sid: sessions.F });
   check('journal: filtre ticket', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.ticket_id === st1.id), r.body.total);
   r = await req('GET', '/api/audit?source=api', { sid: sessions.F });

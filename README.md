@@ -350,6 +350,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV et onglet Analytique |
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances |
+| **Accès invités** | fondateur | Accès temporaire en lecture seule à des tickets choisis pour une personne extérieure (modérateur d'un partenaire, avocat…), sans compte Discord : nom de l'invité, tickets, notes internes incluses ou non, durée (1 h à 30 jours). Le lien (`/invite#…`, jeton dans le fragment, jamais envoyé au serveur ni aux journaux) n'est montré qu'une fois et seul son hachage est stocké ; l'invité n'a aucun droit sur le dashboard, l'expiration et la révocation sont vérifiées à chaque requête, et chaque ouverture de ticket est inscrite au journal (source « Invité »). Bouton « Partager avec un invité » dans la fiche |
 | **Données membres** | fondateur | RGPD : ce que le serveur conserve sur un membre (par ID Discord), export JSON complet, suppression définitive de ses tickets (messages, transcripts, notes, tags), de ses messages et participations dans les tickets d'autres personnes et de sa blacklist ; salons des tickets ouverts supprimés, journal anonymisé. Les tickets des autres membres ne sont jamais touchés ; impossible sur un compte du staff. Accessible aussi depuis la fiche ticket |
 | **Champs** | fondateur, `manage_settings` | Champs personnalisés demandés au membre (texte ou nombre, obligatoires ou non, par sujet) |
 | **Procédures** | fondateur, `manage_settings` | Listes d'étapes à cocher par sujet (ou pour tous les tickets) : affichées dans la fiche avec leur avancement, qui a coché et quand, synchronisées en direct ; fermer un ticket avec des étapes restantes demande une confirmation. Les cases cochées survivent aux modifications de la procédure |
@@ -677,6 +678,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `ticket_views` | Vues enregistrées de la liste des tickets |
 | `ticket_fields` / `ticket_field_values` | Champs personnalisés et valeurs |
 | `subject_rules` | Règles automatiques par sujet ou par mots-clés du message |
+| `guest_invites` | Accès invités (hachage du jeton, tickets, expiration, utilisations) |
 | `member_notes` / `member_profiles` | Discussion du staff et étiquettes sur chaque membre |
 | `ticket_time` | Temps passé (chronos et ajouts manuels) |
 | `procedures` / `ticket_procedure_checks` | Procédures par sujet et étapes cochées sur chaque ticket |

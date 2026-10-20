@@ -330,6 +330,18 @@ const MIGRATIONS = [
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`,
     ],
   },
+  {
+    version: 24,
+    name: 'Accès invités temporaires',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS guest_invites (
+        id INT AUTO_INCREMENT PRIMARY KEY, token_hash CHAR(64) NOT NULL UNIQUE, label VARCHAR(100) NOT NULL,
+        ticket_ids JSON NOT NULL, include_notes TINYINT(1) NOT NULL DEFAULT 0,
+        expires_at DATETIME NOT NULL, revoked_at DATETIME DEFAULT NULL,
+        created_by_id VARCHAR(32) NOT NULL, created_by_tag VARCHAR(100) NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_used_at DATETIME DEFAULT NULL, uses INT NOT NULL DEFAULT 0)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

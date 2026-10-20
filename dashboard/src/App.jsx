@@ -47,6 +47,8 @@ const Incidents   = lazy(() => import('./pages/Incidents'));
 const ApiDocs     = lazy(() => import('./pages/ApiDocs'));
 const Procedures  = lazy(() => import('./pages/Procedures'));
 const Profiles    = lazy(() => import('./pages/Profiles'));
+const GuestInvites = lazy(() => import('./pages/GuestInvites'));
+const GuestView   = lazy(() => import('./pages/GuestView'));
 
 function PageLoader() {
   return (
@@ -146,6 +148,8 @@ export default function App() {
                 </Suspense>
               } />
             ))}
+            {/* Temporary guest access (read-only, token in the link's fragment) */}
+            <Route path="/invite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><GuestView /></ErrorBoundary></Suspense>} />
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>
                 <ErrorBoundary><Login /></ErrorBoundary>
@@ -205,6 +209,7 @@ export default function App() {
                         } />
                         <Route path="queue"      element={<ErrorBoundary><Queue /></ErrorBoundary>} />
                         <Route path="activite"   element={<ErrorBoundary><Activity /></ErrorBoundary>} />
+                        <Route path="acces-invites" element={<RequireRole role="fondateur"><ErrorBoundary><GuestInvites /></ErrorBoundary></RequireRole>} />
                         <Route path="profils" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="profils/:memberId" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="procedures" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Procedures /></ErrorBoundary></RequireRole>} />
