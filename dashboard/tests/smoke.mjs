@@ -62,6 +62,9 @@ const MOCK = {
   '/api/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', active: true, steps: [{ id: 'a1b2c3d4', text: 'Demander la capture' }, { id: 'b2c3d4e5', text: 'Vérifier sur le tableau Stripe' }] }],
   '/api/tickets/1/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', done: 1, total: 2, steps: [
     { id: 'a1b2c3d4', text: 'Demander la capture', checked: true, checked_by_tag: 'Daryu', checked_at: iso(20) }, { id: 'b2c3d4e5', text: 'Vérifier sur le tableau Stripe', checked: false }] }],
+  '/api/tickets/1/time': { total: 3725, mine: 1800, running: { id: 3, seconds: 125, running: true }, byUser: [{ user_id: '1', user_tag: 'Daryu', seconds: 1925 }, { user_id: '2', user_tag: 'Collègue', seconds: 1800 }], entries: [] },
+  '/api/tickets/time/running': { id: 3, ticket_id: 1, elapsed: 125, subject: 'Problème de paiement 1' },
+  '/api/analytics/time': { days: 30, scope: 'team', total: 18000, byUser: [{ user_id: '1', user_tag: 'Daryu', seconds: 12000, tickets: 8, perTicket: 1500 }], bySubject: [{ subject: 'Paiement', seconds: 9000, tickets: 5, perTicket: 1800 }], top: [{ ticket_id: 1, subject: 'Paiement', seconds: 3725 }] },
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },

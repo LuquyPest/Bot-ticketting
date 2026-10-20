@@ -121,6 +121,20 @@ router.get('/sla', async (req, res) => {
 // "open" at creation, then follows its stage changes until closing (or now when still open).
 const { stageCompliance, median, avg } = require('../../utils/stageStats');
 
+// GET /api/analytics/time?days= — time spent per member, per subject, longest tickets. The
+// per-member figures of others need fondateur or view_audit; otherwise only one's own time.
+router.get('/time', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
+    const full = req.userIsFondateur || req.userPermissions?.has('view_audit');
+    const stats = await require('../../utils/ticketTime').timeStats(req.guildDb, days, { userId: full ? null : req.session.user.id });
+    res.json({ ...stats, scope: full ? 'team' : 'mine' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/quality', async (req, res) => {
   try {
     const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);

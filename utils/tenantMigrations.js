@@ -301,6 +301,20 @@ const MIGRATIONS = [
         CONSTRAINT fk_tpc_proc FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE)`,
     ],
   },
+  {
+    version: 22,
+    name: 'Temps passé sur les tickets',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_time (
+        id INT AUTO_INCREMENT PRIMARY KEY, ticket_id INT NOT NULL,
+        user_id VARCHAR(32) NOT NULL, user_tag VARCHAR(100) NOT NULL,
+        source ENUM('timer','manual') NOT NULL DEFAULT 'timer',
+        started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ended_at DATETIME DEFAULT NULL,
+        seconds INT DEFAULT NULL, note VARCHAR(200) DEFAULT NULL,
+        INDEX idx_tt_user_running (user_id, ended_at), INDEX idx_tt_ticket (ticket_id),
+        CONSTRAINT fk_tt_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

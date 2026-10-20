@@ -1031,6 +1031,69 @@ router.get('/:id/history', async (req, res) => {
   }
 });
 
+// ── Time spent (utils/ticketTime.js) ──
+// GET /api/tickets/time/running — my running stopwatch, on any ticket I can still see
+router.get('/time/running', async (req, res) => {
+  try {
+    const run = await require('../../utils/ticketTime').runningTimer(req.guildDb, req.session.user.id);
+    res.json(run);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+router.get('/:id/time', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json(await require('../../utils/ticketTime').ticketTime(req.guildDb, ticket.id, req.session.user.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// POST /api/tickets/:id/time/start | stop — stopwatch (starting one stops my other one)
+const timerAction = action => async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const tt = require('../../utils/ticketTime');
+    if (action === 'start') {
+      if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+      await tt.startTimer(req.guildDb, ticket.id, req.session.user);
+    } else {
+      await req.guildDb(`UPDATE ticket_time SET ended_at = NOW(), seconds = LEAST(TIMESTAMPDIFF(SECOND, started_at, NOW()), ?) WHERE ticket_id = ? AND user_id = ? AND ended_at IS NULL`,
+        [tt.MAX_SESSION_S, ticket.id, req.session.user.id]);
+    }
+    res.json(await tt.ticketTime(req.guildDb, ticket.id, req.session.user.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+};
+router.post('/:id/time/start', timerAction('start'));
+router.post('/:id/time/stop', timerAction('stop'));
+
+// POST /api/tickets/:id/time { minutes, note } — time added by hand (1 to 600 minutes)
+router.post('/:id/time', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const minutes = parseInt(req.body?.minutes);
+    if (!(minutes >= 1 && minutes <= 600)) return res.status(400).json({ error: 'Durée entre 1 et 600 minutes' });
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) || null : null;
+    await req.guildDb(`INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds, note)
+                       VALUES (?, ?, ?, 'manual', NOW() - INTERVAL ? MINUTE, NOW(), ?, ?)`,
+      [ticket.id, req.session.user.id, req.session.user.username, minutes, minutes * 60, note]);
+    res.json(await require('../../utils/ticketTime').ticketTime(req.guildDb, ticket.id, req.session.user.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// DELETE /api/tickets/time/:entryId — remove one of my entries (founders: any)
+router.delete('/time/:entryId', async (req, res) => {
+  try {
+    if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
+    const [e] = await req.guildDb('SELECT id, ticket_id, user_id FROM ticket_time WHERE id = ?', [parseInt(req.params.entryId) || 0]);
+    if (!e) return res.status(404).json({ error: 'Entrée introuvable' });
+    if (e.user_id !== req.session.user.id && !req.userIsFondateur) return res.status(403).json({ error: 'Seul son auteur peut la retirer' });
+    await req.guildDb('DELETE FROM ticket_time WHERE id = ?', [e.id]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // GET /api/tickets/:id/procedures — checklists of the ticket's subject with their progress
 router.get('/:id/procedures', async (req, res) => {
   try {

@@ -323,6 +323,7 @@ function createManager(db, client, guildId) {
       `UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=?, closed_by_id=? WHERE id=?`,
       [closedByUser.tag, byStaff ? closedByUser.id : null, ticket.id]
     );
+    await require('./ticketTime').stopTicketTimers(db, ticket.id).catch(() => null); // stopwatches stop with the ticket
     if (byStaff) {
       await db(
         `INSERT INTO admin_stats (admin_id, admin_tag, tickets_claimed, tickets_closed) VALUES (?, ?, 0, 1)
@@ -579,6 +580,7 @@ function createManager(db, client, guildId) {
     await db('INSERT IGNORE INTO ticket_assignees (ticket_id, user_id, assigned_by_id) SELECT ?, user_id, assigned_by_id FROM ticket_assignees WHERE ticket_id = ?', [targetId, sourceId]);
     await db('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) SELECT ?, tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [targetId, sourceId]);
     await db('UPDATE scheduled_messages SET ticket_id = ? WHERE ticket_id = ? AND sent = 0', [targetId, sourceId]);
+    await db('UPDATE ticket_time SET ticket_id = ? WHERE ticket_id = ?', [targetId, sourceId]).catch(() => null); // time spent follows
     await syncPrimaryAssignee(targetId);
     await db(
       `UPDATE tickets SET status = 'closed', closed_at = NOW(), closed_by_tag = ?, closed_by_id = NULL, merged_into = ? WHERE id = ?`,

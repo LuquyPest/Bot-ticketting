@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   BarChart2, Activity, Users, Shield, Clock, AlertTriangle,
-  TrendingUp, CheckCircle, RefreshCw, Star, Download } from 'lucide-react';
+  TrendingUp, CheckCircle, RefreshCw, Star, Download, Timer } from 'lucide-react';
+import { fmtSeconds } from '../utils/duration';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line
@@ -398,6 +399,48 @@ function Metric({ label, value, sub }) {
   );
 }
 
+// Time spent: per member (team view for fondateur / view_audit, own time otherwise), per subject,
+// longest tickets
+function TabTime() {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  useEffect(() => { setData(null); api.get('/analytics/time', { params: { days } }).then(r => setData(r.data)).catch(() => setData(false)); }, [days]);
+  const bar = (v, max) => <span className="block h-1.5 rounded-full bg-primary/70" style={{ width: `${Math.max(2, Math.round(100 * v / Math.max(1, max)))}%` }} />;
+  const Table = ({ title, rows, label, extra }) => (
+    <ChartCard title={title} icon={Timer}>
+      {!rows.length ? <p className="text-xs text-ink-4">Aucun temps enregistré sur la période</p> : (
+        <ul className="space-y-2.5">
+          {rows.map((r, i) => (
+            <li key={i} className="text-xs">
+              <div className="flex items-baseline gap-2"><span className="text-ink-1 flex-1 truncate">{label(r)}</span><span className="text-ink-1 font-semibold tabular-nums">{fmtSeconds(r.seconds)}</span></div>
+              {extra && <p className="text-[11px] text-ink-4">{extra(r)}</p>}
+              <div className="mt-1">{bar(r.seconds, rows[0].seconds)}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </ChartCard>
+  );
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-ink-2 flex-1">{data ? <>Total : <strong className="text-ink-1">{fmtSeconds(data.total)}</strong>{data.scope === 'mine' ? ' (ton temps uniquement)' : ''}</> : ' '}</p>
+        <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Période" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs">
+          {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
+        </select>
+      </div>
+      {data === false && <p className="text-sm text-red-400">Impossible de charger le temps passé.</p>}
+      {data && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <Table title={data.scope === 'mine' ? 'Mon temps' : 'Par membre du staff'} rows={data.byUser} label={r => r.user_tag} extra={r => `${r.tickets} ticket(s) · ${fmtSeconds(r.perTicket)} par ticket`} />
+          <Table title="Par sujet" rows={data.bySubject} label={r => r.subject} extra={r => `${r.tickets} ticket(s) · ${fmtSeconds(r.perTicket)} par ticket`} />
+          <Table title="Tickets les plus longs" rows={data.top} label={r => `#${r.ticket_id} ${r.subject || ''}`} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TabQuality() {
   const [days, setDays] = useState(30);
   const [q, setQ] = useState(null);
@@ -521,6 +564,7 @@ const TABS = [
   { id: 'sla',    label: 'Vue SLA',            icon: Shield },
   { id: 'quality', label: 'Qualité',            icon: Star },
   { id: 'staff',  label: 'Comparatif Staff',   icon: Users },
+  { id: 'time',   label: 'Temps passé',        icon: Timer },
 ];
 
 export default function Analytics() {
@@ -555,6 +599,7 @@ export default function Analytics() {
       {tab === 'sla'    && <TabSLA />}
       {tab === 'quality' && <TabQuality />}
       {tab === 'staff'  && <TabStaff />}
+      {tab === 'time'   && <TabTime />}
     </div>
   );
 }

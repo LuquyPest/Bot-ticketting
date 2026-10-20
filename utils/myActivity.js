@@ -42,6 +42,7 @@ async function myActivity(db, userId, days = 30) {
         WHERE r.closed_by_id = ? AND r.comment IS NOT NULL AND r.comment <> '' ORDER BY r.rated_at DESC LIMIT 5`, [userId]),
     db('SELECT COUNT(*) AS n FROM ticket_assignees a JOIN tickets t ON t.id = a.ticket_id WHERE a.user_id = ? AND t.status = \'open\'', [userId]),
   ]);
+  const [{ s: timeSeconds }] = await db('SELECT COALESCE(SUM(COALESCE(seconds, LEAST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 28800))), 0) AS s FROM ticket_time WHERE user_id = ? AND started_at >= ?', [userId, since]).catch(() => [{ s: 0 }]);
 
   const mineFr = fr.filter(r => r.author_id === userId).map(r => Number(r.mins));
   const allFr = fr.map(r => Number(r.mins));
@@ -69,6 +70,7 @@ async function myActivity(db, userId, days = 30) {
     days,
     closed: Number(counts.closed), replies: Number(counts.replies), tickets: Number(counts.tickets), notes: Number(counts.notes),
     openAssigned: Number(openAssigned[0].n),
+    timeSeconds: Number(timeSeconds),
     firstResponse: { medianMinutes: median(mineFr), count: mineFr.length, teamMedianMinutes: median(allFr) },
     rating: { average: avg(mineRatings), count: mineRatings.length, teamAverage: avg(ratings.map(r => Number(r.rating))), distribution },
     team: { closedPerMember: Number(team.closers) ? Math.round(Number(team.closed) / Number(team.closers)) : null },

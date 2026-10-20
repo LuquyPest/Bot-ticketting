@@ -13,6 +13,7 @@ import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
 import useDraft from '../hooks/useDraft';
 import MessageContent from '../components/MessageContent';
+import TimeTracker from '../components/TimeTracker';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 import { confirmToast } from '../utils/confirmToast';
@@ -1492,6 +1493,10 @@ export default function TicketDetail() {
               </div>
             </div>
           )}
+
+          {/* TEMPS PASSÉ */}
+          <TimeTracker ticketId={ticketId} canTrack={can('reply_ticket')} open={ticket.status === 'open'} userId={user?.id}
+            isFounder={user?.role === 'fondateur'} SectionTitle={SectionTitle} panelCard={panelCard} />
 
           {/* PROCÉDURES */}
           {procedures.map(proc => (

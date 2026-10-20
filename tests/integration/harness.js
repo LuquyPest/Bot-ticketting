@@ -1866,6 +1866,41 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tp, to]]);
   }
 
+  // ── Time spent on tickets ──
+  {
+    const CHT1 = '900000000000000180', CHT2 = '900000000000000181';
+    channels.set(CHT1, mkChannel(CHT1, G)); channels.set(CHT2, mkChannel(CHT2, G));
+    const t1t = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('45','u45',?,'open','Temps A')", [CHT1])).insertId;
+    const t2t = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('46','u46',?,'open','Temps B')", [CHT2])).insertId;
+    let r = await req('POST', `/api/tickets/${t1t}/time/start`, { sid: sessions.FV });
+    check('temps: chrono démarré', r.status === 200 && r.body.running, JSON.stringify(r.body));
+    await db('UPDATE ticket_time SET started_at = NOW() - INTERVAL 10 MINUTE WHERE ticket_id = ? AND ended_at IS NULL', [t1t]);
+    r = await req('GET', '/api/tickets/time/running', { sid: sessions.FV });
+    check('temps: chrono en cours visible partout', r.body?.ticket_id === t1t && r.body.elapsed >= 600, JSON.stringify(r.body));
+    await req('POST', `/api/tickets/${t2t}/time/start`, { sid: sessions.FV });
+    r = await req('GET', `/api/tickets/${t1t}/time`, { sid: sessions.FV });
+    check('temps: démarrer un autre chrono arrête le premier', !r.body.running && r.body.total >= 600 && r.body.total < 700, JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${t1t}/time`, { sid: sessions.FV, body: { minutes: 15, note: 'appel téléphonique' } });
+    check('temps: ajout manuel', r.status === 200 && r.body.total >= 1500 && r.body.entries.some(e => e.source === 'manual' && e.note === 'appel téléphonique'), JSON.stringify(r.body));
+    const manual = r.body.entries.find(e => e.source === 'manual');
+    r = await req('POST', `/api/tickets/${t1t}/time`, { sid: sessions.FV, body: { minutes: 0 } });
+    check('temps: durée invalide refusée', r.status === 400, r.status);
+    r = await req('DELETE', `/api/tickets/time/${manual.id}`, { sid: sessions.S3T });
+    check('temps: une entrée ne se retire que par son auteur', r.status === 403, r.status);
+    // Forgotten stopwatch: capped at 8 h
+    await db('UPDATE ticket_time SET started_at = NOW() - INTERVAL 30 HOUR WHERE ticket_id = ? AND ended_at IS NULL', [t2t]);
+    await createManager(db, fakeClient, G).closeTicketWithTranscript(channels.get(CHT2), { id: U.F, tag: 'F', username: 'F' });
+    const [closed] = await db('SELECT seconds, ended_at FROM ticket_time WHERE ticket_id = ? ORDER BY id DESC LIMIT 1', [t2t]);
+    check('temps: arrêté à la fermeture, plafonné à 8 h', closed.ended_at && Number(closed.seconds) === 8 * 3600, JSON.stringify(closed));
+    r = await req('GET', '/api/analytics/time', { sid: sessions.FV, query: { days: 7 } });
+    check('temps: analytique de l équipe (fondateur)', r.body.scope === 'team' && r.body.byUser.some(u => u.user_id === U.F) && r.body.bySubject.some(x => x.subject === 'Temps A'), JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', '/api/analytics/time', { sid: sessions.S3T, query: { days: 7 } });
+    check('temps: sans view_audit, seulement son propre temps', r.body.scope === 'mine' && !r.body.byUser.some(u => u.user_id === U.F), JSON.stringify(r.body).slice(0, 200));
+    r = await req('GET', '/api/staff/me/activity', { sid: sessions.FV, query: { days: 7 } });
+    check('temps: total dans Mon activité', r.body.timeSeconds >= 8 * 3600, r.body.timeSeconds);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [t1t]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

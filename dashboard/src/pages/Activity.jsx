@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, CheckCircle2, Clock, Star, Inbox, TrendingUp } from 'lucide-react';
+import { MessageSquare, CheckCircle2, Clock, Star, Inbox, TrendingUp, Timer } from 'lucide-react';
+import { fmtSeconds } from '../utils/duration';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
 import { fmtMinutes } from '../components/SlaBadge';
@@ -68,7 +69,7 @@ export default function Activity() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
             <Tile icon={MessageSquare} label="Réponses envoyées" value={data.replies} sub={`sur ${data.tickets} ticket(s)`} />
             <Tile icon={CheckCircle2} label="Tickets fermés" value={data.closed} sub={data.team.closedPerMember != null ? `équipe : ${data.team.closedPerMember} par personne` : null} />
             <Tile icon={Clock} label="1re réponse (médiane)" value={data.firstResponse.medianMinutes != null ? fmtMinutes(data.firstResponse.medianMinutes) : '—'}
@@ -76,6 +77,7 @@ export default function Activity() {
             <Tile icon={Star} label="Note moyenne reçue" value={data.rating.average != null ? `${data.rating.average}/5` : '—'}
               sub={`${data.rating.count} note(s)${data.rating.teamAverage != null ? ` · équipe : ${data.rating.teamAverage}/5` : ''}`} />
             <Tile icon={Inbox} label="Tickets ouverts attribués" value={data.openAssigned} sub={`${data.notes} note(s) interne(s) sur la période`} />
+            <Tile icon={Timer} label="Temps passé" value={fmtSeconds(data.timeSeconds || 0)} sub="chronos et temps ajoutés sur la période" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

@@ -11,6 +11,7 @@ import { useSSECtx } from '../context/SSEContext';
 import { useSSE } from '../hooks/useSSE';
 import { useTheme } from '../context/ThemeContext';
 import NotificationBell from './NotificationBell';
+import RunningTimer from './RunningTimer';
 import { AVAILABILITY } from '../utils/availability';
 import CommandPalette from './CommandPalette';
 import GuildSwitcher from './GuildSwitcher';
@@ -221,6 +222,8 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
+
+        <RunningTimer />
 
         {/* Guild switcher */}
         <div className="px-2 pb-1 border-t border-overlay/6 pt-2">
