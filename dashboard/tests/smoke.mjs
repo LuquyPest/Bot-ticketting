@@ -140,7 +140,7 @@ const PAGES = [
 // EventSource has no mock: its connection errors are expected
 const IGNORED = /EventSource|text\/event-stream|MIME type|\/api\/events|status of 401/;
 
-const server = await preview({ preview: { port: 4175, strictPort: true }, logLevel: 'error' });
+const server = await preview({ preview: { host: '127.0.0.1', port: 4175, strictPort: true }, logLevel: 'error' });
 const base = 'http://127.0.0.1:4175';
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const failures = [];
