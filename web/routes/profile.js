@@ -108,6 +108,18 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
   }
 });
 
+// GET/PUT /api/profile/whats-new — last patch notes version seen (« Nouveautés » card)
+router.get('/whats-new', requireAuth, async (req, res) => {
+  const [row] = await globalQuery('SELECT seen_version FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
+  res.json({ seen: row?.seen_version || null });
+});
+router.put('/whats-new', requireAuth, async (req, res) => {
+  const v = typeof req.body?.version === 'string' ? req.body.version : '';
+  if (!/^v\d+(\.\d+){0,2}$/.test(v)) return res.status(400).json({ error: 'Version invalide' });
+  await globalQuery('INSERT INTO user_prefs (user_id, seen_version) VALUES (?, ?) ON DUPLICATE KEY UPDATE seen_version = VALUES(seen_version)', [req.session.user.id, v]);
+  res.json({ seen: v });
+});
+
 // GET/PUT /api/profile/availability — available / busy / away (shown when assigning tickets)
 const AVAILABILITY = ['available', 'busy', 'away'];
 router.get('/availability', requireAuthWithGuild, async (req, res) => {

@@ -224,6 +224,12 @@ async function ensureGlobalTables(config) {
         created_by  VARCHAR(100) NOT NULL,
         created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // Per-account preferences shared by every server (last patch notes version seen…)
+      `CREATE TABLE IF NOT EXISTS user_prefs (
+        user_id      VARCHAR(32) NOT NULL PRIMARY KEY,
+        seen_version VARCHAR(20) DEFAULT NULL,
+        updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
       // Plans: preset limits assigned to guilds (copied into guilds.max_*)
       `CREATE TABLE IF NOT EXISTS plans (
         id                        INT AUTO_INCREMENT PRIMARY KEY,

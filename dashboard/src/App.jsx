@@ -8,6 +8,7 @@ import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import WhatsNew, { useWhatsNew } from './components/WhatsNew';
 
 const SAApp       = lazy(() => import('./pages/sa/SAApp'));
 const Login       = lazy(() => import('./pages/Login'));
@@ -109,6 +110,9 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Founders see what changed since their last visit
+  const whatsNew = useWhatsNew(user?.role === 'fondateur' && !!user?.guildId);
+
   const logout = async () => {
     clearAllDrafts();
     await api.post('/auth/logout');
@@ -123,7 +127,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-    <AuthCtx.Provider value={{ user, setUser, loading, logout, selectGuild, sidebarOpen, setSidebarOpen }}>
+    <AuthCtx.Provider value={{ user, setUser, loading, logout, selectGuild, sidebarOpen, setSidebarOpen, whatsNew }}>
       <SSEProvider>
         <NotificationProvider>
           <Routes>
@@ -178,6 +182,7 @@ export default function App() {
                   )}
                   <main className="flex-1 overflow-y-auto min-w-0 pt-10 lg:pt-0">
                     <AnnouncementBanner />
+                    {whatsNew.unseen.length > 0 && <WhatsNew {...whatsNew} />}
                     <Suspense fallback={<PageLoader />}>
                       <Routes>
                         <Route index element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />

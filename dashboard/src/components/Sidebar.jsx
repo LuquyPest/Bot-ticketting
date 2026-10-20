@@ -59,7 +59,7 @@ const SSE_DOT = {
 };
 
 export default function Sidebar() {
-  const { user, logout, sidebarOpen, setSidebarOpen } = useAuth();
+  const { user, logout, sidebarOpen, setSidebarOpen, whatsNew } = useAuth();
   const { status } = useSSECtx() || { status: 'connecting' };
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -200,6 +200,11 @@ export default function Sidebar() {
                     }`}
                   />
                   <span className="truncate flex-1">{label}</span>
+                  {to === '/patchnotes' && whatsNew?.unseen?.length > 0 && (
+                    <span className="ml-auto shrink-0 px-1.5 h-[18px] rounded-full bg-primary/20 border border-primary/30 text-primary-light text-[10px] font-bold flex items-center" aria-label="Nouveautés non vues">
+                      Nouveau
+                    </span>
+                  )}
                   {/* Unclaimed badge on Tickets */}
                   {to === '/tickets' && unclaimedCount > 0 && (
                     <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1

@@ -1803,6 +1803,18 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[a.ticket.id, b.ticket.id, c.ticket.id]]);
   }
 
+  // ── « Nouveautés »: last patch notes version seen ──
+  {
+    let r = await req('GET', '/api/profile/whats-new', { sid: sessions.FV });
+    check('nouveautés: rien de vu au départ', r.status === 200 && r.body.seen === null, JSON.stringify(r.body));
+    r = await req('PUT', '/api/profile/whats-new', { sid: sessions.FV, body: { version: 'v2.17' } });
+    const again = await req('GET', '/api/profile/whats-new', { sid: sessions.FV });
+    check('nouveautés: version vue enregistrée', r.status === 200 && again.body.seen === 'v2.17', JSON.stringify(again.body));
+    r = await req('PUT', '/api/profile/whats-new', { sid: sessions.FV, body: { version: '<script>' } });
+    check('nouveautés: version invalide refusée', r.status === 400, r.status);
+    check('nouveautés: réservé aux comptes connectés', (await req('GET', '/api/profile/whats-new')).status === 401);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

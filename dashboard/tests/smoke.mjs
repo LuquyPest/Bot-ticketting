@@ -58,6 +58,7 @@ const MOCK = {
     paths: { '/tickets/{id}': { get: { summary: 'Détail d’un ticket', description: 'Le ticket et ses messages.\n\nPermission', 'x-permission': 'read_tickets',
       parameters: [{ name: 'id', in: 'path', required: true, description: 'Numéro du ticket', schema: { type: 'integer' } }],
       responses: { 200: { content: { 'application/json': { example: { id: 42, status: 'open' } } } } } } } } },
+  '/api/profile/whats-new': { seen: 'v2.15' },
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
@@ -91,7 +92,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 // [name, path, text that must be visible, anonymous visitor]
 const PAGES = [
   ['login', '/login', 'Discord', true],
-  ['dashboard', '/', 'Dashboard'],
+  ['dashboard', '/', 'Nouveautés depuis ta dernière visite'],
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Voici la capture'],
   ['settings', '/settings', 'Paramètres'],
@@ -100,6 +101,7 @@ const PAGES = [
   ['equipe', '/equipe', 'Équipe'],
   ['activite', '/activite', 'Très rapide, merci'],
   ['incidents', '/incidents', '7 membre(s) touché(s)'],
+  ['patchnotes', '/patchnotes', 'Patchnotes'],
   ['docs-api', '/docs-api', 'Documentation de l'],
   ['sa', '/sa/overview', "Vue d'ensemble"],
   ['espace-login', '/espace', 'Se connecter avec Discord', true],
