@@ -59,6 +59,9 @@ const MOCK = {
       parameters: [{ name: 'id', in: 'path', required: true, description: 'Numéro du ticket', schema: { type: 'integer' } }],
       responses: { 200: { content: { 'application/json': { example: { id: 42, status: 'open' } } } } } } } } },
   '/api/profile/whats-new': { seen: 'v2.15' },
+  '/api/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', active: true, steps: [{ id: 'a1b2c3d4', text: 'Demander la capture' }, { id: 'b2c3d4e5', text: 'Vérifier sur le tableau Stripe' }] }],
+  '/api/tickets/1/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', done: 1, total: 2, steps: [
+    { id: 'a1b2c3d4', text: 'Demander la capture', checked: true, checked_by_tag: 'Daryu', checked_at: iso(20) }, { id: 'b2c3d4e5', text: 'Vérifier sur le tableau Stripe', checked: false }] }],
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
@@ -101,6 +104,7 @@ const PAGES = [
   ['equipe', '/equipe', 'Équipe'],
   ['activite', '/activite', 'Très rapide, merci'],
   ['incidents', '/incidents', '7 membre(s) touché(s)'],
+  ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],
   ['patchnotes', '/patchnotes', 'Patchnotes'],
   ['docs-api', '/docs-api', 'Documentation de l'],
   ['sa', '/sa/overview', "Vue d'ensemble"],

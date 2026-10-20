@@ -1836,6 +1836,36 @@ async function main() {
     await req('PATCH', '/api/config', { sid: sessions.FV, body: { portalLogo: null, portalColor: null, portalWelcome: null } });
   }
 
+  // ── Procedures by subject ──
+  {
+    let r = await req('POST', '/api/procedures', { sid: sessions.FV, body: { title: 'Paiement', subject: 'paiement', steps: [{ text: 'Demander la capture' }, { text: 'Vérifier Stripe' }] } });
+    const proc = r.body;
+    check('procédures: créée avec identifiants d étapes', r.status === 200 && proc.steps.length === 2 && proc.steps.every(s => /^[0-9a-f]{8}$/.test(s.id)), JSON.stringify(r.body));
+    r = await req('POST', '/api/procedures', { sid: sessions.FV, body: { title: 'Vide', steps: [] } });
+    check('procédures: au moins une étape', r.status === 400, r.status);
+    r = await req('POST', '/api/procedures', { sid: sessions.S3T, body: { title: 'x', steps: [{ text: 'y' }] } });
+    check('procédures: réservées à manage_settings', r.status === 403, r.status);
+    const tp = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('43','u43','cproc1','open','Problème de PAIEMENT')")).insertId;
+    const to = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('44','u44','cproc2','open','Compte')")).insertId;
+    r = await req('GET', `/api/tickets/${tp}/procedures`, { sid: sessions.FV });
+    check('procédures: appliquée selon le sujet (accents, casse)', r.body.length === 1 && r.body[0].total === 2 && r.body[0].done === 0, JSON.stringify(r.body));
+    check('procédures: pas sur un autre sujet', (await req('GET', `/api/tickets/${to}/procedures`, { sid: sessions.FV })).body.length === 0);
+    r = await req('PUT', `/api/tickets/${tp}/procedures/${proc.id}/steps/${proc.steps[0].id}`, { sid: sessions.FV, body: { checked: true } });
+    check('procédures: étape cochée avec auteur', r.status === 200 && r.body[0].done === 1 && r.body[0].steps[0].checked_by_tag === 'F', JSON.stringify(r.body));
+    // Editing the steps keeps the checks of the steps that still exist
+    await req('PATCH', `/api/procedures/${proc.id}`, { sid: sessions.FV, body: { steps: [{ text: 'Nouvelle étape' }, ...proc.steps] } });
+    r = await req('GET', `/api/tickets/${tp}/procedures`, { sid: sessions.FV });
+    check('procédures: coches conservées après modification', r.body[0].total === 3 && r.body[0].steps.find(s => s.id === proc.steps[0].id)?.checked === true, JSON.stringify(r.body));
+    r = await req('PUT', `/api/tickets/${tp}/procedures/${proc.id}/steps/inconnu1`, { sid: sessions.FV, body: { checked: true } });
+    check('procédures: étape inconnue', r.status === 404, r.status);
+    r = await req('PUT', `/api/tickets/${tp}/procedures/${proc.id}/steps/${proc.steps[1].id}`, { sid: sessions.FV, body: { checked: false } });
+    check('procédures: décocher', r.status === 200, r.status);
+    r = await req('GET', '/api/config/export', { sid: sessions.FV });
+    check('procédures: exportées avec la configuration', r.body.procedures?.some(p => p.title === 'Paiement' && p.steps.includes('Vérifier Stripe')), JSON.stringify(r.body.procedures));
+    await req('DELETE', `/api/procedures/${proc.id}`, { sid: sessions.FV });
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tp, to]]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

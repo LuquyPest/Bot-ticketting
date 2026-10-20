@@ -1031,6 +1031,42 @@ router.get('/:id/history', async (req, res) => {
   }
 });
 
+// GET /api/tickets/:id/procedures — checklists of the ticket's subject with their progress
+router.get('/:id/procedures', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json(await require('../../utils/procedures').ticketProcedures(req.guildDb, ticket));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/tickets/:id/procedures/:procId/steps/:stepId { checked } — check or uncheck a step
+router.put('/:id/procedures/:procId/steps/:stepId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const { applicableProcedures, ticketProcedures } = require('../../utils/procedures');
+    const proc = (await applicableProcedures(req.guildDb, ticket)).find(p => p.id === parseInt(req.params.procId));
+    if (!proc || !proc.steps.some(s => s.id === req.params.stepId)) return res.status(404).json({ error: 'Étape introuvable' });
+    if (req.body?.checked) {
+      await req.guildDb(`INSERT INTO ticket_procedure_checks (ticket_id, procedure_id, step_id, checked_by_id, checked_by_tag) VALUES (?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE checked_by_id = VALUES(checked_by_id), checked_by_tag = VALUES(checked_by_tag), checked_at = NOW()`,
+        [ticket.id, proc.id, req.params.stepId, req.session.user.id, req.session.user.username]);
+    } else {
+      await req.guildDb('DELETE FROM ticket_procedure_checks WHERE ticket_id = ? AND procedure_id = ? AND step_id = ?', [ticket.id, proc.id, req.params.stepId]);
+    }
+    const procedures = await ticketProcedures(req.guildDb, ticket);
+    broadcast('procedure', { ticketId: ticket.id, procedures }, req.guildId);
+    res.json(procedures);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // GET /api/tickets/:id/similar — closed tickets about the same problem, with the reply that closed them
 router.get('/:id/similar', async (req, res) => {
   try {

@@ -18,6 +18,7 @@ const TICKET_ID_OF = {
   typing:             d => d.ticketId,
   presence:           d => d.ticketId,
   note_update:        d => d.ticketId,
+  procedure:          d => d.ticketId,
 };
 
 const MAX_STREAMS_PER_USER = 5;

@@ -12,6 +12,7 @@ export const VERSIONS = [
     date: '20 octobre 2026',
     title: 'Profils membres, procédures, accès invité et tableau de bord en anglais',
     changes: [
+      { type: 'new',  text: 'Procédures par sujet : des étapes à cocher dans la fiche (qui, quand), avec confirmation si on ferme un ticket avant la fin' },
       { type: 'new',  text: 'Espace membre aux couleurs de chaque serveur : logo, couleur et message d\'accueil (Paramètres → Espace membre web)' },
       { type: 'new',  text: 'Encart « Nouveautés » pour les fondateurs : les ajouts depuis ta dernière visite, sans ouvrir le Patchnotes' },
       { type: 'new',  text: 'Règles automatiques par mots-clés du premier message (« remboursement » → tag et priorité), en plus des règles par sujet' },

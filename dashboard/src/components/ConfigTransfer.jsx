@@ -6,7 +6,7 @@ import { confirmToast } from '../utils/confirmToast';
 
 const SECTION_LABELS = {
   grades: 'grades', tags: 'tags', forms: 'formulaires', panels: 'panels', fields: 'champs',
-  faq: 'entrées de FAQ', templates: 'modèles', subjectRules: 'règles', config: 'paramètres',
+  faq: 'entrées de FAQ', templates: 'modèles', subjectRules: 'règles', procedures: 'procédures', config: 'paramètres',
 };
 
 // Export / import of the server configuration (merge by name, nothing deleted)

@@ -45,6 +45,7 @@ const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 const Activity    = lazy(() => import('./pages/Activity'));
 const Incidents   = lazy(() => import('./pages/Incidents'));
 const ApiDocs     = lazy(() => import('./pages/ApiDocs'));
+const Procedures  = lazy(() => import('./pages/Procedures'));
 
 function PageLoader() {
   return (
@@ -203,6 +204,7 @@ export default function App() {
                         } />
                         <Route path="queue"      element={<ErrorBoundary><Queue /></ErrorBoundary>} />
                         <Route path="activite"   element={<ErrorBoundary><Activity /></ErrorBoundary>} />
+                        <Route path="procedures" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Procedures /></ErrorBoundary></RequireRole>} />
                         <Route path="incidents"  element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Incidents /></ErrorBoundary></RequireRole>} />
                         <Route path="fields"     element={
                           <RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Fields /></ErrorBoundary></RequireRole>

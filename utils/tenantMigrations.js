@@ -284,6 +284,23 @@ const MIGRATIONS = [
          ADD COLUMN IF NOT EXISTS portal_welcome VARCHAR(500) DEFAULT NULL`,
     ],
   },
+  {
+    version: 21,
+    name: 'Procédures par sujet',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS procedures (
+        id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(100) NOT NULL, subject VARCHAR(100) DEFAULT NULL,
+        steps JSON NOT NULL, active TINYINT(1) NOT NULL DEFAULT 1, position INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+      `CREATE TABLE IF NOT EXISTS ticket_procedure_checks (
+        ticket_id INT NOT NULL, procedure_id INT NOT NULL, step_id VARCHAR(12) NOT NULL,
+        checked_by_id VARCHAR(32) NOT NULL, checked_by_tag VARCHAR(100) NOT NULL,
+        checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (ticket_id, procedure_id, step_id),
+        CONSTRAINT fk_tpc_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+        CONSTRAINT fk_tpc_proc FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

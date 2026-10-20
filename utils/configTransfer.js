@@ -46,6 +46,8 @@ async function exportConfig(db) {
         if (actions?.tagId) { actions.tag = tagName.get(actions.tagId) || null; delete actions.tagId; }
         return { ...t, actions };
       }),
+    procedures: (await db('SELECT title, subject, steps, active FROM procedures ORDER BY position, id').catch(() => []))
+      .map(p => ({ title: p.title, subject: p.subject, active: !!p.active, steps: parseJsonField(p.steps, []).map(s => s.text) })),
     subjectRules: (await db('SELECT match_type, subject, keywords, tag_id, priority, visibility_grade_id, active FROM subject_rules ORDER BY id'))
       .map(r => ({ matchType: r.match_type || 'subject', subject: r.subject, keywords: r.keywords, tag: tagName.get(r.tag_id) || null, priority: r.priority, grade: gradeName.get(r.visibility_grade_id) || null, active: !!r.active })),
   };
@@ -151,6 +153,11 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null 
         [str(t.name, 100), ...vals, String(actor?.id || 'import'), String(actor?.username || 'Import')]);
       count('templates', 'created');
     }
+  }
+  for (const p of Array.isArray(data.procedures) ? data.procedures.slice(0, 50) : []) {
+    const steps = require('./procedures').cleanSteps((Array.isArray(p.steps) ? p.steps : []).map(text => ({ text: String(text) })));
+    if (!str(p.title, 100) || !steps) continue;
+    await upsertBy('procedures', 'procedures', 'title', str(p.title, 100), ['subject', 'steps', 'active'], [str(p.subject, 100), JSON.stringify(steps), bool(p.active ?? 1)]);
   }
   for (const r of Array.isArray(data.subjectRules) ? data.subjectRules.slice(0, 100) : []) {
     const vals = [r.tag ? tagId.get(r.tag) || null : null, ['low', 'normal', 'urgent'].includes(r.priority) ? r.priority : null, r.grade ? gradeId.get(r.grade) || null : null];

@@ -321,7 +321,7 @@ Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur
 
 À l'activation, **10 codes de secours** à usage unique sont affichés une seule fois (format `xxxxx-xxxxx`) ; ils remplacent le code TOTP sur l'écran de vérification en cas de perte du téléphone. Ils peuvent être régénérés depuis le profil.
 
-**Sauvegarde et transfert** (Paramètres) : export JSON de la configuration (paramètres, grades et permissions, tags, formulaires, panels, champs personnalisés, FAQ, modèles partagés, règles par sujet et par mots-clés) et import sur le même serveur ou un autre. L'import fusionne par nom sans rien supprimer ; les secrets ne sont jamais exportés, l'obligation de 2FA n'est pas transférée, et les salons et rôles Discord ne sont repris que si la case est cochée. Les panels importés doivent être republiés.
+**Sauvegarde et transfert** (Paramètres) : export JSON de la configuration (paramètres, grades et permissions, tags, formulaires, panels, champs personnalisés, FAQ, modèles partagés, règles par sujet et par mots-clés, procédures) et import sur le même serveur ou un autre. L'import fusionne par nom sans rien supprimer ; les secrets ne sont jamais exportés, l'obligation de 2FA n'est pas transférée, et les salons et rôles Discord ne sont repris que si la case est cochée. Les panels importés doivent être republiés.
 
 **Incidents** (`manage_settings`) : pour un problème connu (panne d'un prestataire…), un incident a un titre, un message et éventuellement des sujets. Tant qu'il est ouvert, chaque nouveau ticket concerné (tous si aucun sujet) reçoit ce message en MP juste après le message de bienvenue, une ligne est ajoutée à l'historique du ticket, et le compteur de membres touchés augmente ; un bandeau le rappelle au staff en haut de la liste des tickets. À la résolution, les membres touchés peuvent recevoir un message (option par incident). 10 incidents ouverts au plus.
 
@@ -349,6 +349,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances |
 | **Données membres** | fondateur | RGPD : ce que le serveur conserve sur un membre (par ID Discord), export JSON complet, suppression définitive de ses tickets (messages, transcripts, notes, tags), de ses messages et participations dans les tickets d'autres personnes et de sa blacklist ; salons des tickets ouverts supprimés, journal anonymisé. Les tickets des autres membres ne sont jamais touchés ; impossible sur un compte du staff. Accessible aussi depuis la fiche ticket |
 | **Champs** | fondateur, `manage_settings` | Champs personnalisés demandés au membre (texte ou nombre, obligatoires ou non, par sujet) |
+| **Procédures** | fondateur, `manage_settings` | Listes d'étapes à cocher par sujet (ou pour tous les tickets) : affichées dans la fiche avec leur avancement, qui a coché et quand, synchronisées en direct ; fermer un ticket avec des étapes restantes demande une confirmation. Les cases cochées survivent aux modifications de la procédure |
 | **Incidents** | fondateur, `manage_settings` | Problèmes connus annoncés aux nouveaux tickets, compteur de membres touchés, message de résolution |
 | **FAQ** | fondateur, `manage_settings` | Entrées de la FAQ automatique (question, réponse, mots-clés), activation, test d'un message, statistiques (proposée / a résolu) |
 | **Tags** | fondateur | Tags pour organiser les tickets |
@@ -672,6 +673,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `ticket_views` | Vues enregistrées de la liste des tickets |
 | `ticket_fields` / `ticket_field_values` | Champs personnalisés et valeurs |
 | `subject_rules` | Règles automatiques par sujet ou par mots-clés du message |
+| `procedures` / `ticket_procedure_checks` | Procédures par sujet et étapes cochées sur chaque ticket |
 | `incidents` / `incident_tickets` | Incidents et tickets auxquels ils ont été annoncés |
 | `faq_entries` | FAQ (question, réponse, mots-clés, compteurs) |
 | `reply_templates` | Modèles de réponse et macros |

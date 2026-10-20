@@ -318,6 +318,7 @@ export default function TicketDetail() {
         return next;
       });
     },
+    procedure: (data) => { if (data.ticketId === ticketId) setProcedures(data.procedures || []); },
     note_update: (data) => {
       if (data.ticketId !== ticketId) return;
       setNotes(prev => prev.map(n => (n.id === data.note.id ? { ...n, ...data.note } : n)));
@@ -395,6 +396,9 @@ export default function TicketDetail() {
   };
 
   const changeStatus = async (status) => {
+    // Closing with steps left in a procedure asks first
+    const left = procedures.reduce((n, p) => n + (p.total - p.done), 0);
+    if (status === 'closed' && left > 0 && !await confirmToast(`Il reste ${left} étape(s) de procédure non cochée(s). Fermer quand même ?`)) return;
     setActionLoading(true);
     try {
       await api.patch(`/tickets/${id}/status`, { status });
@@ -618,6 +622,23 @@ export default function TicketDetail() {
       return true;
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); return false; }
     finally { setSavingSubject(false); }
+  };
+
+  // Procedures of the ticket's subject (checklists), kept in sync live
+  const [procedures, setProcedures] = useState([]);
+  useEffect(() => {
+    if (!ticket) return;
+    api.get(`/tickets/${id}/procedures`).then(r => setProcedures(r.data)).catch(() => setProcedures([]));
+  }, [id, ticket?.subject]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleStep = async (proc, step) => {
+    setProcedures(list => list.map(p => (p.id !== proc.id ? p : { ...p, steps: p.steps.map(s => (s.id === step.id ? { ...s, checked: !s.checked } : s)) })));
+    try {
+      const { data } = await api.put(`/tickets/${id}/procedures/${proc.id}/steps/${step.id}`, { checked: !step.checked });
+      setProcedures(data);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+      api.get(`/tickets/${id}/procedures`).then(r => setProcedures(r.data)).catch(() => {});
+    }
   };
 
   // Closed tickets about the same problem (open tickets only, refreshed when the member writes)
@@ -1471,6 +1492,33 @@ export default function TicketDetail() {
               </div>
             </div>
           )}
+
+          {/* PROCÉDURES */}
+          {procedures.map(proc => (
+            <div key={proc.id} className={panelCard}>
+              <SectionTitle>Procédure · {proc.title}</SectionTitle>
+              <div className="flex items-center gap-2 mb-2.5" aria-label={`${proc.steps.filter(s => s.checked).length} étape(s) sur ${proc.total}`}>
+                <span className="flex-1 h-1.5 rounded-full bg-overlay/8 overflow-hidden">
+                  <span className="block h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.round(100 * proc.steps.filter(s => s.checked).length / Math.max(1, proc.total))}%` }} />
+                </span>
+                <span className="text-[11px] text-ink-3 tabular-nums">{proc.steps.filter(s => s.checked).length}/{proc.total}</span>
+              </div>
+              <ul className="space-y-1.5">
+                {proc.steps.map(step => (
+                  <li key={step.id}>
+                    <label className={`flex items-start gap-2 text-xs ${can('reply_ticket') && ticket.status === 'open' ? 'cursor-pointer' : ''}`}>
+                      <input type="checkbox" checked={step.checked} disabled={!can('reply_ticket') || ticket.status !== 'open'}
+                        onChange={() => toggleStep(proc, step)} className="mt-0.5 accent-emerald-500" />
+                      <span className={`${step.checked ? 'text-ink-3 line-through' : 'text-ink-1'}`}>
+                        {step.text}
+                        {step.checked && step.checked_by_tag && <span className="block text-[10px] text-ink-4 no-underline">{step.checked_by_tag} · {fmtDate(step.checked_at)}</span>}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
 
           {/* TICKETS SIMILAIRES */}
           {similar?.tickets?.length > 0 && (
