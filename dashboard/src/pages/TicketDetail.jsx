@@ -1758,7 +1758,7 @@ export default function TicketDetail() {
           {(grades.length > 0 || user?.role === 'fondateur') && can('manage_grades') && (
             <div className={panelCard}>
               <SectionTitle>Visibilité</SectionTitle>
-              <select value={ticket.visibility_grade_id || ''} onChange={e => changeVisibility(e.target.value || null)}
+              <select value={ticket.visibility_grade_id || ''} onChange={e => changeVisibility(e.target.value || null)} aria-label="Visibilité du ticket"
                 disabled={savingVisibility}
                 className="w-full bg-surface border border-overlay/[0.07] text-ink-1 rounded-xl px-2.5 py-2
                            text-xs focus:outline-hidden focus:border-primary/50 transition-all disabled:opacity-50">
