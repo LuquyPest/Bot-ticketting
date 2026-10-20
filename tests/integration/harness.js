@@ -2030,6 +2030,42 @@ async function main() {
     check('invités: expiration automatique', (await req('GET', '/api/guest/tickets', { headers: gCookie2 })).status === 401);
   }
 
+  // ── Public status page ──
+  {
+    await globalQuery('DELETE FROM status_events');
+    fakeClient.isReady = () => true; fakeClient.ws = { status: 0 };
+    let r = await req('GET', '/api/status');
+    check('statut: page publique sans connexion', r.status === 200 && r.body.overall === 'operational' && r.body.components.bot === 'operational' && r.body.days.length === 90, JSON.stringify(r.body).slice(0, 200));
+    check('statut: rien d interne exposé', !JSON.stringify(r.body).includes(G) && !JSON.stringify(r.body).includes('Test'), '');
+    await mk('SAst', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
+    r = await req('POST', '/api/sa/status-events', { sid: sessions.SAst, body: { kind: 'incident', component: 'dashboard', severity: 'minor', title: 'Lenteurs du dashboard', message: 'On regarde.' } });
+    const evId = r.body.id;
+    r = await req('GET', '/api/status');
+    check('statut: incident déclaré visible', r.body.overall === 'degraded' && r.body.components.dashboard === 'degraded' && r.body.current.some(e => e.title === 'Lenteurs du dashboard'), JSON.stringify(r.body.current));
+    await req('PATCH', `/api/sa/status-events/${evId}`, { sid: sessions.SAst, body: { resolved: true } });
+    r = await req('GET', '/api/status');
+    check('statut: incident résolu dans l historique', r.body.overall === 'operational' && r.body.history.some(e => e.id === evId && e.resolved_at), JSON.stringify(r.body.history));
+    check('statut: gestion réservée au super-admin', (await req('POST', '/api/sa/status-events', { sid: sessions.MGR, body: { title: 'x' } })).status === 403);
+    // Outage detected by the Discord watch: recorded and closed automatically
+    const { setSetting, getSetting } = app('./utils/saSettings');
+    const before = await getSetting('error_alert', {});
+    await setSetting('error_alert', { ...before, discordUserIds: [], webhookUrl: null, discordDownMinutes: 5 });
+    const os = require('os');
+    await redis.del(`discord:down_since:${os.hostname()}`, `discord:down_alerted:${os.hostname()}`);
+    const { runDiscordWatch } = app('./utils/discordWatch');
+    const t0 = Date.now();
+    await runDiscordWatch({ isReady: () => false, ws: { status: 5 }, users: fakeClient.users }, t0);
+    await runDiscordWatch({ isReady: () => false, ws: { status: 5 }, users: fakeClient.users }, t0 + 6 * 60000);
+    fakeClient.isReady = () => false;
+    r = await req('GET', '/api/status');
+    check('statut: coupure du bot inscrite automatiquement', r.body.components.bot === 'down' && r.body.current.some(e => e.component === 'bot'), JSON.stringify(r.body.current));
+    fakeClient.isReady = () => true;
+    await runDiscordWatch({ isReady: () => true, ws: { status: 0 }, users: fakeClient.users }, t0 + 8 * 60000);
+    r = await req('GET', '/api/status');
+    check('statut: coupure close à la reconnexion', r.body.components.bot === 'operational' && !r.body.current.length && r.body.history.some(e => e.component === 'bot' && e.resolved_at), JSON.stringify(r.body).slice(0, 200));
+    await setSetting('error_alert', before);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

@@ -224,6 +224,20 @@ async function ensureGlobalTables(config) {
         created_by  VARCHAR(100) NOT NULL,
         created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // Public status page (/status): incidents, maintenances and automatic outages
+      `CREATE TABLE IF NOT EXISTS status_events (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        kind        ENUM('incident','maintenance') NOT NULL DEFAULT 'incident',
+        component   ENUM('bot','dashboard','all') NOT NULL DEFAULT 'all',
+        severity    ENUM('minor','major') NOT NULL DEFAULT 'minor',
+        title       VARCHAR(120) NOT NULL,
+        message     TEXT DEFAULT NULL,
+        auto        TINYINT(1) NOT NULL DEFAULT 0,
+        started_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME DEFAULT NULL,
+        created_by  VARCHAR(100) DEFAULT NULL,
+        INDEX idx_status_started (started_at)
+      )`,
       // Per-account preferences shared by every server (last patch notes version seen…)
       `CREATE TABLE IF NOT EXISTS user_prefs (
         user_id      VARCHAR(32) NOT NULL PRIMARY KEY,

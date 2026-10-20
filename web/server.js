@@ -152,6 +152,12 @@ app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 
+// GET /api/status — public status page (no authentication, nothing internal)
+app.get('/api/status', async (req, res) => {
+  try { res.json(await require('../utils/statusPage').publicStatus(app.locals.client)); }
+  catch { res.status(503).json({ overall: 'down' }); }
+});
+
 // POST /api/client-errors — crash report from the dashboard or the member space (utils/reportError.js
 // on the client), written to the error journal with context "navigateur". Open to signed-out
 // visitors (the login page can crash too), hence the size limits and the per-IP rate limit.

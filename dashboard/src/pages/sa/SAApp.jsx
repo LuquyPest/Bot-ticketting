@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert, LayoutDashboard, Bug, ScrollText, Layers, HeartPulse, Megaphone } from 'lucide-react';
+import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert, LayoutDashboard, Bug, ScrollText, Layers, HeartPulse, Megaphone, Activity } from 'lucide-react';
 import api from '../../api';
 
 const SALogin    = lazy(() => import('./SALogin'));
@@ -10,6 +10,7 @@ const SAJournal  = lazy(() => import('./SAJournal'));
 const SAPlans    = lazy(() => import('./SAPlans'));
 const SAHealth   = lazy(() => import('./SAHealth'));
 const SAAnnouncements = lazy(() => import('./SAAnnouncements'));
+const SAStatus = lazy(() => import('./SAStatus'));
 const SAGuilds   = lazy(() => import('./SAGuilds'));
 const SAManagers = lazy(() => import('./SAManagers'));
 const SABlocked  = lazy(() => import('./SABlocked'));
@@ -51,6 +52,7 @@ function SALayout({ children }) {
       { to: '/sa/blocked',  label: 'Blocages', icon: ShieldAlert },
       { to: '/sa/announcements', label: 'Annonces', icon: Megaphone },
       { to: '/sa/health',   label: 'Santé',    icon: HeartPulse },
+      { to: '/sa/status',   label: 'Statut public', icon: Activity },
       { to: '/sa/errors',   label: 'Erreurs',  icon: Bug },
       { to: '/sa/journal',  label: 'Journal',  icon: ScrollText },
     ] : [])
@@ -149,6 +151,9 @@ export default function SAApp() {
           } />
           <Route path="announcements" element={
             <RequireSA><SALayout><SAAnnouncements /></SALayout></RequireSA>
+          } />
+          <Route path="status" element={
+            <RequireSA><SALayout><SAStatus /></SALayout></RequireSA>
           } />
           <Route path="health" element={
             <RequireSA><SALayout><SAHealth /></SALayout></RequireSA>

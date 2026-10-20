@@ -49,6 +49,7 @@ const Procedures  = lazy(() => import('./pages/Procedures'));
 const Profiles    = lazy(() => import('./pages/Profiles'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
 const GuestView   = lazy(() => import('./pages/GuestView'));
+const Status      = lazy(() => import('./pages/Status'));
 
 function PageLoader() {
   return (
@@ -149,6 +150,7 @@ export default function App() {
               } />
             ))}
             {/* Temporary guest access (read-only, token in the link's fragment) */}
+            <Route path="/status" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Status /></ErrorBoundary></Suspense>} />
             <Route path="/invite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><GuestView /></ErrorBoundary></Suspense>} />
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>

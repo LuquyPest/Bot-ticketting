@@ -811,6 +811,55 @@ router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
 
 const superadminOnly = (req, res, next) => (req.saUser.type === 'superadmin' ? next() : res.status(403).json({ error: 'Réservé au super-admin' }));
 
+// ── Public status page: incidents and maintenances declared by the super-admin ──
+function cleanStatusEvent(b, partial = false) {
+  const out = {};
+  if (!partial || b.title !== undefined) {
+    const title = typeof b.title === 'string' ? b.title.trim() : '';
+    if (!title || title.length > 120) return { error: 'Titre requis (120 caractères max)' };
+    out.title = title;
+  }
+  if (b.message !== undefined) {
+    if (b.message !== null && (typeof b.message !== 'string' || b.message.length > 2000)) return { error: 'Message trop long (2000 max)' };
+    out.message = b.message?.trim() || null;
+  }
+  if (b.kind !== undefined) { if (!['incident', 'maintenance'].includes(b.kind)) return { error: 'Type invalide' }; out.kind = b.kind; }
+  if (b.component !== undefined) { if (!['bot', 'dashboard', 'all'].includes(b.component)) return { error: 'Composant invalide' }; out.component = b.component; }
+  if (b.severity !== undefined) { if (!['minor', 'major'].includes(b.severity)) return { error: 'Gravité invalide' }; out.severity = b.severity; }
+  return { value: out };
+}
+
+router.get('/status-events', requireSuperAdmin, superadminOnly, async (req, res) => {
+  res.json(await globalQuery('SELECT * FROM status_events ORDER BY resolved_at IS NULL DESC, started_at DESC LIMIT 100'));
+});
+
+router.post('/status-events', requireSuperAdmin, superadminOnly, async (req, res) => {
+  const { value, error } = cleanStatusEvent(req.body || {});
+  if (error) return res.status(400).json({ error });
+  const keys = Object.keys(value);
+  const { insertId } = await globalQuery(`INSERT INTO status_events (${keys.join(', ')}, created_by) VALUES (${keys.map(() => '?').join(', ')}, ?)`, [...keys.map(k => value[k]), req.saUser.username]);
+  res.json({ id: insertId });
+});
+
+router.patch('/status-events/:id', requireSuperAdmin, superadminOnly, async (req, res) => {
+  const { value, error } = cleanStatusEvent(req.body || {}, true);
+  if (error) return res.status(400).json({ error });
+  const sets = Object.keys(value).map(k => `${k} = ?`);
+  const params = Object.values(value);
+  if (req.body?.resolved === true) sets.push('resolved_at = COALESCE(resolved_at, NOW())');
+  if (req.body?.resolved === false) sets.push('resolved_at = NULL');
+  if (!sets.length) return res.status(400).json({ error: 'Aucune modification' });
+  const r = await globalQuery(`UPDATE status_events SET ${sets.join(', ')} WHERE id = ?`, [...params, parseInt(req.params.id) || 0]);
+  if (!r.affectedRows) return res.status(404).json({ error: 'Événement introuvable' });
+  res.json({ ok: true });
+});
+
+router.delete('/status-events/:id', requireSuperAdmin, superadminOnly, async (req, res) => {
+  const r = await globalQuery('DELETE FROM status_events WHERE id = ?', [parseInt(req.params.id) || 0]);
+  if (!r.affectedRows) return res.status(404).json({ error: 'Événement introuvable' });
+  res.json({ ok: true });
+});
+
 router.get('/announcements', requireSuperAdmin, superadminOnly, async (req, res) => {
   res.json(await globalQuery('SELECT * FROM announcements ORDER BY id DESC LIMIT 50'));
 });

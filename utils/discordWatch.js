@@ -24,6 +24,7 @@ async function runDiscordWatch(client, now = Date.now()) {
   if (isConnected(client)) {
     if (!since) return { connected: true };
     await redis.del(DOWN_KEY);
+    await require('./statusPage').resolveAutoOutages().catch(() => null);
     if (await redis.del(ALERTED_KEY)) {
       const res = await deliver(client, settings, {
         title: '✅ Bot reconnecté à Discord', color: 0x57f287,
@@ -43,6 +44,7 @@ async function runDiscordWatch(client, now = Date.now()) {
   if (limit <= 0 || now - since < limit * 60000) return { connected: false, since };
   // Once per outage
   if (!(await redis.set(ALERTED_KEY, '1', 'EX', 7 * 86400, 'NX'))) return { connected: false, since, alerted: true };
+  await require('./statusPage').openAutoOutage('Le bot ne reçoit plus les messages Discord').catch(() => null);
   const status = client?.ws?.status;
   require('./errorLog').logError(null, 'discord', `Bot déconnecté de Discord depuis ${minutes(now - since)} min (statut ${status ?? 'inconnu'})`);
   const res = await deliver(client, settings, {
