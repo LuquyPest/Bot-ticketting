@@ -113,6 +113,10 @@ router.get('/me', async (req, res) => {
 // and enriches each entry with the bot's status from our DB.
 router.get('/guilds', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
+  if (req.session.user.demo) {
+    const { DEMO_GUILD_ID, DEMO_NAME } = require('../../utils/demo');
+    return res.json([{ id: DEMO_GUILD_ID, name: DEMO_NAME, icon: null, iconUrl: null, status: 'active' }]);
+  }
 
   const accessToken = req.session.discordAccessToken;
   if (!accessToken) return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });

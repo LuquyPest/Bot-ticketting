@@ -2066,6 +2066,53 @@ async function main() {
     await setSetting('error_alert', before);
   }
 
+  // ── Demonstration server ──
+  {
+    for (const k of await redis.keys('rl:*')) await redis.del(k);
+    const DEMO = app('./utils/demo').DEMO_GUILD_ID;
+    await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + DEMO);
+    let r = await req('POST', '/api/demo/start');
+    const dCookie = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
+    check('démo: session ouverte (base créée et remplie)', r.status === 200, JSON.stringify(r.body));
+    r = await req('GET', '/api/auth/me', { headers: dCookie });
+    check('démo: fondateur du serveur de démonstration', r.body.guildId === DEMO && r.body.role === 'fondateur' && r.body.demo === true, JSON.stringify(r.body).slice(0, 200));
+    const list = await req('GET', '/api/tickets', { headers: dCookie, query: { status: 'open' } });
+    check('démo: tickets fictifs', list.status === 200 && list.body.total >= 5, JSON.stringify(list.body).slice(0, 200));
+    const firstId = list.body.tickets?.[0]?.id;
+    const pages = ['/api/dashboard/stats', '/api/dashboard/activity', '/api/dashboard/recent', '/api/dashboard/leaderboard', `/api/tickets/${firstId}`, `/api/tickets/${firstId}/notes`,
+      `/api/tickets/${firstId}/procedures`, `/api/tickets/${firstId}/time`, `/api/tickets/${firstId}/similar`, '/api/tickets/queue', '/api/analytics/volume', '/api/analytics/quality',
+      '/api/analytics/time', '/api/staff/me/activity', '/api/profiles', '/api/procedures', '/api/incidents', '/api/config', '/api/grades', '/api/tags', '/api/faq', '/api/fields',
+      '/api/audit', '/api/templates', '/api/auth/guilds', '/api/staff'];
+    const broken = [];
+    for (const p of pages) { const x = await req('GET', p, { headers: dCookie }); if (x.status >= 500 || x.status === 401) broken.push(`${p} → ${x.status}`); }
+    check('démo: toutes les pages répondent sans erreur', broken.length === 0, broken.join(', '));
+    r = await req('POST', '/api/api-keys', { headers: dCookie, body: { name: 'x', permissions: ['read_stats'] } });
+    check('démo: clés API bloquées', r.status === 403 && r.body.demo === true, JSON.stringify(r.body));
+    r = await req('POST', '/api/newsletter/send', { headers: dCookie, body: { message: 'Message depuis la démo' } });
+    check('démo: newsletter bloquée', r.status === 403, r.status);
+    r = await req('PATCH', '/api/config', { headers: dCookie, body: { webhookUrl: 'https://evil.example/hook', welcomeMessage: 'Bienvenue (démo)' } });
+    const [dcfg] = await getTenantDb(DEMO)('SELECT webhook_url, welcome_message FROM guild_config WHERE id = 1');
+    check('démo: réglages sensibles ignorés, le reste essayable', r.status === 200 && !dcfg.webhook_url && dcfg.welcome_message === 'Bienvenue (démo)', JSON.stringify(dcfg));
+    r = await req('POST', `/api/tickets/${firstId}/notes`, { headers: dCookie, body: { content: 'Note de démonstration' } });
+    check('démo: on peut essayer les actions courantes', r.status === 200 || r.status === 201, r.status);
+    r = await req('POST', '/api/auth/select-guild', { sid: sessions.FV, body: { guildId: DEMO } });
+    check('démo: inaccessible depuis un vrai compte', r.status === 404 || r.status === 403, r.status);
+    await mk('DemoForged', { user: { id: U.F, username: 'F', role: null }, currentGuildId: DEMO });
+    check('démo: une session réelle ne peut pas viser la démo', (await req('GET', '/api/tickets', { sid: sessions.DemoForged })).status === 403);
+    await mk('DemoOther', { user: { ...app('./utils/demo').demoUser() }, currentGuildId: G });
+    check('démo: une session démo ne peut pas viser un vrai serveur', (await req('GET', '/api/tickets', { sid: sessions.DemoOther })).status === 403);
+    await mk('SAdm', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
+    r = await req('GET', '/api/sa/guilds', { sid: sessions.SAdm });
+    check('démo: absente des serveurs du super-admin', r.status === 200 && !JSON.stringify(r.body).includes(DEMO), '');
+    r = await req('POST', '/api/sa/demo/reset', { sid: sessions.SAdm });
+    const [dcfg2] = await getTenantDb(DEMO)('SELECT welcome_message FROM guild_config WHERE id = 1');
+    check('démo: remise à zéro', r.status === 200 && r.body.tickets === 24 && dcfg2.welcome_message !== 'Bienvenue (démo)', JSON.stringify([r.body, dcfg2]));
+    await req('PUT', '/api/sa/demo', { sid: sessions.SAdm, body: { enabled: false } });
+    check('démo: désactivable', (await req('POST', '/api/demo/start')).status === 403);
+    await req('PUT', '/api/sa/demo', { sid: sessions.SAdm, body: { enabled: true } });
+    await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + DEMO);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

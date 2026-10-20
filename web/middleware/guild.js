@@ -39,6 +39,16 @@ module.exports = async function guildMiddleware(req, res, next) {
     return res.status(400).json({ error: 'Aucun serveur sélectionné' });
   }
 
+  // Demonstration sandbox: not a registered server, reachable only by a demo session
+  const { DEMO_GUILD_ID, DEMO_NAME } = require('../../utils/demo');
+  if (!!req.session.user.demo !== (guildId === DEMO_GUILD_ID)) return res.status(403).json({ error: 'Serveur introuvable ou inactif' });
+  if (guildId === DEMO_GUILD_ID) {
+    req.guildId = guildId;
+    req.guildDb = getTenantDb(guildId);
+    req.guild = { guild_id: guildId, guild_name: DEMO_NAME, status: 'active', maintenance_mode: 0, demo: true };
+    return next();
+  }
+
   try {
     const [guild] = await globalQuery(
       'SELECT * FROM guilds WHERE guild_id = ? AND status = "active"',

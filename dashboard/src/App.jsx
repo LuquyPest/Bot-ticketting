@@ -189,6 +189,13 @@ export default function App() {
                     />
                   )}
                   <main className="flex-1 overflow-y-auto min-w-0 pt-10 lg:pt-0">
+                    {user?.demo && (
+                      <div role="status" className="mx-4 sm:mx-6 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/8 px-4 py-2.5 text-xs text-ink-1">
+                        <strong>Mode démonstration</strong>
+                        <span className="text-ink-2">Données fictives, partagées avec les autres visiteurs et remises à zéro chaque nuit. Les actions vers Discord et vers l'extérieur ne sont pas réalisées.</span>
+                        <button onClick={async () => { await logout(); window.location.href = '/login'; }} className="ml-auto underline text-ink-3 hover:text-ink-1">Quitter la démo</button>
+                      </div>
+                    )}
                     <AnnouncementBanner />
                     {whatsNew.unseen.length > 0 && <WhatsNew {...whatsNew} />}
                     <Suspense fallback={<PageLoader />}>

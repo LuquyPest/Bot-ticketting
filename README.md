@@ -12,6 +12,7 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Prérequis](#prérequis)
 - [Installation](#installation)
 - [Configuration config.json](#configuration-configjson)
+- [Serveur de démonstration](#serveur-de-démonstration)
 - [Activation d'un serveur](#activation-dun-serveur)
 - [Dashboard web](#dashboard-web)
 - [Panel Superadmin](#panel-superadmin)
@@ -117,6 +118,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Rapport mensuel | Le 1er du mois à 9 h : PDF du mois écoulé (volume, délais, respect des délais par étape, satisfaction, classement du staff, sujets fréquents) dans le salon choisi |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
 | Rappels personnels | Toutes les minutes : envoie les rappels échus |
+| Démonstration | Chaque nuit à 4 h 15 : remet le serveur de démonstration à zéro |
 | Surveillance Discord | Toutes les minutes : alerte le super-admin si le bot est déconnecté de Discord depuis trop longtemps, puis à la reconnexion |
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
 | Limites des serveurs | Toutes les heures : prévient les fondateurs d'un serveur proche d'une limite (80 %) ou qui l'a atteinte |
@@ -267,6 +269,10 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
    `Manage Channels` · `Manage Roles` (masquer le salon d'un ticket restreint à certains grades) · `View Channel` · `Send Messages` · `Read Message History` · `Embed Links` · `Attach Files` · `View Audit Log` (identifier qui a invité le bot) · `Mention Everyone` (pinger les rôles support en « Urgent »). Le bot ne mentionne que les utilisateurs par défaut : `@everyone` ne peut jamais être déclenché.
 
 ---
+
+## Serveur de démonstration
+
+Un bouton **« Essayer la démo »** (page de connexion, et « Voir la démo en attendant » pour un serveur en attente d'approbation) ouvre le dashboard sur un serveur fictif rempli de données réalistes (tickets à toutes les étapes, conversations, staff, grades, tags, modèles, FAQ, procédure, profil de membre…). Le visiteur y est fondateur, mais **uniquement** sur cette base : elle n'est pas enregistrée parmi les serveurs, donc aucun automatisme, aucune liste du super-admin et aucun espace membre ne la voient, et une session démo ne peut viser aucun autre serveur (ni l'inverse). Les actions qui pourraient sortir du bac à sable sont refusées (clés API, accès invités, newsletter, identité du bot, import, RGPD, 2FA, sessions) et les réglages sensibles (webhooks, allowlist IP, 2FA obligatoire, API) ignorés ; les actions vers Discord échouent sans effet. Un bandeau rappelle que les données sont fictives et partagées. Remise à zéro chaque nuit à 4 h 15 et à la demande ; activable et désactivable depuis la page **Santé** du panel super-admin.
 
 ## Activation d'un serveur
 

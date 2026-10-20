@@ -811,6 +811,20 @@ router.delete('/error-logs', requireSuperAdmin, async (req, res) => {
 
 const superadminOnly = (req, res, next) => (req.saUser.type === 'superadmin' ? next() : res.status(403).json({ error: 'Réservé au super-admin' }));
 
+// ── Demonstration server ──
+router.get('/demo', requireSuperAdmin, superadminOnly, async (req, res) => {
+  const { getSetting } = require('../../utils/saSettings');
+  res.json(await getSetting('demo', { enabled: true }));
+});
+router.put('/demo', requireSuperAdmin, superadminOnly, async (req, res) => {
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'enabled doit être un booléen' });
+  await require('../../utils/saSettings').setSetting('demo', { enabled: req.body.enabled });
+  res.json({ enabled: req.body.enabled });
+});
+router.post('/demo/reset', requireSuperAdmin, superadminOnly, async (req, res) => {
+  res.json(await require('../../utils/demo').seedDemo());
+});
+
 // ── Public status page: incidents and maintenances declared by the super-admin ──
 function cleanStatusEvent(b, partial = false) {
   const out = {};

@@ -117,6 +117,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Demo sessions: mutations that could leave the sandbox are refused (before every route)
+app.use(require('../utils/demo').demoGuard);
+
 app.get('/api/health', async (req, res) => {
   try {
     await globalQuery('SELECT 1');
@@ -131,6 +134,7 @@ const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs ar
 app.use('/api/auth', authLimiter);
 app.use('/api/member/auth', authLimiter);
 app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
+app.use('/api/demo', authLimiter);
 app.use('/api/sa/auth', authLimiter);
 app.use('/api', apiLimiter);
 
@@ -151,6 +155,26 @@ app.use('/api/push',     require('./routes/push'));
 app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
+
+// ── Demonstration server (utils/demo.js) ──
+// POST /api/demo/start — founder session on the demo sandbox (when the super-admin keeps it on)
+app.post('/api/demo/start', async (req, res, next) => {
+  try {
+    const demo = require('../utils/demo');
+    const { enabled } = await require('../utils/saSettings').getSetting('demo', { enabled: true });
+    if (!enabled) return res.status(403).json({ error: 'La démonstration est désactivée' });
+    const db = require('../utils/tenantDb').getTenantDb(demo.DEMO_GUILD_ID);
+    const seeded = await db('SELECT COUNT(*) AS n FROM tickets').then(r => Number(r[0].n) > 0).catch(() => false);
+    if (!seeded) await demo.seedDemo();
+    else await require('../utils/tenantSchema').ensureTenantSchema(demo.DEMO_GUILD_ID); // new migrations since the last reset
+    req.session.regenerate(err => {
+      if (err) return next(err);
+      req.session.user = demo.demoUser();
+      req.session.currentGuildId = demo.DEMO_GUILD_ID;
+      res.json({ ok: true });
+    });
+  } catch (err) { next(err); }
+});
 
 // GET /api/status — public status page (no authentication, nothing internal)
 app.get('/api/status', async (req, res) => {

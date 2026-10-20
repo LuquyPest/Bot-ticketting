@@ -14,6 +14,30 @@ function State({ ok, warn, label }) {
   return <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${cls}`}><Icon size={15} aria-hidden="true" />{label}</span>;
 }
 
+// Demonstration server: on/off and reset of its fictitious data
+function DemoCard() {
+  const [demo, setDemo] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.get('/sa/demo').then(r => setDemo(r.data)).catch(() => {}); }, []);
+  if (!demo) return null;
+  const toggle = async () => { try { const r = await api.put('/sa/demo', { enabled: !demo.enabled }); setDemo(r.data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
+  const reset = async () => {
+    setBusy(true);
+    try { const r = await api.post('/sa/demo/reset'); toast.success(`Démo réinitialisée (${r.data.tickets} tickets)`); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  return (
+    <div className="glass-dark rounded-2xl border border-overlay/8 px-5 py-4 flex flex-wrap items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-ink-1">Serveur de démonstration {demo.enabled ? <span className="text-emerald-400 text-xs">· activé</span> : <span className="text-ink-4 text-xs">· désactivé</span>}</p>
+        <p className="text-[11px] text-ink-4">Bouton « Essayer la démo » sur la connexion et pour les serveurs en attente ; données fictives remises à zéro chaque nuit (4 h 15).</p>
+      </div>
+      <button onClick={toggle} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">{demo.enabled ? 'Désactiver' : 'Activer'}</button>
+      <button onClick={reset} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">{busy ? 'Réinitialisation…' : 'Réinitialiser maintenant'}</button>
+    </div>
+  );
+}
+
 export default function SAHealth() {
   const [h, setH] = useState(null);
   const load = useCallback(() => {
@@ -36,6 +60,8 @@ export default function SAHealth() {
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser"><RefreshCw size={15} /></button>
       </div>
+
+      <DemoCard />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div className={card}>

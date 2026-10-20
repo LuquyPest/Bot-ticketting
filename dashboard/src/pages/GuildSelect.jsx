@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Bot, ChevronRight, Loader2, ExternalLink, Clock, Ban, RefreshCw } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../api';
+import DemoButton from '../components/DemoButton';
 
 function GuildIcon({ guild }) {
   const [error, setError] = useState(false);
@@ -183,6 +184,7 @@ export default function GuildSelect() {
                     En attente
                   </span>
                 )}
+                {guild.status === 'pending' && <DemoButton small className="shrink-0" label="Voir la démo en attendant" />}
 
                 {/* suspended → suspendu */}
                 {guild.status === 'suspended' && (

@@ -21,6 +21,7 @@ const JOBS = {
   'discord-watch':       { every: 60 * 1000,      run: client => require('./discordWatch').runDiscordWatch(client) },
   'quota-check':         { every: 60 * 60 * 1000, run: client => require('./quotaAlert').runQuotaCheck(client) },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
+  'demo-reset':          { pattern: '15 4 * * *', run: async () => { const { enabled } = await require('./saSettings').getSetting('demo', { enabled: true }); if (enabled) await require('./demo').seedDemo(); } },
 };
 
 // Last run of each job (Redis hash jobs:last), shown on the super-admin « Santé » page

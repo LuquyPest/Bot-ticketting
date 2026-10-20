@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bot, AlertCircle, Zap } from 'lucide-react';
 import { useAuth } from '../App';
+import DemoButton from '../components/DemoButton';
 
 const ERROR_MESSAGES = {
   not_in_guild: "Tu n'es pas membre du serveur Discord.",
@@ -107,7 +108,8 @@ export default function Login() {
             </p>
           </div>
         </div>
-        <p className="text-xs text-ink-3 text-center mt-5">
+        <div className="text-center mt-5"><DemoButton label="Découvrir le dashboard (démo)" /></div>
+        <p className="text-xs text-ink-3 text-center mt-4">
           Tu cherches tes tickets ? <a href="/espace" className="text-primary-light underline">Espace membre</a> · <a href="/status" className="text-primary-light underline">Statut du service</a>
         </p>
       </div>

@@ -12,6 +12,7 @@ export const VERSIONS = [
     date: '20 octobre 2026',
     title: 'Profils membres, procédures, accès invité et tableau de bord en anglais',
     changes: [
+      { type: 'new',  text: 'Serveur de démonstration : « Essayer la démo » pour découvrir le dashboard sur des données fictives, par exemple en attendant l\'approbation de son serveur' },
       { type: 'new',  text: 'Page de statut publique (/status) : état du bot et du dashboard, incidents en cours, historique et disponibilité sur 90 jours' },
       { type: 'new',  text: 'Accès invité temporaire : un lien en lecture seule vers des tickets choisis pour une personne extérieure, qui expire tout seul et dont chaque consultation est tracée' },
       { type: 'new',  text: 'Profils des membres : annuaire, statistiques, étiquettes (VIP…) et un fil de discussion du staff sur chaque membre, rappelé dans la fiche de ses tickets' },
