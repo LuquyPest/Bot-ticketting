@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import { Plus, Pencil, Trash2, RotateCcw, Loader2, X, Check } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -248,7 +249,7 @@ export default function SAManagers() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-ink-3">
-                    {mgr.created_at ? new Date(mgr.created_at).toLocaleDateString('fr-FR') : '—'}
+                    {mgr.created_at ? new Date(mgr.created_at).toLocaleDateString(uiLocale()) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">

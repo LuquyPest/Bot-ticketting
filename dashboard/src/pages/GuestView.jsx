@@ -30,9 +30,9 @@ export default function GuestView() {
   const view = id => api.get(`/guest/tickets/${id}`).then(r => setOpen(r.data)).catch(err => setError(err.response?.data?.error || 'Erreur'));
   const logout = async () => { await api.post('/guest/logout').catch(() => {}); setMe(null); setError('Tu es déconnecté.'); };
 
-  if (me === undefined) return <div className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
+  if (me === undefined) return <div data-no-translate className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
   return (
-    <div className="min-h-screen bg-base">
+    <div data-no-translate className="min-h-screen bg-base">
       <header className="border-b border-overlay/6 bg-surface/60">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Lock size={16} className="text-primary-light" />

@@ -150,11 +150,12 @@ const RUNS = [
   { run: 'dark', theme: 'dark', viewport: { width: 1440, height: 900 } },
   { run: 'light', theme: 'light', viewport: { width: 1440, height: 900 } },
   { run: 'mobile', theme: 'dark', viewport: { width: 390, height: 844 }, mobile: true },
+  { run: 'en', theme: 'dark', viewport: { width: 1440, height: 900 }, lang: 'en' },
 ];
 
-for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
+for (const { run: theme, theme: colorTheme, viewport, mobile, lang } of RUNS) {
   const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile, locale: 'fr-FR' });
-  await page.addInitScript(t => localStorage.setItem('theme', t), colorTheme);
+  await page.addInitScript(([t, l]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); }, [colorTheme, lang]);
   page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text())) failures.push(`[${theme}] console: ${m.text()}`); });
   page.on('pageerror', e => failures.push(`[${theme}] page: ${e.message}`));
   let anonymous = false;
@@ -167,6 +168,34 @@ for (const { run: theme, theme: colorTheme, viewport, mobile } of RUNS) {
       : MOCK[u.pathname] ?? (route.request().method() === 'GET' ? [] : { ok: true });
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
+  // Dashboard in English: interface translated, what people wrote and the public pages untouched
+  if (lang === 'en') {
+    const EN = [
+      ['settings', '/settings', ['Settings', 'Ticket prefix'], ['Préfixe des tickets']],
+      ['tickets', '/tickets', ['ticket(s) found', 'Save the view'], ['Enregistrer la vue']],
+      // the pinned note is staff writing: it stays as written
+      ['ticket', '/tickets/1', ['Reply', 'Note interne : vérifier Stripe'], ['Répondre']],
+      ['dashboard', '/', ['Release notes', 'Settings'], ['Paramètres']],
+    ];
+    for (const [name, p, wanted, absent] of EN) {
+      await page.goto(base + p, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(800);
+      const text = await page.evaluate(() => document.body.innerText);
+      const missing = wanted.filter(w => !text.includes(w));
+      const left = absent.filter(a => text.includes(a));
+      if (missing.length || left.length) failures.push(`[en] ${name}: manquant ${JSON.stringify(missing)}, encore en français ${JSON.stringify(left)}`);
+      await page.screenshot({ path: path.join(OUT, `en-${name}.png`) });
+      console.log(`${missing.length || left.length ? 'FAIL' : 'PASS'}  en ${name}`);
+    }
+    anonymous = true;
+    await page.goto(base + '/espace', { waitUntil: 'networkidle' });
+    const portalFr = await page.getByText('Se connecter avec Discord').first().isVisible().catch(() => false);
+    if (!portalFr) failures.push('[en] espace membre traduit alors qu\'il suit la langue du membre');
+    console.log(`${portalFr ? 'PASS' : 'FAIL'}  en espace membre inchangé`);
+    await page.close();
+    continue;
+  }
+
   for (const [name, p, text, anon = false] of PAGES) {
     anonymous = anon;
     await page.goto(base + p, { waitUntil: 'networkidle' });

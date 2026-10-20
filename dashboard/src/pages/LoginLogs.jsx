@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { uiLocale } from '../i18n';
 import { ShieldCheck, ShieldAlert, Clock, RefreshCw, Filter } from 'lucide-react';
 import api from '../api';
 
@@ -19,7 +20,7 @@ function StatusBadge({ status }) {
 
 function fmt(dateStr) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleString('fr-FR', {
+  return new Date(dateStr).toLocaleString(uiLocale(), {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { uiLocale } from '../i18n';
 import { MessageSquare, CheckCircle2, Clock, Star, Inbox, TrendingUp, Timer } from 'lucide-react';
 import { fmtSeconds } from '../utils/duration';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -10,7 +11,7 @@ const PERIODS = [7, 30, 90];
 const BAR = '#6c5ce7';
 const LINE = '#f59e0b';
 const axis = { fontSize: 10, fill: 'var(--color-ink-3)' };
-const weekLabel = d => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+const weekLabel = d => new Date(d).toLocaleDateString(uiLocale(), { day: '2-digit', month: '2-digit' });
 
 function Tile({ icon: Icon, label, value, sub }) {
   return (

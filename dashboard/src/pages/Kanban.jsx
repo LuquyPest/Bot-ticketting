@@ -38,7 +38,7 @@ function TicketCard({ ticket, onClick }) {
         {ticket.owner_tag}
       </p>
       {ticket.subject && (
-        <p className="text-xs text-ink-3 truncate">{ticket.subject}</p>
+        <p translate="no" className="text-xs text-ink-3 truncate">{ticket.subject}</p>
       )}
       {ticket.assignees?.length > 0 && (
         <p className="text-[10px] text-ink-4 truncate">👥 {ticket.assignees.map(a => a.username).join(', ')}</p>

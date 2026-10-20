@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { uiLocale } from '../i18n';
 import {
   BarChart2, Activity, Users, Shield, Clock, AlertTriangle,
   TrendingUp, CheckCircle, RefreshCw, Star, Download, Timer } from 'lucide-react';
@@ -20,7 +21,7 @@ const PERIOD_LABELS = { today: "Aujourd'hui", week: '7 jours', month: '30 jours'
 const DAYS_FOR_PERIOD = { today: 1, week: 7, month: 30, all: 180 };
 
 function fmtDate(d) {
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  return new Date(d).toLocaleDateString(uiLocale(), { day: '2-digit', month: 'short' });
 }
 
 function buildVolumeData(opened, closed, days) {

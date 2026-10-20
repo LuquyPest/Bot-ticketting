@@ -687,7 +687,7 @@ export default function Tickets() {
                 <span className="text-ink-1 font-medium truncate">{t.owner_tag}</span>
                 <span className="ml-auto shrink-0"><Badge label={t.status} variant={t.status} /></span>
               </div>
-              <p className="text-sm text-ink-2 mt-1.5 truncate">{t.subject || <span className="italic text-ink-4">—</span>}</p>
+              <p translate="no" className="text-sm text-ink-2 mt-1.5 truncate">{t.subject || <span className="italic text-ink-4">—</span>}</p>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-ink-3">
                 <span className="inline-flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
@@ -810,9 +810,9 @@ export default function Tickets() {
                       {viewersMark(t.id)}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>
+                  <td translate="no" className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>
                   <td className="px-4 py-3.5 text-ink-2 max-w-xs">
-                    <div className="truncate">{t.subject || <span className="italic text-ink-4">—</span>}</div>
+                    <div translate="no" className="truncate">{t.subject || <span className="italic text-ink-4">—</span>}</div>
                     {/* Tags */}
                     {t.tags && t.tags.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">

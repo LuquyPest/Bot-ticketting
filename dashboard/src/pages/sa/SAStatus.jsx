@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import { Loader2, Plus, CheckCircle2, Trash2, ExternalLink } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/confirmToast';
 
 const input = 'w-full px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-sm text-ink-1 outline-hidden focus:border-primary/50';
-const fmt = d => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+const fmt = d => (d ? new Date(d).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
 const COMPONENT = { all: 'Tout le service', bot: 'Bot Discord', dashboard: 'Dashboard' };
 const EMPTY = { kind: 'incident', component: 'all', severity: 'minor', title: '', message: '' };
 

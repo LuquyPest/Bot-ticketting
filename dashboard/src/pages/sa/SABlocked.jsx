@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import { RefreshCw, Loader2, Lock, Globe, Unlock } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -10,7 +11,7 @@ function remaining(date) {
   return ms >= 60000 ? `${Math.ceil(ms / 60000)} min` : `${Math.ceil(ms / 1000)} s`;
 }
 
-const fmt = d => new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmt = d => new Date(d).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 function Section({ icon: Icon, title, hint, count, children }) {
   return (

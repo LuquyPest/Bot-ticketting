@@ -14,7 +14,7 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Configuration config.json](#configuration-configjson)
 - [Serveur de démonstration](#serveur-de-démonstration)
 - [Activation d'un serveur](#activation-dun-serveur)
-- [Dashboard web](#dashboard-web)
+- [Dashboard web](#dashboard-web) (dont [langue du dashboard](#langue-du-dashboard))
 - [Panel Superadmin](#panel-superadmin)
 - [Commandes Discord](#commandes-discord)
 - [Espace membre web](#espace-membre-web)
@@ -95,7 +95,7 @@ Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans 
 
 Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans un salon (voir [Panels Discord](#panels-discord)). Un utilisateur blacklisté sur un serveur ne peut pas y ouvrir de ticket (la blacklist est propre à chaque serveur).
 
-**Langue des messages** (Paramètres → Identité du bot) : français, anglais, ou automatique (langue Discord du membre, mémorisée à sa dernière interaction avec le bot, sinon langue du serveur). Elle s'applique à tout ce que le bot envoie aux membres : questions, bienvenue, réponses du staff (cadre et boutons), notifications, fermeture, notation, FAQ, panels. Les textes personnalisés (bienvenue, fermeture, FAQ, réponses du staff) restent tels qu'écrits ; le dashboard et les messages destinés au staff restent en français. Le message de fermeture personnalisé des paramètres est désormais bien utilisé dans le MP de fermeture.
+**Langue des messages** (Paramètres → Identité du bot) : français, anglais, ou automatique (langue Discord du membre, mémorisée à sa dernière interaction avec le bot, sinon langue du serveur). Elle s'applique à tout ce que le bot envoie aux membres : questions, bienvenue, réponses du staff (cadre et boutons), notifications, fermeture, notation, FAQ, panels. Les textes personnalisés (bienvenue, fermeture, FAQ, réponses du staff) restent tels qu'écrits ; les messages destinés au staff restent en français (le dashboard, lui, peut s'afficher en anglais : voir ci-dessous). Le message de fermeture personnalisé des paramètres est désormais bien utilisé dans le MP de fermeture.
 
 ### Côté staff
 
@@ -292,6 +292,10 @@ Lorsqu'un membre (avec la permission *Gérer le serveur*) ajoute le bot :
 
 Accessible sur `https://ton-domaine.com` après connexion via Discord OAuth.
 
+### Langue du dashboard
+
+Le dashboard s'affiche en **français** ou en **anglais**, au choix de chaque membre du staff : bouton **EN / FR** en bas de la barre latérale, ou **Profil → Langue du dashboard**. Le choix est enregistré sur le compte (`ticketbot_global.user_prefs.ui_lang`) et suit la personne sur tous ses navigateurs ; les dates passent au format anglais. L'interface est écrite en français et traduite à l'affichage par un dictionnaire (`dashboard/src/i18n/en.js`, appliqué par `dashboard/src/i18n/index.js` aux textes et aux attributs `placeholder` / `title` / `aria-label` / `alt`, y compris ce qui s'affiche ensuite). Ce que les gens ont écrit n'est **jamais** traduit : messages, sujets, notes (marqués `translate="no"`). L'espace membre, l'accès invité et la page de statut suivent leur propre langue (`data-no-translate`). Un texte absent du dictionnaire reste en français : pour l'ajouter, une paire `['texte français', 'English']` dans `ENTRIES`, ou un modèle avec `{}` dans `TEMPLATES` pour les textes à valeur variable.
+
 ### Système de rôles
 
 | Rôle | Accès |
@@ -369,7 +373,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Clés API** / **Documentation API** | fondateur | Clés pour l'API publique v1 ; documentation générée depuis le code (`/docs-api`) |
 | **Newsletter** | fondateur | DM groupé au staff |
 | **Patchnotes** | fondateur | Historique des versions (`dashboard/src/data/patchnotes.js`). Les fondateurs voient en haut du dashboard un encart **Nouveautés** avec les ajouts depuis leur dernière visite (dernière version vue enregistrée par compte), et un badge « Nouveau » sur l'entrée Patchnotes ; « J'ai vu » ou l'ouverture du Patchnotes les marque comme lus |
-| **Profil** | tous | Bio, photo (CDN Discord), 2FA, codes de secours, sessions actives, notifications push |
+| **Profil** | tous | Bio, photo (CDN Discord), 2FA, codes de secours, sessions actives, notifications push, langue du dashboard |
 
 ### Journal d'activité
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import {
   Building2, CheckCircle, Clock, XCircle, RefreshCw,
   Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X, Gauge
@@ -349,7 +350,7 @@ export default function SAGuilds() {
                         {guild.member_count?.toLocaleString() ?? '—'}
                       </td>
                       <td className="px-4 py-3 text-xs text-ink-3">
-                        {guild.created_at ? new Date(guild.created_at).toLocaleDateString('fr-FR') : '—'}
+                        {guild.created_at ? new Date(guild.created_at).toLocaleDateString(uiLocale()) : '—'}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">

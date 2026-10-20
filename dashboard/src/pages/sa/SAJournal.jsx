@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import { Loader2, RefreshCw } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -11,7 +12,7 @@ const LABELS = {
   error_delete: 'Erreur supprimée', errors_clear: 'Journal d\'erreurs vidé', error_alert_update: 'Alerte d\'erreurs modifiée', error_alert_test: 'Test de l\'alerte',
   plan_create: 'Formule créée', plan_update: 'Formule modifiée', plan_delete: 'Formule supprimée',
 };
-const fmt = d => new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmt = d => new Date(d).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 const detailsText = d => {
   if (!d) return '';
   const obj = typeof d === 'string' ? JSON.parse(d) : d;

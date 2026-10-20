@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LanguageToggle from './LanguageToggle';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
@@ -291,6 +292,8 @@ export default function Sidebar() {
             >
               {theme === 'dark' ? <Sun size={13} aria-hidden="true" /> : <Moon size={13} aria-hidden="true" />}
             </button>
+
+            <LanguageToggle />
 
             {/* Logout */}
             <button

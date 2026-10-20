@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { uiLocale } from '../i18n';
 import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Star, Clock, Ticket, AlertCircle, ExternalLink } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
@@ -334,7 +335,7 @@ function StaffDetailModal({ adminId, onClose }) {
                         <span className="text-xs text-ink-4 truncate shrink-0">{t.owner_tag}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-ink-4">{t.closed_at ? new Date(t.closed_at).toLocaleDateString('fr-FR') : '—'}</span>
+                        <span className="text-[10px] text-ink-4">{t.closed_at ? new Date(t.closed_at).toLocaleDateString(uiLocale()) : '—'}</span>
                         <ExternalLink size={10} className="text-ink-4 group-hover:text-ink-2 transition-colors" />
                       </div>
                     </a>

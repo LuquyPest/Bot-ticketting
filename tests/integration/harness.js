@@ -1818,6 +1818,20 @@ async function main() {
     check('nouveautés: réservé aux comptes connectés', (await req('GET', '/api/profile/whats-new')).status === 401);
   }
 
+  // ── Dashboard language, kept on the account ──
+  {
+    let r = await req('GET', '/api/profile/language', { sid: sessions.FV });
+    check('langue: aucune au départ', r.status === 200 && r.body.lang === null, JSON.stringify(r.body));
+    r = await req('PUT', '/api/profile/language', { sid: sessions.FV, body: { lang: 'en' } });
+    const again = await req('GET', '/api/profile/language', { sid: sessions.FV });
+    check('langue: anglais enregistré', r.status === 200 && again.body.lang === 'en', JSON.stringify(again.body));
+    const seen = await req('GET', '/api/profile/whats-new', { sid: sessions.FV });
+    check('langue: la version vue est conservée', seen.body.seen === 'v2.17', JSON.stringify(seen.body));
+    r = await req('PUT', '/api/profile/language', { sid: sessions.FV, body: { lang: 'de' } });
+    check('langue: langue inconnue refusée', r.status === 400, r.status);
+    check('langue: réservé aux comptes connectés', (await req('PUT', '/api/profile/language', { body: { lang: 'fr' } })).status === 401);
+  }
+
   // ── Member space colours per server ──
   {
     const PNG1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';

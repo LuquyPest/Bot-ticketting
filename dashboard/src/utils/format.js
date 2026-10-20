@@ -1,6 +1,8 @@
+import { uiLocale } from '../i18n';
+
 export function fmtDate(d, opts = { dateStyle: 'short', timeStyle: 'short' }) {
   if (!d) return '—';
-  return new Date(d).toLocaleString('fr-FR', opts);
+  return new Date(d).toLocaleString(uiLocale(), opts);
 }
 
 export function fmtDuration(s) {

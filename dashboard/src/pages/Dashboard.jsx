@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { uiLocale } from '../i18n';
 import { useNavigate } from 'react-router-dom';
 import {
   Ticket, CheckCircle, Clock, Star, TrendingUp, TrendingDown,
@@ -18,7 +19,7 @@ import { useSSE } from '../hooks/useSSE';
 import { useAuth } from '../App';
 
 function fmtChartDate(d) {
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  return new Date(d).toLocaleDateString(uiLocale(), { day: '2-digit', month: 'short' });
 }
 
 function buildChart(opened, closed, unclaimed, days) {
@@ -368,7 +369,7 @@ export default function Dashboard() {
                   <p className="text-sm text-ink-2 truncate font-medium group-hover:text-ink-1 transition-colors">
                     {t.owner_tag}
                   </p>
-                  <p className="text-xs text-ink-4 truncate mt-0.5">{t.subject || 'Sans sujet'}</p>
+                  <p translate="no" className="text-xs text-ink-4 truncate mt-0.5">{t.subject || 'Sans sujet'}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {t.priority && t.priority !== 'normal' && (

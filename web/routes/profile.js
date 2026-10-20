@@ -120,6 +120,18 @@ router.put('/whats-new', requireAuth, async (req, res) => {
   res.json({ seen: v });
 });
 
+// GET/PUT /api/profile/language — dashboard language (fr / en), kept for every browser of the account
+router.get('/language', requireAuth, async (req, res) => {
+  const [row] = await globalQuery('SELECT ui_lang FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
+  res.json({ lang: row?.ui_lang || null });
+});
+router.put('/language', requireAuth, async (req, res) => {
+  const lang = req.body?.lang;
+  if (lang !== 'fr' && lang !== 'en') return res.status(400).json({ error: 'Langue invalide' });
+  await globalQuery('INSERT INTO user_prefs (user_id, ui_lang) VALUES (?, ?) ON DUPLICATE KEY UPDATE ui_lang = VALUES(ui_lang)', [req.session.user.id, lang]);
+  res.json({ lang });
+});
+
 // GET/PUT /api/profile/availability — available / busy / away (shown when assigning tickets)
 const AVAILABILITY = ['available', 'busy', 'away'];
 router.get('/availability', requireAuthWithGuild, async (req, res) => {

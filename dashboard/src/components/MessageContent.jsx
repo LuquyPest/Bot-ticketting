@@ -29,8 +29,9 @@ export default function MessageContent({ text, linkClass = 'underline break-all'
       }).join('\n').trim()
     : content;
 
+  // translate="no": the dashboard's English translation never touches what people wrote
   return (
-    <>
+    <span translate="no" className="contents">
       {body && (
         <span className="whitespace-pre-wrap wrap-break-word">
           {body.split(URL_RE).map((part, i) => (i % 2 === 1
@@ -61,6 +62,6 @@ export default function MessageContent({ text, linkClass = 'underline break-all'
           })}
         </span>
       )}
-    </>
+    </span>
   );
 }

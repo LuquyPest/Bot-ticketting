@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { RefreshCw, Loader2, Search, Trash2, ChevronDown, ChevronRight, X, BellRing, Send } from 'lucide-react';
 import api from '../../api';
@@ -8,7 +9,7 @@ import { confirmToast } from '../../utils/confirmToast';
 const PAGE = 50;
 const PERIODS = [[24, '24 h'], [168, '7 jours'], [720, '30 jours'], [0, 'Tout']];
 const card = 'glass-dark rounded-2xl border border-overlay/8';
-const fmt = d => new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const fmt = d => new Date(d).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 // Last 24 hours, one bar per hour (rows: { ago: hours ago, n }).
 function hourlySeries(rows) {

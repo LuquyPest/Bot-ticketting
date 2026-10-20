@@ -30,11 +30,11 @@ export default function Status() {
     return () => clearInterval(t);
   }, []);
 
-  if (!data) return <div className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
+  if (!data) return <div data-no-translate className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
   const o = LEVEL[data.overall] || LEVEL.down;
   const OIcon = o.icon;
   return (
-    <div className="min-h-screen bg-base">
+    <div data-no-translate className="min-h-screen bg-base">
       <main className="max-w-3xl mx-auto px-4 py-10 space-y-6">
         <header className="flex items-center gap-2 text-ink-1"><Activity size={18} className="text-primary-light" /><h1 className="text-lg font-bold">Statut du service</h1></header>
 

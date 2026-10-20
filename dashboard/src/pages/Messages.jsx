@@ -151,7 +151,7 @@ export default function Messages() {
                     <span className="text-[10px] text-ink-4">·</span>
                     <span className="text-xs text-ink-3">par {m.sender_tag}</span>
                   </div>
-                  <p className="text-sm text-ink-2 whitespace-pre-wrap wrap-break-word">{m.content}</p>
+                  <p translate="no" className="text-sm text-ink-2 whitespace-pre-wrap wrap-break-word">{m.content}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
@@ -181,7 +181,7 @@ export default function Messages() {
                     <span className="text-xs text-ink-4 font-mono">Ticket #{m.ticket_id}</span>
                     <span className="text-xs text-emerald-600">✓ Envoyé</span>
                   </div>
-                  <p className="text-sm text-ink-3 line-clamp-1">{m.content}</p>
+                  <p translate="no" className="text-sm text-ink-3 line-clamp-1">{m.content}</p>
                 </div>
                 <p className="text-xs text-ink-4 shrink-0">{fmtDate(m.send_at)}</p>
               </div>

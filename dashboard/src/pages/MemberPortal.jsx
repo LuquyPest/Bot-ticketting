@@ -91,7 +91,7 @@ function GuildBanner({ guild }) {
 
 function Shell({ me, onLogout, children }) {
   return (
-    <div className="min-h-screen bg-base">
+    <div data-no-translate className="min-h-screen bg-base">
       <header className="border-b border-overlay/6 bg-surface/60">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Ticket size={18} className="text-primary-light" />
@@ -466,7 +466,7 @@ export default function MemberPortal({ page }) {
   }, []);
   const logout = async () => { await api.post('/member/logout').catch(() => {}); window.location.href = '/espace'; };
 
-  if (me === undefined) return <div className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
+  if (me === undefined) return <div data-no-translate className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
   return (
     <Shell me={me} onLogout={logout}>
       {!me ? <LoginCard error={params.get('error')} />

@@ -8,6 +8,7 @@ import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import { adoptAccountLang } from './i18n';
 import WhatsNew, { useWhatsNew } from './components/WhatsNew';
 
 const SAApp       = lazy(() => import('./pages/sa/SAApp'));
@@ -110,7 +111,11 @@ export default function App() {
 
   useEffect(() => {
     api.get('/auth/me')
-      .then(r => setUser(r.data))
+      .then(r => {
+        setUser(r.data);
+        // Language chosen on another browser of the account
+        api.get('/profile/language').then(l => adoptAccountLang(l.data.lang)).catch(() => {});
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

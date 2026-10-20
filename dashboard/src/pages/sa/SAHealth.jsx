@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { uiLocale } from '../../i18n';
 import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
 const card = 'glass-dark rounded-2xl border border-overlay/8 p-5';
 const fmtDur = s => (s < 3600 ? `${Math.floor(s / 60)} min` : s < 86400 ? `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min` : `${Math.floor(s / 86400)} j ${Math.floor((s % 86400) / 3600)} h`);
-const fmtTime = t => (t ? new Date(t).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—');
+const fmtTime = t => (t ? new Date(t).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—');
 
 // State shown with an icon and a word, never color alone
 function State({ ok, warn, label }) {

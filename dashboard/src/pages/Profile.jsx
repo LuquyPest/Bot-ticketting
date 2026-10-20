@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { uiLocale } from '../i18n';
+import LanguageToggle from '../components/LanguageToggle';
 import {
   Save, RefreshCw, ShieldCheck, ShieldOff, Loader2, Eye, EyeOff,
   Check, Star, Clock, Trophy, Ticket, Palmtree, Link, X,
@@ -342,7 +344,7 @@ export default function Profile() {
             </div>
           </div>
           <p className="text-[10px] text-ink-4">
-            Membre depuis {profile.firstLogin ? new Date(profile.firstLogin).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' }) : '—'}
+            Membre depuis {profile.firstLogin ? new Date(profile.firstLogin).toLocaleDateString(uiLocale(), { year: 'numeric', month: 'long' }) : '—'}
           </p>
         </div>
       </div>
@@ -705,6 +707,11 @@ export default function Profile() {
         </Section>
       </div>
 
+      <Section title="Langue du dashboard">
+        <p className="text-xs text-ink-3">Langue de l'interface pour ton compte. Les messages des membres, les sujets et les notes restent tels qu'ils ont été écrits.</p>
+        <LanguageToggle variant="select" />
+      </Section>
+
       {/* ── Notifications push ───────────────────────────────────────────── */}
       {push.supported && (
         <Section title="Notifications">
@@ -759,7 +766,7 @@ export default function Profile() {
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-ink-4 mt-0.5">{s.ip} · {new Date(s.lastSeenAt).toLocaleString('fr-FR')}</p>
+                <p className="text-[10px] text-ink-4 mt-0.5">{s.ip} · {new Date(s.lastSeenAt).toLocaleString(uiLocale())}</p>
               </div>
               {!s.isCurrent && (
                 <button onClick={() => revokeSession(s.sessionId)}

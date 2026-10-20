@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef} from 'react';
+import { uiLocale } from '../i18n';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
@@ -24,7 +25,7 @@ import { availabilityLabel } from '../utils/availability';
 function hasVars(text) { return /\{\{[a-z][a-z0-9_]*\}\}/i.test(text); }
 
 function resolveVars(text, ticket, staffUsername) {
-  const date = new Date().toLocaleDateString('fr-FR');
+  const date = new Date().toLocaleDateString(uiLocale());
   const fieldValues = new Map((ticket?.fields || []).map(f => [f.variable, f.value ?? '']));
   return text
     .replace(/\{\{([a-z][a-z0-9_]*)\}\}/gi, (m, v) => (fieldValues.has(v.toLowerCase()) ? fieldValues.get(v.toLowerCase()) : m))
@@ -917,7 +918,7 @@ export default function TicketDetail() {
               <Pencil size={12} className="text-ink-4 group-hover:text-ink-2 shrink-0" />
             </button>
           ) : ticket.subject && (
-            <span className="text-sm text-ink-2 truncate max-w-xs">{ticket.subject}</span>
+            <span translate="no" className="text-sm text-ink-2 truncate max-w-xs">{ticket.subject}</span>
           )}
 
           <div className="ml-auto flex items-center gap-2 shrink-0">
@@ -975,7 +976,7 @@ export default function TicketDetail() {
                   <Pin size={12} className="text-amber-400 mt-0.5 shrink-0" />
                   <button onClick={() => document.getElementById(`note-${n.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
                     className="min-w-0 flex-1 text-left">
-                    <p className="text-xs text-ink-1 whitespace-pre-wrap wrap-break-word line-clamp-3">{n.content}</p>
+                    <p translate="no" className="text-xs text-ink-1 whitespace-pre-wrap wrap-break-word line-clamp-3">{n.content}</p>
                     <p className="text-[10px] text-ink-4 mt-0.5">{n.author_tag} · épinglée par {n.pinned_by_tag}</p>
                   </button>
                   {can('reply_ticket') && (

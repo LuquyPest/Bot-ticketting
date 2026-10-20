@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { uiLocale } from '../i18n';
 import { Key, Plus, Trash2, Copy, Check, Loader2, RefreshCw, ShieldOff, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../api';
@@ -198,7 +199,7 @@ export default function ApiKeys() {
                     </div>
                     {k.last_used_at && (
                       <p className="text-[10px] text-ink-4 mt-0.5">
-                        Dernière utilisation : {new Date(k.last_used_at).toLocaleString('fr-FR')}
+                        Dernière utilisation : {new Date(k.last_used_at).toLocaleString(uiLocale())}
                       </p>
                     )}
                   </div>
