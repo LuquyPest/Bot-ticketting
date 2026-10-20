@@ -48,7 +48,7 @@ const MOCK = {
   '/api/incidents': [{ id: 1, title: 'Paiements par carte indisponibles', message: 'Notre prestataire est en panne, ne réessaie pas pour l’instant.', subjects: ['Paiement'], notify_on_resolve: true, created_by_tag: 'Daryu', created_at: iso(90), resolved_at: null, members: 7, tickets: 8 },
     { id: 2, title: 'Connexion lente', message: 'Résolu', subjects: null, notify_on_resolve: false, created_by_tag: 'Daryu', created_at: iso(5000), resolved_at: iso(4000), resolved_by_tag: 'Daryu', members: 3, tickets: 3 }],
   '/api/config': { ticketSubjects: ['Paiement', 'Compte', 'Autre'] },
-  '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null }],
+  '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' }],
   '/api/member/guilds/123456789012345678/faq': [
     { id: 1, question: 'Comment changer mon mot de passe ?', answer: 'Va dans Réglages > Sécurité.' },
     { id: 2, question: 'Mon paiement est refusé', answer: 'Vérifie que ta carte autorise les paiements en ligne.' }],
@@ -64,7 +64,7 @@ const MOCK = {
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
     { id: 2, subject: 'Ancienne commande', status: 'closed', stage: 'open', created_at: iso(9000), closed_at: iso(8000), assigned: true, participant: false, rating: 5 },
   ] }],
-  '/api/member/tickets/123456789012345678/1': { guild: { id: '123456789012345678', name: 'Sunset FA', icon: null },
+  '/api/member/tickets/123456789012345678/1': { guild: { id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' },
     ticket: { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), assigned: true, participant: false },
     messages: [
       { id: 1, kind: 'me', author: null, content: 'Bonjour, je n’arrive pas à payer.', created_at: iso(120) },

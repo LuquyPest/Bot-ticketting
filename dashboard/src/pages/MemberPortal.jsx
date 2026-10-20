@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus } from 'lucide-react';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
+import { readableText } from '../utils/color';
 
 // Member web space: a member signs in with Discord and reads their own tickets (no staff data).
 // French by default, English when the browser asks for it.
@@ -60,10 +61,30 @@ function StatusBadge({ ticket }) {
   return <span className={`shrink-0 px-2 py-0.5 rounded-md border text-[11px] font-semibold ${s.cls}`}>{s.label}</span>;
 }
 
-function GuildIcon({ guild }) {
-  return guild.icon
-    ? <img src={guild.icon} alt="" className="w-7 h-7 rounded-lg object-cover" />
-    : <span className="w-7 h-7 rounded-lg bg-primary/20 text-primary-light text-xs font-bold flex items-center justify-center">{guild.name?.[0] || '?'}</span>;
+function GuildIcon({ guild, size = 'w-7 h-7' }) {
+  const src = guild.logo || guild.icon;
+  return src
+    ? <img src={src} alt="" className={`${size} rounded-lg object-cover`} />
+    : <span className={`${size} rounded-lg bg-primary/20 text-primary-light text-xs font-bold flex items-center justify-center`}>{guild.name?.[0] || '?'}</span>;
+}
+
+// Server colours: accent of the buttons and of the banner on that server's pages
+const accent = guild => (guild?.color ? { background: guild.color, color: readableText(guild.color) } : undefined);
+
+function GuildBanner({ guild }) {
+  if (!guild) return null;
+  return (
+    <div className="rounded-2xl border border-overlay/6 bg-surface-card overflow-hidden">
+      <div className="h-1.5" style={{ background: guild.color || 'var(--color-primary)' }} />
+      <div className="flex items-center gap-3 p-4">
+        <GuildIcon guild={guild} size="w-10 h-10" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink-1">{guild.name}</p>
+          {guild.welcome && <p className="text-xs text-ink-2 mt-0.5 whitespace-pre-wrap">{guild.welcome}</p>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Shell({ me, onLogout, children }) {
@@ -138,7 +159,7 @@ function TicketList() {
       </div>
       {groups.map(({ guild, tickets }) => (
         <section key={guild.id} className="space-y-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-1"><GuildIcon guild={guild} />{guild.name}</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-1 border-l-4 pl-2" style={{ borderColor: guild.color || 'transparent' }}><GuildIcon guild={guild} />{guild.name}</h2>
           <ul className="space-y-2">
             {tickets.map(t => (
               <li key={t.id}>
@@ -197,10 +218,10 @@ function TicketView({ guildId, ticketId, me }) {
       <button onClick={() => navigate('/espace')} className="inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1">
         <ArrowLeft size={13} /> {STR.back}
       </button>
+      <GuildBanner guild={guild} />
       <div className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-3">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-2 text-xs text-ink-3"><GuildIcon guild={guild} />{guild.name}</p>
             <h1 className="text-lg font-bold text-ink-1 mt-2"><span className="font-mono text-ink-4 mr-1.5">#{t.id}</span>{t.subject || '—'}</h1>
             <p className="text-[11px] text-ink-4 mt-1">{STR.opened} {fmt(t.created_at)}{t.closed_at ? ` · ${STR.closed} ${fmt(t.closed_at)}` : ''}</p>
           </div>
@@ -249,7 +270,7 @@ function TicketView({ guildId, ticketId, me }) {
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] text-ink-4">{STR.reply}</p>
             {replyError && <p className="text-xs text-red-400" role="alert">{replyError}</p>}
-            <button onClick={send} disabled={!reply.trim() || sending}
+            <button onClick={send} disabled={!reply.trim() || sending} style={accent(guild)}
               className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50">
               {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {STR.send}
             </button>
@@ -321,6 +342,7 @@ function HelpPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink-1">{STR.faqTitle}</h1>
       <GuildPicker guilds={guilds} guildId={guildId} setGuildId={setGuildId} />
+      <GuildBanner guild={guilds.find(g => g.id === guildId)} />
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 pointer-events-none" />
         <input type="search" value={query} onChange={e => setQuery(e.target.value)} aria-label={STR.faqSearch} placeholder={STR.faqSearch} className={`${INPUT} pl-9`} />
@@ -378,6 +400,7 @@ function NewTicket() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink-1">{STR.tabs.new}</h1>
       <GuildPicker guilds={guilds} guildId={guildId} setGuildId={setGuildId} />
+      <GuildBanner guild={guilds.find(g => g.id === guildId)} />
       {subjects === null ? <Loader2 className="animate-spin text-ink-4" /> : (
         <label className="block">
           <span className="text-sm text-ink-2 font-medium block mb-1">{STR.subject}</span>
@@ -417,7 +440,7 @@ function NewTicket() {
         </fieldset>
       )}
       {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
-      <button onClick={submit} disabled={!ready || busy}
+      <button onClick={submit} disabled={!ready || busy} style={accent(guilds.find(g => g.id === guildId))}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {STR.open}
       </button>

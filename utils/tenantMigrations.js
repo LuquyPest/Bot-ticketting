@@ -275,6 +275,15 @@ const MIGRATIONS = [
          ADD COLUMN IF NOT EXISTS keywords VARCHAR(300) DEFAULT NULL, MODIFY subject VARCHAR(100) DEFAULT NULL`,
     ],
   },
+  {
+    version: 20,
+    name: 'Espace membre aux couleurs du serveur',
+    statements: [
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS portal_logo MEDIUMTEXT DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS portal_color VARCHAR(7) DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS portal_welcome VARCHAR(500) DEFAULT NULL`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

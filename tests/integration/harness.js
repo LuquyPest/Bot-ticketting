@@ -324,7 +324,9 @@ async function main() {
   // M7 — avatar upload no longer rejected by the 100 kB body limit
   r = await req('PATCH', '/api/config/bot-identity', { sid: sessions.F, body: { avatarDataUrl: 'data:image/png;base64,' + 'A'.repeat(500000) } });
   check('M7 corps de 500 ko accepté par le parseur', r.status !== 413, r.status);
-  r = await req('PATCH', '/api/config', { sid: sessions.F, body: { welcomeMessage: 'x'.repeat(200000) } });
+  r = await req('PATCH', '/api/config', { sid: sessions.F, body: { welcomeMessage: 'x'.repeat(500000) } });
+  check('limite de 400 ko sur les paramètres (logo de l espace membre)', r.status === 413, r.status);
+  r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F, body: { content: 'x'.repeat(200000) } });
   check('limite 100 ko conservée ailleurs', r.status === 413, r.status);
 
   // H3 — super-admin ticket limit no longer breaks ticket creation
@@ -1813,6 +1815,25 @@ async function main() {
     r = await req('PUT', '/api/profile/whats-new', { sid: sessions.FV, body: { version: '<script>' } });
     check('nouveautés: version invalide refusée', r.status === 400, r.status);
     check('nouveautés: réservé aux comptes connectés', (await req('GET', '/api/profile/whats-new')).status === 401);
+  }
+
+  // ── Member space colours per server ──
+  {
+    const PNG1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    let r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { portalColor: 'orange' } });
+    check('couleurs: couleur invalide refusée', r.status === 400, r.status);
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { portalLogo: 'https://evil.example/logo.png' } });
+    check('couleurs: logo externe refusé (image intégrée seulement)', r.status === 400, r.status);
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { portalLogo: PNG1, portalColor: '#e67e22', portalWelcome: 'Bienvenue au support !' } });
+    check('couleurs: enregistrées', r.status === 200, JSON.stringify(r.body));
+    await mk('MWB', { member: { id: '200000000000000081', username: 'member81', avatar: null } });
+    await redis.del('memberguilds:200000000000000081');
+    r = await req('GET', '/api/member/guilds', { sid: sessions.MWB });
+    const gb = r.body.find?.(g => g.id === G);
+    check('couleurs: transmises à l espace membre', gb?.color === '#e67e22' && gb.logo === PNG1 && gb.welcome === 'Bienvenue au support !', JSON.stringify(gb).slice(0, 200));
+    r = await req('GET', '/api/config/history', { sid: sessions.FV });
+    check('couleurs: logo masqué dans l historique (trop lourd)', r.body.entries?.[0]?.changes?.portalLogo?.secret === true && !JSON.stringify(r.body).includes('iVBOR'), JSON.stringify(r.body.entries?.[0]).slice(0, 200));
+    await req('PATCH', '/api/config', { sid: sessions.FV, body: { portalLogo: null, portalColor: null, portalWelcome: null } });
   }
 
   // ── Monthly PDF report ──

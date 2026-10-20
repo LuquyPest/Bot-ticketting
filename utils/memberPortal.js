@@ -9,6 +9,12 @@ const { escapeHtml } = require('./transcript');
 const MEMBER_SOURCES = ['user', 'reply', 'scheduled', 'system'];
 const SNOWFLAKE_RE = /^\d{17,20}$/;
 
+// Server colours in the member space (logo, accent colour, welcome text)
+async function guildBranding(db) {
+  const [cfg] = await db('SELECT portal_logo, portal_color, portal_welcome FROM guild_config WHERE id = 1').catch(() => []);
+  return { logo: cfg?.portal_logo || null, color: cfg?.portal_color || null, welcome: cfg?.portal_welcome || null };
+}
+
 async function portalEnabled(db) {
   const [cfg] = await db('SELECT member_portal_enabled FROM guild_config WHERE id = 1');
   return !cfg || cfg.member_portal_enabled === null || Number(cfg.member_portal_enabled) === 1;
@@ -34,7 +40,7 @@ async function listMemberTickets(userId, client) {
       if (!tickets.length) continue;
       const g = client?.guilds?.cache?.get(guild_id);
       out.push({
-        guild: { id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null },
+        guild: { id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
         tickets: tickets.map(({ owner_id, ...t }) => ({ ...t, assigned: !!Number(t.assigned), participant: owner_id !== userId })),
       });
     } catch { /* tenant DB unavailable */ }
@@ -74,7 +80,7 @@ async function memberTicket(userId, guildId, ticketId, client) {
   const g = client?.guilds?.cache?.get(guildId);
   const { owner_id, ...t } = ticket;
   return {
-    guild: { id: guildId, name: g?.name || guild.guild_name || guildId, icon: g?.iconURL?.({ size: 64 }) || null },
+    guild: { id: guildId, name: g?.name || guild.guild_name || guildId, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
     ticket: { ...t, assigned: !!Number(t.assigned), participant: owner_id !== userId },
     messages: notes.map(n => ({
       id: n.id,
@@ -138,7 +144,7 @@ async function memberGuilds(userId, client) {
       const g = client?.guilds?.cache?.get(guild_id);
       if (!g || !(await g.members.fetch(userId).catch(() => null))) continue;
       if (!(await portalEnabled(getTenantDb(guild_id)))) continue;
-      out.push({ id: guild_id, name: g.name || guild_name || guild_id, icon: g.iconURL?.({ size: 64 }) || null });
+      out.push({ id: guild_id, name: g.name || guild_name || guild_id, icon: g.iconURL?.({ size: 64 }) || null, ...(await guildBranding(getTenantDb(guild_id))) });
     } catch { /* tenant DB unavailable */ }
   }
   await redis.set(key, JSON.stringify(out), 'EX', 300).catch(() => null);

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
 import ConfigTransfer from '../components/ConfigTransfer';
 import ConfigHistory from '../components/ConfigHistory';
+import PortalBranding from '../components/PortalBranding';
 
 function Section({ title, description, children }) {
   return (
@@ -238,6 +239,9 @@ export default function Settings() {
         memberReopenDays:         cfg.memberReopenDays ?? 7,
         notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
         memberPortalEnabled:      cfg.memberPortalEnabled === undefined || cfg.memberPortalEnabled ? 1 : 0,
+        portalLogo:               cfg.portalLogo || null,
+        portalColor:              /^#[0-9a-fA-F]{6}$/.test(cfg.portalColor || '') ? cfg.portalColor : null,
+        portalWelcome:            cfg.portalWelcome?.trim() || null,
         lowRatingThreshold:       cfg.lowRatingThreshold ?? 2,
         ticketSubjects:           cfg.ticketSubjects || [],
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
@@ -631,7 +635,9 @@ export default function Settings() {
           label="Espace membre web"
           hint={`Les membres se connectent avec Discord sur ${window.location.origin}/espace pour retrouver leurs tickets, leur statut et l'historique de leurs échanges (jamais les notes internes)`}
           checked={cfg.memberPortalEnabled === undefined || !!cfg.memberPortalEnabled} onChange={v => set('memberPortalEnabled', v)}
-        />
+        >
+          <PortalBranding cfg={cfg} set={set} />
+        </FeatureToggle>
         <FeatureToggle
           label="Rappels staff automatiques"
           hint="DM au staff claimer si aucune réponse dans le délai configuré"

@@ -9,7 +9,8 @@ const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCate
   'removeUserLogChannelId', 'weeklyReportChannelId', 'monthlyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
 const ROLE_FIELDS = ['supportRoleIds', 'chiefRoleIds'];
 // Never written to the audit log in clear
-const SECRET_FIELDS = new Set(['webhookSecret']);
+// Never written to the history in clear (the logo: too large to keep every version)
+const SECRET_FIELDS = new Set(['webhookSecret', 'portalLogo']);
 
 // Allowed fields and their DB column names (all stored in guild_config table)
 const FIELD_MAP = {
@@ -48,6 +49,9 @@ const FIELD_MAP = {
   notifyMemberStage:         'notify_member_stage',
   lowRatingThreshold:        'low_rating_threshold',
   memberPortalEnabled:       'member_portal_enabled',
+  portalLogo:                'portal_logo',
+  portalColor:               'portal_color',
+  portalWelcome:             'portal_welcome',
   webhookUrl:                'webhook_url',
   webhookSecret:             'webhook_secret',
   // Phase 1 — feature flags
@@ -107,6 +111,11 @@ const VALIDATORS = {
   notifyMemberStage:        v => v === 0 || v === 1 || v === true || v === false,
   lowRatingThreshold:       v => Number.isInteger(v) && v >= 0 && v <= 4,
   memberPortalEnabled:      v => v === 0 || v === 1 || v === true || v === false,
+  // Member space branding: a small image embedded as a data URL (resized in the browser), so no
+  // external host is needed and the CSP stays closed
+  portalLogo:               v => v === null || (typeof v === 'string' && v.length <= 200_000 && /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(v)),
+  portalColor:              v => v === null || (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)),
+  portalWelcome:            v => v === null || (typeof v === 'string' && v.length <= 500),
   webhookUrl:               v => v === null || (typeof v === 'string' && v.length <= 500 && /^https:\/\/.{3,}/.test(v)),
   webhookSecret:            v => v === null || (typeof v === 'string' && v.length >= 16 && v.length <= 255),
   // Phase 1 — feature flags
