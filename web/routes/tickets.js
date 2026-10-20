@@ -498,11 +498,11 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
   // DM: embed naming the server and the ticket (a member can have tickets on several servers)
   // Each member receives the reply in their language
   for (const userId of linkedUserIds) {
-    await sendToMember(client, userId, req.guildId, () => {
+    await sendToMember(client, userId, req.guildId, async () => {
       const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: upload ? null : file_url });
       if (upload) dmEmbed.addFields({ name: t('reply.fileAttached'), value: upload.name.slice(0, 1024) });
       return {
-        embeds: [dmEmbed], components: ticketDmComponents(ticket, req.guildId, userId),
+        embeds: [dmEmbed], components: await ticketDmComponents(ticket, req.guildId, userId),
         ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
       };
     });

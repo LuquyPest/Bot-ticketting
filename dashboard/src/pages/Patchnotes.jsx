@@ -10,6 +10,14 @@ const TAG = {
 
 const VERSIONS = [
   {
+    version: 'v2.17',
+    date: '20 octobre 2026',
+    title: 'Profils membres, procédures, accès invité et tableau de bord en anglais',
+    changes: [
+      { type: 'new',  text: 'Bouton « Voir sur le web » sous chaque MP lié à un ticket : il ouvre la page du ticket dans l\'espace membre' },
+    ]
+  },
+  {
     version: 'v2.16',
     date: '18 octobre 2026',
     title: 'Audit de sécurité, vérification complète et nettoyage',

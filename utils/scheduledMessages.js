@@ -36,7 +36,7 @@ async function processPending(client) {
           // Each member receives the reply in their language
           const linkedUserIds = await tm.getAllLinkedUserIds(msg.ticket_id);
           for (const userId of linkedUserIds) {
-            await sendToMember(client, userId, guild_id, () => ({ embeds: [staffReplyDmEmbed(client, guild_id, ticket, { sender: msg.sender_tag, content: msg.content, scheduled: true })], components: ticketDmComponents(ticket, guild_id, userId) }));
+            await sendToMember(client, userId, guild_id, async () => ({ embeds: [staffReplyDmEmbed(client, guild_id, ticket, { sender: msg.sender_tag, content: msg.content, scheduled: true })], components: await ticketDmComponents(ticket, guild_id, userId) }));
           }
           await recordEvent(db, {
             actor: { id: msg.sender_id, tag: msg.sender_tag, source: 'system' }, action: 'scheduled_sent', ticketId: msg.ticket_id,

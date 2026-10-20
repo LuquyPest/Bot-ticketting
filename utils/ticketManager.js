@@ -285,7 +285,7 @@ function createManager(db, client, guildId) {
       .setFooter({ text: t('welcome.footer') });
     if (subject) welcomeEmbed.addFields({ name: t('welcome.subject'), value: subject, inline: true });
     const { ticketDmComponents } = require('./components');
-    const components = ticketId ? ticketDmComponents({ id: ticketId, owner_id: user.id }, gid, user.id) : [];
+    const components = ticketId ? await ticketDmComponents({ id: ticketId, owner_id: user.id }, gid, user.id) : [];
     await user.send({ embeds: [welcomeEmbed], components }).catch(() => null);
     // Known issue in progress: told right after the welcome
     if (ticketId) await require('./incidents').notifyNewTicket({ db, client, guildId: gid, ticketId, ownerId: user.id, subject }).catch(() => null);

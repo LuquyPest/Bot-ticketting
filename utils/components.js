@@ -117,8 +117,15 @@ function memberCloseConfirmButtons(ticketId, guildId) {
 }
 
 // Components for a DM about a ticket: the close button only for its owner.
-function ticketDmComponents(ticket, guildId, recipientId) {
-  return ticket?.owner_id && ticket.owner_id === recipientId && ticket.id ? [memberCloseButton(ticket.id, guildId)] : [];
+// Buttons under a ticket DM: close + my tickets (owner), and « View on the web » (member space,
+// when the server keeps it on) for the owner and the participants
+async function ticketDmComponents(ticket, guildId, recipientId) {
+  if (!ticket?.id) return [];
+  const isOwner = ticket.owner_id && ticket.owner_id === recipientId;
+  const row = isOwner ? memberCloseButton(ticket.id, guildId) : new ActionRowBuilder();
+  const url = await require('./memberPortal').ticketWebUrl(guildId, ticket.id).catch(() => null);
+  if (url) row.addComponents(new ButtonBuilder().setLabel(t('portal.view')).setStyle(ButtonStyle.Link).setURL(url));
+  return row.components.length ? [row] : [];
 }
 
 // FAQ suggestions: one "solved" button per answer + open a ticket anyway

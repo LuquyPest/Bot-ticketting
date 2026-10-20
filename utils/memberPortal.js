@@ -107,6 +107,19 @@ ${rows || '<p class="ev">Aucun message</p>'}
 </body></html>`;
 }
 
+// Link to a ticket in the member space, or null when the server turned the space off (cached 1 min)
+const portalCache = new Map();
+async function ticketWebUrl(guildId, ticketId) {
+  const base = portalUrl();
+  if (!base) return null;
+  let entry = portalCache.get(guildId);
+  if (!entry || Date.now() - entry.at > 60000) {
+    entry = { at: Date.now(), on: await portalEnabled(getTenantDb(guildId)) };
+    portalCache.set(guildId, entry);
+  }
+  return entry.on ? `${base}/${guildId}/${ticketId}` : null;
+}
+
 // Public address of the member space (from the dashboard's public OAuth callback URL)
 function portalUrl() {
   const { config } = require('./config');
@@ -157,4 +170,4 @@ async function openingForm(guildId, subject) {
   return { subjects, fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type, required: !!f.required })), questions };
 }
 
-module.exports = { listMemberTickets, memberTicket, memberTranscriptHtml, portalEnabled, portalUrl, MEMBER_SOURCES, memberGuilds, isMemberGuild, guildFaq, openingForm };
+module.exports = { ticketWebUrl, listMemberTickets, memberTicket, memberTranscriptHtml, portalEnabled, portalUrl, MEMBER_SOURCES, memberGuilds, isMemberGuild, guildFaq, openingForm };

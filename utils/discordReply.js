@@ -10,9 +10,9 @@ const { sendToMember } = require('./i18n');
 async function sendDiscordReply({ client, db, tm, guildId, ticket, author, channel, content = '', fileUrl = null, anonymous = false }) {
   const sender = anonymous ? 'Support' : author.username;
   for (const userId of await tm.getAllLinkedUserIds(ticket.id)) {
-    await sendToMember(client, userId, guildId, () => ({
+    await sendToMember(client, userId, guildId, async () => ({
       embeds: [staffReplyDmEmbed(client, guildId, ticket, { sender, content, fileUrl })],
-      components: ticketDmComponents(ticket, guildId, userId),
+      components: await ticketDmComponents(ticket, guildId, userId),
     }));
   }
   await recordEvent(db, { actor: author, action: 'ticket_reply', ticketId: ticket.id, details: { anonymous, excerpt: (content || fileUrl || '').slice(0, 120) } });

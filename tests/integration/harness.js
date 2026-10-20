@@ -556,7 +556,7 @@ async function main() {
   const ownerDm = memberDms.find(m => m.id === M9)?.p, partDm = memberDms.find(m => m.id === M10)?.p;
   const closeBtnId = ownerDm?.components?.[0]?.components?.[0]?.data?.custom_id;
   check('membre: bouton « Fermer mon ticket » sur les réponses du staff', r.status === 200 && closeBtnId === `memberclose_${tm9}_${G}`, JSON.stringify(ownerDm?.components));
-  check('membre: pas de bouton pour un participant', partDm && !(partDm.components || []).length, JSON.stringify(partDm?.components));
+  check('membre: pas de bouton « Fermer » pour un participant (seulement le lien web)', partDm && !JSON.stringify(partDm.components || []).includes('memberclose') && JSON.stringify(partDm.components || []).includes('Voir sur le web'), JSON.stringify(partDm?.components));
   const dmInteraction = (customId, extra = {}) => {
     const out = {};
     return { out, interaction: {
@@ -1733,6 +1733,22 @@ async function main() {
     await app('./commands/reply').execute(fakeClient, iOut);
     check('/reply: refusé sans droits staff', memberDms.length === 0 && /permission|accès|autoris|réservé/i.test(JSON.stringify(outsider)), JSON.stringify(outsider));
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tc]);
+  }
+
+  // ── « View on the web » link in ticket DMs ──
+  {
+    const CHW = '900000000000000178', MWL = '200000000000000084';
+    channels.set(CHW, mkChannel(CHW, G));
+    const tw = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member84', ?, 'open', 'lien web')", [MWL, CHW])).insertId;
+    const linkOf = () => {
+      const dm = memberDms.filter(m => m.id === MWL).pop();
+      const comps = (dm?.p?.components || []).flatMap(r => (r.components || []).map(c => c.data || c));
+      return comps.find(c => c.url)?.url || null;
+    };
+    memberDms.length = 0;
+    await req('POST', `/api/tickets/${tw}/reply`, { sid: sessions.FV, body: { content: 'Réponse avec lien' } });
+    check('MP: bouton « Voir sur le web » vers la page du ticket', linkOf() === `http://localhost:39123/espace/${G}/${tw}`, JSON.stringify(memberDms.filter(m => m.id === MWL).map(m => m.p?.components)));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tw]);
   }
 
   // ── Monthly PDF report ──

@@ -484,7 +484,7 @@ Les membres se connectent sur **`/espace`** (ex. `https://ticket.sunset-fa.fr/es
 - **Répondre depuis le web** : sur un ticket ouvert, une zone de réponse envoie le message au staff exactement comme un MP (même salon, même historique, mêmes limites anti-flood et blacklist). La conversation se met à jour toute seule toutes les 15 s.
 - **Ouvrir un ticket** : onglet « Ouvrir un ticket » : serveur (ceux dont le membre fait partie), sujet, champs personnalisés et questions du formulaire d'ouverture de ce sujet, puis la demande. Le ticket suit le même parcours qu'en MP (message de bienvenue en MP, règles par sujet, incidents…) avec les mêmes limites (par jour, par serveur, blacklist). Pendant la saisie, les entrées de FAQ qui ressemblent à la demande sont proposées.
 - **Aide** : la FAQ de chaque serveur, consultable et cherchable (sans accent ni casse), avec un lien pour ouvrir un ticket si la réponse n'y est pas.
-- **Lien** : donné dans le MP de fermeture d'un ticket et dans `/mestickets`, et depuis la page de connexion du dashboard.
+- **Lien** : bouton « Voir sur le web » sous chaque MP lié à un ticket (propriétaire et participants), qui ouvre directement la page du ticket ; aussi dans le MP de fermeture, dans `/mestickets` et sur la page de connexion du dashboard.
 
 ### Topic du salon Discord
 
