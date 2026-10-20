@@ -121,12 +121,13 @@ function createManager(db, client, guildId) {
     return [...new Set(ids)];
   }
 
-  async function createTicketDb(channelId, user, subject = null) {
+  async function createTicketDb(channelId, user, subject = null, confidential = false) {
+    const visibility = confidential ? require('./gradePermissions').CONFIDENTIAL : null;
     const result = await db(
-      'INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, last_message_at, stage_changed_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
-      [channelId, user.id, user.tag, subject]
+      'INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, visibility_grade_id, last_message_at, stage_changed_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())',
+      [channelId, user.id, user.tag, subject, visibility]
     );
-    return { id: result.insertId, channel_id: channelId, owner_id: user.id, owner_tag: user.tag, subject };
+    return { id: result.insertId, channel_id: channelId, owner_id: user.id, owner_tag: user.tag, subject, visibility_grade_id: visibility };
   }
 
   // Discord channel name = the ticket subject (sanitized), else <prefix>-<username>.
@@ -164,7 +165,7 @@ function createManager(db, client, guildId) {
   }
 
   // forceNew: open a new ticket even if the user already has one (several tickets per member are allowed)
-  async function createTicket(user, firstMessage, attachments = [], subject = null, { forceNew = false } = {}) {
+  async function createTicket(user, firstMessage, attachments = [], subject = null, { forceNew = false, confidential = false } = {}) {
     const lockKey = `${gid}:${user.id}`;
     // A creation is already running for this user: wait for it and reuse its ticket
     while (creating.has(lockKey)) {
@@ -185,7 +186,7 @@ function createManager(db, client, guildId) {
         return { ticket, created: false };
       }
     }
-    const promise = createTicketUnlocked(user, firstMessage, attachments, subject, forceNew);
+    const promise = createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential);
     creating.set(lockKey, promise);
     try {
       const result = await promise;
@@ -197,7 +198,7 @@ function createManager(db, client, guildId) {
     }
   }
 
-  async function createTicketUnlocked(user, firstMessage, attachments, subject, forceNew) {
+  async function createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential = false) {
     const existing = forceNew ? null : await getOpenTicketByOwnerId(user.id);
     if (existing) {
       const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
@@ -206,7 +207,9 @@ function createManager(db, client, guildId) {
     }
 
     const channel = await createTicketChannel(user, subject);
-    const ticket = await createTicketDb(channel.id, user, subject);
+    const ticket = await createTicketDb(channel.id, user, subject, confidential);
+    // Confidential: the channel is closed to the staff before anything is posted in it
+    if (confidential) await require('./channelVisibility').syncTicketChannel(db, client, gid, ticket).catch(() => null);
 
     const embed = new EmbedBuilder()
       .setColor(0x6366f1)
@@ -226,7 +229,7 @@ function createManager(db, client, guildId) {
     await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
 
     fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
-    await recordEvent(db, { actor: user, action: 'ticket_open', ticketId: ticket.id, details: { subject: ticket.subject || null } });
+    await recordEvent(db, { actor: user, action: 'ticket_open', ticketId: ticket.id, details: { subject: ticket.subject || null, ...(confidential ? { confidential: true } : {}) } });
 
     if (firstMessage || attachments.length) {
       await sendUserContent(channel, user, firstMessage, attachments);
@@ -284,6 +287,10 @@ function createManager(db, client, guildId) {
       .setDescription(welcomeText)
       .setFooter({ text: t('welcome.footer') });
     if (subject) welcomeEmbed.addFields({ name: t('welcome.subject'), value: subject, inline: true });
+    if (ticketId) {
+      const [row] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [ticketId]).catch(() => []);
+      if (row?.visibility_grade_id === require('./gradePermissions').CONFIDENTIAL) welcomeEmbed.addFields({ name: '\u200b', value: t('confidential.welcome') });
+    }
     const { ticketDmComponents } = require('./components');
     const components = ticketId ? await ticketDmComponents({ id: ticketId, owner_id: user.id }, gid, user.id) : [];
     await user.send({ embeds: [welcomeEmbed], components }).catch(() => null);

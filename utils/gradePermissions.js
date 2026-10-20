@@ -53,6 +53,10 @@ async function getVisibleGradeIds(userId, db) {
 
 // Whether a dashboard user may see a ticket restricted to `gradeId` (null = unrestricted).
 // Used for out-of-request delivery (SSE, push) where req.userPermissions is not available.
+// Confidential ticket (harassment, report about a staff member…): stored as this visibility
+// "grade", which no real grade can have, so every visibility check already limits it to founders
+const CONFIDENTIAL = -1;
+
 async function canUserSeeTicket(db, userId, gradeId) {
   const [u] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [userId]);
   if (u?.role === 'fondateur') return true;
@@ -88,6 +92,7 @@ async function logAudit(actorId, actorTag, action, targetType, targetId, details
 }
 
 module.exports = {
+  CONFIDENTIAL,
   PERMISSIONS,
   getUserPermissions,
   getVisibleGradeIds,

@@ -952,6 +952,13 @@ export default function TicketDetail() {
             </div>
           )}
 
+          {ticket.visibility_grade_id === -1 && (
+            <div role="status" className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/8 px-4 py-2.5 text-xs text-ink-1">
+              <Lock size={13} className="text-red-400 mt-0.5 shrink-0" />
+              <span><strong>Ticket confidentiel</strong> — seuls les fondateurs le voient, sur le dashboard comme sur Discord. Le membre l'a demandé à l'ouverture (signalement, harcèlement…).</span>
+            </div>
+          )}
+
           {/* Pinned internal notes: always visible at the top of the conversation */}
           {pinnedNotes.length > 0 && (
             <div className="sticky top-0 z-[5] -mt-2 rounded-xl border border-amber-500/25 bg-surface-elevated/95 backdrop-blur-xs p-3 space-y-2 shadow-card">
@@ -1748,7 +1755,7 @@ export default function TicketDetail() {
           )}
 
           {/* VISIBILITÉ */}
-          {grades.length > 0 && can('manage_grades') && (
+          {(grades.length > 0 || user?.role === 'fondateur') && can('manage_grades') && (
             <div className={panelCard}>
               <SectionTitle>Visibilité</SectionTitle>
               <select value={ticket.visibility_grade_id || ''} onChange={e => changeVisibility(e.target.value || null)}
@@ -1759,8 +1766,9 @@ export default function TicketDetail() {
                 {grades.map(g => (
                   <option key={g.id} value={g.id}>{g.name} et supérieurs</option>
                 ))}
+                {user?.role === 'fondateur' && <option value="-1">🔒 Confidentiel (fondateurs uniquement)</option>}
               </select>
-              {ticket.visibility_grade_id && (
+              {ticket.visibility_grade_id > 0 && (
                 <p className="text-[10px] text-amber-400 mt-2">
                   Ticket restreint — visible uniquement par certains grades, sur le dashboard comme sur Discord.
                 </p>

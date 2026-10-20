@@ -54,7 +54,7 @@ const DM_MAX = 8;
 const DM_WINDOW_MS = 30 * 1000;
 
 // Starts intake form questioning sequence, returns true if form was triggered
-async function checkIntakeForm(user, content, attachments, guildEntry, client, subject, fieldValues = null) {
+async function checkIntakeForm(user, content, attachments, guildEntry, client, subject, fieldValues = null, confidential = false) {
   const { db, config } = guildEntry;
   if (!config.intake_form_enabled) return false;
 
@@ -78,7 +78,7 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   if (!questions.length) return false;
 
   await store.setPending('intake', user.id, {
-    guildId: guildEntry.guildId, content, attachments, subject, fieldValues,
+    guildId: guildEntry.guildId, content, attachments, subject, fieldValues, confidential,
     questions: questions.map(q => q.label), step: 0, answers: [],
   }, INTAKE_TTL_MS);
 
@@ -154,7 +154,7 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
       await user.send({ embeds: [subjectSelectEmbed(guildName)], components: subjectButtons(subjects) }).catch(() => null);
     } else {
       await store.setPending('subjectText', user.id, { guildId, content, attachments }, PENDING_TTL_MS, { onExpire: true });
-      await user.send({ embeds: [subjectAskEmbed(guildName)] }).catch(() => null);
+      await user.send({ embeds: [subjectAskEmbed(guildName)], components: [require('../utils/components').confidentialRow()] }).catch(() => null);
     }
     return;
   }
@@ -164,7 +164,7 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
   if (!opts.fieldsDone) {
     const fields = await applicableFields(db, subject);
     if (fields.length) {
-      await store.setPending('fields', user.id, { guildId, content, attachments, subject, fields, step: 0, values: {} }, INTAKE_TTL_MS);
+      await store.setPending('fields', user.id, { guildId, content, attachments, subject, fields, step: 0, values: {}, confidential: !!opts.confidential }, INTAKE_TTL_MS);
       await user.send({ embeds: [fieldQuestionEmbed(fields[0], 1, fields.length)] }).catch(() => null);
       return;
     }
@@ -172,11 +172,11 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
 
   // Intake form check before creating the ticket
   if (!opts.intakeDone) {
-    const intakeHandled = await checkIntakeForm(user, content, attachments, { guildId, db, tm, config }, client, subject, opts.fieldValues || null);
+    const intakeHandled = await checkIntakeForm(user, content, attachments, { guildId, db, tm, config }, client, subject, opts.fieldValues || null, !!opts.confidential);
     if (intakeHandled) return;
   }
 
-  const result = await tm.createTicket(user, content, attachments, subject || null, { forceNew: true });
+  const result = await tm.createTicket(user, content, attachments, subject || null, { forceNew: true, confidential: !!opts.confidential });
   if (result.created && opts.fieldValues) {
     await saveFieldValues(db, result.ticket.id, opts.fieldValues);
     const lines = (await fieldsForTicket(db, result.ticket.id)).filter(f => f.value).map(f => `**${f.label}** : ${f.value}`);
@@ -317,7 +317,7 @@ async function handleDm(client, user, data) {
       await user.send({ embeds: [fieldQuestionEmbed(fstate.fields[fstate.step], fstate.step + 1, fstate.fields.length)] }).catch(() => null);
     } else {
       await openTicketInGuild(user, fstate.content, fstate.attachments, fstate.guildId, client, fstate.subject ?? '',
-        { skipFaq: true, fieldsDone: true, fieldValues: fstate.values });
+        { skipFaq: true, fieldsDone: true, fieldValues: fstate.values, confidential: !!fstate.confidential });
     }
     return;
   }
@@ -337,7 +337,7 @@ async function handleDm(client, user, data) {
       const summary = intake.questions.map((label, i) => `**${label}** : ${intake.answers[i] || '—'}`).join('\n');
       const enrichedContent = `${intake.content || ''}\n\n📋 **Formulaire d'intake :**\n${summary}`.trim();
       await openTicketInGuild(user, enrichedContent, intake.attachments, intake.guildId, client, intake.subject ?? '',
-        { skipFaq: true, fieldsDone: true, intakeDone: true, fieldValues: intake.fieldValues || null });
+        { skipFaq: true, fieldsDone: true, intakeDone: true, fieldValues: intake.fieldValues || null, confidential: !!intake.confidential });
     }
     return;
   }

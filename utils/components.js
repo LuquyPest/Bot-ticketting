@@ -46,32 +46,28 @@ function oldTicketsPaginationButtons(userId, page, totalPages) {
   );
 }
 
-// Configured subjects as buttons (max 24) + "Autre sujet" for a free-text subject.
+// Configured subjects as buttons + « Autre sujet » (free-text subject) + « Demande confidentielle ».
+// Discord allows 25 buttons (5 rows of 5): 23 subjects at most.
 function subjectButtons(subjects) {
-  const rows = [];
-  let row = new ActionRowBuilder();
-  let count = 0;
-  subjects = subjects.slice(0, 24);
-
   // customId carries the index, not the text: labels are truncated to 80 chars
   // and two long subjects could otherwise collide (Discord rejects duplicate IDs).
-  for (const [i, subject] of subjects.entries()) {
-    if (count > 0 && count % 5 === 0) {
-      rows.push(row);
-      row = new ActionRowBuilder();
-    }
-    row.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`subject_${i}`)
-        .setLabel(subject.slice(0, 80))
-        .setStyle(ButtonStyle.Primary)
-    );
-    count++;
-  }
-  if (count > 0 && count % 5 === 0) { rows.push(row); row = new ActionRowBuilder(); }
-  row.addComponents(new ButtonBuilder().setCustomId('subject_other').setLabel(t('subject.other')).setStyle(ButtonStyle.Secondary));
-  rows.push(row);
+  const buttons = subjects.slice(0, 23).map((subject, i) =>
+    new ButtonBuilder().setCustomId(`subject_${i}`).setLabel(subject.slice(0, 80)).setStyle(ButtonStyle.Primary));
+  buttons.push(
+    new ButtonBuilder().setCustomId('subject_other').setLabel(t('subject.other')).setStyle(ButtonStyle.Secondary),
+    confidentialButton(),
+  );
+  const rows = [];
+  for (let k = 0; k < buttons.length; k += 5) rows.push(new ActionRowBuilder().addComponents(buttons.slice(k, k + 5)));
   return rows;
+}
+
+const confidentialButton = () =>
+  new ButtonBuilder().setCustomId('subject_confidential').setLabel(t('confidential.button')).setEmoji('🔒').setStyle(ButtonStyle.Secondary);
+
+// « Confidential request »: only the founders will see the ticket
+function confidentialRow() {
+  return new ActionRowBuilder().addComponents(confidentialButton());
 }
 
 // customId: rating_<stars>_<ticketId>_<guildId> (ticket IDs are only unique per guild)
@@ -149,5 +145,6 @@ module.exports = {
   closeConfirmationButtons,
   oldTicketsPaginationButtons,
   subjectButtons,
+  confidentialRow,
   ratingButtons
 };

@@ -80,12 +80,21 @@ async function handleInteraction(client, interaction) {
       if (interaction.isButton()) {
 
         // ── Sujet (DM) ── configured subject, or « Autre sujet » to type it
+        // Confidential request: the ticket opens visible to the founders only
+        if (interaction.customId === 'subject_confidential') {
+          const pending = await takePending('subject', interaction.user.id) || await takePending('subjectText', interaction.user.id);
+          if (!pending) return interaction.reply({ embeds: [sessionExpiredEmbed()], flags: MessageFlags.Ephemeral });
+          await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
+          const { openTicketInGuild } = require('./messageCreate');
+          await openTicketInGuild(interaction.user, pending.content, pending.attachments, pending.guildId, client, t('confidential.subject'), { skipFaq: true, confidential: true });
+          return;
+        }
         if (interaction.customId === 'subject_other') {
           const { switchToTextSubject } = require('./messageCreate');
           const state = await switchToTextSubject(interaction.user);
           if (!state) return interaction.reply({ embeds: [sessionExpiredEmbed()], flags: MessageFlags.Ephemeral });
           const guildName = client.guilds.cache.get(state.guildId)?.name;
-          return interaction.update({ embeds: [subjectAskEmbed(guildName)], components: [] });
+          return interaction.update({ embeds: [subjectAskEmbed(guildName)], components: [require('../utils/components').confidentialRow()] });
         }
         if (interaction.customId.startsWith('subject_')) {
           const { openTicketInGuild } = require('./messageCreate');

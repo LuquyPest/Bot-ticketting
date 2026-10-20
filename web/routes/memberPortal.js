@@ -160,7 +160,7 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
     const enriched = questions.length ? `${content}\n\n📋 **Formulaire d'intake :**\n${summary}` : content;
     const startedAt = new Date(Date.now() - 1000);
     await require('../../events/messageCreate').openTicketInGuild(user, enriched, [], guildId, client, subject,
-      { skipFaq: true, fieldsDone: true, intakeDone: true, fieldValues: Object.keys(fieldValues).length ? fieldValues : null });
+      { skipFaq: true, fieldsDone: true, intakeDone: true, fieldValues: Object.keys(fieldValues).length ? fieldValues : null, confidential: !!req.body?.confidential });
     const [ticket] = await db('SELECT id FROM tickets WHERE owner_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 1', [req.member.id, startedAt]);
     if (!ticket) return res.status(409).json({ error: 'Le ticket n\'a pas pu être ouvert, réessaie ou écris au bot en MP' });
     res.json({ ok: true, guildId, ticketId: ticket.id });

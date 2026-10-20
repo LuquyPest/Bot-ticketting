@@ -681,6 +681,7 @@ export default function Tickets() {
               <div className="flex items-center gap-2 text-xs">
                 {unread && <span className="w-1.5 h-1.5 rounded-full bg-primary-light shrink-0" title="Nouveau message" />}
                 <span className="font-mono text-ink-4 tabular-nums">#{t.id}</span>
+                {t.visibility_grade_id === -1 && <Lock size={11} className="text-red-400 shrink-0" aria-label="Confidentiel" />}
                 {hasDraft(`${user?.id}:${user?.guildId}:${t.id}:`) && <PenLine size={11} className="text-amber-400 shrink-0" aria-label="Brouillon" />}
                 {viewersMark(t.id)}
                 <span className="text-ink-1 font-medium truncate">{t.owner_tag}</span>
@@ -804,6 +805,7 @@ export default function Tickets() {
                   </td>
                   <td className="px-4 py-3.5 text-ink-4 font-mono text-xs tabular-nums">
                     <span className="inline-flex items-center gap-1">#{t.id}
+                      {t.visibility_grade_id === -1 && <Lock size={11} className="text-red-400" role="img" aria-label="Ticket confidentiel" />}
                       {hasDraft(`${user?.id}:${user?.guildId}:${t.id}:`) && <PenLine size={11} className="text-amber-400" aria-label="Brouillon non envoyé" />}
                       {viewersMark(t.id)}
                     </span>

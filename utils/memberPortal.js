@@ -67,6 +67,7 @@ async function memberTicket(userId, guildId, ticketId, client) {
   if (!(await portalEnabled(db))) return null;
   const [ticket] = await db(
     `SELECT t.id, t.subject, t.status, t.stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
+            t.visibility_grade_id = -1 AS confidential,
             EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
             (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating
      FROM tickets t WHERE t.id = ? AND ${ownTicketsSql}`,
@@ -81,7 +82,7 @@ async function memberTicket(userId, guildId, ticketId, client) {
   const { owner_id, ...t } = ticket;
   return {
     guild: { id: guildId, name: g?.name || guild.guild_name || guildId, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
-    ticket: { ...t, assigned: !!Number(t.assigned), participant: owner_id !== userId },
+    ticket: { ...t, assigned: !!Number(t.assigned), confidential: !!Number(t.confidential), participant: owner_id !== userId },
     messages: notes.map(n => ({
       id: n.id,
       kind: n.source === 'user' ? (n.author_id === userId ? 'me' : 'member') : n.source === 'system' ? 'event' : 'staff',

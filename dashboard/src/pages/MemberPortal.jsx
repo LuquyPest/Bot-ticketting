@@ -22,6 +22,7 @@ const STR = {
     tabs: { tickets: 'Mes tickets', new: 'Ouvrir un ticket', help: 'Aide' },
     replyPh: 'Écris ta réponse…', send: 'Envoyer', sent: 'Message envoyé', closedTicket: 'Ce ticket est fermé.',
     server: 'Serveur', subject: 'Sujet', subjectPh: 'Sujet de ta demande', message: 'Ta demande', messagePh: 'Explique ton problème le plus précisément possible.',
+    confidential: 'Demande confidentielle : seuls les fondateurs du serveur pourront lire ce ticket (signalement, harcèlement…)', confidentialBadge: 'Confidentiel',
     optional: 'facultatif', form: 'Quelques questions', open: 'Ouvrir le ticket', noGuild: 'Aucun serveur disponible : tu dois être membre d\'un serveur qui utilise ce bot.',
     faqTitle: 'Questions fréquentes', faqSearch: 'Chercher dans l\'aide…', faqNone: 'Aucune réponse ne correspond.', faqEmpty: 'Ce serveur n\'a pas encore de page d\'aide.',
     stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.',
@@ -39,6 +40,7 @@ const STR = {
     tabs: { tickets: 'My tickets', new: 'Open a ticket', help: 'Help' },
     replyPh: 'Write your answer…', send: 'Send', sent: 'Message sent', closedTicket: 'This ticket is closed.',
     server: 'Server', subject: 'Subject', subjectPh: 'Subject of your request', message: 'Your request', messagePh: 'Describe your problem as precisely as possible.',
+    confidential: 'Confidential request: only the server founders will be able to read this ticket (report, harassment…)', confidentialBadge: 'Confidential',
     optional: 'optional', form: 'A few questions', open: 'Open the ticket', noGuild: 'No server available: you must be a member of a server that uses this bot.',
     faqTitle: 'Frequently asked questions', faqSearch: 'Search the help…', faqNone: 'No answer matches.', faqEmpty: 'This server has no help page yet.',
     stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.',
@@ -223,6 +225,7 @@ function TicketView({ guildId, ticketId, me }) {
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold text-ink-1 mt-2"><span className="font-mono text-ink-4 mr-1.5">#{t.id}</span>{t.subject || '—'}</h1>
+            {t.confidential && <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-red-400">🔒 {STR.confidentialBadge}</p>}
             <p className="text-[11px] text-ink-4 mt-1">{STR.opened} {fmt(t.created_at)}{t.closed_at ? ` · ${STR.closed} ${fmt(t.closed_at)}` : ''}</p>
           </div>
           <StatusBadge ticket={t} />
@@ -364,6 +367,7 @@ function NewTicket() {
   const [fields, setFields] = useState({});
   const [answers, setAnswers] = useState([]);
   const [content, setContent] = useState('');
+  const [confidential, setConfidential] = useState(false);
   const [faq, setFaq] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -386,7 +390,7 @@ function NewTicket() {
   const submit = async () => {
     setBusy(true); setError('');
     try {
-      const { data } = await api.post(`/member/guilds/${guildId}/tickets`, { subject, fields, answers, content: content.trim() });
+      const { data } = await api.post(`/member/guilds/${guildId}/tickets`, { subject, fields, answers, content: content.trim(), confidential });
       navigate(`/espace/${data.guildId}/${data.ticketId}`);
     } catch (err) { setError(err.response?.data?.error || STR.error2); }
     setBusy(false);
@@ -439,6 +443,10 @@ function NewTicket() {
           ))}
         </fieldset>
       )}
+      <label className="flex items-start gap-2 text-sm text-ink-2 rounded-xl border border-overlay/8 p-3">
+        <input type="checkbox" checked={confidential} onChange={e => setConfidential(e.target.checked)} className="mt-1" />
+        <span>🔒 {STR.confidential}</span>
+      </label>
       {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
       <button onClick={submit} disabled={!ready || busy} style={accent(guilds.find(g => g.id === guildId))}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">

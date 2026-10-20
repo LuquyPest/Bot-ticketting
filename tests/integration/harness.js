@@ -150,6 +150,7 @@ async function main() {
     ['200000000000000005', new Map()],
     ['200000000000000006', new Map()],
     ['200000000000000081', new Map()],
+    ['200000000000000089', new Map()],
   ]);
   const memberDms = [];
   const G2 = '223456789012345678';
@@ -1899,6 +1900,56 @@ async function main() {
     r = await req('GET', '/api/staff/me/activity', { sid: sessions.FV, query: { days: 7 } });
     check('temps: total dans Mon activité', r.body.timeSeconds >= 8 * 3600, r.body.timeSeconds);
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [t1t]);
+  }
+
+  // ── Confidential tickets (founders only) ──
+  {
+    const MCF = '200000000000000089';
+    const [cfgB] = await db('SELECT ticket_subjects, faq_enabled, intake_form_enabled FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_subjects = ?, faq_enabled = 0, intake_form_enabled = 0 WHERE id = 1", [JSON.stringify(['Paiement', 'Compte'])]);
+    const msgC = app('./events/messageCreate'), interC = app('./events/interactionCreate');
+    memberDms.length = 0;
+    await msgC.execute(fakeClient, { t: 'MESSAGE_CREATE', d: { author: { id: MCF, bot: false }, content: 'Un membre du staff me harcèle', attachments: [] } });
+    const ask = memberDms.filter(m => m.id === MCF).pop()?.p;
+    const ids = (ask?.components || []).flatMap(r => r.components.map(c => c.data.custom_id));
+    check('confidentiel: bouton proposé avec les sujets', ids.includes('subject_confidential') && ids.includes('subject_0') && (ask.components || []).length <= 5, JSON.stringify(ids));
+    const out = {};
+    await interC.execute(fakeClient, { customId: 'subject_confidential', guildId: null, guild: null, channelId: 'dm', values: [], message: { embeds: [] },
+      user: { id: MCF, username: 'member89', tag: 'member89', send: async p => memberDms.push({ id: MCF, p }) },
+      isButton: () => true, isStringSelectMenu: () => false, isModalSubmit: () => false, isChatInputCommand: () => false, isRepliable: () => true,
+      reply: async p => { out.reply = p; }, update: async p => { out.update = p; } });
+    const [tc] = await db("SELECT * FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1", [MCF]);
+    check('confidentiel: ticket ouvert réservé aux fondateurs', tc?.visibility_grade_id === -1 && tc.subject === 'Demande confidentielle', JSON.stringify(tc));
+    const welcome = memberDms.filter(m => m.id === MCF).map(m => JSON.stringify(m.p)).join(' ');
+    check('confidentiel: le membre est prévenu', /seuls les fondateurs/.test(welcome), welcome.slice(-300));
+    let r = await req('GET', `/api/tickets/${tc.id}`, { sid: sessions.S3T });
+    check('confidentiel: invisible pour le staff', r.status === 403 || r.status === 404, r.status);
+    r = await req('GET', '/api/tickets', { sid: sessions.S3T, query: { status: 'open' } });
+    check('confidentiel: absent de la liste du staff', !r.body.tickets?.some(t => t.id === tc.id), '');
+    r = await req('GET', '/api/tickets/search', { sid: sessions.S3T, query: { q: 'harcèle' } });
+    check('confidentiel: absent de la recherche du staff', r.status === 200 && !r.body.results.some(x => x.ticket.id === tc.id), JSON.stringify(r.body).slice(0, 200));
+    r = await req('GET', `/api/tickets/${tc.id}`, { sid: sessions.FV });
+    check('confidentiel: visible par un fondateur', r.status === 200 && r.body.visibility_grade_id === -1, r.status);
+    const canSee = app('./utils/gradePermissions').canUserSeeTicket;
+    check('confidentiel: notifications et salon limités aux fondateurs', await canSee(db, U.F, -1) && !(await canSee(db, U.S1, -1)), '');
+    // A rule on the subject does not lift it
+    const gR = (await db("INSERT INTO grades (name) VALUES ('Règle conf')")).insertId;
+    await db("INSERT INTO subject_rules (subject, visibility_grade_id) VALUES ('Demande confidentielle', ?)", [gR]);
+    await app('./utils/subjectRules').applySubjectRules({ db, client: fakeClient, guildId: G, ticket: tc, firstMessage: '' });
+    const [tc2] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [tc.id]);
+    check('confidentiel: une règle par sujet ne le lève pas', tc2.visibility_grade_id === -1, JSON.stringify(tc2));
+    await db("DELETE FROM subject_rules WHERE subject = 'Demande confidentielle'");
+    r = await req('PATCH', `/api/tickets/${tc.id}/visibility`, { sid: sessions.FV, body: { visibility_grade_id: null } });
+    check('confidentiel: levé par un fondateur', r.status === 200 && (await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [tc.id]))[0].visibility_grade_id === null, JSON.stringify(r.body));
+    // From the member space
+    await mk('MCF', { member: { id: MCF, username: 'member89', avatar: null } });
+    await redis.del(`memberguilds:${MCF}`);
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MCF, body: { subject: 'Compte', content: 'Signalement confidentiel depuis le site', confidential: true } });
+    const [tw] = r.body.ticketId ? await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [r.body.ticketId]) : [];
+    const mv = r.body.ticketId ? await req('GET', `/api/member/tickets/${G}/${r.body.ticketId}`, { sid: sessions.MCF }) : {};
+    check('confidentiel: demandé depuis l espace membre', tw?.visibility_grade_id === -1 && mv.body?.ticket?.confidential === true, JSON.stringify([r.body, tw, mv.body?.ticket]));
+    await db('UPDATE guild_config SET ticket_subjects = ?, faq_enabled = ?, intake_form_enabled = ? WHERE id = 1', [cfgB.ticket_subjects == null || typeof cfgB.ticket_subjects === 'string' ? cfgB.ticket_subjects : JSON.stringify(cfgB.ticket_subjects), cfgB.faq_enabled, cfgB.intake_form_enabled]);
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MCF]);
   }
 
   // ── Monthly PDF report ──

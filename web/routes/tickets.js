@@ -129,7 +129,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -992,8 +992,13 @@ router.patch('/:id/visibility', async (req, res) => {
 
     const { visibility_grade_id } = req.body;
     const gradeId = visibility_grade_id ? parseInt(visibility_grade_id) : null;
+    const { CONFIDENTIAL } = require('../../utils/gradePermissions');
 
-    if (gradeId) {
+    // Confidential (founders only): set or lifted by a founder only
+    if ((gradeId === CONFIDENTIAL || ticket.visibility_grade_id === CONFIDENTIAL) && !req.userIsFondateur) {
+      return res.status(403).json({ error: 'Seul un fondateur peut changer la confidentialité d\'un ticket' });
+    }
+    if (gradeId && gradeId !== CONFIDENTIAL) {
       const [grade] = await req.guildDb('SELECT id FROM grades WHERE id = ?', [gradeId]);
       if (!grade) return res.status(400).json({ error: 'Grade introuvable' });
     }

@@ -35,7 +35,8 @@ async function applySubjectRules({ db, client, guildId, ticket, firstMessage = '
         await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_tag_add', ticketId: ticket.id, targetType: 'tag', targetId: r.tag_id, details: { rule: ruleLabel(r) } });
         applied.push(`tag:${r.tag_id}`);
       }
-      if (r.visibility_grade_id) {
+      // A confidential ticket stays confidential (no rule widens or narrows it)
+      if (r.visibility_grade_id && ticket.visibility_grade_id !== require('./gradePermissions').CONFIDENTIAL) {
         await db('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [r.visibility_grade_id, ticket.id]);
         await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_visibility_change', ticketId: ticket.id, details: { visibility_grade_id: r.visibility_grade_id, rule: ruleLabel(r) } });
         await require('./channelVisibility').syncTicketChannel(db, client, guildId, { ...ticket, visibility_grade_id: r.visibility_grade_id });
