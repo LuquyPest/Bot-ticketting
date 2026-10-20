@@ -18,13 +18,14 @@ import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 import { confirmToast } from '../utils/confirmToast';
 import { availabilityLabel } from '../utils/availability';
 
-const TEMPLATE_VAR_RE = /\{\{(username|ticket_id|date|staff_name|subject)\}\}/gi;
-
-function hasVars(text) { return TEMPLATE_VAR_RE.test(text); }
+// {{username}}, {{ticket_id}}… and the custom fields of the ticket ({{commande}}…)
+function hasVars(text) { return /\{\{[a-z][a-z0-9_]*\}\}/i.test(text); }
 
 function resolveVars(text, ticket, staffUsername) {
   const date = new Date().toLocaleDateString('fr-FR');
+  const fieldValues = new Map((ticket?.fields || []).map(f => [f.variable, f.value ?? '']));
   return text
+    .replace(/\{\{([a-z][a-z0-9_]*)\}\}/gi, (m, v) => (fieldValues.has(v.toLowerCase()) ? fieldValues.get(v.toLowerCase()) : m))
     .replace(/\{\{username\}\}/gi,   ticket?.owner_tag   ?? '')
     .replace(/\{\{ticket_id\}\}/gi,  String(ticket?.id   ?? ''))
     .replace(/\{\{date\}\}/gi,       date)

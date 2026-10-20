@@ -44,9 +44,9 @@ async function sendDiscordReply({ client, db, tm, guildId, ticket, author, chann
   }
 }
 
-// Template variables, same as the dashboard
-function resolveTemplateVars(text, ticket, staffName) {
-  return String(text)
+// Template variables, same as the dashboard; `fields` (fieldsForTicket) adds {{commande}}-style ones
+function resolveTemplateVars(text, ticket, staffName, fields = []) {
+  return require('./ticketFields').resolveFieldVars(String(text), fields)
     .replace(/\{\{username\}\}/gi, ticket?.owner_tag ?? '')
     .replace(/\{\{ticket_id\}\}/gi, String(ticket?.id ?? ''))
     .replace(/\{\{date\}\}/gi, new Date().toLocaleDateString('fr-FR'))

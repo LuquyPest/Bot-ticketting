@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { recordEvent, dashboardActor } = require('../../utils/audit');
-const { TYPES } = require('../../utils/ticketFields');
+const { TYPES, fieldVar, VAR_RE, RESERVED_VARS } = require('../../utils/ticketFields');
 
 const canManage = req => req.userIsFondateur || req.userPermissions?.has('manage_settings');
 
@@ -16,6 +16,12 @@ function clean(body, partial = false) {
     const type = body.type ?? 'text';
     if (!TYPES.includes(type)) return { error: 'Type invalide' };
     out.type = type;
+  }
+  if (body.var_name !== undefined) {
+    // Variable used in reply templates: {{var_name}} (empty = derived from the label)
+    const v = typeof body.var_name === 'string' ? body.var_name.trim().toLowerCase() : '';
+    if (v && (!VAR_RE.test(v) || RESERVED_VARS.has(v))) return { error: 'Variable invalide (lettres minuscules, chiffres et _, sans espace ; noms réservés exclus)' };
+    out.var_name = v || null;
   }
   if (body.required !== undefined) out.required = body.required ? 1 : 0;
   if (body.active !== undefined) out.active = body.active ? 1 : 0;
@@ -32,33 +38,46 @@ function clean(body, partial = false) {
 
 router.get('/', async (req, res) => {
   const rows = await req.guildDb('SELECT * FROM ticket_fields ORDER BY position ASC, id ASC');
-  res.json(rows.map(f => ({ ...f, required: !!f.required, active: !!f.active })));
+  res.json(rows.map(f => ({ ...f, required: !!f.required, active: !!f.active, variable: fieldVar(f) })));
 });
+
+// Two fields cannot share a template variable
+async function varConflict(req, fields, id = 0) {
+  const rows = await req.guildDb('SELECT id, label, var_name FROM ticket_fields WHERE id <> ?', [id]);
+  const [current] = id ? await req.guildDb('SELECT id, label, var_name FROM ticket_fields WHERE id = ?', [id]) : [null];
+  const next = { id: id || 'nouveau', label: fields.label ?? current?.label, var_name: fields.var_name !== undefined ? fields.var_name : current?.var_name };
+  const v = fieldVar(next);
+  return rows.some(r => fieldVar(r) === v) ? `La variable {{${v}}} est déjà utilisée par un autre champ` : null;
+}
 
 router.post('/', async (req, res) => {
   if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   const { fields, error } = clean(req.body);
   if (error) return res.status(400).json({ error });
+  const conflict = await varConflict(req, fields);
+  if (conflict) return res.status(400).json({ error: conflict });
   const [{ n }] = await req.guildDb('SELECT COUNT(*) AS n FROM ticket_fields');
   if (Number(n) >= 20) return res.status(400).json({ error: '20 champs au maximum' });
   const keys = Object.keys(fields);
   const r = await req.guildDb(`INSERT INTO ticket_fields (${keys.join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`, keys.map(k => fields[k]));
   await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'field_create', targetType: 'field', targetId: r.insertId, details: { label: fields.label } });
   const [row] = await req.guildDb('SELECT * FROM ticket_fields WHERE id = ?', [r.insertId]);
-  res.json({ ...row, required: !!row.required, active: !!row.active });
+  res.json({ ...row, required: !!row.required, active: !!row.active, variable: fieldVar(row) });
 });
 
 router.patch('/:id', async (req, res) => {
   if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   const { fields, error } = clean(req.body, true);
   if (error) return res.status(400).json({ error });
+  const conflict = await varConflict(req, fields, parseInt(req.params.id) || 0);
+  if (conflict) return res.status(400).json({ error: conflict });
   const keys = Object.keys(fields);
   if (!keys.length) return res.status(400).json({ error: 'Aucune modification' });
   const r = await req.guildDb(`UPDATE ticket_fields SET ${keys.map(k => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map(k => fields[k]), parseInt(req.params.id)]);
   if (!r.affectedRows) return res.status(404).json({ error: 'Champ introuvable' });
   await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'field_update', targetType: 'field', targetId: req.params.id, details: { fields: keys } });
   const [row] = await req.guildDb('SELECT * FROM ticket_fields WHERE id = ?', [parseInt(req.params.id)]);
-  res.json({ ...row, required: !!row.required, active: !!row.active });
+  res.json({ ...row, required: !!row.required, active: !!row.active, variable: fieldVar(row) });
 });
 
 router.delete('/:id', async (req, res) => {

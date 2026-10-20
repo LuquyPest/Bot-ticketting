@@ -56,7 +56,7 @@ module.exports = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await sendDiscordReply({
       client, db, tm, guildId: interaction.guildId, ticket, author: interaction.user, channel: interaction.channel,
-      content: resolveTemplateVars(tpl.content, ticket, interaction.user.username), anonymous: !!interaction.options.getBoolean('anonyme'),
+      content: resolveTemplateVars(tpl.content, ticket, interaction.user.username, await require('../utils/ticketFields').fieldsForTicket(db, ticket.id)), anonymous: !!interaction.options.getBoolean('anonyme'),
     });
     await db('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
 

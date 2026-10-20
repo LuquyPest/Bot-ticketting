@@ -225,6 +225,14 @@ app.use('/api/sa', require('./routes/superadmin'));
 // Unknown API routes answer 404 JSON (instead of falling through to the dashboard's index.html)
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
+// Errors not caught by a route: JSON answer, never an HTML page with a stack trace
+app.use('/api', (err, req, res, next) => { // eslint-disable-line no-unused-vars
+  const status = Number(err.status || err.statusCode) || 500;
+  if (status >= 500) logger.error('Erreur non gérée', { path: req.originalUrl.split('?')[0], err: err.message });
+  if (res.headersSent) return;
+  res.status(status).json({ error: status >= 500 ? 'Erreur serveur' : (err.expose && err.message) || 'Requête invalide' });
+});
+
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

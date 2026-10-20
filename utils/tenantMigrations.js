@@ -262,6 +262,11 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config DROP COLUMN IF EXISTS embed_color, DROP COLUMN IF EXISTS bot_display_name',
     ],
   },
+  {
+    version: 18,
+    name: 'Variables des champs personnalisés dans les modèles',
+    statements: ['ALTER TABLE ticket_fields ADD COLUMN IF NOT EXISTS var_name VARCHAR(40) DEFAULT NULL'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

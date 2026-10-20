@@ -1751,6 +1751,32 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tw]);
   }
 
+  // ── Custom field variables in reply templates ──
+  {
+    let r = await req('POST', '/api/fields', { sid: sessions.FV, body: { label: 'N° de facture', type: 'number' } });
+    const fc = r.body;
+    check('variables: nom dérivé du libellé', r.status === 200 && fc.variable === 'facture', JSON.stringify(r.body));
+    r = await req('POST', '/api/fields', { sid: sessions.FV, body: { label: 'Facture', type: 'text' } });
+    check('variables: deux champs ne partagent pas une variable', r.status === 400 && /facture/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('PATCH', `/api/fields/${fc.id}`, { sid: sessions.FV, body: { var_name: 'username' } });
+    check('variables: noms réservés refusés', r.status === 400, r.status);
+    r = await req('PATCH', '/api/fields/abc', { sid: sessions.FV, body: { label: 'x' } });
+    check('sécurité: erreur non gérée → JSON sans trace', typeof r.body === 'object' && !JSON.stringify(r.body).includes('tenantDb.js'), JSON.stringify(r.body).slice(0, 120));
+    r = await req('PATCH', `/api/fields/${fc.id}`, { sid: sessions.FV, body: { var_name: 'num_cmd' } });
+    check('variables: renommage', r.status === 200 && r.body.variable === 'num_cmd', JSON.stringify(r.body));
+    const CHV = '900000000000000179';
+    channels.set(CHV, mkChannel(CHV, G));
+    const tv = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000085', 'member85', ?, 'open', 'Variables')", [CHV])).insertId;
+    await db('INSERT INTO ticket_field_values (ticket_id, field_id, value) VALUES (?, ?, ?)', [tv, fc.id, '4242']);
+    r = await req('GET', `/api/tickets/${tv}`, { sid: sessions.FV });
+    check('variables: fournies avec la fiche', r.body.fields?.some(f => f.variable === 'num_cmd' && f.value === '4242'), JSON.stringify(r.body.fields));
+    const { resolveTemplateVars } = app('./utils/discordReply');
+    const out = resolveTemplateVars('Bonjour {{username}}, commande {{num_cmd}} {{inconnue}}', { id: tv, owner_tag: 'member85' }, 'F', await app('./utils/ticketFields').fieldsForTicket(db, tv));
+    check('variables: remplacées dans les réponses envoyées depuis Discord', out === 'Bonjour member85, commande 4242 {{inconnue}}', out);
+    await db('UPDATE ticket_fields SET active = 0 WHERE id = ?', [fc.id]);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tv]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

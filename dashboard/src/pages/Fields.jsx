@@ -26,6 +26,11 @@ export default function Fields() {
   const patch = async (f, body) => {
     try { await api.patch(`/fields/${f.id}`, body); load(); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
+  const renameVar = async (f) => {
+    const v = window.prompt(`Nom de la variable pour « ${f.label} » (lettres minuscules, chiffres et _ ; vide = automatique)`, f.var_name || f.variable);
+    if (v === null) return;
+    await patch(f, { var_name: v.trim() });
+  };
   const remove = async (f) => {
     if (!await confirmToast(`Supprimer le champ « ${f.label} » et toutes ses valeurs ?`)) return;
     try { await api.delete(`/fields/${f.id}`); load(); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -35,7 +40,7 @@ export default function Fields() {
     <div className="p-6 space-y-5 max-w-4xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Champs personnalisés</h1>
-        <p className="text-sm text-ink-3">Informations demandées au membre en MP après le sujet (n° de commande, pseudo en jeu…). Elles apparaissent dans la fiche du ticket, dans le salon Discord, et servent de filtre dans la liste.</p>
+        <p className="text-sm text-ink-3">Informations demandées au membre en MP après le sujet (n° de commande, pseudo en jeu…). Elles apparaissent dans la fiche du ticket, dans le salon Discord, servent de filtre dans la liste, et se reprennent dans les modèles de réponse avec leur variable (ex. <code>{'{{commande}}'}</code>).</p>
       </div>
 
       <form onSubmit={add} className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4 grid grid-cols-1 md:grid-cols-[2fr_1fr_1.5fr_auto_auto] gap-2 items-center">
@@ -63,6 +68,10 @@ export default function Fields() {
                   <p className="text-sm font-semibold text-ink-1">{f.label}</p>
                   <p className="text-[11px] text-ink-4">
                     {f.type === 'number' ? 'Nombre' : 'Texte'} · {f.required ? 'obligatoire' : 'facultatif'} · {f.subject ? `sujet « ${f.subject} »` : 'tous les sujets'}{f.active ? '' : ' · désactivé'}
+                  </p>
+                  <p className="text-[11px] text-ink-3 mt-0.5">
+                    Variable des modèles : <code className="px-1 rounded bg-overlay/6 text-primary-light">{`{{${f.variable}}}`}</code>
+                    <button onClick={() => renameVar(f)} className="ml-2 underline text-ink-4 hover:text-ink-1">modifier</button>
                   </p>
                 </div>
                 <button onClick={() => patch(f, { required: !f.required })} className="px-2 py-1 rounded-lg text-[11px] text-ink-3 hover:text-ink-1 hover:bg-overlay/5">{f.required ? 'Rendre facultatif' : 'Rendre obligatoire'}</button>
