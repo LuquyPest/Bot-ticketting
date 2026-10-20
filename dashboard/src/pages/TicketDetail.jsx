@@ -14,6 +14,7 @@ import { useAuth } from '../App';
 import useDraft from '../hooks/useDraft';
 import MessageContent from '../components/MessageContent';
 import TimeTracker from '../components/TimeTracker';
+import LabelChips from '../components/LabelChips';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge, { fmtMinutes } from '../components/SlaBadge';
 import { confirmToast } from '../utils/confirmToast';
@@ -624,6 +625,13 @@ export default function TicketDetail() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); return false; }
     finally { setSavingSubject(false); }
   };
+
+  // What the team knows about this member (profile: labels, pinned posts)
+  const [memberSummary, setMemberSummary] = useState(null);
+  useEffect(() => {
+    if (!ticket?.owner_id) return;
+    api.get(`/profiles/${ticket.owner_id}/summary`).then(r => setMemberSummary(Array.isArray(r.data?.pinned) ? r.data : null)).catch(() => setMemberSummary(null));
+  }, [ticket?.owner_id]);
 
   // Procedures of the ticket's subject (checklists), kept in sync live
   const [procedures, setProcedures] = useState([]);
@@ -1498,6 +1506,29 @@ export default function TicketDetail() {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* LE MEMBRE (profil) */}
+          {memberSummary && (
+            <div className={panelCard}>
+              <SectionTitle>Le membre</SectionTitle>
+              <LabelChips labels={memberSummary.labels} size="text-[11px]" />
+              {memberSummary.pinned.map(p => (
+                <div key={p.id} className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5">
+                  <p className="text-[11px] text-ink-1 whitespace-pre-wrap line-clamp-4"><Pin size={10} className="inline text-amber-400 mr-1" />{p.content}</p>
+                  <p className="text-[10px] text-ink-4 mt-0.5">{p.author_tag} · {fmtDate(p.created_at, { dateStyle: 'short' })}</p>
+                </div>
+              ))}
+              {memberSummary.latest.map(p => (
+                <div key={p.id} className="mt-2 px-0.5">
+                  <p className="text-[11px] text-ink-2 line-clamp-2">{p.content}</p>
+                  <p className="text-[10px] text-ink-4">{p.author_tag} · {fmtDate(p.created_at, { dateStyle: 'short' })}</p>
+                </div>
+              ))}
+              <button onClick={() => navigate(`/profils/${ticket.owner_id}`)} className="mt-2.5 text-[11px] font-medium text-primary-light hover:underline">
+                {memberSummary.count ? `Voir le profil et les ${memberSummary.count} message(s)` : 'Voir le profil · ajouter une note'}
+              </button>
             </div>
           )}
 

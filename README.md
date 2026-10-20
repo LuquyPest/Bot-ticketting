@@ -339,6 +339,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 |------|-------|-------------|
 | **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, classement, objectif mensuel (option) |
 | **Mon activité** | support, fondateur | Ses propres chiffres sur 7, 30 ou 90 jours : réponses envoyées, tickets fermés, temps de première réponse médian, note moyenne reçue et répartition, tickets ouverts attribués, chacun comparé à l'équipe ; évolution des réponses et de la note sur 12 semaines ; derniers commentaires des membres |
+| **Profils** | `view_tickets` (écrire : `reply_ticket`) | Annuaire des membres ayant ouvert des tickets (recherche par pseudo ou ID). Le profil d'un membre réunit ses statistiques (tickets, note moyenne donnée, temps passé, liste noire), ses étiquettes (« VIP », « à surveiller »…, 10 au plus), les dernières valeurs de ses champs personnalisés, ses tickets visibles, et un **fil de discussion du staff** façon forum : sujets, réponses (un niveau), sujets épinglés, modification et suppression par l'auteur (ou un fondateur). Étiquettes et sujets épinglés apparaissent dans la fiche de chacun de ses tickets (panneau « Le membre »). Couvert par l'export et l'effacement RGPD |
 | **Ma file** | `view_tickets` | Mes tickets du plus urgent au moins urgent (hors délai, proche de l'échéance, membre qui attend une réponse, priorité), avec la raison affichée ; onglet « Non attribués » avec bouton « Prendre » ; mise à jour en temps réel |
 | **Tickets** / **Kanban** | `view_tickets` | Liste filtrable (vue « Ouverts » par défaut, vues personnelles enregistrables) ou colonnes par étape, détail en temps réel |
 | **Mes stats** | support | Compteurs cumulés (prises en charge, fermetures, temps de réponse) |
@@ -676,6 +677,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `ticket_views` | Vues enregistrées de la liste des tickets |
 | `ticket_fields` / `ticket_field_values` | Champs personnalisés et valeurs |
 | `subject_rules` | Règles automatiques par sujet ou par mots-clés du message |
+| `member_notes` / `member_profiles` | Discussion du staff et étiquettes sur chaque membre |
 | `ticket_time` | Temps passé (chronos et ajouts manuels) |
 | `procedures` / `ticket_procedure_checks` | Procédures par sujet et étapes cochées sur chaque ticket |
 | `incidents` / `incident_tickets` | Incidents et tickets auxquels ils ont été annoncés |

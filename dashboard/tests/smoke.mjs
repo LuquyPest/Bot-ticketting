@@ -65,6 +65,12 @@ const MOCK = {
   '/api/tickets/1/time': { total: 3725, mine: 1800, running: { id: 3, seconds: 125, running: true }, byUser: [{ user_id: '1', user_tag: 'Daryu', seconds: 1925 }, { user_id: '2', user_tag: 'Collègue', seconds: 1800 }], entries: [] },
   '/api/tickets/time/running': { id: 3, ticket_id: 1, elapsed: 125, subject: 'Problème de paiement 1' },
   '/api/analytics/time': { days: 30, scope: 'team', total: 18000, byUser: [{ user_id: '1', user_tag: 'Daryu', seconds: 12000, tickets: 8, perTicket: 1500 }], bySubject: [{ subject: 'Paiement', seconds: 9000, tickets: 5, perTicket: 1800 }], top: [{ ticket_id: 1, subject: 'Paiement', seconds: 3725 }] },
+  '/api/profiles': { members: [{ member_id: '200000000000000005', tag: 'membre1', tickets: 4, open: 1, notes: 2, last_at: iso(30), labels: ['VIP'] }], total: 1, page: 1, pages: 1 },
+  '/api/profiles/200000000000000005': { member_id: '200000000000000005', tag: 'membre1', avatar: null, labels: ['VIP', 'Déjà remboursé'], fields: [{ label: 'N° de commande', value: '4242' }],
+    stats: { tickets: 4, open: 1, first: iso(90000), last: iso(30), ratingAvg: 4.5, ratings: 2, timeSeconds: 5400, notes: 2 }, blacklist: null,
+    tickets: [{ id: 1, subject: 'Problème de paiement 1', status: 'open' }] },
+  '/api/profiles/200000000000000005/posts': [{ id: 1, member_id: '200000000000000005', author_id: '1', author_tag: 'Daryu', content: 'Déjà remboursé deux fois, vérifier avant tout geste commercial.', pinned: true, created_at: iso(500), replies: [
+    { id: 2, member_id: '200000000000000005', parent_id: 1, author_id: '2', author_tag: 'Collègue', content: 'Noté, merci.', created_at: iso(400) }] }],
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
@@ -107,6 +113,8 @@ const PAGES = [
   ['equipe', '/equipe', 'Équipe'],
   ['activite', '/activite', 'Très rapide, merci'],
   ['incidents', '/incidents', '7 membre(s) touché(s)'],
+  ['profils', '/profils', 'Profils des membres'],
+  ['profil', '/profils/200000000000000005', 'Déjà remboursé deux fois'],
   ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],
   ['patchnotes', '/patchnotes', 'Patchnotes'],
   ['docs-api', '/docs-api', 'Documentation de l'],

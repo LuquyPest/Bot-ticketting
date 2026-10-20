@@ -315,6 +315,21 @@ const MIGRATIONS = [
         CONSTRAINT fk_tt_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`,
     ],
   },
+  {
+    version: 23,
+    name: 'Profils des membres : discussion du staff et étiquettes',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS member_notes (
+        id INT AUTO_INCREMENT PRIMARY KEY, member_id VARCHAR(32) NOT NULL, parent_id INT DEFAULT NULL,
+        author_id VARCHAR(32) NOT NULL, author_tag VARCHAR(100) NOT NULL, content TEXT NOT NULL,
+        pinned TINYINT(1) NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, edited_at DATETIME DEFAULT NULL,
+        INDEX idx_mn_member (member_id, created_at),
+        CONSTRAINT fk_mn_parent FOREIGN KEY (parent_id) REFERENCES member_notes(id) ON DELETE CASCADE)`,
+      `CREATE TABLE IF NOT EXISTS member_profiles (
+        member_id VARCHAR(32) NOT NULL PRIMARY KEY, labels JSON DEFAULT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -209,6 +209,7 @@ app.use('/api/subject-rules', withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/reports',     withGuild(['support', 'fondateur']), require('./routes/reports'));
 app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./routes/incidents'));
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));
+app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./routes/profiles'));
 // Super-admin announcements shown as a banner to founders
 app.use('/api/announcements', withGuild(['fondateur']), async (req, res) => {
   res.json(await require('../utils/announcements').activeBanners().catch(() => []));

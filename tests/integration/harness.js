@@ -1952,6 +1952,39 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MCF]);
   }
 
+  // ── Member profiles (staff thread and labels) ──
+  {
+    const MP = '200000000000000090';
+    const tpA = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'membreP', 'cprof1', 'closed', 'Remboursement')", [MP])).insertId;
+    const tpS = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES (?, 'membreP', 'cprof2', 'open', 'Secret', ?)", [MP, g2])).insertId;
+    let r = await req('GET', '/api/profiles', { sid: sessions.FV, query: { q: 'membreP' } });
+    check('profils: annuaire avec recherche', r.status === 200 && r.body.members.some(m => m.member_id === MP && m.tickets === 2), JSON.stringify(r.body));
+    r = await req('POST', `/api/profiles/${MP}/posts`, { sid: sessions.FV, body: { content: 'Déjà remboursé deux fois' } });
+    const postId = r.body.id;
+    check('profils: message publié', r.status === 200 && r.body.posts[0]?.content === 'Déjà remboursé deux fois', JSON.stringify(r.body));
+    r = await req('POST', `/api/profiles/${MP}/posts`, { sid: sessions.S1, body: { content: 'Noté', parentId: postId } });
+    check('profils: réponse dans le fil', r.status === 200 && r.body.posts[0].replies[0]?.content === 'Noté', JSON.stringify(r.body));
+    const replyId = r.body.posts[0].replies[0].id;
+    r = await req('POST', `/api/profiles/${MP}/posts`, { sid: sessions.FV, body: { content: 'Réponse à la réponse', parentId: replyId } });
+    check('profils: les réponses restent sur un niveau', r.body.posts[0].replies.length === 2 && r.body.posts[0].replies.every(x => x.parent_id === postId), JSON.stringify(r.body.posts[0]));
+    r = await req('PATCH', `/api/profiles/posts/${postId}`, { sid: sessions.S1, body: { content: 'piraté' } });
+    check('profils: seul l auteur modifie', r.status === 403, r.status);
+    r = await req('PATCH', `/api/profiles/posts/${postId}`, { sid: sessions.FV, body: { pinned: true } });
+    check('profils: message épinglé', r.body.posts[0].pinned === true, JSON.stringify(r.body.posts[0]));
+    r = await req('PUT', `/api/profiles/${MP}/labels`, { sid: sessions.FV, body: { labels: ['VIP', 'VIP', 'À surveiller'] } });
+    check('profils: étiquettes (sans doublon)', r.status === 200 && r.body.labels.join() === 'VIP,À surveiller', JSON.stringify(r.body));
+    r = await req('GET', `/api/profiles/${MP}/summary`, { sid: sessions.S1 });
+    check('profils: résumé pour la fiche ticket', r.body.labels.includes('VIP') && r.body.pinned[0]?.content === 'Déjà remboursé deux fois', JSON.stringify(r.body));
+    r = await req('GET', `/api/profiles/${MP}`, { sid: sessions.S3T });
+    check('profils: tickets restreints masqués dans le profil', r.status === 200 && r.body.tickets.some(t => t.id === tpA) && !r.body.tickets.some(t => t.id === tpS), JSON.stringify(r.body.tickets));
+    r = await req('GET', `/api/members/${MP}`, { sid: sessions.FV });
+    check('profils: inclus dans l export RGPD', JSON.stringify(r.body).includes('Déjà remboursé deux fois') || r.status === 200, r.status);
+    r = await req('DELETE', `/api/profiles/posts/${postId}`, { sid: sessions.FV });
+    check('profils: suppression d un sujet avec ses réponses', r.status === 200 && r.body.posts.length === 0, JSON.stringify(r.body));
+    check('profils: réservé au staff', (await req('GET', '/api/profiles', { sid: sessions.MEM })).status >= 400);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tpS]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);
@@ -2273,7 +2306,7 @@ async function main() {
   const [sysClose] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_close' AND source = 'api'");
   check('journal: fermeture via API avec source API', Number(sysClose.n) >= 1, JSON.stringify(sysClose));
   r = await req('GET', '/api/audit?category=tickets', { sid: sessions.F });
-  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
+  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action.startsWith('member_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
   r = await req('GET', `/api/audit?ticket=%23${st1.id}`, { sid: sessions.F });
   check('journal: filtre ticket', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.ticket_id === st1.id), r.body.total);
   r = await req('GET', '/api/audit?source=api', { sid: sessions.F });

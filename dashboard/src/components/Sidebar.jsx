@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -23,6 +23,7 @@ const ALL_NAV = [
   { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
   { to: '/activite',    label: 'Mon activité', icon: Gauge,           roles: ['support','fondateur'] },
   { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
+  { to: '/profils',     label: 'Profils',      icon: Contact,         roles: ['support','fondateur'] },
   { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
   { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
   { to: '/equipe',      label: 'Équipe',       icon: Users,           roles: ['fondateur'] },

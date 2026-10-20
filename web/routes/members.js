@@ -30,8 +30,10 @@ async function collect(db, userId) {
     db('SELECT reason, added_at, expires_at FROM blacklist WHERE user_id = ?', [userId]),
     db('SELECT action, source, ticket_id, details, created_at FROM audit_log WHERE actor_id = ? OR target_id = ? ORDER BY id', [userId, userId]),
   ]);
+  const staffNotes = await db('SELECT author_tag, content, created_at FROM member_notes WHERE member_id = ? ORDER BY id', [userId]).catch(() => []);
+  const [profileRow] = await db('SELECT labels FROM member_profiles WHERE member_id = ?', [userId]).catch(() => []);
   const { openTranscript } = require('../../utils/transcriptCrypto');
-  return { tickets, notes, ratings, transcripts: transcripts.map(t => ({ ...t, txt: openTranscript(t.txt) })), participations, otherMessages, blacklist, journal };
+  return { tickets, notes, ratings, transcripts: transcripts.map(t => ({ ...t, txt: openTranscript(t.txt) })), participations, otherMessages, blacklist, journal, staffNotes, labels: profileRow?.labels || null };
 }
 
 // GET /api/members/:userId — what the server holds about this member
@@ -79,6 +81,9 @@ router.delete('/:userId', async (req, res) => {
   counts.participations = (await db('DELETE FROM ticket_participants WHERE user_id = ?', [userId])).affectedRows;
   await db('DELETE FROM ticket_ratings WHERE owner_id = ?', [userId]);
   await db('DELETE FROM blacklist WHERE user_id = ?', [userId]);
+  // Staff notes and labels about the member (profile)
+  counts.profileNotes = (await db('DELETE FROM member_notes WHERE member_id = ?', [userId]).catch(() => ({ affectedRows: 0 }))).affectedRows;
+  await db('DELETE FROM member_profiles WHERE member_id = ?', [userId]).catch(() => null);
   counts.journalAnonymised = (await db(
     // SET runs left to right: actor_tag must be rewritten before actor_id changes
     "UPDATE audit_log SET actor_tag = IF(actor_id = ?, '[membre supprimé]', actor_tag), actor_id = IF(actor_id = ?, 'supprime', actor_id), target_id = IF(target_id = ?, NULL, target_id), details = NULL WHERE actor_id = ? OR target_id = ?",
