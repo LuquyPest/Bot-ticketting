@@ -38,7 +38,7 @@ async function exportConfig(db) {
     forms: forms.map(f => ({ name: f.name, subject: f.subject, active: !!f.active, fields: formFields.filter(x => x.form_id === f.id).map(({ form_id, choices, ...x }) => ({ ...x, choices: parseJsonField(choices, null) })) })),
     panels: panels.map(p => ({ name: p.name, title: p.title, description: p.description, color: p.color, footer_text: p.footer_text, image_url: p.image_url,
       buttons: buttons.filter(b => b.panel_id === p.id).map(({ panel_id, form_id, ...b }) => ({ ...b, form: formName.get(form_id) || null })) })),
-    fields: await db('SELECT label, type, required, subject, position, active FROM ticket_fields ORDER BY position, id'),
+    fields: await db('SELECT label, type, required, subject, position, active, var_name FROM ticket_fields ORDER BY position, id'),
     faq: await db('SELECT question, answer, keywords, active FROM faq_entries ORDER BY id'),
     templates: (await db("SELECT name, content, subject, actions FROM reply_templates WHERE scope = 'shared' ORDER BY id"))
       .map(t => {
@@ -46,8 +46,8 @@ async function exportConfig(db) {
         if (actions?.tagId) { actions.tag = tagName.get(actions.tagId) || null; delete actions.tagId; }
         return { ...t, actions };
       }),
-    subjectRules: (await db('SELECT subject, tag_id, priority, visibility_grade_id, active FROM subject_rules ORDER BY id'))
-      .map(r => ({ subject: r.subject, tag: tagName.get(r.tag_id) || null, priority: r.priority, grade: gradeName.get(r.visibility_grade_id) || null, active: !!r.active })),
+    subjectRules: (await db('SELECT match_type, subject, keywords, tag_id, priority, visibility_grade_id, active FROM subject_rules ORDER BY id'))
+      .map(r => ({ matchType: r.match_type || 'subject', subject: r.subject, keywords: r.keywords, tag: tagName.get(r.tag_id) || null, priority: r.priority, grade: gradeName.get(r.visibility_grade_id) || null, active: !!r.active })),
   };
 }
 
@@ -131,8 +131,9 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null 
   };
   for (const f of Array.isArray(data.fields) ? data.fields.slice(0, 20) : []) {
     if (!str(f.label, 80)) continue;
-    await upsertBy('fields', 'ticket_fields', 'label', str(f.label, 80), ['type', 'required', 'subject', 'position', 'active'],
-      [f.type === 'number' ? 'number' : 'text', bool(f.required), str(f.subject, 100), int(f.position), bool(f.active ?? 1)]);
+    const varName = /^[a-z][a-z0-9_]{0,39}$/.test(f.var_name || '') ? f.var_name : null;
+    await upsertBy('fields', 'ticket_fields', 'label', str(f.label, 80), ['type', 'required', 'subject', 'position', 'active', 'var_name'],
+      [f.type === 'number' ? 'number' : 'text', bool(f.required), str(f.subject, 100), int(f.position), bool(f.active ?? 1), varName]);
   }
   for (const q of Array.isArray(data.faq) ? data.faq.slice(0, 200) : []) {
     if (!str(q.question, 200) || !str(q.answer, 2000)) continue;
@@ -152,10 +153,15 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null 
     }
   }
   for (const r of Array.isArray(data.subjectRules) ? data.subjectRules.slice(0, 100) : []) {
-    const subject = str(r.subject, 100); if (!subject) continue;
     const vals = [r.tag ? tagId.get(r.tag) || null : null, ['low', 'normal', 'urgent'].includes(r.priority) ? r.priority : null, r.grade ? gradeId.get(r.grade) || null : null];
     if (!vals.some(Boolean)) continue;
-    await upsertBy('subjectRules', 'subject_rules', 'subject', subject, ['tag_id', 'priority', 'visibility_grade_id', 'active'], [...vals, bool(r.active ?? 1)]);
+    if (r.matchType === 'keyword') {
+      const keywords = str(r.keywords, 300); if (!keywords) continue;
+      await upsertBy('subjectRules', 'subject_rules', 'keywords', keywords, ['match_type', 'tag_id', 'priority', 'visibility_grade_id', 'active'], ['keyword', ...vals, bool(r.active ?? 1)]);
+    } else {
+      const subject = str(r.subject, 100); if (!subject) continue;
+      await upsertBy('subjectRules', 'subject_rules', 'subject', subject, ['tag_id', 'priority', 'visibility_grade_id', 'active'], [...vals, bool(r.active ?? 1)]);
+    }
   }
 
   // Settings: only known columns; Discord IDs only on request

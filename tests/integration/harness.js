@@ -1777,6 +1777,32 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tv]);
   }
 
+  // ── Keyword rules (first message) ──
+  {
+    const tagK = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Remboursement', '#ff8800')")).insertId;
+    let r = await req('POST', '/api/subject-rules', { sid: sessions.FV, body: { matchType: 'keyword', keywords: 'rembours, carte refusée', tagId: tagK, priority: 'urgent' } });
+    check('mots-clés: règle créée', r.status === 200 && r.body.match_type === 'keyword', JSON.stringify(r.body));
+    const ruleId = r.body.id;
+    r = await req('POST', '/api/subject-rules', { sid: sessions.FV, body: { matchType: 'keyword', keywords: 'ab', priority: 'low' } });
+    check('mots-clés: mots trop courts refusés', r.status === 400, r.status);
+    const tmK = createManager(db, fakeClient, G);
+    const mkUser = id => ({ id, username: `u${id.slice(-2)}`, tag: `u${id.slice(-2)}`, send: async () => ({}) });
+    const a = await tmK.createTicket(mkUser('200000000000000086'), 'Bonjour, je voudrais être REMBOURSÉ de ma commande', [], 'Autre', { forceNew: true });
+    const b = await tmK.createTicket(mkUser('200000000000000087'), 'Ma Carte Refusee au paiement', [], 'Autre', { forceNew: true });
+    const c = await tmK.createTicket(mkUser('200000000000000088'), 'Un souci de connexion, rien à voir', [], 'Autre', { forceNew: true });
+    const prio = async t => (await db('SELECT priority FROM tickets WHERE id = ?', [t.ticket.id]))[0].priority;
+    const tagged = async t => (await db('SELECT 1 FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [t.ticket.id, tagK])).length === 1;
+    check('mots-clés: début de mot, accents et majuscules ignorés', await prio(a) === 'urgent' && await tagged(a), '');
+    check('mots-clés: expression de plusieurs mots', await prio(b) === 'urgent' && await tagged(b), '');
+    check('mots-clés: pas de déclenchement sans mot-clé', await prio(c) !== 'urgent' && !(await tagged(c)), '');
+    const [ev] = await db("SELECT details FROM audit_log WHERE action = 'ticket_priority' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [a.ticket.id]);
+    check('mots-clés: tracé dans le journal', JSON.stringify(ev?.details).includes('mots-clés'), JSON.stringify(ev));
+    r = await req('GET', '/api/config/export', { sid: sessions.FV });
+    check('mots-clés: exportés avec la configuration', r.body.subjectRules?.some(x => x.matchType === 'keyword' && x.keywords?.includes('rembours')), JSON.stringify(r.body.subjectRules));
+    await req('DELETE', `/api/subject-rules/${ruleId}`, { sid: sessions.FV });
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[a.ticket.id, b.ticket.id, c.ticket.id]]);
+  }
+
   // ── Monthly PDF report ──
   {
     const month = new Date().toISOString().slice(0, 7);

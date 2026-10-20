@@ -267,6 +267,14 @@ const MIGRATIONS = [
     name: 'Variables des champs personnalisés dans les modèles',
     statements: ['ALTER TABLE ticket_fields ADD COLUMN IF NOT EXISTS var_name VARCHAR(40) DEFAULT NULL'],
   },
+  {
+    version: 19,
+    name: 'Règles par mots-clés du message',
+    statements: [
+      `ALTER TABLE subject_rules ADD COLUMN IF NOT EXISTS match_type ENUM('subject','keyword') NOT NULL DEFAULT 'subject',
+         ADD COLUMN IF NOT EXISTS keywords VARCHAR(300) DEFAULT NULL, MODIFY subject VARCHAR(100) DEFAULT NULL`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

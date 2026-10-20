@@ -14,6 +14,7 @@ const VERSIONS = [
     date: '20 octobre 2026',
     title: 'Profils membres, procédures, accès invité et tableau de bord en anglais',
     changes: [
+      { type: 'new',  text: 'Règles automatiques par mots-clés du premier message (« remboursement » → tag et priorité), en plus des règles par sujet' },
       { type: 'new',  text: 'Variables des champs personnalisés dans les modèles de réponse : {{commande}}, {{pseudo}}… remplacées par ce que le membre a saisi' },
       { type: 'tech', text: 'Les erreurs inattendues de l\'API répondent toujours en JSON, sans détail technique' },
       { type: 'new',  text: 'Bouton « Voir sur le web » sous chaque MP lié à un ticket : il ouvre la page du ticket dans l\'espace membre' },

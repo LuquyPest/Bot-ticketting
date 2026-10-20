@@ -238,7 +238,7 @@ function createManager(db, client, guildId) {
       broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: user.id, author_tag: user.tag, content: noteContent, source: 'user', created_at: new Date() } }, gid);
       await require('./dmEdits').linkDmNote(db, gid, user.id, nr.insertId, noteContent).catch(() => null);
     }
-    await require('./subjectRules').applySubjectRules({ db, client, guildId: gid, ticket }).catch(() => null);
+    await require('./subjectRules').applySubjectRules({ db, client, guildId: gid, ticket, firstMessage }).catch(() => null);
     return { channel, ticket, created: true };
   }
 
