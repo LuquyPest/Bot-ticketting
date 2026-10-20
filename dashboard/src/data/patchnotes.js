@@ -8,6 +8,19 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.17.1',
+    date: '20 octobre 2026',
+    title: 'Audit complet : confidentialité, démonstration et accès invité',
+    changes: [
+      { type: 'fix',  text: 'Sécurité : un visiteur de la démonstration pouvait faire envoyer des MP par le bot à n\'importe qui (ajout de participant) ; c\'est bloqué et aucun MP ne part plus jamais du serveur de démonstration' },
+      { type: 'fix',  text: 'Confidentialité : un ticket confidentiel ou restreint rouvert retrouve un salon Discord fermé au staff (il était recréé visible par tout le support)' },
+      { type: 'fix',  text: 'Confidentialité : les tickets confidentiels et restreints n\'apparaissent plus dans la vue SLA, la répartition par sujet, le temps passé, le profil du membre ni les listes du tableau de bord du staff qui ne peut pas les voir' },
+      { type: 'fix',  text: 'Confidentialité : les logs de fermeture et les alertes d\'escalade d\'un ticket confidentiel n\'indiquent plus le membre ni le sujet' },
+      { type: 'fix',  text: 'Accès invité : les images des tickets partagés s\'affichent ; la suspension du serveur coupe aussitôt les accès en cours' },
+      { type: 'tech', text: 'CI : le test de fumée démarre bien sous Node 22 ; 733 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.17',
     date: '20 octobre 2026',
     title: 'Profils membres, procédures, accès invité et tableau de bord en anglais',

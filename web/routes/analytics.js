@@ -50,11 +50,12 @@ router.get('/hourly', async (req, res) => {
 router.get('/subjects', async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days) || 30, 180);
+    const vis = await visibilityFilter(req); // a ticket's title is free text: restricted ones stay out
     const rows = await req.guildDb(
       `SELECT COALESCE(subject, '(sans sujet)') as subject, COUNT(*) as count
-       FROM tickets WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+       FROM tickets WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND ${vis.sql}
        GROUP BY subject ORDER BY count DESC LIMIT 20`,
-      [days]
+      [days, ...vis.params]
     );
     res.json(rows);
   } catch (err) {
@@ -86,6 +87,7 @@ router.get('/response-trend', async (req, res) => {
 // ── SLA view: open tickets with age buckets ───────────────────────────────────
 router.get('/sla', async (req, res) => {
   try {
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
     const rows = await req.guildDb(
       `SELECT t.id, t.owner_tag, t.subject, t.priority, t.claimed_by,
               t.created_at, t.first_response_at,
@@ -94,8 +96,9 @@ router.get('/sla', async (req, res) => {
               u.username as claimer_name
        FROM tickets t
        LEFT JOIN dashboard_users u ON u.user_id = t.claimed_by
-       WHERE t.status = 'open'
-       ORDER BY t.created_at ASC`
+       WHERE t.status = 'open' AND ${vis.sql}
+       ORDER BY t.created_at ASC`,
+      vis.params
     );
 
     const slaThresholds = { low: 60 * 24, normal: 60 * 8, urgent: 60 * 2 };
@@ -127,7 +130,8 @@ router.get('/time', async (req, res) => {
   try {
     const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
     const full = req.userIsFondateur || req.userPermissions?.has('view_audit');
-    const stats = await require('../../utils/ticketTime').timeStats(req.guildDb, days, { userId: full ? null : req.session.user.id });
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    const stats = await require('../../utils/ticketTime').timeStats(req.guildDb, days, { userId: full ? null : req.session.user.id, vis });
     res.json({ ...stats, scope: full ? 'team' : 'mine' });
   } catch (err) {
     console.error(err);

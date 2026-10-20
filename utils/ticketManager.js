@@ -136,7 +136,9 @@ function createManager(db, client, guildId) {
     return fromSubject || `${cfg.ticket_prefix || 'ticket'}-${sanitizeChannelName(user.username || '', 25) || 'ticket'}`;
   }
 
-  async function createTicketChannel(user, subject = null) {
+  // restricted: the support roles get no access at creation; syncTicketChannel then adds the
+  // allowed staff members one by one (if it fails, nobody but the founders on the dashboard sees it)
+  async function createTicketChannel(user, subject = null, { restricted = false } = {}) {
     const cfg = await getGuildConfig(db);
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
@@ -149,7 +151,7 @@ function createManager(db, client, guildId) {
       { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
       { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.AttachFiles] }
     ];
-    for (const roleId of allRoleIds) {
+    for (const roleId of restricted ? [] : allRoleIds) {
       permOverwrites.push({
         id: roleId,
         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AttachFiles]
@@ -206,7 +208,7 @@ function createManager(db, client, guildId) {
       await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [existing.id]);
     }
 
-    const channel = await createTicketChannel(user, subject);
+    const channel = await createTicketChannel(user, subject, { restricted: confidential });
     const ticket = await createTicketDb(channel.id, user, subject, confidential);
     // Confidential: the channel is closed to the staff before anything is posted in it
     if (confidential) await require('./channelVisibility').syncTicketChannel(db, client, gid, ticket).catch(() => null);
@@ -390,15 +392,17 @@ function createManager(db, client, guildId) {
         const openedAt = ticket.created_at ? new Date(ticket.created_at) : null;
         const mins = openedAt ? Math.round((Date.now() - openedAt.getTime()) / 60000) : null;
         const duration = mins !== null ? (mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}min`) : '—';
+        // Confidential: the staff log channel never learns who wrote or about what
+        const confidential = ticket.visibility_grade_id === require('./gradePermissions').CONFIDENTIAL;
         const closeLogEmbed = new EmbedBuilder()
           .setColor(0x6366f1)
-          .setTitle(`🔒 Ticket #${ticket.id} fermé`)
+          .setTitle(`🔒 Ticket #${ticket.id} fermé${confidential ? ' (confidentiel)' : ''}`)
           .addFields(
-            { name: '👤 Utilisateur', value: `<@${ticket.owner_id}>`, inline: true },
+            { name: '👤 Utilisateur', value: confidential ? '—' : `<@${ticket.owner_id}>`, inline: true },
             { name: '🛡️ Fermé par', value: closedByUser.tag, inline: true },
             { name: '⏱️ Durée', value: duration, inline: true }
           );
-        if (ticket.subject) closeLogEmbed.addFields({ name: '📂 Sujet', value: ticket.subject, inline: true });
+        if (ticket.subject && !confidential) closeLogEmbed.addFields({ name: '📂 Sujet', value: ticket.subject, inline: true });
         closeLogEmbed.setFooter({ text: `Transcript #${transcript?.transcriptId || 'aucun'}` }).setTimestamp();
         await logCh.send({ embeds: [closeLogEmbed] }).catch(() => null);
       }
@@ -411,11 +415,14 @@ function createManager(db, client, guildId) {
   }
 
   async function reopenTicket(ticket, reopenedByUser) {
-    const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag }, ticket.subject);
+    // A restricted or confidential ticket gets a restricted channel again, before anything is posted
+    const restricted = !!ticket.visibility_grade_id;
+    const channel = await createTicketChannel({ id: ticket.owner_id, username: ticket.owner_tag, tag: ticket.owner_tag }, ticket.subject, { restricted });
     await db(
       `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, stage='open', stage_changed_at=NOW(), warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
     );
+    if (restricted) await require('./channelVisibility').syncTicketChannel(db, client, gid, { ...ticket, channel_id: channel.id }).catch(() => null);
     const reopenEmbed = new EmbedBuilder()
       .setColor(0x10b981)
       .setAuthor({ name: 'Ticket réouvert' })

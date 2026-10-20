@@ -34,6 +34,9 @@ async function resolveToken(token) {
 // The invitation behind a guest session, still valid (expiry and revocation checked every time)
 async function sessionInvite(guest) {
   if (!guest?.guildId || !guest?.inviteId) return null;
+  // A suspended or removed server closes its guest accesses at once
+  const [guild] = await globalQuery("SELECT guild_id FROM guilds WHERE guild_id = ? AND status = 'active'", [guest.guildId]);
+  if (!guild) return null;
   const db = getTenantDb(guest.guildId);
   const [row] = await db('SELECT * FROM guest_invites WHERE id = ?', [guest.inviteId]).catch(() => []);
   if (!row || !isLive(row)) return null;
@@ -46,4 +49,14 @@ function guestSources(invite) {
   return invite.include_notes ? ['user', 'reply', 'scheduled', 'system', 'web', 'discord'] : ['user', 'reply', 'scheduled', 'system'];
 }
 
-module.exports = { TOKEN_RE, DURATIONS, newToken, resolveToken, sessionInvite, guestSources, parse, isLive };
+// Is this attachment link part of a message the guest may read? (image previews)
+async function guestCanSeeAttachment(guest, url) {
+  const found = await sessionInvite(guest);
+  if (!found || !found.invite.ticket_ids.length) return false;
+  const like = `%${String(url).replace(/[%_\\]/g, '\\$&')}%`;
+  const [row] = await found.db('SELECT id FROM ticket_notes WHERE ticket_id IN (?) AND source IN (?) AND content LIKE ? LIMIT 1',
+    [found.invite.ticket_ids, guestSources(found.invite), like]);
+  return !!row;
+}
+
+module.exports = { guestCanSeeAttachment, TOKEN_RE, DURATIONS, newToken, resolveToken, sessionInvite, guestSources, parse, isLive };

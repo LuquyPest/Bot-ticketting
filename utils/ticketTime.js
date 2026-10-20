@@ -17,11 +17,11 @@ async function startTimer(db, ticketId, user) {
   await db('INSERT INTO ticket_time (ticket_id, user_id, user_tag) VALUES (?, ?, ?)', [ticketId, user.id, user.username]);
 }
 
-// The signed-in member's running stopwatch, on any ticket
-async function runningTimer(db, userId) {
+// The signed-in member's running stopwatch, on a ticket they may still see
+async function runningTimer(db, userId, vis = { sql: '1=1', params: [] }) {
   const [row] = await db(
     `SELECT tt.id, tt.ticket_id, tt.started_at, TIMESTAMPDIFF(SECOND, tt.started_at, NOW()) AS elapsed, t.subject
-     FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE tt.user_id = ? AND tt.ended_at IS NULL ORDER BY tt.id DESC LIMIT 1`, [userId]);
+     FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE tt.user_id = ? AND tt.ended_at IS NULL AND ${vis.sql} ORDER BY tt.id DESC LIMIT 1`, [userId, ...vis.params]);
   return row ? { ...row, elapsed: Math.min(Number(row.elapsed), MAX_SESSION_S) } : null;
 }
 
@@ -44,7 +44,9 @@ async function ticketTime(db, ticketId, userId) {
 }
 
 // Analytics: per member, per subject, longest tickets over the last `days` days
-async function timeStats(db, days, { userId = null } = {}) {
+// vis: visibility filter on `t` — restricted and confidential tickets stay out of the lists by
+// subject and by ticket (their time still counts in the per-member totals)
+async function timeStats(db, days, { userId = null, vis = { sql: '1=1', params: [] } } = {}) {
   const since = new Date(Date.now() - days * 86400000);
   const userFilter = userId ? 'AND tt.user_id = ?' : '';
   const params = userId ? [since, userId] : [since];
@@ -53,9 +55,9 @@ async function timeStats(db, days, { userId = null } = {}) {
     db(`SELECT tt.user_id, MAX(tt.user_tag) AS user_tag, SUM(${sec}) AS seconds, COUNT(DISTINCT tt.ticket_id) AS tickets
         FROM ticket_time tt WHERE tt.started_at >= ? ${userFilter} GROUP BY tt.user_id ORDER BY seconds DESC`, params),
     db(`SELECT COALESCE(t.subject, '(sans sujet)') AS subject, SUM(${sec}) AS seconds, COUNT(DISTINCT tt.ticket_id) AS tickets
-        FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE tt.started_at >= ? ${userFilter} GROUP BY t.subject ORDER BY seconds DESC LIMIT 20`, params),
+        FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE tt.started_at >= ? ${userFilter} AND ${vis.sql} GROUP BY t.subject ORDER BY seconds DESC LIMIT 20`, [...params, ...vis.params]),
     db(`SELECT tt.ticket_id, MAX(t.subject) AS subject, SUM(${sec}) AS seconds
-        FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE tt.started_at >= ? ${userFilter} GROUP BY tt.ticket_id ORDER BY seconds DESC LIMIT 10`, params),
+        FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE tt.started_at >= ? ${userFilter} AND ${vis.sql} GROUP BY tt.ticket_id ORDER BY seconds DESC LIMIT 10`, [...params, ...vis.params]),
   ]);
   const num = rows => rows.map(r => ({ ...r, seconds: Number(r.seconds), ...(r.tickets !== undefined ? { tickets: Number(r.tickets), perTicket: Math.round(Number(r.seconds) / Math.max(1, Number(r.tickets))) } : {}) }));
   return { days, byUser: num(byUser), bySubject: num(bySubject), top: num(top), total: num(byUser).reduce((n, r) => n + r.seconds, 0) };

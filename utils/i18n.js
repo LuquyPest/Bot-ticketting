@@ -347,6 +347,9 @@ async function inMemberLang(userId, guildId, client, fn) {
 
 // Sends a DM built in the member's language: build() runs inside that language.
 async function sendToMember(client, userOrId, guildId, build) {
+  // The demo sandbox never writes to anyone: a visitor could otherwise add any Discord ID as a
+  // participant and have the bot send them messages and files
+  if (guildId === require('./demo').DEMO_GUILD_ID) return null;
   const user = typeof userOrId === 'string' ? await client?.users.fetch(userOrId).catch(() => null) : userOrId;
   if (!user) return null;
   return inMemberLang(user.id, guildId, client, async () => user.send(await build(user)).catch(() => null));

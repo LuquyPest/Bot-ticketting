@@ -1953,6 +1953,28 @@ async function main() {
     const [tc2] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [tc.id]);
     check('confidentiel: une règle par sujet ne le lève pas', tc2.visibility_grade_id === -1, JSON.stringify(tc2));
     await db("DELETE FROM subject_rules WHERE subject = 'Demande confidentielle'");
+    // Nothing of it reaches the staff through the side doors (analytics, profile, dashboard)
+    r = await req('GET', '/api/analytics/sla', { sid: sessions.S3T });
+    check('confidentiel: absent de la vue SLA du staff', r.status === 200 && !r.body.some(t => t.id === tc.id), JSON.stringify(r.body).slice(0, 200));
+    const fConf = (await db("INSERT INTO ticket_fields (label, type) VALUES ('Détail conf', 'text')")).insertId;
+    await db('INSERT INTO ticket_field_values (ticket_id, field_id, value) VALUES (?, ?, ?)', [tc.id, fConf, 'secret-42']);
+    r = await req('GET', `/api/profiles/${MCF}`, { sid: sessions.S3T });
+    check('confidentiel: champs absents du profil vu par le staff', r.status === 200 && !JSON.stringify(r.body).includes('secret-42'), JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', `/api/profiles/${MCF}`, { sid: sessions.FV });
+    check('confidentiel: champs visibles par un fondateur', JSON.stringify(r.body).includes('secret-42'), '');
+    await db('DELETE FROM ticket_fields WHERE id = ?', [fConf]);
+    // Reopened: the new channel is created closed to the support roles, then synced
+    {
+      const created = [];
+      const origCreate = (await fakeClient.guilds.fetch(G)).channels.create;
+      (await fakeClient.guilds.fetch(G)).channels.create = async opts => { created.push(opts); return origCreate(opts); };
+      await db("UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE id = ?", [tc.id]);
+      const [closed] = await db('SELECT * FROM tickets WHERE id = ?', [tc.id]);
+      await createManager(db, fakeClient, G).reopenTicket(closed, { id: U.F, tag: 'founder', username: 'founder' }).catch(e => created.push({ error: e.message }));
+      (await fakeClient.guilds.fetch(G)).channels.create = origCreate;
+      const ow = created[0]?.permissionOverwrites || [];
+      check('confidentiel: rouvert dans un salon fermé au support', created.length === 1 && !ow.some(o => o.id === '800000000000000001'), JSON.stringify(created, (k, v) => (typeof v === 'bigint' ? String(v) : v)).slice(0, 400));
+    }
     r = await req('PATCH', `/api/tickets/${tc.id}/visibility`, { sid: sessions.FV, body: { visibility_grade_id: null } });
     check('confidentiel: levé par un fondateur', r.status === 200 && (await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [tc.id]))[0].visibility_grade_id === null, JSON.stringify(r.body));
     // From the member space
@@ -2026,6 +2048,15 @@ async function main() {
     check('invités: conversation sans notes internes (option non cochée)', r.status === 200 && r.body.messages.some(m => /litige/.test(m.content)) && !JSON.stringify(r.body).includes('NOTE-INTERNE-LITIGE'), JSON.stringify(r.body).slice(0, 200));
     check('invités: autre ticket introuvable', (await req('GET', `/api/guest/tickets/${tOther}`, { headers: gCookie })).status === 404);
     check('invités: aucun accès au dashboard', (await req('GET', '/api/tickets', { headers: gCookie })).status === 401);
+    // Image previews: the attachments of the shared tickets, nothing else
+    const ex = Math.floor(Date.now() / 1000 + 86400).toString(16);
+    const att = n => `https://cdn.discordapp.com/attachments/111111111111111111/22222222222222222${n}/photo.png?ex=${ex}&is=${ex}&hm=ab`;
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, '47', 'u47', ?, 'user'), (?, '48', 'u48', ?, 'user')",
+      [tg, `📎 photo.png : ${att(1)}`, tOther, `📎 photo.png : ${att(2)}`]);
+    r = await req('GET', '/api/attachment', { headers: gCookie, query: { u: att(1) } });
+    check('invités: pièce jointe d un ticket partagé affichée', r.status === 302, r.status);
+    r = await req('GET', '/api/attachment', { headers: gCookie, query: { u: att(2) } });
+    check('invités: pièce jointe d un autre ticket refusée', r.status === 404, r.status);
     const [ev] = await db("SELECT actor_tag, source FROM audit_log WHERE action = 'guest_view' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [tg]);
     check('invités: consultation inscrite au journal', ev?.source === 'guest' && /Maître Dupont/.test(ev.actor_tag), JSON.stringify(ev));
     const list = await req('GET', '/api/guest-invites', { sid: sessions.FV });
@@ -2104,6 +2135,13 @@ async function main() {
     check('démo: clés API bloquées', r.status === 403 && r.body.demo === true, JSON.stringify(r.body));
     r = await req('POST', '/api/newsletter/send', { headers: dCookie, body: { message: 'Message depuis la démo' } });
     check('démo: newsletter bloquée', r.status === 403, r.status);
+    // No message to anyone from the sandbox: adding any Discord ID as a participant would turn the
+    // bot into a relay to spam people
+    r = await req('POST', `/api/tickets/${firstId}/participants`, { headers: dCookie, body: { discord_id: '200000000000000077' } });
+    check('démo: ajout de participant bloqué', r.status === 403 && r.body.demo === true, JSON.stringify(r.body));
+    const before = memberDms.length;
+    const sent = await app('./utils/i18n').sendToMember(fakeClient, '200000000000000077', DEMO, () => ({ content: 'spam' }));
+    check('démo: aucun MP ne part du serveur de démonstration', sent === null && memberDms.length === before, '');
     r = await req('PATCH', '/api/config', { headers: dCookie, body: { webhookUrl: 'https://evil.example/hook', welcomeMessage: 'Bienvenue (démo)' } });
     const [dcfg] = await getTenantDb(DEMO)('SELECT webhook_url, welcome_message FROM guild_config WHERE id = 1');
     check('démo: réglages sensibles ignorés, le reste essayable', r.status === 200 && !dcfg.webhook_url && dcfg.welcome_message === 'Bienvenue (démo)', JSON.stringify(dcfg));

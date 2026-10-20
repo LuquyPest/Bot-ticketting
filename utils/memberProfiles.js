@@ -38,15 +38,17 @@ async function directory(db, { q = '', page = 1, limit = 30, vis }) {
 }
 
 async function profile(db, memberId, vis) {
+  // Every figure comes from the tickets this staff member may see (restricted and confidential
+  // tickets stay out, custom field values included)
   const [tickets, [rating], [bl], [time], fieldRows, labels, [{ n: notes }]] = await Promise.all([
     db(`SELECT id, subject, status, stage, priority, created_at, closed_at, owner_tag FROM tickets t WHERE t.owner_id = ? AND ${vis.sql} ORDER BY id DESC LIMIT 100`, [memberId, ...vis.params]),
-    db('SELECT AVG(rating) AS avg, COUNT(*) AS n FROM ticket_ratings WHERE owner_id = ?', [memberId]),
+    db(`SELECT AVG(r.rating) AS avg, COUNT(*) AS n FROM ticket_ratings r JOIN tickets t ON t.id = r.ticket_id WHERE r.owner_id = ? AND ${vis.sql}`, [memberId, ...vis.params]),
     db('SELECT reason, expires_at, added_at FROM blacklist WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())', [memberId]),
     db(`SELECT COALESCE(SUM(COALESCE(tt.seconds, LEAST(TIMESTAMPDIFF(SECOND, tt.started_at, NOW()), 28800))), 0) AS s
-        FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE t.owner_id = ?`, [memberId]).catch(() => [{ s: 0 }]),
+        FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id WHERE t.owner_id = ? AND ${vis.sql}`, [memberId, ...vis.params]).catch(() => [{ s: 0 }]),
     // Latest value of each custom field across the member's tickets (order number, in-game name…)
     db(`SELECT f.label, v.value FROM ticket_field_values v JOIN ticket_fields f ON f.id = v.field_id JOIN tickets t ON t.id = v.ticket_id
-        WHERE t.owner_id = ? ORDER BY t.id DESC`, [memberId]),
+        WHERE t.owner_id = ? AND ${vis.sql} ORDER BY t.id DESC`, [memberId, ...vis.params]),
     labelsOf(db, memberId),
     db('SELECT COUNT(*) AS n FROM member_notes WHERE member_id = ?', [memberId]),
   ]);

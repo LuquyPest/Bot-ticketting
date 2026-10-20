@@ -15,6 +15,8 @@ const BLOCKED = [
   ['*', '/api/config/import'], ['*', '/api/members'], ['*', '/api/push'], ['*', '/api/profile'], ['*', '/api/sessions'],
   ['*', '/api/auth/select-guild'],
 ];
+// Adding a participant takes any Discord ID: never from the demo (see sendToMember)
+const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/];
 const BLOCKED_CONFIG_FIELDS = ['webhookUrl', 'webhookSecret', 'webhooksEnabled', 'webhookEvents', 'ipAllowlist', 'require2fa', 'apiKeysEnabled'];
 
 const isDemoSession = session => !!session?.user?.demo;
@@ -23,7 +25,7 @@ const isDemoSession = session => !!session?.user?.demo;
 function demoGuard(req, res, next) {
   if (!isDemoSession(req.session) || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   const path = req.originalUrl.split('?')[0];
-  if (BLOCKED.some(([, prefix]) => path === prefix || path.startsWith(`${prefix}/`))) {
+  if (BLOCKED.some(([, prefix]) => path === prefix || path.startsWith(`${prefix}/`)) || BLOCKED_RE.some(re => re.test(path))) {
     return res.status(403).json({ error: 'Indisponible dans la démonstration', demo: true });
   }
   if (path === '/api/config' && BLOCKED_CONFIG_FIELDS.some(f => req.body?.[f] !== undefined)) {

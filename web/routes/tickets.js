@@ -1040,7 +1040,8 @@ router.get('/:id/history', async (req, res) => {
 // GET /api/tickets/time/running — my running stopwatch, on any ticket I can still see
 router.get('/time/running', async (req, res) => {
   try {
-    const run = await require('../../utils/ticketTime').runningTimer(req.guildDb, req.session.user.id);
+    const vis = await require('../../utils/gradePermissions').visibilityFilter(req, 't.visibility_grade_id');
+    const run = await require('../../utils/ticketTime').runningTimer(req.guildDb, req.session.user.id, vis);
     res.json(run);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });

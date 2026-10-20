@@ -11,3 +11,4 @@ docker/
 tests/
 .github/
 dashboard/tests/
+.claude/

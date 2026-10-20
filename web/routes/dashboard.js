@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { visibilityFilter } = require('../../utils/gradePermissions');
 
 router.get('/stats', async (req, res) => {
   try {
@@ -105,14 +106,16 @@ router.get('/top-staff', async (req, res) => {
 router.get('/pending', async (req, res) => {
   try {
     const hours = parseInt(req.query.hours) || 4;
+    const vis = await visibilityFilter(req);
     const tickets = await req.guildDb(
       `SELECT id, owner_tag, subject, priority, last_message_at, created_at
        FROM tickets
        WHERE status = 'open'
          AND claimed_by = ?
          AND (last_message_at IS NULL OR last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR))
+         AND ${vis.sql}
        ORDER BY COALESCE(last_message_at, created_at) ASC`,
-      [req.session.user.id, hours]
+      [req.session.user.id, hours, ...vis.params]
     );
     res.json(tickets);
   } catch (err) {
@@ -142,9 +145,11 @@ router.get('/recent', async (req, res) => {
       params.push(status);
     }
 
+    // A ticket made restricted or confidential since it was claimed leaves the list
+    const vis = await visibilityFilter(req);
     const tickets = await req.guildDb(
-      `SELECT id, owner_tag, subject, status, priority, created_at FROM tickets ${where} ORDER BY created_at DESC LIMIT 10`,
-      params
+      `SELECT id, owner_tag, subject, status, priority, created_at FROM tickets ${where ? `${where} AND` : 'WHERE'} ${vis.sql} ORDER BY created_at DESC LIMIT 10`,
+      [...params, ...vis.params]
     );
     res.json(tickets);
   } catch (err) {

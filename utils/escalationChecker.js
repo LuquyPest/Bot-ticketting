@@ -1,3 +1,4 @@
+const { CONFIDENTIAL } = require('./gradePermissions');
 const { EmbedBuilder } = require('discord.js');
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
@@ -18,7 +19,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
 
   // 1. Tickets urgents sans réponse staff depuis alertHours → alerte
   const toAlert = await db(
-    `SELECT t.id, t.channel_id, t.owner_tag, t.subject, t.claimed_by
+    `SELECT t.id, t.channel_id, t.owner_tag, t.subject, t.claimed_by, t.visibility_grade_id
      FROM tickets t
      WHERE t.status = 'open'
        AND t.priority = 'urgent'
@@ -45,14 +46,16 @@ async function runEscalationCheckForGuild(client, guild_id) {
     if (alertChId) {
       const ch = await fetchGuildChannel(client, guild_id, alertChId);
       if (ch?.isTextBased()) {
+        const hidden = ticket.visibility_grade_id === CONFIDENTIAL;
         const embed = new EmbedBuilder()
           .setColor(0xef4444)
           .setTitle(`🚨 Escalade — Ticket #${ticket.id}`)
           .setDescription(`Un ticket **urgent** n'a pas reçu de réponse staff depuis plus de **${alertHours}h**.`)
           .addFields(
-            { name: 'Utilisateur',    value: ticket.owner_tag,           inline: true },
-            { name: 'Pris en charge', value: ticket.claimed_by || '—',   inline: true },
-            { name: 'Sujet',          value: ticket.subject || '(aucun)', inline: false }
+            // Confidential tickets: neither the member nor the subject in the shared alert channel
+            { name: 'Utilisateur',    value: hidden ? '—' : ticket.owner_tag,                   inline: true },
+            { name: 'Pris en charge', value: ticket.claimed_by || '—',                          inline: true },
+            { name: 'Sujet',          value: hidden ? '(confidentiel)' : ticket.subject || '(aucun)', inline: false }
           )
           .setFooter({ text: `Fermeture automatique prévue dans ${closeHours - alertHours}h si pas de réponse.` })
           .setTimestamp();
