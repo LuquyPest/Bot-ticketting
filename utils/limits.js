@@ -16,6 +16,15 @@ async function canAddAgent(db, guildId) {
   return { ok: count < max, max, count };
 }
 
+// { ok, max, count } — whether one more open ticket fits under the guild's max_tickets.
+async function canOpenTicket(db, guildId) {
+  const [g] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]).catch(() => []);
+  const max = Number(g?.max_tickets || 0);
+  if (!max) return { ok: true, max: 0, count: null };
+  const [{ n }] = await db("SELECT COUNT(*) AS n FROM tickets WHERE status = 'open'");
+  return { ok: Number(n) < max, max, count: Number(n) };
+}
+
 const limitMessage = l => `Limite de ${l.max} membres du staff atteinte pour ce serveur (fixée par le super-admin)`;
 
-module.exports = { canAddAgent, agentCount, limitMessage };
+module.exports = { canAddAgent, canOpenTicket, agentCount, limitMessage };

@@ -419,7 +419,11 @@ async function handleInteraction(client, interaction) {
         return;
       }
 
-      if (!interaction.isChatInputCommand()) return;
+      if (interaction.isModalSubmit() && require('../commands/createTicketFromMessage').isModal(interaction.customId)) {
+        return require('../commands/createTicketFromMessage').handleModal(client, interaction);
+      }
+
+      if (!interaction.isChatInputCommand() && !interaction.isMessageContextMenuCommand()) return;
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
       await command.execute(client, interaction);

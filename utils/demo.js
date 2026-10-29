@@ -13,10 +13,11 @@ const DEMO_NAME = 'Serveur de démonstration';
 const BLOCKED = [
   ['*', '/api/api-keys'], ['*', '/api/guest-invites'], ['*', '/api/newsletter'], ['*', '/api/config/bot-identity'],
   ['*', '/api/config/import'], ['*', '/api/members'], ['*', '/api/push'], ['*', '/api/profile'], ['*', '/api/sessions'],
-  ['*', '/api/auth/select-guild'],
+  ['*', '/api/auth/select-guild'], ['*', '/api/tickets/open'],
 ];
-// Adding a participant takes any Discord ID: never from the demo (see sendToMember)
-const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/];
+// Adding a participant or contacting a member takes any Discord ID: never from the demo (see
+// sendToMember); the voice channel would be created on Discord
+const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/, /^\/api\/tickets\/\d+\/voice$/];
 const BLOCKED_CONFIG_FIELDS = ['webhookUrl', 'webhookSecret', 'webhooksEnabled', 'webhookEvents', 'ipAllowlist', 'require2fa', 'apiKeysEnabled'];
 
 const isDemoSession = session => !!session?.user?.demo;

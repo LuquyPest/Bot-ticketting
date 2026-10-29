@@ -266,6 +266,54 @@ router.get('/staff', async (req, res) => {
   }
 });
 
+// GET /api/tickets/member-search?q= — server members matching a name or an ID (staff opening a ticket)
+router.get('/member-search', async (req, res) => {
+  if (!hasPerm(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
+  const q = String(req.query.q || '').trim().slice(0, 32);
+  if (q.length < 2) return res.json([]);
+  try {
+    const guild = await req.app.locals.client?.guilds.fetch(req.guildId).catch(() => null);
+    if (!guild) return res.json([]);
+    const found = SNOWFLAKE_RE.test(q)
+      ? [await guild.members.fetch(q).catch(() => null)].filter(Boolean)
+      : [...(await guild.members.search({ query: q, limit: 10 }).catch(() => new Map())).values()];
+    res.json(found.filter(m => !m.user.bot).map(m => ({ id: m.id, username: m.user.username, displayName: m.displayName, avatar: m.user.displayAvatarURL({ size: 64 }) })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST /api/tickets/open { userId, subject?, message } — the staff opens a ticket to contact a
+// member (sanction, follow-up, refund…); the message is sent to them as the first reply.
+router.post('/open', async (req, res) => {
+  if (!hasPerm(req, 'view_tickets') || !hasPerm(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
+  try {
+    const userId = String(req.body.userId || '');
+    const subject = typeof req.body.subject === 'string' ? req.body.subject.replace(/\s+/g, ' ').trim().slice(0, 100) || null : null;
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    if (!SNOWFLAKE_RE.test(userId)) return res.status(400).json({ error: 'Membre invalide' });
+    if (!message) return res.status(400).json({ error: 'Message requis' });
+    if (message.length > 2000) return res.status(400).json({ error: 'Message trop long (max 2000 caractères)' });
+    if (userId === req.session.user.id) return res.status(400).json({ error: 'Tu ne peux pas ouvrir un ticket pour toi-même' });
+    const client = req.app.locals.client;
+    if (!client) return res.status(503).json({ error: 'Bot Discord non disponible' });
+    const guild = await client.guilds.fetch(req.guildId).catch(() => null);
+    const member = await guild?.members.fetch(userId).catch(() => null);
+    if (!member || member.user.bot) return res.status(404).json({ error: 'Membre introuvable sur le serveur' });
+    const limit = await require('../../utils/limits').canOpenTicket(req.guildDb, req.guildId);
+    if (!limit.ok) return res.status(409).json({ error: `Limite de ${limit.max} tickets ouverts atteinte sur ce serveur` });
+
+    const { ticket } = await getManager(req).openTicketForMember(member.user, { subject, byUser: dashboardActor(req) });
+    const [fresh] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
+    await sendStaffReply(req, fresh, { content: message, anonymous: false });
+    res.json({ ok: true, id: ticket.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message?.includes('fils') ? err.message : 'Ouverture du ticket impossible' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res);
@@ -285,13 +333,16 @@ router.get('/:id', async (req, res) => {
       })
     );
 
-    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours, low_rating_threshold FROM guild_config WHERE id = 1');
+    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours, low_rating_threshold, ticket_mode FROM guild_config WHERE id = 1');
+    const thread = cfg?.ticket_mode === 'thread';
     res.json({
       ...ticket,
       participants,
       assignees: await getManager(req).getAssignees(ticket.id),
       // Stages whose Discord category is configured (Paramètres)
-      stages: { open: !!cfg?.ticket_category_id, waiting: !!cfg?.waiting_category_id, in_progress: !!cfg?.in_progress_category_id },
+      // Threads: every stage is available (no category involved)
+      stages: { open: thread || !!cfg?.ticket_category_id, waiting: thread || !!cfg?.waiting_category_id, in_progress: thread || !!cfg?.in_progress_category_id },
+      voiceUrl: ticket.voice_channel_id ? `https://discord.com/channels/${req.guildId}/${ticket.voice_channel_id}` : null,
       sla: slaStatus(ticket, cfg),
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
@@ -419,11 +470,19 @@ router.get('/:id/notes', async (req, res) => {
     if (!ticket) return;
 
     const notes = await req.guildDb(
-      `SELECT id, author_id, author_tag, content, source, created_at, pinned_at, pinned_by_tag, edited_at, edit_history, deleted_at
+      `SELECT id, author_id, author_tag, content, source, created_at, pinned_at, pinned_by_tag, edited_at, edit_history, deleted_at,
+              reply_refs IS NOT NULL AS has_refs, JSON_UNQUOTE(JSON_EXTRACT(reply_refs, '$.fileLine')) AS file_line
        FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC`,
       [ticket.id]
     );
-    res.json(notes.map(n => ({ ...n, edit_history: parseJsonField(n.edit_history, null) })));
+    const { editable } = require('../../utils/replyEdits');
+    res.json(notes.map(({ has_refs, file_line, ...n }) => {
+      const canEdit = editable({ ...n, has_refs });
+      // Text to correct: the reply without its file line (the file itself cannot be changed)
+      const fileLine = file_line && file_line !== 'null' ? `\n${file_line}` : null;
+      return { ...n, edit_history: parseJsonField(n.edit_history, null), editable: canEdit,
+        ...(canEdit ? { edit_text: fileLine && n.content.endsWith(fileLine) ? n.content.slice(0, -fileLine.length) : n.content } : {}) };
+    }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -488,17 +547,20 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
   const linkedUserIds = await tm.getAllLinkedUserIds(ticket.id);
 
   const channel = client && ticket.channel_id ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+  // Where each copy goes, so the reply can be corrected or withdrawn later (utils/replyEdits.js)
+  const refs = require('../../utils/replyEdits').refsBuilder({ sender, format: 'text' });
   if (upload) {
     const sent = await channel?.send({ content: msg.slice(0, 2000), files: [{ attachment: upload.buffer, name: upload.name }] }).catch(() => null);
     file_url = sent?.attachments?.first?.()?.url || null;
+    refs.channel(sent);
   } else if (channel) {
-    await channel.send(msg).catch(() => null);
+    refs.channel(await channel.send(msg).catch(() => null), file_url);
   }
 
   // DM: embed naming the server and the ticket (a member can have tickets on several servers)
   // Each member receives the reply in their language
   for (const userId of linkedUserIds) {
-    await sendToMember(client, userId, req.guildId, async () => {
+    const dm = await sendToMember(client, userId, req.guildId, async () => {
       const dmEmbed = staffReplyDmEmbed(client, req.guildId, ticket, { sender, content, fileUrl: upload ? null : file_url });
       if (upload) dmEmbed.addFields({ name: t('reply.fileAttached'), value: upload.name.slice(0, 1024) });
       return {
@@ -506,6 +568,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
         ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
       };
     });
+    refs.dm(userId, dm);
   }
 
   const staffUser = dashboardActor(req);
@@ -517,10 +580,12 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
     details: { anonymous: !!anonymous, excerpt: (content || upload?.name || file_url || '').slice(0, 120), ...(upload ? { file: upload.name } : {}) },
   });
   const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
-  const noteContent = [content, upload ? `📎 ${upload.name}${file_url ? ` : ${file_url}` : ''}` : file_url].filter(Boolean).join('\n');
+  const fileLine = upload ? `📎 ${upload.name}${file_url ? ` : ${file_url}` : ''}` : (file_url || null);
+  const noteContent = [content, fileLine].filter(Boolean).join('\n');
+  refs.file(fileLine);
   const result = await req.guildDb(
-    'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
-    [ticket.id, req.session.user.id, noteAuthorTag, noteContent]
+    'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, reply_refs) VALUES (?, ?, ?, ?, "reply", ?)',
+    [ticket.id, req.session.user.id, noteAuthorTag, noteContent, refs.json()]
   );
 
   const replyNote = {
@@ -529,6 +594,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
     author_tag: noteAuthorTag,
     content: noteContent,
     source: 'reply',
+    editable: true,
     created_at: new Date()
   };
   broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
@@ -1175,6 +1241,38 @@ router.post('/:id/notes/:noteId/pin', async (req, res) => {
   }
 });
 
+// PATCH /api/tickets/:id/notes/:noteId { content } — corrects a staff reply already sent (the
+// member's DMs and the channel copy are edited too) or an internal note. Author or founder only.
+router.patch('/:id/notes/:noteId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const [note] = await req.guildDb('SELECT * FROM ticket_notes WHERE id = ? AND ticket_id = ?', [parseInt(req.params.noteId) || 0, ticket.id]);
+    if (!note) return res.status(404).json({ error: 'Message introuvable' });
+    if (!req.userIsFondateur && note.author_id !== req.session.user.id) return res.status(403).json({ error: 'Seul l\'auteur peut modifier ce message' });
+    const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+    if (!content) return res.status(400).json({ error: 'Contenu requis' });
+    if (content.length > 2000) return res.status(400).json({ error: 'Contenu trop long (max 2000 caractères)' });
+    if (note.source === 'reply') {
+      const r = await require('../../utils/replyEdits').editReply({
+        client: req.app.locals.client, db: req.guildDb, guildId: req.guildId, ticket, note, content, actor: dashboardActor(req),
+      });
+      if (r.error) return res.status(400).json({ error: r.error });
+      return res.json(r);
+    }
+    if (note.source !== 'web') return res.status(400).json({ error: 'Seules tes réponses et tes notes internes peuvent être modifiées' });
+    const history = [...(parseJsonField(note.edit_history, []) || []), { content: note.content, at: new Date().toISOString() }].slice(-10);
+    await req.guildDb('UPDATE ticket_notes SET content = ?, edit_history = ?, edited_at = NOW() WHERE id = ?', [content, JSON.stringify(history), note.id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'note_edit', ticketId: ticket.id, details: { before: String(note.content).slice(0, 120), after: content.slice(0, 120) } });
+    const [updated] = await req.guildDb('SELECT id, author_id, author_tag, content, source, created_at, pinned_at, pinned_by_tag, edited_at, edit_history, deleted_at FROM ticket_notes WHERE id = ?', [note.id]);
+    broadcast('note_update', { ticketId: ticket.id, note: { ...updated, edit_history: parseJsonField(updated.edit_history, null) } }, req.guildId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.delete('/:id/notes/:noteId', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res);
@@ -1187,9 +1285,43 @@ router.delete('/:id/notes/:noteId', async (req, res) => {
     if (!req.userIsFondateur && note.author_id !== req.session.user.id) {
       return res.status(403).json({ error: 'Accès refusé' });
     }
+    // A reply sent with its refs is withdrawn (DMs deleted), not erased from the history
+    if (note.source === 'reply' && note.reply_refs) {
+      if (!hasPerm(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
+      const r = await require('../../utils/replyEdits').retractReply({
+        client: req.app.locals.client, db: req.guildDb, guildId: req.guildId, ticket, note, actor: dashboardActor(req),
+      });
+      if (r.error) return res.status(400).json({ error: r.error });
+      return res.json({ ...r, retracted: true });
+    }
     await req.guildDb('DELETE FROM ticket_notes WHERE id = ?', [note.id]);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'note_delete', ticketId: ticket.id, details: { author: note.author_tag, excerpt: String(note.content || '').slice(0, 120) } });
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// POST / DELETE /api/tickets/:id/voice — temporary voice channel of the ticket
+router.post('/:id/voice', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    if (!req.app.locals.client) return res.status(503).json({ error: 'Bot Discord non disponible' });
+    const r = await getManager(req).openVoiceChannel(ticket.id, dashboardActor(req));
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    res.json({ ok: true, channelId: r.channel.id, url: `https://discord.com/channels/${req.guildId}/${r.channel.id}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+router.delete('/:id/voice', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    res.json({ ok: true, closed: await getManager(req).closeVoiceChannel(ticket.id, dashboardActor(req)) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

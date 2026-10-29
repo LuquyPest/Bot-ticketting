@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -47,6 +47,7 @@ const ALL_NAV = [
   { to: '/incidents',    label: 'Incidents',    icon: Megaphone,       roles: ['fondateur'], perm: 'manage_settings' },
   { to: '/procedures',   label: 'Procédures',   icon: ListChecks,      roles: ['fondateur'], perm: 'manage_settings' },
   { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
+  { to: '/sante',       label: 'Santé du serveur', icon: HeartPulse,  roles: ['fondateur'], perm: 'manage_settings' },
   { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
   { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
 ];

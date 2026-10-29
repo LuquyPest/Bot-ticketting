@@ -9,11 +9,13 @@ const { sendToMember } = require('./i18n');
 
 async function sendDiscordReply({ client, db, tm, guildId, ticket, author, channel, content = '', fileUrl = null, anonymous = false }) {
   const sender = anonymous ? 'Support' : author.username;
+  // Where each copy goes, so the reply can be corrected or withdrawn later (utils/replyEdits.js)
+  const refs = require('./replyEdits').refsBuilder({ sender, format: anonymous ? 'text' : 'embed' });
   for (const userId of await tm.getAllLinkedUserIds(ticket.id)) {
-    await sendToMember(client, userId, guildId, async () => ({
+    refs.dm(userId, await sendToMember(client, userId, guildId, async () => ({
       embeds: [staffReplyDmEmbed(client, guildId, ticket, { sender, content, fileUrl })],
       components: await ticketDmComponents(ticket, guildId, userId),
-    }));
+    })));
   }
   await recordEvent(db, { actor: author, action: 'ticket_reply', ticketId: ticket.id, details: { anonymous, excerpt: (content || fileUrl || '').slice(0, 120) } });
   await tm.recordStaffResponse(ticket.id, author);
@@ -22,7 +24,7 @@ async function sendDiscordReply({ client, db, tm, guildId, ticket, author, chann
   if (anonymous) {
     let msg = `--- Support : ${content || ''}`.trim();
     if (fileUrl) msg += `\nFichier : ${fileUrl}`;
-    await channel?.send(msg).catch(() => null);
+    refs.channel(await channel?.send(msg).catch(() => null), fileUrl);
   } else {
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
@@ -30,17 +32,18 @@ async function sendDiscordReply({ client, db, tm, guildId, ticket, author, chann
       .setDescription(content || '​')
       .setFooter({ text: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) });
     if (fileUrl) embed.addFields({ name: '📎 Fichier', value: fileUrl });
-    await channel?.send({ embeds: [embed] }).catch(() => null);
+    refs.channel(await channel?.send({ embeds: [embed] }).catch(() => null));
   }
 
   const authorTag = anonymous ? `${author.username} (anonyme)` : author.username;
   const noteContent = [content, fileUrl].filter(Boolean).join('\n');
+  refs.file(fileUrl);
   const result = await db(
-    'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
-    [ticket.id, author.id, authorTag, noteContent]
+    'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, reply_refs) VALUES (?, ?, ?, ?, "reply", ?)',
+    [ticket.id, author.id, authorTag, noteContent, refs.json()]
   ).catch(() => null);
   if (result) {
-    broadcast('note', { ticketId: ticket.id, note: { id: result.insertId, ticket_id: ticket.id, author_id: author.id, author_tag: authorTag, content: noteContent, source: 'reply', created_at: new Date() } }, guildId);
+    broadcast('note', { ticketId: ticket.id, note: { id: result.insertId, ticket_id: ticket.id, author_id: author.id, author_tag: authorTag, content: noteContent, source: 'reply', editable: true, created_at: new Date() } }, guildId);
   }
 }
 

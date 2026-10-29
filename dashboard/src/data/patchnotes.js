@@ -8,6 +8,19 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.18',
+    date: '29 octobre 2026',
+    title: 'Santé du serveur, fils privés, vocal et contacter un membre',
+    changes: [
+      { type: 'new',  text: 'Page « Santé du serveur » : permissions du bot, salons et catégories supprimés ou inaccessibles, rôles introuvables, remplissage des catégories. Un nouveau problème (par exemple une permission perdue) est envoyé en MP aux fondateurs' },
+      { type: 'new',  text: 'Débordement des catégories : quand une catégorie atteint la limite Discord de 50 salons, les tickets vont dans « Tickets 2 », « Tickets 3 »… créées automatiquement, puis supprimées une fois vides' },
+      { type: 'new',  text: 'Tickets en fils privés (Paramètres) : plus de limite de 500 salons par serveur ; le staff autorisé est ajouté à chaque fil, les tickets restreints et confidentiels restent fermés aux autres' },
+      { type: 'new',  text: 'Contacter un membre : le staff ouvre un ticket de lui-même (page Tickets, /contact, ou clic droit sur un message → Créer un ticket)' },
+      { type: 'new',  text: 'Salon vocal temporaire lié au ticket (bouton Vocal ou /vocal), supprimé à la fermeture' },
+      { type: 'new',  text: 'Corriger ou retirer une réponse déjà envoyée : le MP du membre est modifié ou supprimé aussi, l\'ancienne version reste visible pour le staff' },
+    ]
+  },
+  {
     version: 'v2.17.2',
     date: '29 octobre 2026',
     title: 'Audit de sécurité OWASP et dépendances à jour',

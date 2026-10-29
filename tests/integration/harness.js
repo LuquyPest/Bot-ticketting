@@ -130,7 +130,7 @@ async function main() {
   const channels = new Map();
   const sent = [];
   const mkChannel = (id, guildId, type = 0, name = 'ticket') => ({
-    id, guildId, type, name, isTextBased: () => true,
+    id, guildId, type, name, isTextBased: () => true, isThread: () => false,
     setName: async function (n) { this.name = n; return this; },
     send: async p => {
       sent.push({ id, p });
@@ -167,7 +167,12 @@ async function main() {
     id: G,
     channels: {
       fetch: async () => new (require('discord.js').Collection)([...channels].filter(([, c]) => c.guildId === G)),
-      create: async opts => { const id = String(910000000000000000n + BigInt(++chanSeq)); const c = mkChannel(id, G, 0, opts?.name); channels.set(id, c); await new Promise(r => setTimeout(r, 50)); return c; } },
+      get cache() { return new (require('discord.js').Collection)([...channels].filter(([, c]) => c.guildId === G)); },
+      create: async opts => {
+        const id = String(910000000000000000n + BigInt(++chanSeq)); const c = mkChannel(id, G, opts?.type ?? 0, opts?.name);
+        c.parentId = opts?.parent || null; c.opts = opts; c.delete = async () => { c.deleted = true; };
+        channels.set(id, c); await new Promise(r => setTimeout(r, 50)); return c;
+      } },
     roles: { fetch: async () => new (require('discord.js').Collection)([['800000000000000001', { id: '800000000000000001', name: 'Support', managed: false, hexColor: '#5865f2' }]]) },
     members: {
       fetch: async id => { const r = memberRoles.get(id); if (r) return { id, roles: { cache: r } }; throw new Error('Unknown Member'); },
@@ -2954,6 +2959,206 @@ async function main() {
     const relayed = await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%pendant la création%'", [otherTicket]);
     check('multi-instance: création en cours ailleurs → pas de doublon, message relayé', Number(cnt.n) === 1 && relayed.length === 1 && res.created === false, JSON.stringify([cnt, relayed.length, res.created]));
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [otherTicket]);
+  }
+
+  // ── Discord: server health, overflow categories, threads, staff-opened tickets, voice, reply edits ──
+  {
+    const { PermissionsBitField, Collection, ChannelType } = require('discord.js');
+    const F = PermissionsBitField.Flags;
+    const ALL = [F.ViewChannel, F.SendMessages, F.EmbedLinks, F.AttachFiles, F.ReadMessageHistory, F.ManageChannels, F.ManageRoles];
+    const perms = list => new PermissionsBitField(list);
+    const hc = new Collection();
+    const CAT = '950000000000000001', LOG = '950000000000000002', GONE = '950000000000000009';
+    const mkCat = (id, name) => ({ id, name, type: ChannelType.GuildCategory, position: 0, isTextBased: () => false, guildId: G,
+      permissionOverwrites: { cache: new Collection() }, permissionsFor: () => perms(ALL), delete: async () => { hc.delete(id); } });
+    hc.set(CAT, mkCat(CAT, 'Tickets'));
+    hc.set(LOG, { id: LOG, name: 'logs', type: 0, isTextBased: () => true, permissionsFor: () => perms([F.ViewChannel]) });
+    for (let i = 0; i < 50; i++) hc.set(`96000000000000${String(i).padStart(4, '0')}`, { id: `96000000000000${String(i).padStart(4, '0')}`, parentId: CAT, type: 0 });
+    let catSeq = 0;
+    const hGuild = {
+      id: G, members: { me: { permissions: perms(ALL.filter(f => f !== F.ManageRoles)) } },
+      channels: { cache: hc, fetch: async id => hc.get(id) || null,
+        create: async o => { const id = `97000000000000000${++catSeq}`; const c = mkCat(id, o.name); hc.set(id, c); return c; } },
+      roles: { fetch: async () => new Collection([['800000000000000001', { name: 'Support' }]]) },
+    };
+    const healthDms = [];
+    const hClient = { isReady: () => true, user: { id: '1' }, guilds: { fetch: async () => hGuild, cache: new Map() }, users: { fetch: async id => ({ id, send: async p => healthDms.push({ id, p }) }) } };
+    const [saved] = await db('SELECT ticket_category_id, waiting_category_id, close_log_channel_id, support_role_ids FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET ticket_category_id = ?, waiting_category_id = ?, close_log_channel_id = ?, support_role_ids = ? WHERE id = 1',
+      [CAT, GONE, LOG, JSON.stringify(['800000000000000001', '800000000000000077'])]);
+    const health = app('./utils/guildHealth');
+    const rep = await health.checkGuildHealth(db, hClient, G);
+    const ids = rep.problems.map(p => p.id);
+    check('santé: permission « Gérer les rôles » manquante détectée', rep.permissions.find(p => p.key === 'ManageRoles')?.ok === false && ids.includes('perm:ManageRoles'), JSON.stringify(ids));
+    check('santé: catégorie supprimée détectée', rep.channels.find(c => c.field === 'waiting_category_id')?.problem === 'Supprimé ou introuvable', JSON.stringify(rep.channels));
+    check('santé: salon de logs sans droit d écrire détecté', /Envoyer des messages/.test(rep.channels.find(c => c.field === 'close_log_channel_id')?.problem || ''), JSON.stringify(rep.channels));
+    check('santé: rôle support supprimé détecté', ids.includes('role:800000000000000077') && !ids.includes('role:800000000000000001'), JSON.stringify(ids));
+    check('santé: remplissage de la catégorie', rep.categories[0]?.count === 50 && rep.categories[0]?.limit === 50, JSON.stringify(rep.categories));
+    await redis.del(`health:problems:${G}`);
+    const fresh1 = await health.alertNewProblems(db, hClient, G, 'Test', rep);
+    const dmsAfter1 = healthDms.length;
+    const fresh2 = await health.alertNewProblems(db, hClient, G, 'Test', rep);
+    check('santé: MP aux fondateurs une seule fois par nouveau problème', fresh1.length === rep.problems.length && dmsAfter1 === 1 && fresh2.length === 0 && healthDms.length === 1
+      && /Gérer les rôles/.test(healthDms[0].p.embeds[0].data.description), JSON.stringify([fresh1.length, dmsAfter1, fresh2.length]));
+    rep.problems.push({ id: 'perm:Other', text: 'Nouveau' });
+    const fresh3 = await health.alertNewProblems(db, hClient, G, 'Test', rep);
+    check('santé: un nouveau problème est signalé ensuite', fresh3.length === 1 && healthDms.length === 2, JSON.stringify(fresh3));
+    r = await req('GET', '/api/server-health', { sid: sessions.S1 });
+    check('santé: page refusée à un support sans manage_settings', r.status === 403, r.status);
+    r = await req('GET', '/api/server-health', { sid: sessions.F });
+    check('santé: page accessible au fondateur', r.status === 200 && Array.isArray(r.body.permissions) && r.body.alertsEnabled === true, JSON.stringify(r.body).slice(0, 200));
+
+    // Overflow categories
+    const ov = app('./utils/categoryOverflow');
+    const c2 = await ov.categoryWithRoom(db, hGuild, CAT);
+    const c2again = await ov.categoryWithRoom(db, hGuild, CAT);
+    check('débordement: catégorie pleine → « Tickets 2 » créée et réutilisée', c2 !== CAT && c2 === c2again && hc.get(c2)?.name === 'Tickets 2', JSON.stringify([c2, c2again, hc.get(c2)?.name]));
+    for (let i = 0; i < 50; i++) hc.set(`98000000000000${String(i).padStart(4, '0')}`, { id: `98000000000000${String(i).padStart(4, '0')}`, parentId: c2, type: 0 });
+    const c3 = await ov.categoryWithRoom(db, hGuild, CAT);
+    check('débordement: « Tickets 3 » quand la 2 est pleine aussi', hc.get(c3)?.name === 'Tickets 3', hc.get(c3)?.name);
+    check('débordement: une catégorie de débordement reconnue comme la même étape', await ov.inCategoryFamily(db, c3, CAT) && !(await ov.inCategoryFamily(db, LOG, CAT)));
+    hc.delete('960000000000000000');
+    check('débordement: retour à la catégorie de base quand une place se libère', (await ov.categoryWithRoom(db, hGuild, CAT)) === CAT);
+    const removed = await ov.pruneEmptyOverflow(db, hGuild);
+    const [{ n: ovLeft }] = await db('SELECT COUNT(*) AS n FROM overflow_categories');
+    check('débordement: catégories vides supprimées', removed === 1 && !hc.has(c3) && hc.has(c2) && Number(ovLeft) === 1, JSON.stringify([removed, ovLeft]));
+    await db('DELETE FROM overflow_categories');
+    await db('UPDATE guild_config SET ticket_category_id = ?, waiting_category_id = ?, close_log_channel_id = ?, support_role_ids = ? WHERE id = 1',
+      [saved.ticket_category_id, saved.waiting_category_id, saved.close_log_channel_id, saved.support_role_ids == null ? null : JSON.stringify(saved.support_role_ids)]);
+    await redis.del(`health:problems:${G}`);
+
+    // Private threads
+    const PARENT = '950000000000000100';
+    const added = [], removedM = [];
+    const threadGuild = { id: G, members: { fetch: async () => new Map() }, roles: { cache: new Map([['800000000000000001', { members: new Map([['400000000000000001', { id: '400000000000000001', user: { bot: false } }]]) }]]) } };
+    let threadOpts = null;
+    const parentCh = mkChannel(PARENT, G, 0, 'tickets');
+    parentCh.threads = { create: async o => {
+      threadOpts = o;
+      const th = mkChannel('950000000000000101', G, 12, o.name);
+      th.isThread = () => true; th.guild = threadGuild; th.setTopic = undefined;
+      th.members = { fetch: async () => new Map([['1', {}], [U.S1, {}]]), add: async id => added.push(id), remove: async id => removedM.push(id) };
+      channels.set(th.id, th);
+      return th;
+    } };
+    channels.set(PARENT, parentCh);
+    const [cfgT] = await db('SELECT support_role_ids FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_mode = 'thread', thread_parent_channel_id = ?, support_role_ids = ? WHERE id = 1", [PARENT, JSON.stringify(['800000000000000001'])]);
+    const tmT = createManager(db, fakeClient, G);
+    const resT = await tmT.createTicket({ id: '200000000000000041', username: 'member41', tag: 'member41', send: async () => {} }, 'besoin d aide en fil', [], 'fil');
+    check('fils: ticket créé comme fil privé du salon choisi', resT.created && resT.channel.isThread() && threadOpts?.type === ChannelType.PrivateThread && threadOpts?.invitable === false, JSON.stringify(threadOpts));
+    check('fils: staff ajouté (rôle support + comptes dashboard autorisés), sans accès retiré à tort',
+      added.includes('400000000000000001') && added.includes(U.F) && !added.includes(U.S1) && !added.includes('1') && removedM.length === 0, JSON.stringify([added, removedM]));
+    added.length = 0; removedM.length = 0;
+    await db('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [g2, resT.ticket.id]);
+    await app('./utils/channelVisibility').syncTicketChannel(db, fakeClient, G, { ...resT.ticket, visibility_grade_id: g2 });
+    check('fils: ticket restreint → seuls les autorisés restent', added.includes(U.F) && !added.includes('400000000000000001') && removedM.includes(U.S1) && !removedM.includes('1'), JSON.stringify([added, removedM]));
+    const mv = await tmT.moveToStage(resT.ticket.id, 'waiting', { id: U.F, username: 'F', tag: 'F' });
+    const [stT] = await db('SELECT stage FROM tickets WHERE id = ?', [resT.ticket.id]);
+    check('fils: changement d étape sans catégorie', mv.ok && stT.stage === 'waiting', JSON.stringify(mv));
+    r = await req('GET', `/api/tickets/${resT.ticket.id}`, { sid: sessions.F });
+    check('fils: toutes les étapes disponibles sur la fiche', r.status === 200 && r.body.stages.waiting && r.body.stages.in_progress, JSON.stringify(r.body.stages));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [resT.ticket.id]);
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketMode: 'thread', threadParentChannelId: null } });
+    check('fils: mode fils sans salon parent refusé', r.status === 400 && /salon/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { threadParentChannelId: CAT_OPEN } });
+    check('fils: salon parent qui n est pas textuel refusé', r.status === 400, JSON.stringify(r.body));
+    await db("UPDATE guild_config SET ticket_mode = 'channel', thread_parent_channel_id = NULL, support_role_ids = ? WHERE id = 1", [cfgT.support_role_ids == null ? null : JSON.stringify(cfgT.support_role_ids)]);
+
+    // Fake DMs and channel messages that can be fetched, edited and deleted
+    const msgs = new Map();
+    let msgSeq = 0;
+    const mkMsg = (channelId, p) => {
+      const m = { id: `99000000000000${String(++msgSeq).padStart(4, '0')}`, channelId, embeds: p?.embeds || [], content: p?.content ?? (typeof p === 'string' ? p : ''), edits: [], deleted: false,
+        edit: async e => { m.edits.push(e); return m; }, delete: async () => { m.deleted = true; } };
+      msgs.set(m.id, m);
+      return m;
+    };
+    const msgChannel = id => ({ id, guildId: G, type: 0, name: 'x', isTextBased: () => true, isThread: () => false, setTopic: async () => {}, setName: async () => {}, delete: async () => {},
+      send: async p => mkMsg(id, p), messages: { fetch: async q => (typeof q === 'string' ? (msgs.get(q)?.channelId === id ? msgs.get(q) : null) : new Map()) } });
+    const ECH = '950000000000000200', DMCH = '950000000000000201', MEM = '200000000000000042';
+    channels.set(ECH, msgChannel(ECH));
+    channels.set(DMCH, msgChannel(DMCH));
+    const origUsers = fakeClient.users.fetch, origMembers = guildObj.members.fetch;
+    fakeClient.users.fetch = async id => (id === MEM ? { id, username: 'member42', tag: 'member42', bot: false, send: async p => mkMsg(DMCH, p) } : origUsers(id));
+    guildObj.members.fetch = async id => (id === MEM ? { id, user: await fakeClient.users.fetch(id), roles: { cache: new Map() } } : origMembers(id));
+    const te = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member42', ?, 'open', 'édition')", [MEM, ECH])).insertId;
+    r = await req('POST', `/api/tickets/${te}/reply`, { sid: sessions.F, body: { content: 'Votre remboursement est de 10 €' } });
+    const [rn] = await db("SELECT id, reply_refs FROM ticket_notes WHERE ticket_id = ? AND source = 'reply'", [te]);
+    const J = v => (typeof v === 'string' ? JSON.parse(v) : v);
+    const refs = J(rn.reply_refs);
+    check('réponse: emplacements du MP et du salon mémorisés', r.status === 200 && refs.dms.length === 1 && refs.dms[0].channelId === DMCH && refs.channel?.channelId === ECH, JSON.stringify([r.status, refs]));
+    r = await req('PATCH', `/api/tickets/${te}/notes/${rn.id}`, { sid: sessions.S1, body: { content: 'piratage' } });
+    check('réponse: un autre membre du staff ne peut pas la modifier', r.status === 403, r.status);
+    r = await req('PATCH', `/api/tickets/${te}/notes/${rn.id}`, { sid: sessions.F, body: { content: 'Votre remboursement est de 15 €' } });
+    const dmMsg = msgs.get(refs.dms[0].messageId), chMsg = msgs.get(refs.channel.messageId);
+    const [rn2] = await db('SELECT content, edit_history, edited_at FROM ticket_notes WHERE id = ?', [rn.id]);
+    check('réponse corrigée: MP du membre modifié', r.status === 200 && r.body.dms.done === 1 && dmMsg.edits[0]?.embeds?.[0]?.data?.description === 'Votre remboursement est de 15 €', JSON.stringify([r.body, dmMsg.edits]));
+    check('réponse corrigée: copie du salon et historique mis à jour', /15 €/.test(chMsg.edits[0]?.content || '') && rn2.content === 'Votre remboursement est de 15 €'
+      && J(rn2.edit_history)[0].content === 'Votre remboursement est de 10 €' && !!rn2.edited_at, JSON.stringify([chMsg.edits, rn2]));
+    r = await req('GET', `/api/tickets/${te}/notes`, { sid: sessions.F });
+    check('réponse: marquée modifiable dans l historique', r.body.find(n => n.id === rn.id)?.editable === true && r.body.find(n => n.id === rn.id)?.edit_text === 'Votre remboursement est de 15 €', JSON.stringify(r.body.find(n => n.id === rn.id)));
+    r = await req('DELETE', `/api/tickets/${te}/notes/${rn.id}`, { sid: sessions.F });
+    const [rn3] = await db('SELECT deleted_at FROM ticket_notes WHERE id = ?', [rn.id]);
+    check('réponse retirée: MP supprimé, trace gardée', r.status === 200 && r.body.retracted && dmMsg.deleted && !!rn3?.deleted_at && /retirée/.test(chMsg.edits.at(-1)?.content || ''), JSON.stringify([r.body, dmMsg.deleted, rn3]));
+    r = await req('PATCH', `/api/tickets/${te}/notes/${rn.id}`, { sid: sessions.F, body: { content: 'encore' } });
+    check('réponse retirée: plus modifiable', r.status === 400, r.status);
+    const oldNote = (await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'F', 'ancienne', 'reply')", [te, U.F])).insertId;
+    r = await req('PATCH', `/api/tickets/${te}/notes/${oldNote}`, { sid: sessions.F, body: { content: 'x' } });
+    check('réponse antérieure à la fonctionnalité: modification refusée proprement', r.status === 400 && /avant/.test(r.body.error), JSON.stringify(r.body));
+    const webNote = (await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'S1', 'note interne', 'web')", [te, U.S1])).insertId;
+    r = await req('PATCH', `/api/tickets/${te}/notes/${webNote}`, { sid: sessions.S1, body: { content: 'note interne corrigée' } });
+    const [wn] = await db('SELECT content FROM ticket_notes WHERE id = ?', [webNote]);
+    check('note interne: modifiable par son auteur', r.status === 200 && wn.content === 'note interne corrigée', JSON.stringify([r.body, wn]));
+
+    // Discord reply (/reply): embed in the channel, edited the same way
+    const tmE = createManager(db, fakeClient, G);
+    const [tkE] = await db('SELECT * FROM tickets WHERE id = ?', [te]);
+    await app('./utils/discordReply').sendDiscordReply({ client: fakeClient, db, tm: tmE, guildId: G, ticket: tkE, author: { id: U.F, username: 'F', tag: 'F' }, channel: channels.get(ECH), content: 'depuis discord' });
+    const [dn] = await db("SELECT * FROM ticket_notes WHERE ticket_id = ? AND content = 'depuis discord'", [te]);
+    const er = await app('./utils/replyEdits').editReply({ client: fakeClient, db, guildId: G, ticket: tkE, note: dn, content: 'depuis discord (corrigé)', actor: { id: U.F, username: 'F', tag: 'F' } });
+    const dRefs = J(dn.reply_refs);
+    check('réponse /reply: embed du salon et MP corrigés', er.ok && msgs.get(dRefs.channel.messageId).edits[0]?.embeds?.[0]?.data?.description === 'depuis discord (corrigé)' && dRefs.channel.format === 'embed', JSON.stringify([er, dRefs]));
+
+    // Staff opens a ticket to contact a member (NP: support account without any grade)
+    const NP = '100000000000000006';
+    await db("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'NP', 'support')", [NP]);
+    await mk('NP', { user: { id: NP, username: 'NP', role: null }, currentGuildId: G });
+    memberDms.length = 0;
+    r = await req('POST', '/api/tickets/open', { sid: sessions.NP, body: { userId: MEM, message: 'x' } });
+    check('contacter un membre: refusé sans permission', r.status === 403, r.status);
+    r = await req('POST', '/api/tickets/open', { sid: sessions.F, body: { userId: 'abc', message: 'x' } });
+    check('contacter un membre: identifiant invalide refusé', r.status === 400, r.status);
+    r = await req('POST', '/api/tickets/open', { sid: sessions.F, body: { userId: '200000000000000099', message: 'x' } });
+    check('contacter un membre: membre absent du serveur refusé', r.status === 404, r.status);
+    const sentBefore = msgSeq;
+    r = await req('POST', '/api/tickets/open', { sid: sessions.F, body: { userId: MEM, subject: 'Remboursement', message: 'Bonjour, nous revenons vers vous.' } });
+    const [opened] = r.body?.id ? await db('SELECT * FROM tickets WHERE id = ?', [r.body.id]) : [];
+    const dmsTo = [...msgs.values()].filter(m => m.channelId === DMCH && Number(m.id.slice(-4)) > sentBefore);
+    check('contacter un membre: ticket ouvert, ouvert par le staff', r.status === 200 && opened?.owner_id === MEM && opened?.opened_by_id === U.F && opened?.subject === 'Remboursement', JSON.stringify([r.body, opened]));
+    check('contacter un membre: MP d ouverture puis message du staff', dmsTo.length === 2 && /contacter|contact/.test(dmsTo[0].embeds[0].data.description) && dmsTo[1].embeds[0].data.description === 'Bonjour, nous revenons vers vous.', JSON.stringify(dmsTo.map(m => m.embeds[0]?.data)));
+    const [evOpen] = await db("SELECT actor_id FROM audit_log WHERE action = 'ticket_open_staff' AND ticket_id = ?", [r.body.id]);
+    check('contacter un membre: inscrit au journal', evOpen?.actor_id === U.F, JSON.stringify(evOpen));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [r.body.id]);
+
+    // Temporary voice channel
+    r = await req('POST', `/api/tickets/${te}/voice`, { sid: sessions.NP });
+    check('vocal: refusé sans permission', r.status === 403, r.status);
+    r = await req('POST', `/api/tickets/${te}/voice`, { sid: sessions.F });
+    const [tv] = await db('SELECT voice_channel_id FROM tickets WHERE id = ?', [te]);
+    const voice = channels.get(tv.voice_channel_id);
+    const ow = voice?.opts?.permissionOverwrites || [];
+    check('vocal: salon vocal créé, réservé au membre et au staff', r.status === 200 && voice?.opts?.type === ChannelType.GuildVoice
+      && ow.some(o => o.id === MEM) && ow.some(o => o.id === G && o.deny?.length) && /discord\.com\/channels/.test(r.body.url), JSON.stringify([r.body, ow.map(o => o.id)]));
+    r = await req('POST', `/api/tickets/${te}/voice`, { sid: sessions.F });
+    check('vocal: un seul salon par ticket', r.status === 200 && r.body.channelId === tv.voice_channel_id, JSON.stringify(r.body));
+    const tmV = createManager(db, fakeClient, G);
+    await tmV.closeTicketWithTranscript(channels.get(ECH), { id: U.F, tag: 'F', username: 'F' });
+    const [tv2] = await db('SELECT voice_channel_id FROM tickets WHERE id = ?', [te]);
+    check('vocal: supprimé à la fermeture du ticket', voice.deleted === true && tv2.voice_channel_id === null, JSON.stringify([voice.deleted, tv2]));
+
+    fakeClient.users.fetch = origUsers;
+    guildObj.members.fetch = origMembers;
   }
 
   // ── SA: delete guild → bot leaves Discord ──

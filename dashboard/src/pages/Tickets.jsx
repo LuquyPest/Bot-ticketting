@@ -18,6 +18,7 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import toast from 'react-hot-toast';
+import ContactMember from '../components/ContactMember';
 import SlaBadge from '../components/SlaBadge';
 import MessageSearch from '../components/MessageSearch';
 
@@ -409,6 +410,8 @@ export default function Tickets() {
           <h1>Tickets</h1>
           <p>{messageSearch ? "Recherche dans les messages" : `${data.total} ticket(s) trouvé(s)`}</p>
         </div>
+        <div className="flex items-center gap-2">
+        {(user?.role === 'fondateur' || user?.permissions?.includes('reply_ticket')) && !user?.demo && <ContactMember />}
         {user?.role === 'fondateur' && (
           <a
             href="/api/tickets/export"
@@ -419,6 +422,7 @@ export default function Tickets() {
             <Download size={13} /> Export CSV
           </a>
         )}
+        </div>
       </div>
 
       {/* Views: built-in + saved (per user) */}

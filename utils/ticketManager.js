@@ -1,4 +1,4 @@
-const { ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { ChannelType, PermissionsBitField, EmbedBuilder, ThreadAutoArchiveDuration, OverwriteType } = require('discord.js');
 const { t, sendToMember } = require('./i18n');
 const { parseJsonField } = require('./jsonField');
 const { ticketButtons } = require('./components');
@@ -10,6 +10,12 @@ const { fireTicketWebhook } = require('./webhookEmitter');
 const { fetchGuildChannel } = require('./discordGuard');
 const { recordEvent } = require('./audit');
 const { ticketContextAuthor } = require('./dmEmbeds');
+const { categoryWithRoom, baseCategoryOf, inCategoryFamily } = require('./categoryOverflow');
+
+// Threads have no topic: the ticket summary is only set on channels.
+async function setTicketTopic(channel, text) {
+  if (typeof channel?.setTopic === 'function') await channel.setTopic(text).catch(() => null);
+}
 
 // One ticket creation at a time per guild+user, shared by every createManager() instance
 // (a new manager is built per message, so a per-instance lock would protect nothing).
@@ -138,10 +144,24 @@ function createManager(db, client, guildId) {
 
   // restricted: the support roles get no access at creation; syncTicketChannel then adds the
   // allowed staff members one by one (if it fails, nobody but the founders on the dashboard sees it)
+  // Thread mode (Paramètres): a private thread of the configured channel, outside the 50-channel
+  // categories and the 500-channel server limit; syncTicketChannel adds the allowed staff to it.
   async function createTicketChannel(user, subject = null, { restricted = false } = {}) {
     const cfg = await getGuildConfig(db);
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
+
+    if (cfg.ticket_mode === 'thread') {
+      const parent = await fetchGuildChannel(client, gid, cfg.thread_parent_channel_id);
+      if (parent?.type !== ChannelType.GuildText) throw new Error('Salon parent des fils de tickets introuvable');
+      return parent.threads.create({
+        name: channelNameFor(subject, user, cfg),
+        type: ChannelType.PrivateThread,
+        invitable: false,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
+        reason: `Ticket de ${user.tag || user.username || user.id}`,
+      });
+    }
 
     const supportRoleIds = parseJsonField(cfg.support_role_ids);
     const chiefRoleIds   = parseJsonField(cfg.chief_role_ids);
@@ -161,7 +181,7 @@ function createManager(db, client, guildId) {
     return guild.channels.create({
       name: channelNameFor(subject, user, cfg),
       type: ChannelType.GuildText,
-      parent: cfg.ticket_category_id || undefined,
+      parent: (await categoryWithRoom(db, guild, cfg.ticket_category_id)) || undefined,
       permissionOverwrites: permOverwrites
     });
   }
@@ -210,8 +230,9 @@ function createManager(db, client, guildId) {
 
     const channel = await createTicketChannel(user, subject, { restricted: confidential });
     const ticket = await createTicketDb(channel.id, user, subject, confidential);
-    // Confidential: the channel is closed to the staff before anything is posted in it
-    if (confidential) await require('./channelVisibility').syncTicketChannel(db, client, gid, ticket).catch(() => null);
+    // Confidential: the channel is closed to the staff before anything is posted in it.
+    // Thread: the allowed staff members are added to it.
+    if (confidential || channel.isThread()) await require('./channelVisibility').syncTicketChannel(db, client, gid, ticket).catch(() => null);
 
     const embed = new EmbedBuilder()
       .setColor(0x6366f1)
@@ -228,7 +249,7 @@ function createManager(db, client, guildId) {
 
     await channel.send({ embeds: [embed], components: [ticketButtons()] });
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
-    await channel.setTopic(`#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
+    await setTicketTopic(channel, `#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`);
 
     fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
     await recordEvent(db, { actor: user, action: 'ticket_open', ticketId: ticket.id, details: { subject: ticket.subject || null, ...(confidential ? { confidential: true } : {}) } });
@@ -408,6 +429,7 @@ function createManager(db, client, guildId) {
       }
     }
     await channel.delete('Ticket fermé avec transcript').catch(() => null);
+    await closeVoiceChannel(ticket.id).catch(() => null);
 
     fireTicketWebhook(db, 'ticket_close', { ticketId: ticket.id, ownerTag: ticket.owner_tag, closedBy: closedByUser.tag }).catch(() => null);
 
@@ -422,7 +444,7 @@ function createManager(db, client, guildId) {
       `UPDATE tickets SET status='open', channel_id=?, closed_at=NULL, closed_by_tag=NULL, closed_by_id=NULL, stage='open', stage_changed_at=NOW(), warned_inactive=0, last_message_at=NOW() WHERE id=?`,
       [channel.id, ticket.id]
     );
-    if (restricted) await require('./channelVisibility').syncTicketChannel(db, client, gid, { ...ticket, channel_id: channel.id }).catch(() => null);
+    if (restricted || channel.isThread()) await require('./channelVisibility').syncTicketChannel(db, client, gid, { ...ticket, channel_id: channel.id }).catch(() => null);
     const reopenEmbed = new EmbedBuilder()
       .setColor(0x10b981)
       .setAuthor({ name: 'Ticket réouvert' })
@@ -437,7 +459,7 @@ function createManager(db, client, guildId) {
       .setTimestamp();
     await channel.send({ embeds: [reopenEmbed], components: [ticketButtons()] });
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
-    await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSub}`).catch(() => null);
+    await setTicketTopic(channel, `#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSub}`);
     await recordEvent(db, { actor: reopenedByUser, action: 'ticket_reopen', ticketId: ticket.id, details: reopenedByUser?.reason ? { reason: reopenedByUser.reason } : null });
     await sendToMember(client, ticket.owner_id, gid, () => ({ embeds: [new EmbedBuilder()
       .setColor(0x10b981)
@@ -446,6 +468,107 @@ function createManager(db, client, guildId) {
       .setDescription(t('reopened.body'))
       .setFooter({ text: t('welcome.footer') })] }));
     return channel;
+  }
+
+  // Ticket opened by the staff to contact a member (sanction, follow-up, refund…), or from a
+  // message of a public channel (« Créer un ticket »). The staff's first message is sent by the
+  // caller as a normal reply. quote: { content, url, channelId, attachments } of the source message.
+  async function openTicketForMember(user, { subject = null, byUser, quote = null }) {
+    const { channel, ticket } = await createTicket(user, '', [], subject, { forceNew: true });
+    await db('UPDATE tickets SET opened_by_id = ? WHERE id = ?', [String(byUser.id), ticket.id]);
+    const by = byUser.username || byUser.tag;
+    await channel.send({ content: `📩 Ticket ouvert par **${by}** pour contacter <@${user.id}>.`, allowedMentions: { parse: [] } }).catch(() => null);
+    if (quote) {
+      const text = [quote.content, ...(quote.attachments || [])].filter(Boolean).join('\n');
+      const embed = new EmbedBuilder().setColor(0x4e5058).setAuthor({ name: `${user.tag || user.username} · message d'origine` })
+        .setDescription((text || '*[aucun texte]*').slice(0, 4000));
+      if (quote.url) embed.addFields({ name: 'Source', value: `[Voir le message](${quote.url})${quote.channelId ? ` dans <#${quote.channelId}>` : ''}` });
+      await channel.send({ embeds: [embed] }).catch(() => null);
+      await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'user')",
+        [ticket.id, user.id, user.tag || user.username, [text, quote.url].filter(Boolean).join('\n')]);
+    }
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'system')",
+      [ticket.id, String(byUser.id), by, `📩 Ticket ouvert par ${by} pour contacter le membre${quote ? ' à partir de son message' : ''}.`]);
+    await recordEvent(db, { actor: byUser, action: 'ticket_open_staff', ticketId: ticket.id, targetType: 'user', targetId: user.id, details: { member: user.tag || user.username, subject, fromMessage: !!quote } });
+    const { ticketDmComponents } = require('./components');
+    await sendToMember(client, user.id, gid, async () => ({
+      embeds: [new EmbedBuilder().setColor(0x6366f1).setAuthor(ticketContextAuthor(client, gid, ticket))
+        .setTitle(t('staffOpen.title')).setDescription(t('staffOpen.body', { id: ticket.id }))
+        .addFields(...(subject ? [{ name: t('welcome.subject'), value: subject.slice(0, 1024), inline: true }] : []))],
+      components: await ticketDmComponents(ticket, gid, user.id),
+    }));
+    broadcast('new_ticket', { id: ticket.id, ownerTag: user.username || user.tag, subject: ticket.subject }, gid);
+    return { channel, ticket };
+  }
+
+  // ── Temporary voice channel ── for when talking is simpler. Same people as the ticket: the
+  // member and participants on the server, plus the staff allowed to see it. Deleted on close.
+  async function openVoiceChannel(ticketId, byUser) {
+    const [ticket] = await db('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+    if (!ticket || ticket.status !== 'open') return { ok: false, error: 'Ticket fermé ou introuvable' };
+    if (ticket.voice_channel_id) {
+      const existing = await fetchGuildChannel(client, gid, ticket.voice_channel_id);
+      if (existing) return { ok: true, channel: existing, created: false };
+    }
+    const guild = await client.guilds.fetch(gid).catch(() => null);
+    const text = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    if (!guild || !text) return { ok: false, error: 'Salon Discord introuvable' };
+
+    const F = PermissionsBitField.Flags;
+    const VOICE_ALLOW = [F.ViewChannel, F.Connect, F.Speak, F.Stream, F.UseVAD];
+    const { roleIds, userIds } = await require('./channelVisibility').staffAccess(db, ticket);
+    const overwrites = [
+      { id: guild.id, type: OverwriteType.Role, deny: [F.ViewChannel, F.Connect] },
+      { id: client.user.id, type: OverwriteType.Member, allow: [F.ViewChannel, F.Connect, F.ManageChannels, F.MoveMembers] },
+    ];
+    if (!ticket.visibility_grade_id) for (const id of roleIds) overwrites.push({ id, type: OverwriteType.Role, allow: VOICE_ALLOW });
+    const members = [];
+    for (const id of new Set([...userIds, ...(await getAllLinkedUserIds(ticket.id))])) {
+      // Only people on the server can be given access (and join)
+      if (await guild.members.fetch(id).catch(() => null)) { overwrites.push({ id, type: OverwriteType.Member, allow: VOICE_ALLOW }); members.push(id); }
+    }
+    if (!members.includes(ticket.owner_id)) return { ok: false, error: 'Le membre n\'est pas sur le serveur Discord' };
+
+    const textCategory = text.isThread() ? text.parent?.parentId : text.parentId;
+    const parent = textCategory ? await categoryWithRoom(db, guild, await baseCategoryOf(db, textCategory)) : null;
+    let voice;
+    try {
+      voice = await guild.channels.create({
+        name: `🔊 ticket-${ticket.id}`, type: ChannelType.GuildVoice, parent: parent || undefined,
+        permissionOverwrites: overwrites, reason: `Vocal du ticket #${ticket.id}`,
+      });
+    } catch (err) {
+      return { ok: false, error: err.code === 50013 ? 'Permission « Gérer les salons » manquante' : 'Création du salon vocal impossible' };
+    }
+    await db('UPDATE tickets SET voice_channel_id = ? WHERE id = ?', [voice.id, ticket.id]);
+    const url = `https://discord.com/channels/${gid}/${voice.id}`;
+    await text.send(`🔊 Salon vocal ouvert par **${byUser.username || byUser.tag}** : <#${voice.id}>`).catch(() => null);
+    const { ticketNoticeDmEmbed } = require('./dmEmbeds');
+    for (const uid of await getAllLinkedUserIds(ticket.id)) {
+      await sendToMember(client, uid, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, ticket, {
+        title: t('voice.title'), description: t('voice.body', { id: ticket.id, url }), color: 'primary',
+      })] }));
+    }
+    await recordEvent(db, { actor: byUser, action: 'ticket_voice_open', ticketId: ticket.id });
+    broadcast('ticket', { id: ticket.id, voice_channel_id: voice.id, voiceUrl: url }, gid);
+    return { ok: true, channel: voice, created: true };
+  }
+
+  async function closeVoiceChannel(ticketId, byUser = null) {
+    const [ticket] = await db('SELECT id, channel_id, status, voice_channel_id FROM tickets WHERE id = ?', [ticketId]);
+    if (!ticket?.voice_channel_id) return false;
+    const voice = await fetchGuildChannel(client, gid, ticket.voice_channel_id);
+    await voice?.delete(`Vocal du ticket #${ticket.id} fermé`).catch(() => null);
+    await db('UPDATE tickets SET voice_channel_id = NULL WHERE id = ?', [ticket.id]);
+    if (byUser) {
+      await recordEvent(db, { actor: byUser, action: 'ticket_voice_close', ticketId: ticket.id });
+      if (ticket.status === 'open') {
+        const text = await client.channels.fetch(ticket.channel_id).catch(() => null);
+        await text?.send(`🔇 Salon vocal fermé par **${byUser.username || byUser.tag}**.`).catch(() => null);
+      }
+    }
+    broadcast('ticket', { id: ticket.id, voice_channel_id: null, voiceUrl: null }, gid);
+    return true;
   }
 
   // ── Assignees ── a ticket can be assigned to several staff members; tickets.claimed_by is kept
@@ -549,19 +672,26 @@ function createManager(db, client, guildId) {
     const [ticket] = await db('SELECT id, channel_id, status FROM tickets WHERE id = ?', [ticketId]);
     if (!ticket || ticket.status !== 'open') return { ok: false, error: 'Ticket fermé ou introuvable' };
     const cfg = await getGuildConfig(db);
-    const categoryId = cfg[STAGE_CATEGORY[stage]];
-    if (!categoryId) return { ok: false, error: `Aucune catégorie Discord n'est associée à « ${STAGE_LABEL[stage]} » (Paramètres)` };
-    const category = await fetchGuildChannel(client, gid, categoryId);
-    if (!category || category.type !== ChannelType.GuildCategory) return { ok: false, error: 'Catégorie Discord introuvable' };
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (!channel) return { ok: false, error: 'Salon Discord introuvable' };
-    await channel.setParent(category.id, { lockPermissions: false });
+    // Threads stay in their channel: the stage is only recorded
+    let category = null;
+    if (!channel.isThread()) {
+      const categoryId = cfg[STAGE_CATEGORY[stage]];
+      if (!categoryId) return { ok: false, error: `Aucune catégorie Discord n'est associée à « ${STAGE_LABEL[stage]} » (Paramètres)` };
+      category = await fetchGuildChannel(client, gid, categoryId);
+      if (!category || category.type !== ChannelType.GuildCategory) return { ok: false, error: 'Catégorie Discord introuvable' };
+      // Already in that category or one of its overflow categories: no move
+      if (!(await inCategoryFamily(db, channel.parentId, category.id))) {
+        await channel.setParent(await categoryWithRoom(db, category.guild, category.id), { lockPermissions: false });
+      }
+    }
     const [before] = await db('SELECT stage FROM tickets WHERE id = ?', [ticketId]);
     // The SLA clock restarts only when the stage actually changes (SET runs left to right:
     // stage_changed_at must be computed before stage is overwritten)
     await db('UPDATE tickets SET stage_changed_at = IF(stage = ?, stage_changed_at, NOW()), stage = ? WHERE id = ?', [stage, stage, ticketId]);
     await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
-    await logMoveTicket(ticketId, `${STAGE_LABEL[stage]} (${category.name})`, byUser);
+    await logMoveTicket(ticketId, category ? `${STAGE_LABEL[stage]} (${category.name})` : STAGE_LABEL[stage], byUser);
     await channel.send(`📂 Ticket passé en **${STAGE_LABEL[stage]}** par **${byUser.username || byUser.tag}**.`).catch(() => null);
     // Optional: tell the member (guild setting notify_member_stage)
     if (cfg.notify_member_stage && before?.stage !== stage) {
@@ -612,6 +742,7 @@ function createManager(db, client, guildId) {
     const targetChannel = target.channel_id ? await client.channels.fetch(target.channel_id).catch(() => null) : null;
     await targetChannel?.send(`🔀 Le ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} a été fusionné ici par **${actorTag}**.`).catch(() => null);
     await channel?.delete(`Fusionné dans le ticket #${targetId}`).catch(() => null);
+    await closeVoiceChannel(sourceId).catch(() => null);
 
     // The member (and participants) are told where the conversation continues
     const { ticketNoticeDmEmbed } = require('./dmEmbeds');
@@ -714,7 +845,7 @@ function createManager(db, client, guildId) {
       : 'Libre';
     const prio = PRIO_TOPIC[ticket.priority] || ticket.priority;
     const subjectPart = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
-    await channel.setTopic(`#${ticket.id} · ${ticket.owner_tag} · ${prio} · ${claimerName}${subjectPart}`).catch(() => null);
+    await setTicketTopic(channel, `#${ticket.id} · ${ticket.owner_tag} · ${prio} · ${claimerName}${subjectPart}`);
   }
 
   async function logMoveTicket(ticketId, categoryName, movedByUser) {
@@ -885,6 +1016,9 @@ function createManager(db, client, guildId) {
     addAssignee,
     removeAssignee,
     moveToStage,
+    openVoiceChannel,
+    openTicketForMember,
+    closeVoiceChannel,
     mergeTickets,
     addParticipant,
     removeParticipant,

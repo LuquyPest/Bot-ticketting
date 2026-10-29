@@ -101,6 +101,10 @@ Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans 
 
 - Répond via `/reply` (identifié), `/areply` (anonyme comme "Support") ou depuis le **dashboard web** ; depuis le dashboard, un **fichier** (8 Mo max) peut être joint : il arrive en pièce jointe dans le MP du membre et dans le salon
 - Les messages tapés directement dans le salon Discord sont enregistrés comme notes mais **ne sont pas envoyés** au membre
+- Le staff peut aussi **contacter un membre de lui-même** (sanction, suivi, remboursement) : bouton **Contacter un membre** de la page Tickets, `/contact`, ou clic droit sur un message d'un salon public → Applications → **Créer un ticket** (le message d'origine est repris dans le ticket, avec son lien). Le membre reçoit un MP « L'équipe te contacte » puis le premier message, et répond au bot comme pour un ticket normal ; le ticket indique qui l'a ouvert (journal : « Ticket ouvert par le staff »). Permission `reply_ticket`, limite de tickets du serveur respectée
+- **Format des tickets** (Paramètres → Rôles d'accès) : un salon par ticket (par défaut) ou un **fil privé** par ticket dans un salon choisi. Les fils échappent à la limite de 50 salons par catégorie et de 500 salons par serveur ; le staff y est ajouté un par un (membres des rôles support / chef support et comptes du dashboard autorisés à voir le ticket), et un ticket restreint ou confidentiel ne reçoit que les personnes autorisées. Les étapes sont alors enregistrées sans déplacement. Ne pas donner « Gérer les fils » aux rôles support sur ce salon : ils verraient tous les fils, confidentiels compris
+- **Débordement des catégories** : quand une catégorie d'étape atteint 50 salons, les nouveaux tickets vont dans « Tickets 2 », « Tickets 3 »… créées juste en dessous avec les mêmes permissions ; un ticket qui change d'étape reste dans la catégorie de débordement s'il y est déjà, et les catégories de débordement vides sont supprimées
+- **Salon vocal temporaire** (bouton **Vocal** de la fiche ou `/vocal`) : un salon vocal réservé au membre, aux participants présents sur le serveur et au staff qui voit le ticket ; le lien est envoyé en MP au membre et le salon est supprimé à la fermeture du ticket (ou avec `/vocal fermer`)
 - Le ticket se ferme via le bouton Discord ou depuis le dashboard (transcript généré automatiquement)
 - Tableau de bord en **temps réel** via SSE — les nouvelles notes apparaissent sans recharger la page
 
@@ -123,6 +127,7 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
 | Limites des serveurs | Toutes les heures : prévient les fondateurs d'un serveur proche d'une limite (80 %) ou qui l'a atteinte |
 | Alerte d'erreurs | Toutes les 5 min : prévient le super-admin si les erreurs dépassent le seuil configuré |
+| Santé du serveur | Toutes les 15 min, et 20 s après un changement sur Discord (rôles du bot, salon ou rôle supprimé) : vérifie les permissions du bot et les salons, catégories et rôles configurés ; un problème qui n'existait pas à la vérification précédente est envoyé une fois en MP aux fondateurs (désactivable). Supprime aussi les catégories de débordement vides et les salons vocaux de tickets fermés |
 | Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et des transcripts au-delà de la durée fixée par le super-admin |
 
 ---
@@ -371,6 +376,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Blacklist** | fondateur | Utilisateurs bloqués — propre à chaque serveur |
 | **Panels** / **Formulaires** | fondateur | Panels de boutons Discord et formulaires associés |
 | **Paramètres** | fondateur | Configuration du serveur (salons, rôles, messages, automatismes, webhooks, allowlist IP…) |
+| **Santé du serveur** | fondateur, `manage_settings` | Permissions du bot sur le serveur (avec à quoi chacune sert), salons configurés supprimés ou sans les droits nécessaires, rôles support supprimés, remplissage des catégories de tickets (sur 50) et de leurs catégories de débordement, nombre de salons du serveur (sur 500). Bouton « Revérifier » et choix des MP d'alerte aux fondateurs |
 | **Clés API** / **Documentation API** | fondateur | Clés pour l'API publique v1 ; documentation générée depuis le code (`/docs-api`) |
 | **Newsletter** | fondateur | DM groupé au staff |
 | **Patchnotes** | fondateur | Historique des versions (`dashboard/src/data/patchnotes.js`). Les fondateurs voient en haut du dashboard un encart **Nouveautés** avec les ajouts depuis leur dernière visite (dernière version vue enregistrée par compte), et un badge « Nouveau » sur l'entrée Patchnotes ; « J'ai vu » ou l'ouverture du Patchnotes les marque comme lus |
@@ -408,10 +414,11 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 - **Notes épinglées** : une note interne peut être épinglée (5 au plus par ticket) ; elle reste visible en haut de la conversation, avec qui l'a épinglée, et un clic y ramène. Épingler demande `reply_ticket` et est tracé dans le journal
 - **Qui regarde ce ticket** : les collègues qui ont la fiche ouverte apparaissent dans son en-tête (avatars, noms au survol), et un œil le signale dans la liste des tickets. Battement toutes les 20 s, départ signalé à la fermeture de la page, entrée oubliée après 45 s ; état dans Redis, donc partagé entre instances, et filtré par visibilité
 - **Anti double réponse** : à l'envoi, si un collègue a répondu au membre depuis que tu as commencé ta réponse, ou écrit une réponse au même moment, une confirmation est demandée
+- **Corriger ou retirer une réponse** : une réponse déjà envoyée au membre peut être corrigée (crayon) : le MP du membre et la copie du salon sont modifiés, l'ancienne version reste dépliable dans la fiche. **Retirer** supprime le MP chez le membre ; la réponse reste visible pour le staff, marquée « Réponse retirée ». Réservé à l'auteur (ou un fondateur), avec `reply_ticket`, inscrit au journal. Les notes internes sont modifiables de la même façon. Les réponses envoyées avant la v2.18 ne peuvent pas l'être (l'emplacement des MP n'était pas gardé)
 - **Mentions** : dans une note interne, `@pseudo` (suggestions à la frappe) prévient le collègue s'il peut voir le ticket : notification du dashboard, push, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
 - **Macros** : un modèle peut aussi porter des actions appliquées à l'envoi : m'attribuer le ticket, changer la priorité, ajouter un tag, changer d'étape, fermer le ticket. Le texte reste modifiable avant l'envoi ; chaque action exige sa permission (`claim_ticket` pour s'attribuer, `close_ticket` pour fermer) et une action refusée est signalée sans bloquer la réponse
 - **Attribué à** : un ticket peut être attribué à plusieurs membres du staff ; « M'attribuer », attribuer quelqu'un d'autre, retirer (permission `claim_ticket`). La première personne assignée reste le responsable principal (stats, rappels, notation). Quand quelqu'un d'autre t'attribue un ticket, tu es prévenu : notification sur le dashboard (cloche + bandeau), push navigateur si activé, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
-- **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon
+- **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon (en mode fils privés, l'étape est seulement enregistrée)
 - **Prévenir le membre des changements d'étape** (option, Paramètres → Fonctionnalités) : MP « Ton ticket est en cours de traitement », « en attente » ou « de nouveau en file d'attente », dans sa langue
 - **SLA par étape** : un délai maximal (en heures, 0 = aucun) peut être fixé pour chaque étape dans les paramètres. Le temps compte depuis le dernier changement d'étape ; la liste et la fiche affichent le temps restant (orange à 75 %), puis « Hors délai » avec le dépassement, et la vue **Hors délai** regroupe les tickets en retard ; le temps restant figure aussi sur les cartes du Kanban
 - **Fusion** : deux tickets ouverts du même membre peuvent être fusionnés (`close_ticket` + `reply_ticket`) : l'historique, les participants, les attributions, les tags et les messages programmés rejoignent le ticket cible, le ticket source est archivé (transcript), fermé et son salon supprimé, et le membre est prévenu en MP
@@ -488,6 +495,9 @@ Les commandes sont réservées au staff et utilisables uniquement sur un serveur
 | `/staffstats` | Rôle Chef Support ou fondateur | Statistiques détaillées par agent |
 | `/template` | `reply_ticket` | Envoie un modèle de réponse (autocomplétion : modèles du sujet du ticket en tête, partagés et personnels) ; variables résolues, actions appliquées si c'est une macro, option anonyme |
 | `/merge` | `close_ticket` + `reply_ticket` | Fusionne le ticket du salon dans un autre ticket ouvert du même membre (autocomplétion) |
+| `/contact` | `reply_ticket` | Ouvre un ticket pour contacter un membre (membre, message, sujet facultatif) |
+| `/vocal` | `reply_ticket` | Ouvre (ou ferme) le salon vocal temporaire du ticket |
+| Clic droit sur un message → Applications → **Créer un ticket** | `reply_ticket` | Transforme le message d'un salon public en ticket avec son auteur (sujet et premier message facultatifs) |
 | `/mestickets` | Membre, en MP avec le bot | État de ses tickets ouverts sur tous les serveurs (« en attente de ta réponse », « en cours de traitement »…). Aussi accessible par le bouton **📋 Mes tickets** des MP |
 
 Boutons du salon : **Transcript** demande `view_transcripts`, **Fermer** demande `close_ticket`.
@@ -743,12 +753,15 @@ Bot-ticketting/
 │   ├── oldtickets.js               # Historique paginé d'un membre
 │   ├── gettranscript.js            # Lien transcript temporaire
 │   ├── mestickets.js               # État de ses tickets (membre, en MP)
+│   ├── contact.js / createTicketFromMessage.js  # Ticket ouvert par le staff (/contact, clic droit « Créer un ticket »)
+│   ├── vocal.js                    # Salon vocal temporaire du ticket
 │   └── staffstats.js               # Stats par agent
 │
 ├── events/                         # Handlers Discord
 │   ├── interactionCreate.js        # Boutons, menus, slash commands, notes, réouverture
 │   ├── messageCreate.js            # MP → ticket (sujet, champs, formulaire, FAQ) + salon → historique
 │   ├── messageEdits.js             # MP modifiés ou supprimés par le membre
+│   ├── botHealth.js                # Changement Discord (rôles du bot, salon supprimé) → santé revérifiée
 │   ├── guildCreate.js / guildDelete.js  # Arrivée / départ d'un serveur
 │   └── ready.js                    # Synchro des serveurs + migrations au démarrage
 │
@@ -766,6 +779,8 @@ Bot-ticketting/
 │   ├── ticketManager.js            # Logique des tickets (création, relais, fermeture, étapes…)
 │   ├── guildScan.js / panelTicket.js  # Tickets d'un membre sur tous les serveurs ; ouverture par panel
 │   ├── discordReply.js / macroActions.js  # Réponse depuis Discord ; actions des macros
+│   ├── replyEdits.js / staffTicket.js  # Réponses corrigées ou retirées ; ticket ouvert par le staff
+│   ├── categoryOverflow.js         # Catégories « Tickets 2 », « 3 »… quand une catégorie atteint 50 salons
 │   ├── ticketFields.js / subjectRules.js / subjectMatch.js  # Champs, règles et correspondance de sujet
 │   ├── sla.js / stageStats.js      # Délais par étape et leur respect
 │   ├── ticketPresence.js           # Qui a la fiche ouverte (Redis)
@@ -788,6 +803,7 @@ Bot-ticketting/
 │   ├── inactiveTicketChecker.js / userInactiveChecker.js / staffReminderChecker.js / escalationChecker.js
 │   ├── scheduledMessages.js / weeklyReport.js / monthlyReport.js / retention.js / quotaAlert.js
 │   ├── errorLog.js / errorAlert.js / discordWatch.js / logger.js  # Erreurs, alertes, surveillance Discord
+│   ├── guildHealth.js              # Santé du serveur (permissions, salons, rôles) et MP aux fondateurs
 │   ├── announcements.js / saSettings.js  # Annonces et réglages du super-admin
 │   ├── sse.js / webhookEmitter.js  # Temps réel ; webhooks sortants (anti-SSRF)
 │
@@ -873,7 +889,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 748 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 789 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie

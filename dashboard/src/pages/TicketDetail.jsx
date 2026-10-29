@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight, Pin, PinOff
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight, Pin, PinOff, Volume2
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -669,11 +669,50 @@ export default function TicketDetail() {
   const pinnedNotes = notes.filter(n => n.pinned_at).sort((a, b) => new Date(a.pinned_at) - new Date(b.pinned_at));
 
   const deleteNote = async (noteId) => {
+    const note = notes.find(n => n.id === noteId);
+    // A reply already sent is withdrawn (member's DM deleted), and stays in the history as such
+    if (note?.editable && !await confirmToast('Retirer cette réponse ? Le MP sera supprimé chez le membre ; la réponse reste visible ici, marquée comme retirée.')) return;
     try {
-      await api.delete(`/tickets/${id}/notes/${noteId}`);
-      setNotes(n => n.filter(x => x.id !== noteId));
-    } catch { toast.error('Erreur lors de la suppression'); }
+      const { data } = await api.delete(`/tickets/${id}/notes/${noteId}`);
+      if (data?.retracted) {
+        setNotes(n => n.map(x => (x.id === noteId ? { ...x, deleted_at: new Date().toISOString(), editable: false } : x)));
+        toast.success(data.dms?.total ? `Réponse retirée (${data.dms.done}/${data.dms.total} MP supprimé(s))` : 'Réponse retirée');
+      } else {
+        setNotes(n => n.filter(x => x.id !== noteId));
+      }
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur lors de la suppression'); }
   };
+
+  // Correcting a reply already sent (the member's DM is edited too) or an internal note
+  const [editingNote, setEditingNote] = useState(null); // { id, text }
+  const [savingEdit, setSavingEdit] = useState(false);
+  const saveNoteEdit = async () => {
+    if (!editingNote?.text.trim()) return;
+    setSavingEdit(true);
+    try {
+      const { data } = await api.patch(`/tickets/${id}/notes/${editingNote.id}`, { content: editingNote.text });
+      const fresh = await api.get(`/tickets/${id}/notes`);
+      setNotes(fresh.data);
+      setEditingNote(null);
+      toast.success(data.dms?.total ? `Réponse corrigée (${data.dms.done}/${data.dms.total} MP modifié(s))` : 'Message modifié');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setSavingEdit(false); }
+  };
+  const canEditNote = note => !note.deleted_at && canDeleteNote(note) && can('reply_ticket') && (note.editable || note.source === 'web');
+  const noteEditor = note => (
+    <div className="w-full max-w-sm space-y-1.5">
+      <textarea value={editingNote.text} onChange={e => setEditingNote(x => ({ ...x, text: e.target.value }))} rows={3} maxLength={2000}
+        aria-label="Nouveau texte" autoFocus
+        onKeyDown={e => { if (e.key === 'Escape') setEditingNote(null); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveNoteEdit(); }}
+        className="w-full bg-surface border border-primary/40 text-ink-1 rounded-xl px-3 py-2 text-sm focus:outline-hidden resize-y" />
+      <div className="flex justify-end gap-2 text-xs">
+        <button onClick={() => setEditingNote(null)} className="px-2.5 py-1 rounded-lg text-ink-3 hover:text-ink-1">Annuler</button>
+        <button onClick={saveNoteEdit} disabled={savingEdit || !editingNote.text.trim()} className="px-2.5 py-1 rounded-lg bg-primary text-white font-semibold disabled:opacity-50">
+          {note.source === 'reply' ? 'Corriger la réponse' : 'Enregistrer'}
+        </button>
+      </div>
+    </div>
+  );
 
   const saveTemplate = async () => {
     if (!composeText.trim() || !newTemplateName.trim()) return;
@@ -748,6 +787,25 @@ export default function TicketDetail() {
   };
 
   const canDeleteNote = (note) => user?.role === 'fondateur' || note.author_id === user?.id;
+
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const openVoice = async () => {
+    setVoiceBusy(true);
+    try {
+      const { data } = await api.post(`/tickets/${id}/voice`);
+      setTicket(t => ({ ...t, voice_channel_id: data.channelId, voiceUrl: data.url }));
+      toast.success('Salon vocal ouvert : le membre a reçu le lien en MP');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setVoiceBusy(false); }
+  };
+  const closeVoice = async () => {
+    setVoiceBusy(true);
+    try {
+      await api.delete(`/tickets/${id}/voice`);
+      setTicket(t => ({ ...t, voice_channel_id: null, voiceUrl: null }));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setVoiceBusy(false); }
+  };
 
   /* ─── Loading / not found ──────────────────────────────────── */
   if (loading) return (
@@ -929,6 +987,20 @@ export default function TicketDetail() {
                          transition-all">
               <History size={12} /> <span className="hidden sm:inline">Historique</span>
             </button>
+            {ticket.status === 'open' && can('reply_ticket') && (ticket.voiceUrl ? (
+              <span className="flex items-center rounded-lg border border-emerald-500/30 bg-emerald-500/8 text-xs font-medium">
+                <a href={ticket.voiceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 text-emerald-300 hover:text-ink-1">
+                  <Volume2 size={12} /> <span className="hidden sm:inline">Rejoindre le vocal</span>
+                </a>
+                <button onClick={closeVoice} disabled={voiceBusy} aria-label="Fermer le salon vocal" title="Fermer le salon vocal"
+                  className="px-2 py-1.5 border-l border-emerald-500/30 text-ink-3 hover:text-red-400 disabled:opacity-50"><X size={12} /></button>
+              </span>
+            ) : (
+              <button onClick={openVoice} disabled={voiceBusy} aria-label="Ouvrir un salon vocal" title="Salon vocal temporaire avec le membre (supprimé à la fermeture du ticket)"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07] transition-all disabled:opacity-50">
+                <Volume2 size={12} /> <span className="hidden sm:inline">Vocal</span>
+              </button>
+            ))}
             <a href={`/api/tickets/${id}/pdf`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
                          text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07]
@@ -1011,13 +1083,21 @@ export default function TicketDetail() {
                                   bg-surface border border-dashed border-overlay/8 ${flashNote === note.id ? 'ring-2 ring-amber-400' : ''}`}>
                     <Lock size={10} className="text-ink-4 mt-0.5 shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-ink-2 leading-relaxed whitespace-pre-wrap wrap-break-word">
-                        <MessageContent text={note.content} />
-                      </p>
+                      {editingNote?.id === note.id ? noteEditor(note) : (
+                        <p className="text-xs text-ink-2 leading-relaxed whitespace-pre-wrap wrap-break-word">
+                          <MessageContent text={note.content} />
+                        </p>
+                      )}
                       <p className="text-[10px] text-ink-4 mt-1.5">
-                        {note.author_tag} · {fmtDate(note.created_at)}
+                        {note.author_tag} · {fmtDate(note.created_at)}{note.edited_at ? ` · modifiée ${fmtDate(note.edited_at)}` : ''}
                       </p>
                     </div>
+                    {canEditNote(note) && editingNote?.id !== note.id && (
+                      <button onClick={() => setEditingNote({ id: note.id, text: note.content })} aria-label="Modifier la note" title="Modifier"
+                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-ink-1 transition-all shrink-0 mt-0.5">
+                        <Pencil size={10} />
+                      </button>
+                    )}
                     {can('reply_ticket') && (
                       <button onClick={() => togglePin(note)} aria-label={note.pinned_at ? 'Désépingler la note' : 'Épingler la note'}
                         title={note.pinned_at ? 'Désépingler' : 'Épingler en haut du ticket'}
@@ -1065,17 +1145,21 @@ export default function TicketDetail() {
                     )}
                   </div>
 
-                  <div className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed
-                                   whitespace-pre-wrap wrap-break-word max-w-sm ${style.bubble}
-                                   ${isLeft ? 'rounded-tl-md' : 'rounded-tr-md'} ${note.deleted_at ? 'opacity-60 border-dashed' : ''}`}>
-                    <MessageContent text={note.content} light={!isLeft} />
-                  </div>
+                  {editingNote?.id === note.id ? noteEditor(note) : (
+                    <div className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed
+                                     whitespace-pre-wrap wrap-break-word max-w-sm ${style.bubble}
+                                     ${isLeft ? 'rounded-tl-md' : 'rounded-tr-md'} ${note.deleted_at ? 'opacity-60 border-dashed' : ''}`}>
+                      <MessageContent text={note.content} light={!isLeft} />
+                    </div>
+                  )}
 
                   {/* Edited / deleted by the member in their DMs (previous versions kept for the staff) */}
                   {(note.edited_at || note.deleted_at) && (
                     <details className={`text-[10px] px-0.5 max-w-sm ${isLeft ? '' : 'text-right'}`}>
                       <summary className={`cursor-pointer select-none font-medium ${note.deleted_at ? 'text-red-400' : 'text-amber-400'}`}>
-                        {note.deleted_at ? `Supprimé par le membre · ${fmtDate(note.deleted_at)}` : `Modifié · ${fmtDate(note.edited_at)}`}
+                        {note.deleted_at
+                          ? (note.source === 'reply' ? `Réponse retirée · ${fmtDate(note.deleted_at)}` : `Supprimé par le membre · ${fmtDate(note.deleted_at)}`)
+                          : `Modifié · ${fmtDate(note.edited_at)}`}
                         {note.edit_history?.length ? ` · ${note.edit_history.length} version(s) précédente(s)` : ''}
                       </summary>
                       {note.edit_history?.length > 0 && (
@@ -1093,8 +1177,16 @@ export default function TicketDetail() {
 
                   <div className={`flex items-center gap-2 px-0.5 ${isLeft ? '' : 'flex-row-reverse'}`}>
                     <span className="text-[10px] text-ink-4 tabular-nums">{fmtDate(note.created_at)}</span>
-                    {canDeleteNote(note) && (
-                      <button onClick={() => deleteNote(note.id)} aria-label="Supprimer la note"
+                    {canEditNote(note) && editingNote?.id !== note.id && (
+                      <button onClick={() => setEditingNote({ id: note.id, text: note.edit_text ?? note.content })}
+                        aria-label={note.source === 'reply' ? 'Corriger la réponse' : 'Modifier'} title={note.source === 'reply' ? 'Corriger (le MP du membre est modifié aussi)' : 'Modifier'}
+                        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-ink-1 transition-all">
+                        <Pencil size={10} />
+                      </button>
+                    )}
+                    {canDeleteNote(note) && !(note.source === 'reply' && note.deleted_at) && (
+                      <button onClick={() => deleteNote(note.id)} aria-label={note.editable ? 'Retirer la réponse' : 'Supprimer la note'}
+                        title={note.editable ? 'Retirer (le MP du membre est supprimé)' : 'Supprimer'}
                         className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-ink-4 hover:text-red-400
                                    transition-all">
                         <X size={10} />

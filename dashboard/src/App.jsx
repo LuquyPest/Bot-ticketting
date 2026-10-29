@@ -49,6 +49,7 @@ const ApiDocs     = lazy(() => import('./pages/ApiDocs'));
 const Procedures  = lazy(() => import('./pages/Procedures'));
 const Profiles    = lazy(() => import('./pages/Profiles'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
+const Health      = lazy(() => import('./pages/Health'));
 const GuestView   = lazy(() => import('./pages/GuestView'));
 const Status      = lazy(() => import('./pages/Status'));
 
@@ -224,6 +225,7 @@ export default function App() {
                         <Route path="queue"      element={<ErrorBoundary><Queue /></ErrorBoundary>} />
                         <Route path="activite"   element={<ErrorBoundary><Activity /></ErrorBoundary>} />
                         <Route path="acces-invites" element={<RequireRole role="fondateur"><ErrorBoundary><GuestInvites /></ErrorBoundary></RequireRole>} />
+                        <Route path="sante" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Health /></ErrorBoundary></RequireRole>} />
                         <Route path="profils" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="profils/:memberId" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="procedures" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Procedures /></ErrorBoundary></RequireRole>} />

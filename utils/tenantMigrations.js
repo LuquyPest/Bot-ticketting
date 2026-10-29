@@ -342,6 +342,24 @@ const MIGRATIONS = [
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_used_at DATETIME DEFAULT NULL, uses INT NOT NULL DEFAULT 0)`,
     ],
   },
+  {
+    version: 25,
+    name: 'Fils privés, catégories de débordement, vocal de ticket, réponses modifiables',
+    statements: [
+      `ALTER TABLE guild_config
+         ADD COLUMN IF NOT EXISTS ticket_mode ENUM('channel','thread') NOT NULL DEFAULT 'channel',
+         ADD COLUMN IF NOT EXISTS thread_parent_channel_id VARCHAR(32) DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS health_alerts_enabled TINYINT(1) NOT NULL DEFAULT 1`,
+      `ALTER TABLE tickets
+         ADD COLUMN IF NOT EXISTS voice_channel_id VARCHAR(32) DEFAULT NULL,
+         ADD COLUMN IF NOT EXISTS opened_by_id VARCHAR(32) DEFAULT NULL`,
+      'ALTER TABLE ticket_notes ADD COLUMN IF NOT EXISTS reply_refs JSON DEFAULT NULL',
+      // Extra categories created when a stage category reaches Discord's 50-channel limit
+      `CREATE TABLE IF NOT EXISTS overflow_categories (
+        category_id VARCHAR(32) NOT NULL PRIMARY KEY, base_category_id VARCHAR(32) NOT NULL, position INT NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_oc_base (base_category_id))`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

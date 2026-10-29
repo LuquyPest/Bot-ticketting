@@ -251,6 +251,8 @@ export default function Settings() {
         ticketCategoryId:         sn(cfg.ticketCategoryId),
         waitingCategoryId:        sn(cfg.waitingCategoryId),
         inProgressCategoryId:     sn(cfg.inProgressCategoryId),
+        ticketMode:               cfg.ticketMode || 'channel',
+        threadParentChannelId:    sn(cfg.threadParentChannelId),
         slaOpenHours:             cfg.slaOpenHours ?? 0,
         slaWaitingHours:          cfg.slaWaitingHours ?? 0,
         slaInProgressHours:       cfg.slaInProgressHours ?? 0,
@@ -478,9 +480,23 @@ export default function Settings() {
             </Field>
           ))}
         </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Field label="Format des tickets sur Discord" hint="Fils privés : aucune limite de 50 salons par catégorie ni de 500 salons par serveur. Le staff y est ajouté un par un (rôles support et comptes du dashboard).">
+            <select value={cfg.ticketMode || 'channel'} onChange={e => set('ticketMode', e.target.value)}
+              className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary">
+              <option value="channel">Un salon par ticket</option>
+              <option value="thread">Un fil privé par ticket</option>
+            </select>
+          </Field>
+          {cfg.ticketMode === 'thread' && (
+            <Field label="Salon des fils de tickets" hint="Les fils privés y sont créés. Ne donne pas « Gérer les fils » aux rôles support sur ce salon : ils verraient aussi les tickets confidentiels.">
+              <ChannelPicker value={cfg.threadParentChannelId} onChange={v => set('threadParentChannelId', v)} channels={channels} loading={discordLoading} />
+            </Field>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[
-            ['ticketCategoryId', 'Catégorie « Ouvert »', 'Les nouveaux tickets y sont créés'],
+            ['ticketCategoryId', 'Catégorie « Ouvert »', cfg.ticketMode === 'thread' ? 'Utilisée par les salons vocaux des tickets' : 'Les nouveaux tickets y sont créés (une catégorie « 2 », « 3 »… est ajoutée quand elle est pleine)'],
             ['waitingCategoryId', 'Catégorie « En attente »', 'Ticket en attente (réponse du membre, info externe…)'],
             ['inProgressCategoryId', 'Catégorie « En cours »', 'Ticket en cours de traitement'],
           ].map(([key, label, hint]) => (

@@ -5,7 +5,7 @@ const { logAudit } = require('../../utils/gradePermissions');
 const { foreignChannels, foreignRoles } = require('../../utils/discordGuard');
 const { diffConfig, recordHistory, listHistory, restorePlan } = require('../../utils/configHistory');
 
-const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCategoryId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
+const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCategoryId', 'threadParentChannelId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
   'removeUserLogChannelId', 'weeklyReportChannelId', 'monthlyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
 const ROLE_FIELDS = ['supportRoleIds', 'chiefRoleIds'];
 // Never written to the audit log in clear
@@ -25,6 +25,9 @@ const FIELD_MAP = {
   ticketCategoryId:          'ticket_category_id',
   waitingCategoryId:         'waiting_category_id',
   inProgressCategoryId:      'in_progress_category_id',
+  ticketMode:                'ticket_mode',
+  threadParentChannelId:     'thread_parent_channel_id',
+  healthAlertsEnabled:       'health_alerts_enabled',
   slaOpenHours:              'sla_open_hours',
   slaWaitingHours:           'sla_waiting_hours',
   slaInProgressHours:        'sla_in_progress_hours',
@@ -87,6 +90,9 @@ const VALIDATORS = {
   ticketCategoryId:         SNOWFLAKE,
   waitingCategoryId:        SNOWFLAKE,
   inProgressCategoryId:     SNOWFLAKE,
+  ticketMode:               v => ['channel', 'thread'].includes(v),
+  threadParentChannelId:    SNOWFLAKE,
+  healthAlertsEnabled:      v => v === 0 || v === 1 || v === true || v === false,
   slaOpenHours:             v => Number.isInteger(v) && v >= 0 && v <= 720,
   slaWaitingHours:          v => Number.isInteger(v) && v >= 0 && v <= 720,
   slaInProgressHours:       v => Number.isInteger(v) && v >= 0 && v <= 720,
@@ -254,6 +260,18 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
     const roleIds = ROLE_FIELDS.filter(k => k in updates).flatMap(k => updates[k]);
     if ((await foreignRoles(client, req.guildId, roleIds)).length) {
       return { status: 400, error: 'Un des rôles choisis n\'appartient pas à ce serveur' };
+    }
+  }
+
+  // Thread mode: tickets are private threads of a text channel, which must then be chosen
+  if ('ticketMode' in updates || 'threadParentChannelId' in updates) {
+    const [cur] = await req.guildDb('SELECT ticket_mode, thread_parent_channel_id FROM guild_config WHERE id = 1');
+    const mode = updates.ticketMode ?? cur?.ticket_mode;
+    const parentId = 'threadParentChannelId' in updates ? updates.threadParentChannelId : cur?.thread_parent_channel_id;
+    if (mode === 'thread') {
+      if (!parentId) return { status: 400, error: 'Choisis le salon dans lequel les fils de tickets seront créés' };
+      const parent = client ? await require('../../utils/discordGuard').fetchGuildChannel(client, req.guildId, parentId) : null;
+      if (client && parent?.type !== require('discord.js').ChannelType.GuildText) return { status: 400, error: 'Le salon des fils doit être un salon textuel' };
     }
   }
 
