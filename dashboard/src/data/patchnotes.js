@@ -8,6 +8,14 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.21.3',
+    date: '29 octobre 2026',
+    title: 'Le vocal s\'ouvre dans l\'application Discord',
+    changes: [
+      { type: 'impr', text: 'Bouton « Rejoindre le vocal » : ouvre le salon directement dans l\'application Discord, et dans le navigateur seulement si l\'application n\'est pas installée' },
+    ]
+  },
+  {
     version: 'v2.21.2',
     date: '29 octobre 2026',
     title: 'Grand ménage et README illustré',

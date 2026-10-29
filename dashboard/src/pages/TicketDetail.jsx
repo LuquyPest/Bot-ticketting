@@ -850,6 +850,21 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setVoiceBusy(false); }
   };
+  // Ouvre le vocal dans l'application Discord ; repli sur le web si rien ne prend la main
+  const joinVoice = (e) => {
+    e.preventDefault();
+    const webUrl = ticket.voiceUrl;
+    let left = false;
+    const onLeave = () => { left = true; };
+    window.addEventListener('blur', onLeave, { once: true });
+    document.addEventListener('visibilitychange', onLeave, { once: true });
+    window.location.href = webUrl.replace(/^https:\/\/discord\.com\//, 'discord://-/');
+    setTimeout(() => {
+      window.removeEventListener('blur', onLeave);
+      document.removeEventListener('visibilitychange', onLeave);
+      if (!left) window.open(webUrl, '_blank', 'noopener,noreferrer');
+    }, 1500);
+  };
 
   /* ─── Loading / not found ──────────────────────────────────── */
   if (loading) return (
@@ -1039,7 +1054,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
             </button>
             {ticket.status === 'open' && can('reply_ticket') && (ticket.voiceUrl ? (
               <span className="flex items-center rounded-lg border border-emerald-500/30 bg-emerald-500/8 text-xs font-medium">
-                <a href={ticket.voiceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 text-emerald-300 hover:text-ink-1">
+                <a href={ticket.voiceUrl} onClick={joinVoice} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 text-emerald-300 hover:text-ink-1">
                   <Volume2 size={12} /> <span className="hidden sm:inline">Rejoindre le vocal</span>
                 </a>
                 <button onClick={closeVoice} disabled={voiceBusy} aria-label="Fermer le salon vocal" title="Fermer le salon vocal"
