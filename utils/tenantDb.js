@@ -29,9 +29,14 @@ function _getPool(guildId) {
   return pool;
 }
 
+// An id parsed from bad input (parseInt('x') → NaN) would be written as NaN, a SQL error: it
+// becomes NULL, which matches nothing, so the route answers « not found » instead of crashing
+const cleanValue = v => (typeof v === 'number' && Number.isNaN(v) ? null : Array.isArray(v) ? v.map(cleanValue) : v);
+const cleanParams = params => (Array.isArray(params) ? params.map(cleanValue) : params);
+
 function getTenantDb(guildId) {
   return async function tenantQuery(sql, params = []) {
-    const [result] = await _getPool(guildId).query(sql, params);
+    const [result] = await _getPool(guildId).query(sql, cleanParams(params));
     return result;
   };
 }
@@ -41,4 +46,4 @@ async function closeAll() {
   _pools.clear();
 }
 
-module.exports = { getTenantDb, getDbName, closeAll };
+module.exports = { cleanParams, getTenantDb, getDbName, closeAll };

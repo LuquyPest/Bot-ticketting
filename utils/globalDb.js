@@ -21,7 +21,7 @@ function getPool() {
 }
 
 async function globalQuery(sql, params = []) {
-  const [result] = await getPool().query(sql, params);
+  const [result] = await getPool().query(sql, require('./tenantDb').cleanParams(params));
   return result;
 }
 

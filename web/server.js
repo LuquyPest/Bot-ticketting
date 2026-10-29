@@ -101,6 +101,9 @@ app.use(auditLog);
 app.use(httpErrorMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+// Express 5 leaves req.body undefined when nothing was parsed (no or another Content-Type):
+// routes always get an object, so a request without a body is refused as invalid, not a crash
+app.use((req, res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
 app.use('/api', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');

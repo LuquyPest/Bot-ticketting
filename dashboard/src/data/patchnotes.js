@@ -15,7 +15,8 @@ export const VERSIONS = [
       { type: 'fix',  text: 'Sécurité : l\'import de configuration avec « reprendre les salons et rôles » n\'acceptait plus que ceux du serveur importé — un fichier pouvait faire poster les logs du bot dans un autre serveur' },
       { type: 'fix',  text: 'Sécurité : les paramètres importés passent par les mêmes vérifications que la page Paramètres (couleur, logo, nombres…) ; un fichier refusé ne change rien' },
       { type: 'tech', text: 'Dépendances mises à jour (body-parser, multer, undici, follow-redirects) : 4 failles de déni de service et de fuite d\'en-têtes corrigées' },
-      { type: 'tech', text: 'Tests : 737 vérifications automatiques' },
+      { type: 'fix',  text: 'Une requête sans contenu ou avec un identifiant invalide reçoit un refus clair au lieu d\'une erreur serveur (et ne remplit plus le journal d\'erreurs)' },
+      { type: 'tech', text: 'Tests : 741 vérifications automatiques, plus un contrôle de la production (73 vérifications) et un envoi de requêtes malformées à toutes les routes' },
     ]
   },
   {

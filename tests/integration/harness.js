@@ -329,6 +329,16 @@ async function main() {
   check('limite de 400 ko sur les paramètres (logo de l espace membre)', r.status === 413, r.status);
   r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F, body: { content: 'x'.repeat(200000) } });
   check('limite 100 ko conservée ailleurs', r.status === 413, r.status);
+  // Without a body (or with another Content-Type) a route answers 400, it does not crash
+  r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F });
+  check('corps absent: refus propre, pas d erreur 500', r.status === 400, r.status);
+  r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F, headers: { 'Content-Type': 'application/json' } });
+  check('JSON vide: refus propre', r.status === 400, r.status);
+  // An id that is not a number never reaches the database as NaN (SQL error → 500)
+  r = await req('POST', '/api/tickets/1/apply-template', { sid: sessions.F, body: {} });
+  check('identifiant invalide: introuvable, pas d erreur 500', r.status === 404 || r.status === 400, r.status);
+  r = await req('DELETE', '/api/ticket-views/abc', { sid: sessions.F });
+  check('identifiant non numérique dans l URL: pas d erreur 500', r.status < 500, r.status);
 
   // H3 — super-admin ticket limit no longer breaks ticket creation
   const { openTicketForGuild } = app('./events/messageCreate');
