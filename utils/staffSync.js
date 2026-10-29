@@ -7,7 +7,7 @@ const { recordEvent } = require('./audit');
 const { scheduleResync } = require('./channelVisibility');
 const { canAddAgent } = require('./limits');
 
-const SUPPORT_PERMS = ['view_tickets', 'reply_ticket', 'claim_ticket', 'close_ticket', 'manage_participants'];
+const SUPPORT_PERMS = ['view_tickets', 'reply_ticket', 'create_ticket', 'claim_ticket', 'close_ticket', 'manage_participants'];
 const CHIEF_PERMS   = [...SUPPORT_PERMS, 'view_transcripts', 'manage_users', 'view_audit'];
 
 async function createGrade(db, name, color, perms, parentId = null) {

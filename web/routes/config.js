@@ -91,7 +91,7 @@ const VALIDATORS = {
   ticketCategoryId:         SNOWFLAKE,
   waitingCategoryId:        SNOWFLAKE,
   inProgressCategoryId:     SNOWFLAKE,
-  ticketMode:               v => ['channel', 'thread'].includes(v),
+  ticketMode:               v => ['channel', 'auto', 'thread'].includes(v),
   threadParentChannelId:    SNOWFLAKE,
   healthAlertsEnabled:      v => v === 0 || v === 1 || v === true || v === false,
   idleTimeoutMinutes:       v => Number.isInteger(v) && (v === 0 || (v >= 5 && v <= 1440)),
@@ -266,13 +266,14 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
     }
   }
 
-  // Thread mode: tickets are private threads of a text channel, which must then be chosen
+  // Thread modes: tickets are (or may become) private threads of a text channel, chosen here
   if ('ticketMode' in updates || 'threadParentChannelId' in updates) {
     const [cur] = await req.guildDb('SELECT ticket_mode, thread_parent_channel_id FROM guild_config WHERE id = 1');
     const mode = updates.ticketMode ?? cur?.ticket_mode;
     const parentId = 'threadParentChannelId' in updates ? updates.threadParentChannelId : cur?.thread_parent_channel_id;
-    if (mode === 'thread') {
-      if (!parentId) return { status: 400, error: 'Choisis le salon dans lequel les fils de tickets seront créés' };
+    if (mode === 'thread' && !parentId) return { status: 400, error: 'Choisis le salon dans lequel les fils de tickets seront créés' };
+    // 'auto': optional, only used once the server has no room left for a channel
+    if (parentId && mode !== 'channel') {
       const parent = client ? await require('../../utils/discordGuard').fetchGuildChannel(client, req.guildId, parentId) : null;
       if (client && parent?.type !== require('discord.js').ChannelType.GuildText) return { status: 400, error: 'Le salon des fils doit être un salon textuel' };
     }

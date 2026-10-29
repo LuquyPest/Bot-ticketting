@@ -297,7 +297,7 @@ router.get('/staff', async (req, res) => {
 
 // GET /api/tickets/member-search?q= — server members matching a name or an ID (staff opening a ticket)
 router.get('/member-search', async (req, res) => {
-  if (!hasPerm(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
+  if (!hasPerm(req, 'create_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
   const q = String(req.query.q || '').trim().slice(0, 32);
   if (q.length < 2) return res.json([]);
   try {
@@ -316,7 +316,7 @@ router.get('/member-search', async (req, res) => {
 // POST /api/tickets/open { userId, subject?, message } — the staff opens a ticket to contact a
 // member (sanction, follow-up, refund…); the message is sent to them as the first reply.
 router.post('/open', async (req, res) => {
-  if (!hasPerm(req, 'view_tickets') || !hasPerm(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
+  if (!hasPerm(req, 'view_tickets') || !hasPerm(req, 'create_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const userId = String(req.body.userId || '');
     const subject = typeof req.body.subject === 'string' ? req.body.subject.replace(/\s+/g, ' ').trim().slice(0, 100) || null : null;
@@ -339,6 +339,7 @@ router.post('/open', async (req, res) => {
     res.json({ ok: true, id: ticket.id });
   } catch (err) {
     console.error(err);
+    if (err.code === 'TICKET_CAPACITY') return res.status(409).json({ error: 'Plus de place pour un salon de ticket sur le serveur (format « Salons uniquement »)' });
     res.status(500).json({ error: err.message?.includes('fils') ? err.message : 'Ouverture du ticket impossible' });
   }
 });

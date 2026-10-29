@@ -8,6 +8,16 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.21.1',
+    date: '29 octobre 2026',
+    title: 'Format des tickets au choix et clic droit réservé au staff',
+    changes: [
+      { type: 'new',  text: 'Paramètres → Format des tickets : « Salons, puis fils privés » (par défaut), « Salons uniquement » (refus propre quand le serveur est plein, MP aux fondateurs) ou « Fils privés uniquement »' },
+      { type: 'impr', text: 'Clic droit « Créer un ticket » : seul un titre est demandé, et c\'est réservé aux grades qui ont la nouvelle permission « Ouvrir un ticket pour un membre » (Support et Chef support l\'ont déjà)' },
+      { type: 'tech', text: 'Tests : 860 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.21',
     date: '29 octobre 2026',
     title: 'Sécurité : consultations confidentielles, nouvel appareil, inactivité',

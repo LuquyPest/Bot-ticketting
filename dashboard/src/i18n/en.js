@@ -514,6 +514,15 @@ export const ENTRIES = [
   ['Sans clic, frappe ni défilement pendant cette durée, le compte est déconnecté (un avertissement s\'affiche une minute avant). S\'applique à tout le staff, fondateurs compris.', 'Without a click, keystroke or scroll for this long, the account is signed out (a warning shows one minute before). Applies to all the staff, founders included.'],
   ['Tu vas être déconnecté dans moins d\'une minute', 'You will be signed out in less than a minute'], ['Rester connecté', 'Stay signed in'],
   ['Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.', 'You were signed out after a period of inactivity. Sign in again to continue.'],
+
+  // ── v2.21.1 : format des tickets, permission d'ouverture ──
+  ['Salons, puis fils privés quand il n\'y a plus de place (recommandé)', 'Channels, then private threads when there is no room left (recommended)'],
+  ['Salons uniquement', 'Channels only'], ['Fils privés uniquement', 'Private threads only'], ['Salon des fils (quand il n\'y a plus de place)', 'Threads channel (when there is no room left)'],
+  ['Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets deviennent des fils privés du salon choisi ci-contre.', 'One channel per ticket, with “2”, “3”… categories when a category is full. When the server reaches 500 channels, new tickets become private threads of the channel chosen here.'],
+  ['Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets sont refusés : le membre est prévenu et les fondateurs reçoivent un MP.', 'One channel per ticket, with “2”, “3”… categories when a category is full. When the server reaches 500 channels, new tickets are refused: the member is told and the founders get a DM.'],
+  ['Chaque ticket est un fil privé du salon choisi : aucune limite de salons. Le staff y est ajouté un par un (rôles support et comptes du dashboard) ; les étapes ne déplacent plus rien sur Discord.', 'Each ticket is a private thread of the chosen channel: no channel limit. The staff are added one by one (support roles and dashboard accounts); stages no longer move anything on Discord.'],
+  ['salons, puis fils privés', 'channels, then private threads'], ['salons uniquement', 'channels only'], ['fils privés uniquement', 'private threads only'], ['format :', 'format:'],
+  ['Ouvrir un ticket pour un membre', 'Open a ticket for a member'],
 ];
 
 export const TEMPLATES = [

@@ -396,6 +396,16 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS idle_timeout_minutes INT NOT NULL DEFAULT 0',
     ],
   },
+  {
+    version: 29,
+    name: 'Format des tickets en trois modes, permission « Ouvrir un ticket pour un membre »',
+    statements: [
+      // 'channel' meant "channels with overflow categories", now 'auto' (channels, then threads when full)
+      "ALTER TABLE guild_config MODIFY ticket_mode ENUM('channel','auto','thread') NOT NULL DEFAULT 'auto'",
+      "UPDATE guild_config SET ticket_mode = 'auto' WHERE ticket_mode = 'channel'",
+      "INSERT IGNORE INTO grade_permissions (grade_id, permission) SELECT grade_id, 'create_ticket' FROM grade_permissions WHERE permission = 'reply_ticket'",
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

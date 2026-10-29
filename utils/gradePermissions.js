@@ -6,6 +6,7 @@ const PERMISSIONS = [
   'view_tickets',
   'claim_ticket',
   'reply_ticket',
+  'create_ticket',
   'close_ticket',
   'manage_participants',
   'view_transcripts',

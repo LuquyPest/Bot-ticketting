@@ -101,8 +101,12 @@ Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans 
 
 - Répond via `/reply` (identifié), `/areply` (anonyme comme "Support") ou depuis le **dashboard web** ; depuis le dashboard, un **fichier** (8 Mo max) peut être joint : il arrive en pièce jointe dans le MP du membre et dans le salon
 - Les messages tapés directement dans le salon Discord sont enregistrés comme notes mais **ne sont pas envoyés** au membre
-- Le staff peut aussi **contacter un membre de lui-même** (sanction, suivi, remboursement) : bouton **Contacter un membre** de la page Tickets, `/contact`, ou clic droit sur un message d'un salon public → Applications → **Créer un ticket** (le message d'origine est repris dans le ticket, avec son lien). Le membre reçoit un MP « L'équipe te contacte » puis le premier message, et répond au bot comme pour un ticket normal ; le ticket indique qui l'a ouvert (journal : « Ticket ouvert par le staff »). Permission `reply_ticket`, limite de tickets du serveur respectée
-- **Format des tickets** (Paramètres → Rôles d'accès) : un salon par ticket (par défaut) ou un **fil privé** par ticket dans un salon choisi. Les fils échappent à la limite de 50 salons par catégorie et de 500 salons par serveur ; le staff y est ajouté un par un (membres des rôles support / chef support et comptes du dashboard autorisés à voir le ticket), et un ticket restreint ou confidentiel ne reçoit que les personnes autorisées. Les étapes sont alors enregistrées sans déplacement. Ne pas donner « Gérer les fils » aux rôles support sur ce salon : ils verraient tous les fils, confidentiels compris
+- Le staff peut aussi **contacter un membre de lui-même** (sanction, suivi, remboursement) : bouton **Contacter un membre** de la page Tickets, `/contact`, ou clic droit sur un message d'un salon public → Applications → **Sunset-Ticket → Créer un ticket** (seul un titre est demandé ; le message d'origine est repris dans le ticket, avec son lien). Le membre reçoit un MP « L'équipe te contacte » (puis le premier message pour la page Tickets et `/contact`), et répond au bot comme pour un ticket normal ; le ticket indique qui l'a ouvert (journal : « Ticket ouvert par le staff »). Permission de grade `create_ticket` (« Ouvrir un ticket pour un membre ») : les fondateurs l'ont toujours, elle est donnée aux grades qui pouvaient répondre (Support, Chef support) et se coche dans **Grades** pour un autre (un grade Helper, par exemple). Discord affiche quand même le clic droit à tout le monde : pour le masquer, Paramètres du serveur → Intégrations → Sunset-Ticket → « Créer un ticket » → rôles autorisés. Limite de tickets du serveur respectée
+- **Format des tickets** (Paramètres → Rôles d'accès), trois choix :
+  - **Salons, puis fils privés** (par défaut) : un salon par ticket, avec débordement des catégories ; quand le serveur atteint 500 salons, les nouveaux tickets deviennent des fils privés du salon choisi (sans salon choisi : refusés comme ci-dessous) ;
+  - **Salons uniquement** : un salon par ticket, avec débordement des catégories ; quand Discord refuse un salon de plus, le ticket est refusé : le membre reçoit « Serveur complet », le panel l'affiche, et les fondateurs reçoivent un MP (une fois par heure au plus) ;
+  - **Fils privés uniquement** : chaque ticket est un fil privé du salon choisi.
+  Les fils échappent à la limite de 50 salons par catégorie et de 500 salons par serveur ; le staff y est ajouté un par un (membres des rôles support / chef support et comptes du dashboard autorisés à voir le ticket), et un ticket restreint ou confidentiel ne reçoit que les personnes autorisées. Les étapes sont alors enregistrées sans déplacement. Ne pas donner « Gérer les fils » aux rôles support sur ce salon : ils verraient tous les fils, confidentiels compris
 - **Débordement des catégories** : quand une catégorie d'étape atteint 50 salons, les nouveaux tickets vont dans « Tickets 2 », « Tickets 3 »… créées juste en dessous avec les mêmes permissions ; un ticket qui change d'étape reste dans la catégorie de débordement s'il y est déjà, et les catégories de débordement vides sont supprimées
 - **Salon vocal temporaire** (bouton **Vocal** de la fiche ou `/vocal`) : un salon vocal réservé au membre, aux participants présents sur le serveur et au staff qui voit le ticket ; le lien est envoyé en MP au membre et le salon est supprimé à la fermeture du ticket (ou avec `/vocal fermer`)
 - Le ticket se ferme via le bouton Discord ou depuis le dashboard (transcript généré automatiquement)
@@ -324,6 +328,7 @@ Un `support` n'a aucun droit sans grade. Permissions de grade appliquées par l'
 | `claim_ticket` | Prendre en charge / libérer un ticket |
 | `close_ticket` | Fermer / rouvrir un ticket |
 | `manage_participants` | Ajouter / retirer des participants |
+| `create_ticket` | Ouvrir un ticket pour un membre (page Tickets, `/contact`, clic droit « Créer un ticket ») |
 | `view_transcripts` | Consulter les transcripts |
 | `manage_users` | Attribuer des grades (pas à soi-même, ni un grade aux permissions supérieures aux siennes) |
 | `manage_grades` | Créer/éditer les grades (pas ceux qu'on possède) et restreindre la visibilité d'un ticket |
@@ -506,9 +511,9 @@ Les commandes sont réservées au staff et utilisables uniquement sur un serveur
 | `/staffstats` | Rôle Chef Support ou fondateur | Statistiques détaillées par agent |
 | `/template` | `reply_ticket` | Envoie un modèle de réponse (autocomplétion : modèles du sujet du ticket en tête, partagés et personnels) ; variables résolues, actions appliquées si c'est une macro, option anonyme |
 | `/merge` | `close_ticket` + `reply_ticket` | Fusionne le ticket du salon dans un autre ticket ouvert du même membre (autocomplétion) |
-| `/contact` | `reply_ticket` | Ouvre un ticket pour contacter un membre (membre, message, sujet facultatif) |
+| `/contact` | `create_ticket` | Ouvre un ticket pour contacter un membre (membre, message, sujet facultatif) |
 | `/vocal` | `reply_ticket` | Ouvre (ou ferme) le salon vocal temporaire du ticket |
-| Clic droit sur un message → Applications → **Créer un ticket** | `reply_ticket` | Transforme le message d'un salon public en ticket avec son auteur (sujet et premier message facultatifs) |
+| Clic droit sur un message → Applications → **Créer un ticket** | `create_ticket` | Transforme le message d'un salon public en ticket avec son auteur ; seul le titre est demandé |
 | `/mestickets` | Membre, en MP avec le bot | État de ses tickets ouverts sur tous les serveurs (« en attente de ta réponse », « en cours de traitement »…). Aussi accessible par le bouton **📋 Mes tickets** des MP |
 
 Boutons du salon : **Transcript** demande `view_transcripts`, **Fermer** demande `close_ticket`.
@@ -906,7 +911,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 847 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 860 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie

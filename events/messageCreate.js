@@ -176,7 +176,15 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
     if (intakeHandled) return;
   }
 
-  const result = await tm.createTicket(user, content, attachments, subject || null, { forceNew: true, confidential: !!opts.confidential });
+  let result;
+  try {
+    result = await tm.createTicket(user, content, attachments, subject || null, { forceNew: true, confidential: !!opts.confidential });
+  } catch (err) {
+    // « Salons uniquement » and no room left on the server: the member is told, the founders were alerted
+    if (err.code !== 'TICKET_CAPACITY') throw err;
+    await user.send({ embeds: [serverLimitEmbed()] }).catch(() => null);
+    return;
+  }
   if (result.created && opts.fieldValues) {
     await saveFieldValues(db, result.ticket.id, opts.fieldValues);
     const lines = (await fieldsForTicket(db, result.ticket.id)).filter(f => f.value).map(f => `**${f.label}** : ${f.value}`);

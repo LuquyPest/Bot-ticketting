@@ -1,5 +1,6 @@
 // Right click on a message → Applications → « Créer un ticket »: the staff turns a message of a
-// public channel into a ticket with its author (subject and first message asked in a modal).
+// public channel into a ticket with its author; only a title is asked. Grade permission
+// create_ticket (founders always; given to the support grades, and to any grade that ticks it).
 const {
   ContextMenuCommandBuilder, ApplicationCommandType, ModalBuilder, TextInputBuilder, TextInputStyle,
   ActionRowBuilder, MessageFlags,
@@ -16,15 +17,14 @@ module.exports = {
 
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
+    if (!(await ensureSupport(interaction, client, db, 'create_ticket'))) return;
     const msg = interaction.targetMessage;
     if (msg.author.bot) return interaction.reply({ content: 'Impossible d\'ouvrir un ticket pour un bot.', flags: MessageFlags.Ephemeral });
+    if (msg.author.id === interaction.user.id) return interaction.reply({ content: 'Impossible d\'ouvrir un ticket pour toi-même.', flags: MessageFlags.Ephemeral });
     const modal = new ModalBuilder().setCustomId(`${MODAL_PREFIX}${msg.channelId}_${msg.id}`).setTitle('Créer un ticket');
     modal.addComponents(
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('subject').setLabel('Sujet')
-        .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(100)),
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('message').setLabel(`Message à ${msg.author.username}`.slice(0, 45))
-        .setPlaceholder('Facultatif : envoyé au membre en MP à l\'ouverture').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(2000)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('subject').setLabel('Titre du ticket')
+        .setPlaceholder(`Ticket avec ${msg.author.username}`.slice(0, 100)).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(100)),
     );
     return interaction.showModal(modal);
   },
@@ -33,7 +33,7 @@ module.exports = {
 
   async handleModal(client, interaction) {
     const db = getTenantDb(interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
+    if (!(await ensureSupport(interaction, client, db, 'create_ticket'))) return;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const [channelId, messageId] = interaction.customId.slice(MODAL_PREFIX.length).split('_');
     const channel = await client.channels.fetch(channelId).catch(() => null);
@@ -42,8 +42,7 @@ module.exports = {
     const tm = createManager(db, client, interaction.guildId);
     const r = await openFromDiscord({
       client, db, tm, guildId: interaction.guildId, member: msg.author, staff: interaction.user,
-      subject: interaction.fields.getTextInputValue('subject').trim() || null,
-      message: interaction.fields.getTextInputValue('message').trim(),
+      subject: interaction.fields.getTextInputValue('subject').replace(/\s+/g, ' ').trim() || null,
       quote: { content: msg.content, url: msg.url, channelId: msg.channelId, attachments: [...msg.attachments.values()].map(a => a.url) },
     });
     await interaction.editReply({ content: r.error ? `❌ ${r.error}` : `✅ Ticket #${r.ticket.id} ouvert : <#${r.channel.id}>` });

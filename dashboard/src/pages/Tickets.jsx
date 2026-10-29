@@ -449,7 +449,7 @@ export default function Tickets() {
           <p>{messageSearch ? "Recherche dans les messages" : `${data.total} ticket(s) trouvé(s)`}</p>
         </div>
         <div className="flex items-center gap-2">
-        {(user?.role === 'fondateur' || user?.permissions?.includes('reply_ticket')) && !user?.demo && <ContactMember />}
+        {(user?.role === 'fondateur' || user?.permissions?.includes('create_ticket')) && !user?.demo && <ContactMember />}
         {user?.role === 'fondateur' && (
           <a
             href="/api/tickets/export"

@@ -9,7 +9,14 @@ async function openFromDiscord({ client, db, tm, guildId, member, staff, subject
   if (member.id === staff.id) return { error: 'Tu ne peux pas ouvrir un ticket pour toi-même.' };
   const limit = await canOpenTicket(db, guildId);
   if (!limit.ok) return { error: `Limite de ${limit.max} tickets ouverts atteinte sur ce serveur.` };
-  const { channel, ticket } = await tm.openTicketForMember(member, { subject, byUser: staff, quote });
+  let opened;
+  try {
+    opened = await tm.openTicketForMember(member, { subject, byUser: staff, quote });
+  } catch (err) {
+    if (err.code === 'TICKET_CAPACITY') return { error: 'Plus de place pour un salon de ticket sur le serveur (format « Salons uniquement »).' };
+    throw err;
+  }
+  const { channel, ticket } = opened;
   if (message) {
     await sendDiscordReply({ client, db, tm, guildId, ticket, author: staff, channel, content: message });
   }

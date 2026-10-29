@@ -12,6 +12,7 @@ const ALL_PERMISSIONS = [
   { id: 'view_tickets',        label: 'Voir les tickets' },
   { id: 'claim_ticket',        label: 'Prendre en charge' },
   { id: 'reply_ticket',        label: 'Répondre aux utilisateurs' },
+  { id: 'create_ticket',       label: 'Ouvrir un ticket pour un membre' },
   { id: 'close_ticket',        label: 'Fermer les tickets' },
   { id: 'manage_participants', label: 'Gérer les participants' },
   { id: 'view_transcripts',    label: 'Voir les transcripts' },

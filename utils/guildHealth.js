@@ -48,9 +48,9 @@ const missingIn = (perms, list) => list.filter(([flag]) => !perms?.has(F[flag]))
 // Full report. guild: discord.js Guild (null = the bot is no longer on the server).
 async function checkGuildHealth(db, client, guildId) {
   const [cfg = {}] = await db('SELECT * FROM guild_config LIMIT 1');
-  const threads = cfg.ticket_mode === 'thread';
+  const threads = cfg.ticket_mode === 'thread' || (cfg.ticket_mode === 'auto' && !!cfg.thread_parent_channel_id);
   const guild = await client?.guilds.fetch(guildId).catch(() => null);
-  const report = { checkedAt: new Date().toISOString(), mode: threads ? 'thread' : 'channel', botInGuild: !!guild, permissions: [], channels: [], roles: [], categories: [], problems: [] };
+  const report = { checkedAt: new Date().toISOString(), mode: cfg.ticket_mode || 'auto', botInGuild: !!guild, permissions: [], channels: [], roles: [], categories: [], problems: [] };
   if (!guild) {
     report.problems.push({ id: 'bot_absent', text: 'Le bot n\'est plus sur le serveur' });
     return report;
@@ -90,7 +90,7 @@ async function checkGuildHealth(db, client, guildId) {
       report.categories.push({ field: col, label: def.label, id: ch.id, name: ch.name, count, limit: CATEGORY_LIMIT, overflow });
     }
   }
-  if (threads && !cfg.thread_parent_channel_id) {
+  if (cfg.ticket_mode === 'thread' && !cfg.thread_parent_channel_id) {
     report.problems.push({ id: 'thread_parent_missing', text: 'Mode fils privés activé sans salon parent' });
   }
 
@@ -105,7 +105,7 @@ async function checkGuildHealth(db, client, guildId) {
   }
   const total = guild.channels.cache.size;
   report.channelCount = { used: total, limit: 500 };
-  if (!threads && total >= 480) report.problems.push({ id: 'guild_channels', text: `Le serveur approche de la limite de 500 salons (${total})` });
+  if (cfg.ticket_mode !== 'thread' && !(cfg.ticket_mode === 'auto' && cfg.thread_parent_channel_id) && total >= 480) report.problems.push({ id: 'guild_channels', text: `Le serveur approche de la limite de 500 salons (${total})` });
   return report;
 }
 
@@ -166,6 +166,19 @@ async function runGuildHealthCheck(client, onlyGuildId = null) {
   return sent;
 }
 
+// No room left for a ticket channel: founders told by DM, at most once an hour.
+async function alertCapacity(db, client, guildId, text) {
+  const { getRedis } = require('./redis');
+  if (!(await getRedis().set(`health:capacity:${guildId}`, '1', 'EX', 3600, 'NX').catch(() => 'OK'))) return false;
+  const embed = new EmbedBuilder().setColor(0xed4245).setTitle('🚫 Ticket impossible à ouvrir').setDescription(text).setTimestamp();
+  for (const f of await db("SELECT user_id FROM dashboard_users WHERE role = 'fondateur'")) {
+    const user = await client.users.fetch(f.user_id).catch(() => null);
+    if (user) await user.send({ embeds: [embed] }).catch(() => null);
+  }
+  await require('./audit').recordEvent(db, { actor: require('./audit').SYSTEM, action: 'health_alert', details: { problems: [text] } }).catch(() => null);
+  return true;
+}
+
 // Discord change on a server (bot roles, channel deleted…): check it again shortly after,
 // once for a burst of events.
 const pending = new Map();
@@ -177,4 +190,4 @@ function scheduleHealthCheck(client, guildId, delayMs = 20000) {
   }, delayMs).unref?.());
 }
 
-module.exports = { checkGuildHealth, runGuildHealthCheck, scheduleHealthCheck, alertNewProblems };
+module.exports = { checkGuildHealth, runGuildHealthCheck, scheduleHealthCheck, alertNewProblems, alertCapacity };

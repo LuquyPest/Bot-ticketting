@@ -48,6 +48,7 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent, su
       await interaction.editReply({ content: t('panel.exists', { id: result.ticket.id }) });
     }
   } catch (err) {
+    if (err.code === 'TICKET_CAPACITY') return interaction.editReply({ content: t('panel.serverLimit') });
     console.error('[panelTicket] error:', err);
     await interaction.editReply({ content: t('panel.failed') });
   }

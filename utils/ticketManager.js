@@ -142,26 +142,32 @@ function createManager(db, client, guildId) {
     return fromSubject || `${cfg.ticket_prefix || 'ticket'}-${sanitizeChannelName(user.username || '', 25) || 'ticket'}`;
   }
 
+  // Ticket format (Paramètres, guild_config.ticket_mode):
+  //   'channel' — a channel per ticket (overflow categories « 2 », « 3 »… when one is full); when
+  //               Discord refuses one more channel (500 per server), opening is refused (TICKET_CAPACITY)
+  //   'auto'    — the same, but a full server falls back to a private thread of thread_parent_channel_id
+  //   'thread'  — always a private thread of thread_parent_channel_id (no channel limit at all)
   // restricted: the support roles get no access at creation; syncTicketChannel then adds the
-  // allowed staff members one by one (if it fails, nobody but the founders on the dashboard sees it)
-  // Thread mode (Paramètres): a private thread of the configured channel, outside the 50-channel
-  // categories and the 500-channel server limit; syncTicketChannel adds the allowed staff to it.
+  // allowed staff members one by one (if it fails, nobody but the founders on the dashboard sees it).
+  // For a thread, syncTicketChannel adds the allowed staff to it.
+  async function createTicketThread(cfg, user, subject) {
+    const parent = await fetchGuildChannel(client, gid, cfg.thread_parent_channel_id);
+    if (parent?.type !== ChannelType.GuildText) throw new Error('Salon parent des fils de tickets introuvable');
+    return parent.threads.create({
+      name: channelNameFor(subject, user, cfg),
+      type: ChannelType.PrivateThread,
+      invitable: false,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
+      reason: `Ticket de ${user.tag || user.username || user.id}`,
+    });
+  }
+
   async function createTicketChannel(user, subject = null, { restricted = false } = {}) {
     const cfg = await getGuildConfig(db);
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
-
-    if (cfg.ticket_mode === 'thread') {
-      const parent = await fetchGuildChannel(client, gid, cfg.thread_parent_channel_id);
-      if (parent?.type !== ChannelType.GuildText) throw new Error('Salon parent des fils de tickets introuvable');
-      return parent.threads.create({
-        name: channelNameFor(subject, user, cfg),
-        type: ChannelType.PrivateThread,
-        invitable: false,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
-        reason: `Ticket de ${user.tag || user.username || user.id}`,
-      });
-    }
+    const mode = cfg.ticket_mode || 'auto';
+    if (mode === 'thread') return createTicketThread(cfg, user, subject);
 
     const supportRoleIds = parseJsonField(cfg.support_role_ids);
     const chiefRoleIds   = parseJsonField(cfg.chief_role_ids);
@@ -178,12 +184,24 @@ function createManager(db, client, guildId) {
       });
     }
 
-    return guild.channels.create({
-      name: channelNameFor(subject, user, cfg),
-      type: ChannelType.GuildText,
-      parent: (await categoryWithRoom(db, guild, cfg.ticket_category_id)) || undefined,
-      permissionOverwrites: permOverwrites
-    });
+    try {
+      return await guild.channels.create({
+        name: channelNameFor(subject, user, cfg),
+        type: ChannelType.GuildText,
+        parent: (await categoryWithRoom(db, guild, cfg.ticket_category_id)) || undefined,
+        permissionOverwrites: permOverwrites
+      });
+    } catch (err) {
+      // 30013: 500 channels on the server; or a category that could not overflow any more
+      if (err.code !== 30013 && !/maximum number of (guild )?channels/i.test(err.message || '')) throw err;
+      if (mode === 'auto' && cfg.thread_parent_channel_id) return createTicketThread(cfg, user, subject);
+      await require('./guildHealth').alertCapacity(db, client, gid, mode === 'auto'
+        ? 'Le serveur n\'a plus de place pour un salon de ticket et aucun salon des fils n\'est choisi (Paramètres → Format des tickets).'
+        : 'Le serveur n\'a plus de place pour un salon de ticket (limite Discord de 500 salons) : les nouveaux tickets sont refusés. Ferme des tickets ou passe au format « Salons, puis fils privés ».').catch(() => null);
+      const full = new Error('Plus de place pour un nouveau salon de ticket');
+      full.code = 'TICKET_CAPACITY';
+      throw full;
+    }
   }
 
   // forceNew: open a new ticket even if the user already has one (several tickets per member are allowed)

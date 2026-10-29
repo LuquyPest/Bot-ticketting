@@ -20,6 +20,8 @@ function Card({ icon: Icon, title, children, empty }) {
   );
 }
 
+const MODE_LABEL = { auto: 'salons, puis fils privés', channel: 'salons uniquement', thread: 'fils privés uniquement' };
+
 // Bot setup of the server: what is missing or broken, before it makes a ticket action fail
 export default function Health() {
   const [report, setReport] = useState(null);
@@ -64,7 +66,7 @@ export default function Health() {
         {problems.some(p => p.id.startsWith('perm:')) && (
           <p className="mt-2 text-xs text-ink-3">Pour une permission manquante : Paramètres du serveur Discord → Rôles → rôle du bot, ou réinvite le bot avec le lien de la page de sélection du serveur.</p>
         )}
-        <p className="mt-2 text-[11px] text-ink-4">Vérifié le {new Date(report.checkedAt).toLocaleString(uiLocale())} · tickets en {report.mode === 'thread' ? 'fils privés' : 'salons'}</p>
+        <p className="mt-2 text-[11px] text-ink-4">Vérifié le {new Date(report.checkedAt).toLocaleString(uiLocale())} · format : {MODE_LABEL[report.mode] || MODE_LABEL.auto}</p>
       </div>
 
       <Card icon={KeyRound} title="Permissions du bot sur le serveur">
@@ -115,7 +117,7 @@ export default function Health() {
       </Card>
 
       {report.channelCount && (
-        <p className="text-xs text-ink-3">Salons sur le serveur : {report.channelCount.used} / {report.channelCount.limit}.{report.mode !== 'thread' && report.channelCount.used > 400 && <> Pense au format <Link to="/settings" className="underline">fils privés</Link> (Paramètres) pour ne plus dépendre de cette limite.</>}</p>
+        <p className="text-xs text-ink-3">Salons sur le serveur : {report.channelCount.used} / {report.channelCount.limit}.{report.mode === 'channel' && report.channelCount.used > 400 && <> Au-delà, les nouveaux tickets seront refusés : le format <Link to="/settings" className="underline">« Salons, puis fils privés »</Link> (Paramètres) évite ce blocage.</>}</p>
       )}
 
       <label className="flex items-center gap-2 text-sm text-ink-2">

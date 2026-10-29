@@ -32,6 +32,7 @@ const PERMISSION_LABELS = {
   claim_ticket: 'Prendre en charge',
   close_ticket: 'Fermer / rouvrir',
   manage_participants: 'Gérer les participants',
+  create_ticket: 'Ouvrir un ticket pour un membre',
   view_transcripts: 'Consulter les transcripts',
 };
 

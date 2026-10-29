@@ -3065,7 +3065,7 @@ async function main() {
     check('fils: mode fils sans salon parent refusé', r.status === 400 && /salon/.test(r.body.error), JSON.stringify(r.body));
     r = await req('PATCH', '/api/config', { sid: sessions.F, body: { threadParentChannelId: CAT_OPEN } });
     check('fils: salon parent qui n est pas textuel refusé', r.status === 400, JSON.stringify(r.body));
-    await db("UPDATE guild_config SET ticket_mode = 'channel', thread_parent_channel_id = NULL, support_role_ids = ? WHERE id = 1", [cfgT.support_role_ids == null ? null : JSON.stringify(cfgT.support_role_ids)]);
+    await db("UPDATE guild_config SET ticket_mode = 'auto', thread_parent_channel_id = NULL, support_role_ids = ? WHERE id = 1", [cfgT.support_role_ids == null ? null : JSON.stringify(cfgT.support_role_ids)]);
 
     // Fake DMs and channel messages that can be fetched, edited and deleted
     const msgs = new Map();
@@ -3234,7 +3234,7 @@ async function main() {
     r2 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [tb], action: 'stage', value: 'in_progress' } });
     const [st] = await db('SELECT stage FROM tickets WHERE id = ?', [tb]);
     check('masse: changement d étape', r2.status === 200 && r2.body.affected === 1 && st.stage === 'in_progress', JSON.stringify([r2.body, st]));
-    await db("UPDATE guild_config SET ticket_mode = 'channel' WHERE id = 1");
+    await db("UPDATE guild_config SET ticket_mode = 'auto' WHERE id = 1");
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ta, tb]]);
 
     // Interface preferences (split view)
@@ -3397,6 +3397,73 @@ async function main() {
     await mk('IDLE3', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G, lastActivityAt: Date.now() - 1000 * 60000 });
     r4 = await req('GET', '/api/tickets', { sid: sessions.IDLE3 });
     check('inactivité: désactivée → aucune déconnexion', r4.status === 200, r4.status);
+  }
+
+  // ── Ticket format (3 modes) and « Créer un ticket » (right click) ──
+  {
+    const { ChannelType } = require('discord.js');
+    const [cfgM] = await db('SELECT ticket_mode FROM guild_config WHERE id = 1');
+    check('format: « Salons, puis fils privés » par défaut', cfgM.ticket_mode === 'auto', cfgM.ticket_mode);
+    const origCreate = guildObj.channels.create;
+    guildObj.channels.create = async () => { const e = new Error('Maximum number of guild channels reached (500)'); e.code = 30013; throw e; };
+    const PARENT2 = '950000000000000400';
+    const parent2 = mkChannel(PARENT2, G, 0, 'tickets-fils');
+    parent2.threads = { create: async o => { const th = mkChannel('950000000000000401', G, 12, o.name); th.isThread = () => true; th.guild = { id: G, members: { fetch: async () => new Map() }, roles: { cache: new Map() } };
+      th.members = { fetch: async () => new Map(), add: async () => {}, remove: async () => {} }; channels.set(th.id, th); return th; } };
+    channels.set(PARENT2, parent2);
+    const member = id => ({ id, username: 'member' + id.slice(-2), tag: 'member' + id.slice(-2), send: async () => {} });
+    await redis.del(`health:capacity:${G}`);
+    memberDms.length = 0;
+    await db("UPDATE guild_config SET ticket_mode = 'channel', thread_parent_channel_id = ? WHERE id = 1", [PARENT2]);
+    let err = null;
+    await createManager(db, fakeClient, G).createTicket(member('200000000000000091'), 'x', [], 'plein').catch(e => { err = e; });
+    check('salons uniquement: serveur plein → ticket refusé proprement', err?.code === 'TICKET_CAPACITY', err?.message);
+    check('salons uniquement: les fondateurs sont prévenus par MP', memberDms.some(d => d.id === U.F && /impossible/i.test(d.p.embeds?.[0]?.data?.title || '')), JSON.stringify(memberDms.map(d => d.id)));
+    await db("UPDATE guild_config SET ticket_mode = 'auto' WHERE id = 1");
+    const fb = await createManager(db, fakeClient, G).createTicket(member('200000000000000092'), 'x', [], 'repli');
+    check('salons puis fils: serveur plein → le ticket devient un fil privé', fb.created && fb.channel.isThread() && fb.channel.id === '950000000000000401', fb.channel?.id);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [fb.ticket.id]);
+    await db("UPDATE guild_config SET thread_parent_channel_id = NULL WHERE id = 1");
+    err = null;
+    await createManager(db, fakeClient, G).createTicket(member('200000000000000093'), 'x', [], 'sans salon').catch(e => { err = e; });
+    check('salons puis fils: sans salon des fils choisi → refusé proprement', err?.code === 'TICKET_CAPACITY', err?.message);
+    let rm = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketMode: 'auto', threadParentChannelId: null } });
+    check('format: « Salons, puis fils » accepté sans salon des fils', rm.status === 200, JSON.stringify(rm.body));
+    rm = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketMode: 'nimporte' } });
+    check('format: valeur inconnue refusée', rm.status === 400, rm.status);
+    guildObj.channels.create = origCreate;
+
+    // Right click « Créer un ticket »: grade permission create_ticket, only a title is asked
+    const AUTH = '200000000000000044', MCH = '950000000000000500';
+    const srcMsg = { id: '950000000000000501', channelId: MCH, content: 'Je me plains publiquement', url: 'https://discord.com/channels/x/y/z', author: { id: AUTH, username: 'member44', tag: 'member44', bot: false }, attachments: new Map() };
+    const srcCh = mkChannel(MCH, G); srcCh.messages = { fetch: async id => (id === srcMsg.id ? srcMsg : null) };
+    channels.set(MCH, srcCh);
+    const cm = app('./commands/createTicketFromMessage');
+    const ix = (userId, extra = {}) => { const o = {}; return { o, i: { guildId: G, channelId: MCH, guild: guildObj, user: { id: userId, username: 'u' + userId.slice(-1), tag: 'u' + userId.slice(-1) }, member: { roles: { cache: new Map() } },
+      targetMessage: srcMsg, reply: async p => { o.reply = p; }, showModal: async m => { o.modal = m.toJSON(); }, deferReply: async () => {}, editReply: async p => { o.edit = p; }, ...extra } }; };
+    let f = ix(U.S1);
+    await cm.execute(fakeClient, f.i);
+    check('clic droit: refusé sans la permission « Ouvrir un ticket pour un membre »', !f.o.modal && /Ouvrir un ticket pour un membre/.test(f.o.reply?.content || ''), JSON.stringify(f.o));
+    f = ix(U.F);
+    await cm.execute(fakeClient, f.i);
+    const fields = (f.o.modal?.components || []).flatMap(r => r.components);
+    check('clic droit: la fenêtre ne demande que le titre (obligatoire)', fields.length === 1 && fields[0].custom_id === 'subject' && fields[0].required === true, JSON.stringify(fields));
+    const g = ix(U.F, { customId: f.o.modal.custom_id, fields: { getTextInputValue: k => (k === 'subject' ? '  Plainte   publique ' : '') } });
+    await cm.handleModal(fakeClient, g.i);
+    const [ct] = await db('SELECT * FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [AUTH]);
+    const quoted = ct ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user'", [ct.id]) : [];
+    check('clic droit: ticket créé avec le titre, message d origine repris', ct?.subject === 'Plainte publique' && ct?.opened_by_id === U.F && /plains publiquement/.test(quoted[0]?.content || '') && /#\d+/.test(g.o.edit?.content || ''), JSON.stringify([ct?.subject, g.o.edit]));
+    const [{ n: replies }] = await db("SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id = ? AND source = 'reply'", [ct.id]);
+    check('clic droit: aucun message envoyé à la place du staff', Number(replies) === 0, String(replies));
+    await db('INSERT INTO grade_permissions VALUES (?, ?)', [g1, 'create_ticket']);
+    f = ix(U.S1);
+    await cm.execute(fakeClient, f.i);
+    check('clic droit: autorisé à un grade qui a la permission (support, chef support, helper…)', !!f.o.modal, JSON.stringify(f.o.reply));
+    await db("DELETE FROM grade_permissions WHERE grade_id = ? AND permission = 'create_ticket'", [g1]);
+    f = ix(AUTH === U.F ? U.S1 : U.F, { targetMessage: { ...srcMsg, author: { id: U.F, username: 'F', bot: false } } });
+    await cm.execute(fakeClient, f.i);
+    check('clic droit: impossible sur son propre message', !f.o.modal && /toi-même/.test(f.o.reply?.content || ''), JSON.stringify(f.o));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [ct.id]);
   }
 
   // ── SA: delete guild → bot leaves Discord ──

@@ -7,6 +7,13 @@ import ConfigTransfer from '../components/ConfigTransfer';
 import ConfigHistory from '../components/ConfigHistory';
 import PortalBranding from '../components/PortalBranding';
 
+// What each ticket format does (Paramètres → Rôles d'accès)
+const TICKET_MODE_HINT = {
+  auto: 'Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets deviennent des fils privés du salon choisi ci-contre.',
+  channel: 'Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets sont refusés : le membre est prévenu et les fondateurs reçoivent un MP.',
+  thread: 'Chaque ticket est un fil privé du salon choisi : aucune limite de salons. Le staff y est ajouté un par un (rôles support et comptes du dashboard) ; les étapes ne déplacent plus rien sur Discord.',
+};
+
 function Section({ title, description, children }) {
   return (
     <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
@@ -252,7 +259,7 @@ export default function Settings() {
         ticketCategoryId:         sn(cfg.ticketCategoryId),
         waitingCategoryId:        sn(cfg.waitingCategoryId),
         inProgressCategoryId:     sn(cfg.inProgressCategoryId),
-        ticketMode:               cfg.ticketMode || 'channel',
+        ticketMode:               cfg.ticketMode || 'auto',
         threadParentChannelId:    sn(cfg.threadParentChannelId),
         slaOpenHours:             cfg.slaOpenHours ?? 0,
         slaWaitingHours:          cfg.slaWaitingHours ?? 0,
@@ -482,15 +489,17 @@ export default function Settings() {
           ))}
         </div>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <Field label="Format des tickets sur Discord" hint="Fils privés : aucune limite de 50 salons par catégorie ni de 500 salons par serveur. Le staff y est ajouté un par un (rôles support et comptes du dashboard).">
-            <select value={cfg.ticketMode || 'channel'} onChange={e => set('ticketMode', e.target.value)}
+          <Field label="Format des tickets sur Discord" hint={TICKET_MODE_HINT[cfg.ticketMode || 'auto']}>
+            <select value={cfg.ticketMode || 'auto'} onChange={e => set('ticketMode', e.target.value)}
               className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary">
-              <option value="channel">Un salon par ticket</option>
-              <option value="thread">Un fil privé par ticket</option>
+              <option value="auto">Salons, puis fils privés quand il n'y a plus de place (recommandé)</option>
+              <option value="channel">Salons uniquement</option>
+              <option value="thread">Fils privés uniquement</option>
             </select>
           </Field>
-          {cfg.ticketMode === 'thread' && (
-            <Field label="Salon des fils de tickets" hint="Les fils privés y sont créés. Ne donne pas « Gérer les fils » aux rôles support sur ce salon : ils verraient aussi les tickets confidentiels.">
+          {(cfg.ticketMode || 'auto') !== 'channel' && (
+            <Field label={cfg.ticketMode === 'thread' ? 'Salon des fils de tickets' : 'Salon des fils (quand il n\'y a plus de place)'}
+              hint="Les fils privés y sont créés. Ne donne pas « Gérer les fils » aux rôles support sur ce salon : ils verraient aussi les tickets confidentiels.">
               <ChannelPicker value={cfg.threadParentChannelId} onChange={v => set('threadParentChannelId', v)} channels={channels} loading={discordLoading} />
             </Field>
           )}

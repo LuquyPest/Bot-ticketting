@@ -14,7 +14,7 @@ module.exports = {
 
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
-    if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
+    if (!(await ensureSupport(interaction, client, db, 'create_ticket'))) return;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const tm = createManager(db, client, interaction.guildId);
     const r = await openFromDiscord({
