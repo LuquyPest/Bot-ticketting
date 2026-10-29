@@ -453,9 +453,31 @@ export const ENTRIES = [
   ['Retirer la réponse', 'Withdraw the reply'], ['Retirer (le MP du membre est supprimé)', 'Withdraw (the member\'s DM is deleted)'], ['Nouveau texte', 'New text'],
   ['Retirer cette réponse ? Le MP sera supprimé chez le membre ; la réponse reste visible ici, marquée comme retirée.', 'Withdraw this reply? The DM will be deleted on the member\'s side; the reply stays visible here, marked as withdrawn.'],
   ['Réponse retirée', 'Reply withdrawn'], ['Message modifié', 'Message edited'],
+
+  // ── v2.19 : suivi, collage de captures, aperçu, mentions de grade, masse, opérateurs, vue fractionnée ──
+  ['Suivis', 'Followed'], ['Suivre', 'Follow'], ['Suivi', 'Following'], ['Ne plus suivre ce ticket', 'Stop following this ticket'],
+  ['Suivre : être prévenu des nouveaux messages sans en être responsable', 'Follow: be told about new messages without being in charge'],
+  ['Tu seras prévenu des nouveaux messages de ce ticket', 'You will be told about this ticket\'s new messages'], ['Tu ne suis plus ce ticket', 'You no longer follow this ticket'],
+  ['Aperçu', 'Preview'], ['Voir le rendu sur Discord (gras, liens, listes…)', 'See how it looks on Discord (bold, links, lists…)'], ['Rien à prévisualiser', 'Nothing to preview'],
+  ['Aperçu du message sur Discord', 'Message preview on Discord'], ['Dépose le fichier pour le joindre à la réponse', 'Drop the file to attach it to the reply'],
+  ['Capture jointe à la réponse', 'Screenshot attached to the reply'], ['Un seul fichier par réponse : le premier est joint', 'One file per reply: the first one is attached'],
+  ['Joindre un fichier (8 Mo max) — ou colle une capture, ou glisse un fichier sur la zone de texte', 'Attach a file (8 MB max) — or paste a screenshot, or drag a file onto the text area'],
+  ['Mentionner un membre du staff ou un grade', 'Mention a staff member or a grade'], ['Grade : prévient tous ses membres', 'Grade: notifies all its members'], ['grade', 'grade'],
+  ['Étape', 'Stage'], ['Ajouter ou retirer', 'Add or remove'], ['Opérateurs de recherche', 'Search operators'], ['Opérateurs de recherche (tag:, de:, avant:…)', 'Search operators (tag:, de:, avant:…)'],
+  ['Sujet, ou tag:VIP de:pseudo étape:attente… (/)', 'Subject, or tag:VIP de:name étape:attente… (/)'],
+  ['Opérateurs à combiner dans la recherche (les autres mots cherchent dans le sujet) :', 'Operators to combine in the search (other words search the subject):'],
+  ['avec ce tag (tag:"Très urgent" si espaces)', 'with this tag (tag:"Very urgent" with spaces)'], ['ouverts par ce membre (pseudo ou ID)', 'opened by this member (name or ID)'],
+  ['créés avant cette date', 'created before this date'], ['créés à partir de cette date', 'created from this date'], ['ouvert, attente ou cours', 'ouvert, attente or cours (open, waiting, in progress)'],
+  ['faible, normale ou urgente', 'faible, normale or urgente (low, normal, urgent)'], ['ouvert ou fermé', 'ouvert or fermé (open or closed)'],
+  ['moi, personne ou un pseudo du staff', 'moi (me), personne (nobody) or a staff name'], ['dans le sujet', 'in the subject'], ['Recherche invalide', 'Invalid search'],
+  ['Affichage', 'Display'], ['Vue fractionnée des tickets', 'Split ticket view'],
+  ['Sur grand écran, un ticket cliqué dans la liste s\'ouvre à droite de celle-ci, sans changer de page.', 'On a large screen, a ticket clicked in the list opens to its right, without changing page.'],
+  ['Fermer le ticket', 'Close the ticket'], ['Ticket suivi', 'Followed ticket'],
 ];
 
 export const TEMPLATES = [
+  ['Message de {} · #{}', 'Message from {1} · #{2}'], ['{} a répondu · #{}', '{1} replied · #{2}'], ['Note de {} · #{}', 'Note from {1} · #{2}'], ['Ticket #{} fermé par {}', 'Ticket #{1} closed by {2}'],
+  ['{} a mentionné ton grade « {} » dans le ticket #{} : {}', '{1} mentioned your grade “{2}” in ticket #{3}: {4}'],
   ['{} problème à corriger', '{1} problem to fix'], ['{} problèmes à corriger', '{1} problems to fix'],
   ['Réponse retirée · {}', 'Reply withdrawn · {1}'], ['Réponse retirée ({}/{} MP supprimé(s))', 'Reply withdrawn ({1}/{2} DM(s) deleted)'],
   ['Réponse corrigée ({}/{} MP modifié(s))', 'Reply corrected ({1}/{2} DM(s) edited)'], ['Ticket #{} ouvert, message envoyé à {}', 'Ticket #{1} opened, message sent to {2}'],

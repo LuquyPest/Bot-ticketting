@@ -289,6 +289,7 @@ function createManager(db, client, guildId) {
     );
     broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: user.id, author_tag: user.tag, content: noteContent, source: 'user', created_at: new Date() } }, gid);
     await require('./dmEdits').linkDmNote(db, gid, user.id, nr.insertId, noteContent).catch(() => null);
+    require('./followers').notifyFollowers(db, gid, ticket, { kind: 'member', by: user.tag || user.username, byId: user.id, excerpt: noteContent }).catch(() => null);
     return { channel, ticket, created: false };
   }
 
@@ -430,6 +431,7 @@ function createManager(db, client, guildId) {
     }
     await channel.delete('Ticket fermé avec transcript').catch(() => null);
     await closeVoiceChannel(ticket.id).catch(() => null);
+    require('./followers').notifyFollowers(db, gid, ticket, { kind: 'closed', by: closedByUser.tag || closedByUser.username, byId: closedByUser.id ? String(closedByUser.id) : null }).catch(() => null);
 
     fireTicketWebhook(db, 'ticket_close', { ticketId: ticket.id, ownerTag: ticket.owner_tag, closedBy: closedByUser.tag }).catch(() => null);
 

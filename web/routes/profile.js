@@ -132,6 +132,18 @@ router.put('/language', requireAuth, async (req, res) => {
   res.json({ lang });
 });
 
+// GET/PUT /api/profile/prefs — interface preferences kept for every browser of the account
+// (splitView: the ticket list and the opened ticket side by side)
+router.get('/prefs', requireAuth, async (req, res) => {
+  const [row] = await globalQuery('SELECT split_view FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
+  res.json({ splitView: !!row?.split_view });
+});
+router.put('/prefs', requireAuth, async (req, res) => {
+  if (typeof req.body?.splitView !== 'boolean') return res.status(400).json({ error: 'Préférence invalide' });
+  await globalQuery('INSERT INTO user_prefs (user_id, split_view) VALUES (?, ?) ON DUPLICATE KEY UPDATE split_view = VALUES(split_view)', [req.session.user.id, req.body.splitView ? 1 : 0]);
+  res.json({ splitView: req.body.splitView });
+});
+
 // GET/PUT /api/profile/availability — available / busy / away (shown when assigning tickets)
 const AVAILABILITY = ['available', 'busy', 'away'];
 router.get('/availability', requireAuthWithGuild, async (req, res) => {

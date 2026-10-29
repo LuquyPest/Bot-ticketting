@@ -86,9 +86,26 @@ router.get('/', async (req, res) => {
   if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
     const str = k => (typeof req.query[k] === 'string' ? req.query[k] : '');
-    const status = str('status'), priority = str('priority'), subject = str('subject').slice(0, 100);
-    const stage = str('stage'), claimed = str('claimed'), dateFrom = str('dateFrom'), dateTo = str('dateTo');
-    const assignee = str('assignee') === 'me' ? req.session.user.id : str('assignee');
+    // Operators in the search box (tag:VIP de:pseudo avant:2026-10-01 étape:attente…): utils/searchQuery.js
+    const search = require('../../utils/searchQuery').parseSearch(str('subject'));
+    if (search.error) return res.status(400).json({ error: search.error });
+    const op = search.filters;
+    const status = op.status || str('status'), priority = op.priority || str('priority'), subject = search.text.slice(0, 100);
+    const stage = op.stage || str('stage'), claimed = str('claimed');
+    const dateFrom = op.after || str('dateFrom'), dateTo = str('dateTo');
+    let assignee = str('assignee') === 'me' ? req.session.user.id : str('assignee');
+    let unassigned = false;
+    if (op.assignee) {
+      const a = op.assignee.toLowerCase();
+      if (['moi', 'me'].includes(a)) assignee = req.session.user.id;
+      else if (['personne', 'aucun', 'none'].includes(a)) unassigned = true;
+      else {
+        const [u] = await req.guildDb("SELECT user_id FROM dashboard_users WHERE username = ? AND role IN ('support', 'fondateur')", [op.assignee]);
+        if (!u) return res.status(400).json({ error: `Membre du staff inconnu : ${op.assignee}` });
+        assignee = u.user_id;
+      }
+    }
+    const following = str('following') === 'me';
     const tag = parseInt(str('tag')) || null;
     const sla = str('sla');
     const fieldId = parseInt(str('field')) || null, fieldValue = str('fieldValue').slice(0, 100);
@@ -113,7 +130,19 @@ router.get('/', async (req, res) => {
     if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
     if (stage)    { where.push('stage = ?');      params.push(stage); }
     if (claimed === 'true')  where.push('EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
-    if (claimed === 'false') where.push('NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
+    if (claimed === 'false' || unassigned) where.push('NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
+    if (following) { where.push('EXISTS (SELECT 1 FROM ticket_followers tf WHERE tf.ticket_id = tickets.id AND tf.user_id = ?)'); params.push(req.session.user.id); }
+    const like = v => `%${v.replace(/[%_\\]/g, '\\$&')}%`;
+    for (const name of op.tag) {
+      where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta JOIN ticket_tags tg ON tg.id = ta.tag_id WHERE ta.ticket_id = tickets.id AND tg.name = ?)');
+      params.push(name);
+    }
+    for (const who of op.from) {
+      if (SNOWFLAKE_RE.test(who)) { where.push('owner_id = ?'); params.push(who); }
+      else { where.push('owner_tag LIKE ?'); params.push(like(who)); }
+    }
+    for (const words of op.subject) { where.push('subject LIKE ?'); params.push(like(words)); }
+    if (op.before) { where.push('created_at < ?'); params.push(op.before); }
     if (assignee) { where.push('EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id AND a.user_id = ?)'); params.push(assignee); }
     if (dateFrom) { where.push('created_at >= ?'); params.push(dateFrom); }
     if (dateTo)   { where.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(dateTo); }
@@ -343,6 +372,7 @@ router.get('/:id', async (req, res) => {
       // Threads: every stage is available (no category involved)
       stages: { open: thread || !!cfg?.ticket_category_id, waiting: thread || !!cfg?.waiting_category_id, in_progress: thread || !!cfg?.in_progress_category_id },
       voiceUrl: ticket.voice_channel_id ? `https://discord.com/channels/${req.guildId}/${ticket.voice_channel_id}` : null,
+      following: await require('../../utils/followers').isFollowing(req.guildDb, ticket.id, req.session.user.id),
       sla: slaStatus(ticket, cfg),
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
@@ -526,6 +556,7 @@ router.post('/:id/notes', async (req, res) => {
       created_at: new Date()
     };
     broadcast('note', { ticketId: ticket.id, note }, req.guildId);
+    require('../../utils/followers').notifyFollowers(req.guildDb, req.guildId, ticket, { kind: 'note', by: req.session.user.username, byId: req.session.user.id, excerpt: trimmed }).catch(() => null);
     const mentioned = await require('../../utils/mentions').notifyMentions(req.guildDb, client, req.guildId, ticket, trimmed, req.session.user);
     res.json({ ...note, mentioned });
   } catch (err) {
@@ -598,6 +629,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
     created_at: new Date()
   };
   broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
+  require('../../utils/followers').notifyFollowers(req.guildDb, req.guildId, ticket, { kind: 'reply', by: noteAuthorTag, byId: req.session.user.id, excerpt: noteContent }).catch(() => null);
   // Push notification to all subscribers of this guild when staff replies
   sendPushToGuild(req.guildId, {
     type: 'reply',
@@ -1303,6 +1335,20 @@ router.delete('/:id/notes/:noteId', async (req, res) => {
   }
 });
 
+// POST /api/tickets/:id/follow { follow } — be told about the ticket's new messages without being assigned
+router.post('/:id/follow', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    const follow = req.body.follow !== false;
+    await require('../../utils/followers').setFollowing(req.guildDb, ticket.id, req.session.user.id, follow);
+    res.json({ ok: true, following: follow });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // POST / DELETE /api/tickets/:id/voice — temporary voice channel of the ticket
 router.post('/:id/voice', async (req, res) => {
   try {
@@ -1328,15 +1374,46 @@ router.delete('/:id/voice', async (req, res) => {
   }
 });
 
+// Permission needed by each bulk action (on top of view_tickets); tickets the user cannot see are ignored
+const BULK_PERMS = {
+  priority: 'reply_ticket', stage: 'reply_ticket', add_tag: 'reply_ticket', remove_tag: 'reply_ticket', send_template: 'reply_ticket',
+  assign: 'claim_ticket', close: 'close_ticket', reopen: 'close_ticket',
+};
+
 router.post('/bulk', async (req, res) => {
-  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   const { ids, action, value } = req.body;
+  if (!BULK_PERMS[action]) return res.status(400).json({ error: 'Action invalide' });
+  if (!hasPerm(req, 'view_tickets') || !hasPerm(req, BULK_PERMS[action])) return res.status(403).json({ error: 'Permission insuffisante' });
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'IDs requis' });
   if (ids.length > 100) return res.status(400).json({ error: 'Maximum 100 tickets' });
-  const cleanIds = ids.map(Number).filter(n => Number.isInteger(n) && n > 0);
+  let cleanIds = ids.map(Number).filter(n => Number.isInteger(n) && n > 0);
   if (!cleanIds.length) return res.status(400).json({ error: 'IDs invalides' });
 
   try {
+    const vis = await visibilityFilter(req);
+    cleanIds = (await req.guildDb(`SELECT id FROM tickets WHERE id IN (?) AND ${vis.sql}`, [cleanIds, ...vis.params])).map(t => t.id);
+    if (!cleanIds.length) return res.json({ ok: true, affected: 0 });
+    if (action === 'stage') {
+      if (!VALID_STAGE.has(value)) return res.status(400).json({ error: 'Étape invalide' });
+      const tm = getManager(req);
+      let affected = 0;
+      const errors = new Set();
+      for (const id of cleanIds) {
+        const r = await tm.moveToStage(id, value, dashboardActor(req)).catch(err => ({ ok: false, error: err.message }));
+        if (r.ok) { affected++; broadcast('ticket', { id, stage: value }, req.guildId); } else errors.add(r.error);
+      }
+      return res.json({ ok: true, affected, ...(errors.size ? { errors: [...errors] } : {}) });
+    }
+    if (action === 'remove_tag') {
+      const [tag] = await req.guildDb('SELECT id, name FROM ticket_tags WHERE id = ?', [parseInt(value) || 0]);
+      if (!tag) return res.status(400).json({ error: 'Tag introuvable' });
+      let affected = 0;
+      for (const id of cleanIds) {
+        const r = await req.guildDb('DELETE FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [id, tag.id]);
+        if (r.affectedRows) { affected++; await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_remove', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } }); }
+      }
+      return res.json({ ok: true, affected });
+    }
     if (action === 'priority') {
       if (!VALID_PRIORITY.has(value)) return res.status(400).json({ error: 'Priorité invalide' });
       const tm = getManager(req);
@@ -1378,13 +1455,14 @@ router.post('/bulk', async (req, res) => {
       return res.json({ ok: true, affected });
     }
     if (action === 'add_tag') {
-      const [tag] = await req.guildDb('SELECT id, name FROM ticket_tags WHERE id = ?', [parseInt(value)]);
+      const [tag] = await req.guildDb('SELECT id, name FROM ticket_tags WHERE id = ?', [parseInt(value) || 0]);
       if (!tag) return res.status(400).json({ error: 'Tag introuvable' });
+      let affected = 0;
       for (const id of cleanIds) {
         const r = await req.guildDb('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [id, tag.id]);
-        if (r.affectedRows) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } });
+        if (r.affectedRows) { affected++; await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } }); }
       }
-      return res.json({ ok: true, affected: cleanIds.length });
+      return res.json({ ok: true, affected });
     }
     if (action === 'reopen') {
       const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'closed'", [cleanIds]);

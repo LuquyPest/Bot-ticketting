@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Star, FileText, User, Clock, X, Send,
   MessageSquare, Reply, UserPlus, FolderOpen, Pencil,
-  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight, Pin, PinOff, Volume2
+  Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight, Pin, PinOff, Volume2, Bell, BellRing, ImagePlus
 } from 'lucide-react';
 import api from '../api';
 import Badge from '../components/Badge';
@@ -14,6 +14,7 @@ import { fmtDate } from '../utils/format';
 import { useAuth } from '../App';
 import useDraft from '../hooks/useDraft';
 import MessageContent from '../components/MessageContent';
+import DiscordPreview from '../components/DiscordPreview';
 import TimeTracker from '../components/TimeTracker';
 import LabelChips from '../components/LabelChips';
 import { useSSE } from '../hooks/useSSE';
@@ -149,9 +150,13 @@ function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
 }
 
 /* ─── Main component ─────────────────────────────────────────── */
-export default function TicketDetail() {
-  const { id } = useParams();
+// embeddedId: shown next to the ticket list (split view, Tickets page); onClose leaves it
+export default function TicketDetail({ embeddedId = null, onClose = null }) {
+  const { id: routeId } = useParams();
+  const id = embeddedId ? String(embeddedId) : routeId;
+  const embedded = !!embeddedId;
   const navigate = useNavigate();
+  const goBack = () => (onClose ? onClose() : navigate('/tickets'));
   const { user } = useAuth();
 
   const [ticket, setTicket] = useState(null);
@@ -369,7 +374,7 @@ export default function TicketDetail() {
   useEffect(() => {
     function handler(e) {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
-      if (e.key === 'Escape') { navigate('/tickets'); return; }
+      if (e.key === 'Escape') { goBack(); return; }
       if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setComposeMode('reply');
@@ -422,13 +427,17 @@ export default function TicketDetail() {
     finally { setSavingNote(false); }
   };
 
-  // @mentions in internal notes: suggestions while typing "@abc"
+  // @mentions in internal notes: suggestions while typing "@abc" — staff members and grades
+  // ("@Chef support" notifies every member of that grade)
   const mentionQuery = composeMode === 'note' ? (/(?:^|\s)@([\w.]{0,32})$/.exec(newNote)?.[1] ?? null) : null;
-  const mentionMatches = mentionQuery === null ? [] : staff
-    .filter(m => m.user_id !== user?.id && m.username?.toLowerCase().startsWith(mentionQuery.toLowerCase()))
-    .slice(0, 6);
-  const insertMention = (username) => {
-    setNewNote(n => n.replace(/@([\w.]{0,32})$/, `@${username} `));
+  const mentionMatches = mentionQuery === null ? [] : [
+    ...staff.filter(m => m.user_id !== user?.id && m.username?.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+      .map(m => ({ key: `u${m.user_id}`, label: m.username })),
+    ...grades.filter(g => g.name?.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+      .map(g => ({ key: `g${g.id}`, label: g.name, grade: true })),
+  ].slice(0, 8);
+  const insertMention = (label) => {
+    setNewNote(n => n.replace(/@([\w.]{0,32})$/, `@${label} `));
     replyRef.current?.focus();
   };
 
@@ -436,13 +445,39 @@ export default function TicketDetail() {
   const [replyFile, setReplyFile] = useState(null);
   const [macroTpl, setMacroTpl] = useState(null);
   const fileInputRef = useRef(null);
+  const acceptFile = (f) => {
+    if (!f) return false;
+    if (f.size > 8 * 1024 * 1024) { toast.error('Fichier trop volumineux (8 Mo max)'); return false; }
+    if (composeMode !== 'reply') setComposeMode('reply'); // files go with a reply to the member
+    setReplyFile(f);
+    return true;
+  };
   const pickFile = (e) => {
     const f = e.target.files?.[0];
     e.target.value = '';
-    if (!f) return;
-    if (f.size > 8 * 1024 * 1024) return toast.error('Fichier trop volumineux (8 Mo max)');
-    setReplyFile(f);
+    acceptFile(f);
   };
+  // Screenshot pasted (Ctrl+V) or file dropped on the reply area
+  const pasteFile = (e) => {
+    // Copied text (even with an image, e.g. from a document) is pasted as text, as usual
+    if (e.clipboardData?.types?.includes('text/plain')) return;
+    const item = [...(e.clipboardData?.items || [])].find(i => i.kind === 'file');
+    const f = item?.getAsFile();
+    if (!f) return;
+    e.preventDefault();
+    const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+    const named = f.name && f.name !== 'image.png' ? f : new File([f], `capture-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`, { type: f.type });
+    if (acceptFile(named)) toast.success('Capture jointe à la réponse');
+  };
+  const [dragOver, setDragOver] = useState(false);
+  const dropFile = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = [...(e.dataTransfer?.files || [])];
+    if (files.length > 1) toast('Un seul fichier par réponse : le premier est joint');
+    acceptFile(files[0]);
+  };
+  const [preview, setPreview] = useState(false);
 
   const sendReply = async () => {
     if (!replyText.trim() && !replyFile) return;
@@ -788,6 +823,14 @@ export default function TicketDetail() {
 
   const canDeleteNote = (note) => user?.role === 'fondateur' || note.author_id === user?.id;
 
+  const toggleFollow = async () => {
+    try {
+      const { data } = await api.post(`/tickets/${id}/follow`, { follow: !ticket.following });
+      setTicket(t => ({ ...t, following: data.following }));
+      toast.success(data.following ? 'Tu seras prévenu des nouveaux messages de ce ticket' : 'Tu ne suis plus ce ticket');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
   const [voiceBusy, setVoiceBusy] = useState(false);
   const openVoice = async () => {
     setVoiceBusy(true);
@@ -939,11 +982,11 @@ export default function TicketDetail() {
 
         {/* Sticky header */}
         <div className="sticky top-0 z-10 glass-dark border-b border-overlay/6
-                        pl-14 pr-3 sm:pr-5 lg:pl-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2 shrink-0">
-          <button onClick={() => navigate('/tickets')} aria-label="Retour aux tickets"
+                        ${embedded ? 'pl-3' : 'pl-14 lg:pl-5'} pr-3 sm:pr-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2 shrink-0">
+          <button onClick={goBack} aria-label={embedded ? 'Fermer le ticket' : 'Retour aux tickets'}
             className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6
                        transition-all shrink-0">
-            <ArrowLeft size={16} />
+            {embedded ? <X size={16} /> : <ArrowLeft size={16} />}
           </button>
           <div className="h-4 w-px bg-overlay/8 shrink-0" />
           <span className="text-sm font-bold text-ink-1 tabular-nums">Ticket #{ticket.id}</span>
@@ -987,6 +1030,12 @@ export default function TicketDetail() {
                          transition-all">
               <History size={12} /> <span className="hidden sm:inline">Historique</span>
             </button>
+            <button onClick={toggleFollow} aria-pressed={!!ticket.following}
+              title={ticket.following ? 'Ne plus suivre ce ticket' : 'Suivre : être prévenu des nouveaux messages sans en être responsable'}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all
+                          ${ticket.following ? 'bg-primary/10 text-primary-light border-primary/30' : 'text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border-overlay/[0.07]'}`}>
+              {ticket.following ? <BellRing size={12} /> : <Bell size={12} />} <span className="hidden sm:inline">{ticket.following ? 'Suivi' : 'Suivre'}</span>
+            </button>
             {ticket.status === 'open' && can('reply_ticket') && (ticket.voiceUrl ? (
               <span className="flex items-center rounded-lg border border-emerald-500/30 bg-emerald-500/8 text-xs font-medium">
                 <a href={ticket.voiceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 text-emerald-300 hover:text-ink-1">
@@ -1008,8 +1057,8 @@ export default function TicketDetail() {
               <FileText size={12} /> PDF
             </a>
             <button onClick={() => setInfoOpen(true)} aria-label="Infos du ticket" aria-expanded={infoOpen}
-              className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                         text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07] transition-all">
+              className={`${embedded ? '' : 'lg:hidden '}flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
+                         text-ink-3 hover:text-ink-1 hover:bg-overlay/6 border border-overlay/[0.07] transition-all`}>
               <PanelRight size={12} /> Infos
             </button>
             {ticket.created_at && (
@@ -1263,21 +1312,37 @@ export default function TicketDetail() {
 
             {/* @mention suggestions (internal notes) */}
             {mentionQuery !== null && mentionMatches.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5" role="listbox" aria-label="Mentionner un membre du staff">
+              <div className="mb-2 flex flex-wrap gap-1.5" role="listbox" aria-label="Mentionner un membre du staff ou un grade">
                 {mentionMatches.map(m => (
-                  <button key={m.user_id} role="option" aria-selected="false" onClick={() => insertMention(m.username)}
-                    className="px-2 py-1 rounded-lg text-[11px] bg-surface border border-overlay/8 text-ink-2 hover:text-ink-1 hover:border-primary/40">
-                    @{m.username}
+                  <button key={m.key} role="option" aria-selected="false" onClick={() => insertMention(m.label)}
+                    title={m.grade ? 'Grade : prévient tous ses membres' : undefined}
+                    className={`px-2 py-1 rounded-lg text-[11px] bg-surface border hover:text-ink-1 hover:border-primary/40
+                                ${m.grade ? 'border-violet-500/30 text-violet-300' : 'border-overlay/8 text-ink-2'}`}>
+                    @{m.label}{m.grade && <span className="ml-1 text-[9px] uppercase opacity-70">grade</span>}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Textarea */}
+            {/* Textarea (drop a file, or paste a screenshot, to attach it) */}
+            <div className="relative" onDragOver={e => { if (e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); setDragOver(true); } }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }} onDrop={dropFile}>
+            {dragOver && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/60 bg-primary/10 text-sm text-primary-light pointer-events-none">
+                <ImagePlus size={16} /> Dépose le fichier pour le joindre à la réponse
+              </div>
+            )}
+            {preview ? (
+              <div className="min-h-[5.5rem] max-h-72 overflow-y-auto rounded-xl border border-overlay/8 bg-[#313338]/40 px-4 py-3" aria-label="Aperçu du message sur Discord">
+                {composeText.trim() ? <DiscordPreview text={composeMode === 'reply' ? resolveVars(composeText, ticket, user?.username) : composeText} />
+                  : <p className="text-sm text-ink-4">Rien à prévisualiser</p>}
+              </div>
+            ) : (
             <textarea
               ref={replyRef}
               value={composeText}
               onChange={e => setComposeText(e.target.value)}
+              onPaste={pasteFile}
               onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
               placeholder={composeMode === 'reply'
                 ? 'Répondre à l\'utilisateur... (Ctrl+Entrée)'
@@ -1290,11 +1355,18 @@ export default function TicketDetail() {
                             ? 'border-primary/30 focus:border-primary/60 focus:ring-1 focus:ring-primary/20'
                             : 'border-overlay/[0.07] focus:border-overlay/12'}`}
             />
+            )}
+            </div>
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-between gap-2 mt-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] text-ink-4 tabular-nums">{composeText.length}/2000</span>
+                <button onClick={() => setPreview(p => !p)} aria-pressed={preview} title="Voir le rendu sur Discord (gras, liens, listes…)"
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-all
+                              ${preview ? 'bg-primary/10 text-primary-light border-primary/30' : 'bg-surface text-ink-3 border-overlay/[0.07] hover:text-ink-1'}`}>
+                  <Eye size={11} /> {preview ? 'Modifier' : 'Aperçu'}
+                </button>
                 {(composeMode === 'note' ? noteRestored : replyRestored) && (
                   <span className="text-[10px] text-amber-400 font-medium">
                     Brouillon restauré ·{' '}
@@ -1450,7 +1522,7 @@ export default function TicketDetail() {
                         <button onClick={() => setReplyFile(null)} aria-label="Retirer le fichier" className="hover:text-ink-1"><X size={11} /></button>
                       </span>
                     ) : (
-                      <button onClick={() => fileInputRef.current?.click()} title="Joindre un fichier (8 Mo max)"
+                      <button onClick={() => fileInputRef.current?.click()} title="Joindre un fichier (8 Mo max) — ou colle une capture, ou glisse un fichier sur la zone de texte"
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-surface text-ink-3 border-overlay/[0.07] hover:text-ink-1 hover:border-overlay/12">
                         <Paperclip size={11} /> Fichier
                       </button>
@@ -1473,13 +1545,14 @@ export default function TicketDetail() {
       </div>
 
       {/* ══════════════ Right column: sidebar (drawer below lg) ═════ */}
-      {infoOpen && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setInfoOpen(false)} />}
+      {/* Embedded (split view): the column is always a drawer, the list takes the room */}
+      {infoOpen && <div className={`fixed inset-0 z-30 bg-black/50 ${embedded ? '' : 'lg:hidden'}`} onClick={() => setInfoOpen(false)} />}
       <div className={`fixed inset-y-0 right-0 z-40 w-[85vw] max-w-sm bg-surface transition-transform
-                      lg:sticky lg:top-0 lg:z-auto lg:w-72 lg:max-w-none lg:translate-x-0 lg:visible lg:bg-surface/60
+                      ${embedded ? '' : 'lg:sticky lg:top-0 lg:z-auto lg:w-72 lg:max-w-none lg:translate-x-0 lg:visible lg:bg-surface/60'}
                       shrink-0 h-screen overflow-y-auto border-l border-overlay/6 backdrop-blur-xs
                       ${infoOpen ? 'translate-x-0' : 'translate-x-full invisible'}`}>
         <div className="p-5 space-y-4">
-          <div className="flex justify-end lg:hidden -mb-2">
+          <div className={`flex justify-end ${embedded ? '' : 'lg:hidden'} -mb-2`}>
             <button onClick={() => setInfoOpen(false)} aria-label="Fermer le panneau"
               className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6"><X size={16} /></button>
           </div>

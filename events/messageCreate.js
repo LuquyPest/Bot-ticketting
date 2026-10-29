@@ -405,6 +405,7 @@ module.exports = {
             created_at: new Date()
           }
         }, data.guild_id);
+        require('../utils/followers').notifyFollowers(db, data.guild_id, ticket, { kind: 'note', by: authorTag, byId: data.author.id, excerpt: noteContent }).catch(() => null);
         return;
       }
 

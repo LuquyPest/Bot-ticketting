@@ -35,6 +35,7 @@ module.exports = {
       [ticket.id, interaction.user.id, interaction.user.username, content]
     );
     broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: interaction.user.id, author_tag: interaction.user.username, content, source: 'web', created_at: new Date() } }, interaction.guildId);
+    require('../utils/followers').notifyFollowers(db, interaction.guildId, ticket, { kind: 'note', by: interaction.user.username, byId: interaction.user.id, excerpt: content }).catch(() => null);
     await recordEvent(db, { actor: interaction.user, action: 'ticket_note', ticketId: ticket.id, details: { excerpt: content.slice(0, 120) } });
 
     const noteEmbed = new EmbedBuilder()

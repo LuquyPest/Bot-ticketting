@@ -394,7 +394,13 @@ Chaque message privé lié à un ticket (réponse du staff, message programmé, 
 
 ### Vues de la liste des tickets
 
-La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes tickets, Non attribués, En attente, En cours, Urgents, Hors délai, Fermés, Tous. Chaque membre peut enregistrer ses propres vues (filtres statut, priorité, étape, attribué à, dates, tag, recherche, hors délai), en définir une comme vue par défaut, et les supprimer — elles sont personnelles. La barre de recherche bascule entre **Sujets** (filtre de la liste) et **Messages** (recherche plein texte, mêmes résultats que la page Recherche).
+La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes tickets, Non attribués, **Suivis**, En attente, En cours, Urgents, Hors délai, Fermés, Tous. Chaque membre peut enregistrer ses propres vues (filtres statut, priorité, étape, attribué à, dates, tag, recherche, hors délai), en définir une comme vue par défaut, et les supprimer — elles sont personnelles. La barre de recherche bascule entre **Sujets** (filtre de la liste) et **Messages** (recherche plein texte, mêmes résultats que la page Recherche).
+
+**Opérateurs de recherche** (mode Sujets, combinables, sans tenir compte des accents ni de la casse ; bouton `?:` pour l'aide) : `tag:VIP` (`tag:"Très urgent"` avec des espaces), `de:pseudo` (ou ID du membre), `avant:2026-10-01` / `après:01/10/2026`, `étape:attente|ouvert|cours`, `priorité:urgente|normale|faible`, `statut:ouvert|fermé`, `assigné:moi|personne|pseudo`, `sujet:"mot de passe"`. Les autres mots cherchent dans le sujet ; une valeur inconnue ou une date invalide est expliquée sous la recherche. La visibilité par grade s'applique toujours.
+
+**Actions en masse** : cases à cocher pour tout le staff, chaque action exigeant sa permission (priorité, étape, ajout ou retrait de tag, modèle : `reply_ticket` ; attribution : `claim_ticket` ; fermeture, réouverture : `close_ticket`). Les tickets que l'utilisateur ne peut pas voir sont ignorés.
+
+**Vue fractionnée** (Profil → Affichage) : sur un écran d'au moins 1 280 px, un ticket cliqué s'ouvre à droite de la liste, sans changer de page ; Échap ou la croix le referme.
 
 ### Fonctionnalités dans la vue ticket
 
@@ -415,7 +421,10 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 - **Qui regarde ce ticket** : les collègues qui ont la fiche ouverte apparaissent dans son en-tête (avatars, noms au survol), et un œil le signale dans la liste des tickets. Battement toutes les 20 s, départ signalé à la fermeture de la page, entrée oubliée après 45 s ; état dans Redis, donc partagé entre instances, et filtré par visibilité
 - **Anti double réponse** : à l'envoi, si un collègue a répondu au membre depuis que tu as commencé ta réponse, ou écrit une réponse au même moment, une confirmation est demandée
 - **Corriger ou retirer une réponse** : une réponse déjà envoyée au membre peut être corrigée (crayon) : le MP du membre et la copie du salon sont modifiés, l'ancienne version reste dépliable dans la fiche. **Retirer** supprime le MP chez le membre ; la réponse reste visible pour le staff, marquée « Réponse retirée ». Réservé à l'auteur (ou un fondateur), avec `reply_ticket`, inscrit au journal. Les notes internes sont modifiables de la même façon. Les réponses envoyées avant la v2.18 ne peuvent pas l'être (l'emplacement des MP n'était pas gardé)
-- **Mentions** : dans une note interne, `@pseudo` (suggestions à la frappe) prévient le collègue s'il peut voir le ticket : notification du dashboard, push, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
+- **Suivre un ticket** : bouton **Suivre** de la fiche ; tu es prévenu (cloche du dashboard + push) des messages du membre, des réponses, des notes et de la fermeture, sans être attribué. Jamais pour tes propres actions, ni si tu ne peux plus voir le ticket
+- **Pièces jointes** : coller une capture d'écran (Ctrl+V) ou glisser-déposer un fichier sur la zone de réponse le joint à la réponse (8 Mo, un fichier)
+- **Aperçu** : bouton **Aperçu** sous la zone de saisie, rendu Discord du message (gras, italique, souligné, barré, spoiler, code, citations, titres, listes, liens masqués) avec les variables du modèle remplacées
+- **Mentions** : dans une note interne, `@pseudo` (suggestions à la frappe) prévient le collègue s'il peut voir le ticket ; `@Nom du grade` (suggéré aussi à la frappe) prévient tous les membres de ce grade qui voient le ticket : notification du dashboard, push, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
 - **Macros** : un modèle peut aussi porter des actions appliquées à l'envoi : m'attribuer le ticket, changer la priorité, ajouter un tag, changer d'étape, fermer le ticket. Le texte reste modifiable avant l'envoi ; chaque action exige sa permission (`claim_ticket` pour s'attribuer, `close_ticket` pour fermer) et une action refusée est signalée sans bloquer la réponse
 - **Attribué à** : un ticket peut être attribué à plusieurs membres du staff ; « M'attribuer », attribuer quelqu'un d'autre, retirer (permission `claim_ticket`). La première personne assignée reste le responsable principal (stats, rappels, notation). Quand quelqu'un d'autre t'attribue un ticket, tu es prévenu : notification sur le dashboard (cloche + bandeau), push navigateur si activé, et MP Discord avec le lien vers le ticket (désactivable dans **Profil**)
 - **Étapes** : Ouvert / En attente / En cours — chaque étape correspond à une catégorie Discord choisie dans **Paramètres → Rôles d'accès**, changer d'étape déplace le salon (en mode fils privés, l'étape est seulement enregistrée)
@@ -780,6 +789,7 @@ Bot-ticketting/
 │   ├── guildScan.js / panelTicket.js  # Tickets d'un membre sur tous les serveurs ; ouverture par panel
 │   ├── discordReply.js / macroActions.js  # Réponse depuis Discord ; actions des macros
 │   ├── replyEdits.js / staffTicket.js  # Réponses corrigées ou retirées ; ticket ouvert par le staff
+│   ├── followers.js / searchQuery.js   # Tickets suivis ; opérateurs de la recherche (tag:, de:, avant:…)
 │   ├── categoryOverflow.js         # Catégories « Tickets 2 », « 3 »… quand une catégorie atteint 50 salons
 │   ├── ticketFields.js / subjectRules.js / subjectMatch.js  # Champs, règles et correspondance de sujet
 │   ├── sla.js / stageStats.js      # Délais par étape et leur respect
@@ -889,7 +899,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 789 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 813 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie

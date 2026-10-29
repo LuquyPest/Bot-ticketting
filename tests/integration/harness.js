@@ -3161,6 +3161,87 @@ async function main() {
     guildObj.members.fetch = origMembers;
   }
 
+  // ── Ticket handling: search operators, following, grade mentions, bulk actions, preferences ──
+  {
+    const mkT = async (owner, tag, extra = {}) => (await db(
+      'INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage, priority, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [owner, tag, `cs${owner}${Math.random()}`.slice(0, 30), extra.status || 'open', extra.subject || 'recherche op', extra.stage || 'open', extra.priority || 'normal', extra.created || new Date()])).insertId;
+    const ta = await mkT('200000000000000051', 'alicesearch', { subject: 'Remboursement carte', stage: 'waiting', created: new Date('2026-09-15') });
+    const tb = await mkT('200000000000000052', 'bobsearch', { subject: 'Remboursement virement', priority: 'urgent' });
+    const tc = await mkT('200000000000000053', 'carolsearch', { subject: 'Compte bloqué', status: 'closed' });
+    const vip = (await db("INSERT INTO ticket_tags (name, color) VALUES ('VIP op', '#ff0000')")).insertId;
+    await db('INSERT INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [ta, vip]);
+    const ids = async q => { const r = await req('GET', '/api/tickets', { sid: sessions.F, query: { subject: q } }); return r.status === 200 ? r.body.tickets.map(t => t.id).sort() : r; };
+    check('recherche: tag:"VIP op"', JSON.stringify(await ids('tag:"VIP op"')) === JSON.stringify([ta]), JSON.stringify(await ids('tag:"VIP op"')));
+    check('recherche: de:pseudo', JSON.stringify(await ids('de:bobsearch')) === JSON.stringify([tb]));
+    check('recherche: étape:attente + mot du sujet', JSON.stringify(await ids('étape:attente remboursement')) === JSON.stringify([ta]));
+    check('recherche: avant:date', JSON.stringify(await ids('avant:2026-10-01 remboursement')) === JSON.stringify([ta]));
+    check('recherche: priorité:urgente', JSON.stringify(await ids('priorité:urgente remboursement')) === JSON.stringify([tb]));
+    check('recherche: statut:fermé', JSON.stringify(await ids('statut:fermé compte bloqué')) === JSON.stringify([tc]));
+    check('recherche: sujet entre guillemets', JSON.stringify(await ids('sujet:"carte" remboursement')) === JSON.stringify([ta]));
+    await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [tb, U.F]);
+    check('recherche: assigné:moi', JSON.stringify(await ids('assigné:moi remboursement')) === JSON.stringify([tb]));
+    check('recherche: assigné:personne', JSON.stringify(await ids('assigné:personne statut:ouvert remboursement')) === JSON.stringify([ta]));
+    let r2 = await req('GET', '/api/tickets', { sid: sessions.F, query: { subject: 'étape:nimporte' } });
+    check('recherche: valeur inconnue → message clair', r2.status === 400 && /étape/.test(r2.body.error), JSON.stringify(r2.body));
+    r2 = await req('GET', '/api/tickets', { sid: sessions.F, query: { subject: 'avant:2026-02-30' } });
+    check('recherche: date invalide refusée', r2.status === 400 && /Date invalide/.test(r2.body.error), JSON.stringify(r2.body));
+    r2 = await req('GET', '/api/tickets', { sid: sessions.S1, query: { subject: 'statut:ouvert secret' } });
+    check('recherche: les opérateurs respectent la visibilité', r2.status === 200 && !r2.body.tickets.some(t => t.id === t2), JSON.stringify(r2.body.tickets?.map(t => t.id)));
+
+    // Following
+    r2 = await req('POST', `/api/tickets/${ta}/follow`, { sid: sessions.S1, body: { follow: true } });
+    const listF = await req('GET', '/api/tickets', { sid: sessions.S1, query: { following: 'me' } });
+    const detF = await req('GET', `/api/tickets/${ta}`, { sid: sessions.S1 });
+    check('suivi: ticket suivi listé et marqué', r2.status === 200 && listF.body.tickets.map(t => t.id).join() === String(ta) && detF.body.following === true, JSON.stringify([r2.body, listF.body.tickets?.map(t => t.id)]));
+    r2 = await req('POST', `/api/tickets/${t2}/follow`, { sid: sessions.S1, body: { follow: true } });
+    check('suivi: impossible sur un ticket non visible', r2.status === 403, r2.status);
+    const fol = app('./utils/followers');
+    await fol.setFollowing(db, ta, U.F, true);
+    const n1 = await fol.notifyFollowers(db, G, { id: ta, visibility_grade_id: null }, { kind: 'member', by: 'alice', byId: '200000000000000051', excerpt: 'nouveau message' });
+    const n2 = await fol.notifyFollowers(db, G, { id: ta, visibility_grade_id: null }, { kind: 'reply', by: 'S1', byId: U.S1, excerpt: 'réponse' });
+    const n3 = await fol.notifyFollowers(db, G, { id: ta, visibility_grade_id: -1 }, { kind: 'note', by: 'x', byId: 'x' });
+    check('suivi: abonnés prévenus, sauf l auteur et ceux qui ne voient plus le ticket', n1.sort().join() === [U.F, U.S1].sort().join() && n2.join() === U.F && n3.join() === U.F, JSON.stringify([n1, n2, n3]));
+    r2 = await req('POST', `/api/tickets/${ta}/follow`, { sid: sessions.S1, body: { follow: false } });
+    const listF2 = await req('GET', '/api/tickets', { sid: sessions.S1, query: { following: 'me' } });
+    check('suivi: arrêt du suivi', listF2.body.tickets.length === 0, JSON.stringify(listF2.body.tickets?.map(t => t.id)));
+
+    // Grade mention in an internal note: every member of the grade who can see the ticket
+    const [gName] = await db('SELECT name FROM grades WHERE id = ?', [g1]);
+    r2 = await req('POST', `/api/tickets/${ta}/notes`, { sid: sessions.F, body: { content: `@${gName.name} pouvez-vous regarder ?` } });
+    check('mention d un grade: ses membres sont prévenus', r2.status === 200 && r2.body.mentioned.includes(U.S1) && !r2.body.mentioned.includes(U.F), JSON.stringify(r2.body.mentioned));
+    r2 = await req('POST', `/api/tickets/${ta}/notes`, { sid: sessions.F, body: { content: `email@${gName.name}.fr` } });
+    check('mention d un grade: pas de faux positif dans une adresse', r2.status === 200 && r2.body.mentioned.length === 0, JSON.stringify(r2.body.mentioned));
+
+    // Bulk actions for the staff: per-action permission, invisible tickets ignored
+    r2 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [ta, tb, t2], action: 'priority', value: 'low' } });
+    const [pt2] = await db('SELECT priority FROM tickets WHERE id = ?', [t2]);
+    check('masse: support avec reply_ticket peut changer la priorité, ticket restreint ignoré', r2.status === 200 && r2.body.affected === 2 && pt2.priority !== 'low', JSON.stringify([r2.body, pt2]));
+    r2 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [ta], action: 'close' } });
+    check('masse: fermeture refusée sans close_ticket', r2.status === 403, r2.status);
+    r2 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [ta], action: 'nimporte' } });
+    check('masse: action inconnue refusée', r2.status === 400, r2.status);
+    r2 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [ta, tb], action: 'add_tag', value: vip } });
+    const r3 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [ta, tb], action: 'remove_tag', value: vip } });
+    const [{ n: tagLeft }] = await db('SELECT COUNT(*) AS n FROM ticket_tag_assignments WHERE tag_id = ?', [vip]);
+    check('masse: tag ajouté puis retiré', r2.body.affected === 1 && r3.body.affected === 2 && Number(tagLeft) === 0, JSON.stringify([r2.body, r3.body, tagLeft]));
+    await db("UPDATE guild_config SET ticket_mode = 'thread' WHERE id = 1"); // stage changes without categories
+    const thr = mkChannel('950000000000000300', G); thr.isThread = () => true;
+    channels.set(thr.id, thr);
+    await db('UPDATE tickets SET channel_id = ? WHERE id = ?', [thr.id, tb]);
+    r2 = await req('POST', '/api/tickets/bulk', { sid: sessions.S1, body: { ids: [tb], action: 'stage', value: 'in_progress' } });
+    const [st] = await db('SELECT stage FROM tickets WHERE id = ?', [tb]);
+    check('masse: changement d étape', r2.status === 200 && r2.body.affected === 1 && st.stage === 'in_progress', JSON.stringify([r2.body, st]));
+    await db("UPDATE guild_config SET ticket_mode = 'channel' WHERE id = 1");
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[ta, tb]]);
+
+    // Interface preferences (split view)
+    r2 = await req('PUT', '/api/profile/prefs', { sid: sessions.S1, body: { splitView: true } });
+    const pr = await req('GET', '/api/profile/prefs', { sid: sessions.S1 });
+    const bad = await req('PUT', '/api/profile/prefs', { sid: sessions.S1, body: { splitView: 'oui' } });
+    check('préférences: vue fractionnée enregistrée', r2.status === 200 && pr.body.splitView === true && bad.status === 400, JSON.stringify([r2.body, pr.body, bad.status]));
+  }
+
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
   r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });

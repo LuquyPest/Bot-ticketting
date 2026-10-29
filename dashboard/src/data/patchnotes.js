@@ -8,6 +8,21 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.19',
+    date: '29 octobre 2026',
+    title: 'Suivre un ticket, recherche avancée et vue fractionnée',
+    changes: [
+      { type: 'new',  text: 'Suivre un ticket : être prévenu de ses nouveaux messages (membre, réponses, notes, fermeture) sans en être responsable ; vue « Suivis » dans la liste' },
+      { type: 'new',  text: 'Recherche avancée : tag:VIP, de:pseudo, avant:2026-10-01, après:, étape:attente, priorité:urgente, statut:fermé, assigné:moi, sujet:"…" (aide avec le bouton ?: de la recherche)' },
+      { type: 'new',  text: 'Vue fractionnée (Profil → Affichage) : sur grand écran, le ticket s\'ouvre à droite de la liste' },
+      { type: 'new',  text: 'Coller une capture d\'écran (Ctrl+V) ou glisser-déposer un fichier dans la zone de réponse' },
+      { type: 'new',  text: 'Aperçu du rendu Discord (gras, liens, listes, citations…) avant d\'envoyer' },
+      { type: 'new',  text: 'Mentionner un grade dans une note interne (@Chef support) : tous ses membres sont prévenus' },
+      { type: 'impr', text: 'Actions en masse ouvertes au staff selon ses permissions, avec l\'étape et le retrait de tag en plus' },
+      { type: 'fix',  text: 'Les modifications de messages, les procédures et la présence des collègues se mettent bien à jour en direct' },
+    ]
+  },
+  {
     version: 'v2.18',
     date: '29 octobre 2026',
     title: 'Santé du serveur, fils privés, vocal et contacter un membre',

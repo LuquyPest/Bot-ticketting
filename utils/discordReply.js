@@ -44,6 +44,7 @@ async function sendDiscordReply({ client, db, tm, guildId, ticket, author, chann
   ).catch(() => null);
   if (result) {
     broadcast('note', { ticketId: ticket.id, note: { id: result.insertId, ticket_id: ticket.id, author_id: author.id, author_tag: authorTag, content: noteContent, source: 'reply', editable: true, created_at: new Date() } }, guildId);
+    require('./followers').notifyFollowers(db, guildId, ticket, { kind: 'reply', by: authorTag, byId: author.id, excerpt: noteContent }).catch(() => null);
   }
 }
 

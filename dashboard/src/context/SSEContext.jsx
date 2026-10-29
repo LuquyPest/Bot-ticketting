@@ -6,6 +6,7 @@ export const useSSECtx = () => useContext(SSEContext);
 const KNOWN_TYPES = [
   'ticket', 'new_ticket', 'note',
   'participant_add', 'participant_remove', 'connected', 'assigned', 'mention', 'typing', 'low_rating', 'reminder', 'availability',
+  'note_update', 'presence', 'procedure', 'followed',
 ];
 
 export function SSEProvider({ children }) {

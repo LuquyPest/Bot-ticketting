@@ -35,6 +35,11 @@ function describe(row) {
     case 'ticket_reply':    return `${d.anonymous ? '(anonyme) ' : ''}${quote(d.excerpt)}`;
     case 'ticket_note':
     case 'note_delete':     return [d.author && `de ${d.author}`, quote(d.excerpt)].filter(Boolean).join(' ');
+    case 'note_edit':
+    case 'reply_edit':      return arrow(quote(d.before), quote(d.after));
+    case 'reply_retract':   return quote(d.excerpt);
+    case 'ticket_open_staff': return [d.member && `Membre : ${d.member}`, d.subject && `sujet : ${d.subject}`, d.fromMessage && 'à partir de son message'].filter(Boolean).join(' · ');
+    case 'health_alert':    return (d.problems || []).join(' · ');
     case 'ticket_assign':   return `Attribué à ${d.assignee || row.target_id}`;
     case 'ticket_unassign': return `${d.assignee || row.target_id} retiré`;
     case 'ticket_stage':    return arrow(STAGE[d.from] || d.from, STAGE[d.to] || d.to);

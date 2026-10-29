@@ -245,6 +245,7 @@ async function ensureGlobalTables(config) {
         updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS ui_lang VARCHAR(5) DEFAULT NULL`,
+      `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS split_view TINYINT(1) NOT NULL DEFAULT 0`,
       // Plans: preset limits assigned to guilds (copied into guilds.max_*)
       `CREATE TABLE IF NOT EXISTS plans (
         id                        INT AUTO_INCREMENT PRIMARY KEY,

@@ -19,17 +19,27 @@ import { useAuth } from '../App';
 import { useSSE } from '../hooks/useSSE';
 import toast from 'react-hot-toast';
 import ContactMember from '../components/ContactMember';
+import TicketDetail from './TicketDetail';
 import SlaBadge from '../components/SlaBadge';
 import MessageSearch from '../components/MessageSearch';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '' };
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '' };
+
+// Operators of the search box (parsed by utils/searchQuery.js on the server)
+const SEARCH_HELP = [
+  ['tag:VIP', 'avec ce tag (tag:"Très urgent" si espaces)'], ['de:pseudo', 'ouverts par ce membre (pseudo ou ID)'],
+  ['avant:2026-10-01', 'créés avant cette date'], ['après:01/10/2026', 'créés à partir de cette date'],
+  ['étape:attente', 'ouvert, attente ou cours'], ['priorité:urgente', 'faible, normale ou urgente'],
+  ['statut:fermé', 'ouvert ou fermé'], ['assigné:moi', 'moi, personne ou un pseudo du staff'], ['sujet:"mot de passe"', 'dans le sujet'],
+];
 
 /* ── Built-in views (the default one shows open tickets) ─────── */
 const BUILTIN_VIEWS = [
   { id: 'open',        label: 'Ouverts',       filters: { status: 'open' } },
   { id: 'mine',        label: 'Mes tickets',   filters: { status: 'open', assignee: 'me' } },
   { id: 'unassigned',  label: 'Non attribués', filters: { status: 'open', claimed: 'false' } },
+  { id: 'following',   label: 'Suivis',        filters: { following: 'me' } },
   { id: 'waiting',     label: 'En attente',    filters: { status: 'open', stage: 'waiting' } },
   { id: 'in_progress', label: 'En cours',      filters: { status: 'open', stage: 'in_progress' } },
   { id: 'urgent',      label: 'Urgents',       filters: { status: 'open', priority: 'urgent' }, dot: 'bg-red-400' },
@@ -214,6 +224,28 @@ export default function Tickets() {
   const [focusedRow, setFocusedRow] = useState(-1);
 
   const searchRef    = useRef(null);
+  const [searchError, setSearchError] = useState('');
+  const [showSearchHelp, setShowSearchHelp] = useState(false);
+  // Bulk actions: each one needs its permission (checked again by the server)
+  const can = perm => user?.role === 'fondateur' || user?.permissions?.includes(perm);
+  const canBulk = ['reply_ticket', 'claim_ticket', 'close_ticket'].some(can);
+  const [showBulkStage, setShowBulkStage] = useState(false);
+  const [bulkTagMode, setBulkTagMode] = useState('add_tag');
+
+  // Split view (Profile preference): the ticket opens next to the list on wide screens
+  const [splitPref, setSplitPref] = useState(false);
+  useEffect(() => { api.get('/profile/prefs').then(r => setSplitPref(!!r.data.splitView)).catch(() => {}); }, []);
+  const [wide, setWide] = useState(() => window.matchMedia?.('(min-width: 1280px)').matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 1280px)');
+    if (!mq) return undefined;
+    const on = e => setWide(e.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const split = splitPref && wide;
+  const [openId, setOpenId] = useState(null);
+  const openTicket = id => (split ? setOpenId(id) : navigate(`/tickets/${id}`));
   // Search in subjects (list filter) or in every message (full-text results)
   const [searchMode, setSearchModeState] = useState(() => { try { return localStorage.getItem('ticketSearchMode') || 'subject'; } catch { return 'subject'; } });
   const setSearchMode = m => { setSearchModeState(m); try { localStorage.setItem('ticketSearchMode', m); } catch { /* storage unavailable */ } };
@@ -232,6 +264,10 @@ export default function Tickets() {
       };
       const { data: res } = await api.get('/tickets', { params });
       setData(res);
+      setSearchError('');
+    } catch (err) {
+      // Invalid search operator (étape:xyz, avant:2026-02-30…): explained under the search box
+      if (err.response?.status === 400) setSearchError(err.response.data?.error || 'Recherche invalide');
     } finally {
       setLoading(false);
     }
@@ -347,6 +383,7 @@ export default function Tickets() {
       const { data: r } = await api.post('/tickets/bulk', { ids, action, value });
       const label = { close: 'fermé(s)', reopen: 'réouvert(s)', send_template: 'envoyé(s)' }[action] || 'mis à jour';
       toast.success(`${r.affected} ticket(s) ${label}`);
+      if (r.errors?.length) toast.error(r.errors.join(' · '), { duration: 7000 });
       setSelected(new Set());
       setShowBulkPriority(false);
       await load();
@@ -381,7 +418,7 @@ export default function Tickets() {
       if (e.key === 'Enter' && focusedRow >= 0) {
         e.preventDefault();
         const t = data.tickets[focusedRow];
-        if (t) navigate(`/tickets/${t.id}`);
+        if (t) openTicket(t.id);
         return;
       }
       if (e.key === 'Escape') {
@@ -393,14 +430,15 @@ export default function Tickets() {
     }
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [data.tickets, focusedRow, navigate]);
+  }, [data.tickets, focusedRow, navigate, split]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const colCount = user?.role === 'fondateur' ? 10 : 9;
+  const colCount = canBulk ? 10 : 9;
 
   const hasDateFilter = filters.dateFrom || filters.dateTo;
 
   return (
-    <div className="p-6 space-y-5 pb-24">
+    <div className={split && openId ? 'flex items-start' : ''}>
+    <div className={`p-6 space-y-5 pb-24 min-w-0 ${split && openId ? 'w-[46%] shrink-0 overflow-x-auto' : ''}`}>
 
       {quickView && <QuickView ticket={quickView.ticket} x={quickView.x} y={quickView.y} messages={quickView.messages} />}
 
@@ -499,7 +537,8 @@ export default function Tickets() {
             ref={searchRef}
             type="text"
             aria-label={searchMode === 'messages' ? 'Rechercher dans les messages' : 'Rechercher par sujet'}
-            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages... (/)' : 'Rechercher par sujet... (/)'}
+            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages... (/)' : 'Sujet, ou tag:VIP de:pseudo étape:attente… (/)'}
+            aria-invalid={!!searchError} aria-describedby={searchError ? 'search-error' : undefined}
             value={filters.subject}
             onChange={e => setFilter('subject', e.target.value)}
             className="w-full bg-surface border border-overlay/[0.07] text-ink-1 placeholder-ink-4
@@ -507,6 +546,11 @@ export default function Tickets() {
                        focus:outline-hidden focus:border-primary/50 focus:ring-1 focus:ring-primary/20
                        hover:border-overlay/12 transition-all duration-150"
           />
+          {searchMode === 'subject' && (
+            <button type="button" onClick={() => setShowSearchHelp(v => !v)} aria-expanded={showSearchHelp} aria-label="Opérateurs de recherche"
+              title="Opérateurs de recherche (tag:, de:, avant:…)"
+              className="absolute right-[10.5rem] top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-md text-[11px] font-mono text-ink-4 hover:text-ink-1 hover:bg-overlay/6">?:</button>
+          )}
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex rounded-lg bg-overlay/4 p-0.5" role="group" aria-label="Où chercher">
             {[['subject', 'Sujets'], ['messages', 'Messages']].map(([m, label]) => (
               <button key={m} onClick={() => setSearchMode(m)} aria-pressed={searchMode === m}
@@ -632,6 +676,22 @@ export default function Tickets() {
         </button>
       </div>
 
+      {searchError && <p id="search-error" role="alert" className="text-xs text-red-400 -mt-2">{searchError}</p>}
+      {showSearchHelp && searchMode === 'subject' && (
+        <div className="rounded-2xl border border-overlay/8 bg-surface-card p-4 text-xs animate-fade-in">
+          <p className="text-ink-2 font-medium mb-2">Opérateurs à combiner dans la recherche (les autres mots cherchent dans le sujet) :</p>
+          <dl className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1.5">
+            {SEARCH_HELP.map(([op, desc]) => (
+              <div key={op} className="flex gap-2">
+                <dt><button type="button" onClick={() => { setFilter('subject', `${filters.subject} ${op}`.trim()); searchRef.current?.focus(); }}
+                  className="font-mono text-primary-light hover:underline">{op}</button></dt>
+                <dd className="text-ink-3">{desc}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
       {/* Date range row */}
       {showDateFilter && (
         <div className="flex items-center gap-3 animate-fade-in">
@@ -718,7 +778,7 @@ export default function Tickets() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-overlay/6">
-              {user?.role === 'fondateur' && (
+              {canBulk && (
                 <th className="px-3.5 py-3.5 w-10 text-left">
                   <button onClick={toggleAll} aria-label="Tout sélectionner" className="text-ink-4 hover:text-ink-2 transition-colors">
                     {allSelected
@@ -763,7 +823,7 @@ export default function Tickets() {
               return (
                 <tr
                   key={t.id}
-                  onClick={() => navigate(`/tickets/${t.id}`)}
+                  onClick={() => openTicket(t.id)}
                   onMouseEnter={e => {
                     setFocusedRow(rowIdx);
                     mousePosRef.current = { x: e.clientX, y: e.clientY };
@@ -787,12 +847,12 @@ export default function Tickets() {
                   className={`
                     border-b border-overlay/4 last:border-0 cursor-pointer transition-colors
                     ${t.priority === 'urgent' ? 'border-l-2 border-l-red-500/50' : ''}
-                    ${isSelected  ? 'bg-primary/5' : ''}
+                    ${isSelected || openId === t.id ? 'bg-primary/5' : ''}
                     ${isFocused && !isSelected ? 'bg-overlay/2.5' : ''}
                     ${!isFocused && !isSelected ? 'hover:bg-overlay/1.5' : ''}
                   `}
                 >
-                  {user?.role === 'fondateur' && (
+                  {canBulk && (
                     <td className="px-3.5 py-3.5" onClick={e => toggleOne(t.id, e)}>
                       <button aria-label={`Sélectionner le ticket #${t.id}`} aria-pressed={isSelected} className="text-ink-4 hover:text-primary-light transition-colors">
                         {isSelected
@@ -879,7 +939,7 @@ export default function Tickets() {
       </>)}
 
       {/* Bulk action bar */}
-      {someSelected && user?.role === 'fondateur' && (
+      {someSelected && canBulk && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slide-up
                         flex items-center gap-3 bg-surface-elevated border border-overlay/10
                         rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] px-4 py-3">
@@ -917,8 +977,35 @@ export default function Tickets() {
             )}
           </div>
 
+          {/* Stage */}
+          {can('reply_ticket') && (
+            <div className="relative">
+              <button
+                onClick={() => { setShowBulkStage(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); setShowBulkTag(false); }}
+                disabled={bulkLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-overlay/8
+                           text-ink-2 text-xs font-medium hover:bg-surface-hover hover:text-ink-1
+                           transition-all disabled:opacity-50"
+              >
+                Étape
+                <ChevronDown size={11} className={showBulkStage ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              {showBulkStage && (
+                <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-overlay/10
+                                rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-36 animate-in">
+                  {Object.entries(STAGE_LABELS).map(([val, label]) => (
+                    <button key={val} onClick={() => { bulkAction('stage', val); setShowBulkStage(false); }}
+                      className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-xs hover:bg-overlay/5 transition-colors ${STAGE_CLS[val]}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Assign staff */}
-          {staffList.length > 0 && (
+          {staffList.length > 0 && can('claim_ticket') && (
             <div className="relative">
               <button
                 onClick={() => { setShowBulkStaff(p => !p); setShowBulkPriority(false); setShowBulkTag(false); }}
@@ -949,8 +1036,8 @@ export default function Tickets() {
             </div>
           )}
 
-          {/* Add tag */}
-          {tagList.length > 0 && (
+          {/* Add or remove a tag */}
+          {tagList.length > 0 && can('reply_ticket') && (
             <div className="relative">
               <button
                 onClick={() => { setShowBulkTag(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); }}
@@ -965,11 +1052,17 @@ export default function Tickets() {
               {showBulkTag && (
                 <div className="absolute bottom-full mb-2 left-0 bg-surface-elevated border border-overlay/10
                                 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden min-w-40
-                                max-h-48 overflow-y-auto animate-in">
+                                max-h-56 overflow-y-auto animate-in">
+                  <div className="flex m-1.5 rounded-lg bg-overlay/4 p-0.5" role="group" aria-label="Ajouter ou retirer">
+                    {[['add_tag', 'Ajouter'], ['remove_tag', 'Retirer']].map(([m, l]) => (
+                      <button key={m} onClick={() => setBulkTagMode(m)} aria-pressed={bulkTagMode === m}
+                        className={`flex-1 px-2 py-1 rounded-md text-[11px] font-medium ${bulkTagMode === m ? 'bg-surface-elevated text-ink-1 shadow-card' : 'text-ink-3'}`}>{l}</button>
+                    ))}
+                  </div>
                   {tagList.map(t => (
                     <button
                       key={t.id}
-                      onClick={() => { bulkAction('add_tag', t.id); setShowBulkTag(false); }}
+                      onClick={() => { bulkAction(bulkTagMode, t.id); setShowBulkTag(false); }}
                       className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs hover:bg-overlay/5 transition-colors"
                     >
                       <span
@@ -986,7 +1079,7 @@ export default function Tickets() {
 
 
           {/* Send template */}
-          {templates.length > 0 && (
+          {templates.length > 0 && can('reply_ticket') && (
             <div className="relative">
               <button
                 onClick={() => { setShowBulkTemplate(p => !p); setShowBulkPriority(false); setShowBulkStaff(false); setShowBulkTag(false); }}
@@ -1027,6 +1120,7 @@ export default function Tickets() {
             </div>
           )}
 
+          {can('close_ticket') && (<>
           {/* Reopen */}
           <button
             onClick={async () => {
@@ -1052,6 +1146,7 @@ export default function Tickets() {
           >
             <Lock size={11} /> Fermer
           </button>
+          </>)}
 
           {/* Clear */}
           <button
@@ -1062,6 +1157,12 @@ export default function Tickets() {
           </button>
         </div>
       )}
+    </div>
+    {split && openId && (
+      <section aria-label={`Ticket #${openId}`} className="flex-1 min-w-0 sticky top-0 h-screen overflow-y-auto border-l border-overlay/6">
+        <TicketDetail key={openId} embeddedId={openId} onClose={() => setOpenId(null)} />
+      </section>
+    )}
     </div>
   );
 }

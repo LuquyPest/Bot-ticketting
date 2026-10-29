@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 
-const FILTER_KEYS = ['status', 'priority', 'stage', 'subject', 'claimed', 'assignee', 'dateFrom', 'dateTo', 'tag', 'sla', 'field', 'fieldValue'];
+const FILTER_KEYS = ['status', 'priority', 'stage', 'subject', 'claimed', 'assignee', 'dateFrom', 'dateTo', 'tag', 'sla', 'field', 'fieldValue', 'following'];
 const MAX_VIEWS = 20;
 
 // Keeps only known filter keys with short string values.
@@ -12,7 +12,7 @@ function cleanFilters(filters) {
   for (const k of FILTER_KEYS) {
     const v = filters[k];
     if (v === undefined || v === null || v === '') continue;
-    if (typeof v !== 'string' || v.length > 100) return null;
+    if (typeof v !== 'string' || v.length > 300) return null;
     out[k] = v;
   }
   return out;

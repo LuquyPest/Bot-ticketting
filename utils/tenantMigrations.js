@@ -360,6 +360,16 @@ const MIGRATIONS = [
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_oc_base (base_category_id))`,
     ],
   },
+  {
+    version: 26,
+    name: 'Tickets suivis',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_followers (
+        ticket_id INT NOT NULL, user_id VARCHAR(32) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (ticket_id, user_id), INDEX idx_tf_user (user_id),
+        CONSTRAINT fk_tf_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
