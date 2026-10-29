@@ -281,6 +281,17 @@ async function main() {
   check('API v1 fermeture (sans en-tête CSRF)', r.status === 200, r.status + JSON.stringify(r.body));
   const [closed] = await db('SELECT status, closed_by_tag FROM tickets WHERE id = ?', [t1]);
   check('ticket fermé via API', closed.status === 'closed' && closed.closed_by_tag === 'API · ci', JSON.stringify(closed));
+  // Confidential tickets never leave through an API key
+  {
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('49','u49','capiconf','open','Signalement', -1)")).insertId;
+    r = await req('GET', '/api/v1/tickets', { headers: { Authorization: 'Bearer ' + key } });
+    check('API v1: ticket confidentiel absent de la liste', r.status === 200 && !r.body.tickets.some(t => t.id === tConf) && r.body.total === 2, JSON.stringify(r.body).slice(0, 200));
+    r = await req('GET', `/api/v1/tickets/${tConf}`, { headers: { Authorization: 'Bearer ' + key } });
+    check('API v1: ticket confidentiel introuvable', r.status === 404, r.status);
+    r = await req('POST', `/api/v1/tickets/${tConf}/close`, { headers: { Authorization: 'Bearer ' + key } });
+    check('API v1: ticket confidentiel non fermable', r.status === 404, r.status);
+    await db('DELETE FROM tickets WHERE id = ?', [tConf]);
+  }
 
   // CSRF still enforced on cookie routes
   r = await req('POST', '/api/auth/logout', { sid: sessions.F, headers: { 'X-Requested-With': '' } });
@@ -329,6 +340,18 @@ async function main() {
   check('limite de 400 ko sur les paramètres (logo de l espace membre)', r.status === 413, r.status);
   r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F, body: { content: 'x'.repeat(200000) } });
   check('limite 100 ko conservée ailleurs', r.status === 413, r.status);
+  // X-Forwarded-For only believed from the reverse proxy itself
+  {
+    const { createProxyTrust } = app('./utils/trustProxy');
+    const trust = createProxyTrust({ hops: 1, host: 'traefik', lookup: async () => [{ address: '172.18.0.2' }], refreshMs: 0 });
+    await trust.ready;
+    check('proxy: en-tête cru venant de Traefik', trust('172.18.0.2', 0) && trust('::ffff:172.18.0.2', 0), '');
+    check('proxy: en-tête ignoré venant d un autre conteneur', !trust('172.18.0.11', 0), '');
+    check('proxy: pas plus de sauts que configuré', !trust('172.18.0.2', 1), '');
+    const loose = createProxyTrust({ hops: 1, host: 'introuvable', lookup: async () => { throw new Error('ENOTFOUND'); }, refreshMs: 0 });
+    await loose.ready;
+    check('proxy: sans nom résolu, nombre de sauts seul', loose('10.0.0.1', 0) && !loose('10.0.0.1', 1), '');
+  }
   // Without a body (or with another Content-Type) a route answers 400, it does not crash
   r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F });
   check('corps absent: refus propre, pas d erreur 500', r.status === 400, r.status);

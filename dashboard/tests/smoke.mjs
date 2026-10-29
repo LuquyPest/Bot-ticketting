@@ -140,7 +140,8 @@ const PAGES = [
 // EventSource has no mock: its connection errors are expected
 const IGNORED = /EventSource|text\/event-stream|MIME type|\/api\/events|status of 401/;
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 4175, strictPort: true }, logLevel: 'error' });
+const server = await preview({ preview: { host: '127.0.0.1', port: 4175, strictPort: true, proxy: {} }, logLevel: 'error' });
+// proxy: {} — no backend here; the « leave the ticket » beacon (keepalive) escapes page.route
 const base = 'http://127.0.0.1:4175';
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const failures = [];
@@ -175,7 +176,8 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang } of RUNS) {
       ['tickets', '/tickets', ['ticket(s) found', 'Save the view'], ['Enregistrer la vue']],
       // the pinned note is staff writing: it stays as written
       ['ticket', '/tickets/1', ['Reply', 'Note interne : vérifier Stripe'], ['Répondre']],
-      ['dashboard', '/', ['Release notes', 'Settings'], ['Paramètres']],
+      // sidebar labels (the « What's new » card quotes the release notes as written: not checked)
+      ['dashboard', '/', ['Release notes', 'My queue', 'My activity'], ['Ma file', 'Mon activité']],
     ];
     for (const [name, p, wanted, absent] of EN) {
       await page.goto(base + p, { waitUntil: 'networkidle' });

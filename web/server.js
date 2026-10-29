@@ -27,7 +27,14 @@ const app = express();
 
 // Number of reverse proxies in front of the app (Traefik = 1; Cloudflare + Traefik = 2).
 // Drives req.ip, used by rate limiting, the IP allowlist and login logs.
-app.set('trust proxy', Number.isInteger(config.trustProxyHops) ? config.trustProxyHops : 1);
+// The closest hop is trusted only when it is the proxy itself (config.trustedProxyHost, default
+// « traefik », resolved every minute): another container of the shared Docker network could
+// otherwise send its own X-Forwarded-For and pass for any address. Until the name resolves
+// (local runs, tests: no such host), the plain hop count applies.
+app.set('trust proxy', require('../utils/trustProxy').createProxyTrust({
+  hops: Number.isInteger(config.trustProxyHops) ? config.trustProxyHops : 1,
+  host: config.trustedProxyHost === undefined ? 'traefik' : config.trustedProxyHost,
+}));
 
 app.use(helmet({
   contentSecurityPolicy: {

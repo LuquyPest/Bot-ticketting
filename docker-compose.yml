@@ -2,7 +2,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --maxmemory 128mb --maxmemory-policy noeviction --appendonly no
+    # Password from .env (REDIS_PASSWORD), read from the environment: never on the command line
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD manquant dans .env}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    command: sh -c 'exec redis-server --maxmemory 128mb --maxmemory-policy noeviction --appendonly no --requirepass "$$REDIS_PASSWORD"'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -46,6 +50,7 @@ services:
     environment:
       SA_USERNAME: ${SA_USERNAME:-}
       SA_PASSWORD: ${SA_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     security_opt:
       - no-new-privileges:true
     cap_drop:

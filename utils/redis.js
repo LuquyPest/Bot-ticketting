@@ -7,6 +7,7 @@ function getRedis() {
     _redis = new Redis({
       host:              process.env.REDIS_HOST || 'redis',
       port:              parseInt(process.env.REDIS_PORT || '6379', 10),
+      password:          process.env.REDIS_PASSWORD || undefined, // set in .env (docker compose)
       maxRetriesPerRequest: null,
       enableReadyCheck:  true,
       lazyConnect:       true,
@@ -30,6 +31,7 @@ function getSessionRedis() {
     const { createClient } = require('redis');
     _sessionRedis = createClient({
       socket: { host: process.env.REDIS_HOST || 'redis', port: parseInt(process.env.REDIS_PORT || '6379', 10) },
+      password: process.env.REDIS_PASSWORD || undefined,
     });
     _sessionRedis.on('error', err => {
       if (!err.message?.includes('ECONNREFUSED')) console.error('[redis sessions] error:', err.message);

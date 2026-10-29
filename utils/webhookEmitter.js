@@ -97,6 +97,11 @@ async function fireTicketWebhook(db, event, payload) {
     try { events = Array.isArray(cfg.webhook_events) ? cfg.webhook_events : JSON.parse(cfg.webhook_events || '[]'); } catch {}
     if (events.length && !events.includes(event)) return;
 
+    // Confidential ticket: the outside service only learns that ticket N moved, never who or what
+    if (payload?.ticketId) {
+      const [t] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [payload.ticketId]);
+      if (t?.visibility_grade_id === require('./gradePermissions').CONFIDENTIAL) payload = { ticketId: payload.ticketId, confidential: true };
+    }
     await emitWebhook(cfg.webhook_url, event, payload, cfg.webhook_secret || null);
   } catch {}
 }

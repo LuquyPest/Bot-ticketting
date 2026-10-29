@@ -50,6 +50,7 @@ let queue = null;
 const connection = () => ({
   host: process.env.REDIS_HOST || 'redis',
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  password: process.env.REDIS_PASSWORD || undefined,
   maxRetriesPerRequest: null,
 });
 // A closed queue (shutdown, tests) is recreated on the next use

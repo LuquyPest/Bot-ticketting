@@ -49,6 +49,8 @@ async function apiKeyAuth(req, res, next) {
   }
 }
 
+const NOT_CONFIDENTIAL = `(visibility_grade_id IS NULL OR visibility_grade_id <> ${require('../../utils/gradePermissions').CONFIDENTIAL})`;
+
 const requirePerm = perm => (req, res, next) =>
   req.apiKey.permissions.has(perm) ? next() : res.status(403).json({ error: `Permission requise : ${perm}` });
 
@@ -72,7 +74,7 @@ router.use(apiKeyAuth);
 
 endpoint({
   method: 'get', path: '/tickets', perm: 'read_tickets', summary: 'Lister les tickets',
-  description: 'Tickets du serveur de la clé, du plus récent au plus ancien, 50 par page.',
+  description: 'Tickets du serveur de la clé, du plus récent au plus ancien, 50 par page. Les tickets confidentiels (réservés aux fondateurs) ne sont jamais accessibles par l\'API.',
   query: [
     { name: 'status', enum: ['open', 'closed'], description: 'Filtrer par statut' },
     { name: 'page', type: 'integer', description: 'Page (à partir de 1)' },
@@ -84,7 +86,8 @@ endpoint({
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 50;
   try {
-    const where = status ? 'WHERE status = ?' : '';
+    // Confidential tickets (reports, harassment…) never leave through an API key
+    const where = `WHERE ${NOT_CONFIDENTIAL}${status ? ' AND status = ?' : ''}`;
     const params = status ? [status] : [];
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
@@ -111,7 +114,7 @@ endpoint({
   try {
     const [ticket] = await req.guildDb(
       `SELECT id, owner_id, owner_tag, claimed_by, status, subject, priority, created_at, closed_at, closed_by_tag
-       FROM tickets WHERE id = ?`,
+       FROM tickets WHERE id = ? AND ${NOT_CONFIDENTIAL}`,
       [parseInt(req.params.id)]
     );
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
@@ -134,7 +137,7 @@ endpoint({
   errors: [400, 404],
 }, async (req, res) => {
   try {
-    const [ticket] = await req.guildDb('SELECT id, channel_id, status FROM tickets WHERE id = ?', [parseInt(req.params.id)]);
+    const [ticket] = await req.guildDb(`SELECT id, channel_id, status FROM tickets WHERE id = ? AND ${NOT_CONFIDENTIAL}`, [parseInt(req.params.id)]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket déjà fermé' });
 

@@ -140,7 +140,7 @@ Limite actuelle : le processus héberge à la fois la connexion Discord (gateway
 - **Docker** et **Docker Compose v2**
 - Un **bot Discord** configuré (token + OAuth2)
 - Un serveur avec domaine public et un reverse proxy HTTPS — le `docker-compose.yml` est prévu pour **Traefik** (réseau Docker externe `proxy`, labels déjà présents)
-- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`), utilisé pour les sessions du dashboard, les conversations MP en cours et les tâches BullMQ
+- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`, mot de passe `REDIS_PASSWORD` dans `.env`, obligatoire), utilisé pour les sessions du dashboard, les conversations MP en cours et les tâches BullMQ
 
 ---
 
@@ -249,6 +249,7 @@ Le `config.json` contient **uniquement les informations techniques de démarrage
 | `webServerPort` | Port interne du serveur Express (3000 par défaut) |
 | `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |
 | `trustProxyHops` | Nombre de reverse proxies devant l'app (défaut `1` = Traefik ; `2` si Cloudflare + Traefik). Sert à déterminer la vraie IP client (rate limiting, allowlist IP, logs) |
+| `trustedProxyHost` | Nom (ou IP) du reverse proxy, défaut `traefik`, résolu chaque minute : l'en-tête `X-Forwarded-For` n'est cru que s'il vient de lui, pour qu'un autre conteneur du réseau Docker partagé ne puisse pas se faire passer pour une autre adresse. `""` pour désactiver (seul le nombre de sauts compte alors) |
 | `dashboard.sessionSecret` | Clé secrète sessions — **min. 32 chars**, générer avec `openssl rand -hex 32` |
 | `dashboard.encryptionKey` | Clé AES-256 (64 caractères hex, `openssl rand -hex 32`) qui chiffre les secrets 2FA et les transcripts en base. Optionnelle : à défaut, dérivée de `sessionSecret`. Pour la changer, suivre la procédure de rotation ci-dessous |
 | `dashboard.previousEncryptionKeys` | Anciennes clés encore acceptées en lecture pendant une rotation (liste, optionnelle) |
@@ -627,6 +628,7 @@ Notifie une URL externe (HTTPS uniquement) lors d'événements tickets.
 
 **Sécurité intégrée :**
 - Résolution DNS + vérification anti-SSRF (bloque loopback, RFC1918, link-local, multicast…)
+- Ticket confidentiel : l'URL ne reçoit que `{ ticketId, confidential: true }`, jamais le membre ni le sujet
 - Signature HMAC-SHA256 via `X-TicketBot-Signature-256` si un secret est configuré
 - Timeout 5 secondes
 - Header `X-TicketBot-Event` pour identifier l'événement
@@ -639,7 +641,7 @@ Configuration depuis **Paramètres → Webhooks** dans le dashboard.
 
 Clés d'API générées par le fondateur pour des intégrations externes (l'option doit être activée dans les paramètres). Chaque clé a des permissions granulaires et une date d'expiration optionnelle. Seul le hash SHA-256 est stocké, jamais la clé en clair.
 
-Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization: Bearer <clé>`.
+Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization: Bearer <clé>`. Les tickets confidentiels ne sont jamais accessibles par l'API (ni liste, ni détail, ni fermeture).
 
 | Méthode | Route | Permission |
 |---------|-------|------------|
@@ -832,22 +834,22 @@ Bot-ticketting/
 | **TOTP 2FA** | Optionnelle pour le dashboard (codes de secours), obligatoire pour les SA ; anti-rejeu, secrets chiffrés |
 | **Contrôle d'accès** | Permissions de grade et visibilité par grade appliquées côté API, temps réel, push et commandes Discord |
 | **Isolation multi-tenant** | Base par serveur ; salons, rôles, blacklist et journaux de connexion ne débordent jamais sur un autre serveur |
-| **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR |
+| **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR ; `X-Forwarded-For` n'est cru que venant du reverse proxy lui-même (`trustedProxyHost`) |
 | **Rate limiting** | 20 req/15 min sur les endpoints d'auth (dashboard, SA, espace membre), 200 req/min sur l'API générale ; limites propres aux MP, à l'ouverture de tickets depuis le web et aux rapports d'erreur |
 | **CSRF** | Toutes les mutations (POST/PATCH/DELETE/PUT) exigent `X-Requested-With: XMLHttpRequest` |
 | **SSRF** | Webhooks sortants : résolution DNS + blocage de tous les ranges privés/réservés |
 | **Audit SA** | Toutes les tentatives de connexion SA (succès, échec, TOTP) loguées dans `sa_auth_logs` |
 | **Audit dashboard** | Toutes les mutations du dashboard loguées dans `audit_log` |
 | **Brute-force** | 5 tentatives TOTP par session ; comptes SA verrouillés 15 min après 5 échecs ; 8 DM / 30 s par utilisateur côté bot |
-| **Docker** | Utilisateur `node` (non-root), `no-new-privileges`, `cap_drop: ALL`, `NODE_ENV=production` ; `botuser` limité aux bases `ticketbot_*` |
-| **Base de données** | Requêtes paramétrées, `stringifyObjects` activé (pas d'injection via objets JSON) |
+| **Docker** | Utilisateur `node` (non-root), `no-new-privileges`, `cap_drop: ALL`, `NODE_ENV=production` ; `botuser` limité aux bases `ticketbot_*` ; MariaDB et Redis sur le réseau interne seulement, Redis protégé par mot de passe (`REDIS_PASSWORD` dans `.env`) |
+| **Base de données** | Requêtes paramétrées, `stringifyObjects` activé (pas d'injection via objets JSON), noms de colonnes dynamiques tirés de listes blanches ; un identifiant invalide (`NaN`) devient `NULL` (introuvable, jamais d'erreur SQL) |
 | **Maintenance / suspension** | Bloque l'API du serveur et rend le bot inactif sur ce serveur |
 | **Espace membre** | Session distincte (identité Discord seule, scope `identify`) sans aucun droit sur le dashboard ; chaque requête vérifie que le membre est propriétaire ou participant du ticket et membre du serveur ; jamais de note interne ni de message du salon staff |
 | **Chiffrement au repos** | Secrets 2FA et transcripts (AES-256-GCM, rotation de clé, script de rechiffrement vérifié) |
 | **Pièces jointes** | Relais `/api/attachment` limité aux liens de pièces jointes Discord et aux utilisateurs connectés |
 | **Erreurs navigateur** | Rapports limités en taille et en nombre ; ceux envoyés sans session vont dans une source à part, exclue des alertes |
 | **Postes partagés** | Les brouillons sont effacés à la déconnexion |
-| **Dépendances** | `npm audit` en CI, mises à jour Dependabot testées avant fusion |
+| **Dépendances** | `npm audit` en CI, mises à jour Dependabot testées avant fusion ; actions GitHub épinglées par empreinte de commit, jeton de la CI en lecture seule |
 | **Push endpoint allowlist** | Les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — bloque tout endpoint arbitraire |
 
 ---
@@ -869,7 +871,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 616 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 748 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
