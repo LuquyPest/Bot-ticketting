@@ -68,10 +68,11 @@ if (config.webEnabled !== false) {
 
 client.login(config.token);
 
-client.once(Events.ClientReady, () => {
-  logger.info('Bot connecté', { tag: client.user.tag });
-  // All recurring automations (inactivity, escalation, reminders, scheduled messages,
-  // weekly report, retention purge) are BullMQ job schedulers — see utils/jobQueue.js
+client.once(Events.ClientReady, () => logger.info('Bot connecté', { tag: client.user.tag }));
+// All recurring automations (inactivity, escalation, reminders, scheduled messages,
+// weekly report, retention purge) are BullMQ job schedulers — see utils/jobQueue.js. They start
+// once the guild databases are migrated (events/ready.js).
+client.once('tenantsMigrated', () => {
   startWorkers(client).catch(err => logger.error('startWorkers failed', { err: err.message }));
 });
 
