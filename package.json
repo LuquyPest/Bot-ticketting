@@ -14,7 +14,7 @@
     "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^6.3.15",
-    "connect-redis": "^9.0.0",
+    "connect-redis": "^10.0.0",
     "discord.js": "^14.27.0",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
