@@ -2677,14 +2677,16 @@ async function main() {
   r = await req('GET', '/api/sa/blocked', { sid: sessions.MGR });
   check('blocages: réservé au superadmin', r.status === 403, r.status);
   let lastStatus = 0;
-  for (let i = 0; i < 25; i++) lastStatus = (await req('GET', '/api/auth/me')).status;
+  for (let i = 0; i < 25; i++) lastStatus = (await req('GET', '/api/auth/me', { sid: sessions.F })).status;
+  check('blocages: /auth/me (lu à chaque page) jamais bloqué par la limite de connexion', lastStatus === 200, lastStatus);
+  for (let i = 0; i < 25; i++) lastStatus = (await req('GET', '/api/auth/discord')).status;
   check('blocages: limite de connexion atteinte (429)', lastStatus === 429, lastStatus);
   r = await req('GET', '/api/sa/blocked', { sid: sessions.SAnew });
   const ipBlock = (r.body.ips || []).find(b => b.limiter === 'auth');
-  check('blocages: IP bloquée listée', !!ipBlock && ipBlock.path === '/api/auth/me' && ipBlock.hits >= 1, JSON.stringify(r.body.ips));
+  check('blocages: IP bloquée listée', !!ipBlock && ipBlock.path === '/api/auth/discord' && ipBlock.hits >= 1, JSON.stringify(r.body.ips));
   r = await req('POST', '/api/sa/blocked/ips/unblock', { sid: sessions.SAnew, body: { limiter: ipBlock?.limiter, key: ipBlock?.key } });
-  const after = await req('GET', '/api/auth/me');
-  check('blocages: IP débloquée', r.status === 200 && after.status === 401, JSON.stringify([r.status, after.status]));
+  const after = await req('GET', '/api/auth/discord');
+  check('blocages: IP débloquée', r.status === 200 && after.status === 302, JSON.stringify([r.status, after.status]));
 
   // ── SA: overview, limits, error journal ──
   r = await req('GET', '/api/sa/stats', { sid: sessions.SAnew });

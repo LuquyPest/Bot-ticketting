@@ -15,7 +15,8 @@ export const VERSIONS = [
       { type: 'new',  text: 'Traçabilité des tickets confidentiels : qui a ouvert la fiche, les messages, le transcript ou le PDF, et quand (fiche du ticket et Journal → Consultations confidentielles, fondateurs seulement)' },
       { type: 'new',  text: 'MP Discord à chaque connexion depuis un nouvel appareil (navigateur et système), à la place de l\'alerte sur les nouvelles IP' },
       { type: 'new',  text: 'Déconnexion après inactivité, durée réglable par serveur (Paramètres → Sécurité), avec un avertissement une minute avant' },
-      { type: 'tech', text: 'Tests : 846 vérifications automatiques' },
+      { type: 'fix',  text: 'Recharger quelques pages du dashboard ne bloque plus l\'accès pendant 15 minutes (« Trop de tentatives ») : seule la connexion elle-même est limitée' },
+      { type: 'tech', text: 'Tests : 847 vérifications automatiques, plus un test réel sur Discord (fils privés, débordement, vocal, réponses corrigées)' },
     ]
   },
   {

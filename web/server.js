@@ -141,7 +141,9 @@ app.get('/api/health', async (req, res) => {
 
 const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs are listed in the SA panel
 
-app.use('/api/auth', authLimiter);
+// Strict limit on sign-in attempts only: /api/auth/me and /guilds are read on every page load and
+// stay under the general API limit (counting them blocked staff who simply reloaded a few pages)
+app.use(['/api/auth/discord', '/api/auth/totp-verify-login'], authLimiter);
 app.use('/api/member/auth', authLimiter);
 app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
 app.use('/api/demo', authLimiter);

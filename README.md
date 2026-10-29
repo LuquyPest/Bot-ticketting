@@ -870,7 +870,7 @@ Bot-ticketting/
 | **Contrôle d'accès** | Permissions de grade et visibilité par grade appliquées côté API, temps réel, push et commandes Discord |
 | **Isolation multi-tenant** | Base par serveur ; salons, rôles, blacklist et journaux de connexion ne débordent jamais sur un autre serveur |
 | **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR ; `X-Forwarded-For` n'est cru que venant du reverse proxy lui-même (`trustedProxyHost`) |
-| **Rate limiting** | 20 req/15 min sur les endpoints d'auth (dashboard, SA, espace membre), 200 req/min sur l'API générale ; limites propres aux MP, à l'ouverture de tickets depuis le web et aux rapports d'erreur |
+| **Rate limiting** | 20 req/15 min sur les tentatives de connexion (connexion Discord et code 2FA du dashboard, SA, espace membre ; `/api/auth/me` et la liste des serveurs, lus à chaque page, n'y comptent pas), 200 req/min sur l'API générale ; limites propres aux MP, à l'ouverture de tickets depuis le web et aux rapports d'erreur |
 | **CSRF** | Toutes les mutations (POST/PATCH/DELETE/PUT) exigent `X-Requested-With: XMLHttpRequest` |
 | **SSRF** | Webhooks sortants : résolution DNS + blocage de tous les ranges privés/réservés |
 | **Audit SA** | Toutes les tentatives de connexion SA (succès, échec, TOTP) loguées dans `sa_auth_logs` |
@@ -906,7 +906,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 846 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 847 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
