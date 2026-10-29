@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import api from './api';
 import Sidebar from './components/Sidebar';
 import GuidedTour from './components/GuidedTour';
+import IdleWatcher from './components/IdleWatcher';
 import ErrorBoundary from './components/ErrorBoundary';
 import { clearAllDrafts } from './hooks/useDraft';
 import { SSEProvider } from './context/SSEContext';
@@ -190,6 +191,7 @@ export default function App() {
                 <div className="flex h-screen bg-base text-ink-1 overflow-hidden">
                   <Sidebar />
                   <GuidedTour />
+                  <IdleWatcher />
                   {sidebarOpen && (
                     <div
                       className="fixed inset-0 bg-black/60 z-30 lg:hidden"

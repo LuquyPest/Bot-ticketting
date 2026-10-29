@@ -13,9 +13,14 @@ router.use((req, res, next) => {
 async function findSnapshot(req, cols) {
   const vis = await visibilityFilter(req, 't.visibility_grade_id');
   const [snap] = await req.guildDb(
-    `SELECT ${cols} FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id WHERE ts.id = ? AND ${vis.sql}`,
+    `SELECT ${cols}, ts.ticket_id AS _ticket_id, t.visibility_grade_id AS _visibility FROM transcript_snapshots ts JOIN tickets t ON t.id = ts.ticket_id WHERE ts.id = ? AND ${vis.sql}`,
     [parseInt(req.params.id), ...vis.params]
   );
+  // Reading the transcript of a confidential ticket is traced (utils/confidentialAccess.js)
+  if (snap) {
+    await require('../../utils/confidentialAccess').logConfidentialAccess(req.guildDb, req.guildId,
+      { id: snap._ticket_id, visibility_grade_id: snap._visibility }, { id: req.session.user.id, tag: req.session.user.username }, 'transcript', req.ip);
+  }
   return snap;
 }
 

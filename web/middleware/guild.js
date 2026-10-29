@@ -30,6 +30,23 @@ function isAllowed(list, ip) {
 //   req.guildDb   — async query(sql, params) function for that guild's DB
 //   req.guild     — row from ticketbot_global.guilds
 //   req.guildConfig — row from guild_config (lazy-loaded on first use via getter)
+// Sign-out after inactivity (utils/idleTimeout.js). Returns true when the session was ended.
+async function idleExpired(req, res, db, guildId) {
+  const { idleMinutes, isUserAction } = require('../../utils/idleTimeout');
+  const minutes = await idleMinutes(db, guildId);
+  if (!minutes) return false;
+  const last = req.session.lastActivityAt || (req.session.lastActivityAt = Date.now());
+  if (Date.now() - last > minutes * 60000) {
+    const sid = req.session.id;
+    req.session.destroy(() => {});
+    globalQuery('DELETE FROM user_sessions WHERE session_id = ?', [sid]).catch(() => {});
+    res.status(401).json({ error: `Déconnecté après ${minutes} min d'inactivité`, code: 'idle' });
+    return true;
+  }
+  if (isUserAction(req)) req.session.lastActivityAt = Date.now();
+  return false;
+}
+
 module.exports = async function guildMiddleware(req, res, next) {
   const guildId = req.session?.currentGuildId;
 
@@ -46,6 +63,7 @@ module.exports = async function guildMiddleware(req, res, next) {
     req.guildId = guildId;
     req.guildDb = getTenantDb(guildId);
     req.guild = { guild_id: guildId, guild_name: DEMO_NAME, status: 'active', maintenance_mode: 0, demo: true };
+    if (await idleExpired(req, res, req.guildDb, guildId)) return;
     return next();
   }
 
@@ -65,6 +83,7 @@ module.exports = async function guildMiddleware(req, res, next) {
 
     req.guildId = guildId;
     req.guildDb = getTenantDb(guildId);
+    if (await idleExpired(req, res, req.guildDb, guildId)) return;
 
     // IP allowlist check (fondateur is always exempt)
     if (req.session?.user?.role !== 'fondateur') {

@@ -383,6 +383,19 @@ const MIGRATIONS = [
         INDEX idx_sa_user (user_id, starts_at), INDEX idx_sa_state (state, starts_at))`,
     ],
   },
+  {
+    version: 28,
+    name: 'Consultations des tickets confidentiels, déconnexion après inactivité',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_access_log (
+        id INT AUTO_INCREMENT PRIMARY KEY, ticket_id INT NOT NULL,
+        user_id VARCHAR(64) NOT NULL, user_tag VARCHAR(100) NOT NULL,
+        kind ENUM('view','notes','transcript','pdf','guest') NOT NULL DEFAULT 'view',
+        ip VARCHAR(45) DEFAULT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_tal_ticket (ticket_id, created_at), INDEX idx_tal_created (created_at))`,
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS idle_timeout_minutes INT NOT NULL DEFAULT 0',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

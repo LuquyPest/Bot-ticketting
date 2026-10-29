@@ -28,6 +28,7 @@ const FIELD_MAP = {
   ticketMode:                'ticket_mode',
   threadParentChannelId:     'thread_parent_channel_id',
   healthAlertsEnabled:       'health_alerts_enabled',
+  idleTimeoutMinutes:        'idle_timeout_minutes',
   slaOpenHours:              'sla_open_hours',
   slaWaitingHours:           'sla_waiting_hours',
   slaInProgressHours:        'sla_in_progress_hours',
@@ -93,6 +94,7 @@ const VALIDATORS = {
   ticketMode:               v => ['channel', 'thread'].includes(v),
   threadParentChannelId:    SNOWFLAKE,
   healthAlertsEnabled:      v => v === 0 || v === 1 || v === true || v === false,
+  idleTimeoutMinutes:       v => Number.isInteger(v) && (v === 0 || (v >= 5 && v <= 1440)),
   slaOpenHours:             v => Number.isInteger(v) && v >= 0 && v <= 720,
   slaWaitingHours:          v => Number.isInteger(v) && v >= 0 && v <= 720,
   slaInProgressHours:       v => Number.isInteger(v) && v >= 0 && v <= 720,
@@ -195,6 +197,7 @@ router.post('/import', async (req, res) => {
       includeDiscordIds: !!req.body?.includeDiscordIds, actor: req.session.user, applyConfig,
     });
     require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
+    require('../../utils/idleTimeout').clearIdleCache(req.guildId);
     await logAudit(req.session.user.id, req.session.user.username, 'config_import', 'guild', req.guildId, { report, includeDiscordIds: !!req.body?.includeDiscordIds }, req.guildDb);
     res.json({ ok: true, report });
   } catch (err) {
@@ -279,6 +282,7 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
   params.push(1); // WHERE id = 1
   await req.guildDb(`UPDATE guild_config SET ${setClauses.join(', ')} WHERE id = ?`, params);
   require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
+  require('../../utils/idleTimeout').clearIdleCache(req.guildId);
   const changes = diffConfig(before, await snapshot(req.guildDb), SECRET_FIELDS);
   const historyId = await recordHistory(req.guildDb, req.session.user, changes, { source, restoredFrom });
 

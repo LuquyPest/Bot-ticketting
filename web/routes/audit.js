@@ -60,6 +60,24 @@ const parseDetails = d => {
 };
 
 // GET /api/audit/meta — labels for actions, categories and sources
+// GET /api/audit/confidential-access?page= — who opened which confidential ticket, and when.
+// Founders only: confidential tickets are theirs alone, view_audit is not enough.
+router.get('/confidential-access', async (req, res) => {
+  if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé aux fondateurs' });
+  try {
+    const page = Math.max(1, Math.min(200, parseInt(req.query.page) || 1));
+    const [rows, [{ total }]] = await Promise.all([
+      req.guildDb(`SELECT l.id, l.ticket_id, l.user_id, l.user_tag, l.kind, l.ip, l.created_at, t.status
+                   FROM ticket_access_log l LEFT JOIN tickets t ON t.id = l.ticket_id ORDER BY l.created_at DESC, l.id DESC LIMIT 50 OFFSET ?`, [(page - 1) * 50]),
+      req.guildDb('SELECT COUNT(*) AS total FROM ticket_access_log'),
+    ]);
+    res.json({ rows, total: Number(total), page, pages: Math.max(1, Math.ceil(Number(total) / 50)) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/meta', (req, res) => {
   res.json({
     actions: Object.fromEntries(Object.entries(ACTIONS).map(([k, [label, category]]) => [k, { label, category }])),

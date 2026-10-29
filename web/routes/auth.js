@@ -36,30 +36,23 @@ function trackSession(req, userId) {
   ).catch(() => null);
 }
 
-async function checkNewIpAlert(req, userId) {
-  const ip = getClientIp(req);
+// Sign-in from a device the account never used: DM through the bot (utils/deviceAlert.js).
+// Called before the sign-in is written to login_logs, otherwise the device is already "known".
+async function checkNewDeviceAlert(req, userId) {
   try {
-    const rows = await globalQuery(
-      'SELECT ip FROM login_logs WHERE user_id = ? AND status = "success" ORDER BY id DESC LIMIT 10',
-      [userId]
-    );
-    const known = new Set(rows.map(r => r.ip));
-    if (known.size === 0 || known.has(ip)) return; // first login or known IP
-
     const config = cfg();
     if (!config.token) return;
-    const date = new Date().toLocaleString('fr-FR');
-    const dmChannel = await axios.post(
-      'https://discord.com/api/users/@me/channels',
-      { recipient_id: userId },
-      { headers: { Authorization: `Bot ${config.token}` } }
-    ).catch(() => null);
-    if (!dmChannel?.data?.id) return;
-    await axios.post(
-      `https://discord.com/api/channels/${dmChannel.data.id}/messages`,
-      { content: `⚠️ **Nouvelle connexion au dashboard** depuis une IP inconnue \`${ip}\` le ${date}.\nSi ce n'est pas toi, révoque tes sessions depuis ton profil.` },
-      { headers: { Authorization: `Bot ${config.token}` } }
-    ).catch(() => null);
+    const send = async (recipient, payload) => {
+      const dm = await axios.post('https://discord.com/api/users/@me/channels', { recipient_id: recipient },
+        { headers: { Authorization: `Bot ${config.token}` } }).catch(() => null);
+      if (dm?.data?.id) {
+        await axios.post(`https://discord.com/api/channels/${dm.data.id}/messages`, payload,
+          { headers: { Authorization: `Bot ${config.token}` } }).catch(() => null);
+      }
+    };
+    await require('../../utils/deviceAlert').alertNewDevice({
+      userId, userAgent: req.headers['user-agent'], ip: getClientIp(req), baseUrl: config.webServerBaseUrl, send,
+    });
   } catch {}
 }
 
@@ -97,7 +90,7 @@ router.get('/me', async (req, res) => {
 
   try {
     const db = getTenantDb(guildId);
-    const base = { ...user, guildId };
+    const base = { ...user, guildId, idleTimeoutMinutes: await require('../../utils/idleTimeout').idleMinutes(db, guildId) };
     if (user.role === 'fondateur') {
       return res.json({ ...base, permissions: require('../../utils/gradePermissions').PERMISSIONS });
     }
@@ -327,7 +320,7 @@ router.get('/discord/callback', async (req, res) => {
     }
 
     // Check before logging, otherwise the current IP is already "known"
-    checkNewIpAlert(req, discordUser.id).catch(() => null)
+    checkNewDeviceAlert(req, discordUser.id).catch(() => null)
       .finally(() => logLogin(req, discordUser.id, discordUser.username, 'success'));
     req.session.regenerate(err => {
       if (err) return res.redirect('/login?error=oauth_failed');
@@ -338,6 +331,7 @@ router.get('/discord/callback', async (req, res) => {
         role:     null,
       };
       req.session.discordAccessToken = token.access_token;
+      req.session.lastActivityAt = Date.now();
       req.session.save(() => trackSession(req, discordUser.id));
       res.redirect('/select-guild');
     });
@@ -399,7 +393,7 @@ router.post('/totp-verify-login', async (req, res) => {
       });
     }
 
-    checkNewIpAlert(req, pending.userId).catch(() => null)
+    checkNewDeviceAlert(req, pending.userId).catch(() => null)
       .finally(() => logLogin(req, pending.userId, pending.username, 'success'));
     // New session ID once fully authenticated
     req.session.regenerate(err => {
@@ -411,6 +405,7 @@ router.post('/totp-verify-login', async (req, res) => {
         role:     null,
       };
       req.session.discordAccessToken = pending.discordAccessToken;
+      req.session.lastActivityAt = Date.now();
       req.session.save(() => trackSession(req, pending.userId));
       res.json({ ok: true, redirect: '/select-guild' });
     });

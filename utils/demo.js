@@ -18,7 +18,7 @@ const BLOCKED = [
 // Adding a participant or contacting a member takes any Discord ID: never from the demo (see
 // sendToMember); the voice channel would be created on Discord
 const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/, /^\/api\/tickets\/\d+\/voice$/];
-const BLOCKED_CONFIG_FIELDS = ['webhookUrl', 'webhookSecret', 'webhooksEnabled', 'webhookEvents', 'ipAllowlist', 'require2fa', 'apiKeysEnabled'];
+const BLOCKED_CONFIG_FIELDS = ['webhookUrl', 'webhookSecret', 'webhooksEnabled', 'webhookEvents', 'ipAllowlist', 'require2fa', 'apiKeysEnabled', 'idleTimeoutMinutes'];
 
 const isDemoSession = session => !!session?.user?.demo;
 

@@ -15,6 +15,7 @@ import { useAuth } from '../App';
 import useDraft from '../hooks/useDraft';
 import MessageContent from '../components/MessageContent';
 import DiscordPreview from '../components/DiscordPreview';
+import ConfidentialAccess from '../components/ConfidentialAccess';
 import TimeTracker from '../components/TimeTracker';
 import LabelChips from '../components/LabelChips';
 import { useSSE } from '../hooks/useSSE';
@@ -1556,6 +1557,14 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
             <button onClick={() => setInfoOpen(false)} aria-label="Fermer le panneau"
               className="p-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/6"><X size={16} /></button>
           </div>
+
+          {/* Confidential: who opened it (founders only) */}
+          {ticket.visibility_grade_id === -1 && user?.role === 'fondateur' && (
+            <div className={panelCard}>
+              <SectionTitle>Consultations</SectionTitle>
+              <ConfidentialAccess ticketId={ticket.id} />
+            </div>
+          )}
 
           {/* INFORMATIONS */}
           <div className={panelCard}>

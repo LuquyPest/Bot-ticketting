@@ -3330,6 +3330,73 @@ async function main() {
       JSON.stringify([rr.body, oldF.body, oldF2.body, after.body, badT.status]));
   }
 
+  // ── Security: confidential access log, new device alert, sign-out after inactivity ──
+  {
+    const tconf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000071', 'm71', 'cconf71', 'open', 'harcèlement', -1)")).insertId;
+    await redis.del(...(await redis.keys(`cfaccess:${G}:${tconf}:*`)).concat(['__none__']));
+    let r4 = await req('GET', `/api/tickets/${tconf}`, { sid: sessions.F });
+    await req('GET', `/api/tickets/${tconf}`, { sid: sessions.F });
+    await req('GET', `/api/tickets/${tconf}/notes`, { sid: sessions.F });
+    const logRows = await db('SELECT user_id, kind FROM ticket_access_log WHERE ticket_id = ? ORDER BY id', [tconf]);
+    check('confidentiel: ouverture tracée, une fois par 10 min et par type', r4.status === 200 && logRows.length === 2 && logRows[0].user_id === U.F && logRows.map(x => x.kind).join() === 'view,notes', JSON.stringify(logRows));
+    r4 = await req('GET', `/api/tickets/${t1}`, { sid: sessions.F });
+    const [{ n: nonConf }] = await db('SELECT COUNT(*) AS n FROM ticket_access_log WHERE ticket_id = ?', [t1]);
+    check('confidentiel: un ticket normal n est pas tracé', Number(nonConf) === 0, JSON.stringify(nonConf));
+    r4 = await req('GET', `/api/tickets/${tconf}`, { sid: sessions.S1 });
+    const [{ n: afterDenied }] = await db('SELECT COUNT(*) AS n FROM ticket_access_log WHERE ticket_id = ?', [tconf]);
+    check('confidentiel: un refus d accès n est pas une consultation', r4.status === 403 && Number(afterDenied) === 2, JSON.stringify([r4.status, afterDenied]));
+    r4 = await req('GET', `/api/tickets/${tconf}/access-log`, { sid: sessions.F });
+    const r5 = await req('GET', '/api/audit/confidential-access', { sid: sessions.F });
+    const r6 = await req('GET', '/api/audit/confidential-access', { sid: sessions.S1 });
+    check('confidentiel: consultations visibles des fondateurs seulement', r4.status === 200 && r4.body.length === 2 && r5.status === 200 && r5.body.rows.some(x => x.ticket_id === tconf) && r6.status === 403,
+      JSON.stringify([r4.status, r5.status, r6.status]));
+    const snap = (await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt) VALUES (?, 'cconf71', 'x', 'x', 0, ?, ?)",
+      [tconf, app('./utils/transcriptCrypto').sealTranscript('<p>x</p>'), app('./utils/transcriptCrypto').sealTranscript('x')])).insertId;
+    r4 = await req('GET', `/api/transcripts/${snap}/html`, { sid: sessions.F });
+    const [tr] = await db("SELECT COUNT(*) AS n FROM ticket_access_log WHERE ticket_id = ? AND kind = 'transcript'", [tconf]);
+    check('confidentiel: lecture du transcript tracée', r4.status === 200 && Number(tr.n) === 1, JSON.stringify([r4.status, tr]));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tconf]);
+
+    // New device alert
+    const dev = app('./utils/deviceAlert');
+    const DU = '100000000000000088';
+    const CHROME_WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+    const SAFARI_IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+    const sentDm = [];
+    const send = async (id, p) => sentDm.push({ id, p });
+    const first = await dev.alertNewDevice({ userId: DU, userAgent: CHROME_WIN, ip: '1.2.3.4', send });
+    await globalQuery("INSERT INTO login_logs (user_id, username, ip, user_agent, status) VALUES (?, 'du', '1.2.3.4', ?, 'success')", [DU, CHROME_WIN]);
+    const sameNewIp = await dev.alertNewDevice({ userId: DU, userAgent: CHROME_WIN.replace('130.0', '131.0'), ip: '5.6.7.8', send });
+    const phone = await dev.alertNewDevice({ userId: DU, userAgent: SAFARI_IOS, ip: '5.6.7.8', baseUrl: 'https://x.fr', send });
+    check('nouvel appareil: rien à la première connexion ni pour une nouvelle IP sur un appareil connu', first === null && sameNewIp === null, JSON.stringify([first, sameNewIp]));
+    check('nouvel appareil: MP envoyé avec l appareil et l IP', phone === 'Safari sur iPhone' && sentDm.length === 1 && sentDm[0].id === DU
+      && /Safari sur iPhone/.test(sentDm[0].p.embeds[0].description) && /5\.6\.7\.8/.test(sentDm[0].p.embeds[0].description), JSON.stringify(sentDm));
+    await globalQuery('DELETE FROM login_logs WHERE user_id = ?', [DU]);
+
+    // Sign-out after inactivity
+    r4 = await req('PATCH', '/api/config', { sid: sessions.F, body: { idleTimeoutMinutes: 3 } });
+    check('inactivité: durée trop courte refusée', r4.status === 400, r4.status);
+    r4 = await req('PATCH', '/api/config', { sid: sessions.F, body: { idleTimeoutMinutes: 30 } });
+    const me = await req('GET', '/api/auth/me', { sid: sessions.S1 });
+    check('inactivité: durée enregistrée et transmise au dashboard', r4.status === 200 && me.body.idleTimeoutMinutes === 30, JSON.stringify([r4.status, me.body.idleTimeoutMinutes]));
+    await mk('IDLE', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G, lastActivityAt: Date.now() - 31 * 60000 });
+    r4 = await req('GET', '/api/tickets', { sid: sessions.IDLE });
+    const gone = !(await redis.get('sess:' + sessions.IDLE));
+    check('inactivité: session inactive trop longtemps fermée', r4.status === 401 && r4.body.code === 'idle' && gone, JSON.stringify([r4.status, r4.body, gone]));
+    await mk('IDLE2', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G, lastActivityAt: Date.now() - 25 * 60000 });
+    for (let i = 0; i < 3; i++) await req('GET', '/api/tickets', { sid: sessions.IDLE2 });
+    await req('POST', `/api/tickets/${t1}/presence`, { sid: sessions.IDLE2, body: {} });
+    const s2 = JSON.parse(await redis.get('sess:' + sessions.IDLE2));
+    check('inactivité: les lectures et la présence automatique ne comptent pas comme activité', Date.now() - s2.lastActivityAt > 24 * 60000, String(Date.now() - s2.lastActivityAt));
+    r4 = await req('POST', '/api/profile/activity', { sid: sessions.IDLE2 });
+    const s3 = JSON.parse(await redis.get('sess:' + sessions.IDLE2));
+    check('inactivité: le signal d activité du dashboard prolonge la session', r4.status === 200 && Date.now() - s3.lastActivityAt < 5000, String(Date.now() - s3.lastActivityAt));
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { idleTimeoutMinutes: 0 } });
+    await mk('IDLE3', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G, lastActivityAt: Date.now() - 1000 * 60000 });
+    r4 = await req('GET', '/api/tickets', { sid: sessions.IDLE3 });
+    check('inactivité: désactivée → aucune déconnexion', r4.status === 200, r4.status);
+  }
+
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
   r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });

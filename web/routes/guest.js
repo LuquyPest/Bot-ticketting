@@ -58,6 +58,9 @@ router.get('/tickets/:id', requireGuest, async (req, res, next) => {
       'SELECT id, author_tag, content, source, created_at, deleted_at FROM ticket_notes WHERE ticket_id = ? AND source IN (?) ORDER BY created_at ASC, id ASC',
       [id, guestSources(req.invite)]);
     await recordEvent(req.guestDb, { actor: actorOf(req.invite), action: 'guest_view', ticketId: id, targetType: 'guest', targetId: req.invite.id });
+    const [vis] = await req.guestDb('SELECT visibility_grade_id FROM tickets WHERE id = ?', [id]);
+    await require('../../utils/confidentialAccess').logConfidentialAccess(req.guestDb, req.session.guest.guildId,
+      { id, visibility_grade_id: vis?.visibility_grade_id }, { id: `guest:${req.invite.id}`, tag: `Invité · ${req.invite.label}` }, 'guest', req.ip);
     res.json({ ticket, messages });
   } catch (err) { next(err); }
 });

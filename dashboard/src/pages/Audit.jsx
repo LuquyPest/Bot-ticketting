@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, ChevronLeft, ChevronRight, Download, ListTree, BarChart3, X } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Download, ListTree, BarChart3, X, Lock } from 'lucide-react';
+import { useAuth } from '../App';
+import ConfidentialAccess from '../components/ConfidentialAccess';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -233,6 +235,7 @@ function Analytics({ filters, meta }) {
 
 export default function Audit() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tab, setTab] = useState('journal');
   const [meta, setMeta] = useState({ actions: {}, categories: {}, sources: {} });
   const [filters, setFilters] = useState(EMPTY);
@@ -268,8 +271,8 @@ export default function Audit() {
           <p className="text-sm text-ink-3 mt-0.5">Toutes les actions du serveur : dashboard, Discord, API, automatismes et super-admin</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-0.5 bg-surface rounded-xl p-1 border border-overlay/6">
-            {[['journal', 'Journal', ListTree], ['analytics', 'Analytique', BarChart3]].map(([id, label, Icon]) => (
+          <div className="flex flex-wrap gap-0.5 bg-surface rounded-xl p-1 border border-overlay/6">
+            {[['journal', 'Journal', ListTree], ['analytics', 'Analytique', BarChart3], ...(user?.role === 'fondateur' ? [['confidential', 'Consultations confidentielles', Lock]] : [])].map(([id, label, Icon]) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${tab === id ? 'bg-primary/15 text-primary-light' : 'text-ink-3 hover:text-ink-1'}`}>
                 <Icon size={13} /> {label}
@@ -287,9 +290,9 @@ export default function Audit() {
         </div>
       </div>
 
-      <FilterBar filters={filters} setFilter={setFilter} meta={meta} reset={() => { setFilters(EMPTY); setPage(1); }} />
+      {tab !== 'confidential' && <FilterBar filters={filters} setFilter={setFilter} meta={meta} reset={() => { setFilters(EMPTY); setPage(1); }} />}
 
-      {tab === 'analytics' ? <Analytics filters={params} meta={meta} /> : (
+      {tab === 'confidential' ? <ConfidentialAccess /> : tab === 'analytics' ? <Analytics filters={params} meta={meta} /> : (
         <>
           <p className="text-xs text-ink-4">{data.total} action(s)</p>
           <div className="bg-overlay/2 rounded-2xl border border-overlay/6 overflow-hidden">

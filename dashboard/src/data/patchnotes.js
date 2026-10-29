@@ -8,6 +8,17 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.21',
+    date: '29 octobre 2026',
+    title: 'Sécurité : consultations confidentielles, nouvel appareil, inactivité',
+    changes: [
+      { type: 'new',  text: 'Traçabilité des tickets confidentiels : qui a ouvert la fiche, les messages, le transcript ou le PDF, et quand (fiche du ticket et Journal → Consultations confidentielles, fondateurs seulement)' },
+      { type: 'new',  text: 'MP Discord à chaque connexion depuis un nouvel appareil (navigateur et système), à la place de l\'alerte sur les nouvelles IP' },
+      { type: 'new',  text: 'Déconnexion après inactivité, durée réglable par serveur (Paramètres → Sécurité), avec un avertissement une minute avant' },
+      { type: 'tech', text: 'Tests : 846 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.20',
     date: '29 octobre 2026',
     title: 'Absences planifiées, comparaison de périodes et visite guidée',

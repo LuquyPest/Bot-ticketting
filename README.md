@@ -364,7 +364,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
 | **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
 | **Grades** | fondateur, `manage_grades` | Hiérarchie de grades et permissions |
-| **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV et onglet Analytique |
+| **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV, onglet Analytique et, pour les fondateurs, onglet **Consultations confidentielles** |
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances, **absences planifiées** de toute l'équipe |
 | **Accès invités** | fondateur | Accès temporaire en lecture seule à des tickets choisis pour une personne extérieure (modérateur d'un partenaire, avocat…), sans compte Discord : nom de l'invité, tickets, notes internes incluses ou non, durée (1 h à 30 jours). Le lien (`/invite#…`, jeton dans le fragment, jamais envoyé au serveur ni aux journaux) n'est montré qu'une fois et seul son hachage est stocké ; l'invité n'a aucun droit sur le dashboard, l'expiration et la révocation sont vérifiées à chaque requête, et chaque ouverture de ticket est inscrite au journal (source « Invité »). Les images des tickets partagés s'affichent (et seulement elles) ; suspendre le serveur coupe aussitôt les accès en cours. Bouton « Partager avec un invité » dans la fiche |
@@ -817,6 +817,7 @@ Bot-ticketting/
 │   ├── scheduledMessages.js / weeklyReport.js / monthlyReport.js / retention.js / quotaAlert.js
 │   ├── errorLog.js / errorAlert.js / discordWatch.js / logger.js  # Erreurs, alertes, surveillance Discord
 │   ├── guildHealth.js              # Santé du serveur (permissions, salons, rôles) et MP aux fondateurs
+│   ├── confidentialAccess.js / deviceAlert.js / idleTimeout.js  # Consultations confidentielles, nouvel appareil, inactivité
 │   ├── announcements.js / saSettings.js  # Annonces et réglages du super-admin
 │   ├── sse.js / webhookEmitter.js  # Temps réel ; webhooks sortants (anti-SSRF)
 │
@@ -863,6 +864,9 @@ Bot-ticketting/
 | **Sessions** | Cookie `Secure` + `HttpOnly` + `SameSite: Lax`, store Redis, régénérées à chaque élévation de privilège, révocables depuis le profil |
 | **Session secret** | Rejeté au démarrage si < 32 caractères |
 | **TOTP 2FA** | Optionnelle pour le dashboard (codes de secours), obligatoire pour les SA ; anti-rejeu, secrets chiffrés |
+| **Nouvel appareil** | Une connexion au dashboard depuis un appareil jamais utilisé par le compte (navigateur + système, lus dans l'agent utilisateur) envoie un MP Discord au titulaire : appareil, adresse IP, date, et quoi faire si ce n'est pas lui. Rien à la toute première connexion, ni pour une nouvelle IP sur un appareil connu (remplace l'ancienne alerte « IP inconnue », trop fréquente avec les connexions mobiles) |
+| **Déconnexion après inactivité** | Réglage par serveur (Paramètres → Sécurité : jamais, 15 min à 8 h) : sans clic, frappe ni défilement pendant cette durée, la session est fermée, après un avertissement une minute avant. L'activité est partagée entre les onglets du navigateur ; le serveur le vérifie aussi (seules les vraies actions comptent : modifications et signal d'activité du dashboard, jamais les rafraîchissements automatiques, le flux temps réel ni la présence) |
+| **Tickets confidentiels tracés** | Chaque ouverture d'un ticket confidentiel — fiche, messages, transcript, PDF, lien invité — est inscrite (qui, quoi, quand, IP), au plus une fois toutes les 10 min par personne et par type. Visible des fondateurs dans la fiche (« Consultations ») et dans **Journal → Consultations confidentielles** |
 | **Contrôle d'accès** | Permissions de grade et visibilité par grade appliquées côté API, temps réel, push et commandes Discord |
 | **Isolation multi-tenant** | Base par serveur ; salons, rôles, blacklist et journaux de connexion ne débordent jamais sur un autre serveur |
 | **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR ; `X-Forwarded-For` n'est cru que venant du reverse proxy lui-même (`trustedProxyHost`) |
@@ -902,7 +906,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 833 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 846 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie

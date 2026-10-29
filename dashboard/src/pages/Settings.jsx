@@ -236,6 +236,7 @@ export default function Settings() {
         closeMessage:             cfg.closeMessage || null,
         botLanguage:              cfg.botLanguage || 'fr',
         require2fa:               cfg.require2fa || 'none',
+        idleTimeoutMinutes:       cfg.idleTimeoutMinutes ?? 0,
         memberReopenDays:         cfg.memberReopenDays ?? 7,
         notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
         memberPortalEnabled:      cfg.memberPortalEnabled === undefined || cfg.memberPortalEnabled ? 1 : 0,
@@ -535,6 +536,12 @@ export default function Settings() {
             <option value="none">Non imposée</option>
             <option value="founders">Imposée aux fondateurs</option>
             <option value="staff">Imposée à tout le staff</option>
+          </select>
+        </Field>
+        <Field label="Déconnexion après inactivité" hint="Sans clic, frappe ni défilement pendant cette durée, le compte est déconnecté (un avertissement s'affiche une minute avant). S'applique à tout le staff, fondateurs compris.">
+          <select value={cfg.idleTimeoutMinutes ?? 0} onChange={e => set('idleTimeoutMinutes', Number(e.target.value))} className={BASE}>
+            <option value={0}>Jamais</option>
+            {[15, 30, 60, 120, 240, 480].map(m => <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} heure${m > 60 ? 's' : ''}`}</option>)}
           </select>
         </Field>
       </Section>

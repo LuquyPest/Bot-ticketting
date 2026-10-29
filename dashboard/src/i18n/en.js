@@ -504,9 +504,21 @@ export const ENTRIES = [
   ['Ctrl+K (⌘K) pour aller à n\'importe quelle page ou ouvrir un ticket par son numéro.', 'Ctrl+K (⌘K) to go to any page or open a ticket by its number.'],
   ['Double authentification, notifications du navigateur, langue, vue fractionnée et absences.', 'Two-factor authentication, browser notifications, language, split view and absences.'],
   ['Dans un ticket : R pour répondre, N pour une note interne, Échap pour revenir. Bon support !', 'In a ticket: R to reply, N for an internal note, Esc to go back. Happy supporting!'],
+
+  // ── v2.21 : sécurité ──
+  ['Consultations', 'Views'], ['Consultations confidentielles', 'Confidential views'], ['Fiche ouverte', 'Ticket opened'], ['Messages lus', 'Messages read'],
+  ['Transcript lu', 'Transcript read'], ['PDF téléchargé', 'PDF downloaded'], ['Lien invité', 'Guest link'], ['Aucune consultation enregistrée.', 'No view recorded.'],
+  ['Qui', 'Who'], ['Consultation', 'View'], ['IP', 'IP'], ['Chargement…', 'Loading…'],
+  ['Déconnexion après inactivité', 'Sign-out after inactivity'], ['Jamais', 'Never'], ['15 minutes', '15 minutes'], ['30 minutes', '30 minutes'],
+  ['1 heure', '1 hour'], ['2 heures', '2 hours'], ['4 heures', '4 hours'], ['8 heures', '8 hours'],
+  ['Sans clic, frappe ni défilement pendant cette durée, le compte est déconnecté (un avertissement s\'affiche une minute avant). S\'applique à tout le staff, fondateurs compris.', 'Without a click, keystroke or scroll for this long, the account is signed out (a warning shows one minute before). Applies to all the staff, founders included.'],
+  ['Tu vas être déconnecté dans moins d\'une minute', 'You will be signed out in less than a minute'], ['Rester connecté', 'Stay signed in'],
+  ['Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.', 'You were signed out after a period of inactivity. Sign in again to continue.'],
 ];
 
 export const TEMPLATES = [
+  ['Aucune activité depuis {} min sur ce serveur (réglage de sécurité des fondateurs).', 'No activity for {1} min on this server (security setting of the founders).'],
+  ['Chaque ouverture d\'un ticket confidentiel (fiche, messages, transcript, PDF, lien invité) par personne, au plus une fois toutes les 10 minutes par type. {} consultation(s).', 'Every opening of a confidential ticket (ticket, messages, transcript, PDF, guest link) per person, at most once every 10 minutes per type. {1} view(s).'],
   ['Visite guidée · {}', 'Guided tour · {1}'], ['Du {}, comparé à la {} ({})', 'From {1}, compared with the {2} ({3})'], ['avant : {}', 'before: {1}'], ['· avant : {}', '· before: {1}'],
   ['({} sur {} fermetures)', '({1} out of {2} closures)'],
   ['Message de {} · #{}', 'Message from {1} · #{2}'], ['{} a répondu · #{}', '{1} replied · #{2}'], ['Note de {} · #{}', 'Note from {1} · #{2}'], ['Ticket #{} fermé par {}', 'Ticket #{1} closed by {2}'],

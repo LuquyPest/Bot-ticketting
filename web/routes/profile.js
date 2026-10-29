@@ -132,6 +132,13 @@ router.put('/language', requireAuth, async (req, res) => {
   res.json({ lang });
 });
 
+// POST /api/profile/activity — the user is actually using the dashboard (typing, clicking,
+// scrolling): keeps the session alive when the server signs out after inactivity
+router.post('/activity', requireAuth, (req, res) => {
+  req.session.lastActivityAt = Date.now();
+  res.json({ ok: true });
+});
+
 // GET/PUT /api/profile/prefs — interface preferences kept for every browser of the account
 // (splitView: the ticket list and the opened ticket side by side; tourDone: version of the
 // guided tour already seen). newAgent: staff account of the current server less than 14 days old

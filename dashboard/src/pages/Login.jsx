@@ -10,6 +10,7 @@ const ERROR_MESSAGES = {
   oauth_failed:  "Erreur lors de la connexion Discord. Réessaie.",
   no_code:       "Code OAuth manquant.",
 };
+const EXPIRED_MESSAGES = { idle: 'Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.' };
 
 export default function Login() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export default function Login() {
     if (user) navigate(user.role === 'nouveau' ? '/pending' : '/', { replace: true });
     const err = params.get('error');
     if (err) setError(ERROR_MESSAGES[err] || 'Erreur inconnue.');
+    else if (EXPIRED_MESSAGES[params.get('expired')]) setError(EXPIRED_MESSAGES[params.get('expired')]);
   }, [user]);
 
   return (

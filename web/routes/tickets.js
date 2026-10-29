@@ -343,10 +343,14 @@ router.post('/open', async (req, res) => {
   }
 });
 
+const traceConfidential = (req, ticket, kind) => require('../../utils/confidentialAccess')
+  .logConfidentialAccess(req.guildDb, req.guildId, ticket, { id: req.session.user.id, tag: req.session.user.username }, kind, req.ip);
+
 router.get('/:id', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res);
     if (!ticket) return;
+    await traceConfidential(req, ticket, 'view');
 
     const [participantRows, transcript, rating] = await Promise.all([
       req.guildDb('SELECT user_id FROM ticket_participants WHERE ticket_id = ?', [ticket.id]),
@@ -498,6 +502,7 @@ router.get('/:id/notes', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res);
     if (!ticket) return;
+    await traceConfidential(req, ticket, 'notes');
 
     const notes = await req.guildDb(
       `SELECT id, author_id, author_tag, content, source, created_at, pinned_at, pinned_by_tag, edited_at, edit_history, deleted_at,
@@ -1335,6 +1340,20 @@ router.delete('/:id/notes/:noteId', async (req, res) => {
   }
 });
 
+// GET /api/tickets/:id/access-log — who opened this confidential ticket, and when (founders only)
+router.get('/:id/access-log', async (req, res) => {
+  try {
+    if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé aux fondateurs' });
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    const rows = await req.guildDb('SELECT user_id, user_tag, kind, ip, created_at FROM ticket_access_log WHERE ticket_id = ? ORDER BY created_at DESC LIMIT 200', [ticket.id]);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // POST /api/tickets/:id/follow { follow } — be told about the ticket's new messages without being assigned
 router.post('/:id/follow', async (req, res) => {
   try {
@@ -1493,6 +1512,7 @@ router.get('/:id/pdf', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res);
     if (!ticket) return;
+    await traceConfidential(req, ticket, 'pdf');
 
     const notes = await req.guildDb(
       'SELECT author_tag, content, source, created_at FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC',
