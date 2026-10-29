@@ -7,3 +7,4 @@ dashboard/dist/
 !config.example.json
 tests/load/last-report.json
 tests/load/*.cpuprofile
+.claude/
