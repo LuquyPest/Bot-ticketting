@@ -8,6 +8,17 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.17.2',
+    date: '29 octobre 2026',
+    title: 'Audit de sécurité OWASP et dépendances à jour',
+    changes: [
+      { type: 'fix',  text: 'Sécurité : l\'import de configuration avec « reprendre les salons et rôles » n\'acceptait plus que ceux du serveur importé — un fichier pouvait faire poster les logs du bot dans un autre serveur' },
+      { type: 'fix',  text: 'Sécurité : les paramètres importés passent par les mêmes vérifications que la page Paramètres (couleur, logo, nombres…) ; un fichier refusé ne change rien' },
+      { type: 'tech', text: 'Dépendances mises à jour (body-parser, multer, undici, follow-redirects) : 4 failles de déni de service et de fuite d\'en-têtes corrigées' },
+      { type: 'tech', text: 'Tests : 737 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.17.1',
     date: '20 octobre 2026',
     title: 'Audit complet : confidentialité, démonstration et accès invité',

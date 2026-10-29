@@ -1109,10 +1109,24 @@ async function main() {
     const f3 = await db3("SELECT COUNT(*) AS n FROM faq_entries WHERE question = 'Question exportée ?'");
     check('config: import sur un autre serveur', r.status === 200 && c3.welcome_message === 'Bienvenue export' && g3.length === 1 && Number(f3[0].n) === 1, JSON.stringify([r.body, c3]));
     check('config: salons Discord et secrets non repris par défaut', c3.ticket_category_id === null && c3.webhook_secret === null, JSON.stringify(c3));
+    // Channels of another server: refused, and the refused file changes nothing
+    const tagsBefore = (await db3('SELECT COUNT(*) AS n FROM ticket_tags'))[0].n;
+    await db3("DELETE FROM ticket_tags WHERE name = 'Export tag'");
     r = await req('POST', '/api/config/import', { sid: sessions.F3, body: { data: exp, includeDiscordIds: true } });
     const [c3b] = await db3('SELECT ticket_category_id FROM guild_config WHERE id = 1');
+    check('config: salons d un autre serveur refusés à l import', r.status === 400 && /salons|rôles/.test(r.body.error) && c3b.ticket_category_id === null, JSON.stringify([r.body, c3b]));
+    check('config: import refusé sans effet', (await db3("SELECT COUNT(*) AS n FROM ticket_tags WHERE name = 'Export tag'"))[0].n === 0, String(tagsBefore));
+    // Invalid values are refused like on the Settings page
+    r = await req('POST', '/api/config/import', { sid: sessions.F3, body: { data: { ...exp, config: { ...exp.config, portal_color: 'red;background:url(x)', welcome_message: 'X' } } } });
+    check('config: valeurs invalides refusées à l import', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/config/import', { sid: sessions.F3, body: { data: exp } });
     const f3b = await db3("SELECT COUNT(*) AS n FROM faq_entries WHERE question = 'Question exportée ?'");
-    check('config: réimport sans doublon, salons repris sur demande', c3b.ticket_category_id === CAT_OPEN && Number(f3b[0].n) === 1 && r.body.report.faq.updated >= 1, JSON.stringify([c3b, r.body.report.faq]));
+    check('config: réimport sans doublon', r.status === 200 && Number(f3b[0].n) === 1 && r.body.report.faq.updated >= 1, JSON.stringify(r.body.report?.faq));
+    // Same server: its channels come back
+    await db("UPDATE guild_config SET ticket_category_id = NULL WHERE id = 1");
+    r = await req('POST', '/api/config/import', { sid: sessions.FV, body: { data: { ...exp, config: { ...exp.config, support_role_ids: ['800000000000000001'], chief_role_ids: [] } }, includeDiscordIds: true } });
+    const [cG] = await db('SELECT ticket_category_id FROM guild_config WHERE id = 1');
+    check('config: salons repris sur le même serveur', r.status === 200 && cG.ticket_category_id === CAT_OPEN, JSON.stringify([r.body, cG]));
     const imp = await db3("SELECT source, changes FROM config_history WHERE source = 'import'");
     check('historique config: import tracé', imp.length >= 1 && JSON.stringify(imp[0].changes).includes('Bienvenue export'), JSON.stringify(imp));
     r = await req('GET', '/api/config/export', { sid: sessions.S3T });

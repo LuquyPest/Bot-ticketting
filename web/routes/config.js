@@ -175,11 +175,19 @@ router.get('/export', async (req, res) => {
 // POST /api/config/import { data, includeDiscordIds } — merges by name, never deletes
 router.post('/import', async (req, res) => {
   try {
-    const before = await snapshot(req.guildDb);
+    // Imported settings go through the same checks as the Settings page: valid values, channels
+    // and roles of this server only (a file could otherwise point the bot at another server)
+    const byColumn = Object.fromEntries(Object.entries(FIELD_MAP).map(([api, col]) => [col, api]));
+    const applyConfig = async cols => {
+      const updates = {};
+      for (const [col, v] of Object.entries(cols)) if (byColumn[col] && byColumn[col] !== 'require2fa') updates[byColumn[col]] = v;
+      if (!Object.keys(updates).length) return { ok: true, count: 0 };
+      const r = await applyConfigUpdates(req, updates, { source: 'import' });
+      return r.error ? r : { ok: true, count: Object.keys(updates).length };
+    };
     const report = await require('../../utils/configTransfer').importConfig(req.guildDb, req.body?.data, {
-      includeDiscordIds: !!req.body?.includeDiscordIds, actor: req.session.user,
+      includeDiscordIds: !!req.body?.includeDiscordIds, actor: req.session.user, applyConfig,
     });
-    await recordHistory(req.guildDb, req.session.user, diffConfig(before, await snapshot(req.guildDb), SECRET_FIELDS), { source: 'import' });
     require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
     await logAudit(req.session.user.id, req.session.user.username, 'config_import', 'guild', req.guildId, { report, includeDiscordIds: !!req.body?.includeDiscordIds }, req.guildDb);
     res.json({ ok: true, report });

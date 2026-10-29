@@ -58,9 +58,25 @@ const bool = v => (v ? 1 : 0);
 const int = (v, d = 0) => (Number.isInteger(v) ? v : d);
 
 // Returns { created, updated, skipped } counters per section. Throws on an invalid file.
-async function importConfig(db, data, { includeDiscordIds = false, actor = null } = {}) {
+// applyConfig(updates by column) → { error } | { ok }: writes the settings through the same
+// validation as the Settings page (values, channels and roles of this server only, history).
+// It runs first, so a refused file changes nothing.
+async function importConfig(db, data, { includeDiscordIds = false, actor = null, applyConfig } = {}) {
   if (!data || data.format !== FORMAT || data.version !== VERSION) throw Object.assign(new Error('Fichier de configuration invalide ou d\'une autre version'), { status: 400 });
+  if (typeof applyConfig !== 'function') throw new Error('importConfig: applyConfig requis');
   const report = {};
+
+  // Settings: only known columns; Discord IDs only on request
+  const cols = new Set((await db('SHOW COLUMNS FROM guild_config')).map(c => c.Field));
+  const updates = {};
+  for (const [k, v] of Object.entries(data.config || {})) {
+    if (!cols.has(k) || SKIP_CONFIG.has(k)) continue;
+    if (isDiscordIdColumn(k) && !includeDiscordIds) continue;
+    updates[k] = v;
+  }
+  const applied = await applyConfig(updates);
+  if (applied?.error) throw Object.assign(new Error(`Paramètres refusés : ${applied.error}`), { status: 400 });
+  if (applied?.count) report.config = { updated: applied.count };
   const count = (section, kind) => { report[section] = report[section] || { created: 0, updated: 0 }; report[section][kind]++; };
   const { PERMISSIONS } = require('./gradePermissions');
 
@@ -171,18 +187,11 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null 
     }
   }
 
-  // Settings: only known columns; Discord IDs only on request
-  const cols = new Set((await db('SHOW COLUMNS FROM guild_config')).map(c => c.Field));
+  // Grades of the support roles, by name (local ids)
   const sets = [], params = [];
-  for (const [k, v] of Object.entries(data.config || {})) {
-    if (!cols.has(k) || SKIP_CONFIG.has(k)) continue;
-    if (isDiscordIdColumn(k) && !includeDiscordIds) continue;
-    sets.push(`${k} = ?`);
-    params.push(JSON_COLUMNS.has(k) ? JSON.stringify(v ?? (k === 'subject_welcome_messages' ? {} : [])) : v);
-  }
   if (data.config?.support_grade && gradeId.has(data.config.support_grade)) { sets.push('support_grade_id = ?'); params.push(gradeId.get(data.config.support_grade)); }
   if (data.config?.chief_grade && gradeId.has(data.config.chief_grade)) { sets.push('chief_grade_id = ?'); params.push(gradeId.get(data.config.chief_grade)); }
-  if (sets.length) { await db(`UPDATE guild_config SET ${sets.join(', ')} WHERE id = 1`, params); report.config = { updated: sets.length }; }
+  if (sets.length) await db(`UPDATE guild_config SET ${sets.join(', ')} WHERE id = 1`, params);
   return report;
 }
 
