@@ -39,4 +39,4 @@ async function freshAttachmentUrl(client, raw) {
   return fu.toString();
 }
 
-module.exports = { parseAttachment, isFresh, freshAttachmentUrl };
+module.exports = { parseAttachment, freshAttachmentUrl };

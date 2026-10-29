@@ -112,4 +112,3 @@ export async function startTranslation() {
   }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
 }
 
-export const _test = { translateString, compile };

@@ -56,4 +56,4 @@ async function runDiscordWatch(client, now = Date.now()) {
   return { connected: false, since, alertSent: true };
 }
 
-module.exports = { runDiscordWatch, isConnected };
+module.exports = { runDiscordWatch };

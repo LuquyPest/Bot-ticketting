@@ -53,4 +53,4 @@ async function restorePlan(db, id) {
   return { updates, skipped: [...skipped] };
 }
 
-module.exports = { diffConfig, recordHistory, listHistory, restorePlan, MAX_ENTRIES };
+module.exports = { diffConfig, recordHistory, listHistory, restorePlan };

@@ -136,4 +136,4 @@ function demoUser() {
   return { id: DEMO_USER_ID, username: 'Visiteur démo', avatar: null, role: 'fondateur', demo: true };
 }
 
-module.exports = { DEMO_GUILD_ID, DEMO_USER_ID, DEMO_NAME, seedDemo, demoGuard, demoUser, isDemoSession };
+module.exports = { DEMO_GUILD_ID, DEMO_NAME, seedDemo, demoGuard, demoUser };

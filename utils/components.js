@@ -134,17 +134,4 @@ function faqButtons(matches) {
   return [row];
 }
 
-module.exports = {
-  memberReopenButton,
-  faqButtons,
-  ratingCommentButton,
-  memberCloseButton,
-  memberCloseConfirmButtons,
-  ticketDmComponents,
-  ticketButtons,
-  closeConfirmationButtons,
-  oldTicketsPaginationButtons,
-  subjectButtons,
-  confidentialRow,
-  ratingButtons
-};
+module.exports = { memberReopenButton, faqButtons, ratingCommentButton, memberCloseConfirmButtons, ticketDmComponents, ticketButtons, closeConfirmationButtons, oldTicketsPaginationButtons, subjectButtons, confidentialRow, ratingButtons };

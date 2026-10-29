@@ -2,7 +2,6 @@ import React from 'react';
 import { Clock, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import api from '../api';
 import toast from 'react-hot-toast';
 
 export default function Pending() {

@@ -59,4 +59,4 @@ async function guestCanSeeAttachment(guest, url) {
   return !!row;
 }
 
-module.exports = { guestCanSeeAttachment, TOKEN_RE, DURATIONS, newToken, resolveToken, sessionInvite, guestSources, parse, isLive };
+module.exports = { guestCanSeeAttachment, DURATIONS, newToken, resolveToken, sessionInvite, guestSources, parse, isLive };

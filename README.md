@@ -1,12 +1,219 @@
-# Bot Ticketing Discord
+<div align="center">
 
-Bot Discord de support par tickets avec **dashboard web d'administration**. Architecture **multi-tenant** : un seul bot peut servir plusieurs serveurs Discord simultanément, chaque serveur ayant sa propre base de données isolée et son propre dashboard.
+<img src="docs/images/banner.svg" alt="Sunset Ticket — le support Discord par messages privés, piloté depuis un dashboard web" width="100%">
 
----
+<br><br>
 
-## Sommaire
+![Node.js 22](https://img.shields.io/badge/Node.js-22-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white)
+![discord.js 14](https://img.shields.io/badge/discord.js-14-5865F2?style=flat-square&logo=discord&logoColor=white)
+![Express 5](https://img.shields.io/badge/Express-5-000000?style=flat-square&logo=express&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Tailwind 4](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![MariaDB 11](https://img.shields.io/badge/MariaDB-11-003545?style=flat-square&logo=mariadb&logoColor=white)
+![Redis 7](https://img.shields.io/badge/Redis-7-FF4438?style=flat-square&logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+<br>
+![Tests](https://img.shields.io/badge/tests-860_vérifications-2ea44f?style=flat-square)
+![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
+![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
+![Licence](https://img.shields.io/badge/licence-propriétaire-lightgrey?style=flat-square)
 
-- [Architecture](#architecture)
+**[▶ Essayer la démo](https://ticket.sunset-fa.fr/login)** &nbsp;·&nbsp; **[Statut du service](https://ticket.sunset-fa.fr/status)** &nbsp;·&nbsp; **[Démarrage rapide](#-démarrage-rapide)** &nbsp;·&nbsp; **[Documentation](#-documentation)**
+
+</div>
+
+<br>
+
+Les membres écrivent au bot **en message privé** ; chaque demande devient un **ticket** que le staff traite depuis Discord ou depuis un **dashboard web temps réel**. Un seul bot sert **plusieurs serveurs Discord**, chacun avec sa propre base de données, ses réglages, ses grades et son équipe.
+
+<br>
+
+## ✨ Aperçu
+
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="Tableau de bord : tickets ouverts, fermés, délais, satisfaction, activité et priorités" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/ticket.png" alt="Fiche d'un ticket">
+      <p align="center"><b>Fiche ticket</b><br><sub>Conversation, notes internes épinglées, collègues présents, suivi, vocal, temps passé, procédures</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/split-view.png" alt="Vue fractionnée : la liste et le ticket côte à côte">
+      <p align="center"><b>Vue fractionnée</b><br><sub>La liste à gauche, le ticket à droite, sans changer de page</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/tickets.png" alt="Liste des tickets">
+      <p align="center"><b>Tickets</b><br><sub>Vues prêtes ou enregistrées, recherche avec opérateurs (<code>tag:</code> <code>de:</code> <code>étape:</code>…), actions en masse</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/queue.png" alt="Ma file">
+      <p align="center"><b>Ma file</b><br><sub>Ses tickets du plus urgent au moins urgent, avec la raison</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/kanban.png" alt="Kanban par étape">
+      <p align="center"><b>Kanban</b><br><sub>Ouvert, en attente, en cours : délais visibles sur chaque carte</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/analytics-compare.png" alt="Analytique : comparaison de périodes">
+      <p align="center"><b>Analytique</b><br><sub>Comparaison avec la période précédente, réouvertures, qualité, SLA, exports CSV et PDF</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/health.png" alt="Santé du serveur">
+      <p align="center"><b>Santé du serveur</b><br><sub>Permissions du bot, salons et rôles introuvables, catégories pleines — et MP dès qu'un problème apparaît</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/member-portal.png" alt="Espace membre">
+      <p align="center"><b>Espace membre</b><br><sub>Les membres retrouvent leurs tickets, répondent et ouvrent une demande depuis le web</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/dashboard-light.png" alt="Thème clair">
+      <p align="center"><b>Thème clair</b><br><sub>Sombre ou clair, en français ou en anglais</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/login.png" alt="Connexion avec Discord">
+      <p align="center"><b>Connexion Discord</b><br><sub>OAuth2, double authentification, démo publique sans compte</sub></p>
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="230" valign="top"><img src="docs/images/ticket-mobile.png" alt="Fiche ticket sur téléphone" width="220"></td>
+    <td valign="top">
+      <h3>📱 Aussi sur téléphone</h3>
+      Le dashboard et l'espace membre s'adaptent à toutes les largeurs : chaque page est vérifiée automatiquement à 390 px de large (aucun défilement horizontal) et passée à <b>axe-core</b> (WCAG 2.1 AA) en thème sombre et clair.
+      <br><br>
+      Les notifications du navigateur préviennent d'une attribution, d'une mention ou d'un ticket suivi, même onglet fermé.
+    </td>
+  </tr>
+</table>
+
+<br>
+
+## 🚀 Ce qu'il sait faire
+
+<table>
+  <tr>
+    <th width="33%">💬 Pour les membres</th>
+    <th width="33%">🛠️ Pour le staff</th>
+    <th width="33%">👑 Pour les fondateurs</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <ul>
+        <li>Un ticket en écrivant au bot en MP, ou d'un clic sur un <b>panel</b></li>
+        <li>Sujets, formulaires, champs (n° de commande…)</li>
+        <li><b>FAQ automatique</b> qui répond avant d'ouvrir un ticket</li>
+        <li>Demande <b>confidentielle</b>, vue des seuls fondateurs</li>
+        <li>Plusieurs tickets et plusieurs serveurs à la fois</li>
+        <li><b>Espace membre</b> web, transcript téléchargeable</li>
+        <li>Notation, réouverture, messages en <b>français ou anglais</b></li>
+      </ul>
+    </td>
+    <td valign="top">
+      <ul>
+        <li><b>Ma file</b>, Kanban, vues, recherche avec opérateurs</li>
+        <li>Modèles et <b>macros</b>, aperçu Discord, captures collées</li>
+        <li>Réponses <b>corrigées ou retirées</b> chez le membre</li>
+        <li>Notes internes, <b>@collègue</b> et <b>@grade</b>, suivi de tickets</li>
+        <li>Délais par étape, chronomètre, procédures à cocher</li>
+        <li><b>Temps réel</b> : qui regarde, qui écrit, anti double réponse</li>
+        <li>Salon <b>vocal</b> temporaire, ticket ouvert vers un membre</li>
+      </ul>
+    </td>
+    <td valign="top">
+      <ul>
+        <li><b>Grades</b> et permissions fines, visibilité par grade</li>
+        <li><b>Journal</b> de toutes les actions, consultations confidentielles</li>
+        <li>Analytique, comparaison de périodes, <b>exports</b> CSV / PDF</li>
+        <li><b>Santé du serveur</b>, catégories qui débordent, salons ou fils</li>
+        <li>Absences planifiées, <b>visite guidée</b> des nouveaux</li>
+        <li>Accès <b>invités</b> temporaires, API publique, webhooks</li>
+        <li>Configuration exportable, avec historique et retour arrière</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+**🔐 Sécurité** — 2FA (TOTP + codes de secours), transcripts et secrets chiffrés (AES-256-GCM, rotation de clé), alerte de connexion depuis un nouvel appareil, déconnexion après inactivité, allowlist IP, CSRF, limites anti-abus, isolation stricte entre serveurs. Détails dans [Sécurité](#sécurité).
+
+<br>
+
+## 🔄 Comment ça marche
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as 👤 Membre
+    participant B as 🤖 Bot (MP)
+    participant D as 💬 Discord<br/>(salon ou fil du ticket)
+    participant W as 🖥️ Dashboard
+    actor S as 🛠️ Staff
+    M->>B: Message privé
+    B->>M: Quel serveur ? Quel sujet ? (FAQ, formulaire)
+    B->>D: Crée le ticket, privé au staff
+    B-->>W: Nouveau ticket, en temps réel
+    S->>W: Répond, note, attribue, change d'étape…
+    W->>B: Réponse
+    B->>M: Réponse en MP, avec « Fermer mon ticket »
+    S->>W: Ferme le ticket
+    B->>M: Transcript, demande de note, bouton de réouverture
+```
+
+## 🧱 Architecture
+
+```mermaid
+flowchart LR
+    subgraph Discord["☁️ Discord"]
+        MP["Membres<br/>(messages privés)"]
+        SRV["Serveurs<br/>(salons, fils, rôles)"]
+    end
+    subgraph App["🐳 Conteneur bot — Node.js 22"]
+        BOT["Bot discord.js"]
+        API["API Express<br/>+ dashboard React"]
+        JOBS["Tâches planifiées<br/>BullMQ"]
+    end
+    PROXY["🔒 Traefik<br/>HTTPS"] --> API
+    MP <--> BOT
+    SRV <--> BOT
+    BOT & API & JOBS <--> REDIS[("Redis 7<br/>sessions · état · temps réel")]
+    API --> GLOBAL[("MariaDB<br/>ticketbot_global")]
+    BOT & API & JOBS --> TENANT[("MariaDB<br/>ticketbot_guild_…<br/>une base par serveur")]
+```
+
+Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans `ticketbot_global`. Un superadmin valide la demande depuis le panel `/sa`, ce qui crée la base de données dédiée et active le serveur. Tant qu'un serveur n'est pas actif (en attente, suspendu ou en maintenance), le bot n'y répond pas.
+
+<br>
+
+## ⚡ Démarrage rapide
+
+```bash
+git clone git@github.com:LuquyPest/Bot-ticketting.git && cd Bot-ticketting
+cp .env.example .env                 # mots de passe MariaDB, Redis et du premier superadmin
+cp config.example.json config.json   # token Discord, OAuth2, URL publique, clé de chiffrement
+docker compose up -d --build         # base, Redis, bot et dashboard
+```
+
+Puis invite le bot sur ton serveur, valide-le depuis le panel superadmin (`/sa`) et connecte-toi au dashboard avec Discord. Le détail est dans [Installation](#installation) et [Configuration](#configuration-configjson).
+
+<br>
+
+## 📚 Documentation
+
+<table><tr><td valign="top">
+
+- [Architecture](#-architecture)
 - [Stack technique](#stack-technique)
 - [Fonctionnement — cycle de vie d'un ticket](#fonctionnement--cycle-de-vie-dun-ticket)
 - [Prérequis](#prérequis)
@@ -14,11 +221,13 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Configuration config.json](#configuration-configjson)
 - [Serveur de démonstration](#serveur-de-démonstration)
 - [Activation d'un serveur](#activation-dun-serveur)
-- [Dashboard web](#dashboard-web) (dont [langue du dashboard](#langue-du-dashboard))
+- [Dashboard web](#dashboard-web)
 - [Panel Superadmin](#panel-superadmin)
 - [Commandes Discord](#commandes-discord)
-- [Espace membre web](#espace-membre-web)
 - [Fonctionnalités avancées](#fonctionnalités-avancées)
+
+</td><td valign="top">
+
 - [Panels Discord](#panels-discord)
 - [Push Notifications Web](#push-notifications-web)
 - [Gestion des sessions](#gestion-des-sessions)
@@ -32,27 +241,7 @@ Bot Discord de support par tickets avec **dashboard web d'administration**. Arch
 - [Tests](#tests)
 - [Problèmes fréquents](#problèmes-fréquents)
 
----
-
-## Architecture
-
-```
-                    ┌─────────────────────────────────┐
-                    │         ticketbot_global         │
-                    │  guilds · plans · superadmins    │
-                    │  managers · user_totp · sessions │
-                    │  journaux · annonces · erreurs   │
-                    └─────────────┬───────────────────┘
-                                  │
-              ┌───────────────────┼───────────────────┐
-              ▼                   ▼                   ▼
-   ticketbot_guild_111  ticketbot_guild_222  ticketbot_guild_333
-   tickets · staff      tickets · staff      tickets · staff
-   grades · panels      grades · panels      grades · panels
-   config · …           config · …           config · …
-```
-
-Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans `ticketbot_global`. Un superadmin valide la demande depuis le panel `/sa`, ce qui crée la base de données dédiée et active le serveur. Tant qu'un serveur n'est pas actif (en attente, suspendu ou en maintenance), le bot n'y répond pas.
+</td></tr></table>
 
 ---
 
@@ -172,6 +361,7 @@ cp .env.example .env
 ```env
 DB_ROOT_PASSWORD=mot_de_passe_root_fort
 DB_PASSWORD=mot_de_passe_botuser
+REDIS_PASSWORD=mot_de_passe_redis_long_et_aleatoire
 SA_USERNAME=admin
 SA_PASSWORD=mot_de_passe_superadmin_12_caracteres_min
 ```
@@ -684,6 +874,9 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 
 ## Base de données
 
+<details>
+<summary><b>Afficher les tables</b></summary>
+
 ### Base globale — `ticketbot_global`
 
 | Table | Description |
@@ -738,9 +931,14 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `api_keys` | Clés API (hash + permissions) |
 | `audit_log` | Journal de toutes les actions |
 
+</details>
+
 ---
 
 ## Structure des fichiers
+
+<details>
+<summary><b>Afficher l'arborescence commentée</b></summary>
 
 ```
 Bot-ticketting/
@@ -844,6 +1042,8 @@ Bot-ticketting/
 │   ├── integration/                # Suite d'intégration (npm run test:integration)
 │   └── load/                       # Test de charge (npm run test:load)
 │
+├── docs/images/                    # Bannière et captures du README (npm run docs:screenshots)
+│
 └── dashboard/                      # Frontend React + Vite + Tailwind
     ├── public/
     │   └── sw.js                   # Service Worker pour les push notifications
@@ -856,8 +1056,13 @@ Bot-ticketting/
         │   ├── useAutoRefresh.js   # Rafraîchissement automatique des données
         │   └── usePushNotifications.js  # Abonnement / désabonnement push navigateur
         └── utils/                  # Helpers frontend (dates, disponibilité, erreurs navigateur…)
-    └── tests/smoke.mjs             # Test de fumée Playwright + axe-core
+    └── tests/
+        ├── smoke.mjs               # Test de fumée Playwright + axe-core
+        ├── fixtures.mjs            # Fausse API partagée par les tests et les captures
+        └── readme-shots.mjs        # Captures du README (docs/images/)
 ```
+
+</details>
 
 ---
 
@@ -917,6 +1122,7 @@ Suite d'intégration (`tests/integration/harness.js`, 860 vérifications) : elle
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
 cd dashboard && npm run build && npm run test:smoke   # pages du dashboard et de l'espace membre dans Chromium headless (API simulée)
 npm run test:load          # test de charge sur MariaDB + Redis jetables
+cd dashboard && npm run build && npm run docs:screenshots   # régénère les captures du README (docs/images/)
 ```
 
 Le test de fumée passe aussi chaque page, en thème sombre et clair, à **axe-core** (WCAG 2.1 A/AA) : toute violation grave ou critique (contraste, bouton sans nom, champ sans libellé…) fait échouer le test. Une troisième passe simule un téléphone (390 px) et échoue si une page déborde en largeur.

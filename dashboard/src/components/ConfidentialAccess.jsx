@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../api';
 import { fmtDate } from '../utils/format';
 
-export const ACCESS_KIND = { view: 'Fiche ouverte', notes: 'Messages lus', transcript: 'Transcript lu', pdf: 'PDF téléchargé', guest: 'Lien invité' };
+const ACCESS_KIND = { view: 'Fiche ouverte', notes: 'Messages lus', transcript: 'Transcript lu', pdf: 'PDF téléchargé', guest: 'Lien invité' };
 
 // Who opened which confidential ticket, and when (founders only). ticketId: one ticket only.
 export default function ConfidentialAccess({ ticketId = null }) {

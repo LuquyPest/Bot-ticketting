@@ -537,7 +537,7 @@ export default function Tickets() {
             ref={searchRef}
             type="text"
             aria-label={searchMode === 'messages' ? 'Rechercher dans les messages' : 'Rechercher par sujet'}
-            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages... (/)' : 'Sujet, ou tag:VIP de:pseudo étape:attente… (/)'}
+            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages... (/)' : 'Sujet, tag:VIP, de:pseudo… (/)'}
             aria-invalid={!!searchError} aria-describedby={searchError ? 'search-error' : undefined}
             value={filters.subject}
             onChange={e => setFilter('subject', e.target.value)}

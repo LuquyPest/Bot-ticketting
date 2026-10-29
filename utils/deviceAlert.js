@@ -39,4 +39,4 @@ async function alertNewDevice({ userId, userAgent, ip, baseUrl, send }) {
   return device;
 }
 
-module.exports = { deviceOf, newDeviceFor, alertNewDevice };
+module.exports = { alertNewDevice };

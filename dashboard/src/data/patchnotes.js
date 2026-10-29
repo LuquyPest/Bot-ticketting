@@ -8,6 +8,17 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.21.2',
+    date: '29 octobre 2026',
+    title: 'Grand ménage et README illustré',
+    changes: [
+      { type: 'fix',  text: 'Barre latérale : ton pseudo et ton rôle ne passent plus sous les boutons (notifications, thème, langue, déconnexion), désormais sur leur propre ligne' },
+      { type: 'impr', text: 'Kanban : les personnes attribuées sont marquées par une icône lisible partout' },
+      { type: 'tech', text: 'Code inutilisé supprimé, doublons regroupés, anciennes commandes Discord en double retirées du serveur' },
+      { type: 'tech', text: 'README refait avec captures du dashboard, schémas et vue d\'ensemble des fonctionnalités' },
+    ]
+  },
+  {
     version: 'v2.21.1',
     date: '29 octobre 2026',
     title: 'Format des tickets au choix et clic droit réservé au staff',

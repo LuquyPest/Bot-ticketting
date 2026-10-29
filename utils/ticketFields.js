@@ -64,4 +64,4 @@ async function fieldsForTicket(db, ticketId) {
   ).then(rows => rows.map(r => ({ ...r, variable: fieldVar(r) }))).catch(() => []);
 }
 
-module.exports = { TYPES, applicableFields, parseFieldAnswer, saveFieldValues, fieldsForTicket, fieldVar, slugVar, resolveFieldVars, VAR_RE, RESERVED_VARS };
+module.exports = { TYPES, applicableFields, parseFieldAnswer, saveFieldValues, fieldsForTicket, fieldVar, resolveFieldVars, VAR_RE, RESERVED_VARS };

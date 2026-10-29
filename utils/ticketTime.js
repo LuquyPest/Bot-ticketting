@@ -63,4 +63,4 @@ async function timeStats(db, days, { userId = null, vis = { sql: '1=1', params: 
   return { days, byUser: num(byUser), bySubject: num(bySubject), top: num(top), total: num(byUser).reduce((n, r) => n + r.seconds, 0) };
 }
 
-module.exports = { startTimer, stopUserTimer, stopTicketTimers, runningTimer, ticketTime, timeStats, MAX_SESSION_S };
+module.exports = { startTimer, stopTicketTimers, runningTimer, ticketTime, timeStats, MAX_SESSION_S };

@@ -32,4 +32,4 @@ async function findFaqMatches(db, message, limit = 3) {
     .slice(0, limit);
 }
 
-module.exports = { findFaqMatches, scoreEntry, MIN_SCORE };
+module.exports = { findFaqMatches };

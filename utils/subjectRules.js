@@ -49,4 +49,4 @@ async function applySubjectRules({ db, client, guildId, ticket, firstMessage = '
   return applied;
 }
 
-module.exports = { applySubjectRules, matchesKeywords };
+module.exports = { applySubjectRules };

@@ -79,4 +79,4 @@ async function myActivity(db, userId, days = 30) {
   };
 }
 
-module.exports = { myActivity, weekStart };
+module.exports = { myActivity };

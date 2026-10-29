@@ -6,7 +6,7 @@ import { confirmToast } from '../utils/confirmToast';
 import Pagination from './Pagination';
 import { fmtDate } from '../utils/format';
 
-export const FIELD_LABELS = {
+const FIELD_LABELS = {
   ticketPrefix: 'Préfixe des tickets', welcomeMessage: 'Message de bienvenue', closeMessage: 'Message de fermeture',
   ticketSubjects: 'Sujets de ticket', maxTicketsPerDay: 'Tickets max par jour', inactiveWarningHours: 'Avertissement d\'inactivité (h)',
   inactiveHours: 'Fermeture pour inactivité (h)', replyRateLimitSeconds: 'Délai entre deux messages (s)',

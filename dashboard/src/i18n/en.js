@@ -464,7 +464,7 @@ export const ENTRIES = [
   ['Joindre un fichier (8 Mo max) — ou colle une capture, ou glisse un fichier sur la zone de texte', 'Attach a file (8 MB max) — or paste a screenshot, or drag a file onto the text area'],
   ['Mentionner un membre du staff ou un grade', 'Mention a staff member or a grade'], ['Grade : prévient tous ses membres', 'Grade: notifies all its members'], ['grade', 'grade'],
   ['Étape', 'Stage'], ['Ajouter ou retirer', 'Add or remove'], ['Opérateurs de recherche', 'Search operators'], ['Opérateurs de recherche (tag:, de:, avant:…)', 'Search operators (tag:, de:, avant:…)'],
-  ['Sujet, ou tag:VIP de:pseudo étape:attente… (/)', 'Subject, or tag:VIP de:name étape:attente… (/)'],
+  ['Sujet, tag:VIP, de:pseudo… (/)', 'Subject, tag:VIP, de:name… (/)'],
   ['Opérateurs à combiner dans la recherche (les autres mots cherchent dans le sujet) :', 'Operators to combine in the search (other words search the subject):'],
   ['avec ce tag (tag:"Très urgent" si espaces)', 'with this tag (tag:"Very urgent" with spaces)'], ['ouverts par ce membre (pseudo ou ID)', 'opened by this member (name or ID)'],
   ['créés avant cette date', 'created before this date'], ['créés à partir de cette date', 'created from this date'], ['ouvert, attente ou cours', 'ouvert, attente or cours (open, waiting, in progress)'],

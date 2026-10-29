@@ -34,4 +34,4 @@ function breachedSql(cfg) {
     : { sql: '0 = 1', params: [] };
 }
 
-module.exports = { slaStatus, slaHours, breachedSql, SLA_COLUMN };
+module.exports = { slaStatus, slaHours, breachedSql };

@@ -238,8 +238,8 @@ export default function Sidebar() {
 
         {/* User footer */}
         <div className="px-2 pb-3 pt-2">
-          <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl
-                          bg-overlay/3 border border-overlay/5">
+          <div className="px-2.5 py-2.5 rounded-xl bg-overlay/3 border border-overlay/5">
+          <div className="flex items-center gap-2.5">
             {/* Avatar — link to profile page */}
             <button
               onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
@@ -283,7 +283,10 @@ export default function Sidebar() {
               )}
             </div>
 
-            {/* Notification bell */}
+          </div>
+
+          {/* Actions on their own row: the name and role badge keep the whole width */}
+          <div className="flex items-center justify-end gap-0.5 mt-2 pt-2 border-t border-overlay/5">
             <span data-tour="notifications" className="contents"><NotificationBell /></span>
 
             {/* Theme toggle */}
@@ -309,6 +312,7 @@ export default function Sidebar() {
             >
               <LogOut size={13} aria-hidden="true" />
             </button>
+          </div>
           </div>
         </div>
       </aside>

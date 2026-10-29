@@ -36,4 +36,4 @@ async function ticketProcedures(db, ticket) {
   });
 }
 
-module.exports = { cleanSteps, applicableProcedures, ticketProcedures, parse, MAX_STEPS };
+module.exports = { cleanSteps, applicableProcedures, ticketProcedures, parse };

@@ -195,4 +195,4 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
   return report;
 }
 
-module.exports = { exportConfig, importConfig, FORMAT, VERSION };
+module.exports = { exportConfig, importConfig };

@@ -144,7 +144,6 @@ const D = {
     'reopened.body': 'Ton ticket a été réouvert. Tu peux continuer à répondre ici.',
     'voice.title': '🔊 Salon vocal ouvert',
     'voice.body': 'L\'équipe te propose d\'échanger à l\'oral pour le ticket #{id} : {url}\nLe salon sera supprimé à la fermeture du ticket.',
-    'voice.closed': 'Le salon vocal du ticket #{id} a été fermé.',
     'staffOpen.title': '📩 L\'équipe te contacte',
     'staffOpen.body': 'Un membre de l\'équipe a ouvert le ticket #{id} pour te contacter. Réponds simplement ici pour lui répondre.',
     'blacklisted.dm': 'Tu as été bloqué et ne peux plus ouvrir de tickets.',
@@ -292,7 +291,6 @@ const D = {
     'reopened.body': 'Your ticket has been reopened. You can keep replying here.',
     'voice.title': '🔊 Voice channel opened',
     'voice.body': 'The team suggests talking it over for ticket #{id}: {url}\nThe channel will be deleted when the ticket is closed.',
-    'voice.closed': 'The voice channel of ticket #{id} has been closed.',
     'staffOpen.title': '📩 The team is contacting you',
     'staffOpen.body': 'A team member opened ticket #{id} to contact you. Just reply here to answer them.',
     'blacklisted.dm': 'You have been blocked and can no longer open tickets.',
@@ -367,4 +365,4 @@ async function sendToMember(client, userOrId, guildId, build) {
 
 const clearGuildLanguageCache = guildId => guildCache.delete(guildId);
 
-module.exports = { t, lang, withLang, memberLang, inMemberLang, sendToMember, rememberLocale, fromLocale, clearGuildLanguageCache, LANGS };
+module.exports = { t, lang, memberLang, inMemberLang, sendToMember, rememberLocale, clearGuildLanguageCache };

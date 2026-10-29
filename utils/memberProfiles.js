@@ -80,4 +80,4 @@ async function summary(db, memberId) {
   return { labels, pinned: all.filter(p => p.pinned).slice(0, 5), latest: all.filter(p => !p.pinned).slice(0, 2), count: all.length };
 }
 
-module.exports = { cleanLabels, labelsOf, directory, profile, posts, summary, MAX_LABELS };
+module.exports = { cleanLabels, directory, profile, posts, summary, MAX_LABELS };

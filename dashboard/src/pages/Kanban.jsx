@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Kanban as KanbanIcon, RefreshCw } from 'lucide-react';
+import { Kanban as KanbanIcon, RefreshCw, Users } from 'lucide-react';
 import api from '../api';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge from '../components/SlaBadge';
@@ -41,7 +41,7 @@ function TicketCard({ ticket, onClick }) {
         <p translate="no" className="text-xs text-ink-3 truncate">{ticket.subject}</p>
       )}
       {ticket.assignees?.length > 0 && (
-        <p className="text-[10px] text-ink-4 truncate">👥 {ticket.assignees.map(a => a.username).join(', ')}</p>
+        <p className="flex items-center gap-1 text-[10px] text-ink-4 min-w-0"><Users size={10} className="shrink-0" aria-hidden="true" /><span className="truncate">{ticket.assignees.map(a => a.username).join(', ')}</span></p>
       )}
       <SlaBadge sla={ticket.sla} />
     </button>

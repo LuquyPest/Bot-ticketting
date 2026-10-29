@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { uiLocale } from '../i18n';
-import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Star, Clock, Ticket, AlertCircle, ExternalLink } from 'lucide-react';
+import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Clock, Ticket, AlertCircle, ExternalLink } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 import { fmtDate, fmtDuration } from '../utils/format';
 import Absences from '../components/Absences';
+import StarRating from '../components/StarRating';
 
 // ─── Grade tag component ───────────────────────────────────────────
 function GradeTag({ grade, onRemove, canManage }) {
@@ -360,20 +361,6 @@ function StaffDetailModal({ adminId, onClose }) {
 }
 
 // ─── Stats tab ─────────────────────────────────────────────────────
-function StarRating({ value }) {
-  if (!value) return <span className="text-ink-4">—</span>;
-  const num = parseFloat(value);
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex gap-0.5">
-        {[1,2,3,4,5].map(i => (
-          <Star key={i} size={11} fill={i <= Math.round(num) ? '#f59e0b' : 'none'} className={i <= Math.round(num) ? 'text-amber-400' : 'text-ink-4'} />
-        ))}
-      </div>
-      <span className="text-xs text-ink-2 font-medium">{num.toFixed(1)}</span>
-    </div>
-  );
-}
 
 function StatsTab() {
   const [staff, setStaff] = useState([]);

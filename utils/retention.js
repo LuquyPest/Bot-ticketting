@@ -51,4 +51,4 @@ async function runRetentionPurge() {
   return report;
 }
 
-module.exports = { runRetentionPurge, retentionSettings, DEFAULTS };
+module.exports = { runRetentionPurge, DEFAULTS };

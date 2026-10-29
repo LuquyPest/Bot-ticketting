@@ -73,4 +73,4 @@ async function notifyMentions(db, client, guildId, ticket, content, author) {
   }
 }
 
-module.exports = { notifyMentions, findMentionedStaff, findMentionedGrades };
+module.exports = { notifyMentions };

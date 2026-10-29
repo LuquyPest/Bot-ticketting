@@ -56,4 +56,4 @@ async function claimExpired(limit = 50) {
   return claimed;
 }
 
-module.exports = { setPending, getPending, takePending, hasPending, claimExpired };
+module.exports = { setPending, takePending, hasPending, claimExpired };

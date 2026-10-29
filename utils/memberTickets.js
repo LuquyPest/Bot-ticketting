@@ -27,4 +27,4 @@ async function myTicketsEmbed(user, client) {
   return embed.setFooter({ text: t('myTickets.footer') });
 }
 
-module.exports = { myTicketsEmbed, memberStatus };
+module.exports = { myTicketsEmbed };

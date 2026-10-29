@@ -67,4 +67,4 @@ function httpErrorMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { logError, captureConsoleErrors, httpErrorMiddleware, EXPECTED_DISCORD_CODES };
+module.exports = { logError, captureConsoleErrors, httpErrorMiddleware };

@@ -87,4 +87,4 @@ async function retractReply({ client, db, guildId, ticket, note, actor }) {
   return { ok: true, dms: { done, total: (refs.dms || []).length } };
 }
 
-module.exports = { refsBuilder, editReply, retractReply, editable, channelText };
+module.exports = { refsBuilder, editReply, retractReply, editable };

@@ -80,4 +80,4 @@ async function sendWeeklyReport(client) {
   }
 }
 
-module.exports = { sendWeeklyReport, sendWeeklyReportForGuild };
+module.exports = { sendWeeklyReport };

@@ -56,6 +56,5 @@ function parseSearch(input) {
   return { text: words.join(' ').trim(), filters, error: null };
 }
 
-const hasOperators = f => f.tag.length || f.from.length || f.subject.length || f.before || f.after || f.stage || f.priority || f.status || f.assignee;
 
-module.exports = { parseSearch, parseDate, hasOperators };
+module.exports = { parseSearch };

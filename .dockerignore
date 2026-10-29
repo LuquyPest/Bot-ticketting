@@ -12,3 +12,4 @@ tests/
 .github/
 dashboard/tests/
 .claude/
+docs/

@@ -154,4 +154,4 @@ async function recordEvent(db, { actor, action, ticketId = null, targetType = nu
 // Acting user of a dashboard request.
 const dashboardActor = req => ({ id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username, source: 'dashboard' });
 
-module.exports = { ACTIONS, CATEGORIES, SOURCES, SYSTEM, recordEvent, dashboardActor, sourceOf };
+module.exports = { ACTIONS, CATEGORIES, SOURCES, SYSTEM, recordEvent, dashboardActor };

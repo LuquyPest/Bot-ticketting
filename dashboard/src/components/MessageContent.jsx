@@ -12,7 +12,7 @@ const proxied = url => `/api/attachment?u=${encodeURIComponent(url)}`;
 const fileName = url => { try { return decodeURIComponent(new URL(url).pathname.split('/').pop()); } catch { return 'fichier'; } };
 const pathOf = url => { try { return new URL(url).pathname; } catch { return ''; } };
 
-export function attachmentsOf(text) {
+function attachmentsOf(text) {
   return (String(text || '').match(URL_RE) || []).filter(u => DISCORD_ATTACHMENT.test(u));
 }
 

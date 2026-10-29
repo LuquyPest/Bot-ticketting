@@ -125,4 +125,4 @@ function scheduleResync(db, client, guildId) {
   resyncRestrictedTickets(db, client, guildId).catch(err => logger.error('Resynchronisation de la visibilité', { guildId, err: err.message }));
 }
 
-module.exports = { syncTicketChannel, resyncRestrictedTickets, scheduleResync, staffAccess };
+module.exports = { syncTicketChannel, scheduleResync, staffAccess };

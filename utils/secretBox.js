@@ -81,4 +81,4 @@ const isCurrent = stored => typeof stored === 'string' && (stored.startsWith(`${
 // Tests and the rotation script reload the configuration
 const resetKeys = () => { _keys = null; };
 
-module.exports = { seal, open, isSealed, isCurrent, resetKeys, keyId };
+module.exports = { seal, open, isSealed, isCurrent, resetKeys };

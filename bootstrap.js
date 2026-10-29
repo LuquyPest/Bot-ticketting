@@ -370,4 +370,4 @@ async function main() {
 // Run when started directly (npm start); the test suite only imports the setup functions.
 if (require.main === module) main();
 
-module.exports = { ensureGlobalDatabase, ensureGlobalTables, seedSuperAdmin };
+module.exports = { ensureGlobalDatabase, ensureGlobalTables };

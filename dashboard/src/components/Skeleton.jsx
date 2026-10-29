@@ -1,15 +1,6 @@
 import React from 'react';
 
-export function SkeletonBlock({ className = '', style }) {
-  return (
-    <div
-      className={`shimmer rounded-lg bg-surface-hover ${className}`}
-      style={style}
-    />
-  );
-}
-
-export function SkeletonRow({ cols = 5 }) {
+function SkeletonRow({ cols = 5 }) {
   const widths = ['w-8', 'w-24', 'w-32', 'w-28', 'w-16', 'w-20', 'w-24'];
   return (
     <tr className="border-b border-overlay/4">

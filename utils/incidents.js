@@ -59,4 +59,4 @@ async function resolveIncident({ db, client, guildId, incident, message, actor }
   return sent;
 }
 
-module.exports = { activeIncidents, notifyNewTicket, listIncidents, resolveIncident, applies };
+module.exports = { notifyNewTicket, listIncidents, resolveIncident, applies };
