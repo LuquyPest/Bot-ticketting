@@ -6,6 +6,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 import { fmtDate, fmtDuration } from '../utils/format';
+import Absences from '../components/Absences';
 
 // ─── Grade tag component ───────────────────────────────────────────
 function GradeTag({ grade, onRemove, canManage }) {
@@ -248,6 +249,14 @@ function GestionTab({ me }) {
           <span className="text-primary-light font-medium">Fondateur</span> — Accès complet sans restriction.
         </p>
         <p className="text-xs text-ink-4">Attribuer un grade à un utilisateur "Nouveau" le fait automatiquement passer en "Support".</p>
+      </div>
+
+      <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-ink-1">Absences planifiées</h2>
+          <p className="text-xs text-ink-3 mt-0.5">Le mode vacances s'active au début de l'absence et se retire tout seul à la fin.</p>
+        </div>
+        <Absences team staff={users.filter(u => u.role === 'support' || u.role === 'fondateur')} />
       </div>
     </div>
   );

@@ -71,6 +71,7 @@ const MOCK = {
     tickets: [{ id: 1, subject: 'Problème de paiement 1', status: 'open' }] },
   '/api/profiles/200000000000000005/posts': [{ id: 1, member_id: '200000000000000005', author_id: '1', author_tag: 'Daryu', content: 'Déjà remboursé deux fois, vérifier avant tout geste commercial.', pinned: true, created_at: iso(500), replies: [
     { id: 2, member_id: '200000000000000005', parent_id: 1, author_id: '2', author_tag: 'Collègue', content: 'Noté, merci.', created_at: iso(400) }] }],
+  '/api/absences': { canManage: true, past: [], current: [{ id: 1, user_id: '1', username: 'Daryu', starts_at: iso(-60), ends_at: new Date(now + 6 * 864e5).toISOString(), reason: 'Vacances', state: 'active' }] },
   '/api/server-health': { checkedAt: iso(1), mode: 'channel', botInGuild: true, alertsEnabled: true, channelCount: { used: 120, limit: 500 },
     permissions: [{ key: 'ViewChannel', label: 'Voir les salons', why: 'Lire les salons de tickets et de logs', ok: true }, { key: 'ManageRoles', label: 'Gérer les rôles', why: 'Restreindre un ticket à certains grades ou le rendre confidentiel', ok: false }],
     channels: [{ field: 'close_log_channel_id', label: 'Logs de fermeture', id: '9', name: 'logs', ok: false, problem: 'Supprimé ou introuvable' }],

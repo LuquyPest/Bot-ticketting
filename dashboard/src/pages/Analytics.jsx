@@ -429,6 +429,9 @@ function TabTime() {
         <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Période" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs">
           {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
         </select>
+        <a href={`/api/analytics/export/time.csv?days=${days}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-light bg-primary/10 border border-primary/20 hover:bg-primary/20">
+          <Download size={12} /> Exporter le détail (CSV)
+        </a>
       </div>
       {data === false && <p className="text-sm text-red-400">Impossible de charger le temps passé.</p>}
       {data && (
@@ -540,6 +543,104 @@ function TabQuality() {
 }
 
 // Monthly PDF report (founders and view_audit)
+// This period so far vs the same length of the previous one (stat tiles with the change)
+const COMPARE_PERIODS = [['month', 'Ce mois-ci'], ['week', 'Cette semaine'], ['30d', '30 derniers jours'], ['90d', '90 derniers jours']];
+const PREVIOUS_LABEL = { month: 'même période du mois dernier', week: 'même période de la semaine dernière', '30d': '30 jours précédents', '90d': '90 jours précédents' };
+// better: 'up' | 'down' | null (neutral, e.g. the number of tickets received)
+const COMPARE_METRICS = [
+  ['opened', 'Tickets reçus', null, v => v],
+  ['closed', 'Tickets fermés', 'up', v => v],
+  ['replies', 'Réponses envoyées', 'up', v => v],
+  ['firstResponseMedianMin', 'Première réponse (médiane)', 'down', v => (v === null ? null : fmtMinutes(v))],
+  ['resolutionMedianHours', 'Résolution (médiane)', 'down', v => (v === null ? null : `${String(v).replace('.', ',')} h`)],
+  ['satisfaction', 'Satisfaction', 'up', v => (v === null ? null : `${String(v).replace('.', ',')}/5`)],
+  ['reopened', 'Tickets réouverts', 'down', v => v],
+];
+
+function TabCompare() {
+  const [period, setPeriod] = useState('month');
+  const [data, setData] = useState(null);
+  useEffect(() => { setData(null); api.get('/analytics/compare', { params: { period } }).then(r => setData(r.data)).catch(() => setData(false)); }, [period]);
+  const range = r => `${new Date(r.from).toLocaleDateString(uiLocale(), { day: 'numeric', month: 'short' })} → ${new Date(r.to).toLocaleDateString(uiLocale(), { day: 'numeric', month: 'short' })}`;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-ink-2 flex-1">{data ? <>Du {range(data.current)}, comparé à la {PREVIOUS_LABEL[period]} ({range(data.previous)})</> : ' '}</p>
+        <select value={period} onChange={e => setPeriod(e.target.value)} aria-label="Période comparée" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs">
+          {COMPARE_PERIODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+      {data === false && <p className="text-sm text-red-400">Impossible de charger la comparaison.</p>}
+      {data === null && <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}</div>}
+      {data && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {COMPARE_METRICS.map(([key, label, better, fmt]) => {
+            const cur = data.current[key], prev = data.previous[key];
+            const delta = cur !== null && prev !== null && prev !== 0 ? Math.round(((cur - prev) / Math.abs(prev)) * 100) : null;
+            const good = better && delta ? (better === 'up' ? delta > 0 : delta < 0) : null;
+            return (
+              <div key={key} className={qcard}>
+                <p className="text-[11px] text-ink-4">{label}</p>
+                <p className="text-2xl font-bold text-ink-1 tabular-nums mt-1">{fmt(cur) ?? '—'}</p>
+                <p className="text-[11px] mt-0.5 tabular-nums">
+                  {delta === null || delta === 0
+                    ? <span className="text-ink-3">{delta === 0 ? '= ' : ''}avant : {fmt(prev) ?? '—'}</span>
+                    : <><span className={good === null ? 'text-ink-2' : good ? 'text-emerald-400' : 'text-red-400'}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)} %</span><span className="text-ink-3"> · avant : {fmt(prev) ?? '—'}</span></>}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Share of closures followed by a reopening, per subject and per agent
+function TabReopens() {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  useEffect(() => { setData(null); api.get('/analytics/reopens', { params: { days } }).then(r => setData(r.data)).catch(() => setData(false)); }, [days]);
+  const pct = v => (v === null || v === undefined ? '—' : `${String(v).replace('.', ',')} %`);
+  const Table = ({ title, rows }) => (
+    <ChartCard title={title} icon={RefreshCw}>
+      {!rows.length ? <p className="text-xs text-ink-4">Aucune fermeture sur la période</p> : (
+        <table className="w-full text-xs">
+          <thead><tr className="text-ink-4 text-left"><th className="font-medium pb-2">&nbsp;</th><th className="font-medium pb-2 text-right">Fermetures</th><th className="font-medium pb-2 text-right">Réouverts</th><th className="font-medium pb-2 text-right">Taux</th></tr></thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.key} className="border-t border-overlay/6">
+                <td className="py-1.5 pr-2 text-ink-1 truncate max-w-[12rem]" translate="no">{r.label}</td>
+                <td className="py-1.5 text-right tabular-nums text-ink-2">{r.closures}</td>
+                <td className="py-1.5 text-right tabular-nums text-ink-2">{r.reopened}</td>
+                <td className={`py-1.5 text-right tabular-nums font-semibold ${r.rate >= 20 ? 'text-red-400' : r.rate >= 10 ? 'text-amber-400' : 'text-ink-1'}`}>{pct(r.rate)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </ChartCard>
+  );
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-ink-2 flex-1">{data ? <>Taux de réouverture : <strong className="text-ink-1">{pct(data.overall.rate)}</strong> ({data.overall.reopened} sur {data.overall.closures} fermetures)</> : ' '}</p>
+        <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Période" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs">
+          {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
+        </select>
+      </div>
+      <p className="text-xs text-ink-3">Part des fermetures de la période suivies d'une réouverture (par le membre ou le staff). Un taux élevé peut signaler des tickets fermés trop tôt.</p>
+      {data === false && <p className="text-sm text-red-400">Impossible de charger les réouvertures.</p>}
+      {data && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Table title="Par sujet" rows={data.bySubject} />
+          <Table title={data.scope === 'mine' ? 'Mes fermetures' : 'Par membre du staff'} rows={data.byAgent} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MonthlyReportDownload() {
   const { user } = useAuth();
   const now = new Date();
@@ -558,6 +659,22 @@ function MonthlyReportDownload() {
   );
 }
 
+// CSV of the per-member figures (only one's own row without fondateur / view_audit)
+function StatsCsvDownload() {
+  const [days, setDays] = useState(30);
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-ink-3">Statistiques par membre (CSV) :</span>
+      <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Période de l'export" className="bg-surface border border-overlay/[0.07] text-ink-1 rounded-lg px-2 py-1.5 text-xs">
+        {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
+      </select>
+      <a href={`/api/analytics/export/stats.csv?days=${days}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-primary-light bg-primary/10 border border-primary/20 hover:bg-primary/20">
+        <Download size={12} /> Exporter
+      </a>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -566,6 +683,8 @@ const TABS = [
   { id: 'quality', label: 'Qualité',            icon: Star },
   { id: 'staff',  label: 'Comparatif Staff',   icon: Users },
   { id: 'time',   label: 'Temps passé',        icon: Timer },
+  { id: 'compare', label: 'Comparaison',        icon: TrendingUp },
+  { id: 'reopens', label: 'Réouvertures',       icon: RefreshCw },
 ];
 
 export default function Analytics() {
@@ -579,10 +698,13 @@ export default function Analytics() {
         <p className="text-sm text-ink-3 mt-0.5">Performance, SLA et comparatif staff</p>
       </div>
 
-      <MonthlyReportDownload />
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <MonthlyReportDownload />
+        <StatsCsvDownload />
+      </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-surface-card border border-overlay/6 rounded-xl w-fit">
+      <div className="flex flex-wrap gap-1 p-1 bg-surface-card border border-overlay/6 rounded-xl w-fit max-w-full">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all
@@ -601,6 +723,8 @@ export default function Analytics() {
       {tab === 'quality' && <TabQuality />}
       {tab === 'staff'  && <TabStaff />}
       {tab === 'time'   && <TabTime />}
+      {tab === 'compare' && <TabCompare />}
+      {tab === 'reopens' && <TabReopens />}
     </div>
   );
 }

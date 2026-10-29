@@ -3242,6 +3242,94 @@ async function main() {
     check('préférences: vue fractionnée enregistrée', r2.status === 200 && pr.body.splitView === true && bad.status === 400, JSON.stringify([r2.body, pr.body, bad.status]));
   }
 
+  // ── Team: period comparison, reopen rates, CSV exports, planned absences, guided tour ──
+  {
+    const tm3 = createManager(db, fakeClient, G);
+    const mkClosed = async (subject, closer) => {
+      const id = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, created_at, first_response_at, closed_at, closed_by_id) VALUES ('200000000000000061', 'm61', ?, 'closed', ?, DATE_SUB(NOW(), INTERVAL 2 HOUR), DATE_SUB(NOW(), INTERVAL 90 MINUTE), NOW(), ?)",
+        [`rr${Math.random()}`.slice(0, 30), subject, closer.id])).insertId;
+      await app('./utils/audit').recordEvent(db, { actor: { ...closer, source: 'dashboard' }, action: 'ticket_close', ticketId: id });
+      return id;
+    };
+    const F_ = { id: U.F, tag: 'F', username: 'F' }, S1_ = { id: U.S1, tag: 'S1', username: 'S1' };
+    const r1 = await mkClosed('Réouv A', F_), r2 = await mkClosed('Réouv A', F_), r3 = await mkClosed('Réouv B', S1_);
+    await app('./utils/audit').recordEvent(db, { actor: { id: '200000000000000061', tag: 'm61', source: 'discord' }, action: 'ticket_reopen', ticketId: r1 });
+    let rr = await req('GET', '/api/analytics/reopens', { sid: sessions.F, query: { days: 7 } });
+    const subjA = rr.body.bySubject?.find(x => x.label === 'Réouv A'), agF = rr.body.byAgent?.find(x => x.userId === U.F);
+    check('réouvertures: taux par sujet', rr.status === 200 && subjA?.closures === 2 && subjA?.reopened === 1 && subjA?.rate === 50, JSON.stringify(subjA));
+    check('réouvertures: taux par agent (celui qui a fermé)', agF?.reopened >= 1 && rr.body.byAgent.find(x => x.userId === U.S1)?.reopened === 0, JSON.stringify(rr.body.byAgent));
+    rr = await req('GET', '/api/analytics/reopens', { sid: sessions.S1, query: { days: 7 } });
+    check('réouvertures: un support ne voit que ses propres fermetures', rr.status === 200 && rr.body.scope === 'mine' && rr.body.byAgent.every(x => x.userId === U.S1), JSON.stringify(rr.body.byAgent));
+
+    rr = await req('GET', '/api/analytics/compare', { sid: sessions.F, query: { period: '30d' } });
+    check('comparaison: période actuelle et précédente', rr.status === 200 && rr.body.current.closed >= 3 && rr.body.current.reopened >= 1 && typeof rr.body.previous.opened === 'number'
+      && new Date(rr.body.previous.to) <= new Date(rr.body.current.from), JSON.stringify(rr.body).slice(0, 300));
+    rr = await req('GET', '/api/analytics/compare', { sid: sessions.F, query: { period: 'nimporte' } });
+    check('comparaison: période inconnue → mois en cours', rr.status === 200 && rr.body.period === 'month', rr.body.period);
+    const { periodRanges } = app('./utils/teamStats');
+    const pm = periodRanges('month', new Date(2026, 2, 31, 12));
+    check('comparaison: le 31 mars est comparé à février entier, pas au-delà', pm.previous.to.getTime() === pm.current.from.getTime() && pm.previous.from.getMonth() === 1, JSON.stringify(pm));
+
+    await db("INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds, note) VALUES (?, ?, 'S1', 'manual', NOW(), NOW(), 1800, '=cmd()')", [r3, U.S1]);
+    await db("INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds) VALUES (?, ?, 'F', 'manual', NOW(), NOW(), 600)", [r1, U.F]);
+    rr = await req('GET', '/api/analytics/export/time.csv', { sid: sessions.F, query: { days: 7 } });
+    check('export temps: CSV de l équipe, formules neutralisées', rr.status === 200 && /text\/csv/.test(rr.headers['content-type']) && /Réouv B/.test(rr.body) && /Réouv A/.test(rr.body) && rr.body.includes("'=cmd()") && rr.body.includes('30'), String(rr.body).slice(0, 300));
+    rr = await req('GET', '/api/analytics/export/time.csv', { sid: sessions.S1, query: { days: 7 } });
+    check('export temps: un support n exporte que son temps', rr.status === 200 && /Réouv B/.test(rr.body) && !/,F,/.test(rr.body), String(rr.body).slice(0, 300));
+    rr = await req('GET', '/api/analytics/export/stats.csv', { sid: sessions.F, query: { days: 7 } });
+    const lines = String(rr.body).replace(/^﻿/, '').split('\r\n');
+    check('export statistiques: une ligne par membre du staff', rr.status === 200 && /Taux de réouverture/.test(lines[0]) && lines.some(l => l.startsWith('S1,')) && lines.some(l => l.startsWith('F,')), JSON.stringify(lines.slice(0, 4)));
+    rr = await req('GET', '/api/analytics/export/stats.csv', { sid: sessions.S1, query: { days: 7 } });
+    check('export statistiques: un support n a que sa ligne', String(rr.body).replace(/^﻿/, '').split('\r\n').length === 2, String(rr.body));
+    void tm3;
+
+    // Planned absences
+    await db('UPDATE dashboard_users SET vacation_mode = 0 WHERE user_id IN (?)', [[U.S1, U.S3]]);
+    const iso = ms => new Date(Date.now() + ms).toISOString();
+    rr = await req('POST', '/api/absences', { sid: sessions.S1, body: { userId: U.S3, startsAt: iso(-3600e3), endsAt: iso(86400e3) } });
+    check('absences: impossible pour quelqu un d autre sans manage_users', rr.status === 403, rr.status);
+    rr = await req('POST', '/api/absences', { sid: sessions.S1, body: { startsAt: iso(86400e3), endsAt: iso(3600e3) } });
+    check('absences: fin avant le début refusée', rr.status === 400, rr.status);
+    rr = await req('POST', '/api/absences', { sid: sessions.S1, body: { startsAt: iso(-60e3), endsAt: iso(7 * 86400e3), reason: 'Vacances' } });
+    const [vac1] = await db('SELECT vacation_mode FROM dashboard_users WHERE user_id = ?', [U.S1]);
+    check('absences: en cours → mode vacances activé tout de suite', rr.status === 200 && rr.body.state === 'active' && rr.body.set_vacation === 1 && vac1.vacation_mode === 1, JSON.stringify([rr.body, vac1]));
+    const abs1 = rr.body.id;
+    rr = await req('POST', '/api/absences', { sid: sessions.S1, body: { startsAt: iso(86400e3), endsAt: iso(2 * 86400e3) } });
+    check('absences: chevauchement refusé', rr.status === 409, rr.status);
+    rr = await req('POST', '/api/absences', { sid: sessions.S3, body: { userId: U.S1, startsAt: iso(30 * 86400e3), endsAt: iso(31 * 86400e3) } });
+    check('absences: manage_users planifie pour un collègue', rr.status === 200 && rr.body.state === 'planned', JSON.stringify(rr.body));
+    rr = await req('GET', '/api/absences', { sid: sessions.S2 });
+    check('absences: un support ne voit que les siennes', rr.status === 200 && rr.body.current.every(a => a.user_id === U.S2) && rr.body.canManage === false, JSON.stringify(rr.body));
+    await db('UPDATE staff_absences SET ends_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?', [abs1]);
+    await app('./utils/absences').applyAbsences(db, G);
+    const [vac2] = await db('SELECT vacation_mode FROM dashboard_users WHERE user_id = ?', [U.S1]);
+    const [a1] = await db('SELECT state FROM staff_absences WHERE id = ?', [abs1]);
+    check('absences: fin → mode vacances retiré tout seul', vac2.vacation_mode === 0 && a1.state === 'done', JSON.stringify([vac2, a1]));
+    await db('UPDATE dashboard_users SET vacation_mode = 1 WHERE user_id = ?', [U.S3]);
+    const a3 = (await db("INSERT INTO staff_absences (user_id, starts_at, ends_at, created_by_id, created_by_tag) VALUES (?, DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_ADD(NOW(), INTERVAL 1 HOUR), 'x', 'x')", [U.S3])).insertId;
+    await app('./utils/absences').applyAbsences(db, G);
+    await db('UPDATE staff_absences SET ends_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?', [a3]);
+    await app('./utils/absences').applyAbsences(db, G);
+    const [vac3] = await db('SELECT vacation_mode FROM dashboard_users WHERE user_id = ?', [U.S3]);
+    check('absences: un mode vacances activé à la main n est pas retiré', vac3.vacation_mode === 1, JSON.stringify(vac3));
+    await db('UPDATE dashboard_users SET vacation_mode = 0 WHERE user_id = ?', [U.S3]);
+    const [evA] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action IN ('absence_start', 'absence_end', 'absence_create')");
+    check('absences: inscrites au journal', Number(evA.n) >= 4, JSON.stringify(evA));
+    await db("DELETE FROM staff_absences");
+
+    // Guided tour preference
+    await db('UPDATE dashboard_users SET first_login = NOW() WHERE user_id = ?', [U.S2]);
+    rr = await req('GET', '/api/profile/prefs', { sid: sessions.S2 });
+    const oldF = await req('GET', '/api/profile/prefs', { sid: sessions.F });
+    await db('UPDATE dashboard_users SET first_login = DATE_SUB(NOW(), INTERVAL 60 DAY) WHERE user_id = ?', [U.F]);
+    const oldF2 = await req('GET', '/api/profile/prefs', { sid: sessions.F });
+    const put = await req('PUT', '/api/profile/prefs', { sid: sessions.S2, body: { tourDone: 'v1' } });
+    const after = await req('GET', '/api/profile/prefs', { sid: sessions.S2 });
+    const badT = await req('PUT', '/api/profile/prefs', { sid: sessions.S2, body: { tourDone: '<script>' } });
+    check('visite guidée: proposée aux nouveaux comptes, mémorisée une fois vue', rr.body.newAgent === true && oldF2.body.newAgent === false && put.status === 200 && after.body.tourDone === 'v1' && badT.status === 400,
+      JSON.stringify([rr.body, oldF.body, oldF2.body, after.body, badT.status]));
+  }
+
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
   r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });

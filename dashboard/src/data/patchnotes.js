@@ -8,6 +8,18 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.20',
+    date: '29 octobre 2026',
+    title: 'Absences planifiées, comparaison de périodes et visite guidée',
+    changes: [
+      { type: 'new',  text: 'Absences planifiées (Profil, et Équipe pour toute l\'équipe) : le mode vacances s\'active à la date de début et se retire tout seul à la fin' },
+      { type: 'new',  text: 'Analytique → Comparaison : ce mois-ci (ou cette semaine, 30 ou 90 jours) face à la même durée de la période précédente, avec l\'évolution de chaque chiffre' },
+      { type: 'new',  text: 'Analytique → Réouvertures : part des fermetures suivies d\'une réouverture, par sujet et par membre du staff' },
+      { type: 'new',  text: 'Exports CSV du temps passé (détail de chaque entrée) et des statistiques par membre du staff' },
+      { type: 'new',  text: 'Visite guidée pour les nouveaux membres du staff, à revoir depuis le Profil' },
+    ]
+  },
+  {
     version: 'v2.19',
     date: '29 octobre 2026',
     title: 'Suivre un ticket, recherche avancée et vue fractionnée',

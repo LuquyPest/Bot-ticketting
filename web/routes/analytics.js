@@ -255,4 +255,78 @@ router.get('/staff-compare', async (req, res) => {
   }
 });
 
+const teamStats = require('../../utils/teamStats');
+const { csvCell } = require('../../utils/csv');
+const clampDays = v => Math.min(Math.max(parseInt(v) || 30, 1), 365);
+const fullAccess = req => req.userIsFondateur || req.userPermissions?.has('view_audit');
+
+// GET /api/analytics/compare?period=month|week|30d|90d — this period so far vs the same length of the previous one
+router.get('/compare', async (req, res) => {
+  try {
+    const period = ['month', 'week', '30d', '90d'].includes(req.query.period) ? req.query.period : 'month';
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    res.json(await teamStats.comparePeriods(req.guildDb, vis, period));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/analytics/reopens?days= — share of closures followed by a reopening, per subject and per agent
+// (the per-agent detail of others needs fondateur or view_audit, like the time spent)
+router.get('/reopens', async (req, res) => {
+  try {
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    const data = await teamStats.reopenRates(req.guildDb, vis, clampDays(req.query.days));
+    if (!fullAccess(req)) data.byAgent = data.byAgent.filter(a => a.userId === req.session.user.id);
+    res.json({ ...data, scope: fullAccess(req) ? 'team' : 'mine' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+function sendCsv(res, name, header, rows) {
+  const body = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.send('﻿' + body); // BOM: accents shown correctly by spreadsheet software
+}
+const stamp = () => new Date().toISOString().slice(0, 10);
+
+// GET /api/analytics/export/time.csv?days= — every time entry (one's own without fondateur / view_audit)
+router.get('/export/time.csv', async (req, res) => {
+  try {
+    const days = clampDays(req.query.days);
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    const mine = !fullAccess(req);
+    const rows = await req.guildDb(
+      `SELECT tt.started_at, tt.ticket_id, t.subject, tt.user_tag, tt.source,
+              COALESCE(tt.seconds, LEAST(TIMESTAMPDIFF(SECOND, tt.started_at, NOW()), 28800)) AS s, tt.note
+       FROM ticket_time tt JOIN tickets t ON t.id = tt.ticket_id
+       WHERE tt.started_at >= DATE_SUB(NOW(), INTERVAL ? DAY) ${mine ? 'AND tt.user_id = ?' : ''} AND ${vis.sql}
+       ORDER BY tt.started_at`, [days, ...(mine ? [req.session.user.id] : []), ...vis.params]);
+    sendCsv(res, `temps-passe-${stamp()}.csv`, ['Début', 'Ticket', 'Sujet', 'Membre du staff', 'Type', 'Minutes', 'Note'],
+      rows.map(r => [r.started_at, r.ticket_id, r.subject || '', r.user_tag, r.source === 'manual' ? 'ajout manuel' : 'chronomètre', Math.round(Number(r.s) / 60), r.note || '']));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/analytics/export/stats.csv?days= — one row per staff member (only one's own without fondateur / view_audit)
+router.get('/export/stats.csv', async (req, res) => {
+  try {
+    const days = clampDays(req.query.days);
+    const vis = await visibilityFilter(req, 't.visibility_grade_id');
+    const rows = await teamStats.agentStats(req.guildDb, vis, days, fullAccess(req) ? null : req.session.user.id);
+    sendCsv(res, `statistiques-${days}j-${stamp()}.csv`,
+      ['Membre du staff', 'Réponses', 'Notes internes', 'Tickets traités', 'Fermetures', '1re réponse médiane (min)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Taux de réouverture (%)'],
+      rows.map(r => [r.username, r.replies, r.internalNotes, r.tickets, r.closures, r.firstResponseMedianMin ?? '', r.avgRating ?? '', r.ratings, r.timeHours, r.reopenRate ?? '']));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

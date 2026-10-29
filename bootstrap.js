@@ -246,6 +246,7 @@ async function ensureGlobalTables(config) {
       )`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS ui_lang VARCHAR(5) DEFAULT NULL`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS split_view TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS tour_done VARCHAR(20) DEFAULT NULL`,
       // Plans: preset limits assigned to guilds (copied into guilds.max_*)
       `CREATE TABLE IF NOT EXISTS plans (
         id                        INT AUTO_INCREMENT PRIMARY KEY,

@@ -58,6 +58,10 @@ const ACTIONS = {
   agent_limit_reached:      ['Limite de staff atteinte', 'equipe'],
   quota_warning:            ['Limite du serveur bientôt atteinte', 'config'],
   health_alert:             ['Problème de configuration signalé', 'config'],
+  absence_create:           ['Absence planifiée', 'equipe'],
+  absence_delete:           ['Absence annulée', 'equipe'],
+  absence_start:            ['Début d\'absence', 'equipe'],
+  absence_end:              ['Fin d\'absence', 'equipe'],
   // Configuration
   config_update:            ['Paramètres modifiés', 'config'],
   config_export:            ['Configuration exportée', 'config'],

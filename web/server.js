@@ -260,6 +260,7 @@ app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./routes/profiles'));
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
+app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
 // Super-admin announcements shown as a banner to founders
 app.use('/api/announcements', withGuild(['fondateur']), async (req, res) => {
   res.json(await require('../utils/announcements').activeBanners().catch(() => []));

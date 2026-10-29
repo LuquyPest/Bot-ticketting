@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { uiLocale } from '../i18n';
 import LanguageToggle from '../components/LanguageToggle';
 import InterfacePrefs from '../components/InterfacePrefs';
+import Absences from '../components/Absences';
 import {
   Save, RefreshCw, ShieldCheck, ShieldOff, Loader2, Eye, EyeOff,
   Check, Star, Clock, Trophy, Ticket, Palmtree, Link, X,
@@ -715,6 +716,12 @@ export default function Profile() {
 
       <Section title="Affichage">
         <InterfacePrefs />
+        <button onClick={() => window.dispatchEvent(new Event('tour:start'))} className="mt-3 text-xs font-medium text-primary-light hover:underline">Revoir la visite guidée</button>
+      </Section>
+
+      <Section title="Mes absences">
+        <p className="text-xs text-ink-3">Planifie tes congés : le mode vacances s'active au début et se retire tout seul à la fin.</p>
+        <Absences />
       </Section>
 
       {/* ── Notifications push ───────────────────────────────────────────── */}

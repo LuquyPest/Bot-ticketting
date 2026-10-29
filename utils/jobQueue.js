@@ -20,6 +20,7 @@ const JOBS = {
   'error-alert':         { every: 5 * 60 * 1000,  run: client => require('./errorAlert').runErrorAlertCheck(client) },
   'discord-watch':       { every: 60 * 1000,      run: client => require('./discordWatch').runDiscordWatch(client) },
   'guild-health':        { every: 15 * 60 * 1000, run: client => require('./guildHealth').runGuildHealthCheck(client) },
+  'staff-absences':      { every: 5 * 60 * 1000,  run: () => require('./absences').runAbsenceCheck() },
   'quota-check':         { every: 60 * 60 * 1000, run: client => require('./quotaAlert').runQuotaCheck(client) },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
   'demo-reset':          { pattern: '15 4 * * *', run: async () => { const { enabled } = await require('./saSettings').getSetting('demo', { enabled: true }); if (enabled) await require('./demo').seedDemo(); } },

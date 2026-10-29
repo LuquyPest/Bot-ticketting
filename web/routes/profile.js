@@ -133,15 +133,33 @@ router.put('/language', requireAuth, async (req, res) => {
 });
 
 // GET/PUT /api/profile/prefs — interface preferences kept for every browser of the account
-// (splitView: the ticket list and the opened ticket side by side)
+// (splitView: the ticket list and the opened ticket side by side; tourDone: version of the
+// guided tour already seen). newAgent: staff account of the current server less than 14 days old
+// (the tour then starts by itself once).
+const TOUR_VERSION_RE = /^v\d{1,3}$/;
 router.get('/prefs', requireAuth, async (req, res) => {
-  const [row] = await globalQuery('SELECT split_view FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
-  res.json({ splitView: !!row?.split_view });
+  const [row] = await globalQuery('SELECT split_view, tour_done FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
+  let newAgent = false;
+  if (req.session.currentGuildId && !req.session.user.demo) {
+    const [u] = await getTenantDb(req.session.currentGuildId)(
+      "SELECT first_login > DATE_SUB(NOW(), INTERVAL 14 DAY) AS recent FROM dashboard_users WHERE user_id = ? AND role IN ('support', 'fondateur')",
+      [req.session.user.id]).catch(() => []);
+    newAgent = !!Number(u?.recent);
+  }
+  res.json({ splitView: !!row?.split_view, tourDone: row?.tour_done || null, newAgent });
 });
 router.put('/prefs', requireAuth, async (req, res) => {
-  if (typeof req.body?.splitView !== 'boolean') return res.status(400).json({ error: 'Préférence invalide' });
-  await globalQuery('INSERT INTO user_prefs (user_id, split_view) VALUES (?, ?) ON DUPLICATE KEY UPDATE split_view = VALUES(split_view)', [req.session.user.id, req.body.splitView ? 1 : 0]);
-  res.json({ splitView: req.body.splitView });
+  const { splitView, tourDone } = req.body || {};
+  if (splitView === undefined && tourDone === undefined) return res.status(400).json({ error: 'Préférence invalide' });
+  if (splitView !== undefined && typeof splitView !== 'boolean') return res.status(400).json({ error: 'Préférence invalide' });
+  if (tourDone !== undefined && !TOUR_VERSION_RE.test(String(tourDone))) return res.status(400).json({ error: 'Préférence invalide' });
+  if (splitView !== undefined) {
+    await globalQuery('INSERT INTO user_prefs (user_id, split_view) VALUES (?, ?) ON DUPLICATE KEY UPDATE split_view = VALUES(split_view)', [req.session.user.id, splitView ? 1 : 0]);
+  }
+  if (tourDone !== undefined) {
+    await globalQuery('INSERT INTO user_prefs (user_id, tour_done) VALUES (?, ?) ON DUPLICATE KEY UPDATE tour_done = VALUES(tour_done)', [req.session.user.id, tourDone]);
+  }
+  res.json({ ok: true, ...(splitView !== undefined ? { splitView } : {}), ...(tourDone !== undefined ? { tourDone } : {}) });
 });
 
 // GET/PUT /api/profile/availability — available / busy / away (shown when assigning tickets)

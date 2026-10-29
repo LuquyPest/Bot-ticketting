@@ -370,6 +370,19 @@ const MIGRATIONS = [
         CONSTRAINT fk_tf_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE)`,
     ],
   },
+  {
+    version: 27,
+    name: 'Absences planifiées',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS staff_absences (
+        id INT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(32) NOT NULL,
+        starts_at DATETIME NOT NULL, ends_at DATETIME NOT NULL, reason VARCHAR(160) DEFAULT NULL,
+        state ENUM('planned','active','done') NOT NULL DEFAULT 'planned', set_vacation TINYINT(1) NOT NULL DEFAULT 0,
+        created_by_id VARCHAR(32) NOT NULL, created_by_tag VARCHAR(100) NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sa_user (user_id, starts_at), INDEX idx_sa_state (state, starts_at))`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -170,6 +170,7 @@ export default function Sidebar() {
           <button
             onClick={() => setCmdOpen(true)}
             aria-label="Ouvrir la palette de commandes (⌘K)"
+            data-tour="palette"
             title="Recherche (⌘K)"
             className="p-1.5 rounded-lg text-ink-4 hover:text-ink-1 hover:bg-overlay/6
                        transition-all shrink-0"
@@ -185,6 +186,7 @@ export default function Sidebar() {
               key={`${to}-${label}`}
               to={to}
               end={end}
+              data-tour={`nav-${to}`}
               onClick={() => setSidebarOpen(false)}
             >
               {({ isActive }) => (
@@ -242,6 +244,7 @@ export default function Sidebar() {
             <button
               onClick={() => { navigate('/profile'); setSidebarOpen(false); }}
               aria-label="Mon profil"
+              data-tour="profile"
               title="Mon profil"
               className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/50
                          transition-all focus:outline-hidden"
@@ -272,7 +275,7 @@ export default function Sidebar() {
                 )}
               </button>
               {user?.role !== 'nouveau' && (
-                <select value={availability} onChange={e => changeAvailability(e.target.value)}
+                <select value={availability} onChange={e => changeAvailability(e.target.value)} data-tour="availability"
                   aria-label="Ma disponibilité" title="Ma disponibilité (visible quand on attribue un ticket)"
                   className="block mt-0.5 bg-transparent text-[10px] text-ink-3 hover:text-ink-1 focus:outline-hidden cursor-pointer">
                   {Object.entries(AVAILABILITY).map(([v, av]) => <option key={v} value={v}>{av.label}</option>)}
@@ -281,7 +284,7 @@ export default function Sidebar() {
             </div>
 
             {/* Notification bell */}
-            <NotificationBell />
+            <span data-tour="notifications" className="contents"><NotificationBell /></span>
 
             {/* Theme toggle */}
             <button
