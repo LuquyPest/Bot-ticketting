@@ -587,9 +587,11 @@ Les agents du dashboard peuvent s'abonner aux **notifications push navigateur** 
 "vapid": {
   "publicKey":  "...",
   "privateKey": "...",
-  "contact":    "admin@ton-domaine.com"
+  "contact":    "https://ton-domaine.com"
 }
 ```
+
+`contact` : une adresse e-mail (préfixée `mailto:` automatiquement) ou l'URL du site. Sans clés VAPID, la section « Notifications navigateur » du profil ne peut pas s'activer (la route répond 501).
 
 Générer les clés VAPID :
 ```bash

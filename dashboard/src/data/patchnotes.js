@@ -18,6 +18,7 @@ export const VERSIONS = [
       { type: 'fix',  text: 'Une requête sans contenu ou avec un identifiant invalide reçoit un refus clair au lieu d\'une erreur serveur (et ne remplit plus le journal d\'erreurs)' },
       { type: 'fix',  text: 'Confidentialité : les tickets confidentiels ne sortent plus par l\'API publique, et les webhooks sortants n\'indiquent pour eux que le numéro du ticket' },
       { type: 'tech', text: 'Sécurité : Redis protégé par mot de passe ; l\'adresse IP transmise par le proxy n\'est crue que si elle vient de Traefik ; actions GitHub épinglées et jeton de la CI en lecture seule' },
+      { type: 'fix',  text: 'Les notifications du navigateur (Profil → Notifications) fonctionnent enfin en production : les clés de notification n\'y avaient jamais été configurées' },
       { type: 'tech', text: 'Tests : 748 vérifications automatiques, plus un contrôle de la production (73 vérifications) et un envoi de requêtes malformées à toutes les routes' },
     ]
   },

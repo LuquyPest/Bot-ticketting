@@ -35,7 +35,7 @@ function initVapid() {
   const config = require('../../utils/config').config;
   if (!config.vapid?.publicKey || !config.vapid?.privateKey) return;
   webpush.setVapidDetails(
-    `mailto:${config.vapid.contact || 'admin@localhost'}`,
+    /^https?:\/\//.test(config.vapid.contact || '') ? config.vapid.contact : `mailto:${config.vapid.contact || 'admin@localhost'}`,
     config.vapid.publicKey,
     config.vapid.privateKey
   );
