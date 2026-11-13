@@ -23,7 +23,7 @@ const where = (envName, key) => `${envName} (variable d'environnement) ou ${key}
 
 function validateConfig(config) {
   if (!config.hasFile && !config.token) {
-    fail('Aucune configuration trouvée : ni config.json, ni variables d\'environnement. Lance scripts/setup.sh ou lis https://daryu.xyz/guide/installation');
+    fail('Aucune configuration trouvée : ni config.json, ni variables d\'environnement. Lance scripts/setup.sh ou lis https://docs.bot.daryu.xyz/guide/installation');
   }
   if (!config.token)    fail(`Champ manquant : ${where('DISCORD_TOKEN', 'token')}`);
   if (!config.clientId) fail(`Champ manquant : ${where('DISCORD_CLIENT_ID', 'clientId')}`);

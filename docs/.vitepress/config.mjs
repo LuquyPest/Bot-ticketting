@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
 
 const REPO = 'https://github.com/LuquyPest/Bot-ticketting';
-// Published on GitHub Pages under the custom domain daryu.xyz (site root). Without a custom
+// Published on GitHub Pages under the custom domain docs.bot.daryu.xyz (site root). Without a custom
 // domain the project would live under /Bot-ticketting/: DOCS_BASE=/Bot-ticketting/
 const base = process.env.DOCS_BASE || '/';
 
@@ -55,7 +55,7 @@ export default withMermaid(defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   srcExclude: ['**/node_modules/**', 'README.md'],
-  sitemap: { hostname: 'https://daryu.xyz' },
+  sitemap: { hostname: 'https://docs.bot.daryu.xyz' },
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}logo.svg` }],
     ['meta', { name: 'theme-color', content: '#2f6feb' }],

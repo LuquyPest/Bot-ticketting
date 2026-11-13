@@ -6,7 +6,7 @@ Merci de t'intéresser au projet. Il est sous licence [AGPL-3.0](https://github.
 
 - **Question, idée, aide à l'installation** → [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions).
 - **Bug** → [issue « Bug »](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose), avec la version (page *Patchnotes* du dashboard ou tag de l'image), les étapes et les logs (`docker compose logs bot`), **sans token ni secret**.
-- **Faille de sécurité** → jamais en public : voir [Signaler une faille](https://daryu.xyz/guide/signaler-une-faille).
+- **Faille de sécurité** → jamais en public : voir [Signaler une faille](https://docs.bot.daryu.xyz/guide/signaler-une-faille).
 
 ## Lancer le projet en développement
 

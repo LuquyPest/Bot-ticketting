@@ -11,7 +11,7 @@ Tu installes ton instance, tu branches ton bot Discord : il est à toi.
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
 
-**[Documentation](https://daryu.xyz)** · **[Installer](https://daryu.xyz/guide/installation)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)** · **[Contribuer](CONTRIBUTING.md)**
+**[Documentation](https://docs.bot.daryu.xyz)** · **[Installer](https://docs.bot.daryu.xyz/guide/installation)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)** · **[Contribuer](CONTRIBUTING.md)**
 
 <img src="docs/public/images/dashboard.png" alt="Tableau de bord" width="100%">
 
@@ -55,11 +55,11 @@ scripts/setup.sh                              # quelques questions → .env comp
 docker compose pull && docker compose up -d
 ```
 
-Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée. Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://daryu.xyz/guide/installation)** (*[English](https://daryu.xyz/en/installation)*).
+Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée. Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://docs.bot.daryu.xyz/guide/installation)** (*[English](https://docs.bot.daryu.xyz/en/installation)*).
 
 | | |
 |---|---|
-| Mise à jour | `docker compose pull && docker compose up -d` — migrations automatiques ([Mises à jour](https://daryu.xyz/guide/mise-a-jour)) |
+| Mise à jour | `docker compose pull && docker compose up -d` — migrations automatiques ([Mises à jour](https://docs.bot.daryu.xyz/guide/mise-a-jour)) |
 | Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité) ; la clé est dans Paramètres → Sécurité pour le propriétaire ; restauration : `scripts/restore.sh` |
 | HTTPS | Caddy inclus (Let's Encrypt), ou ton Traefik, ou ton propre proxy |
 | Configuration | tout dans `.env`, chaque variable est commentée dans [.env.example](.env.example) |

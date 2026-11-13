@@ -10,5 +10,5 @@ if (!version) { console.error(`Version ${tag} absente de dashboard/src/data/patc
 const lines = [`## ${version.title}`, '', `_${version.date}_`, ''];
 for (const c of version.changes) lines.push(`- **${TAG[c.type]?.label || c.type}** — ${c.text}`);
 lines.push('', '### Mise à jour', '', '```bash', `docker compose pull && docker compose up -d`, '```', '',
-  `Image : \`${image}:${tag}\` (aussi \`latest\`). Les migrations de base de données s'appliquent au démarrage — voir [Mises à jour](https://daryu.xyz/guide/mise-a-jour).`);
+  `Image : \`${image}:${tag}\` (aussi \`latest\`). Les migrations de base de données s'appliquent au démarrage — voir [Mises à jour](https://docs.bot.daryu.xyz/guide/mise-a-jour).`);
 console.log(lines.join('\n'));
