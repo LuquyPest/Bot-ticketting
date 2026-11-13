@@ -1,10 +1,12 @@
 import React from 'react';
 import { Copy, Download, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useInstanceInfo } from '../hooks/useInstanceInfo';
 
 // One-time display of 2FA recovery codes (the server only keeps their hashes).
 export default function RecoveryCodes({ codes, onDone }) {
   const text = codes.join('\n');
+  const info = useInstanceInfo();
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(text); toast.success('Codes copiés'); }
@@ -12,7 +14,7 @@ export default function RecoveryCodes({ codes, onDone }) {
   };
 
   const download = () => {
-    const url = URL.createObjectURL(new Blob([`Codes de secours 2FA — Ticket Bot\n\n${text}\n`], { type: 'text/plain' }));
+    const url = URL.createObjectURL(new Blob([`Codes de secours 2FA — ${info?.name || 'Ticket Bot'}\n\n${text}\n`], { type: 'text/plain' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'codes-secours-2fa.txt';

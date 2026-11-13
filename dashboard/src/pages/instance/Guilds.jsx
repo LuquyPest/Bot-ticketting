@@ -1,22 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { uiLocale } from '../../i18n';
 import {
-  Building2, CheckCircle, Clock, XCircle, RefreshCw,
+  Building2, CheckCircle, XCircle, RefreshCw,
   Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X
 } from 'lucide-react';
 import api from '../../api';
-import { useSA } from './SAApp';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../../utils/confirmToast';
 
 const STATUS = {
   active:    { label: 'Actif',    cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20', icon: CheckCircle },
-  pending:   { label: 'En attente', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/20',     icon: Clock },
   suspended: { label: 'Suspendu', cls: 'text-red-300 bg-red-500/10 border-red-500/20',             icon: XCircle },
 };
 
-const TABS = ['all', 'pending', 'active', 'suspended'];
-const TAB_LABEL = { all: 'Tous', pending: 'En attente', active: 'Actifs', suspended: 'Suspendus' };
+const TABS = ['all', 'active', 'suspended'];
+const TAB_LABEL = { all: 'Tous', active: 'Actifs', suspended: 'Suspendus' };
 
 function GuildIcon({ guild }) {
   const [err, setErr] = useState(false);
@@ -63,13 +61,13 @@ function ConfirmModal({ message, onConfirm, onCancel, danger }) {
   );
 }
 
-// Founders of a tenant's dashboard; the super-admin can appoint new ones by Discord ID.
-function FoundersModal({ guild, canEdit, onClose }) {
+// Founders of a tenant's dashboard; the owner of the instance can appoint new ones by Discord ID.
+function FoundersModal({ guild, onClose }) {
   const [founders, setFounders] = useState(null);
   const [discordId, setDiscordId] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = () => api.get(`/sa/guilds/${guild.guild_id}/founders`)
+  const load = () => api.get(`/instance/guilds/${guild.guild_id}/founders`)
     .then(r => setFounders(r.data))
     .catch(err => { toast.error(err.response?.data?.error || 'Erreur chargement'); setFounders([]); });
 
@@ -78,7 +76,7 @@ function FoundersModal({ guild, canEdit, onClose }) {
   const remove = async (f) => {
     if (!await confirmToast(`Retirer ${f.username || f.user_id} des fondateurs ?`)) return;
     try {
-      await api.delete(`/sa/guilds/${guild.guild_id}/founders/${f.user_id}`);
+      await api.delete(`/instance/guilds/${guild.guild_id}/founders/${f.user_id}`);
       toast.success(`${f.username || f.user_id} n'est plus fondateur`);
       load();
     } catch (err) {
@@ -92,7 +90,7 @@ function FoundersModal({ guild, canEdit, onClose }) {
     if (!/^\d{17,20}$/.test(id)) return toast.error('ID Discord invalide (17 à 20 chiffres)');
     setSaving(true);
     try {
-      const r = await api.post(`/sa/guilds/${guild.guild_id}/founders`, { discordId: id });
+      const r = await api.post(`/instance/guilds/${guild.guild_id}/founders`, { discordId: id });
       toast.success(`${r.data.username} est maintenant fondateur`);
       if (!r.data.isMember) toast(`⚠️ ${r.data.username} n'est pas membre du serveur Discord`, { duration: 6000 });
       setDiscordId('');
@@ -128,7 +126,7 @@ function FoundersModal({ guild, canEdit, onClose }) {
                 <div className="flex items-center gap-1 shrink-0">
                   {f.isInviter && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-indigo-300 bg-indigo-500/10 border-indigo-500/20">Invitant</span>}
                   {f.isOwner && <span className="text-[10px] px-1.5 py-0.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20">Propriétaire</span>}
-                  {canEdit && founders.length > 1 && (
+                  {founders.length > 1 && (
                     <button onClick={() => remove(f)} title="Retirer des fondateurs"
                       className="p-1 rounded-md text-ink-4 hover:text-red-400 hover:bg-red-400/10 transition-colors">
                       <Trash2 size={12} />
@@ -140,30 +138,26 @@ function FoundersModal({ guild, canEdit, onClose }) {
           </ul>
         )}
 
-        {canEdit && (
-          <form onSubmit={add} className="space-y-2 pt-2 border-t border-overlay/6">
-            <label className="text-xs font-medium text-ink-3">Ajouter un fondateur (ID Discord)</label>
-            <div className="flex gap-2">
-              <input value={discordId} onChange={e => setDiscordId(e.target.value)}
-                placeholder="123456789012345678" inputMode="numeric" maxLength={20}
-                className="flex-1 px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-sm text-ink-1
-                           placeholder-ink-4 outline-hidden focus:border-primary/50 font-mono" />
-              <button type="submit" disabled={saving}
-                className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-light
-                           disabled:opacity-60 flex items-center gap-1.5">
-                {saving ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Ajouter
-              </button>
-            </div>
-          </form>
-        )}
+        <form onSubmit={add} className="space-y-2 pt-2 border-t border-overlay/6">
+          <label className="text-xs font-medium text-ink-3">Ajouter un fondateur (ID Discord)</label>
+          <div className="flex gap-2">
+            <input value={discordId} onChange={e => setDiscordId(e.target.value)}
+              placeholder="123456789012345678" inputMode="numeric" maxLength={20}
+              className="flex-1 px-3 py-2 rounded-xl bg-overlay/4 border border-overlay/8 text-sm text-ink-1
+                         placeholder-ink-4 outline-hidden focus:border-primary/50 font-mono" />
+            <button type="submit" disabled={saving}
+              className="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-light
+                         disabled:opacity-60 flex items-center gap-1.5">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Ajouter
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
-export default function SAGuilds() {
-  const { saUser } = useSA();
-  const isSA = saUser?.type === 'superadmin';
+export default function Guilds() {
 
   const [guilds, setGuilds]       = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -175,7 +169,7 @@ export default function SAGuilds() {
 
   const load = () => {
     setLoading(true);
-    api.get('/sa/guilds').then(r => setGuilds(r.data)).catch(() => toast.error('Erreur chargement')).finally(() => setLoading(false));
+    api.get('/instance/guilds').then(r => setGuilds(r.data)).catch(() => toast.error('Erreur chargement')).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -195,24 +189,21 @@ export default function SAGuilds() {
     setConfirm(null);
     setActioning(guild.guild_id + action);
     try {
-      if (action === 'approve') {
-        await api.post(`/sa/guilds/${guild.guild_id}/approve`);
-        toast.success(`${guild.guild_name} activé`);
-      } else if (action === 'suspend') {
-        await api.patch(`/sa/guilds/${guild.guild_id}/suspend`);
+      if (action === 'suspend') {
+        await api.patch(`/instance/guilds/${guild.guild_id}/suspend`);
         toast.success(`${guild.guild_name} suspendu`);
       } else if (action === 'reactivate') {
-        await api.patch(`/sa/guilds/${guild.guild_id}/reactivate`);
+        await api.patch(`/instance/guilds/${guild.guild_id}/reactivate`);
         toast.success(`${guild.guild_name} réactivé`);
       } else if (action === 'delete') {
-        const { data } = await api.delete(`/sa/guilds/${guild.guild_id}`);
+        const { data } = await api.delete(`/instance/guilds/${guild.guild_id}`);
         if (data.wasInDiscord && !data.leftDiscord) toast.error(`${guild.guild_name} supprimé, mais le bot n'a pas pu quitter le serveur Discord`);
         else toast.success(`${guild.guild_name} supprimé${data.leftDiscord ? ' — le bot a quitté le serveur' : ''}`);
       } else if (action === 'maintenance_on') {
-        await api.patch(`/sa/guilds/${guild.guild_id}/maintenance`, { enabled: true });
+        await api.patch(`/instance/guilds/${guild.guild_id}/maintenance`, { enabled: true });
         toast.success(`Mode maintenance activé pour ${guild.guild_name}`);
       } else if (action === 'maintenance_off') {
-        await api.patch(`/sa/guilds/${guild.guild_id}/maintenance`, { enabled: false });
+        await api.patch(`/instance/guilds/${guild.guild_id}/maintenance`, { enabled: false });
         toast.success(`Mode maintenance désactivé pour ${guild.guild_name}`);
       }
       load();
@@ -227,7 +218,7 @@ export default function SAGuilds() {
   return (
     <div className="p-6 space-y-5 max-w-6xl">
       {foundersOf && (
-        <FoundersModal guild={foundersOf} canEdit={isSA} onClose={() => setFoundersOf(null)} />
+        <FoundersModal guild={foundersOf} onClose={() => setFoundersOf(null)} />
       )}
       {confirm && (
         <ConfirmModal
@@ -264,7 +255,7 @@ export default function SAGuilds() {
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                         ${tab === t ? 'bg-primary/15 text-ink-1' : 'text-ink-4 hover:text-ink-2'}`}>
+                         ${tab === t ? 'bg-primary/15 text-ink-1' : 'text-ink-3 hover:text-ink-2'}`}>
               {TAB_LABEL[t]}
               {counts[t] > 0 && (
                 <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full
@@ -305,7 +296,7 @@ export default function SAGuilds() {
               </thead>
               <tbody className="divide-y divide-overlay/4">
                 {filtered.map(guild => {
-                  const st = STATUS[guild.status] || STATUS.pending;
+                  const st = STATUS[guild.status] || STATUS.active;
                   const Icon = st.icon;
                   const isActioning = actioning?.startsWith(guild.guild_id);
                   return (
@@ -348,26 +339,18 @@ export default function SAGuilds() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                        {guild.status !== 'pending' && !isActioning && (
+                        {!isActioning && (
                           <ActionBtn
                             icon={Crown} label="Fondateurs"
                             cls="text-amber-300 hover:bg-amber-400/10"
                             onClick={() => setFoundersOf(guild)}
                           />
                         )}
-                        {isSA && (
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5">
                             {isActioning ? (
                               <Loader2 size={14} className="animate-spin text-ink-3" />
                             ) : (
                               <>
-                                {guild.status === 'pending' && (
-                                  <ActionBtn
-                                    icon={Play} label="Approuver"
-                                    cls="text-emerald-400 hover:bg-emerald-400/10"
-                                    onClick={() => askConfirm('approve', guild)}
-                                  />
-                                )}
                                 {guild.status === 'active' && (
                                   <ActionBtn
                                     icon={Pause} label="Suspendre"
@@ -396,7 +379,6 @@ export default function SAGuilds() {
                               </>
                             )}
                           </div>
-                        )}
                         </div>
                       </td>
                     </tr>

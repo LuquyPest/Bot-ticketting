@@ -93,7 +93,7 @@ async function main() {
   const redis = getRedis();
 
   await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G);
-  await globalQuery('DELETE FROM guilds'); await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_223456789012345678'); await globalQuery('DELETE FROM login_logs'); await globalQuery('DELETE FROM user_sessions'); await globalQuery('DELETE FROM user_totp'); await globalQuery('DELETE FROM superadmins');
+  await globalQuery('DELETE FROM guilds'); await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_223456789012345678'); await globalQuery('DELETE FROM login_logs'); await globalQuery('DELETE FROM user_sessions'); await globalQuery('DELETE FROM user_totp');
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name)
                      VALUES (?, 'Test', ?, 'f', 'active', ?)`, [G, U.F, 'ticketbot_guild_' + G]);
   await ensureTenantSchema(G);
@@ -123,7 +123,8 @@ async function main() {
   };
   for (const k of ['F', 'S1', 'S2', 'S3']) await mk(k, { user: { id: U[k], username: k, role: null }, currentGuildId: G });
   await mk('S1b', { user: { id: U.S1, username: 'S1', role: null }, currentGuildId: G });
-  await mk('MGR', { superAdmin: { id: 1, username: 'm', type: 'manager', lastSeen: Date.now() } });
+  await mk('OWN', { user: { id: U.F, username: 'F', role: null } });     // owner of the instance (application owner below)
+  await mk('NOWN', { user: { id: U.S1, username: 'S1', role: null } });  // signed in, not the owner
   await globalQuery('INSERT INTO user_sessions (user_id, session_id, ip, user_agent) VALUES (?, ?, "x", "x")', [U.S1, sessions.S1b]);
 
   // Fake Discord client: one channel in our guild, one in a foreign guild, channel creation for tickets
@@ -180,7 +181,8 @@ async function main() {
     },
   };
   const fakeClient = {
-    isReady: () => true, user: { id: '1' },
+    isReady: () => true, user: { id: '1', username: 'Bot de test', displayAvatarURL: () => null },
+    application: { fetch: async () => ({ owner: { id: U.F, username: 'F' } }) },
     guilds: { fetch: async id => (id === G ? guildObj : id === G2 ? g2Discord : null), cache: new Map([[G, { name: 'Serveur Test', iconURL: () => null, members: guildObj.members }]]) },
     channels: { fetch: async id => channels.get(id) || null },
     users: { fetch: async id => {
@@ -267,9 +269,13 @@ async function main() {
   const nonce = /nonce-([^']+)'/.exec(r.headers['content-security-policy'] || '')?.[1];
   check('PDF: script du bouton autorisé par nonce', nonce && r.body.includes(`nonce="${nonce}"`) && !r.body.includes('onclick'), r.headers['content-security-policy']);
 
-  // Superadmin
-  r = await req('GET', '/api/sa/error-logs', { sid: sessions.MGR });
-  check('error-logs refusé aux managers', r.status === 403, r.status);
+  // Instance section: reserved to the owner
+  r = await req('GET', '/api/instance/error-logs', { sid: sessions.NOWN });
+  check('instance: erreurs refusées à un compte qui n est pas propriétaire', r.status === 403, r.status);
+  r = await req('GET', '/api/instance/error-logs', { sid: sessions.S1 });
+  check('instance: refusée aussi au staff connecté sur un serveur', r.status === 403, r.status);
+  r = await req('GET', '/api/instance/error-logs');
+  check('instance: refusée sans connexion', r.status === 401, r.status);
 
   // API v1
   await db('UPDATE guild_config SET api_keys_enabled = 1 WHERE id = 1');
@@ -432,40 +438,56 @@ async function main() {
   const [tr] = await globalQuery('SELECT totp_secret FROM user_totp WHERE user_id = ?', [U.S2]);
   check('M4 secret stocké chiffré', /^enc:v[12]:/.test(tr.totp_secret) && !tr.totp_secret.includes(secret), tr.totp_secret.slice(0, 20));
 
-  // M5 — per-account lockout for superadmin login
-  await globalQuery('INSERT INTO superadmins (username, password_hash) VALUES (?, ?)', ['root', await bcrypt.hash('correct-horse-battery', 4)]);
-  for (let i = 0; i < 5; i++) await req('POST', '/api/sa/auth/login', { body: { username: 'root', password: 'wrong' } });
-  r = await req('POST', '/api/sa/auth/login', { body: { username: 'root', password: 'correct-horse-battery' } });
-  check('M5 compte verrouillé après 5 échecs', r.status === 429, r.status + JSON.stringify(r.body));
+  // Owner of the instance: the owner of the Discord application, plus OWNER_IDS
+  {
+    const inst = app('./utils/instance');
+    inst.resetOwnerCache();
+    check('propriétaire: propriétaire de l application Discord', (await inst.ownerIds(fakeClient)).includes(U.F) && !(await inst.isOwner(fakeClient, U.S1)));
+    inst.resetOwnerCache();
+    const teamClient = { application: { fetch: async () => ({ owner: { ownerId: U.S2, members: new Map([[U.S3, { id: U.S3, role: 'admin' }], ['100000000000000005', { id: '100000000000000005', role: 'read_only' }]]) } }) } };
+    const team = await inst.ownerIds(teamClient);
+    check('propriétaire: application d une équipe → propriétaire et admins', team.includes(U.S2) && team.includes(U.S3) && !team.includes('100000000000000005'), JSON.stringify(team));
+    inst.resetOwnerCache();
+    const cfgO = app('./utils/config').config;
+    cfgO.ownerIds = ['100000000000000007'];
+    const extra = await inst.ownerIds({ application: { fetch: async () => { throw new Error('Discord injoignable'); } } });
+    check('propriétaire: OWNER_IDS suffit si Discord ne répond pas', extra.includes('100000000000000007'), JSON.stringify(extra));
+    delete cfgO.ownerIds;
+    inst.resetOwnerCache();
+    r = await req('GET', '/api/auth/me', { sid: sessions.OWN });
+    const meS1 = await req('GET', '/api/auth/me', { sid: sessions.S1 });
+    check('propriétaire: signalé par /auth/me', r.body.isOwner === true && meS1.body.isOwner === false, JSON.stringify([r.body.isOwner, meS1.body.isOwner]));
+    r = await req('GET', '/api/instance/stats', { sid: sessions.OWN });
+    check('propriétaire: accès à la section Instance sans choisir de serveur', r.status === 200, r.status);
+    r = await req('GET', '/api/instance/info');
+    check('instance: infos publiques (nom du bot, démo désactivée par défaut)', r.status === 200 && r.body.name === 'Bot de test' && r.body.demo === false && !('ownerIds' in r.body), JSON.stringify(r.body));
+    for (const p of ['/api/sa/auth/login', '/api/sa/stats', '/api/sa/managers']) {
+      r = await req(p.endsWith('login') ? 'POST' : 'GET', p, { body: { username: 'root', password: 'x' } });
+      check(`super-admin retiré: ${p}`, r.status === 404, r.status);
+    }
+    check('super-admin retiré: middleware et routes supprimés', ['./web/middleware/superadmin', './web/routes/superadmin'].every(m => { try { require.resolve(path.join(ROOT, m)); return false; } catch { return true; } }));
+  }
 
-  // SA idle timeout
-  await mk('SAold', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() - 31 * 60 * 1000 } });
-  r = await req('GET', '/api/sa/stats', { sid: sessions.SAold });
-  check('session SA expirée après 30 min d\'inactivité', r.status === 401, r.status);
-  await mk('SAnew', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
-  r = await req('GET', '/api/sa/stats', { sid: sessions.SAnew });
-  check('session SA active acceptée', r.status === 200, r.status);
-
-  // SA — appoint tenant founders by Discord ID
-  r = await req('POST', `/api/sa/guilds/${G}/founders`, { sid: sessions.MGR, body: { discordId: '300000000000000001' } });
-  check('fondateurs: ajout refusé à un manager', r.status === 403, r.status);
-  r = await req('POST', `/api/sa/guilds/${G}/founders`, { sid: sessions.SAnew, body: { discordId: '12345' } });
+  // Instance — appoint tenant founders by Discord ID
+  r = await req('POST', `/api/instance/guilds/${G}/founders`, { sid: sessions.NOWN, body: { discordId: '300000000000000001' } });
+  check('fondateurs: ajout refusé à qui n est pas propriétaire', r.status === 403, r.status);
+  r = await req('POST', `/api/instance/guilds/${G}/founders`, { sid: sessions.OWN, body: { discordId: '12345' } });
   check('fondateurs: ID invalide refusé', r.status === 400, r.status);
-  r = await req('POST', `/api/sa/guilds/${G}/founders`, { sid: sessions.SAnew, body: { discordId: '399999999999999999' } });
+  r = await req('POST', `/api/instance/guilds/${G}/founders`, { sid: sessions.OWN, body: { discordId: '399999999999999999' } });
   check('fondateurs: utilisateur Discord inconnu -> 404', r.status === 404, r.status);
-  r = await req('POST', `/api/sa/guilds/${G}/founders`, { sid: sessions.SAnew, body: { discordId: '300000000000000001' } });
+  r = await req('POST', `/api/instance/guilds/${G}/founders`, { sid: sessions.OWN, body: { discordId: '300000000000000001' } });
   check('fondateurs: ajout OK (non membre signalé)', r.status === 200 && r.body.isMember === false, r.status + JSON.stringify(r.body));
-  r = await req('POST', `/api/sa/guilds/${G}/founders`, { sid: sessions.SAnew, body: { discordId: '300000000000000002' } });
+  r = await req('POST', `/api/instance/guilds/${G}/founders`, { sid: sessions.OWN, body: { discordId: '300000000000000002' } });
   check('fondateurs: ajout OK (membre)', r.status === 200 && r.body.isMember === true, r.status + JSON.stringify(r.body));
   const [fr] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', ['300000000000000001']);
   check('fondateurs: rôle fondateur en base', fr?.role === 'fondateur', JSON.stringify(fr));
-  r = await req('GET', `/api/sa/guilds/${G}/founders`, { sid: sessions.SAnew });
+  r = await req('GET', `/api/instance/guilds/${G}/founders`, { sid: sessions.OWN });
   const fids = (r.body || []).map(f => f.user_id);
   check('fondateurs: liste (F propriétaire + 2 nouveaux)', r.status === 200 && fids.includes(U.F) && fids.includes('300000000000000001') && r.body.find(f => f.user_id === U.F)?.isOwner, JSON.stringify(r.body));
   const [fa] = await db("SELECT actor_tag FROM audit_log WHERE action = 'founder_add' LIMIT 1");
-  check('fondateurs: action tracée dans l\'audit du serveur', fa?.actor_tag === 'SA root', JSON.stringify(fa));
-  r = await req('GET', `/api/sa/guilds/${G}/founders`, { sid: sessions.MGR });
-  check('fondateurs: manager non assigné -> 403', r.status === 403, r.status);
+  check('fondateurs: action tracée dans l\'audit du serveur', fa?.actor_tag === 'F', JSON.stringify(fa));
+  r = await req('GET', `/api/instance/guilds/${G}/founders`, { sid: sessions.NOWN });
+  check('fondateurs: liste refusée à qui n est pas propriétaire', r.status === 403, r.status);
 
   // Ratings: closer attribution and unattributed ratings
   const { ensureTenantSchema: ets } = app('./utils/tenantSchema');
@@ -1439,6 +1461,7 @@ async function main() {
     r = await req('GET', '/api/v1/openapi.json');
     const paths = Object.keys(r.body?.paths || {});
     check('doc API: description OpenAPI publique', r.status === 200 && r.body.openapi === '3.0.3' && ['/tickets', '/tickets/{id}', '/tickets/{id}/close', '/stats'].every(p => paths.includes(p)), JSON.stringify(paths));
+    check('doc API: titre au nom du bot de l instance', r.body.info?.title === 'Bot de test — API publique', r.body.info?.title);
     check('doc API: permissions et exemples', r.body.paths['/tickets/{id}/close'].post['x-permission'] === 'close_tickets' && r.body.paths['/stats'].get.responses[200].content['application/json'].example.tickets, '');
     const routes = app('./web/routes/apiV1').stack.filter(l => l.route).map(l => `${Object.keys(l.route.methods)[0]} ${l.route.path}`).filter(x => !x.endsWith('/openapi.json'));
     const documented = Object.entries(r.body.paths).flatMap(([p, m]) => Object.keys(m).map(k => `${k} ${p.replace(/\{(\w+)\}/g, ':$1')}`));
@@ -1467,7 +1490,7 @@ async function main() {
 
   // ── Discord disconnection alert ──
   {
-    const { setSetting, getSetting } = app('./utils/saSettings');
+    const { setSetting, getSetting } = app('./utils/instanceSettings');
     const { runDiscordWatch } = app('./utils/discordWatch');
     const before = await getSetting('error_alert', {});
     await setSetting('error_alert', { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: ['200000000000000099'], webhookUrl: null, discordDownMinutes: 5 });
@@ -1493,8 +1516,7 @@ async function main() {
     check('discord: alerte désactivable (0)', memberDms.length === 0, JSON.stringify(memberDms));
     await redis.del(`discord:down_since:${os.hostname()}`, `discord:down_alerted:${os.hostname()}`);
     await setSetting('error_alert', before);
-    await mk('SAdw', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
-    r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAdw, body: { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null, discordDownMinutes: -1 } });
+    r = await req('PUT', '/api/instance/settings/error-alert', { sid: sessions.OWN, body: { enabled: false, threshold: 20, windowMinutes: 15, discordUserIds: [], webhookUrl: null, discordDownMinutes: -1 } });
     check('discord: délai validé', r.status === 400 && /déconnexion/.test(r.body.error), JSON.stringify(r.body));
   }
 
@@ -1640,6 +1662,8 @@ async function main() {
     // Sign-in helpers
     r = await req('GET', '/api/auth/invite-url', { sid: F, query: { guildId: G } });
     check('tour: lien d invitation du bot', r.status === 200 && /permissions=268684432/.test(r.body.url) && r.body.url.includes(G), JSON.stringify(r.body));
+    r = await req('GET', '/api/auth/invite-url', { sid: sessions.S3T, query: { guildId: G } });
+    check('tour: lien d invitation réservé au propriétaire de l instance', r.status === 403, r.status);
     r = await req('GET', '/api/auth/discord');
     check('tour: connexion Discord (redirection avec état)', r.status === 302 && /state=[0-9a-f]{32}/.test(r.headers.location), r.headers.location);
     r = await req('GET', '/api/auth/discord/callback', { query: { code: 'x', state: 'faux' } });
@@ -1647,57 +1671,23 @@ async function main() {
     r = await req('GET', '/api/auth/guilds', { sid: F });
     check('tour: serveurs Discord sans jeton → reconnexion', r.status === 401, r.status);
 
-    // Super-admin: servers (approve, suspend, reactivate, maintenance), managers
+    // Instance: servers (suspend, reactivate, maintenance), settings
     for (const k of await redis.keys('rl:*')) await redis.del(k); // earlier sign-in tests used up the limit
-    await mk('SAt', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
-    const SA = sessions.SAt;
-    ok('SA : identité', await req('GET', '/api/sa/auth/me', { sid: SA }));
-    ok('SA : serveurs', await req('GET', '/api/sa/guilds', { sid: SA }));
-    ok('SA : fiche serveur', await req('GET', `/api/sa/guilds/${G}`, { sid: SA }));
+    const OW = sessions.OWN;
+    ok('instance : serveurs', await req('GET', '/api/instance/guilds', { sid: OW }));
+    ok('instance : fiche serveur', await req('GET', `/api/instance/guilds/${G}`, { sid: OW }));
     const G4 = '423456789012345678';
-    await globalQuery("INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'Tour', ?, 'f', 'pending', ?)", [G4, U.F, 'ticketbot_guild_' + G4]);
-    ok('SA : approuver un serveur', await req('POST', `/api/sa/guilds/${G4}/approve`, { sid: SA }));
-    const [g4] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [G4]);
-    const [v4] = await getTenantDb(G4)('SELECT MAX(version) AS v FROM schema_migrations');
-    check('tour: serveur approuvé avec sa base à jour', g4.status === 'active' && v4.v === app('./utils/tenantMigrations').LATEST_VERSION, JSON.stringify([g4, v4]));
-    ok('SA : suspendre', await req('PATCH', `/api/sa/guilds/${G4}/suspend`, { sid: SA, body: { reason: 'tour' } }));
-    ok('SA : réactiver', await req('PATCH', `/api/sa/guilds/${G4}/reactivate`, { sid: SA }));
-    ok('SA : maintenance', await req('PATCH', `/api/sa/guilds/${G4}/maintenance`, { sid: SA, body: { enabled: true } }));
-    r = await req('POST', '/api/sa/managers', { sid: SA, body: { username: 'tour-manager', password: 'un-mot-de-passe-long', assigned_guilds: [G4] } });
-    ok('SA : créer un manager', r);
-    const mid = r.body?.id;
-    ok('SA : managers', await req('GET', '/api/sa/managers', { sid: SA }));
-    ok('SA : modifier un manager', await req('PATCH', `/api/sa/managers/${mid}`, { sid: SA, body: { assigned_guilds: [] } }));
-    ok('SA : réinitialiser la 2FA d un manager', await req('POST', `/api/sa/managers/${mid}/reset-totp`, { sid: SA }));
-    ok('SA : supprimer un manager', await req('DELETE', `/api/sa/managers/${mid}`, { sid: SA }));
-    denied('SA : managers (manager)', await req('GET', '/api/sa/managers', { sid: sessions.MGR }));
-    for (const p of ['settings/error-alert']) ok(`SA : ${p}`, await req('GET', `/api/sa/${p}`, { sid: SA }));
-    ok('SA : déconnexion', await req('POST', '/api/sa/auth/logout', { sid: SA }));
-    denied('SA : session terminée', await req('GET', '/api/sa/auth/me', { sid: SA }));
+    await globalQuery("INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'Tour', ?, 'f', 'active', ?)", [G4, U.F, 'ticketbot_guild_' + G4]);
+    await ensureTenantSchema(G4);
+    ok('instance : suspendre', await req('PATCH', `/api/instance/guilds/${G4}/suspend`, { sid: OW, body: { reason: 'tour' } }));
+    ok('instance : réactiver', await req('PATCH', `/api/instance/guilds/${G4}/reactivate`, { sid: OW }));
+    ok('instance : maintenance', await req('PATCH', `/api/instance/guilds/${G4}/maintenance`, { sid: OW, body: { enabled: true } }));
+    for (const p of ['settings/error-alert', 'demo', 'audit', 'blocked', 'health']) ok(`instance : ${p}`, await req('GET', `/api/instance/${p}`, { sid: OW }));
+    for (const p of ['guilds', 'stats', 'settings/error-alert', 'demo']) denied(`instance : ${p} (pas propriétaire)`, await req('GET', `/api/instance/${p}`, { sid: sessions.NOWN }));
+    r = await req('POST', `/api/instance/guilds/${G4}/approve`, { sid: OW });
+    check('tour: plus d approbation de serveur', r.status === 404, r.status);
     await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G4]);
     await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G4);
-
-    // Manager first sign-in: password, then 2FA set up by scanning the QR code
-    for (const k of await redis.keys('rl:*')) await redis.del(k);
-    const bcrypt = require('bcrypt');
-    await globalQuery("INSERT INTO managers (username, password_hash, assigned_guilds, created_by) VALUES ('tour-sa', ?, '[]', 1)", [await bcrypt.hash('mot-de-passe-du-tour', 4)]);
-    r = await req('POST', '/api/sa/auth/login', { body: { username: 'tour-sa', password: 'mot-de-passe-du-tour' } });
-    const saCookie = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
-    check('tour: SA première connexion → configuration 2FA', r.status === 200 && r.body.needs_totp_setup && r.body.secret, JSON.stringify(r.body).slice(0, 120));
-    const bad = await req('POST', '/api/sa/auth/totp-setup', { headers: saCookie, body: { code: '000000' } });
-    check('tour: SA code 2FA faux refusé', bad.status === 400, bad.status);
-    const good = await req('POST', '/api/sa/auth/totp-setup', { headers: saCookie, body: { code: require('otplib').generateSync({ secret: r.body.secret }) } });
-    const saCookie2 = good.headers['set-cookie'] ? { Cookie: String(good.headers['set-cookie'][0]).split(';')[0] } : saCookie;
-    const meSa = await req('GET', '/api/sa/auth/me', { headers: saCookie2 });
-    check('tour: SA 2FA configurée et connecté', good.status === 200 && meSa.status === 200 && meSa.body.username === 'tour-sa', JSON.stringify([good.status, meSa.body]));
-    const [mgr] = await globalQuery("SELECT totp_enabled, totp_secret FROM managers WHERE username = 'tour-sa'");
-    check('tour: SA secret 2FA stocké chiffré', mgr.totp_enabled === 1 && /^enc:v2:/.test(mgr.totp_secret), JSON.stringify(mgr).slice(0, 80));
-    r = await req('POST', '/api/sa/auth/login', { body: { username: 'tour-sa', password: 'mot-de-passe-du-tour' } });
-    const saCookie3 = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
-    check('tour: SA connexion suivante → code demandé', r.body.needs_totp_verify === true, JSON.stringify(r.body));
-    r = await req('POST', '/api/sa/auth/totp-verify', { headers: saCookie3, body: { code: '123456' } });
-    check('tour: SA code faux à la connexion refusé', r.status === 400 || r.status === 401, r.status);
-    await globalQuery("DELETE FROM managers WHERE username = 'tour-sa'");
 
     // Revoking my other sessions
     await mk('FVother', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
@@ -2130,7 +2120,7 @@ async function main() {
   {
     let r = await req('GET', '/api/status');
     check('statut public retiré: /api/status inconnu', r.status === 404, r.status);
-    const { setSetting, getSetting } = app('./utils/saSettings');
+    const { setSetting, getSetting } = app('./utils/instanceSettings');
     const before = await getSetting('error_alert', {});
     await setSetting('error_alert', { ...before, discordUserIds: [], webhookUrl: null, discordDownMinutes: 5 });
     const os = require('os');
@@ -2151,6 +2141,12 @@ async function main() {
     const DEMO = app('./utils/demo').DEMO_GUILD_ID;
     await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + DEMO);
     let r = await req('POST', '/api/demo/start');
+    check('démo: désactivée par défaut sur une nouvelle instance', r.status === 403, r.status);
+    r = await req('PUT', '/api/instance/demo', { sid: sessions.NOWN, body: { enabled: true } });
+    check('démo: seul le propriétaire l active', r.status === 403, r.status);
+    await req('PUT', '/api/instance/demo', { sid: sessions.OWN, body: { enabled: true } });
+    check('démo: annoncée à la page de connexion une fois activée', (await req('GET', '/api/instance/info')).body.demo === true);
+    r = await req('POST', '/api/demo/start');
     const dCookie = { Cookie: String(r.headers['set-cookie']?.[0] || '').split(';')[0] };
     check('démo: session ouverte (base créée et remplie)', r.status === 200, JSON.stringify(r.body));
     r = await req('GET', '/api/auth/me', { headers: dCookie });
@@ -2187,15 +2183,14 @@ async function main() {
     check('démo: une session réelle ne peut pas viser la démo', (await req('GET', '/api/tickets', { sid: sessions.DemoForged })).status === 403);
     await mk('DemoOther', { user: { ...app('./utils/demo').demoUser() }, currentGuildId: G });
     check('démo: une session démo ne peut pas viser un vrai serveur', (await req('GET', '/api/tickets', { sid: sessions.DemoOther })).status === 403);
-    await mk('SAdm', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
-    r = await req('GET', '/api/sa/guilds', { sid: sessions.SAdm });
-    check('démo: absente des serveurs du super-admin', r.status === 200 && !JSON.stringify(r.body).includes(DEMO), '');
-    r = await req('POST', '/api/sa/demo/reset', { sid: sessions.SAdm });
+    r = await req('GET', '/api/instance/guilds', { sid: sessions.OWN });
+    check('démo: absente des serveurs de l instance', r.status === 200 && !JSON.stringify(r.body).includes(DEMO), '');
+    check('démo: une session démo n a jamais accès à la section Instance', (await req('GET', '/api/instance/stats', { headers: dCookie })).status === 403);
+    r = await req('POST', '/api/instance/demo/reset', { sid: sessions.OWN });
     const [dcfg2] = await getTenantDb(DEMO)('SELECT welcome_message FROM guild_config WHERE id = 1');
     check('démo: remise à zéro', r.status === 200 && r.body.tickets === 24 && dcfg2.welcome_message !== 'Bienvenue (démo)', JSON.stringify([r.body, dcfg2]));
-    await req('PUT', '/api/sa/demo', { sid: sessions.SAdm, body: { enabled: false } });
+    await req('PUT', '/api/instance/demo', { sid: sessions.OWN, body: { enabled: false } });
     check('démo: désactivable', (await req('POST', '/api/demo/start')).status === 403);
-    await req('PUT', '/api/sa/demo', { sid: sessions.SAdm, body: { enabled: true } });
     await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + DEMO);
   }
 
@@ -2483,18 +2478,18 @@ async function main() {
   r = await req('GET', `/api/tickets?tag=${tagId}`, { sid: sessions.F });
   check('filtre: tag', r.status === 200 && r.body.tickets.map(t => t.id).join() === String(st1.id), JSON.stringify(r.body.tickets.map(t => t.id)));
 
-  // ── SA: remove founder ──
-  r = await req('DELETE', `/api/sa/guilds/${G}/founders/300000000000000001`, { sid: sessions.MGR });
-  check('SA retrait fondateur: manager -> 403', r.status === 403, r.status);
-  r = await req('DELETE', `/api/sa/guilds/${G}/founders/300000000000000001`, { sid: sessions.SAnew });
+  // ── Instance: remove founder ──
+  r = await req('DELETE', `/api/instance/guilds/${G}/founders/300000000000000001`, { sid: sessions.NOWN });
+  check('SA retrait fondateur: pas propriétaire -> 403', r.status === 403, r.status);
+  r = await req('DELETE', `/api/instance/guilds/${G}/founders/300000000000000001`, { sid: sessions.OWN });
   const [rf] = await db("SELECT role FROM dashboard_users WHERE user_id = '300000000000000001'");
   check('SA retrait fondateur: OK (repasse en nouveau)', r.status === 200 && rf.role === 'nouveau', JSON.stringify([r.status, r.body, rf]));
-  r = await req('DELETE', `/api/sa/guilds/${G}/founders/${U.S1}`, { sid: sessions.SAnew });
+  r = await req('DELETE', `/api/instance/guilds/${G}/founders/${U.S1}`, { sid: sessions.OWN });
   check('SA retrait fondateur: non-fondateur -> 404', r.status === 404, r.status);
-  await req('DELETE', `/api/sa/guilds/${G}/founders/300000000000000002`, { sid: sessions.SAnew });
+  await req('DELETE', `/api/instance/guilds/${G}/founders/300000000000000002`, { sid: sessions.OWN });
   const others = (await db("SELECT user_id FROM dashboard_users WHERE role = 'fondateur'")).map(x => x.user_id).filter(id => id !== U.F);
-  for (const id of others) await req('DELETE', `/api/sa/guilds/${G}/founders/${id}`, { sid: sessions.SAnew });
-  r = await req('DELETE', `/api/sa/guilds/${G}/founders/${U.F}`, { sid: sessions.SAnew });
+  for (const id of others) await req('DELETE', `/api/instance/guilds/${G}/founders/${id}`, { sid: sessions.OWN });
+  r = await req('DELETE', `/api/instance/guilds/${G}/founders/${U.F}`, { sid: sessions.OWN });
   check('SA retrait fondateur: dernier fondateur protégé', r.status === 400 && /dernier/.test(r.body.error), JSON.stringify(r.body));
 
   // M9 — staff roles removed
@@ -2645,40 +2640,33 @@ async function main() {
   await worker.close();
   await getQueue().close();
 
-  // ── SA: blocked accounts / IPs ──
-  r = await req('GET', '/api/sa/blocked', { sid: sessions.SAnew });
-  const lockedRoot = (r.body.accounts || []).find(a => a.username === 'root');
-  check('blocages: compte SA verrouillé listé', r.status === 200 && !!lockedRoot, JSON.stringify(r.body));
-  r = await req('POST', `/api/sa/blocked/accounts/superadmin/${lockedRoot?.id}/unlock`, { sid: sessions.SAnew });
-  const [rootRow] = await globalQuery("SELECT locked_until, failed_attempts FROM superadmins WHERE username = 'root'");
-  check('blocages: compte débloqué', r.status === 200 && rootRow.locked_until === null && rootRow.failed_attempts === 0, JSON.stringify([r.status, rootRow]));
-  r = await req('GET', '/api/sa/blocked', { sid: sessions.MGR });
-  check('blocages: réservé au superadmin', r.status === 403, r.status);
+  // ── Instance: blocked IPs ──
+  r = await req('GET', '/api/instance/blocked', { sid: sessions.NOWN });
+  check('blocages: réservé au propriétaire', r.status === 403, r.status);
   let lastStatus = 0;
   for (let i = 0; i < 25; i++) lastStatus = (await req('GET', '/api/auth/me', { sid: sessions.F })).status;
   check('blocages: /auth/me (lu à chaque page) jamais bloqué par la limite de connexion', lastStatus === 200, lastStatus);
   for (let i = 0; i < 25; i++) lastStatus = (await req('GET', '/api/auth/discord')).status;
   check('blocages: limite de connexion atteinte (429)', lastStatus === 429, lastStatus);
-  r = await req('GET', '/api/sa/blocked', { sid: sessions.SAnew });
+  r = await req('GET', '/api/instance/blocked', { sid: sessions.OWN });
   const ipBlock = (r.body.ips || []).find(b => b.limiter === 'auth');
   check('blocages: IP bloquée listée', !!ipBlock && ipBlock.path === '/api/auth/discord' && ipBlock.hits >= 1, JSON.stringify(r.body.ips));
-  r = await req('POST', '/api/sa/blocked/ips/unblock', { sid: sessions.SAnew, body: { limiter: ipBlock?.limiter, key: ipBlock?.key } });
+  r = await req('POST', '/api/instance/blocked/ips/unblock', { sid: sessions.OWN, body: { limiter: ipBlock?.limiter, key: ipBlock?.key } });
   const after = await req('GET', '/api/auth/discord');
   check('blocages: IP débloquée', r.status === 200 && after.status === 302, JSON.stringify([r.status, after.status]));
 
-  // ── SA: overview, error journal ──
-  r = await req('GET', '/api/sa/stats', { sid: sessions.SAnew });
+  // ── Instance: overview, error journal ──
+  r = await req('GET', '/api/instance/stats', { sid: sessions.OWN });
   const gStat = r.body.perGuild?.find(g => g.guild_id === G);
   check('SA stats: totaux et détail par serveur', r.status === 200 && r.body.totals.tickets > 0 && r.body.daily.length === 30 && gStat && typeof gStat.openTickets === 'number' && typeof gStat.staff === 'number', JSON.stringify(gStat));
-  r = await req('GET', '/api/sa/stats', { sid: sessions.MGR });
-  check('SA stats: manager sans le compteur d\'erreurs', r.status === 200 && r.body.errors24h === null, JSON.stringify(r.body.errors24h));
+  check('SA stats: compteur d erreurs et serveurs actifs / suspendus', typeof r.body.errors24h === 'number' && !('pending' in r.body.guilds) && !('managers' in r.body), JSON.stringify(r.body.guilds));
   check('SA stats: plus de formule ni de limite', gStat && !('max_tickets' in gStat) && !('plan_name' in gStat), JSON.stringify(gStat));
-  r = await req('PATCH', `/api/sa/guilds/${G}/maintenance`, { sid: sessions.SAnew, body: { enabled: false } });
+  r = await req('PATCH', `/api/instance/guilds/${G}/maintenance`, { sid: sessions.OWN, body: { enabled: false } });
   check('SA maintenance: enregistrée', r.status === 200, r.status);
-  r = await req('PATCH', `/api/sa/guilds/${G}/maintenance`, { sid: sessions.SAnew, body: { enabled: 'non' } });
+  r = await req('PATCH', `/api/instance/guilds/${G}/maintenance`, { sid: sessions.OWN, body: { enabled: 'non' } });
   check('SA maintenance: valeur invalide refusée', r.status === 400, r.status);
-  for (const p of [`/api/sa/guilds/${G}/limits`, `/api/sa/guilds/${G}/plan`, '/api/sa/plans']) {
-    r = await req(p.endsWith('plans') ? 'GET' : 'PATCH', p, { sid: sessions.SAnew, body: { max_tickets: 1 } });
+  for (const p of [`/api/instance/guilds/${G}/limits`, `/api/instance/guilds/${G}/plan`, '/api/instance/plans']) {
+    r = await req(p.endsWith('plans') ? 'GET' : 'PATCH', p, { sid: sessions.OWN, body: { max_tickets: 1 } });
     check(`formules et limites retirées: ${p}`, r.status === 404, r.status);
   }
   check('formules et limites retirées: modules supprimés', ['./utils/limits', './utils/quotaAlert'].every(m => { try { require.resolve(path.join(ROOT, m)); return false; } catch { return true; } }));
@@ -2694,32 +2682,32 @@ async function main() {
   errorLog.httpErrorMiddleware({ method: 'GET', baseUrl: '/api/tickets', route: { path: '/:id' }, path: '/9', session: { guildId: G } }, fakeRes, () => {});
   fakeRes.emit('finish');
   await new Promise(res => setTimeout(res, 150));
-  r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'test-ctx' } });
+  r = await req('GET', '/api/instance/error-logs', { sid: sessions.OWN, query: { context: 'test-ctx' } });
   check('erreurs: enregistrée avec le serveur, doublon ignoré', r.status === 200 && r.body.total === 1 && !!r.body.rows[0].guild_name && r.body.rows[0].stack.includes('boom unique'), JSON.stringify(r.body.rows));
-  r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { q: 'message capturé', hours: 1 } });
+  r = await req('GET', '/api/instance/error-logs', { sid: sessions.OWN, query: { q: 'message capturé', hours: 1 } });
   const [benign] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'dm-fermes'");
   check('erreurs: erreurs Discord attendues ignorées (MP fermés…)', Number(benign.n) === 0, JSON.stringify(benign));
   check('erreurs: console.error capturé', r.body.rows?.some(e => e.context === 'capture-test'), JSON.stringify(r.body.rows));
-  r = await req('GET', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'http' } });
+  r = await req('GET', '/api/instance/error-logs', { sid: sessions.OWN, query: { context: 'http' } });
   check('erreurs: réponse HTTP 500 enregistrée avec la route', r.body.rows?.some(e => e.message === 'GET /api/tickets/:id → 500' && e.guild_id === G), JSON.stringify(r.body.rows));
   check('erreurs: sources fréquentes et activité horaire', r.body.contexts?.some(c => c.context === 'test-ctx') && Array.isArray(r.body.hourly), JSON.stringify(r.body.contexts));
   const errId = r.body.rows?.[0]?.id;
-  r = await req('DELETE', `/api/sa/error-logs/${errId}`, { sid: sessions.MGR });
-  check('erreurs: suppression réservée au superadmin', r.status === 403, r.status);
-  r = await req('DELETE', `/api/sa/error-logs/${errId}`, { sid: sessions.SAnew });
+  r = await req('DELETE', `/api/instance/error-logs/${errId}`, { sid: sessions.NOWN });
+  check('erreurs: suppression réservée au propriétaire', r.status === 403, r.status);
+  r = await req('DELETE', `/api/instance/error-logs/${errId}`, { sid: sessions.OWN });
   const [gone] = await globalQuery('SELECT COUNT(*) AS n FROM error_logs WHERE id = ?', [errId]);
   check('erreurs: suppression d\'une entrée', r.status === 200 && Number(gone.n) === 0, JSON.stringify(gone));
-  r = await req('DELETE', '/api/sa/error-logs', { sid: sessions.SAnew, query: { context: 'test-ctx' } });
+  r = await req('DELETE', '/api/instance/error-logs', { sid: sessions.OWN, query: { context: 'test-ctx' } });
   const [left] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'test-ctx'");
   const [captured] = await globalQuery("SELECT COUNT(*) AS n FROM error_logs WHERE context = 'capture-test'");
   check('erreurs: vider selon les filtres uniquement', r.body.deleted === 1 && Number(left.n) === 0 && Number(captured.n) >= 1, JSON.stringify([r.body, left, captured]));
 
   // ── Error spike alert ──
-  r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.MGR, body: {} });
-  check('alerte erreurs: réservée au superadmin', r.status === 403, r.status);
-  r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAnew, body: { enabled: true, threshold: 0, windowMinutes: 15, discordUserIds: [], webhookUrl: null } });
+  r = await req('PUT', '/api/instance/settings/error-alert', { sid: sessions.NOWN, body: {} });
+  check('alerte erreurs: réservée au propriétaire', r.status === 403, r.status);
+  r = await req('PUT', '/api/instance/settings/error-alert', { sid: sessions.OWN, body: { enabled: true, threshold: 0, windowMinutes: 15, discordUserIds: [], webhookUrl: null } });
   check('alerte erreurs: seuil invalide refusé', r.status === 400, r.status);
-  r = await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAnew, body: { enabled: true, threshold: 3, windowMinutes: 15, discordUserIds: [U.S1], webhookUrl: 'https://127.0.0.1/hook' } });
+  r = await req('PUT', '/api/instance/settings/error-alert', { sid: sessions.OWN, body: { enabled: true, threshold: 3, windowMinutes: 15, discordUserIds: [U.S1], webhookUrl: 'https://127.0.0.1/hook' } });
   check('alerte erreurs: réglages enregistrés', r.status === 200 && r.body.threshold === 3, JSON.stringify(r.body));
   {
     const alert = app('./utils/errorAlert');
@@ -2735,9 +2723,9 @@ async function main() {
     check('alerte erreurs: webhook vers une IP privée bloqué (anti-SSRF)', res.sent?.webhook?.blocked === true, JSON.stringify(res.sent?.webhook));
     res = await alert.runErrorAlertCheck(fakeClient);
     check('alerte erreurs: une seule alerte par heure', res.skipped === 'cooldown', JSON.stringify(res));
-    r = await req('POST', '/api/sa/settings/error-alert/test', { sid: sessions.SAnew });
+    r = await req('POST', '/api/instance/settings/error-alert/test', { sid: sessions.OWN });
     check('alerte erreurs: envoi de test', r.status === 200 && r.body.dm === 1, JSON.stringify(r.body));
-    await req('PUT', '/api/sa/settings/error-alert', { sid: sessions.SAnew, body: { enabled: false, threshold: 3, windowMinutes: 15, discordUserIds: [], webhookUrl: null } });
+    await req('PUT', '/api/instance/settings/error-alert', { sid: sessions.OWN, body: { enabled: false, threshold: 3, windowMinutes: 15, discordUserIds: [], webhookUrl: null } });
     await redis.del('alert:errors:cooldown');
     res = await alert.runErrorAlertCheck(fakeClient);
     check('alerte erreurs: désactivée → aucun envoi', res.skipped === 'disabled', JSON.stringify(res));
@@ -2746,33 +2734,33 @@ async function main() {
   // ── Announcements are gone ──
   r = await req('GET', '/api/announcements', { sid: sessions.FV });
   check('annonces retirées: /api/announcements inconnu', r.status === 404, r.status);
-  r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'x', body: 'y', showBanner: true } });
+  r = await req('POST', '/api/instance/announcements', { sid: sessions.OWN, body: { title: 'x', body: 'y', showBanner: true } });
   check('annonces retirées: plus de publication', r.status === 404, r.status);
 
-  // ── SA health page ──
+  // ── Instance health page ──
   {
-    r = await req('GET', '/api/sa/health', { sid: sessions.MGR });
-    check('santé: réservée au superadmin', r.status === 403, r.status);
-    r = await req('GET', '/api/sa/health', { sid: sessions.SAnew });
+    r = await req('GET', '/api/instance/health', { sid: sessions.NOWN });
+    check('santé: réservée au propriétaire', r.status === 403, r.status);
+    r = await req('GET', '/api/instance/health', { sid: sessions.OWN });
     const tm2 = app('./utils/tenantMigrations');
     check('santé: base et Redis joignables', r.status === 200 && r.body.database.ok && r.body.redis.ok && typeof r.body.process.uptimeS === 'number', JSON.stringify([r.body.database, r.body.redis]));
     check('santé: tâches planifiées listées', r.body.jobs?.jobs?.length === Object.keys(app('./utils/jobQueue').JOBS).length && r.body.jobs.jobs.every(j => j.schedule), JSON.stringify(r.body.jobs).slice(0, 300));
     check('santé: versions de schéma', r.body.schemas.latest === tm2.LATEST_VERSION && r.body.schemas.guilds.some(g => g.guildId === G && g.version === tm2.LATEST_VERSION), JSON.stringify(r.body.schemas));
   }
 
-  // ── Journal of the super-admin panel ──
+  // ── Journal of the instance section ──
   {
     await new Promise(res => setTimeout(res, 200));
-    r = await req('GET', '/api/sa/audit', { sid: sessions.MGR });
-    check('journal SA: réservé au superadmin', r.status === 403, r.status);
-    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'guild_maintenance' } });
+    r = await req('GET', '/api/instance/audit', { sid: sessions.NOWN });
+    check('journal SA: réservé au propriétaire', r.status === 403, r.status);
+    r = await req('GET', '/api/instance/audit', { sid: sessions.OWN, query: { action: 'guild_maintenance' } });
     const lim = r.body.rows?.find(x => x.guild_id === G);
-    check('journal SA: maintenance enregistrée avec le serveur', r.status === 200 && lim && lim.actor_name === 'root' && JSON.stringify(lim.details).includes('enabled'), JSON.stringify(r.body.rows?.slice(0, 2)));
+    check('journal SA: maintenance enregistrée avec le serveur', r.status === 200 && lim && lim.actor_name === 'F' && JSON.stringify(lim.details).includes('enabled'), JSON.stringify(r.body.rows?.slice(0, 2)));
     check('journal SA: action refusée (400) non enregistrée', !r.body.rows.some(x => JSON.stringify(x.details).includes('"non"')));
-    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'error_alert_update' } });
+    r = await req('GET', '/api/instance/audit', { sid: sessions.OWN, query: { action: 'error_alert_update' } });
     const al = JSON.stringify((r.body.rows || []).find(x => x.details?.webhookUrl)?.details || {});
     check('journal SA: URL de webhook réduite à son origine', al.includes('https://127.0.0.1/…') && !al.includes('/hook'), al);
-    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'founder_add' } });
+    r = await req('GET', '/api/instance/audit', { sid: sessions.OWN, query: { action: 'founder_add' } });
     check('journal SA: nomination de fondateur enregistrée', r.body.rows?.length >= 1 && r.body.rows[0].guild_id === G, JSON.stringify(r.body.rows?.[0]));
   }
 
@@ -3430,9 +3418,9 @@ async function main() {
     await db('DELETE FROM ticket_tags WHERE id = ?', [tagR]);
   }
 
-  // ── SA: delete guild → bot leaves Discord ──
-  await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
-  r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });
+  // ── Instance: delete guild → bot leaves Discord ──
+  await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'active', ?)`, [G2, 'ticketbot_guild_' + G2]);
+  r = await req('DELETE', `/api/instance/guilds/${G2}`, { sid: sessions.OWN });
   const [g2row] = await globalQuery('SELECT COUNT(*) AS n FROM guilds WHERE guild_id = ?', [G2]);
   check('suppression serveur: le bot quitte Discord', r.status === 200 && g2Left && r.body.leftDiscord === true && Number(g2row.n) === 0, JSON.stringify([r.status, r.body, g2Left, g2row]));
 
@@ -3440,32 +3428,52 @@ async function main() {
   {
     const { loadConfig } = app('./utils/config');
     const env = { DISCORD_TOKEN: 't', DISCORD_CLIENT_ID: '42', DISCORD_CLIENT_SECRET: 's', PUBLIC_URL: 'https://tickets.example.com/',
-      SESSION_SECRET: 'x'.repeat(32), DB_PASSWORD: 'pw', DB_PORT: '3307', AUTO_APPROVE_GUILDS: 'true', TRUSTED_PROXY_HOST: '' };
+      SESSION_SECRET: 'x'.repeat(32), DB_PASSWORD: 'pw', DB_PORT: '3307', OWNER_IDS: '100000000000000001, x', ALLOWED_GUILDS: '523456789012345678', TRUSTED_PROXY_HOST: '' };
     const c = loadConfig({ file: '/nonexistent/config.json', env });
     check('config: tout par variables d environnement, sans config.json', !c.hasFile && c.token === 't' && c.clientId === '42' && c.dashboard.discordClientSecret === 's'
       && c.dashboard.sessionSecret.length === 32 && c.database.password === 'pw' && c.database.port === 3307 && c.database.host === 'db' && c.webServerPort === 3000, JSON.stringify(c));
     check('config: URL publique normalisée et retour OAuth déduit', c.webServerBaseUrl === 'https://tickets.example.com' && c.dashboard.discordCallbackUrl === 'https://tickets.example.com/api/auth/discord/callback', c.dashboard.discordCallbackUrl);
-    check('config: AUTO_APPROVE_GUILDS et TRUSTED_PROXY_HOST vide lus', c.autoApproveGuilds === true && c.trustedProxyHost === '' && loadConfig({ file: '/nonexistent/config.json', env: { AUTO_APPROVE_GUILDS: 'non' } }).autoApproveGuilds === false);
+    check('config: OWNER_IDS, ALLOWED_GUILDS (listes d IDs) et TRUSTED_PROXY_HOST vide lus', c.ownerIds.join() === '100000000000000001' && c.allowedGuilds.join() === '523456789012345678' && c.trustedProxyHost === '', JSON.stringify([c.ownerIds, c.allowedGuilds]));
     const merged = loadConfig({ env: { DB_PORT: '3399', DB_HOST: '' } });
     check('config: la variable d environnement l emporte sur config.json, une valeur vide est ignorée', merged.hasFile && merged.database.port === 3399 && merged.database.host === config.database.host && merged.token === 'test-token', JSON.stringify(merged.database));
 
-    // guildCreate with autoApproveGuilds: tenant created, inviter founder, status active, no super-admin step
-    const G5 = '523456789012345678';
+    // A server is active as soon as the bot joins it: database, inviter founder, no approval step
+    const G5 = '523456789012345678', G6 = '623456789012345678';
     const guildCreate = app('./events/guildCreate');
-    const g5 = { id: G5, name: 'Auto', ownerId: '300000000000000001', memberCount: 3, iconURL: () => null,
-      fetchOwner: async () => ({ id: '300000000000000001', user: { username: 'founder1' } }), fetchAuditLogs: async () => ({ entries: new Map() }) };
-    fakeClient.config = { ...config, autoApproveGuilds: false };
-    await guildCreate.execute(fakeClient, g5);
-    let [g5row] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [G5]);
-    check('activation: sans l option, un nouveau serveur attend le super-admin', g5row?.status === 'pending', JSON.stringify(g5row));
-    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G5]);
-    fakeClient.config = { ...config, autoApproveGuilds: true };
-    await guildCreate.execute(fakeClient, g5);
-    [g5row] = await globalQuery('SELECT status, approved_by, approved_at FROM guilds WHERE guild_id = ?', [G5]);
+    let left = false;
+    const mkGuild = id => ({ id, name: 'Auto', ownerId: '300000000000000001', memberCount: 3, iconURL: () => null, leave: async () => { left = true; },
+      fetchOwner: async () => ({ id: '300000000000000001', user: { username: 'founder1' } }), fetchAuditLogs: async () => ({ entries: new Map() }) });
+    const welcome = [];
+    const realFetch = fakeClient.users.fetch;
+    fakeClient.users.fetch = async id => (id === '300000000000000001' ? { id, username: 'founder1', send: async p => welcome.push(p) } : realFetch(id));
+    await guildCreate.execute(fakeClient, mkGuild(G5));
+    fakeClient.users.fetch = realFetch;
+    const [g5row] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [G5]);
     const [g5founder] = await getTenantDb(G5)("SELECT role FROM dashboard_users WHERE user_id = '300000000000000001'").catch(() => []);
-    check('activation: AUTO_APPROVE_GUILDS active le serveur à l arrivée du bot (base créée, invitant fondateur)', g5row?.status === 'active' && g5row.approved_by === null && g5row.approved_at && g5founder?.role === 'fondateur', JSON.stringify([g5row, g5founder]));
-    fakeClient.config = config;
-    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G5]);
+    const [g5v] = await getTenantDb(G5)('SELECT MAX(version) AS v FROM schema_migrations').catch(() => [{}]);
+    check('activation: serveur actif dès l arrivée du bot (base à jour, invitant fondateur)', g5row?.status === 'active' && g5founder?.role === 'fondateur' && g5v.v === app('./utils/tenantMigrations').LATEST_VERSION, JSON.stringify([g5row, g5founder, g5v]));
+    check('activation: MP de bienvenue avec le nom du bot', welcome.some(p => String(p).includes('Bot de test') && String(p).includes('Paramètres')), JSON.stringify(welcome));
+    // ALLOWED_GUILDS: any other server is left
+    const cfgA = app('./utils/config').config;
+    cfgA.allowedGuilds = [G5];
+    await guildCreate.execute(fakeClient, mkGuild(G6));
+    const [g6row] = await globalQuery('SELECT COUNT(*) AS n FROM guilds WHERE guild_id = ?', [G6]);
+    check('ALLOWED_GUILDS: le bot quitte un serveur hors liste, sans l enregistrer', left && Number(g6row.n) === 0, JSON.stringify([left, g6row]));
+    delete cfgA.allowedGuilds;
+    // Upgrade from v2.x: a server left « pending » is activated at the next start (ready)
+    await globalQuery('ALTER TABLE guilds MODIFY status ENUM(\'pending\',\'active\',\'suspended\') NOT NULL DEFAULT \'active\'');
+    await globalQuery("UPDATE guilds SET status = 'pending' WHERE guild_id = ?", [G5]);
+    await app('./utils/guildActivation').registerGuild(fakeClient, mkGuild(G5), { notify: false });
+    const [g5again] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [G5]);
+    check('mise à jour v2 → v3: serveur en attente activé au démarrage', g5again.status === 'active', JSON.stringify(g5again));
+    await globalQuery('ALTER TABLE guilds MODIFY status ENUM(\'active\',\'suspended\') NOT NULL DEFAULT \'active\'');
+    // The owner of the instance is founder on every server
+    await getTenantDb(G5)("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'F', 'nouveau') ON DUPLICATE KEY UPDATE role = 'nouveau'", [U.F]);
+    await mk('OWNsel', { user: { id: U.F, username: 'F', role: null }, discordAccessToken: 't' });
+    r = await req('POST', '/api/auth/select-guild', { sid: sessions.OWNsel, body: { guildId: G5 } });
+    const [ownRole] = await getTenantDb(G5)('SELECT role FROM dashboard_users WHERE user_id = ?', [U.F]);
+    check('propriétaire: fondateur sur chaque serveur de l instance', r.status === 200 && r.body.role === 'fondateur' && ownRole.role === 'fondateur', JSON.stringify([r.body, ownRole]));
+    await globalQuery('DELETE FROM guilds WHERE guild_id IN (?, ?)', [G5, G6]);
     await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${G5}\``).catch(() => null);
   }
 

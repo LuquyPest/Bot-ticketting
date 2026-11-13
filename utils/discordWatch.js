@@ -1,9 +1,9 @@
 // Alert when the bot loses its Discord connection for more than a few minutes, then when it is
 // back. Checked every minute (job 'discord-watch'); recipients are those of the error alert
-// (SA panel → Erreurs). While Discord is unreachable, DMs may not go through: the webhook is the
+// (Instance → Erreurs). While Discord is unreachable, DMs may not go through: the webhook is the
 // reliable channel.
 const os = require('os');
-const { getSetting } = require('./saSettings');
+const { getSetting } = require('./instanceSettings');
 const { getRedis } = require('./redis');
 const { DEFAULTS, KEY, deliver } = require('./errorAlert');
 const logger = require('./logger');

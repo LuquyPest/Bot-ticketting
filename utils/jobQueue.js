@@ -22,10 +22,10 @@ const JOBS = {
   'guild-health':        { every: 15 * 60 * 1000, run: client => require('./guildHealth').runGuildHealthCheck(client) },
   'staff-absences':      { every: 5 * 60 * 1000,  run: () => require('./absences').runAbsenceCheck() },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
-  'demo-reset':          { pattern: '15 4 * * *', run: async () => { const { enabled } = await require('./saSettings').getSetting('demo', { enabled: true }); if (enabled) await require('./demo').seedDemo(); } },
+  'demo-reset':          { pattern: '15 4 * * *', run: async () => { if (await require('./demo').demoEnabled()) await require('./demo').seedDemo(); } },
 };
 
-// Last run of each job (Redis hash jobs:last), shown on the super-admin « Santé » page
+// Last run of each job (Redis hash jobs:last), shown on the Instance « Santé » page
 const LAST_RUNS = 'jobs:last';
 async function recordRun(name, started, ok, error = null) {
   await require('./redis').getRedis().hset(LAST_RUNS, name, JSON.stringify({ at: Date.now(), durationMs: Date.now() - started, ok, error })).catch(() => {});

@@ -1568,7 +1568,7 @@ router.get('/:id/pdf', async (req, res) => {
 <h2 style="font-size:14px;color:#374151;margin:0 0 12px">Historique des messages (${notes.length})</h2>
 ${notesHtml || '<p style="color:#6b7280;font-size:13px;text-align:center;padding:20px">Aucun message</p>'}
 <div style="margin-top:24px;font-size:11px;color:#9ca3af;text-align:center">
-  Exporté le ${new Date().toLocaleString('fr-FR')} — Ticket Bot Dashboard
+  Exporté le ${new Date().toLocaleString('fr-FR')} — ${escapeHtml(require('../../utils/instance').instanceName(req.app.locals.client))}
 </div>
 <script nonce="${nonce}">document.getElementById('print').addEventListener('click', () => window.print());</script>
 </body></html>`;

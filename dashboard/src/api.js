@@ -10,7 +10,7 @@ api.interceptors.response.use(
   r => r,
   err => {
     const path = window.location.pathname;
-    if (err.response?.status === 401 && path !== '/login' && !path.startsWith('/sa') && !path.startsWith('/espace') && !path.startsWith('/invite')) {
+    if (err.response?.status === 401 && path !== '/login' && !path.startsWith('/espace') && !path.startsWith('/invite') && path !== '/confidentialite') {
       window.location.href = err.response.data?.code === 'idle' ? '/login?expired=idle' : '/login';
     }
     // The server requires 2FA for this account: only the profile (to turn it on) is reachable

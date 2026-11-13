@@ -139,7 +139,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs are listed in the SA panel
+const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs are listed in Instance → Blocages
 
 // Strict limit on sign-in attempts only: /api/auth/me and /guilds are read on every page load and
 // stay under the general API limit (counting them blocked staff who simply reloaded a few pages)
@@ -147,7 +147,6 @@ app.use(['/api/auth/discord', '/api/auth/totp-verify-login'], authLimiter);
 app.use('/api/member/auth', authLimiter);
 app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
 app.use('/api/demo', authLimiter);
-app.use('/api/sa/auth', authLimiter);
 app.use('/api', apiLimiter);
 
 app.get('/t/:token', (req, res) => {
@@ -169,12 +168,11 @@ app.use('/api/member',   require('./routes/memberPortal')); // member web space 
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 
 // ── Demonstration server (utils/demo.js) ──
-// POST /api/demo/start — founder session on the demo sandbox (when the super-admin keeps it on)
+// POST /api/demo/start — founder session on the demo sandbox (when the owner turned it on)
 app.post('/api/demo/start', async (req, res, next) => {
   try {
     const demo = require('../utils/demo');
-    const { enabled } = await require('../utils/saSettings').getSetting('demo', { enabled: true });
-    if (!enabled) return res.status(403).json({ error: 'La démonstration est désactivée' });
+    if (!(await demo.demoEnabled())) return res.status(403).json({ error: 'La démonstration est désactivée' });
     const db = require('../utils/tenantDb').getTenantDb(demo.DEMO_GUILD_ID);
     const seeded = await db('SELECT COUNT(*) AS n FROM tickets').then(r => Number(r[0].n) > 0).catch(() => false);
     if (!seeded) await demo.seedDemo();
@@ -198,7 +196,7 @@ app.post('/api/client-errors', async (req, res) => {
   const message = typeof b.message === 'string' ? b.message.trim().slice(0, 500) : '';
   if (!message) return res.status(400).end();
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined);
-  const who = req.session?.user ? `staff:${req.session.user.id}` : req.session?.member ? `membre:${req.session.member.id}` : req.session?.superAdmin ? `sa:${req.session.superAdmin.id}` : 'anonyme';
+  const who = req.session?.user ? `staff:${req.session.user.id}` : req.session?.member ? `membre:${req.session.member.id}` : 'anonyme';
   const err = Object.assign(new Error(message), { stack: str(b.stack, 4000) || message });
   // Anonymous reports get their own source, left out of the error-spike alert (anyone can send them)
   require('../utils/errorLog').logError(req.session?.currentGuildId || null, who === 'anonyme' ? 'navigateur-anonyme' : 'navigateur', err, {
@@ -267,7 +265,7 @@ app.use('/api/panels',      withGuild(['fondateur']),            require('./rout
 app.use('/api/forms',       withGuild(['fondateur']),            require('./routes/forms'));
 app.use('/api/login-logs',  withGuild(['support', 'fondateur']), require('./routes/loginLogs'));
 
-app.use('/api/sa', require('./routes/superadmin'));
+app.use('/api/instance', require('./routes/instance')); // owner of the instance (GET /info is public)
 
 // Unknown API routes answer 404 JSON (instead of falling through to the dashboard's index.html)
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));

@@ -5,9 +5,10 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server,
 } from 'lucide-react';
 import { useAuth } from '../App';
+import { useInstanceInfo } from '../hooks/useInstanceInfo';
 import { useSSECtx } from '../context/SSEContext';
 import { useSSE } from '../hooks/useSSE';
 import { useTheme } from '../context/ThemeContext';
@@ -60,6 +61,7 @@ const NAV_GROUPS = [
     { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
     { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
     { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
+    { to: '/instance',    label: 'Instance',     icon: Server,          owner: true },
   ] },
 ];
 
@@ -81,6 +83,7 @@ const SSE_DOT = {
 
 export default function Sidebar() {
   const { user, logout, sidebarOpen, setSidebarOpen, whatsNew } = useAuth();
+  const info = useInstanceInfo();
   const { status } = useSSECtx() || { status: 'connecting' };
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -105,6 +108,7 @@ export default function Sidebar() {
     : null;
 
   const allowed = item => {
+    if (item.owner) return !!user?.isOwner;
     const role = user?.role;
     if (item.perm) return role === 'fondateur' || user?.permissions?.includes(item.perm);
     return item.roles.includes(role);
@@ -236,7 +240,7 @@ export default function Sidebar() {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-ink-1 leading-tight tracking-tight">Ticket Bot</p>
+            <p className="text-sm font-bold text-ink-1 leading-tight tracking-tight truncate" translate="no">{info?.name || 'Ticket Bot'}</p>
             <p className="text-[9px] text-primary-light font-semibold uppercase tracking-[0.15em]">
               Dashboard
             </p>

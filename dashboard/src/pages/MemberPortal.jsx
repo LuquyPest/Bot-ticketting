@@ -4,6 +4,8 @@ import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send,
 import api from '../api';
 import MessageContent from '../components/MessageContent';
 import { readableText } from '../utils/color';
+import { useInstanceInfo } from '../hooks/useInstanceInfo';
+import { privacyHref } from './Privacy';
 
 // Member web space: a member signs in with Discord and reads their own tickets (no staff data).
 // French by default, English when the browser asks for it.
@@ -25,7 +27,7 @@ const STR = {
     confidential: 'Demande confidentielle : seuls les fondateurs du serveur pourront lire ce ticket (signalement, harcèlement…)', confidentialBadge: 'Confidentiel',
     optional: 'facultatif', form: 'Quelques questions', open: 'Ouvrir le ticket', noGuild: 'Aucun serveur disponible : tu dois être membre d\'un serveur qui utilise ce bot.',
     faqTitle: 'Questions fréquentes', faqSearch: 'Chercher dans l\'aide…', faqNone: 'Aucune réponse ne correspond.', faqEmpty: 'Ce serveur n\'a pas encore de page d\'aide.',
-    stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.',
+    stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.', privacy: 'Confidentialité',
   },
   en: {
     title: 'My tickets', subtitle: 'Find your support requests, their status and your conversations.',
@@ -43,7 +45,7 @@ const STR = {
     confidential: 'Confidential request: only the server founders will be able to read this ticket (report, harassment…)', confidentialBadge: 'Confidential',
     optional: 'optional', form: 'A few questions', open: 'Open the ticket', noGuild: 'No server available: you must be a member of a server that uses this bot.',
     faqTitle: 'Frequently asked questions', faqSearch: 'Search the help…', faqNone: 'No answer matches.', faqEmpty: 'This server has no help page yet.',
-    stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.',
+    stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.', privacy: 'Privacy',
   },
 }[LANG];
 
@@ -90,6 +92,7 @@ function GuildBanner({ guild }) {
 }
 
 function Shell({ me, onLogout, children }) {
+  const info = useInstanceInfo();
   return (
     <div data-no-translate className="min-h-screen bg-base">
       <header className="border-b border-overlay/6 bg-surface/60">
@@ -120,6 +123,9 @@ function Shell({ me, onLogout, children }) {
         </nav>
       )}
       <main className="max-w-3xl mx-auto px-4 py-6">{children}</main>
+      <footer className="max-w-3xl mx-auto px-4 pb-8 text-center">
+        <a href={privacyHref(info)} className="text-xs text-ink-3 underline hover:text-ink-1">{STR.privacy}</a>
+      </footer>
     </div>
   );
 }

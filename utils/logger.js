@@ -12,7 +12,7 @@ module.exports = {
   warn:  (msg, ctx) => log('warn',  msg, ctx),
   error: (msg, ctx = {}) => {
     log('error', msg, ctx);
-    // Also kept in the error journal (super-admin "Erreurs" page)
+    // Also kept in the error journal (Instance → Erreurs)
     const { guildId, err, ...rest } = ctx;
     const text = err ? String(err) : msg;
     require('./errorLog').logError(guildId, msg, { message: text.split('\n')[0], stack: err ? text : '' }, Object.keys(rest).length ? rest : null);

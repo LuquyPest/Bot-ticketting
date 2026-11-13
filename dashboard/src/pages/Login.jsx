@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bot, AlertCircle, Zap } from 'lucide-react';
 import { useAuth } from '../App';
 import DemoButton from '../components/DemoButton';
+import { useInstanceInfo } from '../hooks/useInstanceInfo';
+import { privacyHref } from './Privacy';
 
 const ERROR_MESSAGES = {
   not_in_guild: "Tu n'es pas membre du serveur Discord.",
@@ -17,6 +19,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [error, setError] = useState('');
+  const info = useInstanceInfo();
 
   useEffect(() => {
     if (user) navigate(user.role === 'nouveau' ? '/pending' : '/', { replace: true });
@@ -53,15 +56,19 @@ export default function Login() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <div className="relative mb-5">
-            <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
-                            flex items-center justify-center shadow-primary">
-              <Bot size={38} className="text-white" />
-            </div>
+            {info?.avatar ? (
+              <img src={info.avatar} alt="" className="w-20 h-20 rounded-2xl shadow-primary" />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
+                              flex items-center justify-center shadow-primary">
+                <Bot size={38} className="text-white" />
+              </div>
+            )}
             {/* Glow ring */}
             <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-violet-500 to-indigo-600
                             opacity-30 blur-xl -z-10 animate-glow-pulse" />
           </div>
-          <h1 className="text-2xl font-bold text-ink-1 tracking-tight">Ticket Dashboard</h1>
+          <h1 className="text-2xl font-bold text-ink-1 tracking-tight" translate="no">{info?.name || 'Ticket Dashboard'}</h1>
           <p className="text-sm text-ink-3 mt-1.5">Gestion des tickets de support</p>
         </div>
 
@@ -113,6 +120,7 @@ export default function Login() {
         <div className="text-center mt-5"><DemoButton label="Découvrir le dashboard (démo)" /></div>
         <p className="text-xs text-ink-3 text-center mt-4">
           Tu cherches tes tickets ? <a href="/espace" className="text-primary-light underline">Espace membre</a>
+          {' · '}<a href={privacyHref(info)} className="text-primary-light underline">Confidentialité</a>
         </p>
       </div>
     </div>

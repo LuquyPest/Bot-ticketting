@@ -19,12 +19,12 @@ function State({ ok, warn, label }) {
 function DemoCard() {
   const [demo, setDemo] = useState(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.get('/sa/demo').then(r => setDemo(r.data)).catch(() => {}); }, []);
+  useEffect(() => { api.get('/instance/demo').then(r => setDemo(r.data)).catch(() => {}); }, []);
   if (!demo) return null;
-  const toggle = async () => { try { const r = await api.put('/sa/demo', { enabled: !demo.enabled }); setDemo(r.data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
+  const toggle = async () => { try { const r = await api.put('/instance/demo', { enabled: !demo.enabled }); setDemo(r.data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
   const reset = async () => {
     setBusy(true);
-    try { const r = await api.post('/sa/demo/reset'); toast.success(`Démo réinitialisée (${r.data.tickets} tickets)`); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    try { const r = await api.post('/instance/demo/reset'); toast.success(`Démo réinitialisée (${r.data.tickets} tickets)`); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
   return (
@@ -38,10 +38,10 @@ function DemoCard() {
   );
 }
 
-export default function SAHealth() {
+export default function Health() {
   const [h, setH] = useState(null);
   const load = useCallback(() => {
-    api.get('/sa/health').then(r => setH(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
+    api.get('/instance/health').then(r => setH(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
   }, []);
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
 

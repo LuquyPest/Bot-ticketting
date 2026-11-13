@@ -1,4 +1,4 @@
-// Error journal (global table error_logs), shown on the super-admin "Erreurs" page.
+// Error journal (global table error_logs), shown on the Instance → Erreurs page.
 // Fed by logger.error, console.error (the code base reports caught errors there), HTTP 5xx
 // responses, job failures and unhandled rejections. Identical messages are written at most
 // once a minute, and the volume is capped, so an error loop cannot flood the database.

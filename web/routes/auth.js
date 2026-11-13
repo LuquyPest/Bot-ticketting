@@ -10,6 +10,7 @@ const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb }  = require('../../utils/tenantDb');
 const { syncDiscordStaff, discordStaffLevel } = require('../../utils/staffSync');
 const { recordEvent } = require('../../utils/audit');
+const { isOwner } = require('../../utils/instance');
 
 function getClientIp(req) {
   return req.ip || 'unknown'; // resolved through `trust proxy` — never trust raw X-Forwarded-For
@@ -83,7 +84,7 @@ router.get('/me', async (req, res) => {
   }
 
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
-  const user = req.session.user;
+  const user = { ...req.session.user, isOwner: !req.session.user.demo && await isOwner(req.app.locals.client, req.session.user.id) };
   const guildId = req.session.currentGuildId || null;
 
   if (!guildId) return res.json({ ...user, guildId: null, permissions: [] });
@@ -131,12 +132,14 @@ router.get('/guilds', async (req, res) => {
     );
     const dbMap = new Map(dbGuilds.map(g => [g.guild_id, g.status]));
 
-    // Managers see every server (to invite the bot); others see the active servers where they
-    // already have a dashboard account or hold a Discord staff role
+    // The owner of the instance sees every server they manage (to invite the bot); others see the
+    // active servers they own on Discord, or where they have a dashboard account or a staff role
+    const owner = await isOwner(req.app.locals.client, req.session.user.id);
     const visible = [];
     for (const g of discordGuilds) {
-      if (canManage(g)) { visible.push(g); continue; }
+      if (owner && canManage(g)) { visible.push(g); continue; }
       if (dbMap.get(g.id) !== 'active') continue;
+      if (g.owner) { visible.push(g); continue; }
       try {
         const db = getTenantDb(g.id);
         const [row] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [req.session.user.id]);
@@ -165,9 +168,11 @@ router.get('/guilds', async (req, res) => {
 });
 
 // GET /api/auth/invite-url?guildId=xxx
-// Returns the bot invite URL with the target guild pre-selected.
-router.get('/invite-url', (req, res) => {
+// Returns the bot invite URL with the target guild pre-selected (owner of the instance only: the
+// bot is meant to be private, Discord refuses the invite to anyone else).
+router.get('/invite-url', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
+  if (!(await isOwner(req.app.locals.client, req.session.user.id))) return res.status(403).json({ error: 'Réservé au propriétaire de l\'instance' });
   const config = cfg();
   const { guildId } = req.query;
   const url = new URL('https://discord.com/oauth2/authorize');
@@ -206,8 +211,10 @@ router.post('/select-guild', async (req, res) => {
       [req.session.user.id]
     );
 
-    // Auto-register the guild owner as fondateur on their first access
-    if (!dbUser && guild.owner_discord_id === req.session.user.id) {
+    // The owner of the instance is founder on every server; the server's Discord owner becomes
+    // founder on their first access
+    const instanceOwner = await isOwner(req.app.locals.client, req.session.user.id);
+    if ((instanceOwner && dbUser?.role !== 'fondateur') || (!dbUser && guild.owner_discord_id === req.session.user.id)) {
       await db(
         `INSERT INTO dashboard_users (user_id, username, avatar, role)
          VALUES (?, ?, ?, 'fondateur')

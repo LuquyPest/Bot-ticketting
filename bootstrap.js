@@ -41,7 +41,6 @@ function validateConfig(config) {
       console.warn('   Mets PUBLIC_URL (webServerBaseUrl) en https:// pour supprimer ce message.');
     }
   }
-  if (config.autoApproveGuilds) info('Approbation automatique des serveurs activée (AUTO_APPROVE_GUILDS).');
   ok(config.hasFile ? 'Configuration valide (config.json + environnement).' : 'Configuration valide (environnement).');
 }
 
@@ -79,42 +78,22 @@ async function ensureGlobalTables(config) {
 
   try {
     await conn.query(`
-      CREATE TABLE IF NOT EXISTS superadmins (
-        id           INT AUTO_INCREMENT PRIMARY KEY,
-        username     VARCHAR(80) NOT NULL UNIQUE,
-        password_hash VARCHAR(255) NOT NULL,
-        totp_secret  VARCHAR(64) DEFAULT NULL,
-        totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
-        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS managers (
-        id               INT AUTO_INCREMENT PRIMARY KEY,
-        username         VARCHAR(80) NOT NULL UNIQUE,
-        password_hash    VARCHAR(255) NOT NULL,
-        assigned_guilds  JSON NOT NULL DEFAULT ('[]'),
-        created_by       INT DEFAULT NULL,
-        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_mgr_sa FOREIGN KEY (created_by) REFERENCES superadmins(id) ON DELETE SET NULL
-      );
-
       CREATE TABLE IF NOT EXISTS guilds (
-        id                 INT AUTO_INCREMENT PRIMARY KEY,
-        guild_id           VARCHAR(32) NOT NULL UNIQUE,
-        guild_name         VARCHAR(200) NOT NULL,
-        guild_icon         VARCHAR(200) DEFAULT NULL,
-        owner_discord_id   VARCHAR(32) NOT NULL,
-        owner_discord_tag  VARCHAR(100) NOT NULL,
-        status             ENUM('pending','active','suspended') NOT NULL DEFAULT 'pending',
-        db_name            VARCHAR(100) NOT NULL,
-        activation_token   VARCHAR(128) DEFAULT NULL,
-        token_expires_at   DATETIME DEFAULT NULL,
-        approved_by        INT DEFAULT NULL,
-        approved_at        DATETIME DEFAULT NULL,
-        member_count       INT DEFAULT NULL,
-        last_activity_at   DATETIME DEFAULT NULL,
-        created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_guild_approver FOREIGN KEY (approved_by) REFERENCES superadmins(id) ON DELETE SET NULL
+        id                  INT AUTO_INCREMENT PRIMARY KEY,
+        guild_id            VARCHAR(32) NOT NULL UNIQUE,
+        guild_name          VARCHAR(200) NOT NULL,
+        guild_icon          VARCHAR(200) DEFAULT NULL,
+        owner_discord_id    VARCHAR(32) NOT NULL,
+        owner_discord_tag   VARCHAR(100) NOT NULL,
+        inviter_discord_id  VARCHAR(32) DEFAULT NULL,
+        inviter_discord_tag VARCHAR(100) DEFAULT NULL,
+        status              ENUM('active','suspended') NOT NULL DEFAULT 'active',
+        suspension_reason   VARCHAR(32) DEFAULT NULL,
+        maintenance_mode    TINYINT(1) NOT NULL DEFAULT 0,
+        db_name             VARCHAR(100) NOT NULL,
+        member_count        INT DEFAULT NULL,
+        last_activity_at    DATETIME DEFAULT NULL,
+        created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS user_totp (
@@ -141,23 +120,9 @@ async function ensureGlobalTables(config) {
 
     // Migrations for existing rows
     const migrations = [
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS activation_token VARCHAR(128) DEFAULT NULL`,
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS token_expires_at DATETIME DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS member_count INT DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS last_activity_at DATETIME DEFAULT NULL`,
-      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_secret VARCHAR(64) DEFAULT NULL`,
-      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_enabled TINYINT(1) NOT NULL DEFAULT 0`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS maintenance_mode TINYINT(1) NOT NULL DEFAULT 0`,
-      `CREATE TABLE IF NOT EXISTS sa_auth_logs (
-        id         INT AUTO_INCREMENT PRIMARY KEY,
-        username   VARCHAR(100) NOT NULL,
-        ip         VARCHAR(45) NOT NULL,
-        user_agent VARCHAR(500) DEFAULT NULL,
-        status     ENUM('failed','totp_failed','success') NOT NULL DEFAULT 'failed',
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_sal_created (created_at),
-        INDEX idx_sal_username (username)
-      )`,
       `CREATE TABLE IF NOT EXISTS user_sessions (
         id           INT AUTO_INCREMENT PRIMARY KEY,
         user_id      VARCHAR(32) NOT NULL,
@@ -192,20 +157,11 @@ async function ensureGlobalTables(config) {
         INDEX idx_sub_guild (guild_id)
       )`,
       // Encrypted TOTP secrets (utils/secretBox.js) are longer than the old base32 values
-      `ALTER TABLE superadmins MODIFY totp_secret VARCHAR(255) DEFAULT NULL`,
-      `ALTER TABLE managers MODIFY totp_secret VARCHAR(255) DEFAULT NULL`,
       `ALTER TABLE user_totp MODIFY totp_secret VARCHAR(255) NOT NULL`,
       // TOTP replay protection: last accepted time step
-      `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0`,
-      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0`,
       `ALTER TABLE user_totp ADD COLUMN IF NOT EXISTS totp_last_step BIGINT NOT NULL DEFAULT 0`,
       // Dashboard 2FA recovery codes (JSON array of sha256 hashes)
       `ALTER TABLE user_totp ADD COLUMN IF NOT EXISTS recovery_codes TEXT DEFAULT NULL`,
-      // Per-account lockout for superadmin/manager logins
-      `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
-      `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
-      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
-      `ALTER TABLE managers ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
       // Per-account preferences shared by every server (last patch notes version seen…)
       `CREATE TABLE IF NOT EXISTS user_prefs (
         user_id      VARCHAR(32) NOT NULL PRIMARY KEY,
@@ -216,25 +172,26 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS split_view TINYINT(1) NOT NULL DEFAULT 0`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS tour_done VARCHAR(20) DEFAULT NULL`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS ui_skin VARCHAR(10) DEFAULT NULL`,
-      // Journal of the super-admin panel (utils/saAudit.js)
-      `CREATE TABLE IF NOT EXISTS sa_audit_log (
+      // Journal of the instance section (utils/instanceAudit.js)
+      `CREATE TABLE IF NOT EXISTS instance_audit_log (
         id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-        actor_id   INT NOT NULL,
+        actor_id   VARCHAR(32) NOT NULL,
         actor_name VARCHAR(100) NOT NULL,
-        actor_type VARCHAR(16) NOT NULL,
         action     VARCHAR(64) NOT NULL,
         guild_id   VARCHAR(32) DEFAULT NULL,
         details    JSON DEFAULT NULL,
         ip         VARCHAR(64) DEFAULT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_saa_created (created_at), INDEX idx_saa_guild (guild_id), INDEX idx_saa_action (action)
+        INDEX idx_ia_created (created_at), INDEX idx_ia_guild (guild_id), INDEX idx_ia_action (action)
       )`,
-      // Super-admin settings (error alert, demo…), JSON values
-      `CREATE TABLE IF NOT EXISTS sa_settings (
+      // Instance settings (error alert, demonstration server…), JSON values
+      `CREATE TABLE IF NOT EXISTS instance_settings (
         k          VARCHAR(64) PRIMARY KEY,
         v          JSON NOT NULL,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
+      // Up to v2.24 the settings lived in sa_settings: carried over once (fails harmlessly without it)
+      `INSERT IGNORE INTO instance_settings (k, v, updated_at) SELECT k, v, updated_at FROM sa_settings`,
       // 'bot_removed' (auto-reactivated on re-invite) vs 'admin' (manual suspension)
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS suspension_reason VARCHAR(32) DEFAULT NULL`,
       // Old session table (sessions live in Redis)
@@ -243,30 +200,6 @@ async function ensureGlobalTables(config) {
     for (const m of migrations) await conn.query(m).catch(() => null);
 
     ok('Tables globales créées ou déjà présentes.');
-  } finally {
-    await conn.end();
-  }
-}
-
-async function seedSuperAdmin(config) {
-  const username = process.env.SA_USERNAME?.trim();
-  const password = process.env.SA_PASSWORD;
-  if (!username || !password) return;
-
-  const { host, port, user, password: dbPass } = config.database;
-  const conn = await mysql.createConnection({ host, port, user, password: dbPass, database: 'ticketbot_global' });
-  try {
-    const [rows] = await conn.query('SELECT COUNT(*) AS n FROM superadmins');
-    if (rows[0].n > 0) {
-      info('Compte superadmin déjà existant — SA_USERNAME/SA_PASSWORD ignorés.');
-      return;
-    }
-    // Checked only when the account is actually created: an existing install must still boot
-    if (password.length < 12) fail('SA_PASSWORD doit faire au moins 12 caractères pour créer le compte superadmin.');
-    const bcrypt = require('bcrypt');
-    const hash = await bcrypt.hash(password, 12);
-    await conn.query('INSERT INTO superadmins (username, password_hash) VALUES (?, ?)', [username, hash]);
-    ok(`Compte superadmin "${username}" créé. Retire SA_USERNAME et SA_PASSWORD du .env après le premier démarrage.`);
   } finally {
     await conn.end();
   }
@@ -313,7 +246,6 @@ async function main() {
     info('Connexion MariaDB...');
     await ensureGlobalDatabase(config);
     await ensureGlobalTables(config);
-    await seedSuperAdmin(config);
 
     await verifyDiscordToken(config);
     await runNodeScript('deploy-commands.js', 'Déploiement des commandes slash');

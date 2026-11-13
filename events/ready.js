@@ -1,33 +1,13 @@
-const crypto = require('crypto');
 const { Events } = require('discord.js');
 const { globalQuery } = require('../utils/globalDb');
-const { getDbName } = require('../utils/tenantDb');
+const { registerGuild } = require('../utils/guildActivation');
 const logger = require('../utils/logger');
-const { activateGuild } = require('../utils/guildActivation');
 
+// Servers that got the bot while it was offline are activated now, without a DM
 async function syncGuild(client, guild) {
   try {
-    const owner = await guild.fetchOwner().catch(() => null);
-    const ownerDiscordId  = owner?.id  || guild.ownerId;
-    const ownerDiscordTag = owner?.user?.username || guild.ownerId;
-
-    const [existing] = await globalQuery('SELECT guild_id FROM guilds WHERE guild_id = ?', [guild.id]);
-
-    if (existing) {
-      await globalQuery(
-        'UPDATE guilds SET guild_name = ?, guild_icon = ?, member_count = ?, owner_discord_id = ?, owner_discord_tag = ? WHERE guild_id = ?',
-        [guild.name, guild.iconURL() || null, guild.memberCount, ownerDiscordId, ownerDiscordTag, guild.id]
-      );
-    } else {
-      const activationToken = crypto.randomBytes(48).toString('hex');
-      const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await globalQuery(
-        `INSERT INTO guilds (guild_id, guild_name, guild_icon, owner_discord_id, owner_discord_tag, status, db_name, activation_token, token_expires_at, member_count)
-         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-        [guild.id, guild.name, guild.iconURL() || null, ownerDiscordId, ownerDiscordTag, getDbName(guild.id), activationToken, tokenExpires, guild.memberCount]
-      );
-      logger.info('Nouveau serveur enregistré au démarrage', { guildId: guild.id, guildName: guild.name });
-    }
+    const result = await registerGuild(client, guild, { notify: false });
+    if (result !== 'updated') logger.info('Serveur synchronisé au démarrage', { guildId: guild.id, guildName: guild.name, result });
   } catch (err) {
     logger.error('Erreur sync guild au démarrage', { guildId: guild.id, err: err.message });
   }
@@ -44,16 +24,7 @@ module.exports = {
     await Promise.all(guilds.map(g => syncGuild(client, g)));
     logger.info('Synchronisation terminée');
 
-    // AUTO_APPROVE_GUILDS: every server still waiting (registered before the option, or while the
-    // bot was down) is activated now, as a new one would be on arrival
-    if (client.config?.autoApproveGuilds) {
-      const pending = await globalQuery('SELECT * FROM guilds WHERE status = "pending"').catch(() => []);
-      for (const row of pending) {
-        await activateGuild(client, row).catch(err => logger.error('Activation automatique échouée', { guildId: row.guild_id, err: err.message }));
-      }
-    }
-
-    // Tenant migrations are idempotent: apply them to every active guild, not only at approval time.
+    // Tenant migrations are idempotent: apply them to every active guild, not only when a server arrives.
     // The scheduled jobs wait for them ('tenantsMigrated', index.js): a job would otherwise query
     // a table a new version has not created yet.
     try {

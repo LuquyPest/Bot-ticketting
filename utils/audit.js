@@ -1,5 +1,5 @@
 // Guild event journal (table audit_log): every action, from the dashboard, Discord, the API,
-// the super-admin panel or the bot's own automations.
+// the instance section or the bot's own automations.
 
 // action -> [label, category] — also served to the dashboard (GET /api/audit/meta)
 const ACTIONS = {

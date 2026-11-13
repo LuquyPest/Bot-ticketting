@@ -4,9 +4,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { RefreshCw, Loader2, WrenchIcon } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
-import { useSA } from './SAApp';
 
-const STATUS_LABEL = { active: 'Actif', pending: 'En attente', suspended: 'Suspendu' };
+const STATUS_LABEL = { active: 'Actif', suspended: 'Suspendu' };
 const card = 'glass-dark rounded-2xl border border-overlay/8';
 
 function Kpi({ label, value, sub, to }) {
@@ -35,13 +34,11 @@ function ChartTooltip({ active, payload, label }) {
   );
 }
 
-export default function SAOverview() {
-  const { saUser } = useSA();
-  const isSA = saUser?.type === 'superadmin';
+export default function Overview() {
   const [stats, setStats] = useState(null);
 
   const load = useCallback(() => {
-    api.get('/sa/stats').then(r => setStats(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
+    api.get('/instance/stats').then(r => setStats(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -61,13 +58,12 @@ export default function SAOverview() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Kpi label="Serveurs actifs" value={guilds.active} sub={`${guilds.total} au total`} to="/sa/guilds" />
-        <Kpi label="En attente d'approbation" value={guilds.pending} sub={guilds.suspended ? `${guilds.suspended} suspendu(s)` : null} to="/sa/guilds" />
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        <Kpi label="Serveurs actifs" value={guilds.active} sub={guilds.suspended ? `${guilds.suspended} suspendu(s)` : `${guilds.total} au total`} to="/instance/guilds" />
         <Kpi label="Tickets ouverts" value={totals.openTickets} sub={`${totals.tickets} au total`} />
         <Kpi label="Ouverts sur 30 jours" value={totals.opened30d} sub={`${totals.closed30d} fermés`} />
-        <Kpi label="Membres du staff" value={totals.staff} sub={isSA ? `${stats.managers} manager(s)` : null} />
-        {isSA && <Kpi label="Erreurs (24 h)" value={stats.errors24h} to="/sa/errors" />}
+        <Kpi label="Membres du staff" value={totals.staff} />
+        <Kpi label="Erreurs (24 h)" value={stats.errors24h} to="/instance/errors" />
       </div>
 
       <div className={`${card} p-5`}>

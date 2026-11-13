@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Re-encrypts every stored secret (2FA of dashboard users, super-admins, managers) and every
-// transcript of every server with the current key (config.dashboard.encryptionKey); transcripts
+// Re-encrypts every stored secret (2FA of the dashboard accounts) and every
+// transcript of every server with the current key (ENCRYPTION_KEY / dashboard.encryptionKey); transcripts
 // still in clear (written before encryption) are encrypted too. Run after setting the new key and
 // moving the old one to dashboard.previousEncryptionKeys (or once to encrypt old transcripts):
 //   docker compose exec bot node scripts/rotate-encryption-key.js
@@ -14,8 +14,6 @@ if (process.argv.includes('--generate')) {
 
 const TABLES = [
   ['user_totp', 'user_id'],
-  ['superadmins', 'id'],
-  ['managers', 'id'],
 ];
 
 async function rotate() {

@@ -7,7 +7,8 @@ export const ticket = (id, o = {}) => ({ id, owner_id: '2000000000000000' + Stri
   sla: id % 2 ? { hours: 2, elapsedMinutes: 150, state: 'breached', since: iso(150) } : { hours: 4, elapsedMinutes: 60, state: 'ok', since: iso(60) }, ...o });
 export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(now - (n - 1 - i) * 864e5).toISOString().slice(0, 10), count: (i * 7) % 5 + 1 }));
 export const MOCK = {
-  '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [] },
+  '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true },
+  '/api/instance/info': { name: 'Ticket Bot', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com' },
   '/api/roles': [
     { id: 1, name: 'Modération', color: '#ef4444', position: 0, members: [{ user_id: '2', username: 'Lina', avatar: null }], tags: [{ id: 1, name: 'Litige', color: '#f97316' }] },
     { id: 2, name: 'Comptabilité', color: '#22c55e', position: 1, members: [], tags: [] },
@@ -95,11 +96,12 @@ export const MOCK = {
   '/api/tickets/search': { results: [{ ticket: { id: 1, owner_tag: 'membre1', subject: 'Problème de paiement 1', status: 'open' }, hits: 2,
     match: { id: 11, author_tag: 'membre1', source: 'user', created_at: iso(30), snippet: 'Mon remboursement n’est pas arrivé' } }], total: 1, page: 1, pages: 1, terms: ['rembours'] },
   '/api/audit/meta': { actions: { ticket_close: { label: 'Ticket fermé', category: 'tickets' } }, categories: { tickets: 'Tickets' }, sources: { dashboard: 'Dashboard' } },
-  '/api/sa/auth/me': { id: 1, username: 'root', type: 'superadmin' },
-  '/api/sa/stats': { guilds: { total: 3, active: 2, pending: 1, suspended: 0 }, managers: 1, errors24h: 4,
+  '/api/instance/stats': { guilds: { total: 3, active: 2, suspended: 1 }, errors24h: 4,
     totals: { tickets: 340, openTickets: 12, opened30d: 80, closed30d: 75, staff: 9 },
     daily: Array.from({ length: 30 }, (_, i) => ({ day: new Date(now - (29 - i) * 864e5).toISOString().slice(0, 10), opened: (i * 7) % 6, closed: (i * 5) % 5 })),
     perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, staff: 5, opened30d: 50, avgRating: 4.5 }] },
+  '/api/instance/guilds': [{ guild_id: '1', guild_name: 'Sunset FA', guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: 1200, created_at: iso(60 * 24 * 30) }],
+  '/api/instance/blocked': { ips: [] },
 };
 
 // 1×1 image served for attachment previews

@@ -1,4 +1,4 @@
-// Rate limiters + registry of the IPs they are currently blocking (listed / unblocked from the SA panel).
+// Rate limiters + registry of the IPs they are currently blocking (listed / unblocked from Instance → Blocages).
 // Counters and registry live in Redis: limits hold across restarts and across instances.
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');

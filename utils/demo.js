@@ -1,6 +1,6 @@
 // Demonstration server: a sandbox database filled with fictitious but realistic data, to show the
 // dashboard to a server waiting for approval (or to anyone). It is not a row of `guilds`, so no
-// automation, scan or super-admin list ever touches it. A visitor gets a founder session limited to
+// automation, scan or instance list ever touches it. A visitor gets a founder session limited to
 // this database; actions that could reach the outside (webhooks, API keys, guest links, newsletter,
 // Discord identity, import, GDPR, 2FA) are refused. Reset every night and on demand.
 const { getTenantDb } = require('./tenantDb');
@@ -136,4 +136,10 @@ function demoUser() {
   return { id: DEMO_USER_ID, username: 'Visiteur démo', avatar: null, role: 'fondateur', demo: true };
 }
 
-module.exports = { DEMO_GUILD_ID, DEMO_NAME, seedDemo, demoGuard, demoUser };
+// The demonstration server is an option of the instance (Instance → Santé), off by default
+async function demoEnabled() {
+  const { enabled } = await require('./instanceSettings').getSetting('demo', { enabled: false });
+  return enabled === true;
+}
+
+module.exports = { DEMO_GUILD_ID, DEMO_NAME, seedDemo, demoGuard, demoUser, demoEnabled };

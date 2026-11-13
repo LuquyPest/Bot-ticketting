@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, ScrollText, Shield, ClipboardList,
-  Kanban, Tag, BarChart2, ArrowRight, UserCog,
+  Kanban, Tag, BarChart2, ArrowRight, UserCog, Server,
 } from 'lucide-react';
 import { useAuth } from '../App';
 
@@ -20,6 +20,7 @@ const ALL_COMMANDS = [
   { id: 'blacklist',   label: 'Blacklist',   icon: ShieldBan,       to: '/blacklist',   roles: ['fondateur'] },
   { id: 'transcripts', label: 'Transcripts', icon: FileText,        to: '/transcripts', roles: ['fondateur'] },
   { id: 'patchnotes',  label: 'Patchnotes',  icon: ScrollText,      to: '/patchnotes',  roles: ['fondateur'] },
+  { id: 'instance',    label: 'Instance',    icon: Server,          to: '/instance',    roles: [], owner: true },
   { id: 'settings',    label: 'Paramètres',  icon: Settings,        to: '/settings',    roles: ['fondateur'] },
 ];
 
@@ -32,7 +33,8 @@ export default function CommandPalette({ open, onClose }) {
   const listRef    = useRef(null);
 
   const commands = ALL_COMMANDS.filter(c => {
-    if (!c.roles.includes(user?.role) && user?.role !== 'fondateur') return false;
+    if (c.owner) { if (!user?.isOwner) return false; }
+    else if (!c.roles.includes(user?.role) && user?.role !== 'fondateur') return false;
     if (!query.trim()) return true;
     return c.label.toLowerCase().includes(query.toLowerCase());
   });

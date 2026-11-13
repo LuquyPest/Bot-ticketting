@@ -13,7 +13,7 @@ import { adoptAccountSkin } from './ui/skin';
 import { adoptAccountLang } from './i18n';
 import WhatsNew, { useWhatsNew } from './components/WhatsNew';
 
-const SAApp       = lazy(() => import('./pages/sa/SAApp'));
+const InstanceApp = lazy(() => import('./pages/instance/InstanceApp'));
 const Login       = lazy(() => import('./pages/Login'));
 const Pending     = lazy(() => import('./pages/Pending'));
 const GuildSelect = lazy(() => import('./pages/GuildSelect'));
@@ -54,6 +54,7 @@ const Profiles    = lazy(() => import('./pages/Profiles'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
 const Health      = lazy(() => import('./pages/Health'));
 const GuestView   = lazy(() => import('./pages/GuestView'));
+const Privacy     = lazy(() => import('./pages/Privacy'));
 
 function PageLoader() {
   return (
@@ -145,9 +146,9 @@ export default function App() {
       <SSEProvider>
         <NotificationProvider>
           <Routes>
-            <Route path="/sa/*" element={
+            <Route path="/instance/*" element={
               <Suspense fallback={<PageLoader />}>
-                <ErrorBoundary><SAApp /></ErrorBoundary>
+                <ErrorBoundary><InstanceApp /></ErrorBoundary>
               </Suspense>
             } />
             {/* Member web space: own tickets, outside the staff dashboard */}
@@ -159,6 +160,7 @@ export default function App() {
               } />
             ))}
             {/* Temporary guest access (read-only, token in the link's fragment) */}
+            <Route path="/confidentialite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Privacy /></ErrorBoundary></Suspense>} />
             <Route path="/invite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><GuestView /></ErrorBoundary></Suspense>} />
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>

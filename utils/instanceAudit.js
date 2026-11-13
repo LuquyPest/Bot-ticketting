@@ -1,23 +1,17 @@
-// Journal of the super-admin panel (ticketbot_global.sa_audit_log): every successful change made
-// by a super-admin or a manager, with the server concerned. Recorded by a middleware on the SA
-// router (web/routes/superadmin.js), so a new route is journaled without extra code.
+// Journal of the instance section (ticketbot_global.instance_audit_log): every successful change
+// made by the owner, with the server concerned. Recorded by a middleware on the instance router
+// (web/routes/instance.js), so a new route is journaled without extra code.
 const { globalQuery } = require('./globalDb');
 
 // "METHOD /route/pattern" -> action
 const ACTIONS = {
-  'POST /guilds/:guildId/approve': 'guild_approve',
   'PATCH /guilds/:guildId/suspend': 'guild_suspend',
   'PATCH /guilds/:guildId/reactivate': 'guild_reactivate',
   'DELETE /guilds/:guildId': 'guild_delete',
   'PATCH /guilds/:guildId/maintenance': 'guild_maintenance',
   'POST /guilds/:guildId/founders': 'founder_add',
   'DELETE /guilds/:guildId/founders/:userId': 'founder_remove',
-  'POST /blocked/accounts/:type/:id/unlock': 'account_unlock',
   'POST /blocked/ips/unblock': 'ip_unblock',
-  'POST /managers': 'manager_create',
-  'PATCH /managers/:id': 'manager_update',
-  'POST /managers/:id/reset-totp': 'manager_reset_totp',
-  'DELETE /managers/:id': 'manager_delete',
   'DELETE /error-logs/:id': 'error_delete',
   'DELETE /error-logs': 'errors_clear',
   'PUT /settings/error-alert': 'error_alert_update',
@@ -40,20 +34,20 @@ function cleanDetails(req) {
   return Object.keys(details).length ? details : null;
 }
 
-function saAuditMiddleware(req, res, next) {
-  if (req.method === 'GET' || req.path.startsWith('/auth/')) return next();
+function instanceAuditMiddleware(req, res, next) {
+  if (req.method === 'GET') return next();
   res.on('finish', () => {
-    if (res.statusCode >= 400 || !req.saUser || !req.route) return;
+    if (res.statusCode >= 400 || !req.owner || !req.route) return;
     const action = ACTIONS[`${req.method} ${req.route.path}`] || `${req.method.toLowerCase()} ${req.route.path}`;
     let details = null;
     try { details = cleanDetails(req); } catch { /* malformed URL in body */ }
     globalQuery(
-      'INSERT INTO sa_audit_log (actor_id, actor_name, actor_type, action, guild_id, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [req.saUser.id, req.saUser.username, req.saUser.type, action.slice(0, 64), req.params?.guildId || null,
+      'INSERT INTO instance_audit_log (actor_id, actor_name, action, guild_id, details, ip) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.owner.id, req.owner.username, action.slice(0, 64), req.params?.guildId || null,
         details ? JSON.stringify(details).slice(0, 4000) : null, (req.ip || '').slice(0, 64)]
     ).catch(() => null);
   });
   next();
 }
 
-module.exports = { saAuditMiddleware, ACTIONS };
+module.exports = { instanceAuditMiddleware, ACTIONS };

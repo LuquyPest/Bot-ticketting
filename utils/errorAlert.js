@@ -1,8 +1,9 @@
 // Alert when errors spike: more than `threshold` entries in error_logs within `windowMinutes`.
 // Sent by Discord DM to the configured users and/or to a webhook (Discord webhooks get an
-// embed, other URLs a JSON payload). At most one alert per hour. Settings: SA panel → Erreurs.
+// embed, other URLs a JSON payload). Without chosen users, the DMs go to the instance owners.
+// At most one alert per hour. Settings: Instance → Erreurs.
 const { globalQuery } = require('./globalDb');
-const { getSetting } = require('./saSettings');
+const { getSetting } = require('./instanceSettings');
 const { getRedis } = require('./redis');
 const logger = require('./logger');
 
@@ -26,18 +27,24 @@ async function errorSummary(windowMinutes) {
 function alertText({ count, top }, settings, test) {
   const lines = top.map(t => `• \`${t.context}\` : ${t.n}`).join('\n') || '—';
   const { config } = require('./config');
-  const link = config.webServerBaseUrl ? `${config.webServerBaseUrl.replace(/\/$/, '')}/sa/errors` : null;
+  const link = config.webServerBaseUrl ? `${config.webServerBaseUrl.replace(/\/$/, '')}/instance/errors` : null;
   return {
     title: test ? '🧪 Test de l\'alerte d\'erreurs' : '🚨 Pic d\'erreurs sur le bot',
     description: `${count} erreur(s) sur les ${settings.windowMinutes} dernières minutes (seuil : ${settings.threshold}).\n\n**Sources principales**\n${lines}${link ? `\n\n[Ouvrir la page Erreurs](${link})` : ''}`,
   };
 }
 
+// Discord users who get the alert DMs: the chosen ones, otherwise the instance owners
+async function recipients(client, settings) {
+  if (settings.discordUserIds?.length) return settings.discordUserIds;
+  return require('./instance').ownerIds(client);
+}
+
 // Delivers an alert to the configured recipients: Discord DMs and/or webhook (embed for a Discord
 // webhook, `data` as JSON otherwise)
 async function deliver(client, settings, { title, description, color = 0xed4245, event, data = {} }) {
   const results = { dm: 0, webhook: null };
-  for (const id of settings.discordUserIds || []) {
+  for (const id of await recipients(client, settings)) {
     const user = await client?.users.fetch(id).catch(() => null);
     if (user && await user.send({ embeds: [{ title, description, color, timestamp: new Date().toISOString() }] }).catch(() => null)) results.dm++;
   }
@@ -45,7 +52,7 @@ async function deliver(client, settings, { title, description, color = 0xed4245,
     const { safePostJson } = require('./webhookEmitter');
     const isDiscord = /^https:\/\/(?:\w+\.)?discord(?:app)?\.com\/api\/webhooks\//.test(settings.webhookUrl);
     const body = isDiscord
-      ? { username: 'Ticket Bot — alertes', embeds: [{ title, description, color, timestamp: new Date().toISOString() }] }
+      ? { username: `${require('./instance').instanceName(client)} — alertes`, embeds: [{ title, description, color, timestamp: new Date().toISOString() }] }
       : { event, ...data, timestamp: new Date().toISOString() };
     results.webhook = await safePostJson(settings.webhookUrl, body);
   }
@@ -73,4 +80,4 @@ async function runErrorAlertCheck(client) {
   return { count: summary.count, sent: results };
 }
 
-module.exports = { runErrorAlertCheck, sendAlert, deliver, errorSummary, DEFAULTS, KEY };
+module.exports = { runErrorAlertCheck, sendAlert, deliver, recipients, errorSummary, DEFAULTS, KEY };

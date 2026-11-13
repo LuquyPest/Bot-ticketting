@@ -5,12 +5,10 @@ import api from '../../api';
 import toast from 'react-hot-toast';
 
 const LABELS = {
-  guild_approve: 'Serveur approuvé', guild_suspend: 'Serveur suspendu', guild_reactivate: 'Serveur réactivé',
-  guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance', guild_limits: 'Limites modifiées', guild_plan: 'Formule attribuée',
-  founder_add: 'Fondateur nommé', founder_remove: 'Fondateur retiré', account_unlock: 'Compte débloqué', ip_unblock: 'IP débloquée',
-  manager_create: 'Manager créé', manager_update: 'Manager modifié', manager_reset_totp: '2FA d\'un manager réinitialisée', manager_delete: 'Manager supprimé',
+  guild_suspend: 'Serveur suspendu', guild_reactivate: 'Serveur réactivé', guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance',
+  founder_add: 'Fondateur nommé', founder_remove: 'Fondateur retiré', ip_unblock: 'IP débloquée',
   error_delete: 'Erreur supprimée', errors_clear: 'Journal d\'erreurs vidé', error_alert_update: 'Alerte d\'erreurs modifiée', error_alert_test: 'Test de l\'alerte',
-  plan_create: 'Formule créée', plan_update: 'Formule modifiée', plan_delete: 'Formule supprimée',
+  demo_toggle: 'Démonstration activée ou désactivée', demo_reset: 'Démonstration remise à zéro',
 };
 const fmt = d => new Date(d).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 const detailsText = d => {
@@ -19,14 +17,14 @@ const detailsText = d => {
   return Object.entries(obj).map(([k, v]) => `${k} : ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ');
 };
 
-export default function SAJournal() {
+export default function Journal() {
   const [filters, setFilters] = useState({ actor: '', action: '', guild_id: '' });
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
 
   const load = useCallback(() => {
     const params = { page, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) };
-    api.get('/sa/audit', { params }).then(r => setData(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
+    api.get('/instance/audit', { params }).then(r => setData(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
   }, [filters, page]);
   useEffect(() => { load(); }, [load]);
   const set = (k, v) => { setFilters(f => ({ ...f, [k]: v })); setPage(1); };
@@ -36,7 +34,7 @@ export default function SAJournal() {
     <div className="p-6 space-y-5 max-w-6xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-ink-1">Journal du panel</h1>
+          <h1 className="text-lg font-bold text-ink-1">Journal de l'instance</h1>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser"><RefreshCw size={15} /></button>
       </div>
@@ -70,7 +68,7 @@ export default function SAJournal() {
                 {data.rows.map(r => (
                   <tr key={r.id} className="align-top">
                     <td className="px-4 py-2.5 text-ink-3 whitespace-nowrap tabular-nums">{fmt(r.created_at)}</td>
-                    <td className="px-4 py-2.5 text-ink-1 whitespace-nowrap">{r.actor_name} <span className="text-[10px] text-ink-4">{r.actor_type === 'superadmin' ? 'SA' : 'manager'}</span></td>
+                    <td className="px-4 py-2.5 text-ink-1 whitespace-nowrap"><span translate="no">{r.actor_name}</span></td>
                     <td className="px-4 py-2.5 text-ink-2 whitespace-nowrap">{LABELS[r.action] || r.action}</td>
                     <td className="px-4 py-2.5 text-ink-2">{r.guild_id ? (r.guild_name || <span className="font-mono">{r.guild_id}</span>) : '—'}</td>
                     <td className="px-4 py-2.5 text-ink-3 max-w-md break-words">{detailsText(r.details)}</td>

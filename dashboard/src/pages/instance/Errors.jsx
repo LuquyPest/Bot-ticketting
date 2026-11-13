@@ -31,7 +31,7 @@ function AlertSettings() {
 
   useEffect(() => {
     if (!open || cfg) return;
-    api.get('/sa/settings/error-alert').then(r => { setCfg(r.data); setIds(r.data.discordUserIds.join(', ')); })
+    api.get('/instance/settings/error-alert').then(r => { setCfg(r.data); setIds(r.data.discordUserIds.join(', ')); })
       .catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
   }, [open, cfg]);
 
@@ -43,15 +43,15 @@ function AlertSettings() {
   });
   const save = async () => {
     setBusy(true);
-    try { const r = await api.put('/sa/settings/error-alert', payload()); setCfg(r.data); toast.success('Alerte enregistrée'); }
+    try { const r = await api.put('/instance/settings/error-alert', payload()); setCfg(r.data); toast.success('Alerte enregistrée'); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
   const test = async () => {
     setBusy(true);
     try {
-      await api.put('/sa/settings/error-alert', payload());
-      const r = await api.post('/sa/settings/error-alert/test');
+      await api.put('/instance/settings/error-alert', payload());
+      const r = await api.post('/instance/settings/error-alert/test');
       const wh = r.data.webhook ? (r.data.webhook.status >= 200 && r.data.webhook.status < 300 ? 'webhook OK' : 'webhook en échec') : null;
       toast.success([`${r.data.dm} MP envoyé(s)`, wh].filter(Boolean).join(' · '));
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -62,7 +62,7 @@ function AlertSettings() {
   return (
     <div className="glass-dark rounded-2xl border border-overlay/8">
       <button onClick={() => setOpen(o => !o)} className="w-full px-5 py-3.5 flex items-center gap-2.5 text-left">
-        <BellRing size={15} className="text-red-400" />
+        <BellRing size={15} className="text-primary-light" />
         <span className="flex-1">
           <span className="text-sm font-semibold text-ink-1">Alerte en cas de pic d'erreurs</span>
         </span>
@@ -87,7 +87,7 @@ function AlertSettings() {
           <label className="block space-y-1 text-[11px] text-ink-3">Prévenir aussi si le bot est déconnecté de Discord depuis plus de (minutes, 0 = jamais) — indépendant de la case ci-dessus, aux mêmes destinataires ; pendant une coupure, seul le webhook est fiable
             <input type="number" min={0} max={1440} value={cfg.discordDownMinutes ?? 5} onChange={e => setCfg(c => ({ ...c, discordDownMinutes: e.target.value }))} className={input} />
           </label>
-          <label className="block space-y-1 text-[11px] text-ink-3">IDs Discord à prévenir en MP (séparés par des virgules)
+          <label className="block space-y-1 text-[11px] text-ink-3">IDs Discord à prévenir en MP (séparés par des virgules ; vide = le propriétaire)
             <input value={ids} onChange={e => setIds(e.target.value)} placeholder="123456789012345678" className={`${input} font-mono`} />
           </label>
           <label className="block space-y-1 text-[11px] text-ink-3">URL de webhook (Discord ou autre, https)
@@ -137,14 +137,14 @@ function ErrorRow({ e, onDelete }) {
   );
 }
 
-export default function SAErrors() {
+export default function Errors() {
   const [filters, setFilters] = useState({ hours: 168, guild_id: '', context: '', q: '' });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
   const [guilds, setGuilds] = useState([]);
 
-  useEffect(() => { api.get('/sa/guilds').then(r => setGuilds(r.data)).catch(() => {}); }, []);
+  useEffect(() => { api.get('/instance/guilds').then(r => setGuilds(r.data)).catch(() => {}); }, []);
   // Debounced text search
   useEffect(() => {
     const t = setTimeout(() => setFilters(f => (f.q === search ? f : { ...f, q: search })), 300);
@@ -155,7 +155,7 @@ export default function SAErrors() {
   const params = useMemo(() => Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), [filters]);
 
   const load = useCallback(() => {
-    api.get('/sa/error-logs', { params: { ...params, limit: PAGE, offset: page * PAGE } })
+    api.get('/instance/error-logs', { params: { ...params, limit: PAGE, offset: page * PAGE } })
       .then(r => setData(r.data))
       .catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
   }, [params, page]);
@@ -166,13 +166,13 @@ export default function SAErrors() {
   const filtered = filters.guild_id || filters.context || filters.q || filters.hours;
 
   const remove = async (e) => {
-    try { await api.delete(`/sa/error-logs/${e.id}`); load(); }
+    try { await api.delete(`/instance/error-logs/${e.id}`); load(); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
   const clear = async () => {
     if (!await confirmToast(`Supprimer les ${data.total} erreur(s) ${filtered ? 'correspondant aux filtres' : 'du journal'} ?`)) return;
     try {
-      const r = await api.delete('/sa/error-logs', { params });
+      const r = await api.delete('/instance/error-logs', { params });
       toast.success(`${r.data.deleted} erreur(s) supprimée(s)`);
       load();
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }

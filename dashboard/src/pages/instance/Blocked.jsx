@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { uiLocale } from '../../i18n';
-import { RefreshCw, Loader2, Lock, Globe, Unlock } from 'lucide-react';
+import { RefreshCw, Loader2, Globe, Unlock } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
@@ -17,7 +17,7 @@ function Section({ icon: Icon, title, hint, count, children }) {
   return (
     <div className="glass-dark rounded-2xl border border-overlay/8 overflow-hidden">
       <div className="px-5 py-4 border-b border-overlay/6 flex items-center gap-2.5">
-        <Icon size={15} className="text-red-400" />
+        <Icon size={15} className="text-primary-light" />
         <div className="flex-1">
           <h2 className="text-sm font-semibold text-ink-1">{title} <span className="text-ink-4 font-normal">({count})</span></h2>
           <p className="text-[11px] text-ink-4">{hint}</p>
@@ -38,14 +38,14 @@ function UnblockBtn({ onClick, busy }) {
   );
 }
 
-export default function SABlocked() {
+export default function Blocked() {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(null);
 
   const load = useCallback(() => {
-    api.get('/sa/blocked')
+    api.get('/instance/blocked')
       .then(r => setData(r.data))
-      .catch(err => { toast.error(err.response?.data?.error || 'Erreur chargement'); setData({ accounts: [], ips: [] }); });
+      .catch(err => { toast.error(err.response?.data?.error || 'Erreur chargement'); setData({ ips: [] }); });
   }, []);
 
   useEffect(() => {
@@ -54,20 +54,10 @@ export default function SABlocked() {
     return () => clearInterval(t);
   }, [load]);
 
-  const unlockAccount = async (a) => {
-    setBusy(`acc:${a.type}:${a.id}`);
-    try {
-      await api.post(`/sa/blocked/accounts/${a.type}/${a.id}/unlock`);
-      toast.success(`Compte ${a.username} débloqué`);
-      load();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-    setBusy(null);
-  };
-
   const unblockIp = async (b) => {
     setBusy(`ip:${b.limiter}:${b.key}`);
     try {
-      await api.post('/sa/blocked/ips/unblock', { limiter: b.limiter, key: b.key });
+      await api.post('/instance/blocked/ips/unblock', { limiter: b.limiter, key: b.key });
       toast.success(`${b.ip} débloquée`);
       load();
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -88,28 +78,8 @@ export default function SABlocked() {
       {data === null ? (
         <div className="flex justify-center py-16"><Loader2 size={20} className="animate-spin text-ink-3" /></div>
       ) : (
-        <>
-          <Section icon={Lock} title="Comptes super-admin / manager verrouillés" count={data.accounts.length}
-            hint="Verrouillés 15 min après 5 échecs de mot de passe ou de code 2FA">
-            {data.accounts.length === 0 ? (
-              <p className="px-5 py-6 text-xs text-ink-4 text-center">Aucun compte verrouillé</p>
-            ) : (
-              <ul className="divide-y divide-overlay/4">
-                {data.accounts.map(a => (
-                  <li key={`${a.type}:${a.id}`} className="px-5 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-ink-1">{a.username} <span className="text-[10px] text-ink-4 uppercase">{a.type === 'superadmin' ? 'Super-admin' : 'Manager'}</span></p>
-                      <p className="text-[11px] text-ink-4">{a.failed_attempts} échec(s) — déblocage auto dans {remaining(a.locked_until)}</p>
-                    </div>
-                    <UnblockBtn onClick={() => unlockAccount(a)} busy={busy === `acc:${a.type}:${a.id}`} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
           <Section icon={Globe} title="Adresses IP limitées" count={data.ips.length}
-            hint="Trop de tentatives de connexion (dashboard ou panel) ou de requêtes API depuis une même adresse">
+            hint="Trop de tentatives de connexion ou de requêtes API depuis une même adresse">
             {data.ips.length === 0 ? (
               <p className="px-5 py-6 text-xs text-ink-4 text-center">Aucune adresse bloquée</p>
             ) : (
@@ -128,7 +98,6 @@ export default function SABlocked() {
               </ul>
             )}
           </Section>
-        </>
       )}
     </div>
   );

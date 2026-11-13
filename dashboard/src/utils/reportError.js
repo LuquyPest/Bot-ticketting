@@ -1,5 +1,5 @@
 // Dashboard crashes (React render errors, uncaught errors, unhandled rejections) are sent to the
-// server and appear on the super-admin « Erreurs » page (context "navigateur"). Network errors
+// server and appear on the Instance « Erreurs » page (context "navigateur"). Network errors
 // are left out (the server already logs its own failures), as is noise from browser extensions.
 const IGNORED = /ResizeObserver loop|^Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|Loading chunk \d+ failed|Failed to fetch dynamically imported module/i;
 const MAX_PER_PAGE = 10;

@@ -7,11 +7,10 @@ const logger = require('./logger');
 
 const DEFAULTS = {
   loginLogsDays: 90,    // dashboard logins (contain IP addresses)
-  saAuthLogsDays: 90,   // super-admin login attempts
   errorLogsDays: 30,
   auditLogDays: 365,    // per-guild activity journal
   sessionsDays: 7,      // session tracking rows (sessions themselves expire after 24 h)
-  saAuditDays: 730,     // super-admin panel journal
+  instanceAuditDays: 730, // journal of the instance section
   transcriptDays: 0,    // closed tickets' transcripts
 };
 
@@ -30,10 +29,9 @@ async function runRetentionPurge() {
   const s = retentionSettings();
   const report = {
     login_logs:   await purge(globalQuery, 'login_logs', 'created_at', s.loginLogsDays),
-    sa_auth_logs: await purge(globalQuery, 'sa_auth_logs', 'created_at', s.saAuthLogsDays),
     error_logs:   await purge(globalQuery, 'error_logs', 'created_at', s.errorLogsDays),
     user_sessions: await purge(globalQuery, 'user_sessions', 'last_seen_at', s.sessionsDays),
-    sa_audit_log: await purge(globalQuery, 'sa_audit_log', 'created_at', s.saAuditDays),
+    instance_audit_log: await purge(globalQuery, 'instance_audit_log', 'created_at', s.instanceAuditDays),
     audit_log: 0,
     transcripts: 0,
   };

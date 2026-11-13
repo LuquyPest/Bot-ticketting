@@ -29,11 +29,15 @@ const ENV_MAP = {
   DB_NAME:               'database.database',
   TRUST_PROXY_HOPS:      'trustProxyHops',
   TRUSTED_PROXY_HOST:    'trustedProxyHost',
-  AUTO_APPROVE_GUILDS:   'autoApproveGuilds',
+  OWNER_IDS:             'ownerIds',
+  ALLOWED_GUILDS:        'allowedGuilds',
+  PRIVACY_URL:           'privacyUrl',
+  CONTACT_EMAIL:         'contactEmail',
   TRANSCRIPT_RETENTION_DAYS: 'retention.transcriptDays',
 };
 const NUMBERS  = new Set(['webServerPort', 'database.port', 'trustProxyHops', 'retention.transcriptDays']);
-const BOOLEANS = new Set(['autoApproveGuilds']);
+// Comma or space separated lists of Discord IDs
+const LISTS    = new Set(['ownerIds', 'allowedGuilds']);
 // Values an environment variable may carry even when empty (an empty TRUSTED_PROXY_HOST disables the check)
 const EMPTY_ALLOWED = new Set(['TRUSTED_PROXY_HOST']);
 
@@ -60,7 +64,7 @@ function loadConfig({ file = CONFIG_PATH, env = process.env } = {}) {
     if (raw === undefined || (raw === '' && !EMPTY_ALLOWED.has(name))) continue;
     let value = raw;
     if (NUMBERS.has(target)) { value = Number(raw); if (!Number.isFinite(value)) continue; }
-    else if (BOOLEANS.has(target)) value = /^(1|true|yes|oui)$/i.test(raw.trim());
+    else if (LISTS.has(target)) value = raw.split(/[\s,;]+/).filter(id => /^\d{17,20}$/.test(id));
     setPath(config, target, value);
   }
   // Defaults a Docker install never has to spell out

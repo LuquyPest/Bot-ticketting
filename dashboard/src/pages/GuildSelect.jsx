@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Bot, ChevronRight, Loader2, ExternalLink, Clock, Ban, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bot, ChevronRight, Loader2, ExternalLink, Ban, RefreshCw, Server } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../api';
-import DemoButton from '../components/DemoButton';
 
 function GuildIcon({ guild }) {
   const [error, setError] = useState(false);
@@ -27,13 +27,12 @@ function GuildIcon({ guild }) {
 
 const STATUS_BADGE = {
   active:    { label: 'Actif',         cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
-  pending:   { label: 'En attente',    cls: 'text-amber-300  bg-amber-500/10  border-amber-500/20'    },
   suspended: { label: 'Suspendu',      cls: 'text-red-400    bg-red-500/10    border-red-500/20'      },
   not_added: { label: 'Non configuré', cls: 'text-ink-4      bg-overlay/5       border-overlay/10'        },
 };
 
 export default function GuildSelect() {
-  const { selectGuild } = useAuth();
+  const { selectGuild, user } = useAuth();
   const [guilds, setGuilds]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [selecting, setSelecting] = useState(null);
@@ -136,7 +135,9 @@ export default function GuildSelect() {
             <div className="px-5 py-12 text-center space-y-2">
               <p className="text-sm text-ink-3">Aucun serveur trouvé.</p>
               <p className="text-xs text-ink-4">
-                Tu dois avoir la permission «&nbsp;Gérer le serveur&nbsp;» pour configurer le bot.
+                {user?.isOwner
+                  ? <>Invite le bot sur un serveur où tu as la permission « Gérer le serveur ».</>
+                  : <>Demande au fondateur du serveur de t'ajouter au staff.</>}
               </p>
             </div>
           )}
@@ -176,16 +177,6 @@ export default function GuildSelect() {
                   </button>
                 )}
 
-                {/* pending → attente */}
-                {guild.status === 'pending' && (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                                   text-amber-300 border border-amber-500/20 shrink-0 cursor-default select-none">
-                    <Clock size={13} />
-                    En attente
-                  </span>
-                )}
-                {guild.status === 'pending' && <DemoButton small className="shrink-0" label="Voir la démo en attendant" />}
-
                 {/* suspended → suspendu */}
                 {guild.status === 'suspended' && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
@@ -216,6 +207,14 @@ export default function GuildSelect() {
             );
           })}
         </div>
+
+        {user?.isOwner && (
+          <Link to="/instance"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold text-ink-2
+                       border border-overlay/8 hover:text-ink-1 hover:bg-overlay/4 transition-colors">
+            <Server size={13} /> Gérer l'instance
+          </Link>
+        )}
 
         {/* Refresh */}
         {!loading && !error && (

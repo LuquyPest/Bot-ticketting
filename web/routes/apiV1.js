@@ -68,7 +68,7 @@ const TICKET_EXAMPLE = {
 };
 
 // Public, no key needed: the description of this API
-router.get('/openapi.json', (req, res) => res.json(buildOpenApi()));
+router.get('/openapi.json', (req, res) => res.json(buildOpenApi(require('../../utils/instance').instanceName(req.app.locals.client))));
 
 router.use(apiKeyAuth);
 
@@ -186,7 +186,7 @@ endpoint({
 
 const ERROR_TEXT = { 400: 'Requête invalide', 401: 'Clé manquante, invalide, révoquée ou expirée', 403: 'Permission manquante ou API désactivée', 404: 'Introuvable', 429: 'Trop de requêtes' };
 
-function buildOpenApi() {
+function buildOpenApi(name = 'Ticket Bot') {
   const { config } = require('../../utils/config');
   let server = '/api/v1';
   try { server = new URL('/api/v1', config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { /* relative */ }
@@ -206,7 +206,7 @@ function buildOpenApi() {
   return {
     openapi: '3.0.3',
     info: {
-      title: 'Ticket Bot — API publique', version: '1',
+      title: `${name} — API publique`, version: '1',
       description: 'Accès aux tickets d\'un serveur avec une clé API créée dans le dashboard (page « Clés API »). La clé désigne le serveur et porte ses permissions. Envoie-la dans l\'en-tête `Authorization: Bearer <clé>`. Limite : celle de l\'API du dashboard, par adresse IP.',
     },
     servers: [{ url: server }],

@@ -23,7 +23,8 @@ gen() { openssl rand -hex 32; }
 
 echo "── Ticket Bot : configuration ──────────────────────────────────────────"
 echo "Crée d'abord l'application sur https://discord.com/developers/applications"
-echo "(onglet Bot → Reset Token ; intents « Server Members » et « Message Content » ; OAuth2 → Client Secret)."
+echo "(onglet Bot → Reset Token, décoche « Public Bot », active les intents « Server Members » et « Message Content » ;"
+echo " onglet OAuth2 → Client Secret). Le compte Discord propriétaire de cette application administrera l'instance."
 echo
 ask DISCORD_TOKEN         "Token du bot Discord" "" secret
 ask DISCORD_CLIENT_ID     "ID de l'application (Application ID)"
@@ -41,10 +42,6 @@ case "$PROXY" in
   *) COMPOSE_FILE="docker-compose.yml:docker-compose.caddy.yml" ;;
 esac
 echo
-ask SA_USERNAME "Identifiant du compte super-admin" "admin"
-SA_PASSWORD="$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)"
-ask AUTO "Activer automatiquement chaque serveur Discord qui invite le bot ? (o/n)" "o"
-AUTO_APPROVE_GUILDS=false; [[ "$AUTO" =~ ^[oOyY] ]] && AUTO_APPROVE_GUILDS=true
 
 # VAPID keys for push notifications: from the published image, or a local Node, otherwise skipped
 VAPID_PUBLIC_KEY=""; VAPID_PRIVATE_KEY=""
@@ -74,11 +71,7 @@ ENCRYPTION_KEY=$(gen)
 VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
 
-# Premier compte super-admin (créé au premier démarrage ; ces deux lignes peuvent être retirées ensuite)
-SA_USERNAME=$SA_USERNAME
-SA_PASSWORD=$SA_PASSWORD
-
-AUTO_APPROVE_GUILDS=$AUTO_APPROVE_GUILDS
+CONTACT_EMAIL=$ACME_EMAIL
 TICKETBOT_VERSION=latest
 ENV
 chmod 600 .env
@@ -93,8 +86,7 @@ Dernières étapes :
   2. Fais pointer le DNS de $PUBLIC_HOST vers ce serveur$( [[ "$PROXY" == 1 || "$PROXY" == "" ]] && echo " (ports 80 et 443 ouverts)")
   3. Démarre :   docker compose pull && docker compose up -d
      Suis :      docker compose logs -f bot
-  4. Panneau super-admin : https://$PUBLIC_HOST/sa
-       identifiant : $SA_USERNAME
-       mot de passe : $SA_PASSWORD      (aussi dans .env — note-le, puis retire SA_PASSWORD du .env)
-  5. Invite le bot sur ton serveur depuis le dashboard (https://$PUBLIC_HOST), connecte-toi avec Discord.
+  4. Ouvre https://$PUBLIC_HOST et connecte-toi avec le compte Discord propriétaire de l'application :
+     tu es le propriétaire de l'instance. Invite le bot sur ton serveur depuis « Mes serveurs » ;
+     le serveur est prêt dès que le bot arrive, et la section « Instance » te donne la main sur tout.
 MSG
