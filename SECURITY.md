@@ -16,4 +16,4 @@ Une réponse est apportée dès que possible, et le correctif est publié avant 
 
 ## Versions prises en charge
 
-Seule la dernière version publiée ([Releases](https://github.com/LuquyPest/Bot-ticketting/releases), image `latest`) reçoit des correctifs de sécurité. Mets à jour avec `docker compose pull && docker compose up -d` (voir [Mises à jour](https://luquypest.github.io/Bot-ticketting/guide/mise-a-jour)).
+Seule la dernière version publiée ([Releases](https://github.com/LuquyPest/Bot-ticketting/releases), image `latest`) reçoit des correctifs de sécurité. Mets à jour avec `docker compose pull && docker compose up -d` (voir [Mises à jour](https://daryu.xyz/guide/mise-a-jour)).
