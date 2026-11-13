@@ -17,7 +17,7 @@ h1{color:#edf2ff;font-size:24px;margin:0}p{margin:0;font-size:15px}</style></hea
 const { config } = require('../utils/config');
 
 if (!config.dashboard?.sessionSecret) {
-  throw new Error('FATAL: dashboard.sessionSecret doit être défini dans config.json');
+  throw new Error('FATAL: SESSION_SECRET (dashboard.sessionSecret) doit être défini');
 }
 if (config.dashboard.sessionSecret.length < 32) {
   throw new Error('FATAL: dashboard.sessionSecret doit faire au moins 32 caractères (entropie insuffisante)');

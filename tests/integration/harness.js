@@ -3437,6 +3437,34 @@ async function main() {
     const merged = loadConfig({ env: { DB_PORT: '3399', DB_HOST: '' } });
     check('config: la variable d environnement l emporte sur config.json, une valeur vide est ignorée', merged.hasFile && merged.database.port === 3399 && merged.database.host === config.database.host && merged.token === 'test-token', JSON.stringify(merged.database));
 
+    // Regression (v3.0 in production): the routes read their settings from the shared loader, so the
+    // Discord sign-in works with no config.json at all, only environment variables
+    {
+      const { execFileSync } = require('child_process');
+      const probe = `
+        const router = require('./web/routes/auth');
+        const req = { method: 'GET', url: '/discord', originalUrl: '/discord', headers: {}, session: {}, query: {} };
+        const res = { redirect: u => { console.log('REDIRECT ' + u); process.exit(0); }, status() { return this; }, json: b => { console.log('JSON ' + JSON.stringify(b)); process.exit(0); }, setHeader() {}, getHeader() {} };
+        router.handle(req, res, err => { console.log('ERR ' + (err && err.message)); process.exit(0); });`;
+      let out = '';
+      try {
+        out = execFileSync(process.execPath, ['-e', probe], { cwd: ROOT, encoding: 'utf8', timeout: 20000, env: {
+          PATH: process.env.PATH, TICKETBOT_CONFIG: '/nonexistent/config.json', REDIS_HOST: process.env.REDIS_HOST, REDIS_PORT: process.env.REDIS_PORT,
+          DISCORD_TOKEN: 't', DISCORD_CLIENT_ID: '424242', DISCORD_CLIENT_SECRET: 's', PUBLIC_URL: 'https://tickets.example.com', SESSION_SECRET: 'y'.repeat(32), DB_PASSWORD: 'pw' } });
+      } catch (e) { out = String(e.stdout || '') + String(e.message); }
+      const line = out.split('\n').find(l => /^(REDIRECT|JSON|ERR)/.test(l)) || out.slice(0, 200);
+      check('connexion Discord sans config.json (variables d environnement seules)', line.startsWith('REDIRECT https://discord.com/oauth2/authorize') && line.includes('client_id=424242') && line.includes(encodeURIComponent('https://tickets.example.com/api/auth/discord/callback')), line);
+      const offenders = [];
+      for (const dir of ['web', 'utils', 'events', 'commands']) {
+        for (const f of fs.readdirSync(path.join(ROOT, dir), { recursive: true })) {
+          if (!String(f).endsWith('.js') || path.join(dir, String(f)) === path.join('utils', 'config.js')) continue;
+          const src = fs.readFileSync(path.join(ROOT, dir, String(f)), 'utf8');
+          if (/CONFIG_PATH|require\([^)]*config\.json/.test(src)) offenders.push(path.join(dir, String(f)));
+        }
+      }
+      check('configuration: seul utils/config.js lit config.json', offenders.length === 0, offenders.join(', '));
+    }
+
     // A server is active as soon as the bot joins it: database, inviter founder, no approval step
     const G5 = '523456789012345678', G6 = '623456789012345678';
     const guildCreate = app('./events/guildCreate');

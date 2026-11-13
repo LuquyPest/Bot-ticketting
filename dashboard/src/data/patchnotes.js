@@ -8,6 +8,15 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.1',
+    date: '13 novembre 2026',
+    title: 'Correctif de la connexion Discord',
+    changes: [
+      { type: 'fix',  text: 'Connexion avec Discord : « Erreur serveur » sur une installation sans config.json (configuration par .env uniquement)' },
+      { type: 'tech', text: 'Tests : 873 vérifications automatiques, dont la connexion Discord sans config.json' },
+    ]
+  },
+  {
     version: 'v3.0',
     date: '13 novembre 2026',
     title: 'Instance personnelle : ton bot, sans intermédiaire',

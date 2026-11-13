@@ -57,24 +57,8 @@ async function checkNewDeviceAlert(req, userId) {
   } catch {}
 }
 
-let _cfg = null;
-let _cfgMtime = 0;
-const fs = require('fs');
-const _cfgPath = require('../../utils/config').CONFIG_PATH;
-
-function cfg() {
-  try {
-    const mtime = fs.statSync(_cfgPath).mtimeMs;
-    if (!_cfg || mtime !== _cfgMtime) {
-      delete require.cache[_cfgPath];
-      _cfg = require(_cfgPath);
-      _cfgMtime = mtime;
-    }
-  } catch {
-    if (!_cfg) throw new Error('config.json introuvable');
-  }
-  return _cfg;
-}
+// Runtime configuration: environment variables over an optional config.json (utils/config.js)
+const cfg = () => require('../../utils/config').config;
 
 // GET /api/auth/me
 router.get('/me', async (req, res) => {
