@@ -69,7 +69,8 @@ const RUNS = [
 for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RUNS) {
   const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile, locale: 'fr-FR' });
   await page.addInitScript(([t, l, sk]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); if (sk) localStorage.setItem('uiSkin', sk); }, [colorTheme, lang, skin]);
-  page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text())) failures.push(`[${theme}] console: ${m.text()}`); });
+  let expect403 = false; // a test that asks for a refusal on purpose
+  page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text()) && !(expect403 && /status of 403/.test(m.text()))) failures.push(`[${theme}] console: ${m.text()}`); });
   page.on('pageerror', e => failures.push(`[${theme}] page: ${e.message}`));
   let anonymous = false;
   await page.route('**/api/**', route => {
@@ -161,6 +162,27 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RU
       console.log(`${ok ? 'PASS' : 'FAIL'}  ${theme} choix du serveur ${owner ? 'propriétaire (liste)' : 'utilisateur (direct)'}`);
       await page.unroute('**/api/auth/me'); await page.unroute('**/api/auth/guilds'); await page.unroute('**/api/auth/select-guild');
     }
+  }
+
+  // /demo opens the demonstration straight away (link from the docs site)
+  if (theme === 'dark') {
+    anonymous = false;
+    let started = false;
+    await page.route('**/api/demo/start', r => { started = true; r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+    await page.goto(base + '/demo', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    const ok = started && new URL(page.url()).pathname === '/';
+    if (!ok) failures.push(`[${theme}] /demo : démonstration non ouverte (${page.url()})`);
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${theme} /demo ouvre la démonstration`);
+    await page.unroute('**/api/demo/start');
+    expect403 = true;
+    await page.route('**/api/demo/start', r => r.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"La démonstration est désactivée"}' }));
+    await page.goto(base + '/demo', { waitUntil: 'networkidle' });
+    const off = await page.getByText('La démonstration est désactivée').isVisible().catch(() => false);
+    if (!off) failures.push(`[${theme}] /demo désactivée : message absent`);
+    console.log(`${off ? 'PASS' : 'FAIL'}  ${theme} /demo désactivée`);
+    await page.unroute('**/api/demo/start');
+    expect403 = false;
   }
 
   // A reply typed on a ticket is still there after leaving the page

@@ -509,6 +509,7 @@ export const ENTRIES = [
   ['Invite le bot sur un serveur où tu as la permission « Gérer le serveur ».', 'Invite the bot to a server where you have the « Manage Server » permission.'],
   ['Demande au fondateur du serveur de t\'ajouter au staff.', 'Ask the server\'s founder to add you to the staff.'],
   ['Réservé au propriétaire de l\'instance', 'Reserved to the owner of the instance'],
+  ['Ouverture de la démonstration…', 'Opening the demo…'], ['Démonstration indisponible pour le moment', 'Demo unavailable for now'], ['Page de connexion', 'Sign-in page'],
   ['Clé des sauvegardes', 'Backup key'], ['Clé des sauvegardes affichée', 'Backup key shown'], ['Afficher la clé', 'Show the key'], ['Masquer la clé', 'Hide the key'],
   ['Copier la clé', 'Copy the key'], ['Clé copiée', 'Key copied'], ['Restauration :', 'Restore:'],
   ['Déchiffre les sauvegardes nocturnes de l\'instance (tous les serveurs). Réservée au propriétaire de l\'instance ; chaque affichage est inscrit au journal de l\'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.', 'Decrypts the nightly backups of the instance (every server). Reserved to the owner of the instance; every display is written to the instance log. Keep it off the server: without it, a backup is lost.'],

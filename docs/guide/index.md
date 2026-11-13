@@ -66,5 +66,6 @@ Un même bot sert **plusieurs serveurs Discord**, chacun avec sa propre base de 
 
 ## Et ensuite
 
+- [Essayer la démo](https://ticket.sunset-fa.fr/demo) — le dashboard sur un serveur fictif, sans compte ni installation.
 - [Installer ton instance](./installation) — vingt minutes, du portail Discord au premier ticket.
 - [Premiers pas](./premiers-pas) — ce qu'il faut régler juste après l'installation.

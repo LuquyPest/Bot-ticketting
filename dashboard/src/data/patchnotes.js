@@ -8,6 +8,15 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.5',
+    date: '14 novembre 2026',
+    title: 'Démonstration en un clic',
+    changes: [
+      { type: 'new',  text: 'Adresse /demo : ouvre directement la démonstration (lien du site de documentation) ; indique simplement qu\'elle est désactivée quand le propriétaire l\'a coupée' },
+      { type: 'fix',  text: 'Sécurité : les copies du .env et le dossier des sauvegardes ne sont plus copiés dans une image construite sur le serveur' },
+    ]
+  },
+  {
     version: 'v3.0.4',
     date: '14 novembre 2026',
     title: 'Sauvegardes chiffrées',

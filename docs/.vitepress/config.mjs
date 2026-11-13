@@ -69,6 +69,7 @@ export default withMermaid(defineConfig({
       { text: 'Guide', link: '/guide/', activeMatch: '^/guide/' },
       { text: 'Installation', link: '/guide/installation' },
       { text: 'Versions', link: '/guide/versions' },
+      { text: 'Démo', link: 'https://ticket.sunset-fa.fr/demo' },
       { text: 'English', link: '/en/installation' },
     ],
     sidebar: {

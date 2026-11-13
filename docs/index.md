@@ -15,6 +15,9 @@ hero:
       text: Installer en 20 minutes
       link: /guide/installation
     - theme: alt
+      text: Essayer la démo
+      link: https://ticket.sunset-fa.fr/demo
+    - theme: alt
       text: Découvrir
       link: /guide/
     - theme: alt
