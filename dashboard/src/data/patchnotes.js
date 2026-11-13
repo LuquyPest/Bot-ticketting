@@ -8,6 +8,23 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0',
+    date: '13 novembre 2026',
+    title: 'Instance personnelle : ton bot, sans intermédiaire',
+    changes: [
+      { type: 'new',  text: 'Le propriétaire de l\'application Discord administre son instance depuis la nouvelle section « Instance » du dashboard, avec sa connexion Discord : serveurs, fondateurs, santé, erreurs, journal, adresses bloquées. Co-propriétaires possibles avec OWNER_IDS' },
+      { type: 'new',  text: 'Un serveur est prêt dès que le bot le rejoint : plus de validation. Seul le propriétaire obtient le lien d\'invitation ; ALLOWED_GUILDS limite les serveurs acceptés' },
+      { type: 'new',  text: 'Le dashboard, les MP et les exports portent le nom et l\'avatar de ton bot' },
+      { type: 'new',  text: 'Page de confidentialité intégrée (/confidentialite), remplaçable par PRIVACY_URL, liée depuis la connexion et l\'espace membre' },
+      { type: 'new',  text: 'Sauvegarde automatique des bases chaque nuit (service backup, proposé par setup.sh)' },
+      { type: 'impr', text: 'Serveur de démonstration en option, désactivé par défaut (Instance → Santé)' },
+      { type: 'impr', text: 'Alertes d\'erreurs et de déconnexion Discord envoyées au propriétaire par défaut' },
+      { type: 'impr', text: 'Retirés, car propres à un service hébergé pour des clients : panneau super-admin et ses comptes, managers, formules et limites par serveur, annonces, page de statut publique' },
+      { type: 'tech', text: 'Conservation des transcripts : TRANSCRIPT_RETENTION_DAYS. Mise à jour depuis la v2 : voir UPGRADE.md' },
+      { type: 'tech', text: 'Tests : 871 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.24',
     date: '13 novembre 2026',
     title: 'Auto-hébergement : chacun son bot',

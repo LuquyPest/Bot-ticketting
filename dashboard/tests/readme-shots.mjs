@@ -29,7 +29,15 @@ const T = TICKETS[0];
 
 const DATA = {
   ...MOCK,
-  '/api/auth/me': { id: '1', username: 'Alex', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [] },
+  '/api/auth/me': { id: '1', username: 'Alex', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true },
+  '/api/instance/info': { name: 'Support Bot', avatar: null, demo: false, privacyUrl: null, contactEmail: null },
+  '/api/instance/stats': { guilds: { total: 2, active: 2, suspended: 0 }, errors24h: 0,
+    totals: { tickets: 1284, openTickets: 23, opened30d: 312, closed30d: 298, staff: 14 },
+    daily: Array.from({ length: 30 }, (_, i) => ({ day: new Date(now - (29 - i) * 864e5).toISOString().slice(0, 10), opened: 7 + ((i * 5) % 9), closed: 6 + ((i * 7) % 8) })),
+    perGuild: [
+      { guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 17, staff: 9, opened30d: 241, avgRating: 4.7 },
+      { guild_id: '2', guild_name: 'Sunset Events', status: 'active', maintenance_mode: false, openTickets: 6, staff: 5, opened30d: 71, avgRating: 4.5 },
+    ] },
   '/api/profile/whats-new': { seen: VERSIONS[0].version },
   '/api/profile/prefs': { splitView: false, tourDone: 'v1', newAgent: false },
   '/api/tickets': { tickets: TICKETS, total: 37, page: 1, pages: 2 },
@@ -78,6 +86,7 @@ const SHOTS = [
   ['dashboard-light', '/', { theme: 'light' }],
   ['ticket-mobile', `/tickets/${T.id}`, { viewport: { width: 390, height: 844 }, mobile: true }],
   ['login', '/login', { anonymous: true }],
+  ['instance', '/instance/overview'],
   // « Pro » skin (Profil → Affichage → Interface)
   ['pro-dashboard', '/', { skin: 'pro' }],
   ['pro-ticket', `/tickets/${T.id}`, { skin: 'pro' }],

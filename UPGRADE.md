@@ -1,6 +1,6 @@
 # Mettre à jour
 
-Les versions sont publiées sur la page [Releases](https://github.com/LuquyPest/Bot-ticketting/releases) avec leurs notes (les mêmes que la page *Patchnotes* du dashboard). Chaque version a son image Docker : `ghcr.io/luquypest/bot-ticketting:v2.24`, et `latest` pointe sur la dernière.
+Les versions sont publiées sur la page [Releases](https://github.com/LuquyPest/Bot-ticketting/releases) avec leurs notes (les mêmes que la page *Patchnotes* du dashboard). Chaque version a son image Docker : `ghcr.io/luquypest/bot-ticketting:v3.0`, et `latest` pointe sur la dernière.
 
 ## Mise à jour ordinaire
 
@@ -12,11 +12,34 @@ docker compose logs -f bot                     # « Tout est prêt » = terminé
 
 Les **migrations de base de données s'appliquent toutes seules** au démarrage, pour la base globale et pour chaque serveur Discord, une seule fois chacune et dans l'ordre. Aucune commande à lancer, aucune interruption pour les membres : le bot est indisponible le temps du redémarrage (quelques secondes), les messages privés reçus pendant ce temps sont lus à la reprise.
 
-Pour rester sur une version précise, mets `TICKETBOT_VERSION=v2.24` dans `.env` au lieu de `latest` ; la mise à jour se fait alors en changeant cette valeur.
+Pour rester sur une version précise, mets `TICKETBOT_VERSION=v3.0` dans `.env` au lieu de `latest` ; la mise à jour se fait alors en changeant cette valeur.
 
 ## Revenir en arrière
 
-Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `TICKETBOT_VERSION=v2.23` dans `.env`, `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz`.
+Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `TICKETBOT_VERSION=` suivi de la version précédente dans `.env`, puis `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz`.
+
+## Passer de la v2 à la v3.0 (instance personnelle)
+
+La v3.0 abandonne le modèle « service » : plus de panneau super-admin, de managers, de formules, de limites, d'annonces, de page de statut publique ni de validation des serveurs. **Le propriétaire de l'application Discord administre l'instance** depuis la section **Instance** du dashboard, avec sa connexion Discord.
+
+Avant de mettre à jour :
+
+1. Vérifie dans le portail Discord (*General Information*) que le propriétaire de l'application est bien ton compte. Sinon, mets ton ID dans `OWNER_IDS` (`.env`).
+2. Les serveurs encore **« en attente »** seront activés au démarrage. Si tu n'en veux pas, retire-les avant (panneau `/sa` de la v2 → Supprimer : le bot les quitte).
+3. Sauvegarde : `scripts/backup.sh`.
+
+Puis `docker compose pull && docker compose up -d`. Ensuite :
+
+- retire de `.env` `SA_USERNAME`, `SA_PASSWORD` et `AUTO_APPROVE_GUILDS` (ignorés) ;
+- la conservation des transcripts n'est plus une limite par serveur : `TRANSCRIPT_RETENTION_DAYS` (vide = indéfiniment) ;
+- les réglages (alerte d'erreurs, démonstration) sont repris ; sur une nouvelle installation, la démonstration est désactivée par défaut ;
+- ajoute la sauvegarde nocturne : `:docker-compose.backup.yml` à la fin de `COMPOSE_FILE`.
+
+Les tables de l'ancien modèle restent en base, inutilisées, pour permettre un retour à la v2.24 : `superadmins`, `managers`, `plans`, `announcements`, `status_events`, `sa_auth_logs`, `sa_audit_log`, `sa_settings`. Une fois la v3 adoptée, tu peux les supprimer :
+
+```bash
+docker compose exec db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" ticketbot_global -e "ALTER TABLE guilds DROP FOREIGN KEY IF EXISTS fk_guild_approver; DROP TABLE IF EXISTS managers, superadmins, plans, announcements, status_events, sa_auth_logs, sa_audit_log, sa_settings"'
+```
 
 ## Installations faites avant la v2.24 (config.json + Traefik)
 

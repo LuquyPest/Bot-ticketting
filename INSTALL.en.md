@@ -1,6 +1,6 @@
 # Self-hosting Ticket Bot
 
-One server, Docker, a domain name: twenty minutes. Every install is independent — your bot, your database, your data, no link to the author or to any other instance.
+One server, Docker, a domain name: twenty minutes. Every install is independent — your bot, your database, your data, no link to the author or to any other instance. You are its only administrator: no account to create, you sign in with your Discord account.
 
 *Version française : [INSTALL.md](INSTALL.md).* The dashboard itself is available in French and English (per-user setting).
 
@@ -20,12 +20,12 @@ Installing Docker: <https://docs.docker.com/engine/install/>.
 On <https://discord.com/developers/applications>:
 
 1. **New Application**, name it after your bot.
-2. **Bot** tab → **Reset Token** → copy the **token** (it is shown once).
+2. **Bot** tab → **Reset Token** → copy the **token** (it is shown once). Untick **Public Bot**: only you will be able to invite the bot.
 3. Still under **Bot**, *Privileged Gateway Intents*: enable **Server Members Intent** and **Message Content Intent** (without them the bot cannot read direct messages).
 4. **OAuth2** tab → copy the **Client Secret** (*Reset Secret* if needed). The **Application ID** is on *General Information*.
 5. Still under **OAuth2** → *Redirects* → **Add Redirect**: `https://tickets.example.com/api/auth/discord/callback` (your domain, exactly this path). Save.
 
-You now have three values: the token, the Application ID and the Client Secret.
+You now have three values: the token, the Application ID and the Client Secret. **The Discord account that owns this application owns the instance** (for a team application: the team owner and admins).
 
 ## 3. Install
 
@@ -35,7 +35,7 @@ cd Bot-ticketting
 scripts/setup.sh
 ```
 
-The script (prompts in French) asks for the token, the application ID, the client secret, your domain, your e-mail and the HTTPS mode, then generates every password and secret into `.env` (private file, `chmod 600`). It ends by printing the **super-admin** username and password: write them down.
+The script (prompts in French) asks for the token, the application ID, the client secret, your domain, your e-mail, the HTTPS mode and the nightly backup, then generates every password and secret into `.env` (private file, `chmod 600`).
 
 Three HTTPS modes:
 
@@ -57,25 +57,25 @@ Without the script, copy `.env.example` to `.env` and fill it in by hand: every 
 
 ## 4. First start
 
-1. **Super-admin panel**: `https://tickets.example.com/sa`, with the username and password printed by the script. It asks you to scan a QR code (Google Authenticator, Authy, Bitwarden…): two-factor authentication is mandatory for this account.
-2. **Invite the bot**: sign in to `https://tickets.example.com` with Discord → the server picker offers an invite link with the right permissions. You need *Manage Server* on the Discord server.
-3. **Activation**: with `AUTO_APPROVE_GUILDS=true` (the script's default), the server is active as soon as the bot joins and the person who invited it becomes the dashboard **founder**. Otherwise approve it in `/sa` → Servers.
-4. **Settings**: in the dashboard, *Paramètres* → access roles (which Discord roles are staff), ticket channel category, welcome messages… Everything else is done from the dashboard, nothing in files.
+1. **Sign in**: open `https://tickets.example.com` and sign in with Discord, using the account that owns the application. You are recognised as the **owner of the instance**.
+2. **Invite the bot**: the server picker offers « Inviter le bot » on every server where you have *Manage Server*. The server is **ready as soon as the bot joins**: you are its founder and get a DM with the dashboard link.
+3. **Settings**: in the dashboard, *Paramètres* → access roles (which Discord roles are staff), ticket channel category, welcome messages… Everything is done from the dashboard, nothing in files.
+4. **Instance section** (Administration menu, or « Gérer l'instance » on the server picker): your servers and their founders, bot health, errors and their alert (DM to you by default), the log, blocked addresses and the demonstration server (off by default).
 
-Then remove `SA_PASSWORD` from `.env` (the account exists, the line is no longer used) and restart: `docker compose up -d`.
+To let someone else manage the instance, add their Discord ID to `OWNER_IDS` (`.env`) and restart. To let them manage a single server, make them a founder of that server instead.
 
 ## 5. Day to day
 
 | Action | Command |
 |---|---|
 | Update | `docker compose pull && docker compose up -d` — see [UPGRADE.md](UPGRADE.md) |
-| Back up | `scripts/backup.sh` (all databases → `backups/`, put it in a cron); also keep a copy of `.env` |
+| Back up | automatic every night into `backups/` (`backup` service); on demand: `docker compose run --rm backup now` or `scripts/backup.sh`. Also keep a copy of `.env`: without `ENCRYPTION_KEY`, restored transcripts cannot be read |
 | Restore | `scripts/restore.sh backups/ticketbot-<date>.sql.gz` |
 | Logs | `docker compose logs -f bot` |
 | Restart | `docker compose restart bot` |
 | Stop | `docker compose down` (data stays in the Docker volumes) |
 | Remove everything | `docker compose down -v` — also deletes the databases |
-| Pin a version | `TICKETBOT_VERSION=v2.24` in `.env` instead of `latest` |
+| Pin a version | `TICKETBOT_VERSION=v3.0` in `.env` instead of `latest` |
 
 ## 6. Troubleshooting
 
@@ -87,9 +87,11 @@ Then remove `SA_PASSWORD` from `.env` (the account exists, the line is no longer
 
 **No HTTPS certificate** → DNS does not point to the server yet, or ports 80/443 are closed (firewall, router). `docker compose logs caddy` says why.
 
-**My server stays "pending"** → `AUTO_APPROVE_GUILDS` is not `true`: approve it in `/sa`, or set the variable to `true` and restart (pending servers are then activated).
+**No « Instance » section or invite button** → you are not signed in with the account that owns the Discord application (developer portal → *General Information* → *Owner*). Add your ID to `OWNER_IDS` if intended, then `docker compose up -d`.
 
-**Lost the super-admin password** → `SA_USERNAME`/`SA_PASSWORD` only create the very first account. Reset it in the database: `docker compose exec db mariadb -uroot -p"$DB_ROOT_PASSWORD" ticketbot_global -e "DELETE FROM superadmins"`, then restart with `SA_USERNAME`/`SA_PASSWORD` set.
+**The bot leaves a server right after joining** → `ALLOWED_GUILDS` is set and this server is not in it.
+
+**Use my own privacy policy** → the built-in `/confidentialite` page fits most cases (with the `CONTACT_EMAIL` address); for your own, put its address in `PRIVACY_URL`.
 
 **I want to keep a `config.json`** → still supported: mount it into the container (commented lines in `docker-compose.yml`). Environment variables override its values.
 

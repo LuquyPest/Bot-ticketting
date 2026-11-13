@@ -13,7 +13,7 @@
 ![Redis 7](https://img.shields.io/badge/Redis-7-FF4438?style=flat-square&logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 <br>
-![Tests](https://img.shields.io/badge/tests-880_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-871_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
@@ -85,10 +85,17 @@ Logiciel libre ([AGPL-3.0](LICENSE)) : **chacun héberge le sien**, en vingt min
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/login.png" alt="Connexion avec Discord">
-      <p align="center"><b>Connexion Discord</b><br><sub>OAuth2, double authentification, démo publique sans compte</sub></p>
+      <p align="center"><b>Connexion Discord</b><br><sub>OAuth2, double authentification, au nom et à l'avatar de ton bot</sub></p>
     </td>
   </tr>
 </table>
+
+<h3 align="center">Section Instance</h3>
+
+<p align="center">
+  <img src="docs/images/instance.png" alt="Section Instance : serveurs de l'instance, tickets par jour, erreurs" width="100%">
+</p>
+<p align="center"><sub>Réservée au propriétaire du bot : ses serveurs, leurs fondateurs, la santé, les erreurs, le journal — avec sa connexion Discord</sub></p>
 
 <h3 align="center">Interface « Pro »</h3>
 <p align="center"><sub>Au choix dans le profil : la même application, en palette neutre, angles droits, sans effets. Sombre ou clair.</sub></p>
@@ -213,7 +220,7 @@ flowchart LR
     BOT & API & JOBS --> TENANT[("MariaDB<br/>ticketbot_guild_…<br/>une base par serveur")]
 ```
 
-Un serveur Discord qui ajoute le bot est enregistré dans `ticketbot_global` et activé — aussitôt avec `AUTO_APPROVE_GUILDS=true`, sinon par un superadmin depuis le panel `/sa` — ce qui crée sa base de données dédiée. Tant qu'un serveur n'est pas actif (en attente, suspendu ou en maintenance), le bot n'y répond pas.
+Un serveur Discord qui ajoute le bot est enregistré dans `ticketbot_global` et actif aussitôt, avec sa base de données dédiée. Le propriétaire de l'application Discord administre l'instance depuis la section **Instance** du dashboard. Un serveur suspendu ou en maintenance est ignoré par le bot.
 
 <br>
 
@@ -239,9 +246,9 @@ Il faut un serveur avec Docker, un nom de domaine et une application Discord. Le
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Serveur de démonstration](#serveur-de-démonstration)
-- [Activation d'un serveur](#activation-dun-serveur)
+- [Arrivée d'un serveur](#arrivée-dun-serveur)
 - [Dashboard web](#dashboard-web)
-- [Panel Superadmin](#panel-superadmin)
+- [Section Instance](#section-instance)
 - [Commandes Discord](#commandes-discord)
 - [Fonctionnalités avancées](#fonctionnalités-avancées)
 
@@ -336,14 +343,13 @@ Tous les automatismes sont des tâches planifiées **BullMQ** (Redis) : chacune 
 | Rapport mensuel | Le 1er du mois à 9 h : PDF du mois écoulé (volume, délais, respect des délais par étape, satisfaction, classement du staff, sujets fréquents) dans le salon choisi |
 | Rapport hebdomadaire | Embed Discord automatique chaque lundi à 9 h (stats + classement) |
 | Rappels personnels | Toutes les minutes : envoie les rappels échus |
-| Démonstration | Chaque nuit à 4 h 15 : remet le serveur de démonstration à zéro |
-| Surveillance Discord | Toutes les minutes : alerte le super-admin si le bot est déconnecté de Discord depuis trop longtemps, puis à la reconnexion |
+| Démonstration | Chaque nuit à 4 h 15, si elle est activée : remet le serveur de démonstration à zéro |
+| Surveillance Discord | Toutes les minutes : alerte le propriétaire de l'instance si le bot est déconnecté de Discord depuis trop longtemps, puis à la reconnexion |
 | Questions sans réponse | Toutes les 15 s : ouvre sans sujet les tickets dont la question du sujet a expiré |
-| Limites des serveurs | Toutes les heures : prévient les fondateurs d'un serveur proche d'une limite (80 %) ou qui l'a atteinte |
-| Alerte d'erreurs | Toutes les 5 min : prévient le super-admin si les erreurs dépassent le seuil configuré |
+| Alerte d'erreurs | Toutes les 5 min : prévient le propriétaire de l'instance si les erreurs dépassent le seuil configuré |
 | Absences planifiées | Toutes les 5 min (et dès qu'une absence est créée ou retirée) : met en mode vacances le membre du staff dont l'absence commence et l'en sort à la fin — seulement si c'est l'absence qui l'y avait mis. Une absence se planifie dans **Profil** (pour soi) ou **Équipe** (fondateur ou `manage_users`, pour n'importe qui), 366 jours au plus, sans chevauchement ; journalisé |
 | Santé du serveur | Toutes les 15 min, et 20 s après un changement sur Discord (rôles du bot, salon ou rôle supprimé) : vérifie les permissions du bot et les salons, catégories et rôles configurés ; un problème qui n'existait pas à la vérification précédente est envoyé une fois en MP aux fondateurs (désactivable). Supprime aussi les catégories de débordement vides et les salons vocaux de tickets fermés |
-| Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et des transcripts au-delà de la durée fixée par le super-admin |
+| Rétention | Chaque nuit : purge des journaux anciens (connexions, erreurs, audit, sessions) et, si `TRANSCRIPT_RETENTION_DAYS` est fixé, des transcripts plus anciens |
 
 ---
 
@@ -362,9 +368,11 @@ Le guide complet est dans **[INSTALL.md](INSTALL.md)**. En résumé :
 - **Prérequis** : Docker + Docker Compose v2, un nom de domaine pointant vers le serveur (Discord exige HTTPS pour la connexion au dashboard), une application Discord (token, ID, secret OAuth2 — voir [ci-dessous](#configurer-le-bot-discord)).
 - **`scripts/setup.sh`** pose cinq questions et écrit `.env` avec tous les secrets générés (`chmod 600`). À la main : `cp .env.example .env` et remplir, chaque variable y est commentée.
 - **HTTPS** au choix dans `.env` (`COMPOSE_FILE`) : `docker-compose.caddy.yml` (Caddy inclus, certificats Let's Encrypt automatiques), `docker-compose.traefik.yml` (Traefik existant, réseau `proxy`), ou rien (port local `127.0.0.1:3000`, ton propre proxy).
+- **Sauvegarde** : `docker-compose.backup.yml` (proposé par `setup.sh`) exporte toutes les bases chaque nuit dans `./backups` ; `scripts/restore.sh` les restaure.
+- **Premier accès** : connecte-toi avec le compte Discord **propriétaire de l'application** — tu es le propriétaire de l'instance, sans compte à créer.
 - **Démarrage** : `docker compose pull && docker compose up -d`, puis `docker compose logs -f bot`.
 
-`bootstrap.js` s'exécute au démarrage : validation de la configuration, création et migration de `ticketbot_global`, compte superadmin initial (`SA_USERNAME`/`SA_PASSWORD`, seulement s'il n'en existe aucun), vérification du token Discord, déploiement des commandes slash, puis lancement du bot et du serveur web ; les bases de chaque serveur sont migrées à ce moment-là.
+`bootstrap.js` s'exécute au démarrage : validation de la configuration, création et migration de `ticketbot_global`, vérification du token Discord, déploiement des commandes slash, puis lancement du bot et du serveur web ; les bases de chaque serveur sont migrées à ce moment-là.
 
 L'image est publiée sur `ghcr.io/luquypest/bot-ticketting` (`latest` et un tag par version, amd64 et arm64) ; `docker compose up -d --build` la reconstruit depuis les sources.
 
@@ -382,48 +390,50 @@ Tout se règle dans **`.env`** ; `config.json` n'est plus nécessaire (toujours 
 | `DISCORD_CALLBACK_URL` | Optionnel : par défaut `PUBLIC_URL` + `/api/auth/discord/callback` ; doit correspondre exactement à l'URL enregistrée dans le portail Discord |
 | `PUBLIC_HOST` / `PUBLIC_URL` | Domaine du dashboard (Caddy, Traefik) et URL publique en `https://` |
 | `ACME_EMAIL` | E-mail pour Let's Encrypt (Caddy) |
-| `COMPOSE_FILE` | Fichiers compose utilisés : base seule, `+ docker-compose.caddy.yml` ou `+ docker-compose.traefik.yml` |
+| `COMPOSE_FILE` | Fichiers compose utilisés : base seule, `+ docker-compose.caddy.yml` ou `+ docker-compose.traefik.yml`, `+ docker-compose.backup.yml` |
 | `SESSION_SECRET` | Clé des sessions — **min. 32 caractères** (`openssl rand -hex 32`) |
 | `ENCRYPTION_KEY` | Clé AES-256 (64 hex) qui chiffre les secrets 2FA et les transcripts ; à défaut, dérivée de `SESSION_SECRET`. À sauvegarder avec la base. Rotation : voir plus bas |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT` | Notifications push du dashboard (facultatif ; `npx web-push generate-vapid-keys`) |
 | `DB_ROOT_PASSWORD` / `DB_PASSWORD` | Mots de passe MariaDB (root : jamais transmis au bot ; `botuser` : le bot) |
 | `REDIS_PASSWORD` | Mot de passe Redis (obligatoire) |
-| `SA_USERNAME` / `SA_PASSWORD` | Premier compte superadmin (12 caractères min.), créé au premier démarrage seulement ; à retirer ensuite |
-| `AUTO_APPROVE_GUILDS` | `true` : chaque serveur qui invite le bot est activé aussitôt, l'invitant devient fondateur ; sinon validation dans `/sa` |
-| `TICKETBOT_VERSION` | Tag de l'image : `latest` ou une version (`v2.24`) |
+| `OWNER_IDS` | Comptes Discord co-propriétaires de l'instance, en plus du propriétaire de l'application (IDs séparés par des virgules ; facultatif) |
+| `ALLOWED_GUILDS` | Si renseigné, seuls ces serveurs Discord sont acceptés : le bot quitte tout autre serveur (IDs séparés par des virgules) |
+| `PRIVACY_URL` / `CONTACT_EMAIL` | Page de confidentialité affichée (par défaut la page intégrée `/confidentialite`) et e-mail de contact qu'elle indique |
+| `TRANSCRIPT_RETENTION_DAYS` | Conservation des transcripts en jours (vide ou 0 = indéfiniment) |
+| `BACKUP_TIME` / `BACKUP_KEEP_DAYS` / `TZ` | Heure de la sauvegarde nocturne (03:00), durée de conservation des archives (30 jours), fuseau horaire |
+| `TICKETBOT_VERSION` | Tag de l'image : `latest` ou une version (`v3.0`) |
 | `BIND_ADDRESS` / `WEB_PORT` | Sans proxy : adresse et port publiés sur l'hôte (`127.0.0.1:3000`) |
 | `TRUST_PROXY_HOPS` | Nombre de reverse proxies devant l'app (défaut `1` ; `2` derrière Cloudflare). Sert à déterminer la vraie IP client (rate limiting, allowlist IP, logs) |
 | `TRUSTED_PROXY_HOST` | Nom du proxy dont l'en-tête `X-Forwarded-For` est cru, résolu chaque minute (`caddy` et `traefik` posés par les fichiers compose) : un autre conteneur du réseau Docker ne peut pas se faire passer pour une autre adresse. Vide pour désactiver (seul le nombre de sauts compte alors) |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_NAME` | Par défaut `db` / `3306` / `botuser` / `ticketbot_global` (noms du compose) |
 
-Les variables l'emportent sur `config.json`, qui garde les réglages rares sans variable : `retention.*` (durées de conservation en jours : `loginLogsDays` 90, `saAuthLogsDays` 90, `errorLogsDays` 30, `auditLogDays` 365, `sessionsDays` 7, `saAuditDays` 730 ; purge chaque nuit à 4 h 30), `rateLimits.apiPerMinute` (200), `dashboard.previousEncryptionKeys` (rotation), `database.tenantConnectionLimit` (connexions MariaDB par serveur, 5 ; voir le test de charge), `webEnabled` (`false` = bot seul, sans dashboard).
+Les variables l'emportent sur `config.json`, qui garde les réglages rares sans variable : `retention.*` (durées de conservation en jours : `loginLogsDays` 90, `errorLogsDays` 30, `auditLogDays` 365, `sessionsDays` 7, `instanceAuditDays` 730 ; purge chaque nuit à 4 h 30), `rateLimits.apiPerMinute` (200), `dashboard.previousEncryptionKeys` (rotation), `database.tenantConnectionLimit` (connexions MariaDB par serveur, 5 ; voir le test de charge), `webEnabled` (`false` = bot seul, sans dashboard).
 
 ### Configurer le bot Discord
 
 1. [discord.com/developers/applications](https://discord.com/developers/applications) → **New Application**
-2. Onglet **Bot** → copier le Token
+2. Onglet **Bot** → copier le Token, et **décocher « Public Bot »** : seul le propriétaire pourra inviter le bot
 3. Activer : **Server Members Intent**, **Message Content Intent**
 4. **OAuth2** → ajouter l'URL callback → copier le **Client Secret**
-5. Le lien d'invitation est généré par le dashboard (sélection du serveur). Permissions demandées (`268684432`) :  
+5. Le lien d'invitation est généré par le dashboard (**Mes serveurs**, réservé au propriétaire de l'instance). Permissions demandées (`268684432`) :  
    `Manage Channels` · `Manage Roles` (masquer le salon d'un ticket restreint à certains grades) · `View Channel` · `Send Messages` · `Read Message History` · `Embed Links` · `Attach Files` · `View Audit Log` (identifier qui a invité le bot) · `Mention Everyone` (pinger les rôles support en « Urgent »). Le bot ne mentionne que les utilisateurs par défaut : `@everyone` ne peut jamais être déclenché.
 
 ---
 
 ## Serveur de démonstration
 
-Un bouton **« Essayer la démo »** (page de connexion, et « Voir la démo en attendant » pour un serveur en attente d'approbation) ouvre le dashboard sur un serveur fictif rempli de données réalistes (tickets à toutes les étapes, conversations, staff, grades, tags, modèles, FAQ, procédure, profil de membre…). Le visiteur y est fondateur, mais **uniquement** sur cette base : elle n'est pas enregistrée parmi les serveurs, donc aucun automatisme, aucune liste du super-admin et aucun espace membre ne la voient, et une session démo ne peut viser aucun autre serveur (ni l'inverse). Les actions qui pourraient sortir du bac à sable sont refusées (clés API, accès invités, newsletter, identité du bot, import, RGPD, 2FA, sessions, ajout de participant), les réglages sensibles (webhooks, allowlist IP, 2FA obligatoire, API) sont ignorés, **aucun MP ne part jamais** du serveur de démonstration et les autres actions vers Discord échouent sans effet. Un bandeau rappelle que les données sont fictives et partagées. Remise à zéro chaque nuit à 4 h 15 et à la demande ; activable et désactivable depuis la page **Santé** du panel super-admin.
+**En option, désactivé par défaut** (Instance → Santé). Une fois activé, un bouton **« Découvrir le dashboard (démo) »** sur la page de connexion ouvre le dashboard sur un serveur fictif rempli de données réalistes (tickets à toutes les étapes, conversations, staff, grades, tags, modèles, FAQ, procédure, profil de membre…). Le visiteur y est fondateur, mais **uniquement** sur cette base : elle n'est pas enregistrée parmi les serveurs, donc aucun automatisme, aucune liste de l'instance et aucun espace membre ne la voient, et une session démo ne peut viser aucun autre serveur (ni l'inverse). Les actions qui pourraient sortir du bac à sable sont refusées (clés API, accès invités, newsletter, identité du bot, import, RGPD, 2FA, sessions, ajout de participant), les réglages sensibles (webhooks, allowlist IP, 2FA obligatoire, API) sont ignorés, **aucun MP ne part jamais** du serveur de démonstration et les autres actions vers Discord échouent sans effet. Un bandeau rappelle que les données sont fictives et partagées. Remise à zéro chaque nuit à 4 h 15 et à la demande depuis **Instance → Santé**. Une session démo n'a jamais accès à la section Instance.
 
-## Activation d'un serveur
+## Arrivée d'un serveur
 
-Lorsqu'un membre (avec la permission *Gérer le serveur*) ajoute le bot :
+Il n'y a **pas d'étape de validation** : l'instance appartient à celui qui l'a installée.
 
-1. Le bot est **enregistré automatiquement** dans `ticketbot_global.guilds` avec le statut `pending` (les serveurs où le bot est déjà présent sont aussi enregistrés au démarrage)
-2. La personne qui a invité le bot (lue dans le journal d'audit, à défaut le propriétaire) reçoit un **DM de confirmation**
-3. Le serveur est activé — **aussitôt** si `AUTO_APPROVE_GUILDS=true` (installation pour soi), sinon par un **superadmin** depuis le panel `/sa` → statut `active`, création de la base `ticketbot_guild_{id}`
-4. L'invitant devient **fondateur** et reçoit un DM d'activation avec le lien du dashboard
+1. Le propriétaire invite le bot depuis **Mes serveurs** (lien avec les bonnes permissions, réservé au propriétaire). Avec « Public Bot » décoché dans le portail Discord, personne d'autre ne peut l'ajouter ; `ALLOWED_GUILDS` restreint en plus la liste des serveurs acceptés (le bot quitte tout autre serveur)
+2. Le serveur est **enregistré et actif aussitôt** : création de la base `ticketbot_guild_{id}`, migrations appliquées
+3. La personne qui a invité le bot (lue dans le journal d'audit, à défaut le propriétaire du serveur) devient **fondateur** et reçoit un MP avec le lien du dashboard
+4. Les serveurs rejoints pendant que le bot était arrêté sont enregistrés au démarrage, sans MP
 
-> Tant qu'un serveur n'est pas activé, aucune fonctionnalité n'y est disponible. Au démarrage avec `AUTO_APPROVE_GUILDS=true`, les serveurs encore en attente sont activés.
-> Si le bot est retiré puis ré-invité, le serveur est réactivé automatiquement ; une suspension décidée par un superadmin, elle, est conservée.
+> Si le bot est retiré puis ré-invité, le serveur est réactivé automatiquement ; une suspension décidée depuis la section Instance, elle, est conservée.
 
 ---
 
@@ -443,7 +453,7 @@ Le dashboard s'affiche en **français** ou en **anglais**, au choix de chaque me
 | `support` | Dashboard · Tickets · Staff · Analytics — chaque action est soumise aux permissions de ses grades (voir ci-dessous) |
 | `fondateur` | Accès complet + Paramètres · Blacklist · Transcripts · Utilisateurs · Clés API |
 
-Le fondateur est la personne qui a invité le bot (ou, à défaut, le propriétaire du serveur), désignée à l'approbation du serveur ; il peut promouvoir d'autres fondateurs. Les nouveaux membres reçoivent `nouveau` et attendent l'attribution d'un grade depuis la page **Équipe**.
+Le fondateur est la personne qui a invité le bot (ou, à défaut, le propriétaire du serveur), désigné à l'arrivée du bot ; le propriétaire de l'instance est fondateur sur tous les serveurs ; il peut promouvoir d'autres fondateurs. Les nouveaux membres reçoivent `nouveau` et attendent l'attribution d'un grade depuis la page **Équipe**.
 
 **Accès automatique par rôle Discord :** les membres qui ont un des rôles *support* ou *chef support* choisis dans **Paramètres → Rôles d'accès** voient le serveur dans « Mes serveurs » et obtiennent un compte `support` à leur connexion, avec le grade associé à leur rôle (par défaut les grades **Support** et **Chef support**, créés automatiquement et modifiables ; *Chef support* est parent de *Support*). S'ils perdent le rôle Discord, l'accès est retiré (vérifié à la connexion puis toutes les 5 minutes). Les fondateurs et les comptes gérés à la main depuis **Équipe** ne sont jamais modifiés par cette synchronisation.
 
@@ -483,8 +493,6 @@ Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur
 
 **2FA obligatoire par serveur** (Paramètres → Sécurité) : non imposée, imposée aux fondateurs, ou à tout le staff. Un compte concerné sans 2FA est redirigé vers son profil pour l'activer et n'accède à rien d'autre ; il ne peut pas la désactiver tant que l'obligation est en place. Un fondateur doit avoir activé sa propre 2FA avant de l'imposer.
 
-Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de passe ou TOTP), déconnexion automatique après 30 min d'inactivité, mot de passe manager de 12 caractères minimum.
-
 ### Pages disponibles
 
 **Deux interfaces** (Profil → Affichage → Interface, enregistré sur le compte comme la langue) : **Classique**, et **Pro** — palette neutre bleu/gris, angles droits, aucun effet de verre, dégradé, lueur ni animation d'entrée. Les deux partagent toutes les pages et fonctions, et chacune a un mode sombre et un mode clair. Techniquement, la peau Pro est un attribut `html[data-ui="pro"]` qui remplace les jetons de couleur et de rayon de `dashboard/src/index.css` (section « Skin Pro ») : rien n'est dupliqué dans les composants.
@@ -504,7 +512,7 @@ La barre latérale range les pages en catégories repliables (**Support**, **Sui
 | **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
 | **Grades** | fondateur, `manage_grades` | Hiérarchie de grades et permissions |
 | **Rôles** | fondateur | Rôles du staff rattachés à des tags : un ticket au tag n'est visible que du rôle (et des fondateurs) |
-| **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV, onglet Analytique et, pour les fondateurs, onglet **Consultations confidentielles** |
+| **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, section Instance) avec filtres, export CSV, onglet Analytique et, pour les fondateurs, onglet **Consultations confidentielles** |
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances, **absences planifiées** de toute l'équipe |
 | **Accès invités** | fondateur | Accès temporaire en lecture seule à des tickets choisis pour une personne extérieure (modérateur d'un partenaire, avocat…), sans compte Discord : nom de l'invité, tickets, notes internes incluses ou non, durée (1 h à 30 jours). Le lien (`/invite#…`, jeton dans le fragment, jamais envoyé au serveur ni aux journaux) n'est montré qu'une fois et seul son hachage est stocké ; l'invité n'a aucun droit sur le dashboard, l'expiration et la révocation sont vérifiées à chaque requête, et chaque ouverture de ticket est inscrite au journal (source « Invité »). Les images des tickets partagés s'affichent (et seulement elles) ; suspendre le serveur coupe aussitôt les accès en cours. Bouton « Partager avec un invité » dans la fiche |
@@ -525,7 +533,7 @@ La barre latérale range les pages en catégories repliables (**Support**, **Sui
 
 ### Journal d'activité
 
-Chaque action est enregistrée dans `audit_log` avec son **acteur**, sa **source** (Dashboard, Discord, Automatique, API, Super-admin), le **ticket** concerné et des détails lisibles : ouverture, fermeture (y compris automatique, avec la raison), réouverture, réponses et notes, attributions, étapes, priorité, titre, renommage, participants, tags, notation, escalade, messages programmés, blacklist, connexions au dashboard, accès accordés / retirés par rôle Discord, grades, fondateurs, paramètres, panels, formulaires, tags, modèles, clés API, newsletter.
+Chaque action est enregistrée dans `audit_log` avec son **acteur**, sa **source** (Dashboard, Discord, Automatique, API), le **ticket** concerné et des détails lisibles : ouverture, fermeture (y compris automatique, avec la raison), réouverture, réponses et notes, attributions, étapes, priorité, titre, renommage, participants, tags, notation, escalade, messages programmés, blacklist, connexions au dashboard, accès accordés / retirés par rôle Discord, grades, fondateurs, paramètres, panels, formulaires, tags, modèles, clés API, newsletter.
 
 La page **Journal** filtre par catégorie, action, source, acteur, ticket, période et texte, exporte en CSV, et son onglet **Analytique** montre l'activité par jour et par catégorie, les actions les plus fréquentes, les membres les plus actifs, l'origine des actions et l'activité par heure (7, 30 ou 90 jours, avec les mêmes filtres).
 
@@ -581,45 +589,20 @@ La liste s'ouvre sur la vue **Ouverts**. Vues prédéfinies : Ouverts, Mes ticke
 
 ---
 
-## Panel Superadmin
+## Section Instance
 
-Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propres comptes.
+Réservée au **propriétaire de l'instance** : le propriétaire de l'application Discord du bot (pour une application d'équipe, son propriétaire et ses admins), plus les comptes de `OWNER_IDS`. Il s'y rend avec la même connexion Discord que le dashboard — lien **Instance** dans le menu Administration et sur **Mes serveurs**, adresse `/instance`. Aucun compte ni mot de passe à part ; le propriétaire est aussi fondateur sur chaque serveur de l'instance.
 
-### Authentification
-
-- Connexion par **identifiant + mot de passe** (bcrypt)
-- **TOTP 2FA** requis après configuration initiale
-- Les tentatives échouées sont loguées dans `sa_auth_logs`
-- Rate limiting : 20 tentatives / 15 min par IP sur les endpoints d'auth SA
-- Verrouillage du compte 15 min après 5 échecs (mot de passe ou TOTP), quelle que soit l'IP
-- Déconnexion automatique après 30 min d'inactivité
-
-### Fonctionnalités
-
-| Section | Description |
-|---------|-------------|
-| **Vue d'ensemble** | Serveurs actifs / en attente, tickets ouverts, tickets ouverts et fermés par jour sur 30 jours, staff, erreurs des dernières 24 h, et tableau par serveur (utilisation par rapport aux limites, note moyenne, conservation des transcripts). Un manager ne voit que ses serveurs |
-| **Guilds** | Lister, approuver, suspendre, réactiver, supprimer des serveurs (la suppression efface la base du serveur et fait quitter le serveur Discord au bot) |
-| **Formules** | Jeux de limites nommés (tickets, staff, conservation des transcripts) à attribuer aux serveurs depuis la fenêtre « Limites » : l'attribution copie les limites, modifier une formule met à jour tous ses serveurs, modifier les valeurs à la main repasse le serveur en « personnalisé ». Les fondateurs d'un serveur reçoivent un MP à 80 % puis à 100 % d'une limite (une fois par jour au plus, événement dans le journal du serveur) — superadmin uniquement |
-| **Limites** | Par serveur : tickets ouverts simultanés (`max_tickets`), membres du staff (`max_agents`), conservation des transcripts en jours (`transcript_retention_days`) — 0 = illimité |
-| **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
-| **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
-| **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
-| **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min par défaut, `rateLimits.apiPerMinute` dans un `config.json` facultatif), avec déblocage manuel — superadmin uniquement |
-| **Journal** | Toutes les modifications faites depuis le panel (serveurs, limites, fondateurs, managers, blocages, erreurs, alertes, formules) : compte, action, serveur concerné, paramètres (secrets masqués, URL de webhook réduite à leur origine), IP ; filtres par compte, action et serveur — superadmin uniquement, conservé 2 ans |
-| **Annonces** | Message aux fondateurs de tous les serveurs : bandeau sur leur dashboard (jusqu'à une date choisie, masquable) et/ou MP Discord envoyé une fois par personne ; information ou avertissement — superadmin uniquement |
-| **Santé** | État de Discord (connexion, latence), de la base et de Redis (temps de réponse), des tâches planifiées (dernière exécution, durée, résultat, prochaine exécution, retards signalés), du processus (mémoire, durée de fonctionnement) et version de schéma de chaque base — superadmin uniquement, actualisé toutes les 15 s |
-| **Statut public** | Page publique **`/status`** (sans connexion) : état du bot Discord, du dashboard et de la base, incidents et maintenances en cours, historique et disponibilité du bot sur 90 jours, actualisée chaque minute, sans aucune donnée interne. Le super-admin y déclare et résout incidents et maintenances ; les coupures du bot détectées par la surveillance Discord y sont inscrites et closes automatiquement. Lien depuis la page de connexion |
-| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes, et plantages JavaScript des navigateurs — source `navigateur`, ou `navigateur-anonyme` hors session et exclue des alertes, avec la page, le type, le composant React, le compte et le navigateur ; bruit des extensions et erreurs réseau exclus, 10 rapports par page et 20 par IP toutes les 10 min au plus) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres — superadmin uniquement. **Alerte** configurable : au-delà d'un seuil d'erreurs sur une fenêtre donnée, MP Discord aux IDs choisis et/ou webhook (embed pour un webhook Discord, JSON sinon), une alerte par heure au plus, bouton de test. **Déconnexion Discord** : vérifiée chaque minute ; si le bot reste déconnecté plus de N minutes (5 par défaut, 0 = jamais), les mêmes destinataires sont prévenus une fois, puis à la reconnexion avec la durée de la coupure (le webhook est le canal fiable pendant une panne de Discord) |
+| Page | Description |
+|------|-------------|
+| **Vue d'ensemble** | Serveurs actifs et suspendus, tickets ouverts, tickets ouverts et fermés par jour sur 30 jours, staff, erreurs des dernières 24 h, tableau par serveur (tickets, staff, note moyenne) |
+| **Serveurs** | Suspendre, réactiver, mettre en maintenance, supprimer un serveur (la suppression efface sa base et fait quitter le serveur Discord au bot) ; **fondateurs** : les voir, en nommer par ID Discord (MP envoyé), en retirer (le dernier est protégé), actions tracées dans l'audit du serveur |
+| **Santé** | État de Discord (connexion, latence), de la base et de Redis, des tâches planifiées (dernière exécution, durée, résultat, prochaine exécution), du processus et version de schéma de chaque base ; activation et remise à zéro du serveur de démonstration |
+| **Erreurs** | Journal centralisé des erreurs (bot, dashboard, automatismes, et plantages JavaScript des navigateurs — source `navigateur`, ou `navigateur-anonyme` hors session et exclue des alertes) : filtres par période, serveur, source et texte, trace complète, erreurs par heure, sources fréquentes, suppression unitaire ou selon les filtres. **Alerte** : au-delà d'un seuil d'erreurs sur une fenêtre donnée, MP Discord (au propriétaire par défaut, ou aux IDs choisis) et/ou webhook, une par heure au plus, bouton de test. **Déconnexion Discord** : si le bot reste déconnecté plus de N minutes (5 par défaut, 0 = jamais), les mêmes destinataires sont prévenus, puis à la reconnexion |
+| **Journal** | Toutes les modifications faites depuis la section (serveurs, fondateurs, déblocages, erreurs, alertes, démonstration) : compte, action, serveur, paramètres (secrets masqués, URL de webhook réduite à leur origine), IP ; conservé 2 ans |
+| **Blocages** | Adresses IP limitées (connexion : 20 / 15 min, API : 200 / min par défaut, `rateLimits.apiPerMinute`), avec déblocage manuel |
 
 Le journal d'erreurs est alimenté par `logger.error`, `console.error`, les réponses HTTP 5xx (avec la route), les échecs des tâches planifiées et les rejets non gérés. Les erreurs Discord attendues (membre aux MP fermés, interaction expirée ou déjà traitée, message déjà supprimé) sont ignorées. Un même message n'est enregistré qu'une fois par minute (60 entrées / min au plus) ; la purge de rétention supprime les entrées de plus de 30 jours.
-
-### Rôles dans le panel SA
-
-| Rôle | Accès |
-|------|-------|
-| `superadmin` | Accès complet à toutes les guilds et tous les managers |
-| `manager` | Accès restreint aux guilds qui lui sont assignées |
 
 ---
 
@@ -816,14 +799,9 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 
 | Table | Description |
 |-------|-------------|
-| `guilds` | Registre des serveurs (pending / active / suspended), maintenance, limites, formule |
-| `plans` | Formules (limites de tickets, d'agents, rétention) appliquées aux serveurs |
-| `superadmins` / `managers` | Comptes du panel SA (mot de passe bcrypt, TOTP chiffré, verrouillage) |
-| `sa_auth_logs` | Tentatives de connexion au panel SA |
-| `sa_audit_log` | Journal des actions du panel SA |
-| `sa_settings` | Réglages du panel SA (alerte d'erreurs, déconnexion Discord…) |
-| `announcements` | Annonces du super-admin aux fondateurs |
-| `status_events` | Incidents, maintenances et coupures affichés sur la page de statut |
+| `guilds` | Registre des serveurs de l'instance (actif / suspendu), maintenance, propriétaire et invitant |
+| `instance_audit_log` | Journal des actions de la section Instance |
+| `instance_settings` | Réglages de l'instance (alerte d'erreurs, déconnexion Discord, démonstration) |
 | `user_prefs` | Préférences par compte (dernière version du Patchnotes vue) |
 | `error_logs` | Erreurs centralisées (bot, dashboard, tâches, navigateurs) |
 | `user_sessions` | Sessions actives par utilisateur (IP, user-agent) |
@@ -963,17 +941,18 @@ Bot-ticketting/
 │   │  — Automatismes et supervision
 │   ├── jobQueue.js                 # Tâches planifiées BullMQ
 │   ├── inactiveTicketChecker.js / userInactiveChecker.js / staffReminderChecker.js / escalationChecker.js
-│   ├── scheduledMessages.js / weeklyReport.js / monthlyReport.js / retention.js / quotaAlert.js
+│   ├── scheduledMessages.js / weeklyReport.js / monthlyReport.js / retention.js
 │   ├── errorLog.js / errorAlert.js / discordWatch.js / logger.js  # Erreurs, alertes, surveillance Discord
 │   ├── guildHealth.js              # Santé du serveur (permissions, salons, rôles) et MP aux fondateurs
 │   ├── confidentialAccess.js / deviceAlert.js / idleTimeout.js  # Consultations confidentielles, nouvel appareil, inactivité
-│   ├── announcements.js / saSettings.js  # Annonces et réglages du super-admin
+│   ├── instance.js                 # Propriétaire de l'instance, nom et avatar du bot
+│   ├── instanceSettings.js / instanceAudit.js / guildActivation.js  # Réglages, journal de l'instance ; arrivée d'un serveur
 │   ├── sse.js / webhookEmitter.js  # Temps réel ; webhooks sortants (anti-SSRF)
 │
 ├── web/
 │   ├── server.js                   # Express : sessions, CSP, CSRF, limites, routes, pièces jointes, erreurs navigateur
 │   ├── rateLimiters.js             # Limiteurs (Redis) et IP bloquées
-│   ├── middleware/                 # guild.js (serveur courant), role.js (rôle + grades), superadmin.js
+│   ├── middleware/                 # guild.js (serveur courant), role.js (rôle + grades), owner.js (propriétaire)
 │   └── routes/
 │       ├── auth.js / profile.js / sessions.js / push.js  # Connexion, profil, 2FA, sessions, push
 │       ├── memberPortal.js         # Espace membre (/api/member)
@@ -982,7 +961,7 @@ Bot-ticketting/
 │       ├── config.js / grades.js / users.js / members.js / blacklist.js / faq.js / incidents.js
 │       ├── panels.js / forms.js / discord.js / events.js / transcripts.js / newsletter.js
 │       ├── apiKeys.js / apiV1.js   # Clés API ; API publique v1 (+ openapi.json)
-│       └── superadmin.js           # Panel SA
+│       └── instance.js             # Section Instance (/api/instance, /info publique)
 │
 ├── tests/
 │   ├── integration/                # Suite d'intégration (npm run test:integration)
@@ -1019,19 +998,19 @@ Bot-ticketting/
 | **CSP** | Content-Security-Policy strict via Helmet (script-src self, no inline) |
 | **Sessions** | Cookie `Secure` + `HttpOnly` + `SameSite: Lax`, store Redis, régénérées à chaque élévation de privilège, révocables depuis le profil |
 | **Session secret** | Rejeté au démarrage si < 32 caractères |
-| **TOTP 2FA** | Optionnelle pour le dashboard (codes de secours), obligatoire pour les SA ; anti-rejeu, secrets chiffrés |
+| **TOTP 2FA** | Optionnelle pour le dashboard (codes de secours), imposable par serveur ; anti-rejeu, secrets chiffrés |
 | **Nouvel appareil** | Une connexion au dashboard depuis un appareil jamais utilisé par le compte (navigateur + système, lus dans l'agent utilisateur) envoie un MP Discord au titulaire : appareil, adresse IP, date, et quoi faire si ce n'est pas lui. Rien à la toute première connexion, ni pour une nouvelle IP sur un appareil connu (remplace l'ancienne alerte « IP inconnue », trop fréquente avec les connexions mobiles) |
 | **Déconnexion après inactivité** | Réglage par serveur (Paramètres → Sécurité : jamais, 15 min à 8 h) : sans clic, frappe ni défilement pendant cette durée, la session est fermée, après un avertissement une minute avant. L'activité est partagée entre les onglets du navigateur ; le serveur le vérifie aussi (seules les vraies actions comptent : modifications et signal d'activité du dashboard, jamais les rafraîchissements automatiques, le flux temps réel ni la présence) |
 | **Tickets confidentiels tracés** | Chaque ouverture d'un ticket confidentiel — fiche, messages, transcript, PDF, lien invité — est inscrite (qui, quoi, quand, IP), au plus une fois toutes les 10 min par personne et par type. Visible des fondateurs dans la fiche (« Consultations ») et dans **Journal → Consultations confidentielles** |
 | **Contrôle d'accès** | Permissions de grade et visibilité par grade appliquées côté API, temps réel, push et commandes Discord |
 | **Isolation multi-tenant** | Base par serveur ; salons, rôles, blacklist et journaux de connexion ne débordent jamais sur un autre serveur |
 | **Allowlist IP** | Par serveur, sur la vraie IP client (`trustProxyHops`), IPv4/IPv6 et CIDR ; `X-Forwarded-For` n'est cru que venant du reverse proxy lui-même (`trustedProxyHost`) |
-| **Rate limiting** | 20 req/15 min sur les tentatives de connexion (connexion Discord et code 2FA du dashboard, SA, espace membre ; `/api/auth/me` et la liste des serveurs, lus à chaque page, n'y comptent pas), 200 req/min sur l'API générale ; limites propres aux MP, à l'ouverture de tickets depuis le web et aux rapports d'erreur |
+| **Rate limiting** | 20 req/15 min sur les tentatives de connexion (connexion Discord et code 2FA du dashboard, espace membre ; `/api/auth/me` et la liste des serveurs, lus à chaque page, n'y comptent pas), 200 req/min sur l'API générale ; limites propres aux MP, à l'ouverture de tickets depuis le web et aux rapports d'erreur |
 | **CSRF** | Toutes les mutations (POST/PATCH/DELETE/PUT) exigent `X-Requested-With: XMLHttpRequest` |
 | **SSRF** | Webhooks sortants : résolution DNS + blocage de tous les ranges privés/réservés |
-| **Audit SA** | Toutes les tentatives de connexion SA (succès, échec, TOTP) loguées dans `sa_auth_logs` |
+| **Instance** | Section réservée au propriétaire de l'application Discord (et `OWNER_IDS`), vérifié à chaque requête ; jamais accessible à une session de démonstration ; chaque modification journalisée dans `instance_audit_log` |
 | **Audit dashboard** | Toutes les mutations du dashboard loguées dans `audit_log` |
-| **Brute-force** | 5 tentatives TOTP par session ; comptes SA verrouillés 15 min après 5 échecs ; 8 DM / 30 s par utilisateur côté bot |
+| **Brute-force** | 5 tentatives TOTP par session ; 8 DM / 30 s par utilisateur côté bot |
 | **Docker** | Utilisateur `node` (non-root), `no-new-privileges`, `cap_drop: ALL`, `NODE_ENV=production` ; `botuser` limité aux bases `ticketbot_*` ; MariaDB et Redis sur le réseau interne seulement, Redis protégé par mot de passe (`REDIS_PASSWORD` dans `.env`) |
 | **Base de données** | Requêtes paramétrées, `stringifyObjects` activé (pas d'injection via objets JSON), noms de colonnes dynamiques tirés de listes blanches ; un identifiant invalide (`NaN`) devient `NULL` (introuvable, jamais d'erreur SQL) |
 | **Maintenance / suspension** | Bloque l'API du serveur et rend le bot inactif sur ce serveur |
@@ -1062,7 +1041,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 880 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 871 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
@@ -1101,8 +1080,11 @@ La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG
 **Le certificat HTTPS n'arrive pas (Caddy)**  
 → DNS pas encore propagé ou ports 80/443 fermés : `docker compose logs caddy`.
 
-**Mon serveur est bloqué en "pending"**  
-→ Mets `AUTO_APPROVE_GUILDS=true` dans `.env` et redémarre (les serveurs en attente sont activés), ou valide-le depuis le panel `/sa`.
+**Je ne vois pas la section Instance**  
+→ Elle est réservée au compte Discord propriétaire de l'application (portail développeur → *General Information*). Pour un autre compte, ajoute son ID dans `OWNER_IDS` et redémarre.
+
+**Le bot quitte aussitôt un serveur**  
+→ `ALLOWED_GUILDS` est renseigné et ce serveur n'y est pas : ajoute son ID ou vide la variable.
 
 **Les SSE (temps réel) ne fonctionnent pas derrière un reverse proxy**  
 → Ajoute ces directives dans ta config Nginx :
@@ -1124,12 +1106,6 @@ proxy_read_timeout 3600s;
 **Un support voit « Permission insuffisante » partout**  
 → Un support n'a aucun droit sans grade : vérifie le grade associé à son rôle dans **Paramètres**, ou attribue-lui un grade avec au moins `view_tickets` (page **Équipe**).
 
-**Première connexion superadmin**  
-→ Après l'identifiant et le mot de passe, le panel affiche un QR code TOTP à scanner (Authy, Google Authenticator…), puis demande un code pour confirmer.
-
-**Compte superadmin verrouillé**  
-→ Attends 15 minutes après 5 échecs. Un superadmin peut réinitialiser le mot de passe (et la 2FA) d'un manager depuis le panel.
-
 **J'ai perdu mon téléphone (2FA dashboard)**  
 → Utilise un de tes codes de secours sur l'écran de vérification, puis désactive/réactive la 2FA depuis ton profil.
 
@@ -1137,7 +1113,7 @@ proxy_read_timeout 3600s;
 
 ## Instance de l'auteur
 
-Le projet est né pour le serveur Discord Sunset et y tourne en production : **[ticket.sunset-fa.fr](https://ticket.sunset-fa.fr/login)** (bouton « Essayer la démo » sur la page de connexion : un serveur fictif, remis à zéro chaque nuit) et sa [page de statut](https://ticket.sunset-fa.fr/status). C'est une installation parmi d'autres, pas un service : ton instance ne lui parle jamais.
+Le projet est né pour le serveur Discord Sunset et y tourne en production : **[ticket.sunset-fa.fr](https://ticket.sunset-fa.fr/login)** (démonstration activée : un serveur fictif, remis à zéro chaque nuit). C'est une installation parmi d'autres, pas un service : ton instance ne lui parle jamais.
 
 ## Licence et contributions
 

@@ -1,6 +1,6 @@
 # Installer son propre Ticket Bot
 
-Un serveur, Docker, un nom de domaine : vingt minutes. Chaque installation est indépendante — ton bot, ta base, tes données, aucun lien avec l'auteur ni avec une autre instance.
+Un serveur, Docker, un nom de domaine : vingt minutes. Chaque installation est indépendante — ton bot, ta base, tes données, aucun lien avec l'auteur ni avec une autre instance. Tu en es le seul administrateur : pas de compte à créer, tu te connectes avec ton compte Discord.
 
 *English version: [INSTALL.en.md](INSTALL.en.md).*
 
@@ -20,12 +20,12 @@ Installation de Docker : <https://docs.docker.com/engine/install/>.
 Sur <https://discord.com/developers/applications> :
 
 1. **New Application**, donne-lui le nom de ton bot.
-2. Onglet **Bot** → **Reset Token** → copie le **token** (il ne sera plus affiché).
+2. Onglet **Bot** → **Reset Token** → copie le **token** (il ne sera plus affiché). Décoche **Public Bot** : toi seul pourras inviter le bot.
 3. Toujours dans **Bot**, section *Privileged Gateway Intents* : active **Server Members Intent** et **Message Content Intent** (sans eux, le bot ne lit pas les messages privés).
 4. Onglet **OAuth2** → copie le **Client Secret** (bouton *Reset Secret* si besoin). L'**Application ID** est sur la page *General Information*.
 5. Toujours dans **OAuth2** → *Redirects* → **Add Redirect** : `https://tickets.example.com/api/auth/discord/callback` (avec ton domaine, exactement cette fin). Enregistre.
 
-Tu as maintenant trois valeurs : le token, l'Application ID et le Client Secret.
+Tu as maintenant trois valeurs : le token, l'Application ID et le Client Secret. **Le compte Discord propriétaire de cette application sera le propriétaire de l'instance** (pour une application d'équipe : le propriétaire et les admins de l'équipe).
 
 ## 3. Installer
 
@@ -35,7 +35,7 @@ cd Bot-ticketting
 scripts/setup.sh
 ```
 
-Le script demande le token, l'ID d'application, le Client Secret, ton domaine, ton e-mail et le mode HTTPS, puis génère tous les mots de passe et secrets dans `.env` (fichier privé, `chmod 600`). Il affiche à la fin l'identifiant et le mot de passe du compte **super-admin** : note-les.
+Le script demande le token, l'ID d'application, le Client Secret, ton domaine, ton e-mail, le mode HTTPS et la sauvegarde nocturne, puis génère tous les mots de passe et secrets dans `.env` (fichier privé, `chmod 600`).
 
 Trois modes HTTPS :
 
@@ -57,25 +57,25 @@ Sans le script, copie `.env.example` en `.env` et remplis-le à la main : chaque
 
 ## 4. Premier démarrage
 
-1. **Panneau super-admin** : `https://tickets.example.com/sa`, avec l'identifiant et le mot de passe affichés par le script. Il te demande de scanner un QR code (Google Authenticator, Authy, Bitwarden…) : la double authentification est obligatoire pour ce compte.
-2. **Inviter le bot** : connecte-toi sur `https://tickets.example.com` avec Discord → la page de choix du serveur propose un lien d'invitation avec les bonnes permissions. Il faut la permission *Gérer le serveur* sur le serveur Discord.
-3. **Activation** : avec `AUTO_APPROVE_GUILDS=true` (choix par défaut du script), le serveur est actif dès l'arrivée du bot et la personne qui l'a invité devient **fondateur** du dashboard. Sinon, approuve-le dans `/sa` → Serveurs.
-4. **Réglages** : dans le dashboard, *Paramètres* → rôles d'accès (quels rôles Discord sont staff), catégorie des salons de tickets, messages d'accueil… Tout le reste se fait depuis le dashboard, rien dans les fichiers.
+1. **Connexion** : ouvre `https://tickets.example.com` et connecte-toi avec Discord, avec le compte propriétaire de l'application. Tu es reconnu comme **propriétaire de l'instance**.
+2. **Inviter le bot** : la page **Mes serveurs** propose « Inviter le bot » sur chaque serveur où tu as la permission *Gérer le serveur*. Le serveur est **prêt dès que le bot arrive** : tu en es fondateur et tu reçois un MP avec le lien du dashboard.
+3. **Réglages** : dans le dashboard, *Paramètres* → rôles d'accès (quels rôles Discord sont staff), catégorie des salons de tickets, messages d'accueil… Tout se fait depuis le dashboard, rien dans les fichiers.
+4. **Section Instance** (menu Administration, ou « Gérer l'instance » sur **Mes serveurs**) : tes serveurs, leurs fondateurs, la santé du bot, les erreurs et leur alerte (MP envoyé à toi par défaut), le journal, les adresses bloquées et le serveur de démonstration (désactivé par défaut).
 
-Retire ensuite `SA_PASSWORD` du `.env` (le compte est créé, la ligne ne sert plus) et redémarre : `docker compose up -d`.
+Pour donner la main à quelqu'un d'autre sur l'instance, ajoute son ID Discord dans `OWNER_IDS` (`.env`) et redémarre. Pour qu'il gère un seul serveur, nomme-le plutôt fondateur de ce serveur.
 
 ## 5. Au quotidien
 
 | Action | Commande |
 |---|---|
 | Mettre à jour | `docker compose pull && docker compose up -d` — voir [UPGRADE.md](UPGRADE.md) |
-| Sauvegarder | `scripts/backup.sh` (toutes les bases → `backups/`, à mettre en cron) ; garde aussi une copie du `.env` |
+| Sauvegarder | automatique chaque nuit dans `backups/` (service `backup`) ; à la demande : `docker compose run --rm backup now` ou `scripts/backup.sh`. Garde aussi une copie du `.env` : sans `ENCRYPTION_KEY`, les transcripts restaurés sont illisibles |
 | Restaurer | `scripts/restore.sh backups/ticketbot-<date>.sql.gz` |
 | Voir les logs | `docker compose logs -f bot` |
 | Redémarrer | `docker compose restart bot` |
 | Arrêter | `docker compose down` (les données restent dans les volumes Docker) |
 | Tout supprimer | `docker compose down -v` — supprime aussi les bases |
-| Rester sur une version | `TICKETBOT_VERSION=v2.24` dans `.env` au lieu de `latest` |
+| Rester sur une version | `TICKETBOT_VERSION=v3.0` dans `.env` au lieu de `latest` |
 
 ## 6. Problèmes fréquents
 
@@ -87,9 +87,11 @@ Retire ensuite `SA_PASSWORD` du `.env` (le compte est créé, la ligne ne sert p
 
 **Le certificat HTTPS n'arrive pas** → le DNS ne pointe pas encore vers le serveur, ou les ports 80/443 sont fermés (pare-feu, box). `docker compose logs caddy` dit pourquoi.
 
-**Mon serveur reste « en attente »** → `AUTO_APPROVE_GUILDS` n'est pas à `true` : approuve-le dans `/sa`, ou mets la variable à `true` et redémarre (les serveurs en attente sont alors activés).
+**Je ne vois pas « Instance » ni « Inviter le bot »** → tu n'es pas connecté avec le compte propriétaire de l'application Discord (portail développeur → *General Information* → *Owner*). Ajoute ton ID dans `OWNER_IDS` si c'est voulu, puis `docker compose up -d`.
 
-**Je n'ai plus le mot de passe super-admin** → mets de nouvelles valeurs `SA_USERNAME`/`SA_PASSWORD` dans `.env`… non : elles ne servent qu'à la création du premier compte. Réinitialise-le en base : `docker compose exec db mariadb -uroot -p"$DB_ROOT_PASSWORD" ticketbot_global -e "DELETE FROM superadmins"` puis redémarre avec `SA_USERNAME`/`SA_PASSWORD` renseignés.
+**Le bot quitte un serveur dès son arrivée** → `ALLOWED_GUILDS` est renseigné et ce serveur n'y est pas.
+
+**Afficher ma propre politique de confidentialité** → la page intégrée `/confidentialite` convient à la plupart des cas (avec l'e-mail `CONTACT_EMAIL`) ; pour la tienne, mets son adresse dans `PRIVACY_URL`.
 
 **Je veux garder un `config.json`** → toujours possible : monte-le dans le conteneur (lignes commentées dans `docker-compose.yml`). Les variables d'environnement l'emportent sur ses valeurs.
 
