@@ -4,7 +4,11 @@ dashboard/dist
 .git
 .gitignore
 config.json
+# Secrets and local data never go into an image (.env, its copies, backups)
 .env
+.env.*
+!.env.example
+backups/
 *.md
 LICENSE
 docker/
