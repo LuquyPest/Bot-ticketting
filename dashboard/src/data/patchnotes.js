@@ -8,6 +8,16 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.6',
+    date: '14 novembre 2026',
+    title: 'Dépendances à jour',
+    changes: [
+      { type: 'tech', text: 'Première image publiée depuis la v3.0.4 : elle contient aussi tout le contenu de la v3.0.5 (démonstration en un clic, corrections de sécurité)' },
+      { type: 'tech', text: 'Dépendances mises à jour : discord.js 14.28, BullMQ 6.7, connect-redis 10, pdfkit 0.20, Vite 8.3, actions GitHub' },
+      { type: 'tech', text: 'Image arm64 construite sur une machine ARM native plutôt qu\'en émulation, qui faisait planter Node' },
+    ]
+  },
+  {
     version: 'v3.0.5',
     date: '14 novembre 2026',
     title: 'Démonstration en un clic',
