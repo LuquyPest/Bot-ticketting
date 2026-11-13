@@ -19,11 +19,17 @@ Installing Docker: <https://docs.docker.com/engine/install/>.
 
 On <https://discord.com/developers/applications>:
 
+![Developer portal: New Application, then copy the Application ID](/images/guide-discord-app.png)
+
 1. **New Application**, name it after your bot.
 2. **Bot** tab → **Reset Token** → copy the **token** (it is shown once). Untick **Public Bot**: only you will be able to invite the bot.
 3. Still under **Bot**, *Privileged Gateway Intents*: enable **Server Members Intent** and **Message Content Intent** (without them the bot cannot read direct messages).
+![Bot tab: Reset Token, Public Bot off, intents on](/images/guide-discord-bot.png)
+
 4. **OAuth2** tab → copy the **Client Secret** (*Reset Secret* if needed). The **Application ID** is on *General Information*.
 5. Still under **OAuth2** → *Redirects* → **Add Redirect**: `https://tickets.example.com/api/auth/discord/callback` (your domain, exactly this path). Save.
+
+![OAuth2 tab: Reset Secret, redirect URL](/images/guide-discord-oauth.png)
 
 You now have three values: the token, the Application ID and the Client Secret. **The Discord account that owns this application owns the instance** (for a team application: the team owner and admins).
 

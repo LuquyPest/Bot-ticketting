@@ -4,6 +4,12 @@ Un serveur, Docker, un nom de domaine : **une vingtaine de minutes**, étape par
 
 *English version: [Installation](../en/installation).*
 
+## Ce que tu vas mettre en place
+
+![Ton domaine mène à ton serveur, qui fait tourner le bot relié à Discord](/images/guide-overview.png)
+
+Trois choses à relier : **ton application Discord** (étape 3), **ton serveur** qui fait tourner le bot (étapes 1, 4 et 5) et **ton domaine** qui y mène (étape 2).
+
 ## Ce qu'il te faut
 
 | | Pourquoi |
@@ -17,18 +23,22 @@ Un serveur, Docker, un nom de domaine : **une vingtaine de minutes**, étape par
 
 Sur le serveur, en SSH. La méthode officielle, pour Debian ou Ubuntu :
 
+![Installer Docker puis vérifier sa version](/images/install-docker.png)
+
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # puis déconnecte-toi et reconnecte-toi
 ```
 
 ::: tip Vérifier
-`docker compose version` doit afficher une version 2. Autres systèmes : [docs.docker.com/engine/install](https://docs.docker.com/engine/install/).
+`docker compose version` doit répondre par un numéro de version. Autres systèmes : [docs.docker.com/engine/install](https://docs.docker.com/engine/install/).
 :::
 
 ## Étape 2 — Faire pointer le domaine
 
-Chez ton fournisseur de domaine, ajoute un enregistrement **A** vers l'adresse IP du serveur :
+Chez ton fournisseur de domaine (OVH, Gandi, Cloudflare, Ionos…), ouvre la **zone DNS** et ajoute un enregistrement **A** vers l'adresse IP du serveur :
+
+![Ajouter un enregistrement A dans la zone DNS](/images/guide-dns.png)
 
 | Type | Nom | Valeur |
 |---|---|---|
@@ -42,15 +52,29 @@ Chez ton fournisseur de domaine, ajoute un enregistrement **A** vers l'adresse I
 
 Ouvre le [portail développeur Discord](https://discord.com/developers/applications) et connecte-toi avec le compte qui administrera l'instance.
 
+### Créer l'application
+
 1. **New Application** → donne-lui le nom de ton bot → **Create**.
 2. Page **General Information** : copie l'**Application ID**.
+
+![Portail développeur : New Application, puis copier l'Application ID](/images/guide-discord-app.png)
+
+### Le bot
+
 3. Onglet **Bot** :
    - **Reset Token** → copie le **token** (il ne sera plus jamais affiché) ;
    - décoche **Public Bot** : toi seul pourras inviter le bot ;
    - dans *Privileged Gateway Intents*, active **Server Members Intent** et **Message Content Intent**, puis **Save Changes**.
+
+![Onglet Bot : Reset Token, Public Bot désactivé, intents activés](/images/guide-discord-bot.png)
+
+### La connexion au dashboard
+
 4. Onglet **OAuth2** :
    - **Reset Secret** → copie le **Client Secret** ;
    - dans *Redirects*, **Add Redirect** : `https://tickets.example.com/api/auth/discord/callback` (avec ton domaine, cette fin exactement) → **Save Changes**.
+
+![Onglet OAuth2 : Reset Secret, adresse de redirection](/images/guide-discord-oauth.png)
 
 Tu as maintenant trois valeurs : l'**Application ID**, le **token** et le **Client Secret**.
 

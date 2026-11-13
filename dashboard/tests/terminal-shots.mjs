@@ -1,10 +1,18 @@
 // Renders terminal sessions as images for the installation guide
 import { chromium } from 'playwright-core';
-// node tests/terminal-shots.mjs   (writes ../docs/public/images/install-setup.png and install-start.png)
+// node tests/terminal-shots.mjs   (writes ../docs/public/images/install-*.png)
 const out = process.argv[2] || new URL("../../docs/public/images", import.meta.url).pathname;
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // Lines: [text, kind] — kind: cmd (prompt + command), in (typed answer after a prompt), ok, dim, plain
 const sessions = {
+  'install-docker': [
+    ['curl -fsSL https://get.docker.com | sh', 'cmd'],
+    ['# Executing docker install script…', 'dim'],
+    ['sudo usermod -aG docker $USER', 'cmd'],
+    ['exit                       # puis reconnecte-toi en SSH', 'cmd'],
+    ['docker compose version', 'cmd'],
+    ['Docker Compose version v5.5.1', 'hl'],
+  ],
   'install-setup': [
     ['git clone https://github.com/LuquyPest/Bot-ticketting.git && cd Bot-ticketting', 'cmd'],
     ['scripts/setup.sh', 'cmd'],

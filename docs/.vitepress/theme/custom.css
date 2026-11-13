@@ -61,4 +61,4 @@
 
 /* Pictures inside the guide pages */
 .vp-doc p > img { display: block; margin: 20px auto; max-width: 100%; border: 1px solid var(--vp-c-divider); border-radius: 6px; }
-.vp-doc p > img[src*='install-setup'], .vp-doc p > img[src*='install-start'] { border: 0; }
+.vp-doc p > img[src*='install-setup'], .vp-doc p > img[src*='install-start'], .vp-doc p > img[src*='install-docker'], .vp-doc p > img[src*='guide-'] { border: 0; }
