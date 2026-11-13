@@ -30,7 +30,7 @@ const T = TICKETS[0];
 const DATA = {
   ...MOCK,
   '/api/auth/me': { id: '1', username: 'Alex', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true },
-  '/api/instance/info': { name: 'Support Bot', avatar: null, demo: false, privacyUrl: null, contactEmail: null },
+  '/api/instance/info': { name: 'Support Bot', avatar: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2f6feb"/><text x="32" y="42" font-family="Arial" font-size="30" font-weight="700" fill="#fff" text-anchor="middle">S</text></svg>'), demo: false, privacyUrl: null, contactEmail: null },
   '/api/instance/stats': { guilds: { total: 2, active: 2, suspended: 0 }, errors24h: 0,
     totals: { tickets: 1284, openTickets: 23, opened30d: 312, closed30d: 298, staff: 14 },
     daily: Array.from({ length: 30 }, (_, i) => ({ day: new Date(now - (29 - i) * 864e5).toISOString().slice(0, 10), opened: 7 + ((i * 5) % 9), closed: 6 + ((i * 7) % 8) })),
@@ -72,25 +72,17 @@ const DATA = {
   '/api/tickets/time/running': null,
 };
 
+// README pictures, in the « Pro » interface (Profil → Affichage → Interface)
+const PRO = { skin: 'pro' };
 const SHOTS = [
-  // [file, path, { theme, viewport, after }]
-  ['dashboard', '/'],
-  ['tickets', '/tickets'],
-  ['ticket', `/tickets/${T.id}`],
-  ['split-view', '/tickets', { prefs: { splitView: true }, after: async page => { await page.locator('table tr', { hasText: T.subject }).first().click(); await page.waitForTimeout(1200); } }],
-  ['queue', '/queue'],
-  ['kanban', '/kanban'],
-  ['analytics-compare', '/analytics', { after: async page => { await page.click('button:has-text("Comparaison")'); await page.waitForTimeout(900); } }],
-  ['health', '/sante'],
-  ['member-portal', '/espace/123456789012345678/1'],
-  ['dashboard-light', '/', { theme: 'light' }],
-  ['ticket-mobile', `/tickets/${T.id}`, { viewport: { width: 390, height: 844 }, mobile: true }],
-  ['login', '/login', { anonymous: true }],
-  ['instance', '/instance/overview'],
-  // « Pro » skin (Profil → Affichage → Interface)
-  ['pro-dashboard', '/', { skin: 'pro' }],
-  ['pro-ticket', `/tickets/${T.id}`, { skin: 'pro' }],
-  ['pro-tickets-light', '/tickets', { skin: 'pro', theme: 'light' }],
+  // [file, path, { theme, skin, viewport, after }]
+  ['dashboard', '/', PRO],
+  ['ticket', `/tickets/${T.id}`, PRO],
+  ['split-view', '/tickets', { ...PRO, prefs: { splitView: true }, after: async page => { await page.locator('table tr', { hasText: T.subject }).first().click(); await page.waitForTimeout(1200); } }],
+  ['instance', '/instance/overview', PRO],
+  ['member-portal', '/espace/123456789012345678/1', PRO],
+  ['dashboard-light', '/', { ...PRO, theme: 'light' }],
+  ['ticket-mobile', `/tickets/${T.id}`, { ...PRO, viewport: { width: 390, height: 844 }, mobile: true }],
 ];
 
 const server = await preview({ preview: { host: '127.0.0.1', port: 4176, strictPort: true, proxy: {} }, logLevel: 'error' });

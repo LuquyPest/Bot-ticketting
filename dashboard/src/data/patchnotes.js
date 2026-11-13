@@ -13,6 +13,7 @@ export const VERSIONS = [
     title: 'Le logo, c\'est ton bot',
     changes: [
       { type: 'impr', text: 'L\'avatar du bot remplace le logo en haut à gauche du dashboard et sert d\'icône d\'onglet ; le titre de l\'onglet porte son nom' },
+      { type: 'tech', text: 'README refait : court, avec des captures de l\'interface Pro ; dépendance bcrypt retirée (plus utilisée depuis la v3.0)' },
     ]
   },
   {
