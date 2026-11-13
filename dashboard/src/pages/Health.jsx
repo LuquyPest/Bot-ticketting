@@ -50,7 +50,6 @@ export default function Health() {
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-ink-1">Santé du serveur</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Permissions du bot, salons, catégories et rôles configurés. Vérifié toutes les 15 minutes et après chaque changement sur Discord : un nouveau problème t'est envoyé en MP.</p>
         </div>
         <button onClick={load} disabled={loading} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-overlay/8 text-sm text-ink-2 hover:text-ink-1 disabled:opacity-50">
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Revérifier
@@ -63,9 +62,6 @@ export default function Health() {
           {problems.length ? `${problems.length} problème${problems.length > 1 ? 's' : ''} à corriger` : 'Tout fonctionne'}
         </p>
         {problems.length > 0 && <ul className="mt-2 space-y-1 text-sm text-ink-2 list-disc pl-6">{problems.map(p => <li key={p.id}>{p.text}</li>)}</ul>}
-        {problems.some(p => p.id.startsWith('perm:')) && (
-          <p className="mt-2 text-xs text-ink-3">Pour une permission manquante : Paramètres du serveur Discord → Rôles → rôle du bot, ou réinvite le bot avec le lien de la page de sélection du serveur.</p>
-        )}
         <p className="mt-2 text-[11px] text-ink-4">Vérifié le {new Date(report.checkedAt).toLocaleString(uiLocale())} · format : {MODE_LABEL[report.mode] || MODE_LABEL.auto}</p>
       </div>
 

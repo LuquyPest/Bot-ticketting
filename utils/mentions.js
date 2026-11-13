@@ -43,7 +43,7 @@ async function notifyMentions(db, client, guildId, ticket, content, author) {
     const mentioned = (await findMentionedStaff(db, content)).filter(s => s.user_id !== author.id);
     const notified = [];
     for (const s of mentioned) {
-      if (!(await canUserSeeTicket(db, s.user_id, ticket.visibility_grade_id).catch(() => false))) continue;
+      if (!(await canUserSeeTicket(db, s.user_id, ticket).catch(() => false))) continue;
       const excerpt = String(content).slice(0, 200);
       sendToUser(guildId, s.user_id, 'mention', { ticketId: ticket.id, subject: ticket.subject, by: author.username, excerpt, grade: s.grade || null });
       require('../web/routes/push').sendPushToUser(guildId, s.user_id, {

@@ -53,7 +53,6 @@ export default function Incidents() {
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Incidents</h1>
-        <p className="text-sm text-ink-3 mt-0.5">Un problème connu ? Tant que l'incident est ouvert, son message est envoyé en MP à chaque nouveau ticket concerné, juste après le message de bienvenue.</p>
       </div>
 
       <section className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
@@ -65,7 +64,7 @@ export default function Incidents() {
         <label className="block">
           <span className="text-sm text-ink-2 font-medium block mb-1">Message aux membres</span>
           <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} maxLength={1500} rows={3}
-            placeholder="Nous rencontrons un problème avec notre prestataire de paiement. Il est en cours de résolution, inutile de réessayer pour l'instant." className={FIELD} />
+            placeholder="Message" className={FIELD} />
         </label>
         {subjects.length > 0 && (
           <fieldset>

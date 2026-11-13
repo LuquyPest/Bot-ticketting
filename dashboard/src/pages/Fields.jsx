@@ -40,11 +40,10 @@ export default function Fields() {
     <div className="p-6 space-y-5 max-w-4xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Champs personnalisés</h1>
-        <p className="text-sm text-ink-3">Informations demandées au membre en MP après le sujet (n° de commande, pseudo en jeu…). Elles apparaissent dans la fiche du ticket, dans le salon Discord, servent de filtre dans la liste, et se reprennent dans les modèles de réponse avec leur variable (ex. <code>{'{{commande}}'}</code>).</p>
       </div>
 
       <form onSubmit={add} className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4 grid grid-cols-1 md:grid-cols-[2fr_1fr_1.5fr_auto_auto] gap-2 items-center">
-        <input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} maxLength={80} placeholder="Libellé (ex : N° de commande)" aria-label="Libellé" className={input} />
+        <input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} maxLength={80} placeholder="Libellé" aria-label="Libellé" className={input} />
         <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} aria-label="Type" className={input}>
           <option value="text">Texte</option><option value="number">Nombre</option>
         </select>

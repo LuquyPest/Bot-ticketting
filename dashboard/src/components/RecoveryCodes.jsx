@@ -26,8 +26,7 @@ export default function RecoveryCodes({ codes, onDone }) {
         <KeyRound size={14} /> Codes de secours
       </div>
       <p className="text-xs text-ink-3">
-        Garde-les en lieu sûr : chacun permet <strong>une</strong> connexion si tu perds ton téléphone.
-        Ils ne seront plus jamais affichés.
+        Ils ne seront plus affichés.
       </p>
       <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-black/20 border border-overlay/6 p-3 font-mono text-xs text-ink-1 select-all">
         {codes.map(c => <span key={c}>{c}</span>)}

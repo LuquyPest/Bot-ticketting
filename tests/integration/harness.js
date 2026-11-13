@@ -3466,6 +3466,40 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [ct.id]);
   }
 
+  // ── Staff roles attached to tags (page Rôles) ──
+  {
+    const gp = app('./utils/gradePermissions');
+    const rt = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('510000000000000001', 'rolemember', 'crole1', 'open', 'ticket rôle')")).insertId;
+    const tagR = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Litige', '#ff0000')")).insertId;
+    r = await req('POST', '/api/roles', { sid: sessions.S1, body: { name: 'Modération' } });
+    check('rôles: création réservée aux fondateurs', r.status === 403, r.status);
+    r = await req('POST', '/api/roles', { sid: sessions.F, body: { name: 'Modération', color: '#123456' } });
+    const roleId = r.body.id;
+    check('rôles: création', r.status === 200 && roleId > 0 && r.body.color === '#123456', JSON.stringify(r.body));
+    r = await req('PUT', `/api/roles/${roleId}/tags`, { sid: sessions.F, body: { tagIds: [tagR, 999999] } });
+    check('rôles: tags rattachés (tag inconnu ignoré)', r.status === 200 && r.body.tagIds.join() === String(tagR), JSON.stringify(r.body));
+    r = await req('PUT', `/api/roles/${roleId}/members`, { sid: sessions.F, body: { userIds: [U.S3, U.OUT, 'x'] } });
+    check('rôles: membres = comptes du staff seulement', r.status === 200 && r.body.userIds.join() === U.S3, JSON.stringify(r.body));
+    const listIds = async sid => ((await req('GET', '/api/tickets?status=open&limit=100', { sid })).body.tickets || []).map(t => t.id);
+    check('rôles: ticket sans tag visible du staff', (await listIds(sessions.S1)).includes(rt));
+    await db('INSERT INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [rt, tagR]);
+    check('rôles: ticket au tag lié masqué hors du rôle (liste)', !(await listIds(sessions.S1)).includes(rt));
+    r = await req('GET', `/api/tickets/${rt}`, { sid: sessions.S1 });
+    check('rôles: ticket au tag lié masqué hors du rôle (fiche)', r.status === 403 || r.status === 404, r.status);
+    check('rôles: membre du rôle le voit (liste)', (await listIds(sessions.S3)).includes(rt));
+    check('rôles: fondateur le voit', (await listIds(sessions.F)).includes(rt));
+    const tObj = { id: rt, visibility_grade_id: null };
+    check('rôles: temps réel / push suivent le rôle', !(await gp.canUserSeeTicket(db, U.S1, tObj)) && (await gp.canUserSeeTicket(db, U.S3, tObj)) && (await gp.canUserSeeTicket(db, U.F, tObj)));
+    check('rôles: commandes Discord suivent le rôle', !(await gp.discordStaffCanSee(db, '510000000000000099', tObj)) && (await gp.discordStaffCanSee(db, U.S3, tObj)));
+    r = await req('GET', '/api/roles', { sid: sessions.F });
+    const listed = (r.body || []).find(x => x.id === roleId);
+    check('rôles: liste avec membres et tags', listed?.members.map(m => m.user_id).join() === U.S3 && listed?.tags.map(t => t.id).join() === String(tagR), JSON.stringify(listed));
+    r = await req('DELETE', `/api/roles/${roleId}`, { sid: sessions.F });
+    check('rôles: suppression → ticket de nouveau visible du staff', r.status === 200 && (await listIds(sessions.S1)).includes(rt), r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [rt]);
+    await db('DELETE FROM ticket_tags WHERE id = ?', [tagR]);
+  }
+
   // ── SA: delete guild → bot leaves Discord ──
   await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G2', '1', 'o', 'pending', ?)`, [G2, 'ticketbot_guild_' + G2]);
   r = await req('DELETE', `/api/sa/guilds/${G2}`, { sid: sessions.SAnew });

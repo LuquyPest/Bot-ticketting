@@ -88,7 +88,7 @@ function ButtonRow({ btn, index, total, forms, onChange, onRemove, onMove }) {
           <label className="text-[10px] text-ink-4 mb-1 block">Sujet de ticket (optionnel)</label>
           <input type="text" value={btn.subject} maxLength={100}
             onChange={e => onChange(index, 'subject', e.target.value)}
-            placeholder="Ex: Bug, Achat…" className={BASE} />
+            placeholder="Sujet" className={BASE} />
         </div>
         <div>
           <label className="text-[10px] text-ink-4 mb-1 block">Formulaire (optionnel)</label>
@@ -168,7 +168,7 @@ function PanelEditor({ panel, forms, channels, onSave, onCancel }) {
           <div>
             <label className="text-xs text-ink-3 block mb-1">Nom interne <span className="text-red-400">*</span></label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} maxLength={100}
-              placeholder="Ex: Panel principal" className={BASE} />
+              placeholder="Nom" className={BASE} />
           </div>
           <div>
             <label className="text-xs text-ink-3 block mb-1">Titre de l'embed <span className="text-red-400">*</span></label>
@@ -180,7 +180,7 @@ function PanelEditor({ panel, forms, channels, onSave, onCancel }) {
         <div>
           <label className="text-xs text-ink-3 block mb-1">Description</label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} maxLength={2000}
-            placeholder="Clique sur un bouton pour ouvrir un ticket…" className={BASE + " resize-none"} />
+            placeholder="Description" className={BASE + " resize-none"} />
         </div>
 
         <div className="grid grid-cols-[auto_1fr_1fr] gap-3 items-end">
@@ -212,7 +212,7 @@ function PanelEditor({ panel, forms, channels, onSave, onCancel }) {
           </div>
           {buttons.length === 0 && (
             <p className="text-xs text-ink-4 text-center py-4 border border-dashed border-overlay/8 rounded-xl">
-              Aucun bouton — clique sur "Ajouter un bouton"
+              Aucun bouton
             </p>
           )}
           {buttons.map((btn, i) => (
@@ -306,7 +306,7 @@ function PublishModal({ panel, channels, onPublish, onUnpublish, onClose }) {
 
         {panel.message_id && (
           <p className="text-xs text-ink-4 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-            Un message est déjà publié. Le republier le mettra à jour ou le redéplacera dans le nouveau salon.
+            Déjà publié
           </p>
         )}
 
@@ -399,7 +399,6 @@ export default function Panels() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Panels</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Embeds Discord avec boutons pour ouvrir des tickets</p>
         </div>
         {!editing && (
           <button onClick={() => setEditing('new')}

@@ -36,7 +36,6 @@ function EntryModal({ entry, onClose, onSave }) {
         <label className="block space-y-1.5">
           <span className="text-xs text-ink-3">Mots-clés (séparés par des virgules)</span>
           <input value={form.keywords} onChange={e => set('keywords', e.target.value)} maxLength={500} placeholder="mot de passe, mdp, connexion" className={input} />
-          <span className="block text-[10px] text-ink-4">Un mot-clé trouvé dans le message compte plus qu'un mot commun avec la question.</span>
         </label>
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1 hover:bg-overlay/5">Annuler</button>
@@ -98,7 +97,6 @@ export default function Faq() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-ink-1">FAQ automatique</h1>
-          <p className="text-sm text-ink-3">Avant d'ouvrir un ticket, le bot propose au membre les réponses qui correspondent à son message.</p>
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
@@ -126,11 +124,11 @@ export default function Faq() {
         <p className="text-xs font-semibold text-ink-2 flex items-center gap-1.5"><FlaskConical size={13} /> Tester un message de membre</p>
         <div className="flex gap-2">
           <input value={sample} onChange={e => setSample(e.target.value)} onKeyDown={e => e.key === 'Enter' && runPreview()}
-            placeholder="Bonjour, j'ai oublié mon mot de passe…" className={input} />
+            placeholder="Message" className={input} />
           <button onClick={runPreview} className="px-3 py-2 rounded-xl text-xs text-ink-2 border border-overlay/8 hover:bg-overlay/5 shrink-0">Tester</button>
         </div>
         {preview && (preview.length === 0
-          ? <p className="text-[11px] text-ink-4">Aucune entrée proposée : le ticket s'ouvrirait directement.</p>
+          ? <p className="text-[11px] text-ink-4">Aucune entrée proposée</p>
           : <ul className="text-[11px] text-ink-2 space-y-0.5">{preview.map(p => <li key={p.id}>• {p.question} <span className="text-ink-4">(score {p.score})</span></li>)}</ul>)}
       </div>
 

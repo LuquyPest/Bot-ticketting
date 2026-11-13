@@ -37,9 +37,6 @@ export default function Newsletter() {
     <div className="p-6 space-y-5 max-w-2xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Newsletter staff</h1>
-        <p className="text-sm text-ink-3 mt-0.5">
-          Envoie un DM Discord à tous les membres du staff qui ne sont pas en vacances
-        </p>
       </div>
 
       {/* Result banner */}
@@ -66,7 +63,7 @@ export default function Newsletter() {
               type="text"
               value={subject}
               onChange={e => setSubject(e.target.value)}
-              placeholder="ex: Nouvelles règles de modération"
+              placeholder="Titre"
               maxLength={100}
               className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2
                          text-sm focus:outline-hidden focus:border-primary transition-colors placeholder:text-ink-4"
@@ -78,7 +75,7 @@ export default function Newsletter() {
             <textarea
               value={message}
               onChange={e => setMessage(e.target.value)}
-              placeholder="Ton message ici..."
+              placeholder="Message"
               maxLength={MAX_CHARS}
               rows={8}
               className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2
@@ -126,11 +123,6 @@ export default function Newsletter() {
               </div>
             </div>
           </div>
-
-          <p className="text-[10px] text-ink-4">
-            Le message sera envoyé en DM Discord à chaque membre du staff (hors mode vacances).
-            Markdown Discord supporté : **gras**, *italique*, `code`, __souligné__.
-          </p>
         </div>
       </div>
     </div>

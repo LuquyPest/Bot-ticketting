@@ -33,10 +33,6 @@ export default function ConfigTransfer() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-ink-3">
-        Exporte la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles partagés, règles) pour la sauvegarder ou la copier sur un autre serveur.
-        Les secrets ne sont jamais exportés. À l'import, les éléments sont fusionnés par nom ; les panels doivent ensuite être republiés.
-      </p>
       <div className="flex flex-wrap items-center gap-2">
         <a href="/api/config/export" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-ink-1 border border-overlay/8 hover:bg-overlay/5">
           <Download size={13} /> Exporter (JSON)

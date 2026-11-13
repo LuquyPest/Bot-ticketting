@@ -8,6 +8,18 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.22',
+    date: '13 novembre 2026',
+    title: 'Rôles, menu par catégories et nouveau ticket',
+    changes: [
+      { type: 'new',  text: 'Page Rôles : créer des rôles, y ajouter des membres du staff et les rattacher à des tags. Un ticket qui porte un de ces tags n\'est visible que des membres du rôle et des fondateurs, sur le dashboard comme sur Discord' },
+      { type: 'impr', text: 'Barre latérale rangée en catégories repliables : Support, Suivi, Équipe, Configuration, Administration' },
+      { type: 'impr', text: 'Bouton « Nouveau ticket » sur la page Tickets' },
+      { type: 'impr', text: 'Interface allégée : textes d\'explication et exemples retirés (les explications des Paramètres restent au survol du libellé)' },
+      { type: 'tech', text: 'Tests : 873 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.21.3',
     date: '29 octobre 2026',
     title: 'Le vocal s\'ouvre dans l\'application Discord',

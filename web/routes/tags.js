@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { visibilityFilter } = require('../../utils/gradePermissions');
+const { syncAfterTagChange, syncTicketChannel } = require('../../utils/channelVisibility');
 
 const hasPerm = (req, perm) => req.userIsFondateur || req.userPermissions.has(perm);
 
@@ -78,7 +79,12 @@ router.patch('/:id', requireSettings, async (req, res) => {
 router.delete('/:id', requireSettings, async (req, res) => {
   try {
     const [tag] = await req.guildDb('SELECT name FROM ticket_tags WHERE id = ?', [req.params.id]);
+    // Its tickets lose the restriction of the roles attached to it: resynced once it is gone
+    const affected = await req.guildDb(
+      "SELECT DISTINCT t.id, t.channel_id, t.visibility_grade_id FROM tickets t JOIN ticket_tag_assignments ta ON ta.ticket_id = t.id JOIN access_role_tags srt ON srt.tag_id = ta.tag_id WHERE ta.tag_id = ? AND t.status = 'open'",
+      [req.params.id]);
     await req.guildDb('DELETE FROM ticket_tags WHERE id = ?', [req.params.id]);
+    (async () => { for (const t of affected) await syncTicketChannel(req.guildDb, req.app.locals.client, req.guildId, t); })().catch(() => null);
     if (tag) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'tag_delete', targetType: 'tag', targetId: req.params.id, details: { name: tag.name } });
     res.json({ ok: true });
   } catch (err) {
@@ -113,6 +119,7 @@ router.post('/ticket/:ticketId', requireTicketAccess, async (req, res) => {
     if (r.affectedRows) {
       const [tag] = await req.guildDb('SELECT name FROM ticket_tags WHERE id = ?', [parseInt(tag_id)]);
       await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: req.ticketId, targetType: 'tag', targetId: tag_id, details: { tag: tag?.name } });
+      syncAfterTagChange(req.guildDb, req.app.locals.client, req.guildId, req.ticketId, parseInt(tag_id)).catch(() => null);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -130,6 +137,7 @@ router.delete('/ticket/:ticketId/:tagId', requireTicketAccess, async (req, res) 
     if (r.affectedRows) {
       const [tag] = await req.guildDb('SELECT name FROM ticket_tags WHERE id = ?', [req.params.tagId]);
       await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_remove', ticketId: req.ticketId, targetType: 'tag', targetId: req.params.tagId, details: { tag: tag?.name } });
+      syncAfterTagChange(req.guildDb, req.app.locals.client, req.guildId, req.ticketId, parseInt(req.params.tagId)).catch(() => null);
     }
     res.json({ ok: true });
   } catch (err) {

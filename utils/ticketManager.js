@@ -536,12 +536,13 @@ function createManager(db, client, guildId) {
 
     const F = PermissionsBitField.Flags;
     const VOICE_ALLOW = [F.ViewChannel, F.Connect, F.Speak, F.Stream, F.UseVAD];
-    const { roleIds, userIds } = await require('./channelVisibility').staffAccess(db, ticket);
+    const { staffAccess, isRestricted } = require('./channelVisibility');
+    const { roleIds, userIds } = await staffAccess(db, ticket);
     const overwrites = [
       { id: guild.id, type: OverwriteType.Role, deny: [F.ViewChannel, F.Connect] },
       { id: client.user.id, type: OverwriteType.Member, allow: [F.ViewChannel, F.Connect, F.ManageChannels, F.MoveMembers] },
     ];
-    if (!ticket.visibility_grade_id) for (const id of roleIds) overwrites.push({ id, type: OverwriteType.Role, allow: VOICE_ALLOW });
+    if (!(await isRestricted(db, ticket))) for (const id of roleIds) overwrites.push({ id, type: OverwriteType.Role, allow: VOICE_ALLOW });
     const members = [];
     for (const id of new Set([...userIds, ...(await getAllLinkedUserIds(ticket.id))])) {
       // Only people on the server can be given access (and join)
@@ -905,7 +906,7 @@ function createManager(db, client, guildId) {
     );
     const { discordStaffCanSee } = require('./gradePermissions');
     const visible = [];
-    for (const t of rows) if (await discordStaffCanSee(db, viewerId, t.visibility_grade_id)) visible.push(t);
+    for (const t of rows) if (await discordStaffCanSee(db, viewerId, t)) visible.push(t);
     return visible;
   }
 

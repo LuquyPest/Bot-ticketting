@@ -95,7 +95,6 @@ export default function ApiKeys() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Clés API</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Accès externe sécurisé par clé pour intégrations tierces</p>
         </div>
         <div className="flex gap-2">
           <Link to="/docs-api" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1"><BookOpen size={13} /> Documentation</Link>
@@ -116,11 +115,6 @@ export default function ApiKeys() {
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
           <p className="text-sm font-semibold text-emerald-300">Clé créée — copie-la maintenant !</p>
           <p className="text-xs text-emerald-400">Elle ne sera plus affichée après rechargement de la page.</p>
-          <p className="text-xs text-ink-3">
-            Utilisation : en-tête <code className="font-mono">Authorization: Bearer &lt;clé&gt;</code> sur{' '}
-            <code className="font-mono">/api/v1/tickets</code>, <code className="font-mono">/api/v1/tickets/:id</code>,{' '}
-            <code className="font-mono">POST /api/v1/tickets/:id/close</code>, <code className="font-mono">/api/v1/stats</code>.
-          </p>
           <div className="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2 font-mono text-xs text-emerald-300">
             <span className="flex-1 break-all">{newKey.key}</span>
             <CopyButton text={newKey.key} />
@@ -138,7 +132,7 @@ export default function ApiKeys() {
           <div>
             <label className="text-xs text-ink-3 block mb-1">Nom de la clé</label>
             <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="ex: Mon intégration webhook" maxLength={100}
+              placeholder="Nom" maxLength={100}
               className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2
                          text-sm focus:outline-hidden focus:border-primary transition-colors" />
           </div>

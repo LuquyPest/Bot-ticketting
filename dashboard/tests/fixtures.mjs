@@ -8,6 +8,14 @@ export const ticket = (id, o = {}) => ({ id, owner_id: '2000000000000000' + Stri
 export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(now - (n - 1 - i) * 864e5).toISOString().slice(0, 10), count: (i * 7) % 5 + 1 }));
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [] },
+  '/api/roles': [
+    { id: 1, name: 'Modération', color: '#ef4444', position: 0, members: [{ user_id: '2', username: 'Lina', avatar: null }], tags: [{ id: 1, name: 'Litige', color: '#f97316' }] },
+    { id: 2, name: 'Comptabilité', color: '#22c55e', position: 1, members: [], tags: [] },
+  ],
+  '/api/users': [
+    { user_id: '2', username: 'Lina', avatar: null, role: 'support', grades: [] },
+    { user_id: '3', username: 'Malo', avatar: null, role: 'support', grades: [] },
+  ],
   '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i)), total: 6, page: 1, pages: 1 },
   '/api/tickets/1': { ...ticket(1), participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
     rating: { rating: 4, comment: 'Très rapide, merci !', rated_at: iso(5) } },

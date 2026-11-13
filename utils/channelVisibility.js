@@ -4,7 +4,7 @@
 // Editing channel overwrites needs the "Manage Roles" (Gérer les permissions) permission.
 const { PermissionsBitField, OverwriteType } = require('discord.js');
 const { parseJsonField } = require('./jsonField');
-const { canUserSeeTicket } = require('./gradePermissions');
+const { canUserSeeTicket, ticketRoleIds } = require('./gradePermissions');
 const logger = require('./logger');
 
 const F = PermissionsBitField.Flags;
@@ -20,7 +20,7 @@ async function staffAccess(db, ticket) {
   const staff = await db("SELECT user_id FROM dashboard_users WHERE role IN ('support', 'fondateur')");
   const userIds = [];
   for (const { user_id } of staff) {
-    if (await canUserSeeTicket(db, user_id, ticket.visibility_grade_id || null).catch(() => false)) userIds.push(user_id);
+    if (await canUserSeeTicket(db, user_id, ticket).catch(() => false)) userIds.push(user_id);
   }
   return { roleIds, userIds, managedUserIds: staff.map(s => s.user_id) };
 }
@@ -41,8 +41,13 @@ async function roleMemberIds(guild, roleIds) {
 // Private thread: staff members cannot be given access by role, they are added one by one.
 // Unrestricted: support / chief role members and dashboard staff; restricted: only the allowed
 // dashboard staff. Staff members who may no longer see it are removed; others are left alone.
+// Restricted: to a grade, or by a tag attached to a staff role
+async function isRestricted(db, ticket) {
+  return !!ticket.visibility_grade_id || (await ticketRoleIds(db, ticket.id)).length > 0;
+}
+
 async function syncTicketThread(db, client, thread, ticket) {
-  const restricted = !!ticket.visibility_grade_id;
+  const restricted = await isRestricted(db, ticket);
   const { roleIds, userIds, managedUserIds } = await staffAccess(db, ticket);
   const roleMembers = await roleMemberIds(thread.guild, roleIds);
   const allowed = new Set(restricted ? userIds : [...userIds, ...roleMembers]);
@@ -73,7 +78,7 @@ async function syncTicketChannel(db, client, guildId, ticket) {
   const roleIds = [...new Set([...parseJsonField(cfg?.support_role_ids), ...parseJsonField(cfg?.chief_role_ids)])];
   const staff = await db("SELECT user_id FROM dashboard_users WHERE role IN ('support', 'fondateur')");
   const staffIds = new Set(staff.map(s => s.user_id));
-  const restricted = !!ticket.visibility_grade_id;
+  const restricted = await isRestricted(db, ticket);
 
   // Overwrites managed here are rebuilt; any other one (e.g. added by hand on Discord) is kept
   const managed = new Set([guildId, client.user.id, ...roleIds, ...staffIds]);
@@ -92,7 +97,7 @@ async function syncTicketChannel(db, client, guildId, ticket) {
   }
   if (restricted) {
     for (const userId of staffIds) {
-      if (await canUserSeeTicket(db, userId, ticket.visibility_grade_id).catch(() => false)) {
+      if (await canUserSeeTicket(db, userId, ticket).catch(() => false)) {
         overwrites.push({ id: userId, type: OverwriteType.Member, allow: STAFF_ALLOW });
       }
     }
@@ -116,7 +121,8 @@ async function resyncRestrictedTickets(db, client, guildId) {
   if (!client) return;
   const [cfg] = await db('SELECT ticket_mode FROM guild_config LIMIT 1');
   // Threads: staff are members of every ticket, so every open ticket is resynced
-  const tickets = await db(`SELECT id, channel_id, visibility_grade_id FROM tickets WHERE status = 'open'${cfg?.ticket_mode === 'thread' ? '' : ' AND visibility_grade_id IS NOT NULL'}`);
+  const restricted = ` AND (visibility_grade_id IS NOT NULL OR EXISTS (SELECT 1 FROM ticket_tag_assignments ta JOIN access_role_tags srt ON srt.tag_id = ta.tag_id WHERE ta.ticket_id = tickets.id))`;
+  const tickets = await db(`SELECT id, channel_id, visibility_grade_id FROM tickets WHERE status = 'open'${cfg?.ticket_mode === 'thread' ? '' : restricted}`);
   for (const t of tickets) await syncTicketChannel(db, client, guildId, t);
 }
 
@@ -125,4 +131,26 @@ function scheduleResync(db, client, guildId) {
   resyncRestrictedTickets(db, client, guildId).catch(err => logger.error('Resynchronisation de la visibilité', { guildId, err: err.message }));
 }
 
-module.exports = { syncTicketChannel, scheduleResync, staffAccess };
+// A tag was added to or removed from a ticket: its visibility changes when the tag belongs to a staff role
+async function syncAfterTagChange(db, client, guildId, ticketId, tagId) {
+  if (!client) return;
+  const [linked] = await db('SELECT 1 FROM access_role_tags WHERE tag_id = ? LIMIT 1', [tagId]);
+  if (!linked) return;
+  const [ticket] = await db("SELECT id, channel_id, visibility_grade_id FROM tickets WHERE id = ? AND status = 'open'", [ticketId]);
+  if (ticket) await syncTicketChannel(db, client, guildId, ticket);
+}
+
+// Open tickets carrying one of the tags: resynced after a role's tags changed (a ticket may become
+// unrestricted, which resyncRestrictedTickets would no longer pick up)
+function scheduleTagsResync(db, client, guildId, tagIds) {
+  if (!client || !tagIds.length) return;
+  (async () => {
+    const tickets = await db(
+      "SELECT DISTINCT t.id, t.channel_id, t.visibility_grade_id FROM tickets t JOIN ticket_tag_assignments ta ON ta.ticket_id = t.id WHERE t.status = 'open' AND ta.tag_id IN (?)",
+      [tagIds]
+    );
+    for (const t of tickets) await syncTicketChannel(db, client, guildId, t);
+  })().catch(err => logger.error('Resynchronisation de la visibilité', { guildId, err: err.message }));
+}
+
+module.exports = { syncTicketChannel, scheduleResync, scheduleTagsResync, syncAfterTagChange, staffAccess, isRestricted };

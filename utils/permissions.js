@@ -55,9 +55,9 @@ async function ensureSupport(interaction, client, db, permission = 'view_tickets
     }
   }
   if (interaction.channelId) {
-    const [ticket] = await db("SELECT visibility_grade_id FROM tickets WHERE channel_id = ? AND status = 'open' LIMIT 1", [interaction.channelId]);
-    if (ticket && !(await discordStaffCanSee(db, interaction.user.id, ticket.visibility_grade_id))) {
-      return deny(interaction, '❌ Ce ticket est réservé à certains grades.');
+    const [ticket] = await db("SELECT id, visibility_grade_id FROM tickets WHERE channel_id = ? AND status = 'open' LIMIT 1", [interaction.channelId]);
+    if (ticket && !(await discordStaffCanSee(db, interaction.user.id, ticket))) {
+      return deny(interaction, '❌ Ce ticket est réservé à certains grades ou rôles.');
     }
   }
   return true;

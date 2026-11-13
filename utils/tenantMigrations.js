@@ -406,6 +406,22 @@ const MIGRATIONS = [
       "INSERT IGNORE INTO grade_permissions (grade_id, permission) SELECT grade_id, 'create_ticket' FROM grade_permissions WHERE permission = 'reply_ticket'",
     ],
   },
+  {
+    version: 30,
+    name: 'Rôles du staff rattachés à des tags',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS access_roles (
+        id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(80) NOT NULL, color VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+        position INT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+      `CREATE TABLE IF NOT EXISTS access_role_members (
+        role_id INT NOT NULL, user_id VARCHAR(32) NOT NULL, PRIMARY KEY (role_id, user_id), INDEX idx_srm_user (user_id),
+        CONSTRAINT fk_srm_role FOREIGN KEY (role_id) REFERENCES access_roles(id) ON DELETE CASCADE)`,
+      `CREATE TABLE IF NOT EXISTS access_role_tags (
+        role_id INT NOT NULL, tag_id INT NOT NULL, PRIMARY KEY (role_id, tag_id), INDEX idx_srt_tag (tag_id),
+        CONSTRAINT fk_srt_role FOREIGN KEY (role_id) REFERENCES access_roles(id) ON DELETE CASCADE,
+        CONSTRAINT fk_srt_tag FOREIGN KEY (tag_id) REFERENCES ticket_tags(id) ON DELETE CASCADE)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

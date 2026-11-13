@@ -155,9 +155,6 @@ function FoundersModal({ guild, canEdit, onClose }) {
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Ajouter
               </button>
             </div>
-            <p className="text-[10px] text-ink-4">
-              Accès complet au dashboard de ce serveur. La personne reçoit un DM et se connecte avec Discord.
-            </p>
           </form>
         )}
       </div>

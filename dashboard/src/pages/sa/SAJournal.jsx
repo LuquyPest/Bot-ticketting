@@ -37,7 +37,6 @@ export default function SAJournal() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Journal du panel</h1>
-          <p className="text-sm text-ink-3">Toutes les modifications faites par les super-admins et managers, avec le serveur concerné</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser"><RefreshCw size={15} /></button>
       </div>

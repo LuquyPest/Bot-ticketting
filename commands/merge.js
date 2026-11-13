@@ -10,7 +10,7 @@ async function candidates(db, channelId, userId) {
   if (!ticket) return { ticket: null, list: [] };
   const rows = await db("SELECT id, subject, visibility_grade_id FROM tickets WHERE owner_id = ? AND status = 'open' AND id <> ? ORDER BY id DESC", [ticket.owner_id, ticket.id]);
   const list = [];
-  for (const r of rows) if (await discordStaffCanSee(db, userId, r.visibility_grade_id)) list.push(r);
+  for (const r of rows) if (await discordStaffCanSee(db, userId, r)) list.push(r);
   return { ticket, list };
 }
 

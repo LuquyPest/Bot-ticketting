@@ -104,15 +104,15 @@ async function sendPushToGuild(guildId, payload, onlyUserId = null) {
   if (!subs.length) return;
 
   const db = getTenantDb(guildId);
-  let gradeId = null;
+  let ticket = null;
   if (payload.ticketId) {
-    const [t] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [payload.ticketId]).catch(() => []);
-    gradeId = t?.visibility_grade_id ?? null;
+    const [t] = await db('SELECT id, visibility_grade_id FROM tickets WHERE id = ?', [payload.ticketId]).catch(() => []);
+    ticket = t || null;
   }
   const allowed = new Map();
   for (const sub of subs) {
     if (!allowed.has(sub.user_id)) {
-      allowed.set(sub.user_id, await canUserSeeTicket(db, sub.user_id, gradeId).catch(() => false));
+      allowed.set(sub.user_id, await canUserSeeTicket(db, sub.user_id, ticket).catch(() => false));
     }
     if (!allowed.get(sub.user_id)) continue;
     const subscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } };

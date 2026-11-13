@@ -52,7 +52,7 @@ function AddModal({ onClose, onAdded }) {
           </div>
           <div>
             <label className="text-xs text-ink-3 mb-1 block">Raison (optionnel)</label>
-            <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Spam, abus..."
+            <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Raison"
               className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary" />
           </div>
           <div>

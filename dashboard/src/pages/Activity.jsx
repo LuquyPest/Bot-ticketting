@@ -53,7 +53,6 @@ export default function Activity() {
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Mon activité</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Tes chiffres sur la période, comparés à ceux de l'équipe</p>
         </div>
         <div className="ml-auto flex rounded-lg bg-overlay/4 p-0.5" role="group" aria-label="Période">
           {PERIODS.map(p => (

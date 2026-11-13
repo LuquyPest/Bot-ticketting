@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { createManager } = require('../../utils/ticketManager');
 const { broadcast } = require('../../utils/sse');
-const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, logAudit } = require('../../utils/gradePermissions');
-const { syncTicketChannel } = require('../../utils/channelVisibility');
+const { getVisibleGradeIds, visibilityFilter, canUserSeeTicket, holdsTicketRole, logAudit } = require('../../utils/gradePermissions');
+const { syncTicketChannel, syncAfterTagChange } = require('../../utils/channelVisibility');
 const { slaStatus, breachedSql } = require('../../utils/sla');
 const { fieldsForTicket, saveFieldValues } = require('../../utils/ticketFields');
 const { sendPushToGuild } = require('./push');
@@ -34,6 +34,8 @@ async function checkAccess(req, ticketId) {
       return { ticket, denied: true };
     }
   }
+  // Tag attached to a staff role: only the role's members
+  if (!(await holdsTicketRole(req.guildDb, req.session.user.id, ticket.id))) return { ticket, denied: true };
   return { ticket, denied: false };
 }
 
@@ -74,7 +76,7 @@ async function findAssignableStaff(req, userId, ticket) {
   if (!SNOWFLAKE_RE.test(String(userId))) return null;
   const [u] = await req.guildDb("SELECT user_id, username FROM dashboard_users WHERE user_id = ? AND role IN ('support', 'fondateur')", [String(userId)]);
   if (!u) return null;
-  if (ticket && !(await canUserSeeTicket(req.guildDb, u.user_id, ticket.visibility_grade_id))) return null;
+  if (ticket && !(await canUserSeeTicket(req.guildDb, u.user_id, ticket))) return null;
   return { id: u.user_id, username: u.username, tag: u.username };
 }
 
@@ -694,7 +696,7 @@ router.post('/:id/apply-template', async (req, res) => {
 
     const tm = getManager(req);
     const { applied, warnings } = await require('../../utils/macroActions').applyMacroActions({
-      client: req.app.locals.client, db: req.guildDb, tm, ticket, actions: tpl.actions, actor: dashboardActor(req), can: p => hasPerm(req, p),
+      client: req.app.locals.client, db: req.guildDb, guildId: req.guildId, tm, ticket, actions: tpl.actions, actor: dashboardActor(req), can: p => hasPerm(req, p),
     });
     const [fresh] = await req.guildDb('SELECT status, stage, priority FROM tickets WHERE id = ?', [ticket.id]);
     broadcast('ticket', { id: ticket.id, ...fresh, assignees: await tm.getAssignees(ticket.id) }, req.guildId);
@@ -1430,7 +1432,11 @@ router.post('/bulk', async (req, res) => {
       let affected = 0;
       for (const id of cleanIds) {
         const r = await req.guildDb('DELETE FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [id, tag.id]);
-        if (r.affectedRows) { affected++; await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_remove', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } }); }
+        if (r.affectedRows) {
+          affected++;
+          await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_remove', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } });
+          syncAfterTagChange(req.guildDb, req.app.locals.client, req.guildId, id, tag.id).catch(() => null);
+        }
       }
       return res.json({ ok: true, affected });
     }
@@ -1480,7 +1486,11 @@ router.post('/bulk', async (req, res) => {
       let affected = 0;
       for (const id of cleanIds) {
         const r = await req.guildDb('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [id, tag.id]);
-        if (r.affectedRows) { affected++; await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } }); }
+        if (r.affectedRows) {
+          affected++;
+          await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_tag_add', ticketId: id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } });
+          syncAfterTagChange(req.guildDb, req.app.locals.client, req.guildId, id, tag.id).catch(() => null);
+        }
       }
       return res.json({ ok: true, affected });
     }

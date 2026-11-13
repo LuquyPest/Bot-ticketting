@@ -40,7 +40,6 @@ export default function SAStatus() {
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1">
           <h1 className="text-lg font-bold text-ink-1">Statut public</h1>
-          <p className="text-sm text-ink-3">Incidents et maintenances affichés sur la page publique. Les coupures du bot détectées par la surveillance Discord y sont ajoutées et closes automatiquement.</p>
         </div>
         <a href="/status" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-ink-2 border border-overlay/8 hover:bg-overlay/5"><ExternalLink size={12} /> Voir la page</a>
       </div>

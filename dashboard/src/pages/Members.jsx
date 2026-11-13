@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { UserSearch, Download, UserX, Loader2, ShieldCheck } from 'lucide-react';
+import { UserSearch, Download, UserX, Loader2 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -38,7 +38,6 @@ export default function Members() {
     <div className="p-6 space-y-5 max-w-3xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Données des membres</h1>
-        <p className="text-sm text-ink-3">Demandes RGPD : consulter, exporter ou supprimer ce que ce serveur conserve sur un membre.</p>
       </div>
 
       <div className="flex gap-2">
@@ -76,7 +75,7 @@ export default function Members() {
           <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5 space-y-3">
             <p className="text-sm font-semibold text-red-300 flex items-center gap-2"><UserX size={15} /> Supprimer les données de ce membre</p>
             <p className="text-xs text-ink-3">
-              Supprime définitivement ses tickets (messages, transcripts, notes, tags, messages programmés), ses messages et sa participation dans les tickets d'autres personnes, et son entrée de blacklist. Les salons Discord de ses tickets ouverts sont supprimés. Le journal est conservé mais anonymisé. Les tickets des autres membres ne sont jamais supprimés.
+              Suppression définitive de ses tickets, messages et transcripts.
             </p>
             <label className="block space-y-1">
               <span className="text-[11px] text-ink-3">Pour confirmer, saisis l'ID du membre</span>
@@ -87,7 +86,6 @@ export default function Members() {
               {deleting ? <Loader2 size={14} className="animate-spin" /> : <UserX size={14} />} Supprimer définitivement
             </button>
           </div>
-          <p className="text-[11px] text-ink-4 flex items-center gap-1.5"><ShieldCheck size={12} /> Export et suppression sont enregistrés dans le journal (la suppression sans l'identifiant du membre).</p>
         </div>
       )}
     </div>

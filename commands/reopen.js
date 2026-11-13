@@ -25,7 +25,7 @@ module.exports = {
       return interaction.editReply({ content: 'Aucun ticket fermé trouvé pour cet utilisateur.' });
     }
     const { discordStaffCanSee } = require('../utils/gradePermissions');
-    if (!(await discordStaffCanSee(db, interaction.user.id, ticket.visibility_grade_id))) {
+    if (!(await discordStaffCanSee(db, interaction.user.id, ticket))) {
       return interaction.editReply({ content: '❌ Ce ticket est réservé à certains grades.' });
     }
 

@@ -474,7 +474,6 @@ function TabQuality() {
 
       <div className={`${qcard} overflow-x-auto`}>
         <h2 className="text-sm font-semibold text-ink-1 mb-1">Respect des délais par étape</h2>
-        <p className="text-[11px] text-ink-4 mb-3">Délais définis dans Paramètres ; temps reconstitué à partir des changements d'étape. Les passages en cours et encore dans les délais ne sont pas comptés.</p>
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-[11px] text-ink-4 border-b border-overlay/6">
@@ -629,7 +628,6 @@ function TabReopens() {
           {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
         </select>
       </div>
-      <p className="text-xs text-ink-3">Part des fermetures de la période suivies d'une réouverture (par le membre ou le staff). Un taux élevé peut signaler des tickets fermés trop tôt.</p>
       {data === false && <p className="text-sm text-red-400">Impossible de charger les réouvertures.</p>}
       {data && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -695,7 +693,6 @@ export default function Analytics() {
     <div className="p-6 space-y-5 max-w-5xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Analytiques</h1>
-        <p className="text-sm text-ink-3 mt-0.5">Performance, SLA et comparatif staff</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">

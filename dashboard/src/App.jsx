@@ -26,6 +26,7 @@ const Transcripts = lazy(() => import('./pages/Transcripts'));
 const Settings    = lazy(() => import('./pages/Settings'));
 const Patchnotes  = lazy(() => import('./pages/Patchnotes'));
 const Grades      = lazy(() => import('./pages/Grades'));
+const Roles       = lazy(() => import('./pages/Roles'));
 const Audit       = lazy(() => import('./pages/Audit'));
 const Kanban      = lazy(() => import('./pages/Kanban'));
 const Equipe      = lazy(() => import('./pages/Equipe'));
@@ -248,6 +249,9 @@ export default function App() {
                         } />
                         <Route path="grades"     element={
                           <RequireRole role="fondateur" perm="manage_grades"><ErrorBoundary><Grades /></ErrorBoundary></RequireRole>
+                        } />
+                        <Route path="roles"      element={
+                          <RequireRole role="fondateur"><ErrorBoundary><Roles /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="audit"      element={
                           <RequireRole role="fondateur" perm="view_audit"><ErrorBoundary><Audit /></ErrorBoundary></RequireRole>

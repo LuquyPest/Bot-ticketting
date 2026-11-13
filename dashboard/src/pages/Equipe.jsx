@@ -189,7 +189,7 @@ function GestionTab({ me }) {
                         )}
                         {canManage && isAssigning && (
                           <div className="flex items-center gap-1.5">
-                            <select value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}
+                            <select value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)} aria-label="Grade à attribuer"
                               className="bg-surface border border-overlay/8 text-ink-2 rounded-md px-2 py-0.5 text-xs focus:outline-hidden focus:border-primary" autoFocus>
                               <option value="">— Choisir...</option>
                               {availableGrades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -221,7 +221,7 @@ function GestionTab({ me }) {
                   <td className="px-4 py-3">
                     {isMe ? <span className="text-xs text-ink-4 italic">—</span> : (
                       <div className="flex items-center gap-2">
-                        <select value={u.role} disabled={updating === u.user_id} onChange={e => changeRole(u.user_id, e.target.value)}
+                        <select value={u.role} disabled={updating === u.user_id} onChange={e => changeRole(u.user_id, e.target.value)} aria-label={`Rôle de ${u.username}`}
                           className="bg-surface border border-overlay/8 text-ink-2 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary disabled:opacity-50">
                           <option value="nouveau">Nouveau</option>
                           <option value="support">Support</option>
@@ -243,20 +243,8 @@ function GestionTab({ me }) {
         </table>
       </div>
 
-      <div className="bg-surface-card/50 border border-overlay/6 rounded-2xl p-4 space-y-1.5">
-        <p className="text-xs text-ink-3 leading-relaxed">
-          <span className="text-amber-400 font-medium">Nouveau</span> — Accès refusé. Attribuez un grade pour donner l'accès. ·{' '}
-          <span className="text-emerald-400 font-medium">Support</span> — Accès selon les permissions de ses grades. ·{' '}
-          <span className="text-primary-light font-medium">Fondateur</span> — Accès complet sans restriction.
-        </p>
-        <p className="text-xs text-ink-4">Attribuer un grade à un utilisateur "Nouveau" le fait automatiquement passer en "Support".</p>
-      </div>
-
       <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold text-ink-1">Absences planifiées</h2>
-          <p className="text-xs text-ink-3 mt-0.5">Le mode vacances s'active au début de l'absence et se retire tout seul à la fin.</p>
-        </div>
+        <h2 className="text-sm font-semibold text-ink-1">Absences planifiées</h2>
         <Absences team staff={users.filter(u => u.role === 'support' || u.role === 'fondateur')} />
       </div>
     </div>
@@ -498,7 +486,6 @@ export default function Equipe() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-ink-1">Équipe</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Gestion des membres et statistiques</p>
         </div>
       </div>
 

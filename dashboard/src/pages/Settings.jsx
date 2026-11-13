@@ -14,12 +14,12 @@ const TICKET_MODE_HINT = {
   thread: 'Chaque ticket est un fil privé du salon choisi : aucune limite de salons. Le staff y est ajouté un par un (rôles support et comptes du dashboard) ; les étapes ne déplacent plus rien sur Discord.',
 };
 
+// `description` / `hint`: shown on hover only, the page stays free of explanatory text
 function Section({ title, description, children }) {
   return (
     <div className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
       <div className="border-b border-overlay/6 pb-3">
-        <h2 className="text-sm font-semibold text-ink-2">{title}</h2>
-        {description && <p className="text-xs text-ink-4 mt-0.5">{description}</p>}
+        <h2 className="text-sm font-semibold text-ink-2" title={description}>{title}</h2>
       </div>
       {children}
     </div>
@@ -32,8 +32,7 @@ function Field({ label, hint, children }) {
   const single = isValidElement(children) && ['input', 'select', 'textarea'].includes(children.type);
   return (
     <div>
-      <label id={`${id}-l`} htmlFor={single ? (children.props.id || id) : undefined} className="text-sm text-ink-2 font-medium block mb-1">{label}</label>
-      {hint && <p className="text-xs text-ink-4 mb-2">{hint}</p>}
+      <label id={`${id}-l`} htmlFor={single ? (children.props.id || id) : undefined} className="text-sm text-ink-2 font-medium block mb-1" title={hint}>{label}</label>
       {single
         ? (children.props.id ? children : cloneElement(children, { id }))
         : <div role="group" aria-labelledby={`${id}-l`}>{children}</div>}
@@ -96,8 +95,7 @@ function FeatureToggle({ label, hint, checked, onChange, children }) {
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-overlay/4 last:border-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-ink-2 font-medium">{label}</p>
-        {hint && <p className="text-xs text-ink-4 mt-0.5">{hint}</p>}
+        <p className="text-sm text-ink-2 font-medium" title={hint}>{label}</p>
         {on && children && <div className="mt-2">{children}</div>}
       </div>
       <button
@@ -319,7 +317,6 @@ export default function Settings() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Paramètres</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Configuration du bot pour ce serveur</p>
         </div>
         <div className="flex gap-2">
           <button onClick={load}
@@ -433,7 +430,7 @@ export default function Settings() {
         </Field>
         <Field label="Message de fermeture DM" hint="Envoyé à l'utilisateur quand son ticket est fermé (facultatif)">
           <textarea value={cfg.closeMessage || ''} onChange={e => set('closeMessage', e.target.value)} rows={2}
-            placeholder="Votre ticket a été fermé. Merci de nous avoir contactés." className={BASE + " resize-none"} />
+            className={BASE + " resize-none"} />
         </Field>
       </Section>
 

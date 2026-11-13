@@ -523,9 +523,22 @@ export const ENTRIES = [
   ['Chaque ticket est un fil privé du salon choisi : aucune limite de salons. Le staff y est ajouté un par un (rôles support et comptes du dashboard) ; les étapes ne déplacent plus rien sur Discord.', 'Each ticket is a private thread of the chosen channel: no channel limit. The staff are added one by one (support roles and dashboard accounts); stages no longer move anything on Discord.'],
   ['salons, puis fils privés', 'channels, then private threads'], ['salons uniquement', 'channels only'], ['fils privés uniquement', 'private threads only'], ['format :', 'format:'],
   ['Ouvrir un ticket pour un membre', 'Open a ticket for a member'],
+
+  // ── v2.22 : rôles, menu par catégories, nouveau ticket ──
+  ['Rôles', 'Roles'], ['Nouveau rôle', 'New role'], ['Modifier le rôle', 'Edit the role'], ['Aucun rôle', 'No role'], ['+ Ajouter', '+ Add'],
+  ['Rôle créé', 'Role created'], ['Rôle modifié', 'Role updated'], ['Rôle supprimé', 'Role deleted'], ['Autre couleur', 'Other colour'],
+  ['Suivi', 'Tracking'], ['Configuration', 'Configuration'], ['Administration', 'Administration'],
+  ['Nouveau ticket', 'New ticket'], ['Membre (pseudo ou ID)', 'Member (name or ID)'], ['Question', 'Question'], ['URL de l\'image', 'Image URL'],
+  ['Ajouter une étiquette', 'Add a label'], ['Aucune entrée proposée', 'No entry suggested'], ['Aucun bouton', 'No button'], ['Déjà publié', 'Already published'],
+  ['0 = illimité', '0 = unlimited'], ['— fondateurs uniquement', '— founders only'], ['Ils ne seront plus affichés.', 'They will not be shown again.'],
+  ['Code de ton application ou code de secours', 'Code from your app or a recovery code'], ['Message d\'accueil', 'Welcome message'],
+  ['Suppression définitive de ses tickets, messages et transcripts.', 'Permanent deletion of their tickets, messages and transcripts.'],
 ];
 
 export const TEMPLATES = [
+  ['{} consultation(s)', '{1} view(s)'], ['Membres ({})', 'Members ({1})'], ['Tags ({})', 'Tags ({1})'],
+  ['Modifier {}', 'Edit {1}'], ['Supprimer {}', 'Delete {1}'], ['Retirer {}', 'Remove {1}'], ['Ajouter un membre à {}', 'Add a member to {1}'], ['Rattacher un tag à {}', 'Attach a tag to {1}'],
+  ['Supprimer le rôle « {} » ?', 'Delete the role « {1} »?'], ['{} tag(s)', '{1} tag(s)'],
   ['Aucune activité depuis {} min sur ce serveur (réglage de sécurité des fondateurs).', 'No activity for {1} min on this server (security setting of the founders).'],
   ['Chaque ouverture d\'un ticket confidentiel (fiche, messages, transcript, PDF, lien invité) par personne, au plus une fois toutes les 10 minutes par type. {} consultation(s).', 'Every opening of a confidential ticket (ticket, messages, transcript, PDF, guest link) per person, at most once every 10 minutes per type. {1} view(s).'],
   ['Visite guidée · {}', 'Guided tour · {1}'], ['Du {}, comparé à la {} ({})', 'From {1}, compared with the {2} ({3})'], ['avant : {}', 'before: {1}'], ['· avant : {}', '· before: {1}'],

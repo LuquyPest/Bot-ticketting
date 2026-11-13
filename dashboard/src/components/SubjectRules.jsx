@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Zap } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -32,7 +32,6 @@ export default function SubjectRules({ subjects = [] }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-ink-3 flex items-center gap-1.5"><Zap size={12} /> Règles automatiques à l'ouverture d'un ticket : selon son <strong className="font-semibold">sujet</strong> (« paiement » couvre « Problème de paiement »), ou selon des <strong className="font-semibold">mots-clés</strong> du premier message (« rembours » couvre « remboursement »). Accents et majuscules ignorés.</p>
       {rules.length > 0 && (
         <ul className="space-y-1.5">
           {rules.map(r => (

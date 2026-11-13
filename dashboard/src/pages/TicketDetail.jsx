@@ -1101,7 +1101,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           {ticket.visibility_grade_id === -1 && (
             <div role="status" className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/8 px-4 py-2.5 text-xs text-ink-1">
               <Lock size={13} className="text-red-400 mt-0.5 shrink-0" />
-              <span><strong>Ticket confidentiel</strong> — seuls les fondateurs le voient, sur le dashboard comme sur Discord. Le membre l'a demandé à l'ouverture (signalement, harcèlement…).</span>
+              <span><strong>Ticket confidentiel</strong> — fondateurs uniquement</span>
             </div>
           )}
 
@@ -1389,11 +1389,6 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                     <button onClick={() => setComposeText('')} className="underline hover:text-amber-300">effacer</button>
                   </span>
                 )}
-                <span className="text-[10px] text-ink-4 hidden sm:block">
-                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">R</kbd> répondre ·{' '}
-                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">N</kbd> note ·{' '}
-                  <kbd className="px-1 py-0.5 rounded-sm bg-surface border border-overlay/[0.07] font-mono text-[9px]">ESC</kbd> retour
-                </span>
 
                 {/* Templates */}
                 <div className="relative" ref={templatesRef}>
@@ -1875,7 +1870,6 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                     className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded-xl font-semibold border bg-primary/10 text-primary-light border-primary/20 hover:bg-primary/20 disabled:opacity-50">
                     <GitMerge size={12} /> {merging ? 'Fusion…' : 'Fusionner ce ticket dans la cible'}
                   </button>
-                  <p className="text-[10px] text-ink-4">Ce ticket est fermé et son contenu rejoint la cible ; le membre est prévenu.</p>
                 </div>
               )}
             </div>
@@ -2066,7 +2060,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                   <div className="mt-3 space-y-2">
                     <p className="text-[11px] text-amber-300">Note basse : recontacte le membre (MP, avec le bouton « Rouvrir » s'il est encore possible).</p>
                     <textarea value={followupText} onChange={e => setFollowupText(e.target.value)} rows={3} maxLength={2000}
-                      placeholder="Bonjour, nous avons vu ta note…" aria-label="Message de suivi"
+                      placeholder="Message" aria-label="Message de suivi"
                       className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-primary/50 resize-none" />
                     <button onClick={sendFollowup} disabled={!followupText.trim() || sendingFollowup}
                       className="w-full py-2 text-xs rounded-xl font-semibold border bg-primary/10 text-primary-light border-primary/20 hover:bg-primary/20 disabled:opacity-50">

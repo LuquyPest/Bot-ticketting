@@ -65,7 +65,6 @@ function AlertSettings() {
         <BellRing size={15} className="text-red-400" />
         <span className="flex-1">
           <span className="text-sm font-semibold text-ink-1">Alerte en cas de pic d'erreurs</span>
-          <span className="block text-[11px] text-ink-4">MP Discord et/ou webhook quand les erreurs dépassent un seuil (une alerte par heure au plus)</span>
         </span>
         {open ? <ChevronDown size={14} className="text-ink-4" /> : <ChevronRight size={14} className="text-ink-4" />}
       </button>
@@ -186,7 +185,6 @@ export default function SAErrors() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Erreurs</h1>
-          <p className="text-sm text-ink-3">Erreurs du bot, du dashboard et des automatismes, tous serveurs confondus</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser">
           <RefreshCw size={15} />

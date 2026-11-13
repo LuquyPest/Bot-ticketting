@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, ScrollText, Shield, ClipboardList,
-  Kanban, Tag, BarChart2, ArrowRight,
+  Kanban, Tag, BarChart2, ArrowRight, UserCog,
 } from 'lucide-react';
 import { useAuth } from '../App';
 
@@ -14,6 +14,7 @@ const ALL_COMMANDS = [
   { id: 'staff',       label: 'Mes stats',   icon: BarChart2,       to: '/staff',       roles: ['support'] },
   { id: 'equipe',      label: 'Équipe',      icon: Users,           to: '/equipe',      roles: ['fondateur'] },
   { id: 'grades',      label: 'Grades',      icon: Shield,          to: '/grades',      roles: ['fondateur'] },
+  { id: 'roles',       label: 'Rôles',       icon: UserCog,         to: '/roles',       roles: ['fondateur'] },
   { id: 'tags',        label: 'Tags',        icon: Tag,             to: '/tags',        roles: ['fondateur'] },
   { id: 'audit',       label: 'Audit',       icon: ClipboardList,   to: '/audit',       roles: ['fondateur'] },
   { id: 'blacklist',   label: 'Blacklist',   icon: ShieldBan,       to: '/blacklist',   roles: ['fondateur'] },

@@ -50,7 +50,6 @@ export default function Queue() {
     <div className="p-6 space-y-5 max-w-4xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1 flex items-center gap-2"><ListTodo size={20} /> Ma file</h1>
-        <p className="text-sm text-ink-3">Tes tickets du plus urgent au moins urgent : hors délai, proches de l'échéance, membre en attente de réponse, puis priorité.</p>
       </div>
       <div className="flex gap-1 p-1 rounded-xl bg-surface-card border border-overlay/6 w-fit" role="tablist">
         {[['mine', 'Mes tickets'], ['unassigned', 'Non attribués']].map(([v, label]) => (

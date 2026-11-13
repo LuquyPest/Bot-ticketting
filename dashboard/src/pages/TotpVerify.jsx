@@ -56,8 +56,7 @@ export default function TotpVerify() {
         {/* Form */}
         <div className="glass-dark rounded-2xl border border-overlay/8 p-6 space-y-4">
           <p className="text-xs text-ink-3 text-center">
-            Entre le code généré par ton application d'authentification pour accéder au dashboard,
-            ou l'un de tes codes de secours (format <span className="font-mono">xxxxx-xxxxx</span>).
+            Code de ton application ou code de secours
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

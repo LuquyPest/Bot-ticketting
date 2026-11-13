@@ -144,7 +144,6 @@ export default function Dashboard() {
       {/* Page header */}
       <div className="page-header">
         <h1>Dashboard</h1>
-        <p>Vue d'ensemble du système de tickets</p>
       </div>
 
       {/* Stat grid — row 1 */}

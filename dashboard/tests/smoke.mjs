@@ -38,6 +38,7 @@ const PAGES = [
   ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],
   ['patchnotes', '/patchnotes', 'Patchnotes'],
   ['docs-api', '/docs-api', 'Documentation de l'],
+  ['roles', '/roles', 'Comptabilité'],
   ['sa', '/sa/overview', "Vue d'ensemble"],
   ['espace-login', '/espace', 'Se connecter avec Discord', true],
   ['espace', '/espace', 'Ancienne commande'],
@@ -84,8 +85,8 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang } of RUNS) {
       ['tickets', '/tickets', ['ticket(s) found', 'Save the view'], ['Enregistrer la vue']],
       // the pinned note is staff writing: it stays as written
       ['ticket', '/tickets/1', ['Reply', 'Note interne : vérifier Stripe'], ['Répondre']],
-      // sidebar labels (the « What's new » card quotes the release notes as written: not checked)
-      ['dashboard', '/', ['Release notes', 'My queue', 'My activity'], ['Ma file', 'Mon activité']],
+      // sidebar labels (group titles are shown in capitals; the « What's new » card quotes the release notes as written: not checked)
+      ['dashboard', '/', ['ADMINISTRATION', 'My queue', 'TRACKING'], ['Ma file', 'SUIVI']],
     ];
     for (const [name, p, wanted, absent] of EN) {
       await page.goto(base + p, { waitUntil: 'networkidle' });

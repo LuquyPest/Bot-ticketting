@@ -37,10 +37,9 @@ export default function SAAnnouncements() {
     <div className="p-6 space-y-5 max-w-4xl">
       <div>
         <h1 className="text-lg font-bold text-ink-1">Annonces</h1>
-        <p className="text-sm text-ink-3">Message aux fondateurs de tous les serveurs : bandeau sur leur dashboard et/ou MP Discord (une seule fois par personne).</p>
       </div>
       <form onSubmit={publish} className="glass-dark rounded-2xl border border-overlay/8 p-5 space-y-3">
-        <input value={form.title} onChange={e => set('title', e.target.value)} maxLength={120} placeholder="Titre (ex : Maintenance dimanche 22 h)" aria-label="Titre" className={input} />
+        <input value={form.title} onChange={e => set('title', e.target.value)} maxLength={120} placeholder="Titre" aria-label="Titre" className={input} />
         <textarea value={form.body} onChange={e => set('body', e.target.value)} maxLength={4000} rows={4} placeholder="Message" aria-label="Message" className={`${input} resize-none`} />
         <div className="flex flex-wrap items-center gap-4 text-xs text-ink-2">
           <select value={form.level} onChange={e => set('level', e.target.value)} aria-label="Type" className="px-2 py-1.5 rounded-lg bg-overlay/4 border border-overlay/8 text-ink-1">

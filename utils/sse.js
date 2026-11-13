@@ -42,11 +42,11 @@ function send(set, entry, line) {
 
 async function sendToTicketAudience(set, line, guildId, ticketId) {
   const db = getTenantDb(guildId);
-  const [ticket] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [ticketId]);
+  const [ticket] = await db('SELECT id, visibility_grade_id FROM tickets WHERE id = ?', [ticketId]);
   const allowed = new Map();
   for (const entry of [...set]) {
     if (!allowed.has(entry.userId)) {
-      allowed.set(entry.userId, await canUserSeeTicket(db, entry.userId, ticket?.visibility_grade_id ?? null).catch(() => false));
+      allowed.set(entry.userId, await canUserSeeTicket(db, entry.userId, ticket || null).catch(() => false));
     }
     if (allowed.get(entry.userId)) send(set, entry, line);
   }

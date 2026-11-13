@@ -62,7 +62,7 @@ module.exports = {
 
     const actions = tpl.actions ? parseJsonField(tpl.actions, null) : null;
     const { applied, warnings } = await applyMacroActions({
-      client, db, tm, ticket, actions, actor: interaction.user, can: await staffPermissionChecker(db, interaction.user.id),
+      client, db, guildId: interaction.guildId, tm, ticket, actions, actor: interaction.user, can: await staffPermissionChecker(db, interaction.user.id),
     });
     const summary = [`Modèle « ${tpl.name} » envoyé.`, applied.length ? `Actions : ${applied.join(', ')}.` : null, ...warnings.map(w => `⚠️ ${w}`)];
     await interaction.editReply({ content: summary.filter(Boolean).join('\n') }).catch(() => null);

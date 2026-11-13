@@ -37,7 +37,6 @@ function TagModal({ tag, onClose, onSave }) {
             <label className="text-xs text-ink-3 mb-1.5 block">Nom</label>
             <input
               value={name} onChange={e => setName(e.target.value)}
-              placeholder="Ex : Bug, Facturation..."
               className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary"
             />
           </div>
@@ -120,7 +119,7 @@ export default function Tags() {
           <Tag size={20} className="text-primary-light" />
           <div>
             <h1 className="text-xl font-bold text-ink-1">Tags</h1>
-            <p className="text-sm text-ink-3">{tags.length} tag(s) — assignables aux tickets</p>
+            <p className="text-sm text-ink-3">{tags.length} tag(s)</p>
           </div>
         </div>
         <button onClick={() => setModal({ mode: 'create' })}
@@ -135,7 +134,6 @@ export default function Tags() {
         <div className="text-center py-16 space-y-3">
           <Tag size={36} className="text-ink-4 mx-auto" />
           <p className="text-ink-3 text-sm">Aucun tag créé</p>
-          <p className="text-ink-4 text-xs">Créez des tags pour les assigner aux tickets et filtrer plus facilement.</p>
           <button onClick={() => setModal({ mode: 'create' })}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
             <Plus size={14} /> Créer le premier tag
@@ -165,13 +163,6 @@ export default function Tags() {
           ))}
         </div>
       )}
-
-      <div className="bg-surface-card/50 border border-overlay/6 rounded-2xl p-4">
-        <p className="text-xs text-ink-3 leading-relaxed">
-          Les tags peuvent être assignés à n'importe quel ticket depuis la page de détail du ticket.
-          Ils permettent de catégoriser les tickets librement (ex : Bug, Facturation, Urgent, VIP...).
-        </p>
-      </div>
     </div>
   );
 }

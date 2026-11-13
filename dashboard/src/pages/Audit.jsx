@@ -268,7 +268,6 @@ export default function Audit() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Journal d'activité</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Toutes les actions du serveur : dashboard, Discord, API, automatismes et super-admin</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex flex-wrap gap-0.5 bg-surface rounded-xl p-1 border border-overlay/6">

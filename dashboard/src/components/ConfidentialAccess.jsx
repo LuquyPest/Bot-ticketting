@@ -30,7 +30,7 @@ export default function ConfidentialAccess({ ticketId = null }) {
   }
   return (
     <div className="space-y-3">
-      <p className="text-xs text-ink-3">Chaque ouverture d'un ticket confidentiel (fiche, messages, transcript, PDF, lien invité) par personne, au plus une fois toutes les 10 minutes par type. {data.total} consultation(s).</p>
+      <p className="text-xs text-ink-3">{data.total} consultation(s)</p>
       <div className="bg-overlay/2 rounded-2xl border border-overlay/6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-overlay/6 text-[10px] uppercase tracking-wider text-ink-4">

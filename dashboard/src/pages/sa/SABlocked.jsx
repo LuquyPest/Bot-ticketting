@@ -79,7 +79,6 @@ export default function SABlocked() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Blocages</h1>
-          <p className="text-sm text-ink-3">Comptes et adresses bloqués après trop de tentatives — actualisé toutes les 30 s</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser">
           <RefreshCw size={15} />

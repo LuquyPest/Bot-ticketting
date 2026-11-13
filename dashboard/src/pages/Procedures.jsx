@@ -55,7 +55,6 @@ export default function Procedures() {
     <div className="p-4 sm:p-6 space-y-6 max-w-3xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Procédures</h1>
-        <p className="text-sm text-ink-3 mt-0.5">Des étapes à cocher dans la fiche selon le sujet du ticket, pour que chaque demande soit traitée de la même façon quel que soit l'agent. Fermer un ticket avec des étapes restantes demande une confirmation.</p>
       </div>
 
       <section className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-3">

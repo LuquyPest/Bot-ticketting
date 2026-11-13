@@ -31,7 +31,7 @@ function FieldEditor({ field, index, total, onChange, onRemove, onMove }) {
           <label className="text-xs text-ink-3 block mb-1">Label <span className="text-red-400">*</span></label>
           <input type="text" value={field.label} maxLength={45}
             onChange={e => onChange(index, 'label', e.target.value)}
-            placeholder="Ex: Motif de la demande" className={BASE} />
+            placeholder="Question" className={BASE} />
         </div>
         <div>
           <label className="text-xs text-ink-3 block mb-1">Placeholder</label>
@@ -121,7 +121,7 @@ function FormEditor({ form, onSave, onCancel }) {
         <div>
           <label className="text-xs text-ink-3 block mb-1">Nom du formulaire <span className="text-red-400">*</span></label>
           <input type="text" value={name} onChange={e => setName(e.target.value)} maxLength={100}
-            placeholder="Ex: Demande de support" className={BASE} />
+            placeholder="Titre" className={BASE} />
         </div>
         <div>
           <label className="text-xs text-ink-3 block mb-1">Sujet associé</label>
@@ -205,7 +205,6 @@ export default function Forms() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Formulaires d'intake</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Posez des questions lors de l'ouverture d'un ticket</p>
         </div>
         {!editing && (
           <button onClick={() => setEditing('new')}

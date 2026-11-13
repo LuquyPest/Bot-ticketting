@@ -48,7 +48,6 @@ export default function LoginLogs() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Logs de connexion</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Historique des connexions au dashboard</p>
         </div>
         <button onClick={load} className="p-2 text-ink-3 hover:text-ink-1 hover:bg-surface rounded-lg transition-colors">
           <RefreshCw size={15} />

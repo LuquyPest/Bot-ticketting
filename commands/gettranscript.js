@@ -23,7 +23,7 @@ module.exports = {
     const transcript = await tm.getTranscriptById(transcriptId);
 
     const { discordStaffCanSee } = require('../utils/gradePermissions');
-    if (!transcript || !(await discordStaffCanSee(db, interaction.user.id, transcript.visibility_grade_id))) {
+    if (!transcript || !(await discordStaffCanSee(db, interaction.user.id, { id: transcript.ticket_id, visibility_grade_id: transcript.visibility_grade_id }))) {
       return interaction.editReply({ content: 'Transcript introuvable.' });
     }
 

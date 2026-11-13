@@ -55,7 +55,6 @@ export default function Patchnotes() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-ink-1">Patchnotes</h1>
-          <p className="text-sm text-ink-3 mt-0.5">Historique de toutes les modifications depuis le lancement</p>
         </div>
       </div>
 

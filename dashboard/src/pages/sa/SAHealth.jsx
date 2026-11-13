@@ -31,7 +31,6 @@ function DemoCard() {
     <div className="glass-dark rounded-2xl border border-overlay/8 px-5 py-4 flex flex-wrap items-center gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-ink-1">Serveur de démonstration {demo.enabled ? <span className="text-emerald-400 text-xs">· activé</span> : <span className="text-ink-4 text-xs">· désactivé</span>}</p>
-        <p className="text-[11px] text-ink-4">Bouton « Essayer la démo » sur la connexion et pour les serveurs en attente ; données fictives remises à zéro chaque nuit (4 h 15).</p>
       </div>
       <button onClick={toggle} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">{demo.enabled ? 'Désactiver' : 'Activer'}</button>
       <button onClick={reset} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">{busy ? 'Réinitialisation…' : 'Réinitialiser maintenant'}</button>
@@ -57,7 +56,6 @@ export default function SAHealth() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Santé</h1>
-          <p className="text-sm text-ink-3">État du bot et de ses dépendances — actualisé toutes les 15 s</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser"><RefreshCw size={15} /></button>
       </div>

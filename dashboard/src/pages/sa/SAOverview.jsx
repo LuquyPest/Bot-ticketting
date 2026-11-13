@@ -71,7 +71,6 @@ export default function SAOverview() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Vue d'ensemble</h1>
-          <p className="text-sm text-ink-3">Activité de {isSA ? 'tous les serveurs' : 'vos serveurs'}</p>
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser">
           <RefreshCw size={15} />
@@ -105,7 +104,6 @@ export default function SAOverview() {
       <div className={`${card} overflow-hidden`}>
         <div className="px-5 py-4 border-b border-overlay/6">
           <h2 className="text-sm font-semibold text-ink-1">Serveurs et limites</h2>
-          <p className="text-[11px] text-ink-4">Utilisation par rapport aux limites fixées (∞ = illimité)</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">

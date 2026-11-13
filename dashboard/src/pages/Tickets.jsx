@@ -162,7 +162,6 @@ function QuickView({ ticket, x, y, messages }) {
         )}
       </div>
 
-      <p className="text-[10px] text-ink-4 mt-3">Cliquez pour ouvrir le ticket</p>
     </div>,
     document.body
   );
@@ -513,22 +512,6 @@ export default function Tickets() {
         </div>
       ))}
 
-      {/* Keyboard hint */}
-      <div className="hidden md:flex items-center gap-3 text-[10px] text-ink-4">
-        <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-overlay/8 font-mono">J/K</kbd>
-          <span>naviguer</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-overlay/8 font-mono">↵</kbd>
-          <span>ouvrir</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <kbd className="px-1.5 py-0.5 rounded-sm bg-surface border border-overlay/8 font-mono">/</kbd>
-          <span>rechercher</span>
-        </span>
-      </div>
-
       {/* Filters row 1 */}
       <div className="flex flex-wrap gap-2.5">
         <div className="relative flex-1 min-w-48">
@@ -537,7 +520,7 @@ export default function Tickets() {
             ref={searchRef}
             type="text"
             aria-label={searchMode === 'messages' ? 'Rechercher dans les messages' : 'Rechercher par sujet'}
-            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages... (/)' : 'Sujet, tag:VIP, de:pseudo… (/)'}
+            placeholder={searchMode === 'messages' ? 'Rechercher dans les messages' : 'Rechercher'}
             aria-invalid={!!searchError} aria-describedby={searchError ? 'search-error' : undefined}
             value={filters.subject}
             onChange={e => setFilter('subject', e.target.value)}
@@ -810,7 +793,6 @@ export default function Tickets() {
                       <Inbox size={20} className="text-ink-4" />
                     </div>
                     <p className="text-sm text-ink-3 font-medium">Aucun ticket trouvé</p>
-                    <p className="text-xs text-ink-4">Modifiez vos filtres ou attendez de nouveaux tickets.</p>
                   </div>
                 </td>
               </tr>

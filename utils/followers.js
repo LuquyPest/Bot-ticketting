@@ -28,7 +28,7 @@ async function notifyFollowers(db, guildId, ticket, { kind, by, byId = null, exc
     const notified = [];
     for (const { user_id: uid } of rows) {
       if (uid === byId) continue;
-      if (!(await canUserSeeTicket(db, uid, ticket.visibility_grade_id ?? null).catch(() => false))) continue;
+      if (!(await canUserSeeTicket(db, uid, ticket).catch(() => false))) continue;
       const title = TITLES[kind](ticket, by || '?');
       const body = String(excerpt || '').slice(0, 160);
       sendToUser(guildId, uid, 'followed', { ticketId: ticket.id, subject: ticket.subject || null, kind, title, body });

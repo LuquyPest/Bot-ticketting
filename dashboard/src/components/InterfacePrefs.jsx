@@ -19,7 +19,6 @@ export default function InterfacePrefs() {
       <input type="checkbox" checked={!!splitView} disabled={splitView === null} onChange={toggle} className="mt-0.5" />
       <span>
         <span className="block text-sm font-medium text-ink-1">Vue fractionnée des tickets</span>
-        <span className="block text-xs text-ink-3 mt-0.5">Sur grand écran, un ticket cliqué dans la liste s'ouvre à droite de celle-ci, sans changer de page.</span>
       </span>
     </label>
   );

@@ -87,7 +87,6 @@ export default function Kanban() {
           <KanbanIcon size={18} className="text-primary-light" />
           <div className="page-header">
             <h1>Kanban</h1>
-            <p>Vue par colonnes des tickets</p>
           </div>
         </div>
         <button onClick={load}

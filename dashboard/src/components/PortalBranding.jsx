@@ -65,9 +65,8 @@ export default function PortalBranding({ cfg, set }) {
         {ratio < 4.5 && <span className="text-[11px] text-amber-400">Contraste faible ({ratio.toFixed(1)}:1) : texte difficile à lire</span>}
       </div>
       <label className="block">
-        <span className="text-xs text-ink-3">Message d'accueil (affiché en haut des pages de ce serveur)</span>
+        <span className="text-xs text-ink-3">Message d'accueil</span>
         <textarea value={cfg.portalWelcome || ''} onChange={e => set('portalWelcome', e.target.value || null)} maxLength={500} rows={2}
-          placeholder="Bienvenue sur le support de Sunset ! Réponse sous 24 h en semaine."
           className="mt-1 w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm" />
       </label>
     </div>

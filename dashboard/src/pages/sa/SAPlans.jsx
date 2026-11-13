@@ -79,7 +79,6 @@ export default function SAPlans() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Formules</h1>
-          <p className="text-sm text-ink-3">Jeux de limites à attribuer aux serveurs (fenêtre « Limites »). Les fondateurs sont prévenus à 80 % et à 100 % d'une limite.</p>
         </div>
         <button onClick={() => setEditing({})} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary-light">
           <Plus size={13} /> Nouvelle formule

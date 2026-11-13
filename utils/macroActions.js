@@ -6,7 +6,7 @@ const { recordEvent } = require('./audit');
 const STAGE_NAMES = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
 const PRIORITY_NAMES = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
 
-async function applyMacroActions({ client, db, tm, ticket, actions, actor, can }) {
+async function applyMacroActions({ client, db, guildId, tm, ticket, actions, actor, can }) {
   const applied = [], warnings = [];
   if (!actions) return { applied, warnings };
   if (actions.assignSelf) {
@@ -22,6 +22,7 @@ async function applyMacroActions({ client, db, tm, ticket, actions, actor, can }
     if (!tag) warnings.push('Tag introuvable');
     else if ((await db('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [ticket.id, tag.id])).affectedRows) {
       await recordEvent(db, { actor, action: 'ticket_tag_add', ticketId: ticket.id, targetType: 'tag', targetId: tag.id, details: { tag: tag.name } });
+      await require('./channelVisibility').syncAfterTagChange(db, client, guildId, ticket.id, tag.id).catch(() => null);
       applied.push(`Tag ${tag.name}`);
     }
   }

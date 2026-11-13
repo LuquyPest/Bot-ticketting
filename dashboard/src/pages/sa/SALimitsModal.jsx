@@ -70,7 +70,7 @@ export default function SALimitsModal({ guild, onClose, onSaved }) {
             </select>
           </label>
         )}
-        <p className="text-[11px] text-ink-4">0 = illimité. Enregistrer des valeurs à la main détache le serveur de sa formule.</p>
+        <p className="text-[11px] text-ink-4">0 = illimité</p>
         {FIELDS.map(f => (
           <label key={f.key} className="block space-y-1">
             <span className="text-xs font-medium text-ink-2">{f.label}</span>

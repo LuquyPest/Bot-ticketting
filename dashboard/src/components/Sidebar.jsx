@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import LanguageToggle from './LanguageToggle';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useSSECtx } from '../context/SSEContext';
@@ -19,38 +19,54 @@ import GuildSwitcher from './GuildSwitcher';
 import api from '../api';
 import toast from 'react-hot-toast';
 
-const ALL_NAV = [
-  { to: '/',            label: 'Dashboard',    icon: LayoutDashboard, end: true, roles: ['support','fondateur'] },
-  { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
-  { to: '/activite',    label: 'Mon activité', icon: Gauge,           roles: ['support','fondateur'] },
-  { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
-  { to: '/profils',     label: 'Profils',      icon: Contact,         roles: ['support','fondateur'] },
-  { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
-  { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
-  { to: '/equipe',      label: 'Équipe',       icon: Users,           roles: ['fondateur'] },
-  { to: '/grades',      label: 'Grades',       icon: Shield,          roles: ['fondateur'], perm: 'manage_grades' },
-  { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
-  { to: '/audit',       label: 'Journal',        icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
-  { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
-  { to: '/members',     label: 'Données membres', icon: UserSearch,   roles: ['fondateur'] },
-  { to: '/acces-invites', label: 'Accès invités', icon: KeyRound,     roles: ['fondateur'] },
-  { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'], perm: 'view_transcripts' },
-  { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
-  { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
-  { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
-  { to: '/messages',    label: 'Programmés',   icon: Clock,           roles: ['fondateur'], perm: 'reply_ticket' },
-  { to: '/login-logs',  label: 'Connexions',   icon: History,         roles: ['support','fondateur'] },
-  { to: '/panels',       label: 'Panels',       icon: LayoutTemplate,  roles: ['fondateur'] },
-  { to: '/forms',        label: 'Formulaires',  icon: ClipboardCheck,  roles: ['fondateur'] },
-  { to: '/fields',       label: 'Champs',       icon: ListPlus,        roles: ['fondateur'], perm: 'manage_settings' },
-  { to: '/faq',          label: 'FAQ',          icon: HelpCircle,      roles: ['fondateur'], perm: 'manage_settings' },
-  { to: '/incidents',    label: 'Incidents',    icon: Megaphone,       roles: ['fondateur'], perm: 'manage_settings' },
-  { to: '/procedures',   label: 'Procédures',   icon: ListChecks,      roles: ['fondateur'], perm: 'manage_settings' },
-  { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
-  { to: '/sante',       label: 'Santé du serveur', icon: HeartPulse,  roles: ['fondateur'], perm: 'manage_settings' },
-  { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
-  { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
+const HOME = { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, roles: ['support','fondateur'] };
+
+const NAV_GROUPS = [
+  { id: 'support', label: 'Support', items: [
+    { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
+    { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
+    { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
+    { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
+    { to: '/profils',     label: 'Profils',      icon: Contact,         roles: ['support','fondateur'] },
+    { to: '/messages',    label: 'Programmés',   icon: Clock,           roles: ['fondateur'], perm: 'reply_ticket' },
+  ] },
+  { id: 'suivi', label: 'Suivi', items: [
+    { to: '/activite',    label: 'Mon activité', icon: Gauge,           roles: ['support','fondateur'] },
+    { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
+    { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
+    { to: '/audit',       label: 'Journal',      icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
+    { to: '/login-logs',  label: 'Connexions',   icon: History,         roles: ['support','fondateur'] },
+  ] },
+  { id: 'equipe', label: 'Équipe', items: [
+    { to: '/equipe',      label: 'Équipe',       icon: Users,           roles: ['fondateur'] },
+    { to: '/grades',      label: 'Grades',       icon: Shield,          roles: ['fondateur'], perm: 'manage_grades' },
+    { to: '/roles',       label: 'Rôles',        icon: UserCog,         roles: ['fondateur'] },
+  ] },
+  { id: 'config', label: 'Configuration', items: [
+    { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
+    { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
+    { to: '/panels',      label: 'Panels',       icon: LayoutTemplate,  roles: ['fondateur'] },
+    { to: '/forms',       label: 'Formulaires',  icon: ClipboardCheck,  roles: ['fondateur'] },
+    { to: '/fields',      label: 'Champs',       icon: ListPlus,        roles: ['fondateur'], perm: 'manage_settings' },
+    { to: '/faq',         label: 'FAQ',          icon: HelpCircle,      roles: ['fondateur'], perm: 'manage_settings' },
+    { to: '/procedures',  label: 'Procédures',   icon: ListChecks,      roles: ['fondateur'], perm: 'manage_settings' },
+    { to: '/incidents',   label: 'Incidents',    icon: Megaphone,       roles: ['fondateur'], perm: 'manage_settings' },
+    { to: '/sante',       label: 'Santé du serveur', icon: HeartPulse,  roles: ['fondateur'], perm: 'manage_settings' },
+  ] },
+  { id: 'admin', label: 'Administration', items: [
+    { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
+    { to: '/members',     label: 'Données membres', icon: UserSearch,   roles: ['fondateur'] },
+    { to: '/acces-invites', label: 'Accès invités', icon: KeyRound,     roles: ['fondateur'] },
+    { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'], perm: 'view_transcripts' },
+    { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
+    { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
+    { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
+  ] },
 ];
+
+const GROUPS_KEY = 'sidebar.groups';
+const readGroups = () => { try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || 'null') || { support: true }; } catch { return { support: true }; } };
+const inGroup = (pathname, items) => items.some(i => pathname === i.to || pathname.startsWith(`${i.to}/`));
 
 const ROLE_STYLES = {
   fondateur: { text: 'text-violet-300', bg: 'bg-violet-500/10 border border-violet-500/20', label: 'Fondateur' },
@@ -89,11 +105,24 @@ export default function Sidebar() {
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=64`
     : null;
 
-  const nav = ALL_NAV.filter(item => {
+  const allowed = item => {
     const role = user?.role;
     if (item.perm) return role === 'fondateur' || user?.permissions?.includes(item.perm);
     return item.roles.includes(role);
+  };
+  const groups = NAV_GROUPS.map(g => ({ ...g, items: g.items.filter(allowed) })).filter(g => g.items.length);
+  const { pathname } = useLocation();
+  const [openGroups, setOpenGroups] = useState(readGroups);
+  const toggleGroup = (id) => setOpenGroups(o => {
+    const next = { ...o, [id]: !o[id] };
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+    return next;
   });
+  // The group of the page being shown opens by itself (and can still be folded)
+  const activeGroup = groups.find(g => inGroup(pathname, g.items))?.id;
+  useEffect(() => {
+    if (activeGroup) setOpenGroups(o => (o[activeGroup] ? o : { ...o, [activeGroup]: true }));
+  }, [activeGroup]);
 
   const roleStyle = ROLE_STYLES[user?.role] || ROLE_STYLES.nouveau;
   const [availability, setAvailability] = useState('available');
@@ -107,6 +136,53 @@ export default function Sidebar() {
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
   const dot = SSE_DOT[status] || SSE_DOT.connecting;
+
+  const navItem = ({ to, label, icon: Icon, end }) => (
+    <NavLink
+      key={`${to}-${label}`}
+      to={to}
+      end={end}
+      data-tour={`nav-${to}`}
+      onClick={() => setSidebarOpen(false)}
+    >
+      {({ isActive }) => (
+        <span className={`
+          relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium
+          transition-all duration-150 cursor-pointer group
+          ${isActive
+            ? 'bg-primary/10 text-ink-1'
+            : 'text-ink-3 hover:text-ink-2 hover:bg-overlay/4'}
+        `}>
+          {isActive && (
+            <span className="absolute left-0 h-5 w-[3px] bg-linear-to-b from-primary-light to-primary
+                             rounded-r-full shadow-[0_0_10px_rgba(124,110,243,0.7)]" />
+          )}
+          <Icon
+            size={15}
+            className={`shrink-0 transition-colors ${
+              isActive ? 'text-primary-light' : 'text-ink-4 group-hover:text-ink-3'
+            }`}
+          />
+          <span className="truncate flex-1">{label}</span>
+          {to === '/patchnotes' && whatsNew?.unseen?.length > 0 && (
+            <span className="ml-auto shrink-0 px-1.5 h-[18px] rounded-full bg-primary/20 border border-primary/30 text-primary-light text-[10px] font-bold flex items-center" aria-label="Nouveautés non vues">
+              Nouveau
+            </span>
+          )}
+          {/* Unclaimed badge on Tickets */}
+          {to === '/tickets' && unclaimedCount > 0 && (
+            <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1
+                             rounded-full bg-amber-500/20 border border-amber-500/30
+                             text-amber-300 text-[10px] font-bold
+                             flex items-center justify-center tabular-nums
+                             shadow-[0_0_8px_rgba(245,158,11,0.25)]">
+              {unclaimedCount > 99 ? '99+' : unclaimedCount}
+            </span>
+          )}
+        </span>
+      )}
+    </NavLink>
+  );
 
   /* ── keyboard shortcut ⌘K / Ctrl+K ──────────────────────────── */
   React.useEffect(() => {
@@ -181,52 +257,24 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {nav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={`${to}-${label}`}
-              to={to}
-              end={end}
-              data-tour={`nav-${to}`}
-              onClick={() => setSidebarOpen(false)}
-            >
-              {({ isActive }) => (
-                <span className={`
-                  relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium
-                  transition-all duration-150 cursor-pointer group
-                  ${isActive
-                    ? 'bg-primary/10 text-ink-1'
-                    : 'text-ink-3 hover:text-ink-2 hover:bg-overlay/4'}
-                `}>
-                  {isActive && (
-                    <span className="absolute left-0 h-5 w-[3px] bg-linear-to-b from-primary-light to-primary
-                                     rounded-r-full shadow-[0_0_10px_rgba(124,110,243,0.7)]" />
-                  )}
-                  <Icon
-                    size={15}
-                    className={`shrink-0 transition-colors ${
-                      isActive ? 'text-primary-light' : 'text-ink-4 group-hover:text-ink-3'
-                    }`}
-                  />
-                  <span className="truncate flex-1">{label}</span>
-                  {to === '/patchnotes' && whatsNew?.unseen?.length > 0 && (
-                    <span className="ml-auto shrink-0 px-1.5 h-[18px] rounded-full bg-primary/20 border border-primary/30 text-primary-light text-[10px] font-bold flex items-center" aria-label="Nouveautés non vues">
-                      Nouveau
-                    </span>
-                  )}
-                  {/* Unclaimed badge on Tickets */}
-                  {to === '/tickets' && unclaimedCount > 0 && (
-                    <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1
-                                     rounded-full bg-amber-500/20 border border-amber-500/30
-                                     text-amber-300 text-[10px] font-bold
-                                     flex items-center justify-center tabular-nums
-                                     shadow-[0_0_8px_rgba(245,158,11,0.25)]">
-                      {unclaimedCount > 99 ? '99+' : unclaimedCount}
-                    </span>
-                  )}
-                </span>
-              )}
-            </NavLink>
-          ))}
+          {allowed(HOME) && navItem(HOME)}
+          {groups.map(g => {
+            const open = !!openGroups[g.id];
+            const ticketsBadge = !open && unclaimedCount > 0 && g.items.some(i => i.to === '/tickets');
+            const newsBadge = !open && whatsNew?.unseen?.length > 0 && g.items.some(i => i.to === '/patchnotes');
+            return (
+              <div key={g.id} className="pt-2">
+                <button type="button" onClick={() => toggleGroup(g.id)} aria-expanded={open}
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-4 hover:text-ink-2 transition-colors">
+                  <ChevronRight size={11} aria-hidden="true" className={`shrink-0 transition-transform duration-150 ${open ? 'rotate-90' : ''}`} />
+                  <span className="flex-1 text-left">{g.label}</span>
+                  {ticketsBadge && <span className="min-w-[16px] h-4 px-1 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-bold flex items-center justify-center tabular-nums">{unclaimedCount > 99 ? '99+' : unclaimedCount}</span>}
+                  {newsBadge && <span className="w-1.5 h-1.5 rounded-full bg-primary-light" aria-label="Nouveautés non vues" />}
+                </button>
+                {open && <div className="space-y-0.5 mt-0.5">{g.items.map(navItem)}</div>}
+              </div>
+            );
+          })}
         </nav>
 
         <RunningTimer />

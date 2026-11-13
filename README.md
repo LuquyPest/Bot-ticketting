@@ -13,7 +13,7 @@
 ![Redis 7](https://img.shields.io/badge/Redis-7-FF4438?style=flat-square&logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 <br>
-![Tests](https://img.shields.io/badge/tests-860_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-873_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
 ![Licence](https://img.shields.io/badge/licence-propriétaire-lightgrey?style=flat-square)
@@ -290,7 +290,7 @@ Le membre peut aussi ouvrir un ticket en cliquant sur un **panel** publié dans 
 
 - Répond via `/reply` (identifié), `/areply` (anonyme comme "Support") ou depuis le **dashboard web** ; depuis le dashboard, un **fichier** (8 Mo max) peut être joint : il arrive en pièce jointe dans le MP du membre et dans le salon
 - Les messages tapés directement dans le salon Discord sont enregistrés comme notes mais **ne sont pas envoyés** au membre
-- Le staff peut aussi **contacter un membre de lui-même** (sanction, suivi, remboursement) : bouton **Contacter un membre** de la page Tickets, `/contact`, ou clic droit sur un message d'un salon public → Applications → **Sunset-Ticket → Créer un ticket** (seul un titre est demandé ; le message d'origine est repris dans le ticket, avec son lien). Le membre reçoit un MP « L'équipe te contacte » (puis le premier message pour la page Tickets et `/contact`), et répond au bot comme pour un ticket normal ; le ticket indique qui l'a ouvert (journal : « Ticket ouvert par le staff »). Permission de grade `create_ticket` (« Ouvrir un ticket pour un membre ») : les fondateurs l'ont toujours, elle est donnée aux grades qui pouvaient répondre (Support, Chef support) et se coche dans **Grades** pour un autre (un grade Helper, par exemple). Discord affiche quand même le clic droit à tout le monde : pour le masquer, Paramètres du serveur → Intégrations → Sunset-Ticket → « Créer un ticket » → rôles autorisés. Limite de tickets du serveur respectée
+- Le staff peut aussi **contacter un membre de lui-même** (sanction, suivi, remboursement) : bouton **Nouveau ticket** de la page Tickets, `/contact`, ou clic droit sur un message d'un salon public → Applications → **Sunset-Ticket → Créer un ticket** (seul un titre est demandé ; le message d'origine est repris dans le ticket, avec son lien). Le membre reçoit un MP « L'équipe te contacte » (puis le premier message pour la page Tickets et `/contact`), et répond au bot comme pour un ticket normal ; le ticket indique qui l'a ouvert (journal : « Ticket ouvert par le staff »). Permission de grade `create_ticket` (« Ouvrir un ticket pour un membre ») : les fondateurs l'ont toujours, elle est donnée aux grades qui pouvaient répondre (Support, Chef support) et se coche dans **Grades** pour un autre (un grade Helper, par exemple). Discord affiche quand même le clic droit à tout le monde : pour le masquer, Paramètres du serveur → Intégrations → Sunset-Ticket → « Créer un ticket » → rôles autorisés. Limite de tickets du serveur respectée
 - **Format des tickets** (Paramètres → Rôles d'accès), trois choix :
   - **Salons, puis fils privés** (par défaut) : un salon par ticket, avec débordement des catégories ; quand le serveur atteint 500 salons, les nouveaux tickets deviennent des fils privés du salon choisi (sans salon choisi : refusés comme ci-dessous) ;
   - **Salons uniquement** : un salon par ticket, avec débordement des catégories ; quand Discord refuse un salon de plus, le ticket est refusé : le membre reçoit « Serveur complet », le panel l'affiche, et les fondateurs reçoivent un MP (une fois par heure au plus) ;
@@ -527,6 +527,8 @@ Un `support` n'a aucun droit sans grade. Permissions de grade appliquées par l'
 
 Un ticket restreint à un grade n'est visible (liste, détail, recherche, SSE, push, transcripts) que par ce grade, ses grades parents et le fondateur.
 
+**Rôles** (page Rôles, fondateurs) : des groupes de membres du staff, comme des rôles Discord, rattachés à un ou plusieurs **tags**. Un ticket qui porte un tag rattaché à un rôle n'est plus visible que des membres de ce rôle (de l'un d'eux si plusieurs) et des fondateurs, partout : liste, fiche, recherche, statistiques, temps réel, push, mentions, commandes Discord, salon ou fil du ticket et salon vocal. La règle s'ajoute à celle des grades (un ticket restreint à un grade et tagué demande les deux) et ne lève jamais la confidentialité. Ajouter ou retirer le tag, changer les membres ou les tags d'un rôle, supprimer un rôle ou un tag recalcule aussitôt l'accès aux salons Discord. Seuls les fondateurs gèrent les rôles : un membre du staff ne peut pas s'en donner un pour voir plus de tickets.
+
 Sur Discord, le salon d'un ticket restreint est masqué aux rôles support / chef support et ouvert individuellement aux membres du staff autorisés (fondateurs et grades concernés). Les droits du salon sont recalculés quand la restriction est levée et quand les grades, leurs permissions ou les comptes du staff changent. Le bot a besoin de la permission **Gérer les rôles** : sans elle, la restriction ne s'applique qu'au dashboard et un avertissement est affiché (pour un serveur invité avant cette version, réinviter le bot ou lui ajouter la permission).
 
 ### 2FA pour les comptes dashboard
@@ -547,6 +549,8 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 
 ### Pages disponibles
 
+La barre latérale range les pages en catégories repliables (**Support**, **Suivi**, **Équipe**, **Configuration**, **Administration**) ; chaque catégorie garde son état ouvert ou fermé dans le navigateur, celle de la page affichée s'ouvre d'elle-même, et une catégorie fermée signale les tickets non attribués et les nouveautés.
+
 | Page | Accès | Description |
 |------|-------|-------------|
 | **Dashboard** | support, fondateur | Stats globales, activité, tickets récents, classement, objectif mensuel (option) |
@@ -559,6 +563,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 | **Programmés** | `reply_ticket` | Messages planifiés dans un ticket |
 | **Connexions** | support, fondateur | Historique de ses connexions (le fondateur voit celles des membres de son serveur) |
 | **Grades** | fondateur, `manage_grades` | Hiérarchie de grades et permissions |
+| **Rôles** | fondateur | Rôles du staff rattachés à des tags : un ticket au tag n'est visible que du rôle (et des fondateurs) |
 | **Journal** | fondateur, `view_audit` | Journal de toutes les actions (dashboard, Discord, API, automatismes, super-admin) avec filtres, export CSV, onglet Analytique et, pour les fondateurs, onglet **Consultations confidentielles** |
 | **Transcripts** | fondateur, `view_transcripts` | Consultation et téléchargement HTML/TXT |
 | **Équipe** | fondateur | Membres du dashboard, rôles, grades, mode vacances, **absences planifiées** de toute l'équipe |
@@ -925,6 +930,7 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 | `scheduled_messages` | Messages programmés |
 | `ticket_panels` / `panel_buttons` | Panels de boutons Discord |
 | `grades` / `grade_permissions` / `user_grades` | Grades, permissions et attributions |
+| `access_roles` / `access_role_members` / `access_role_tags` | Rôles du staff, leurs membres et leurs tags |
 | `dashboard_users` | Comptes dashboard (rôle, profil, disponibilité, vacances) |
 | `admin_stats` | Statistiques cumulées par agent |
 | `blacklist` | Membres bloqués (expiration optionnelle) |
@@ -1116,7 +1122,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 860 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 873 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie

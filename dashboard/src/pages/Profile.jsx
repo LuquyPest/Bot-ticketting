@@ -439,7 +439,6 @@ export default function Profile() {
             {/* Photo */}
             <div>
               <label className="text-sm text-ink-2 font-medium block mb-1">Photo de profil</label>
-              <p className="text-xs text-ink-4 mb-2">URL d'une image — remplace ton avatar Discord</p>
               {!editingPhoto ? (
                 <div className="flex items-center gap-3">
                   {avatarUrl ? (
@@ -467,7 +466,7 @@ export default function Profile() {
               ) : (
                 <div className="flex gap-2">
                   <input type="url" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
-                    placeholder="https://cdn.discordapp.com/…  (lien d'une image envoyée sur Discord)" autoFocus
+                    placeholder="URL de l'image" autoFocus
                     className="flex-1 bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                                rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors" />
                   <button onClick={() => setEditingPhoto(false)}
@@ -483,7 +482,7 @@ export default function Profile() {
             <div>
               <label className="text-sm text-ink-2 font-medium block mb-1">Bio</label>
               <textarea value={bio} onChange={e => setBio(e.target.value.slice(0, 160))} rows={2}
-                placeholder="Quelques mots sur toi…"
+                placeholder="Bio"
                 className="w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4
                            rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary
                            transition-colors resize-none" />
@@ -517,7 +516,6 @@ export default function Profile() {
                   <Palmtree size={13} className={vacation ? 'text-amber-400' : 'text-ink-4'} />
                   Mode vacances
                 </p>
-                <p className="text-xs text-ink-4">Indique que tu es absent temporairement</p>
               </div>
             </label>
 
@@ -534,7 +532,6 @@ export default function Profile() {
                   <BellRing size={13} className={notifyAssignDm ? 'text-primary-light' : 'text-ink-4'} />
                   MP Discord quand on m'attribue un ticket
                 </p>
-                <p className="text-xs text-ink-4">La notification du dashboard et le push restent actifs</p>
               </div>
             </label>
 
@@ -549,7 +546,6 @@ export default function Profile() {
                   <BellRing size={13} className={notifyMentionDm ? 'text-primary-light' : 'text-ink-4'} />
                   MP Discord quand on me mentionne dans une note
                 </p>
-                <p className="text-xs text-ink-4">Mentionne un collègue avec @pseudo dans une note interne</p>
               </div>
             </label>
 
@@ -710,7 +706,6 @@ export default function Profile() {
       </div>
 
       <Section title="Langue du dashboard">
-        <p className="text-xs text-ink-3">Langue de l'interface pour ton compte. Les messages des membres, les sujets et les notes restent tels qu'ils ont été écrits.</p>
         <LanguageToggle variant="select" />
       </Section>
 
@@ -720,7 +715,6 @@ export default function Profile() {
       </Section>
 
       <Section title="Mes absences">
-        <p className="text-xs text-ink-3">Planifie tes congés : le mode vacances s'active au début et se retire tout seul à la fin.</p>
         <Absences />
       </Section>
 

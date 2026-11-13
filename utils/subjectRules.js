@@ -33,6 +33,7 @@ async function applySubjectRules({ db, client, guildId, ticket, firstMessage = '
       }
       if (r.tag_id && (await db('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) SELECT ?, id FROM ticket_tags WHERE id = ?', [ticket.id, r.tag_id])).affectedRows) {
         await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_tag_add', ticketId: ticket.id, targetType: 'tag', targetId: r.tag_id, details: { rule: ruleLabel(r) } });
+        await require('./channelVisibility').syncAfterTagChange(db, client, guildId, ticket.id, r.tag_id).catch(() => null);
         applied.push(`tag:${r.tag_id}`);
       }
       // A confidential ticket stays confidential (no rule widens or narrows it)

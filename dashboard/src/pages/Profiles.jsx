@@ -28,7 +28,6 @@ function Directory() {
     <div className="p-4 sm:p-6 space-y-5 max-w-4xl">
       <div>
         <h1 className="text-xl font-bold text-ink-1">Profils des membres</h1>
-        <p className="text-sm text-ink-3 mt-0.5">Tout ce que l'équipe sait d'un membre, d'un ticket à l'autre : ses tickets, ses étiquettes et un fil de discussion entre membres du staff.</p>
       </div>
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 pointer-events-none" />
@@ -161,7 +160,7 @@ function ProfileView({ memberId }) {
               {canWrite && p.labels.length < 10 && (
                 <form onSubmit={addLabel} className="inline-flex items-center gap-1">
                   <Tag size={11} className="text-ink-4" />
-                  <input value={labelInput} onChange={e => setLabelInput(e.target.value)} maxLength={30} placeholder="Ajouter une étiquette (VIP…)" aria-label="Nouvelle étiquette"
+                  <input value={labelInput} onChange={e => setLabelInput(e.target.value)} maxLength={30} placeholder="Ajouter une étiquette" aria-label="Nouvelle étiquette"
                     className="bg-transparent border-b border-overlay/10 text-xs text-ink-1 placeholder-ink-4 w-44 focus:outline-hidden focus:border-primary/50" />
                 </form>
               )}
@@ -186,7 +185,7 @@ function ProfileView({ memberId }) {
           <h2 id="thread-title" className="text-sm font-semibold text-ink-2 flex items-center gap-1.5"><MessageSquare size={14} /> Discussion de l'équipe</h2>
           {canWrite && (
             <div className="bg-surface-card border border-overlay/6 rounded-2xl p-4">
-              <PostForm placeholder="Nouveau message sur ce membre (déjà remboursé, à surveiller…)"
+              <PostForm placeholder="Message"
                 onSubmit={async text => { try { const r = await api.post(`/profiles/${memberId}/posts`, { content: text }); setPosts(r.data.posts); return true; } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); return false; } }} />
             </div>
           )}

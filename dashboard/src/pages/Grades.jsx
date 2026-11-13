@@ -78,7 +78,7 @@ function GradeModal({ grade, grades, onClose, onSave }) {
             <input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Ex : Chef Support"
+              placeholder="Nom"
               className="w-full bg-surface border border-overlay/8 rounded-lg px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-hidden focus:border-primary"
             />
           </div>
@@ -117,11 +117,6 @@ function GradeModal({ grade, grades, onClose, onSave }) {
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
-            {parentId && (
-              <p className="text-xs text-ink-4 mt-1">
-                Les membres avec ce grade pourront voir les tickets visibles par "{available.find(g => g.id === parseInt(parentId))?.name}" et en dessous.
-              </p>
-            )}
           </div>
 
           <div>
@@ -360,16 +355,6 @@ export default function Grades() {
           ))}
         </div>
       )}
-
-      <div className="bg-surface-card/50 border border-overlay/6 rounded-2xl p-4 space-y-1.5">
-        <p className="text-xs text-ink-3 leading-relaxed">
-          <span className="text-primary-light font-medium">Hiérarchie</span> — Un grade peut avoir un parent.
-          Les membres d'un grade parent voient les tickets visibles par ses grades enfants.
-        </p>
-        <p className="text-xs text-ink-4">
-          <span className="text-amber-400">★ Grade par défaut</span> — Attribué automatiquement lors de la première approbation d'un utilisateur.
-        </p>
-      </div>
 
       {modal?.mode === 'create' && (
         <GradeModal
