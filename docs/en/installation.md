@@ -1,8 +1,8 @@
-# Self-hosting Ticket Bot
+# Installation
 
 One server, Docker, a domain name: twenty minutes. Every install is independent — your bot, your database, your data, no link to the author or to any other instance. You are its only administrator: no account to create, you sign in with your Discord account.
 
-*Version française : [INSTALL.md](INSTALL.md).* The dashboard itself is available in French and English (per-user setting).
+*Version française : [Installation](../guide/installation).* The dashboard itself is available in French and English (per-user setting).
 
 ## 1. What you need
 
@@ -68,7 +68,7 @@ To let someone else manage the instance, add their Discord ID to `OWNER_IDS` (`.
 
 | Action | Command |
 |---|---|
-| Update | `docker compose pull && docker compose up -d` — see [UPGRADE.md](UPGRADE.md) |
+| Update | `docker compose pull && docker compose up -d` — see [Updates (French)](../guide/mise-a-jour) |
 | Back up | automatic every night into `backups/`, encrypted with `BACKUP_KEY` (`backup` service); on demand: `scripts/backup.sh`. The key is also shown to the owner in **Paramètres → Sécurité**: keep it off the server with a copy of `.env` (`ENCRYPTION_KEY` decrypts the transcripts) |
 | Restore | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` (integrity checked before anything is written) |
 | Logs | `docker compose logs -f bot` |

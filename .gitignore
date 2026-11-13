@@ -10,3 +10,6 @@ tests/load/*.cpuprofile
 .claude/
 backups/
 .env.bak.*
+docs/node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

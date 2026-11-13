@@ -12,7 +12,7 @@ function fail(msg) { console.error(`❌ ${msg}`); process.exit(1); }
 function ok(msg)   { console.log(`✅ ${msg}`); }
 function info(msg) { console.log(`ℹ️  ${msg}`); }
 
-// config.json (optional) + environment variables — see utils/config.js and INSTALL.md
+// config.json (optional) + environment variables — see utils/config.js and docs/guide/installation.md
 function readConfig() {
   try { return require('./utils/config').loadConfig(); }
   catch (e) { fail(e.message); }
@@ -23,7 +23,7 @@ const where = (envName, key) => `${envName} (variable d'environnement) ou ${key}
 
 function validateConfig(config) {
   if (!config.hasFile && !config.token) {
-    fail('Aucune configuration trouvée : ni config.json, ni variables d\'environnement. Lance scripts/setup.sh ou lis INSTALL.md.');
+    fail('Aucune configuration trouvée : ni config.json, ni variables d\'environnement. Lance scripts/setup.sh ou lis https://luquypest.github.io/Bot-ticketting/guide/installation');
   }
   if (!config.token)    fail(`Champ manquant : ${where('DISCORD_TOKEN', 'token')}`);
   if (!config.clientId) fail(`Champ manquant : ${where('DISCORD_CLIENT_ID', 'clientId')}`);

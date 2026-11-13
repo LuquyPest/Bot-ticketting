@@ -11,9 +11,9 @@ Tu installes ton instance, tu branches ton bot Discord : il est à toi.
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
 
-**[Installer](INSTALL.md)** · **[Mettre à jour](UPGRADE.md)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)** · **[Contribuer](CONTRIBUTING.md)**
+**[Documentation](https://luquypest.github.io/Bot-ticketting)** · **[Installer](https://luquypest.github.io/Bot-ticketting/guide/installation)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)** · **[Contribuer](CONTRIBUTING.md)**
 
-<img src="docs/images/dashboard.png" alt="Tableau de bord" width="100%">
+<img src="docs/public/images/dashboard.png" alt="Tableau de bord" width="100%">
 
 </div>
 
@@ -23,16 +23,16 @@ Un membre écrit au bot en **message privé** ; sa demande devient un **ticket**
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/ticket.png" alt="Fiche d'un ticket"><p align="center"><sub><b>Fiche ticket</b> — conversation, notes internes, attribution, suivi, temps passé</sub></p></td>
-    <td width="50%"><img src="docs/images/split-view.png" alt="Vue fractionnée"><p align="center"><sub><b>Vue fractionnée</b> — la liste et le ticket côte à côte</sub></p></td>
+    <td width="50%"><img src="docs/public/images/ticket.png" alt="Fiche d'un ticket"><p align="center"><sub><b>Fiche ticket</b> — conversation, notes internes, attribution, suivi, temps passé</sub></p></td>
+    <td width="50%"><img src="docs/public/images/split-view.png" alt="Vue fractionnée"><p align="center"><sub><b>Vue fractionnée</b> — la liste et le ticket côte à côte</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/instance.png" alt="Section Instance"><p align="center"><sub><b>Section Instance</b> — tes serveurs, la santé du bot, les erreurs</sub></p></td>
-    <td width="50%"><img src="docs/images/member-portal.png" alt="Espace membre"><p align="center"><sub><b>Espace membre</b> — le membre suit et répond à ses tickets</sub></p></td>
+    <td width="50%"><img src="docs/public/images/instance.png" alt="Section Instance"><p align="center"><sub><b>Section Instance</b> — tes serveurs, la santé du bot, les erreurs</sub></p></td>
+    <td width="50%"><img src="docs/public/images/member-portal.png" alt="Espace membre"><p align="center"><sub><b>Espace membre</b> — le membre suit et répond à ses tickets</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/dashboard-light.png" alt="Thème clair"><p align="center"><sub><b>Thème clair</b> — et une interface « Classique » au choix</sub></p></td>
-    <td width="50%" align="center"><img src="docs/images/ticket-mobile.png" alt="Sur téléphone" width="45%"><p align="center"><sub><b>Sur téléphone</b></sub></p></td>
+    <td width="50%"><img src="docs/public/images/dashboard-light.png" alt="Thème clair"><p align="center"><sub><b>Thème clair</b> — et une interface « Classique » au choix</sub></p></td>
+    <td width="50%" align="center"><img src="docs/public/images/ticket-mobile.png" alt="Sur téléphone" width="45%"><p align="center"><sub><b>Sur téléphone</b></sub></p></td>
   </tr>
 </table>
 
@@ -55,11 +55,11 @@ scripts/setup.sh                              # quelques questions → .env comp
 docker compose pull && docker compose up -d
 ```
 
-Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée. Le guide pas à pas, du portail Discord au premier ticket : **[INSTALL.md](INSTALL.md)** (*[English](INSTALL.en.md)*).
+Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée. Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://luquypest.github.io/Bot-ticketting/guide/installation)** (*[English](https://luquypest.github.io/Bot-ticketting/en/installation)*).
 
 | | |
 |---|---|
-| Mise à jour | `docker compose pull && docker compose up -d` — migrations automatiques ([UPGRADE.md](UPGRADE.md)) |
+| Mise à jour | `docker compose pull && docker compose up -d` — migrations automatiques ([Mises à jour](https://luquypest.github.io/Bot-ticketting/guide/mise-a-jour)) |
 | Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité) ; la clé est dans Paramètres → Sécurité pour le propriétaire ; restauration : `scripts/restore.sh` |
 | HTTPS | Caddy inclus (Let's Encrypt), ou ton Traefik, ou ton propre proxy |
 | Configuration | tout dans `.env`, chaque variable est commentée dans [.env.example](.env.example) |

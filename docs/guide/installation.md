@@ -1,8 +1,8 @@
-# Installer son propre Ticket Bot
+# Installation
 
 Un serveur, Docker, un nom de domaine : vingt minutes. Chaque installation est indépendante — ton bot, ta base, tes données, aucun lien avec l'auteur ni avec une autre instance. Tu en es le seul administrateur : pas de compte à créer, tu te connectes avec ton compte Discord.
 
-*English version: [INSTALL.en.md](INSTALL.en.md).*
+*English version: [Installation](../en/installation).*
 
 ## 1. Ce qu'il te faut
 
@@ -68,7 +68,7 @@ Pour donner la main à quelqu'un d'autre sur l'instance, ajoute son ID Discord d
 
 | Action | Commande |
 |---|---|
-| Mettre à jour | `docker compose pull && docker compose up -d` — voir [UPGRADE.md](UPGRADE.md) |
+| Mettre à jour | `docker compose pull && docker compose up -d` — voir [Mises à jour](./mise-a-jour) |
 | Sauvegarder | automatique chaque nuit dans `backups/`, chiffrée avec `BACKUP_KEY` (service `backup`) ; à la demande : `scripts/backup.sh`. La clé est aussi affichée au propriétaire dans **Paramètres → Sécurité** : garde-la hors du serveur avec une copie du `.env` (`ENCRYPTION_KEY` déchiffre les transcripts) |
 | Restaurer | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` (intégrité vérifiée avant toute écriture) |
 | Voir les logs | `docker compose logs -f bot` |
@@ -77,22 +77,6 @@ Pour donner la main à quelqu'un d'autre sur l'instance, ajoute son ID Discord d
 | Tout supprimer | `docker compose down -v` — supprime aussi les bases |
 | Rester sur une version | `TICKETBOT_VERSION=v3.0` dans `.env` au lieu de `latest` |
 
-## 6. Problèmes fréquents
+## 6. En cas de problème
 
-**« Aucune configuration trouvée » au démarrage** → le `.env` manque ou est vide ; relance `scripts/setup.sh`.
-
-**Le bot ne répond pas aux messages privés** → *Message Content Intent* n'est pas activé (étape 2.3). Après activation, `docker compose restart bot`.
-
-**« Invalid OAuth2 redirect_uri » en se connectant** → l'URL de redirection du portail Discord doit être exactement `https://<ton domaine>/api/auth/discord/callback`, et `PUBLIC_URL` dans `.env` doit être `https://<ton domaine>` sans barre finale.
-
-**Le certificat HTTPS n'arrive pas** → le DNS ne pointe pas encore vers le serveur, ou les ports 80/443 sont fermés (pare-feu, box). `docker compose logs caddy` dit pourquoi.
-
-**Je ne vois pas « Instance » ni « Inviter le bot »** → tu n'es pas connecté avec le compte propriétaire de l'application Discord (portail développeur → *General Information* → *Owner*). Ajoute ton ID dans `OWNER_IDS` si c'est voulu, puis `docker compose up -d`.
-
-**Le bot quitte un serveur dès son arrivée** → `ALLOWED_GUILDS` est renseigné et ce serveur n'y est pas.
-
-**Afficher ma propre politique de confidentialité** → la page intégrée `/confidentialite` convient à la plupart des cas (avec l'e-mail `CONTACT_EMAIL`) ; pour la tienne, mets son adresse dans `PRIVACY_URL`.
-
-**Je veux garder un `config.json`** → toujours possible : monte-le dans le conteneur (lignes commentées dans `docker-compose.yml`). Les variables d'environnement l'emportent sur ses valeurs.
-
-Autres questions : les [Discussions GitHub](https://github.com/LuquyPest/Bot-ticketting/discussions) ; un bug : une [issue](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose).
+Les erreurs les plus courantes et leur solution : [Problèmes fréquents](./problemes). Sinon, pose ta question dans les [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions).

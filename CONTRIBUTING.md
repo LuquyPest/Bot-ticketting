@@ -1,12 +1,12 @@
 # Contribuer
 
-Merci de t'intéresser au projet. Il est sous licence [AGPL-3.0](LICENSE) : tu peux l'installer, le modifier et l'héberger pour d'autres, à condition de publier tes modifications sous la même licence.
+Merci de t'intéresser au projet. Il est sous licence [AGPL-3.0](https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE) : tu peux l'installer, le modifier et l'héberger pour d'autres, à condition de publier tes modifications sous la même licence.
 
 ## Où poser une question, où signaler
 
 - **Question, idée, aide à l'installation** → [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions).
 - **Bug** → [issue « Bug »](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose), avec la version (page *Patchnotes* du dashboard ou tag de l'image), les étapes et les logs (`docker compose logs bot`), **sans token ni secret**.
-- **Faille de sécurité** → jamais en public : voir [SECURITY.md](SECURITY.md).
+- **Faille de sécurité** → jamais en public : voir [Signaler une faille](https://luquypest.github.io/Bot-ticketting/guide/signaler-une-faille).
 
 ## Lancer le projet en développement
 
@@ -33,7 +33,7 @@ Règles du dépôt :
 - Messages de commit en **français**, style conventionnel (`feat:`, `fix:`, `docs:`, `chore:`…).
 - Toute évolution du schéma d'une base de serveur est une **nouvelle migration** à la fin de `utils/tenantMigrations.js` ; on ne modifie jamais une version déjà publiée. Les tables globales évoluent dans `bootstrap.js` (`ADD COLUMN IF NOT EXISTS`).
 - Les appels API qui modifient quelque chose exigent l'en-tête `X-Requested-With: XMLHttpRequest`.
-- Une fonctionnalité visible s'accompagne d'une entrée dans `dashboard/src/data/patchnotes.js` (c'est aussi la source des notes de release) et, si besoin, du README.
+- Une fonctionnalité visible s'accompagne d'une entrée dans `dashboard/src/data/patchnotes.js` (source des notes de release et de la page Versions du site) et de sa page dans la documentation (`docs/guide/`, aperçu local : `cd docs && npm ci && npm run dev`).
 - Textes de l'interface en français dans le code ; la traduction anglaise est dans `dashboard/src/i18n/en.js`.
 
 ## Publier une version (mainteneurs)

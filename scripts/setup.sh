@@ -50,7 +50,7 @@ echo
 VAPID_PUBLIC_KEY=""; VAPID_PRIVATE_KEY=""
 gen_vapid() { node -e "const k=require('web-push').generateVAPIDKeys();console.log(k.publicKey+' '+k.privateKey)" 2>/dev/null; }
 VAPID="$( (docker run --rm --entrypoint node ghcr.io/luquypest/bot-ticketting:latest -e "const k=require('web-push').generateVAPIDKeys();console.log(k.publicKey+' '+k.privateKey)" 2>/dev/null) || (command -v node >/dev/null && [[ -d node_modules/web-push ]] && gen_vapid) || true)"
-if [[ -n "$VAPID" ]]; then VAPID_PUBLIC_KEY="${VAPID% *}"; VAPID_PRIVATE_KEY="${VAPID#* }"; else echo "⚠️  Clés VAPID non générées (pas d'image ni de Node) : notifications push désactivées, voir INSTALL.md."; fi
+if [[ -n "$VAPID" ]]; then VAPID_PUBLIC_KEY="${VAPID% *}"; VAPID_PRIVATE_KEY="${VAPID#* }"; else echo "⚠️  Clés VAPID non générées (pas d'image ni de Node) : notifications push désactivées, voir https://luquypest.github.io/Bot-ticketting/guide/configuration"; fi
 
 [[ -f .env ]] && { cp .env ".env.bak.$(date +%Y%m%d%H%M%S)"; echo "Ancien .env sauvegardé."; }
 mkdir -p backups && chmod 700 backups

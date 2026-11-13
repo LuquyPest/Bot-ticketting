@@ -1,4 +1,4 @@
-// Screenshots of the README (docs/images/): the production build with a fake API full of
+// Screenshots of the README and the docs site (docs/public/images/): the production build with a fake API full of
 // realistic data, in headless Chromium.   npm run build && npm run docs:screenshots
 import { chromium } from 'playwright-core';
 import { preview } from 'vite';
@@ -7,7 +7,7 @@ import path from 'node:path';
 import { now, iso, days, MOCK, PNG } from './fixtures.mjs';
 import { VERSIONS } from '../src/data/patchnotes.js';
 
-const OUT = path.resolve('../docs/images');
+const OUT = path.resolve('../docs/public/images');
 mkdirSync(OUT, { recursive: true });
 
 const STAFF = [{ user_id: '1', username: 'Alex', avatar: null }, { user_id: '2', username: 'Inès', avatar: null }, { user_id: '3', username: 'Tom', avatar: null }];
