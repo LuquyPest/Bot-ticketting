@@ -1,33 +1,64 @@
 # Installation
 
-Un serveur, Docker, un nom de domaine : vingt minutes. Chaque installation est indépendante — ton bot, ta base, tes données, aucun lien avec l'auteur ni avec une autre instance. Tu en es le seul administrateur : pas de compte à créer, tu te connectes avec ton compte Discord.
+Un serveur, Docker, un nom de domaine : **une vingtaine de minutes**, étape par étape. Chaque installation est indépendante — ton bot, ta base, tes données, sans lien avec l'auteur ni avec une autre instance. Tu en es le seul administrateur : aucun compte à créer, tu te connectes avec ton compte Discord.
 
 *English version: [Installation](../en/installation).*
 
-## 1. Ce qu'il te faut
+## Ce qu'il te faut
 
 | | Pourquoi |
 |---|---|
-| Un serveur Linux (1 Go de RAM suffit) avec **Docker** et **Docker Compose v2** | tout tourne en conteneurs : MariaDB, Redis, le bot et son dashboard |
-| Un **nom de domaine** pointant vers ce serveur (`tickets.example.com`) | Discord n'accepte la connexion au dashboard qu'en HTTPS sur une adresse publique |
-| Les **ports 80 et 443** ouverts | certificats HTTPS automatiques (Let's Encrypt) — sauf si tu as déjà un reverse proxy |
-| Une **application Discord** (étape 2) | le bot et la connexion « Se connecter avec Discord » |
+| Un **serveur Linux** (VPS, 1 Go de RAM suffit) | Le bot tourne en continu ; une machine chez toi convient aussi si elle reste allumée |
+| Un **nom de domaine** (ou un sous-domaine, comme `tickets.example.com`) | Discord n'autorise la connexion au dashboard qu'en HTTPS sur une adresse publique |
+| Les **ports 80 et 443** ouverts | Pour le certificat HTTPS automatique |
+| Un **compte Discord** | Il deviendra le propriétaire de ton instance |
 
-Installation de Docker : <https://docs.docker.com/engine/install/>.
+## Étape 1 — Installer Docker
 
-## 2. Créer l'application Discord
+Sur le serveur, en SSH. La méthode officielle, pour Debian ou Ubuntu :
 
-Sur <https://discord.com/developers/applications> :
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER   # puis déconnecte-toi et reconnecte-toi
+```
 
-1. **New Application**, donne-lui le nom de ton bot.
-2. Onglet **Bot** → **Reset Token** → copie le **token** (il ne sera plus affiché). Décoche **Public Bot** : toi seul pourras inviter le bot.
-3. Toujours dans **Bot**, section *Privileged Gateway Intents* : active **Server Members Intent** et **Message Content Intent** (sans eux, le bot ne lit pas les messages privés).
-4. Onglet **OAuth2** → copie le **Client Secret** (bouton *Reset Secret* si besoin). L'**Application ID** est sur la page *General Information*.
-5. Toujours dans **OAuth2** → *Redirects* → **Add Redirect** : `https://tickets.example.com/api/auth/discord/callback` (avec ton domaine, exactement cette fin). Enregistre.
+::: tip Vérifier
+`docker compose version` doit afficher une version 2. Autres systèmes : [docs.docker.com/engine/install](https://docs.docker.com/engine/install/).
+:::
 
-Tu as maintenant trois valeurs : le token, l'Application ID et le Client Secret. **Le compte Discord propriétaire de cette application sera le propriétaire de l'instance** (pour une application d'équipe : le propriétaire et les admins de l'équipe).
+## Étape 2 — Faire pointer le domaine
 
-## 3. Installer
+Chez ton fournisseur de domaine, ajoute un enregistrement **A** vers l'adresse IP du serveur :
+
+| Type | Nom | Valeur |
+|---|---|---|
+| `A` | `tickets` (pour `tickets.example.com`) | l'adresse IPv4 du serveur |
+
+::: tip Vérifier
+`ping tickets.example.com` doit répondre avec l'adresse de ton serveur. La propagation prend de quelques minutes à une heure.
+:::
+
+## Étape 3 — Créer le bot sur Discord
+
+Ouvre le [portail développeur Discord](https://discord.com/developers/applications) et connecte-toi avec le compte qui administrera l'instance.
+
+1. **New Application** → donne-lui le nom de ton bot → **Create**.
+2. Page **General Information** : copie l'**Application ID**.
+3. Onglet **Bot** :
+   - **Reset Token** → copie le **token** (il ne sera plus jamais affiché) ;
+   - décoche **Public Bot** : toi seul pourras inviter le bot ;
+   - dans *Privileged Gateway Intents*, active **Server Members Intent** et **Message Content Intent**, puis **Save Changes**.
+4. Onglet **OAuth2** :
+   - **Reset Secret** → copie le **Client Secret** ;
+   - dans *Redirects*, **Add Redirect** : `https://tickets.example.com/api/auth/discord/callback` (avec ton domaine, cette fin exactement) → **Save Changes**.
+
+Tu as maintenant trois valeurs : l'**Application ID**, le **token** et le **Client Secret**.
+
+::: warning Ne partage jamais le token ni le Client Secret
+Ils donnent le contrôle de ton bot. S'ils fuient : **Reset Token** / **Reset Secret** dans le portail, puis relance `scripts/setup.sh`.
+:::
+
+## Étape 4 — Installer et configurer
 
 ```bash
 git clone https://github.com/LuquyPest/Bot-ticketting.git
@@ -35,48 +66,76 @@ cd Bot-ticketting
 scripts/setup.sh
 ```
 
-Le script demande le token, l'ID d'application, le Client Secret, ton domaine, ton e-mail, le mode HTTPS et la sauvegarde nocturne, puis génère tous les mots de passe et secrets dans `.env` (fichier privé, `chmod 600`).
+Le script pose quelques questions et **génère tout le reste** : mots de passe, clés de chiffrement, clés des notifications. Le token et le Client Secret sont saisis sans s'afficher.
 
-Trois modes HTTPS :
+![setup.sh pose ses questions puis écrit le fichier .env](/images/install-setup.png)
 
-- **Caddy inclus** (par défaut) : rien à configurer, certificats automatiques. Ports 80 et 443 requis.
-- **Traefik existant** : le bot rejoint le réseau Docker `proxy` avec les labels pour les entrypoints `web`/`websecure` et le résolveur `letsencrypt` ; adapte `docker-compose.traefik.yml` si tes noms diffèrent.
-- **Aucun** : le dashboard écoute sur `127.0.0.1:3000` ; mets ton propre proxy devant (Nginx : `proxy_buffering off;` pour le temps réel) et renseigne `TRUSTED_PROXY_HOST` ou `TRUST_PROXY_HOPS` dans `.env`.
+| Question | Réponse |
+|---|---|
+| HTTPS | **1** (Caddy inclus) dans la plupart des cas. **2** si tu as déjà un Traefik, **3** si tu as ton propre reverse proxy |
+| Sauvegarder chaque nuit | **o** : une sauvegarde chiffrée de toutes les bases, chaque nuit, dans `backups/` |
 
-Puis :
+Tout est écrit dans le fichier `.env`, privé (lisible par toi seul). Garde-en une copie hors du serveur : il contient les clés qui déchiffrent les transcripts et les sauvegardes.
+
+## Étape 5 — Démarrer
 
 ```bash
-docker compose pull          # image publiée (ghcr.io/luquypest/bot-ticketting)
-docker compose up -d
-docker compose logs -f bot   # « Tout est prêt » = démarré ; Ctrl+C pour quitter les logs
+docker compose pull && docker compose up -d
+docker compose logs -f bot
 ```
 
-Première ouverture de `https://tickets.example.com` : le certificat peut prendre une minute.
+Docker télécharge l'image publiée, démarre la base, Redis, le bot, Caddy et la sauvegarde. Le bot vérifie sa configuration et se connecte à Discord :
 
-Sans le script, copie `.env.example` en `.env` et remplis-le à la main : chaque variable y est commentée.
+![Démarrage des conteneurs puis du bot](/images/install-start.png)
 
-## 4. Premier démarrage
+« **Connecté en tant que** » : c'est bon. `Ctrl+C` pour quitter les logs (le bot continue de tourner).
 
-1. **Connexion** : ouvre `https://tickets.example.com` et connecte-toi avec Discord, avec le compte propriétaire de l'application. Tu es reconnu comme **propriétaire de l'instance**.
-2. **Inviter le bot** : la page **Mes serveurs** propose « Inviter le bot » sur chaque serveur où tu as la permission *Gérer le serveur*. Le serveur est **prêt dès que le bot arrive** : tu en es fondateur et tu reçois un MP avec le lien du dashboard.
-3. **Réglages** : dans le dashboard, *Paramètres* → rôles d'accès (quels rôles Discord sont staff), catégorie des salons de tickets, messages d'accueil… Tout se fait depuis le dashboard, rien dans les fichiers.
-4. **Section Instance** (menu Administration, ou « Gérer l'instance » sur **Mes serveurs**) : tes serveurs, leurs fondateurs, la santé du bot, les erreurs et leur alerte (MP envoyé à toi par défaut), le journal, les adresses bloquées et le serveur de démonstration (désactivé par défaut).
+::: tip Si ça ne démarre pas
+Le message d'erreur dit ce qui manque. Les cas courants sont dans [Problèmes fréquents](./problemes#installation).
+:::
 
-Pour donner la main à quelqu'un d'autre sur l'instance, ajoute son ID Discord dans `OWNER_IDS` (`.env`) et redémarre. Pour qu'il gère un seul serveur, nomme-le plutôt fondateur de ce serveur.
+## Étape 6 — Se connecter
 
-## 5. Au quotidien
+Ouvre `https://tickets.example.com` (la première fois, le certificat HTTPS peut prendre une minute) et clique **Connexion avec Discord**, avec le compte propriétaire de l'application.
+
+![Page de connexion du dashboard](/images/install-login.png)
+
+Le dashboard porte le nom et l'avatar de ton bot. Tu es reconnu comme **propriétaire de l'instance**.
+
+## Étape 7 — Inviter le bot sur ton serveur
+
+La page **Mes serveurs** liste les serveurs Discord où tu as la permission *Gérer le serveur*. Clique **Inviter le bot** sur le tien et valide dans la fenêtre Discord.
+
+![Mes serveurs : « Inviter le bot » sur un serveur, « Accéder » sur un serveur déjà actif](/images/install-servers.png)
+
+Le serveur est **prêt dès que le bot arrive** : tu en es fondateur et tu reçois un MP avec le lien du dashboard. Clique **Accéder**.
+
+## Étape 8 — Régler l'essentiel
+
+**Paramètres → Rôles d'accès** : choisis les rôles Discord de ton staff et les catégories où ranger les tickets.
+
+![Paramètres → Rôles d'accès : rôles du staff et catégories des étapes](/images/install-roles.png)
+
+Puis envoie un message privé au bot depuis un autre compte : le ticket apparaît dans **Tickets** et dans la catégorie « Ouvert » de ton serveur. **C'est installé.**
+
+La suite — sujets, messages, grades, FAQ, panels : [Premiers pas](./premiers-pas).
+
+## Au quotidien
 
 | Action | Commande |
 |---|---|
-| Mettre à jour | `docker compose pull && docker compose up -d` — voir [Mises à jour](./mise-a-jour) |
-| Sauvegarder | automatique chaque nuit dans `backups/`, chiffrée avec `BACKUP_KEY` (service `backup`) ; à la demande : `scripts/backup.sh`. La clé est aussi affichée au propriétaire dans **Paramètres → Sécurité** : garde-la hors du serveur avec une copie du `.env` (`ENCRYPTION_KEY` déchiffre les transcripts) |
-| Restaurer | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` (intégrité vérifiée avant toute écriture) |
+| Mettre à jour | `docker compose pull && docker compose up -d` — [Mises à jour](./mise-a-jour) |
+| Sauvegarder maintenant | `scripts/backup.sh` — [Sauvegardes](./sauvegardes) |
+| Restaurer | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` |
 | Voir les logs | `docker compose logs -f bot` |
-| Redémarrer | `docker compose restart bot` |
-| Arrêter | `docker compose down` (les données restent dans les volumes Docker) |
-| Tout supprimer | `docker compose down -v` — supprime aussi les bases |
-| Rester sur une version | `TICKETBOT_VERSION=v3.0` dans `.env` au lieu de `latest` |
+| Redémarrer le bot | `docker compose restart bot` |
+| Tout arrêter | `docker compose down` (les données restent) |
+| Rester sur une version | `TICKETBOT_VERSION=v3.0.4` dans `.env` au lieu de `latest` |
 
-## 6. En cas de problème
+::: details Installer sans le script
+Copie `.env.example` en `.env` et remplis-le : chaque variable y est commentée, et toutes sont décrites dans [Configuration](./configuration). Génère chaque secret avec `openssl rand -hex 32`.
+:::
 
-Les erreurs les plus courantes et leur solution : [Problèmes fréquents](./problemes). Sinon, pose ta question dans les [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions).
+::: details Utiliser ton propre reverse proxy (Nginx, Traefik…)
+Avec le choix **3**, le dashboard écoute sur `127.0.0.1:3000` : fais pointer ton proxy dessus. Pour Nginx, ajoute `proxy_buffering off;` (temps réel). Avec un **Traefik** existant (choix **2**), le bot rejoint le réseau Docker `proxy` avec les entrypoints `web` / `websecure` et le résolveur `letsencrypt` : adapte `docker-compose.traefik.yml` si les tiens s'appellent autrement.
+:::

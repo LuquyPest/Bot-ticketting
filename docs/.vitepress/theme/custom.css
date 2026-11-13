@@ -58,3 +58,7 @@
 .tb-steps > div { border: 1px solid var(--vp-c-divider); background: var(--vp-c-bg-soft); border-radius: 4px; padding: 20px; }
 .tb-steps b { display: block; color: var(--vp-c-brand-1); font-size: 13px; margin-bottom: 6px; }
 .tb-steps p { margin: 0; font-size: 14px; color: var(--vp-c-text-2); line-height: 1.6; }
+
+/* Pictures inside the guide pages */
+.vp-doc p > img { display: block; margin: 20px auto; max-width: 100%; border: 1px solid var(--vp-c-divider); border-radius: 6px; }
+.vp-doc p > img[src*='install-setup'], .vp-doc p > img[src*='install-start'] { border: 0; }

@@ -35,6 +35,8 @@ cd Bot-ticketting
 scripts/setup.sh
 ```
 
+![setup.sh asks its questions, then writes .env](/images/install-setup.png)
+
 The script (prompts in French) asks for the token, the application ID, the client secret, your domain, your e-mail, the HTTPS mode and the nightly backup, then generates every password and secret into `.env` (private file, `chmod 600`).
 
 Three HTTPS modes:
@@ -51,14 +53,20 @@ docker compose up -d
 docker compose logs -f bot   # « Tout est prêt » = running; Ctrl+C leaves the logs
 ```
 
+![Containers start, then the bot connects to Discord](/images/install-start.png)
+
 The first visit to `https://tickets.example.com` may wait a minute for the certificate.
 
 Without the script, copy `.env.example` to `.env` and fill it in by hand: every variable is commented.
 
 ## 4. First start
 
+![Sign-in page of the dashboard](/images/install-login.png)
+
 1. **Sign in**: open `https://tickets.example.com` and sign in with Discord, using the account that owns the application. You are recognised as the **owner of the instance**.
 2. **Invite the bot**: the server picker offers « Inviter le bot » on every server where you have *Manage Server*. The server is **ready as soon as the bot joins**: you are its founder and get a DM with the dashboard link.
+![Server picker: « Inviter le bot » (invite the bot) and « Accéder » (open)](/images/install-servers.png)
+
 3. **Settings**: in the dashboard, *Paramètres* → access roles (which Discord roles are staff), ticket channel category, welcome messages… Everything is done from the dashboard, nothing in files.
 4. **Instance section** (Administration menu, or « Gérer l'instance » on the server picker): your servers and their founders, bot health, errors and their alert (DM to you by default), the log, blocked addresses and the demonstration server (off by default).
 

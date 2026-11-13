@@ -29,6 +29,16 @@ const T = TICKETS[0];
 
 const DATA = {
   ...MOCK,
+  // Installation guide: server picker, access roles
+  '/api/auth/guilds': [
+    { id: '1', name: 'Sunset FA', icon: null, iconUrl: null, status: 'active' },
+    { id: '2', name: 'Mon serveur', icon: null, iconUrl: null, status: 'not_added' },
+  ],
+  '/api/discord/roles': [
+    { id: '11', name: 'Support', color: '#3b82f6' }, { id: '12', name: 'Chef support', color: '#22c55e' }, { id: '13', name: 'Modération', color: '#f59e0b' },
+  ],
+  '/api/discord/categories': [{ id: '21', name: 'Tickets ouverts' }, { id: '22', name: 'Tickets en attente' }, { id: '23', name: 'Tickets en cours' }],
+  '/api/discord/channels': [{ id: '31', name: 'logs-tickets', type: 0 }],
   '/api/auth/me': { id: '1', username: 'Alex', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true },
   '/api/instance/info': { name: 'Support Bot', avatar: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2f6feb"/><text x="32" y="42" font-family="Arial" font-size="30" font-weight="700" fill="#fff" text-anchor="middle">S</text></svg>'), demo: false, privacyUrl: null, contactEmail: null },
   '/api/instance/stats': { guilds: { total: 2, active: 2, suspended: 0 }, errors24h: 0,
@@ -74,6 +84,8 @@ const DATA = {
 
 // README pictures, in the « Pro » interface (Profil → Affichage → Interface)
 const PRO = { skin: 'pro' };
+// The section of a page that holds this heading, cropped
+const section = text => async page => page.locator('section, div.rounded-2xl', { has: page.getByRole('heading', { name: text, exact: true }) }).last();
 const SHOTS = [
   // [file, path, { theme, skin, viewport, after }]
   ['dashboard', '/', PRO],
@@ -83,19 +95,28 @@ const SHOTS = [
   ['member-portal', '/espace/123456789012345678/1', PRO],
   ['dashboard-light', '/', { ...PRO, theme: 'light' }],
   ['ticket-mobile', `/tickets/${T.id}`, { ...PRO, viewport: { width: 390, height: 844 }, mobile: true }],
+  // Installation guide
+  ['install-login', '/login', { ...PRO, anonymous: true, viewport: { width: 1100, height: 720 }, crop: 'div.max-w-sm' }],
+  ['install-servers', '/select-guild', { ...PRO, me: { guildId: null, role: null }, viewport: { width: 1100, height: 720 }, crop: 'div.max-w-lg' }],
+  ['install-roles', '/settings', { ...PRO, viewport: { width: 1300, height: 900 }, element: section("Rôles d'accès"), config: {
+    supportRoleIds: ['11'], chiefRoleIds: ['12'], ticketCategoryId: '21', waitingCategoryId: '22', inProgressCategoryId: '23', ticketMode: 'auto', ticketSubjects: ['Paiement', 'Compte', 'Signalement', 'Autre'] } }],
 ];
 
 const server = await preview({ preview: { host: '127.0.0.1', port: 4176, strictPort: true, proxy: {} }, logLevel: 'error' });
 const base = 'http://127.0.0.1:4176';
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 
+const ONLY = process.env.SHOTS ? process.env.SHOTS.split(',') : null;
 for (const [name, p, o = {}] of SHOTS) {
+  if (ONLY && !ONLY.includes(name)) continue;
   const page = await browser.newPage({ viewport: o.viewport || { width: 1440, height: 900 }, isMobile: !!o.mobile, hasTouch: !!o.mobile, locale: 'fr-FR', deviceScaleFactor: o.mobile ? 2 : 1 });
   await page.addInitScript(([t, sk]) => { localStorage.setItem('theme', t); localStorage.setItem('uiLang', 'fr'); localStorage.setItem('uiSkin', sk); }, [o.theme || 'dark', o.skin || 'classic']);
   await page.route('**/api/**', route => {
     const u = new URL(route.request().url());
     if (o.anonymous && (u.pathname.endsWith('/auth/me') || u.pathname === '/api/member/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
     if (u.pathname === '/api/attachment') return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    if (u.pathname.endsWith('/auth/me') && o.me) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...DATA['/api/auth/me'], ...o.me }) });
+    if (u.pathname === '/api/config' && o.config) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...DATA['/api/config'], ...o.config }) });
     if (u.pathname === '/api/profile/prefs' && o.prefs) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...DATA['/api/profile/prefs'], ...o.prefs }) });
     const closedList = u.pathname === '/api/tickets' && u.searchParams.get('status') === 'closed';
     const body = u.pathname.endsWith('/presence') && route.request().method() === 'POST'
@@ -110,7 +131,19 @@ for (const [name, p, o = {}] of SHOTS) {
   // Pages that follow the latest message open scrolled down: shown from the top
   await page.evaluate(() => document.querySelectorAll('main, main section, main [class*="overflow-y-auto"]').forEach(el => el.scrollTo(0, 0)));
   await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+  if (o.element) {
+    const el = await o.element(page);
+    await el.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await el.screenshot({ path: path.join(OUT, `${name}.png`) });
+  } else if (o.crop) {
+    // The content block with a margin around it
+    const box = await page.locator(o.crop).first().boundingBox();
+    const m = 40;
+    await page.screenshot({ path: path.join(OUT, `${name}.png`), clip: { x: Math.max(0, box.x - m), y: Math.max(0, box.y - m), width: box.width + 2 * m, height: box.height + 2 * m } });
+  } else {
+    await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+  }
   console.log('✓', name);
   await page.close();
 }
