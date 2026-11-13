@@ -3,6 +3,7 @@ const { Events, AuditLogEvent } = require('discord.js');
 const { globalQuery } = require('../utils/globalDb');
 const { getDbName } = require('../utils/tenantDb');
 const logger = require('../utils/logger');
+const { activateGuild } = require('../utils/guildActivation');
 
 async function fetchInviter(guild, client) {
   try {
@@ -51,6 +52,12 @@ module.exports = {
            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
           [guild.id, guild.name, guild.iconURL() || null, ownerDiscordId, ownerDiscordTag, inviterDiscordId, inviterDiscordTag, getDbName(guild.id), activationToken, tokenExpires, guild.memberCount]
         );
+      }
+
+      // Self-hosted with AUTO_APPROVE_GUILDS: no super-admin step, the server is ready at once
+      if (client.config?.autoApproveGuilds) {
+        const [row] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [guild.id]);
+        if (row?.status === 'pending') { await activateGuild(client, row); return; }
       }
 
       // DM the inviter

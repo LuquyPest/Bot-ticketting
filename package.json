@@ -1,7 +1,7 @@
 {
-  "name": "bot-ticket-v5-final",
-  "version": "1.0.0",
-  "description": "Bot Discord de tickets DM -> salons avec transcripts HTML et statistiques staff",
+  "name": "bot-ticketting",
+  "version": "2.24.0",
+  "description": "Bot Discord de tickets par messages privés, avec dashboard web temps réel (multi-serveurs)",
   "main": "index.js",
   "scripts": {
     "start": "node bootstrap.js",
@@ -32,5 +32,10 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuquyPest/Bot-ticketting.git"
   }
 }

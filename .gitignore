@@ -8,3 +8,5 @@ dashboard/dist/
 tests/load/last-report.json
 tests/load/*.cpuprofile
 .claude/
+backups/
+.env.bak.*

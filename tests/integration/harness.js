@@ -3510,6 +3510,39 @@ async function main() {
   const [g2row] = await globalQuery('SELECT COUNT(*) AS n FROM guilds WHERE guild_id = ?', [G2]);
   check('suppression serveur: le bot quitte Discord', r.status === 200 && g2Left && r.body.leftDiscord === true && Number(g2row.n) === 0, JSON.stringify([r.status, r.body, g2Left, g2row]));
 
+  // ── Self-hosting: configuration from the environment, automatic activation of a server ──
+  {
+    const { loadConfig } = app('./utils/config');
+    const env = { DISCORD_TOKEN: 't', DISCORD_CLIENT_ID: '42', DISCORD_CLIENT_SECRET: 's', PUBLIC_URL: 'https://tickets.example.com/',
+      SESSION_SECRET: 'x'.repeat(32), DB_PASSWORD: 'pw', DB_PORT: '3307', AUTO_APPROVE_GUILDS: 'true', TRUSTED_PROXY_HOST: '' };
+    const c = loadConfig({ file: '/nonexistent/config.json', env });
+    check('config: tout par variables d environnement, sans config.json', !c.hasFile && c.token === 't' && c.clientId === '42' && c.dashboard.discordClientSecret === 's'
+      && c.dashboard.sessionSecret.length === 32 && c.database.password === 'pw' && c.database.port === 3307 && c.database.host === 'db' && c.webServerPort === 3000, JSON.stringify(c));
+    check('config: URL publique normalisée et retour OAuth déduit', c.webServerBaseUrl === 'https://tickets.example.com' && c.dashboard.discordCallbackUrl === 'https://tickets.example.com/api/auth/discord/callback', c.dashboard.discordCallbackUrl);
+    check('config: AUTO_APPROVE_GUILDS et TRUSTED_PROXY_HOST vide lus', c.autoApproveGuilds === true && c.trustedProxyHost === '' && loadConfig({ file: '/nonexistent/config.json', env: { AUTO_APPROVE_GUILDS: 'non' } }).autoApproveGuilds === false);
+    const merged = loadConfig({ env: { DB_PORT: '3399', DB_HOST: '' } });
+    check('config: la variable d environnement l emporte sur config.json, une valeur vide est ignorée', merged.hasFile && merged.database.port === 3399 && merged.database.host === config.database.host && merged.token === 'test-token', JSON.stringify(merged.database));
+
+    // guildCreate with autoApproveGuilds: tenant created, inviter founder, status active, no super-admin step
+    const G5 = '523456789012345678';
+    const guildCreate = app('./events/guildCreate');
+    const g5 = { id: G5, name: 'Auto', ownerId: '300000000000000001', memberCount: 3, iconURL: () => null,
+      fetchOwner: async () => ({ id: '300000000000000001', user: { username: 'founder1' } }), fetchAuditLogs: async () => ({ entries: new Map() }) };
+    fakeClient.config = { ...config, autoApproveGuilds: false };
+    await guildCreate.execute(fakeClient, g5);
+    let [g5row] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [G5]);
+    check('activation: sans l option, un nouveau serveur attend le super-admin', g5row?.status === 'pending', JSON.stringify(g5row));
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G5]);
+    fakeClient.config = { ...config, autoApproveGuilds: true };
+    await guildCreate.execute(fakeClient, g5);
+    [g5row] = await globalQuery('SELECT status, approved_by, approved_at FROM guilds WHERE guild_id = ?', [G5]);
+    const [g5founder] = await getTenantDb(G5)("SELECT role FROM dashboard_users WHERE user_id = '300000000000000001'").catch(() => []);
+    check('activation: AUTO_APPROVE_GUILDS active le serveur à l arrivée du bot (base créée, invitant fondateur)', g5row?.status === 'active' && g5row.approved_by === null && g5row.approved_at && g5founder?.role === 'fondateur', JSON.stringify([g5row, g5founder]));
+    fakeClient.config = config;
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G5]);
+    await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${G5}\``).catch(() => null);
+  }
+
   console.log(`\n${pass} passed, ${failed} failed`);
   server.close();
   await redis.quit();

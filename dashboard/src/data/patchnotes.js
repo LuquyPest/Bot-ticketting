@@ -8,6 +8,20 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.24',
+    date: '13 novembre 2026',
+    title: 'Auto-hébergement : chacun son bot',
+    changes: [
+      { type: 'new',  text: 'Logiciel libre sous licence AGPL-3.0 : installer, modifier et héberger son propre bot est désormais permis à tous' },
+      { type: 'new',  text: 'Installation en vingt minutes : scripts/setup.sh pose cinq questions et génère toute la configuration ; HTTPS automatique avec Caddy inclus, ou Traefik existant ; guide INSTALL.md (français et anglais), UPGRADE.md, CONTRIBUTING.md' },
+      { type: 'new',  text: 'Image Docker publiée (ghcr.io/luquypest/bot-ticketting) à chaque version, avec release GitHub : mise à jour par docker compose pull' },
+      { type: 'new',  text: 'Option AUTO_APPROVE_GUILDS : chaque serveur qui invite le bot est activé aussitôt, sans passer par le super-admin ; les serveurs en attente le sont au démarrage' },
+      { type: 'impr', text: 'Toute la configuration dans .env (config.json devient facultatif, les variables l\'emportent) ; le mot de passe de la base n\'est plus à recopier' },
+      { type: 'impr', text: 'Sauvegarde et restauration des bases en une commande (scripts/backup.sh, scripts/restore.sh)' },
+      { type: 'tech', text: 'Tests : 880 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v2.23',
     date: '13 novembre 2026',
     title: 'Interface « Pro »',

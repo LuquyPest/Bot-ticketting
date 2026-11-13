@@ -13,18 +13,21 @@
 ![Redis 7](https://img.shields.io/badge/Redis-7-FF4438?style=flat-square&logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 <br>
-![Tests](https://img.shields.io/badge/tests-874_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-880_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
-![Licence](https://img.shields.io/badge/licence-propriétaire-lightgrey?style=flat-square)
+![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
+![Image Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
 
-**[▶ Essayer la démo](https://ticket.sunset-fa.fr/login)** &nbsp;·&nbsp; **[Statut du service](https://ticket.sunset-fa.fr/status)** &nbsp;·&nbsp; **[Démarrage rapide](#-démarrage-rapide)** &nbsp;·&nbsp; **[Documentation](#-documentation)**
+**[⚡ Installer le sien](INSTALL.md)** &nbsp;·&nbsp; **[Démarrage rapide](#-démarrage-rapide)** &nbsp;·&nbsp; **[Documentation](#-documentation)** &nbsp;·&nbsp; **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)**
 
 </div>
 
 <br>
 
 Les membres écrivent au bot **en message privé** ; chaque demande devient un **ticket** que le staff traite depuis Discord ou depuis un **dashboard web temps réel**. Un seul bot sert **plusieurs serveurs Discord**, chacun avec sa propre base de données, ses réglages, ses grades et son équipe.
+
+Logiciel libre ([AGPL-3.0](LICENSE)) : **chacun héberge le sien**, en vingt minutes avec Docker, sans dépendre de personne — voir [INSTALL.md](INSTALL.md).
 
 <br>
 
@@ -202,7 +205,7 @@ flowchart LR
         API["API Express<br/>+ dashboard React"]
         JOBS["Tâches planifiées<br/>BullMQ"]
     end
-    PROXY["🔒 Traefik<br/>HTTPS"] --> API
+    PROXY["🔒 Caddy ou Traefik<br/>HTTPS"] --> API
     MP <--> BOT
     SRV <--> BOT
     BOT & API & JOBS <--> REDIS[("Redis 7<br/>sessions · état · temps réel")]
@@ -210,20 +213,19 @@ flowchart LR
     BOT & API & JOBS --> TENANT[("MariaDB<br/>ticketbot_guild_…<br/>une base par serveur")]
 ```
 
-Un serveur Discord qui ajoute le bot est enregistré en statut **pending** dans `ticketbot_global`. Un superadmin valide la demande depuis le panel `/sa`, ce qui crée la base de données dédiée et active le serveur. Tant qu'un serveur n'est pas actif (en attente, suspendu ou en maintenance), le bot n'y répond pas.
+Un serveur Discord qui ajoute le bot est enregistré dans `ticketbot_global` et activé — aussitôt avec `AUTO_APPROVE_GUILDS=true`, sinon par un superadmin depuis le panel `/sa` — ce qui crée sa base de données dédiée. Tant qu'un serveur n'est pas actif (en attente, suspendu ou en maintenance), le bot n'y répond pas.
 
 <br>
 
 ## ⚡ Démarrage rapide
 
 ```bash
-git clone git@github.com:LuquyPest/Bot-ticketting.git && cd Bot-ticketting
-cp .env.example .env                 # mots de passe MariaDB, Redis et du premier superadmin
-cp config.example.json config.json   # token Discord, OAuth2, URL publique, clé de chiffrement
-docker compose up -d --build         # base, Redis, bot et dashboard
+git clone https://github.com/LuquyPest/Bot-ticketting.git && cd Bot-ticketting
+scripts/setup.sh                         # token Discord, domaine, e-mail → .env complet, secrets générés
+docker compose pull && docker compose up -d
 ```
 
-Puis invite le bot sur ton serveur, valide-le depuis le panel superadmin (`/sa`) et connecte-toi au dashboard avec Discord. Le détail est dans [Installation](#installation) et [Configuration](#configuration-configjson).
+Il faut un serveur avec Docker, un nom de domaine et une application Discord. Le guide pas à pas, du portail Discord au premier serveur activé : **[INSTALL.md](INSTALL.md)** (*[English](INSTALL.en.md)*). Mise à jour : `docker compose pull && docker compose up -d` ([UPGRADE.md](UPGRADE.md)).
 
 <br>
 
@@ -234,9 +236,8 @@ Puis invite le bot sur ton serveur, valide-le depuis le panel superadmin (`/sa`)
 - [Architecture](#-architecture)
 - [Stack technique](#stack-technique)
 - [Fonctionnement — cycle de vie d'un ticket](#fonctionnement--cycle-de-vie-dun-ticket)
-- [Prérequis](#prérequis)
 - [Installation](#installation)
-- [Configuration config.json](#configuration-configjson)
+- [Configuration](#configuration)
 - [Serveur de démonstration](#serveur-de-démonstration)
 - [Activation d'un serveur](#activation-dun-serveur)
 - [Dashboard web](#dashboard-web)
@@ -258,6 +259,8 @@ Puis invite le bot sur ton serveur, valide-le depuis le panel superadmin (`/sa`)
 - [Migrations des bases](#migrations-des-bases)
 - [Tests](#tests)
 - [Problèmes fréquents](#problèmes-fréquents)
+- [Instance de l'auteur](#instance-de-lauteur)
+- [Licence et contributions](#licence-et-contributions)
 
 </td></tr></table>
 
@@ -352,131 +355,48 @@ Limite actuelle : le processus héberge à la fois la connexion Discord (gateway
 
 ---
 
-## Prérequis
-
-- **Docker** et **Docker Compose v2**
-- Un **bot Discord** configuré (token + OAuth2)
-- Un serveur avec domaine public et un reverse proxy HTTPS — le `docker-compose.yml` est prévu pour **Traefik** (réseau Docker externe `proxy`, labels déjà présents)
-- **Redis 7** — inclus dans le `docker-compose.yml` (service `redis`, mot de passe `REDIS_PASSWORD` dans `.env`, obligatoire), utilisé pour les sessions du dashboard, les conversations MP en cours et les tâches BullMQ
-
----
-
 ## Installation
 
-### 1. Cloner le projet
+Le guide complet est dans **[INSTALL.md](INSTALL.md)**. En résumé :
 
-```bash
-git clone https://github.com/LuquyPest/Bot-ticketting.git
-cd Bot-ticketting
-```
+- **Prérequis** : Docker + Docker Compose v2, un nom de domaine pointant vers le serveur (Discord exige HTTPS pour la connexion au dashboard), une application Discord (token, ID, secret OAuth2 — voir [ci-dessous](#configurer-le-bot-discord)).
+- **`scripts/setup.sh`** pose cinq questions et écrit `.env` avec tous les secrets générés (`chmod 600`). À la main : `cp .env.example .env` et remplir, chaque variable y est commentée.
+- **HTTPS** au choix dans `.env` (`COMPOSE_FILE`) : `docker-compose.caddy.yml` (Caddy inclus, certificats Let's Encrypt automatiques), `docker-compose.traefik.yml` (Traefik existant, réseau `proxy`), ou rien (port local `127.0.0.1:3000`, ton propre proxy).
+- **Démarrage** : `docker compose pull && docker compose up -d`, puis `docker compose logs -f bot`.
 
-### 2. Créer le fichier `.env`
+`bootstrap.js` s'exécute au démarrage : validation de la configuration, création et migration de `ticketbot_global`, compte superadmin initial (`SA_USERNAME`/`SA_PASSWORD`, seulement s'il n'en existe aucun), vérification du token Discord, déploiement des commandes slash, puis lancement du bot et du serveur web ; les bases de chaque serveur sont migrées à ce moment-là.
 
-```bash
-cp .env.example .env
-```
-
-```env
-DB_ROOT_PASSWORD=mot_de_passe_root_fort
-DB_PASSWORD=mot_de_passe_botuser
-REDIS_PASSWORD=mot_de_passe_redis_long_et_aleatoire
-SA_USERNAME=admin
-SA_PASSWORD=mot_de_passe_superadmin_12_caracteres_min
-```
-
-`DB_PASSWORD` doit correspondre exactement à `config.json → database.password`.
-`SA_USERNAME` / `SA_PASSWORD` créent le premier compte superadmin au démarrage (uniquement si aucun n'existe) — retire-les du `.env` une fois le compte créé. Seules ces deux variables sont transmises au conteneur du bot.
-
-### 3. Créer `config.json`
-
-```bash
-cp config.example.json config.json
-```
-
-Édite `config.json` — voir la section [Configuration](#configuration-configjson).
-
-### 4. Démarrer
-
-```bash
-docker compose up -d --build
-```
-
-`bootstrap.js` s'exécute automatiquement au démarrage et effectue :
-1. Validation de `config.json` (champs requis, session secret ≥ 32 chars)
-2. Connexion MariaDB — création/migration de `ticketbot_global` et de ses tables
-3. Création du compte superadmin initial (si `SA_USERNAME`/`SA_PASSWORD` sont définis)
-4. Vérification du token Discord
-5. Déploiement des commandes slash (réservées aux serveurs, pas en DM)
-6. Lancement du bot + serveur web — au démarrage, les migrations des bases par serveur sont appliquées à tous les serveurs actifs
-
-```bash
-# Voir les logs en direct
-docker compose logs -f bot
-
-# Redémarrer après modification de config.json
-docker compose up -d --build
-```
+L'image est publiée sur `ghcr.io/luquypest/bot-ticketting` (`latest` et un tag par version, amd64 et arm64) ; `docker compose up -d --build` la reconstruit depuis les sources.
 
 ---
 
-## Configuration config.json
+## Configuration
 
-Le `config.json` contient **uniquement les informations techniques de démarrage** — ce qui est nécessaire avant que le bot puisse se connecter à la base de données. Tout le reste (rôles Discord, catégories, messages, limites, webhooks…) se configure depuis le **dashboard web** et est stocké en base de données.
+Tout se règle dans **`.env`** ; `config.json` n'est plus nécessaire (toujours accepté : voir [UPGRADE.md](UPGRADE.md)). Le fichier contient **uniquement les informations techniques de démarrage** — tout le reste (rôles Discord, catégories, messages, limites, webhooks…) se configure depuis le **dashboard web** et est stocké en base de données.
 
-```json
-{
-  "token": "TON_TOKEN_BOT_DISCORD",
-  "clientId": "ID_APPLICATION_BOT",
+| Variable | Rôle |
+|----------|------|
+| `DISCORD_TOKEN` | Token du bot — identité unique du bot, commun à tous les serveurs |
+| `DISCORD_CLIENT_ID` | ID de l'application Discord — OAuth2 et déploiement des commandes slash |
+| `DISCORD_CLIENT_SECRET` | Secret OAuth2 (portail développeur) |
+| `DISCORD_CALLBACK_URL` | Optionnel : par défaut `PUBLIC_URL` + `/api/auth/discord/callback` ; doit correspondre exactement à l'URL enregistrée dans le portail Discord |
+| `PUBLIC_HOST` / `PUBLIC_URL` | Domaine du dashboard (Caddy, Traefik) et URL publique en `https://` |
+| `ACME_EMAIL` | E-mail pour Let's Encrypt (Caddy) |
+| `COMPOSE_FILE` | Fichiers compose utilisés : base seule, `+ docker-compose.caddy.yml` ou `+ docker-compose.traefik.yml` |
+| `SESSION_SECRET` | Clé des sessions — **min. 32 caractères** (`openssl rand -hex 32`) |
+| `ENCRYPTION_KEY` | Clé AES-256 (64 hex) qui chiffre les secrets 2FA et les transcripts ; à défaut, dérivée de `SESSION_SECRET`. À sauvegarder avec la base. Rotation : voir plus bas |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT` | Notifications push du dashboard (facultatif ; `npx web-push generate-vapid-keys`) |
+| `DB_ROOT_PASSWORD` / `DB_PASSWORD` | Mots de passe MariaDB (root : jamais transmis au bot ; `botuser` : le bot) |
+| `REDIS_PASSWORD` | Mot de passe Redis (obligatoire) |
+| `SA_USERNAME` / `SA_PASSWORD` | Premier compte superadmin (12 caractères min.), créé au premier démarrage seulement ; à retirer ensuite |
+| `AUTO_APPROVE_GUILDS` | `true` : chaque serveur qui invite le bot est activé aussitôt, l'invitant devient fondateur ; sinon validation dans `/sa` |
+| `TICKETBOT_VERSION` | Tag de l'image : `latest` ou une version (`v2.24`) |
+| `BIND_ADDRESS` / `WEB_PORT` | Sans proxy : adresse et port publiés sur l'hôte (`127.0.0.1:3000`) |
+| `TRUST_PROXY_HOPS` | Nombre de reverse proxies devant l'app (défaut `1` ; `2` derrière Cloudflare). Sert à déterminer la vraie IP client (rate limiting, allowlist IP, logs) |
+| `TRUSTED_PROXY_HOST` | Nom du proxy dont l'en-tête `X-Forwarded-For` est cru, résolu chaque minute (`caddy` et `traefik` posés par les fichiers compose) : un autre conteneur du réseau Docker ne peut pas se faire passer pour une autre adresse. Vide pour désactiver (seul le nombre de sauts compte alors) |
+| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_NAME` | Par défaut `db` / `3306` / `botuser` / `ticketbot_global` (noms du compose) |
 
-  "vapid": {
-    "publicKey":  "GENERE_AVEC_node_-e_require('web-push').generateVAPIDKeys()",
-    "privateKey": "GENERE_AVEC_node_-e_require('web-push').generateVAPIDKeys()",
-    "contact":    "admin@ton-domaine.com"
-  },
-
-  "webEnabled": true,
-  "webServerPort": 3000,
-  "webServerBaseUrl": "https://ton-domaine.com",
-  "trustProxyHops": 1,
-
-  "dashboard": {
-    "sessionSecret": "GENERE_AVEC_openssl_rand_-hex_32",
-    "encryptionKey": "GENERE_AVEC_openssl_rand_-hex_32",
-    "discordClientSecret": "SECRET_OAUTH2_APP_DISCORD",
-    "discordCallbackUrl": "https://ton-domaine.com/api/auth/discord/callback"
-  },
-
-  "database": {
-    "host": "db",
-    "port": 3306,
-    "user": "botuser",
-    "password": "MEME_VALEUR_QUE_DB_PASSWORD_DANS_ENV",
-    "database": "ticketbot_global"
-  }
-}
-```
-
-| Champ | Description |
-|-------|-------------|
-| `token` | Token du bot Discord — identité unique du bot, commun à tous les serveurs |
-| `clientId` | ID de l'application Discord — nécessaire pour OAuth2 et le déploiement global des commandes slash |
-| `vapid.publicKey` | Clé publique VAPID pour les push notifications — générer avec `node -e "console.log(require('web-push').generateVAPIDKeys())"` |
-| `vapid.privateKey` | Clé privée VAPID (à conserver secrète) |
-| `vapid.contact` | Adresse e-mail de contact incluse dans les requêtes push (ex. `admin@ton-domaine.com`) |
-| `webEnabled` | `true` pour activer le dashboard et l'API |
-| `webServerPort` | Port interne du serveur Express (3000 par défaut) |
-| `webServerBaseUrl` | URL publique du dashboard (avec `https://`) |
-| `trustProxyHops` | Nombre de reverse proxies devant l'app (défaut `1` = Traefik ; `2` si Cloudflare + Traefik). Sert à déterminer la vraie IP client (rate limiting, allowlist IP, logs) |
-| `trustedProxyHost` | Nom (ou IP) du reverse proxy, défaut `traefik`, résolu chaque minute : l'en-tête `X-Forwarded-For` n'est cru que s'il vient de lui, pour qu'un autre conteneur du réseau Docker partagé ne puisse pas se faire passer pour une autre adresse. `""` pour désactiver (seul le nombre de sauts compte alors) |
-| `dashboard.sessionSecret` | Clé secrète sessions — **min. 32 chars**, générer avec `openssl rand -hex 32` |
-| `dashboard.encryptionKey` | Clé AES-256 (64 caractères hex, `openssl rand -hex 32`) qui chiffre les secrets 2FA et les transcripts en base. Optionnelle : à défaut, dérivée de `sessionSecret`. Pour la changer, suivre la procédure de rotation ci-dessous |
-| `dashboard.previousEncryptionKeys` | Anciennes clés encore acceptées en lecture pendant une rotation (liste, optionnelle) |
-| `dashboard.discordClientSecret` | Secret OAuth2 depuis le portail développeur Discord |
-| `dashboard.discordCallbackUrl` | Doit correspondre exactement à l'URL configurée dans le portail Discord |
-| `retention.*` | Optionnel. Durées de conservation en jours (0 = jamais purgé) : `loginLogsDays` (90), `saAuthLogsDays` (90), `errorLogsDays` (30), `auditLogDays` (365), `sessionsDays` (7). Purge chaque nuit à 4 h 30 ; les transcripts suivent la limite `transcript_retention_days` de chaque serveur |
-| `database.host` | Doit être `db` (nom du service Docker Compose, pas `localhost`) |
-| `database.password` | Doit correspondre à `DB_PASSWORD` dans `.env` |
-| `database.tenantConnectionLimit` | Connexions MariaDB max par serveur Discord (5 par défaut ; voir le test de charge) |
+Les variables l'emportent sur `config.json`, qui garde les réglages rares sans variable : `retention.*` (durées de conservation en jours : `loginLogsDays` 90, `saAuthLogsDays` 90, `errorLogsDays` 30, `auditLogDays` 365, `sessionsDays` 7, `saAuditDays` 730 ; purge chaque nuit à 4 h 30), `rateLimits.apiPerMinute` (200), `dashboard.previousEncryptionKeys` (rotation), `database.tenantConnectionLimit` (connexions MariaDB par serveur, 5 ; voir le test de charge), `webEnabled` (`false` = bot seul, sans dashboard).
 
 ### Configurer le bot Discord
 
@@ -499,10 +419,10 @@ Lorsqu'un membre (avec la permission *Gérer le serveur*) ajoute le bot :
 
 1. Le bot est **enregistré automatiquement** dans `ticketbot_global.guilds` avec le statut `pending` (les serveurs où le bot est déjà présent sont aussi enregistrés au démarrage)
 2. La personne qui a invité le bot (lue dans le journal d'audit, à défaut le propriétaire) reçoit un **DM de confirmation**
-3. Un **superadmin** valide la demande depuis le panel `/sa` → statut `active`, création de la base `ticketbot_guild_{id}`
+3. Le serveur est activé — **aussitôt** si `AUTO_APPROVE_GUILDS=true` (installation pour soi), sinon par un **superadmin** depuis le panel `/sa` → statut `active`, création de la base `ticketbot_guild_{id}`
 4. L'invitant devient **fondateur** et reçoit un DM d'activation avec le lien du dashboard
 
-> Sans validation superadmin, aucune fonctionnalité n'est disponible pour le serveur.
+> Tant qu'un serveur n'est pas activé, aucune fonctionnalité n'y est disponible. Au démarrage avec `AUTO_APPROVE_GUILDS=true`, les serveurs encore en attente sont activés.
 > Si le bot est retiré puis ré-invité, le serveur est réactivé automatiquement ; une suspension décidée par un superadmin, elle, est conservée.
 
 ---
@@ -685,7 +605,7 @@ Accessible sur `/sa` — interface séparée du dashboard guild, avec ses propre
 | **Maintenance** | Activer/désactiver le mode maintenance d'un serveur |
 | **Fondateurs** | Voir les fondateurs d'un serveur ; le superadmin peut en nommer par ID Discord (DM envoyé) ou en retirer (le dernier fondateur est protégé). Actions tracées dans l'audit du serveur |
 | **Managers** | Créer des comptes managers avec accès restreint à certains serveurs |
-| **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min par défaut, `rateLimits.apiPerMinute` dans `config.json`), avec déblocage manuel — superadmin uniquement |
+| **Blocages** | Comptes super-admin / manager verrouillés après trop d'échecs et adresses IP limitées (connexion : 20 / 15 min, API : 200 / min par défaut, `rateLimits.apiPerMinute` dans un `config.json` facultatif), avec déblocage manuel — superadmin uniquement |
 | **Journal** | Toutes les modifications faites depuis le panel (serveurs, limites, fondateurs, managers, blocages, erreurs, alertes, formules) : compte, action, serveur concerné, paramètres (secrets masqués, URL de webhook réduite à leur origine), IP ; filtres par compte, action et serveur — superadmin uniquement, conservé 2 ans |
 | **Annonces** | Message aux fondateurs de tous les serveurs : bandeau sur leur dashboard (jusqu'à une date choisie, masquable) et/ou MP Discord envoyé une fois par personne ; information ou avertissement — superadmin uniquement |
 | **Santé** | État de Discord (connexion, latence), de la base et de Redis (temps de réponse), des tâches planifiées (dernière exécution, durée, résultat, prochaine exécution, retards signalés), du processus (mémoire, durée de fonctionnement) et version de schéma de chaque base — superadmin uniquement, actualisé toutes les 15 s |
@@ -823,23 +743,13 @@ Le fondateur peut créer, modifier, publier et retirer des panels depuis **Dashb
 
 Les agents du dashboard peuvent s'abonner aux **notifications push navigateur** (Web Push API) depuis leur profil. Une notification est envoyée quand un membre du staff répond à un ticket depuis le dashboard, uniquement aux agents autorisés à voir ce ticket.
 
-**Configuration dans `config.json` :**
-```json
-"vapid": {
-  "publicKey":  "...",
-  "privateKey": "...",
-  "contact":    "https://ton-domaine.com"
-}
-```
+**Configuration (`.env`) :** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` et `VAPID_CONTACT` (une adresse e-mail, préfixée `mailto:` automatiquement, ou l'URL du site). `scripts/setup.sh` génère les clés ; à la main :
 
-`contact` : une adresse e-mail (préfixée `mailto:` automatiquement) ou l'URL du site. Sans clés VAPID, la section « Notifications navigateur » du profil ne peut pas s'activer (la route répond 501).
-
-Générer les clés VAPID :
 ```bash
-node -e "const wp = require('web-push'); const k = wp.generateVAPIDKeys(); console.log(JSON.stringify(k, null, 2));"
+docker compose run --rm --entrypoint node bot -e "const k = require('web-push').generateVAPIDKeys(); console.log(k)"
 ```
 
-Si le bloc `vapid` est absent de `config.json`, le push est simplement désactivé — le reste du bot fonctionne normalement.
+Sans clés VAPID, le push est simplement désactivé (la section « Notifications navigateur » du profil ne peut pas s'activer, la route répond 501) — le reste du bot fonctionne normalement.
 
 **Sécurité :** les endpoints push enregistrés sont validés contre une liste blanche des origines connues (FCM, Mozilla, Windows, Apple) — aucun endpoint arbitraire ne peut être souscrit.
 
@@ -969,11 +879,21 @@ Format : `tb_<guildId>_<64 hex>`. Envoyer la clé dans l'en-tête `Authorization
 ```
 Bot-ticketting/
 ├── Dockerfile                      # Build multi-stage (React + bot)
-├── docker-compose.yml              # Bot + MariaDB + Redis + labels Traefik
+├── docker-compose.yml              # Bot + MariaDB + Redis (port local) — image GHCR ou build
+├── docker-compose.caddy.yml        # + Caddy : HTTPS automatique (Let's Encrypt)
+├── docker-compose.traefik.yml      # + labels pour un Traefik existant
 ├── docker/
+│   ├── Caddyfile                   # Reverse proxy Caddy
 │   └── mariadb-init.sql            # Droits SQL initiaux pour botuser
-├── .env                            # Variables secret (à créer depuis .env.example)
-├── .env.example                    # Template .env versionné
+├── .env                            # Toute la configuration (scripts/setup.sh ; modèle : .env.example)
+├── scripts/
+│   ├── setup.sh                    # Première installation : questions → .env
+│   ├── backup.sh / restore.sh      # Sauvegarde et restauration des bases
+│   ├── release.sh / release-notes.mjs  # Publication d'une version (tag → image + release)
+│   └── rotate-encryption-key.js    # Rotation de la clé de chiffrement
+├── INSTALL.md / INSTALL.en.md      # Guide d'installation (FR / EN)
+├── UPGRADE.md                      # Mise à jour, retour arrière, migration depuis config.json
+├── CONTRIBUTING.md                 # Contribuer
 │
 ├── bootstrap.js                    # Vérification config + DB + token → lance index.js
 ├── index.js                        # Client Discord + chargement commandes/events
@@ -1010,7 +930,7 @@ Bot-ticketting/
 │
 ├── utils/
 │   │  — Bases et configuration
-│   ├── config.js                   # Chargement de config.json
+│   ├── config.js                   # Configuration : variables d'environnement + config.json facultatif
 │   ├── globalDb.js / tenantDb.js   # Pool global / pool par serveur
 │   ├── tenantSchema.js             # Schéma de base des tables par serveur
 │   ├── tenantMigrations.js         # Migrations versionnées (schema_migrations)
@@ -1130,11 +1050,11 @@ Bot-ticketting/
 Les secrets 2FA **et les transcripts** sont chiffrés (AES-256-GCM, les transcripts compressés avant) avec `dashboard.encryptionKey` et portent l'identifiant de la clé utilisée. Les messages des tickets restent en clair : les chiffrer rendrait impossibles la recherche plein texte et les tickets similaires. Pour changer de clé sans rien rendre illisible :
 
 1. Générer une clé : `docker compose exec bot node scripts/rotate-encryption-key.js --generate`
-2. Dans `config.json`, mettre l'ancienne clé dans `dashboard.previousEncryptionKeys` et la nouvelle dans `dashboard.encryptionKey`, puis redémarrer le bot
+2. Mettre la nouvelle clé dans `ENCRYPTION_KEY` (`.env`) et l'ancienne dans `dashboard.previousEncryptionKeys` d'un `config.json` monté (seul réglage sans variable), puis redémarrer le bot
 3. Rechiffrer tous les secrets et tous les transcripts de tous les serveurs : `docker compose exec bot node scripts/rotate-encryption-key.js` (rapport par table, relançable sans risque ; chaque transcript est relu avant d'être réécrit). Le même script chiffre aussi les transcripts écrits avant le chiffrement
 4. Retirer l'ancienne clé de `previousEncryptionKeys` et redémarrer
 
-La clé dérivée de `sessionSecret` (utilisée quand aucune clé n'est configurée) reste toujours acceptée en lecture.
+La clé dérivée de `SESSION_SECRET` (utilisée quand aucune clé n'est configurée) reste toujours acceptée en lecture.
 
 ## Migrations des bases
 
@@ -1142,7 +1062,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 874 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 880 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie
@@ -1157,7 +1077,7 @@ Le test de fumée passe aussi chaque page, en thème sombre et clair, à **axe-c
 
 Mesure du 18/10/2026 (5 000 tickets, 30 000 messages, 200 connexions temps réel, 50 utilisateurs simultanés sur un même serveur pendant 30 s) : aucune erreur ; création de 300 tickets à ~370/s ; événement temps réel livré aux 200 connexions en 12 ms (p95) ; dashboard ~155 requêtes/s, p95 ~460 ms. La limite vient d'abord des **5 connexions MariaDB par serveur** (les requêtes d'un serveur très actif attendent une connexion libre) : 15 connexions donnent ~190 req/s (p95 ~375 ms), 30 connexions ~205 req/s (p95 ~340 ms), où le processus Node atteint alors un cœur de CPU. Réglable avec `database.tenantConnectionLimit` (5 par défaut ; total = serveurs actifs × limite, à garder sous `max_connections` de MariaDB).
 
-La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG`) : le `config.json` de production n'est jamais lu. La même suite tourne à chaque push via **GitHub Actions** (`.github/workflows/ci.yml`), avec le build du dashboard et `npm audit`. **Dependabot** (`.github/dependabot.yml`) propose chaque lundi les mises à jour npm du bot et du dashboard (correctifs et mineures regroupés, majeures une par une), et chaque mois celles des actions GitHub et de l'image Docker : chaque proposition est une pull request testée par la même CI avant fusion.
+La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG`) : le `config.json` de production n'est jamais lu. La même suite tourne à chaque push via **GitHub Actions** (`.github/workflows/ci.yml`), avec le build du dashboard et `npm audit`. Un tag `vX.Y` (`scripts/release.sh`) déclenche `.github/workflows/release.yml` : image Docker amd64 + arm64 publiée sur GHCR et release GitHub avec les notes tirées des patchnotes. **Dependabot** (`.github/dependabot.yml`) propose chaque lundi les mises à jour npm du bot et du dashboard (correctifs et mineures regroupés, majeures une par une), et chaque mois celles des actions GitHub et de l'image Docker : chaque proposition est une pull request testée par la même CI avant fusion.
 
 ---
 
@@ -1169,12 +1089,20 @@ La configuration de test est générée à la volée (variable `TICKETBOT_CONFIG
 **Les commandes slash n'apparaissent pas**  
 → Attends 1–2 minutes. Si ça persiste : `docker compose restart bot`.
 
+**« Aucune configuration trouvée » au démarrage**  
+→ Le `.env` manque ou est vide : lance `scripts/setup.sh` (ou copie `.env.example`).
+
 **MariaDB refuse la connexion**  
-→ `database.host` doit être `db` (nom du service Docker Compose, pas `localhost`).  
-→ Vérifie que `DB_PASSWORD` dans `.env` correspond à `database.password` dans `config.json`.
+→ `DB_HOST` doit rester `db` (nom du service Docker Compose, pas `localhost`). Si tu gardes un `config.json`, son `database.password` doit valoir `DB_PASSWORD`.
+
+**« Invalid OAuth2 redirect_uri » à la connexion**  
+→ L'URL enregistrée dans le portail Discord doit être exactement `https://<domaine>/api/auth/discord/callback`, et `PUBLIC_URL` vaut `https://<domaine>` sans barre finale.
+
+**Le certificat HTTPS n'arrive pas (Caddy)**  
+→ DNS pas encore propagé ou ports 80/443 fermés : `docker compose logs caddy`.
 
 **Mon serveur est bloqué en "pending"**  
-→ Un superadmin doit valider la demande depuis le panel `/sa`. Sans validation, aucune fonctionnalité n'est active.
+→ Mets `AUTO_APPROVE_GUILDS=true` dans `.env` et redémarre (les serveurs en attente sont activés), ou valide-le depuis le panel `/sa`.
 
 **Les SSE (temps réel) ne fonctionnent pas derrière un reverse proxy**  
 → Ajoute ces directives dans ta config Nginx :
@@ -1184,8 +1112,8 @@ proxy_cache off;
 proxy_read_timeout 3600s;
 ```
 
-**Erreur "dashboard.sessionSecret trop court"**  
-→ Génère une clé : `openssl rand -hex 32`, et mets-la dans `config.json → dashboard.sessionSecret`.
+**Erreur « Secret de session trop court »**  
+→ Génère une clé : `openssl rand -hex 32`, et mets-la dans `SESSION_SECRET`.
 
 **Je suis bloqué sur la page d'attente (rôle "nouveau")**  
 → Le fondateur du serveur doit t'attribuer un grade depuis la page **Équipe**.
@@ -1204,3 +1132,13 @@ proxy_read_timeout 3600s;
 
 **J'ai perdu mon téléphone (2FA dashboard)**  
 → Utilise un de tes codes de secours sur l'écran de vérification, puis désactive/réactive la 2FA depuis ton profil.
+
+---
+
+## Instance de l'auteur
+
+Le projet est né pour le serveur Discord Sunset et y tourne en production : **[ticket.sunset-fa.fr](https://ticket.sunset-fa.fr/login)** (bouton « Essayer la démo » sur la page de connexion : un serveur fictif, remis à zéro chaque nuit) et sa [page de statut](https://ticket.sunset-fa.fr/status). C'est une installation parmi d'autres, pas un service : ton instance ne lui parle jamais.
+
+## Licence et contributions
+
+[AGPL-3.0](LICENSE) : libre d'installer, de modifier et d'héberger pour d'autres, à condition de publier les modifications sous la même licence. Questions et idées dans les [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions), bugs en [issue](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose), failles en privé ([SECURITY.md](SECURITY.md)). Pour proposer du code : [CONTRIBUTING.md](CONTRIBUTING.md).

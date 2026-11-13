@@ -1,3 +1,8 @@
+# Base, generic stack: MariaDB + Redis + bot/dashboard, reachable on http://127.0.0.1:3000.
+# All settings come from .env (see .env.example or scripts/setup.sh).
+# HTTPS: add one override file through COMPOSE_FILE in .env —
+#   docker-compose.caddy.yml    Caddy included, certificates from Let's Encrypt (recommended)
+#   docker-compose.traefik.yml  an existing Traefik on the external « proxy » network
 services:
   redis:
     image: redis:7-alpine
@@ -23,10 +28,10 @@ services:
     image: mariadb:11
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD manquant dans .env}
       MARIADB_DATABASE: ticketbot_global
       MARIADB_USER: botuser
-      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant dans .env}
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/mariadb-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -42,15 +47,30 @@ services:
           memory: 512M
 
   bot:
+    # Published image (docker compose pull); `docker compose up -d --build` rebuilds it from the sources
+    image: ghcr.io/luquypest/bot-ticketting:${TICKETBOT_VERSION:-latest}
     build: .
     restart: unless-stopped
-    # Runs as the host user owning config.json, so that file can stay chmod 600 (BOT_UID/BOT_GID in .env)
-    user: "${BOT_UID:-1000}:${BOT_GID:-1000}"
     # Only what the bot needs from .env — DB_ROOT_PASSWORD must stay out of this container
     environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_CONTACT: ${VAPID_CONTACT:-}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       SA_USERNAME: ${SA_USERNAME:-}
       SA_PASSWORD: ${SA_PASSWORD:-}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AUTO_APPROVE_GUILDS: ${AUTO_APPROVE_GUILDS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
+      TRUSTED_PROXY_HOST: ${TRUSTED_PROXY_HOST:-}
+    # Optional config.json instead of (or on top of) the variables above:
+    #   volumes: ["./config.json:/app/config.json:ro"]  and  user: "${BOT_UID:-1000}:${BOT_GID:-1000}"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -60,37 +80,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./config.json:/app/config.json:ro
-    expose:
-      - "3000"
-    networks:
-      - proxy
-      - default
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3000}:3000"
     deploy:
       resources:
         limits:
           memory: 512M
           cpus: "1.0"
-
-    labels:
-      - "traefik.enable=true"
-
-      # Domaine
-      - "traefik.http.routers.ticket.rule=Host(`ticket.sunset-fa.fr`)"
-      - "traefik.http.routers.ticket.entrypoints=websecure"
-      - "traefik.http.routers.ticket.tls.certresolver=letsencrypt"
-
-      # Redirection HTTP → HTTPS
-      - "traefik.http.routers.ticket-http.rule=Host(`ticket.sunset-fa.fr`)"
-      - "traefik.http.routers.ticket-http.entrypoints=web"
-      - "traefik.http.routers.ticket-http.middlewares=redirect-https"
-      - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-https.redirectscheme.permanent=true"
-
-      # Service interne
-      - "traefik.http.services.ticket.loadbalancer.server.port=3000"
-
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
@@ -101,7 +97,3 @@ services:
 volumes:
   db_data:
   redis_data:
-
-networks:
-  proxy:
-    external: true

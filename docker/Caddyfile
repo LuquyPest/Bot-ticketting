@@ -1,0 +1,12 @@
+# Reverse proxy in front of the bot's web server. PUBLIC_HOST and ACME_EMAIL come from .env.
+{
+	email {$ACME_EMAIL}
+}
+
+{$PUBLIC_HOST} {
+	encode zstd gzip
+	# Real-time stream (SSE): nothing buffered
+	reverse_proxy bot:3000 {
+		flush_interval -1
+	}
+}

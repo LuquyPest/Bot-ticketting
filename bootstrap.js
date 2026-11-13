@@ -4,8 +4,6 @@ const { spawn } = require('child_process');
 const mysql = require('mysql2/promise');
 
 const ROOT = __dirname;
-// Same resolution as utils/config.js, without loading the file (a missing config gets a clear message)
-const configPath  = process.env.TICKETBOT_CONFIG ? path.resolve(process.env.TICKETBOT_CONFIG) : path.join(ROOT, 'config.json');
 const indexPath   = path.join(ROOT, 'index.js');
 const deployPath  = path.join(ROOT, 'deploy-commands.js');
 const packagePath = path.join(ROOT, 'package.json');
@@ -14,37 +12,37 @@ function fail(msg) { console.error(`❌ ${msg}`); process.exit(1); }
 function ok(msg)   { console.log(`✅ ${msg}`); }
 function info(msg) { console.log(`ℹ️  ${msg}`); }
 
-function readJson(filePath, label) {
-  if (!fs.existsSync(filePath)) fail(`${label} introuvable.`);
-  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
-  catch (e) { fail(`Impossible de lire ${label}: ${e.message}`); }
+// config.json (optional) + environment variables — see utils/config.js and INSTALL.md
+function readConfig() {
+  try { return require('./utils/config').loadConfig(); }
+  catch (e) { fail(e.message); }
 }
 
-function readConfig() { return readJson(configPath, 'config.json'); }
+// Names a missing value by its environment variable and its config.json key
+const where = (envName, key) => `${envName} (variable d'environnement) ou ${key} (config.json)`;
 
 function validateConfig(config) {
-  const required = ['token', 'clientId', 'webServerPort', 'webServerBaseUrl', 'database'];
-  for (const key of required) {
-    if (!(key in config)) fail(`Champ manquant dans config.json: ${key}`);
+  if (!config.hasFile && !config.token) {
+    fail('Aucune configuration trouvée : ni config.json, ni variables d\'environnement. Lance scripts/setup.sh ou lis INSTALL.md.');
   }
-  const requiredDb = ['host', 'port', 'user', 'password', 'database'];
-  for (const key of requiredDb) {
-    if (!(key in config.database)) fail(`Champ manquant dans config.json.database: ${key}`);
-  }
+  if (!config.token)    fail(`Champ manquant : ${where('DISCORD_TOKEN', 'token')}`);
+  if (!config.clientId) fail(`Champ manquant : ${where('DISCORD_CLIENT_ID', 'clientId')}`);
+  if (!config.database?.password) fail(`Champ manquant : ${where('DB_PASSWORD', 'database.password')}`);
   if (config.webEnabled !== false) {
-    if (!config.dashboard?.sessionSecret)        fail('Champ manquant: dashboard.sessionSecret');
+    if (!config.webServerBaseUrl) fail(`Champ manquant : ${where('PUBLIC_URL', 'webServerBaseUrl')}`);
+    if (!config.dashboard?.sessionSecret) fail(`Champ manquant : ${where('SESSION_SECRET', 'dashboard.sessionSecret')}`);
     if (config.dashboard.sessionSecret.length < 32)
-      fail('dashboard.sessionSecret trop court (min 32 caractères) — génère-en un avec: openssl rand -hex 32');
-    if (!config.dashboard?.discordClientSecret)  fail('Champ manquant: dashboard.discordClientSecret');
-    if (!config.dashboard?.discordCallbackUrl)   fail('Champ manquant: dashboard.discordCallbackUrl');
-    if (config.webServerBaseUrl && !config.webServerBaseUrl.startsWith('https://') &&
-        config.dashboard.discordCallbackUrl?.startsWith('https://')) {
-      console.warn('⚠️  webServerBaseUrl utilise http:// mais discordCallbackUrl utilise https://.');
-      console.warn('   Le cookie de session sera Secure grâce à discordCallbackUrl.');
-      console.warn('   Mets webServerBaseUrl à https:// pour supprimer ce message.');
+      fail('Secret de session trop court (min 32 caractères) — génère-en un avec : openssl rand -hex 32');
+    if (!config.dashboard?.discordClientSecret) fail(`Champ manquant : ${where('DISCORD_CLIENT_SECRET', 'dashboard.discordClientSecret')}`);
+    if (!config.dashboard?.discordCallbackUrl)  fail(`Champ manquant : ${where('DISCORD_CALLBACK_URL', 'dashboard.discordCallbackUrl')}`);
+    if (!config.webServerBaseUrl.startsWith('https://') && config.dashboard.discordCallbackUrl?.startsWith('https://')) {
+      console.warn('⚠️  L\'URL publique utilise http:// mais l\'URL de retour OAuth utilise https://.');
+      console.warn('   Le cookie de session sera Secure grâce à l\'URL de retour.');
+      console.warn('   Mets PUBLIC_URL (webServerBaseUrl) en https:// pour supprimer ce message.');
     }
   }
-  ok('config.json valide.');
+  if (config.autoApproveGuilds) info('Approbation automatique des serveurs activée (AUTO_APPROVE_GUILDS).');
+  ok(config.hasFile ? 'Configuration valide (config.json + environnement).' : 'Configuration valide (environnement).');
 }
 
 function ensureFilesExist() {

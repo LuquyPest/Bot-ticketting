@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const mysql = require('mysql2/promise');
 const { globalQuery } = require('../../utils/globalDb');
 const { getTenantDb, getDbName } = require('../../utils/tenantDb');
-const { ensureTenantSchema } = require('../../utils/tenantSchema');
+const { activateGuild } = require('../../utils/guildActivation');
 const { logAudit } = require('../../utils/gradePermissions');
 const requireSuperAdmin = require('../middleware/superadmin');
 const { saAuditMiddleware } = require('../../utils/saAudit');
@@ -267,36 +267,7 @@ router.post('/guilds/:guildId/approve', requireSuperAdmin, async (req, res) => {
     if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
     if (guild.status === 'active') return res.status(400).json({ error: 'Déjà actif' });
 
-    await ensureTenantSchema(guild.guild_id);
-
-    // Fondateur = invitant (fallback sur le owner si non capturé)
-    const founderId  = guild.inviter_discord_id  || guild.owner_discord_id;
-    const founderTag = guild.inviter_discord_tag || guild.owner_discord_tag;
-
-    const db = getTenantDb(guild.guild_id);
-    await db(
-      `INSERT INTO dashboard_users (user_id, username, role) VALUES (?, ?, 'fondateur')
-       ON DUPLICATE KEY UPDATE role = 'fondateur'`,
-      [founderId, founderTag]
-    );
-
-    await globalQuery(
-      'UPDATE guilds SET status = "active", approved_by = ?, approved_at = NOW(), activation_token = NULL WHERE guild_id = ?',
-      [req.saUser.id, guild.guild_id]
-    );
-
-    // DM au fondateur
-    try {
-      const client = req.app.locals.client;
-      const baseUrl = require('../../utils/config').config.webServerBaseUrl || '';
-      const founderUser = await client.users.fetch(founderId);
-      await founderUser.send([
-        `✅ Ton serveur **${guild.guild_name}** a été activé !`,
-        '',
-        `Tu peux maintenant accéder au dashboard : **${baseUrl}**`,
-        'Connecte-toi avec Discord et sélectionne ton serveur.'
-      ].join('\n')).catch(() => null);
-    } catch {}
+    await activateGuild(req.app.locals.client, guild, { approvedBy: req.saUser.id });
 
     res.json({ ok: true });
   } catch (err) {

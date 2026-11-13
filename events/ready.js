@@ -3,6 +3,7 @@ const { Events } = require('discord.js');
 const { globalQuery } = require('../utils/globalDb');
 const { getDbName } = require('../utils/tenantDb');
 const logger = require('../utils/logger');
+const { activateGuild } = require('../utils/guildActivation');
 
 async function syncGuild(client, guild) {
   try {
@@ -42,6 +43,15 @@ module.exports = {
     logger.info('Synchronisation des serveurs existants', { count: guilds.size });
     await Promise.all(guilds.map(g => syncGuild(client, g)));
     logger.info('Synchronisation terminée');
+
+    // AUTO_APPROVE_GUILDS: every server still waiting (registered before the option, or while the
+    // bot was down) is activated now, as a new one would be on arrival
+    if (client.config?.autoApproveGuilds) {
+      const pending = await globalQuery('SELECT * FROM guilds WHERE status = "pending"').catch(() => []);
+      for (const row of pending) {
+        await activateGuild(client, row).catch(err => logger.error('Activation automatique échouée', { guildId: row.guild_id, err: err.message }));
+      }
+    }
 
     // Tenant migrations are idempotent: apply them to every active guild, not only at approval time.
     // The scheduled jobs wait for them ('tenantsMigrated', index.js): a job would otherwise query

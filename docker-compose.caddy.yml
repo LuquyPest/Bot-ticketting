@@ -1,0 +1,28 @@
+# HTTPS with Caddy: certificates obtained and renewed from Let's Encrypt for PUBLIC_HOST.
+# .env: COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml — ports 80 and 443 must be open.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?PUBLIC_HOST manquant dans .env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - bot
+
+  bot:
+    environment:
+      TRUSTED_PROXY_HOST: caddy
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+
+volumes:
+  caddy_data:
+  caddy_config:

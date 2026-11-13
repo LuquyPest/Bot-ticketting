@@ -1,0 +1,26 @@
+# Existing Traefik (entrypoints « web » / « websecure », resolver « letsencrypt », external network « proxy »).
+# .env: COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml and PUBLIC_HOST=tickets.example.com
+services:
+  bot:
+    environment:
+      TRUSTED_PROXY_HOST: ${TRUSTED_PROXY_HOST:-traefik}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+    networks:
+      - proxy
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.ticket.rule=Host(`${PUBLIC_HOST:?PUBLIC_HOST manquant dans .env}`)"
+      - "traefik.http.routers.ticket.entrypoints=websecure"
+      - "traefik.http.routers.ticket.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ticket-http.rule=Host(`${PUBLIC_HOST}`)"
+      - "traefik.http.routers.ticket-http.entrypoints=web"
+      - "traefik.http.routers.ticket-http.middlewares=ticket-redirect-https"
+      - "traefik.http.middlewares.ticket-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.ticket-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.ticket.loadbalancer.server.port=3000"
+
+networks:
+  proxy:
+    external: true

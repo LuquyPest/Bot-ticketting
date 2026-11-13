@@ -16,4 +16,4 @@ Une réponse est apportée dès que possible, et le correctif est publié avant 
 
 ## Versions prises en charge
 
-Seule la dernière version de la branche `main` reçoit des correctifs de sécurité.
+Seule la dernière version publiée ([Releases](https://github.com/LuquyPest/Bot-ticketting/releases), image `latest`) reçoit des correctifs de sécurité. Mets à jour avec `docker compose pull && docker compose up -d` (voir [UPGRADE.md](UPGRADE.md)).

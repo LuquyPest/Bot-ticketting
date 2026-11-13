@@ -22,6 +22,9 @@ COPY --chown=node:node --from=dashboard-builder /build/dist ./dashboard/dist
 
 ENV NODE_ENV=production
 EXPOSE 3000
+LABEL org.opencontainers.image.source="https://github.com/LuquyPest/Bot-ticketting" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.description="Bot Discord de tickets par messages privés, avec dashboard web"
 
-# config.json est fourni via bind-mount au runtime (voir docker-compose.yml)
+# Configuration par variables d'environnement (.env via docker-compose.yml) ou config.json monté
 CMD ["node", "bootstrap.js"]
