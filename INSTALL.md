@@ -69,8 +69,8 @@ Pour donner la main à quelqu'un d'autre sur l'instance, ajoute son ID Discord d
 | Action | Commande |
 |---|---|
 | Mettre à jour | `docker compose pull && docker compose up -d` — voir [UPGRADE.md](UPGRADE.md) |
-| Sauvegarder | automatique chaque nuit dans `backups/` (service `backup`) ; à la demande : `docker compose run --rm backup now` ou `scripts/backup.sh`. Garde aussi une copie du `.env` : sans `ENCRYPTION_KEY`, les transcripts restaurés sont illisibles |
-| Restaurer | `scripts/restore.sh backups/ticketbot-<date>.sql.gz` |
+| Sauvegarder | automatique chaque nuit dans `backups/`, chiffrée avec `BACKUP_KEY` (service `backup`) ; à la demande : `scripts/backup.sh`. La clé est aussi affichée au propriétaire dans **Paramètres → Sécurité** : garde-la hors du serveur avec une copie du `.env` (`ENCRYPTION_KEY` déchiffre les transcripts) |
+| Restaurer | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` (intégrité vérifiée avant toute écriture) |
 | Voir les logs | `docker compose logs -f bot` |
 | Redémarrer | `docker compose restart bot` |
 | Arrêter | `docker compose down` (les données restent dans les volumes Docker) |

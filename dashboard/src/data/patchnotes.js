@@ -8,6 +8,16 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.4',
+    date: '14 novembre 2026',
+    title: 'Sauvegardes chiffrées',
+    changes: [
+      { type: 'new',  text: 'Les sauvegardes nocturnes sont chiffrées (AES-256, clé dérivée par PBKDF2) avec un contrôle d\'intégrité HMAC vérifié avant toute restauration ; jamais écrites en clair' },
+      { type: 'new',  text: 'Clé des sauvegardes affichée au propriétaire de l\'instance dans Paramètres → Sécurité (masquée par défaut, chaque affichage inscrit au journal de l\'instance)' },
+      { type: 'tech', text: 'Tests : 880 vérifications automatiques' },
+    ]
+  },
+  {
     version: 'v3.0.3',
     date: '14 novembre 2026',
     title: 'Le logo, c\'est ton bot',

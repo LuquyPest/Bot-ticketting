@@ -2741,6 +2741,23 @@ async function main() {
   r = await req('POST', '/api/instance/announcements', { sid: sessions.OWN, body: { title: 'x', body: 'y', showBanner: true } });
   check('annonces retirées: plus de publication', r.status === 404, r.status);
 
+  // ── Key of the encrypted backups: owner only, never cached, every display logged ──
+  {
+    const cfgB = app('./utils/config').config;
+    r = await req('GET', '/api/instance/backup-key', { sid: sessions.OWN });
+    check('sauvegardes: sans BACKUP_KEY, signalé comme non configuré', r.status === 200 && r.body.configured === false && r.body.key === null, JSON.stringify(r.body));
+    cfgB.backupKey = 'a'.repeat(64);
+    r = await req('GET', '/api/instance/backup-key', { sid: sessions.NOWN });
+    const rS1 = await req('GET', '/api/instance/backup-key', { sid: sessions.S1 });
+    check('sauvegardes: clé refusée à un compte non propriétaire et au staff du serveur', r.status === 403 && rS1.status === 403 && !JSON.stringify([r.body, rS1.body]).includes('aaaa'), JSON.stringify([r.status, rS1.status]));
+    r = await req('GET', '/api/instance/backup-key', { sid: sessions.OWN });
+    check('sauvegardes: clé donnée au propriétaire, jamais mise en cache', r.status === 200 && r.body.key === 'a'.repeat(64) && /no-store/.test(r.headers['cache-control'] || ''), JSON.stringify([r.body.configured, r.headers['cache-control']]));
+    await new Promise(res => setTimeout(res, 150));
+    const [view] = await globalQuery("SELECT actor_id FROM instance_audit_log WHERE action = 'backup_key_view' ORDER BY id DESC LIMIT 1");
+    check('sauvegardes: affichage de la clé journalisé', view?.actor_id === U.F, JSON.stringify(view));
+    delete cfgB.backupKey;
+  }
+
   // ── Instance health page ──
   {
     r = await req('GET', '/api/instance/health', { sid: sessions.NOWN });

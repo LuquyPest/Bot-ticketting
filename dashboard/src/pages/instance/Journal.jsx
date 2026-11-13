@@ -8,7 +8,7 @@ const LABELS = {
   guild_suspend: 'Serveur suspendu', guild_reactivate: 'Serveur réactivé', guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance',
   founder_add: 'Fondateur nommé', founder_remove: 'Fondateur retiré', ip_unblock: 'IP débloquée',
   error_delete: 'Erreur supprimée', errors_clear: 'Journal d\'erreurs vidé', error_alert_update: 'Alerte d\'erreurs modifiée', error_alert_test: 'Test de l\'alerte',
-  demo_toggle: 'Démonstration activée ou désactivée', demo_reset: 'Démonstration remise à zéro',
+  demo_toggle: 'Démonstration activée ou désactivée', demo_reset: 'Démonstration remise à zéro', backup_key_view: 'Clé des sauvegardes affichée',
 };
 const fmt = d => new Date(d).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 const detailsText = d => {

@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
-# One-off backup of every database (global + one per Discord server) to backups/ticketbot-<date>.sql.gz,
-# then prunes the archives older than KEEP_DAYS (30). Redis only holds sessions and queues: not saved.
-# Nightly backups: the « backup » service (docker-compose.backup.yml) does the same every night.
+# One-off encrypted backup of every database, same format as the nightly « backup » service
+# (docker/backup.sh): backups/ticketbot-<date>.sql.gz.enc + .hmac, key BACKUP_KEY from .env.
 #   scripts/backup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ -f .env ]] || { echo ".env introuvable."; exit 1; }
-KEEP_DAYS="${KEEP_DAYS:-30}"
+grep -qE '^BACKUP_KEY=.+' .env || { echo "BACKUP_KEY manquant dans .env (openssl rand -hex 32)."; exit 1; }
 mkdir -p backups; chmod 700 backups
-OUT="backups/ticketbot-$(date +%Y%m%d-%H%M%S).sql.gz"
-# The dump runs inside the db container, the root password is read from its environment
-docker compose exec -T db sh -c 'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction --routines --events --databases $(mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -N -e "SHOW DATABASES LIKE '"'"'ticketbot%'"'"'" | tr "\n" " ")' | gzip > "$OUT"
-chmod 600 "$OUT"
-find backups -name 'ticketbot-*.sql.gz' -mtime +"$KEEP_DAYS" -delete
-echo "✅ $OUT ($(du -h "$OUT" | cut -f1)). Sauvegarde aussi .env : il contient la clé qui déchiffre les transcripts."
+docker compose -f docker-compose.yml -f docker-compose.backup.yml run --rm backup now
+echo "Garde aussi une copie du .env : ENCRYPTION_KEY déchiffre les transcripts, BACKUP_KEY les sauvegardes."

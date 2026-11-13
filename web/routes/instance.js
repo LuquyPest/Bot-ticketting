@@ -395,6 +395,19 @@ router.post('/demo/reset', async (req, res) => {
   res.json(await require('../../utils/demo').seedDemo());
 });
 
+// ─── BACKUPS ─────────────────────────────────────────────────────────────────
+
+// GET /api/instance/backup-key — key of the encrypted backups (BACKUP_KEY); every display is logged
+router.get('/backup-key', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const key = config.backupKey || null;
+  if (key) {
+    globalQuery('INSERT INTO instance_audit_log (actor_id, actor_name, action, ip) VALUES (?, ?, ?, ?)',
+      [req.owner.id, req.owner.username, 'backup_key_view', (req.ip || '').slice(0, 64)]).catch(() => null);
+  }
+  res.json({ configured: !!key, key });
+});
+
 // ─── HEALTH ──────────────────────────────────────────────────────────────────
 
 const timed = async fn => { const t = Date.now(); try { await fn(); return { ok: true, ms: Date.now() - t }; } catch (err) { return { ok: false, ms: Date.now() - t, error: err.message }; } };

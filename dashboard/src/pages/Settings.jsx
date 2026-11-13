@@ -6,6 +6,8 @@ import SubjectRules from '../components/SubjectRules';
 import ConfigTransfer from '../components/ConfigTransfer';
 import ConfigHistory from '../components/ConfigHistory';
 import PortalBranding from '../components/PortalBranding';
+import BackupKey from '../components/BackupKey';
+import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Rôles d'accès)
 const TICKET_MODE_HINT = {
@@ -142,6 +144,7 @@ function RoleMultiPicker({ value, onChange, roles, loading }) {
 }
 
 export default function Settings() {
+  const { user } = useAuth();
   const [cfg, setCfg]               = useState(null);
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
@@ -550,6 +553,11 @@ export default function Settings() {
             {[15, 30, 60, 120, 240, 480].map(m => <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} heure${m > 60 ? 's' : ''}`}</option>)}
           </select>
         </Field>
+        {user?.isOwner && (
+          <Field label="Clé des sauvegardes" hint="Déchiffre les sauvegardes nocturnes de l'instance (tous les serveurs). Réservée au propriétaire de l'instance ; chaque affichage est inscrit au journal de l'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.">
+            <BackupKey />
+          </Field>
+        )}
       </Section>
 
       <Section title="Limites et délais">

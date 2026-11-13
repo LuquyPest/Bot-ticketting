@@ -33,6 +33,7 @@ const ENV_MAP = {
   ALLOWED_GUILDS:        'allowedGuilds',
   PRIVACY_URL:           'privacyUrl',
   CONTACT_EMAIL:         'contactEmail',
+  BACKUP_KEY:            'backupKey',
   TRANSCRIPT_RETENTION_DAYS: 'retention.transcriptDays',
 };
 const NUMBERS  = new Set(['webServerPort', 'database.port', 'trustProxyHops', 'retention.transcriptDays']);

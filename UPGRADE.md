@@ -18,6 +18,16 @@ Pour rester sur une version précise, mets `TICKETBOT_VERSION=v3.0` dans `.env` 
 
 Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `TICKETBOT_VERSION=` suivi de la version précédente dans `.env`, puis `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz`.
 
+## Sauvegardes chiffrées (v3.0.4)
+
+Les sauvegardes sont désormais chiffrées : ajoute une clé dans `.env` avant la mise à jour, sinon le service `backup` refuse de démarrer.
+
+```bash
+echo "BACKUP_KEY=$(openssl rand -hex 32)" >> .env
+```
+
+Les anciennes archives `.sql.gz` en clair restent restaurables avec `scripts/restore.sh` ; supprime-les une fois qu'une sauvegarde chiffrée existe.
+
 ## Passer de la v2 à la v3.0 (instance personnelle)
 
 La v3.0 abandonne le modèle « service » : plus de panneau super-admin, de managers, de formules, de limites, d'annonces, de page de statut publique ni de validation des serveurs. **Le propriétaire de l'application Discord administre l'instance** depuis la section **Instance** du dashboard, avec sa connexion Discord.
