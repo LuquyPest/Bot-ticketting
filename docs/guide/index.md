@@ -38,7 +38,7 @@ sequenceDiagram
 | **Équipe** | Grades aux permissions fines, rôles rattachés à des tags, synchronisation avec les rôles Discord, absences planifiées, objectifs, statistiques, comparaison de périodes, rapports PDF mensuels |
 | **Membres** | Réponses en MP dans leur langue, espace web pour suivre et ouvrir des tickets, aide consultable, notation, réouverture |
 | **Instance** | Propriétaire = propriétaire de l'application Discord, serveurs actifs dès l'arrivée du bot, santé, erreurs et alertes, journal, sauvegardes chiffrées |
-| **Interface** | Français et anglais, thème clair et sombre, interface « Pro » ou « Classique », accessible (WCAG 2.1 AA), adaptée au téléphone |
+| **Interface** | Français et anglais, thème clair et sombre, interface « Pro » par défaut ou « Classique » (Profil → Affichage), accessible (WCAG 2.1 AA), adaptée au téléphone |
 
 ## Architecture
 

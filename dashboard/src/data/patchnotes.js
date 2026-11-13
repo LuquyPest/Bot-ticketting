@@ -8,6 +8,14 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.7',
+    date: '14 novembre 2026',
+    title: 'Interface Pro par défaut',
+    changes: [
+      { type: 'impr', text: 'L\'interface « Pro » est celle par défaut ; « Classique » reste au choix dans Profil → Affichage, et un choix déjà enregistré sur le compte est conservé' },
+    ]
+  },
+  {
     version: 'v3.0.6',
     date: '14 novembre 2026',
     title: 'Dépendances à jour',

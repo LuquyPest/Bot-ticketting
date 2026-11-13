@@ -58,17 +58,17 @@ const failures = [];
 
 // Desktop in both themes, then a phone: on the phone no page may scroll sideways
 const RUNS = [
-  { run: 'dark', theme: 'dark', viewport: { width: 1440, height: 900 } },
-  { run: 'light', theme: 'light', viewport: { width: 1440, height: 900 } },
+  { run: 'dark', theme: 'dark', viewport: { width: 1440, height: 900 }, skin: 'classic' },
+  { run: 'light', theme: 'light', viewport: { width: 1440, height: 900 }, skin: 'classic' },
   { run: 'mobile', theme: 'dark', viewport: { width: 390, height: 844 }, mobile: true },
   { run: 'en', theme: 'dark', viewport: { width: 1440, height: 900 }, lang: 'en' },
-  { run: 'pro', theme: 'dark', viewport: { width: 1440, height: 900 }, skin: 'pro' },
+  { run: 'pro', theme: 'dark', viewport: { width: 1440, height: 900 } },
   { run: 'pro-light', theme: 'light', viewport: { width: 1440, height: 900 }, skin: 'pro' },
 ];
 
 for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RUNS) {
   const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile, locale: 'fr-FR' });
-  await page.addInitScript(([t, l, sk]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); if (sk) localStorage.setItem('uiSkin', sk); }, [colorTheme, lang, skin]);
+  await page.addInitScript(([t, l, sk]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); if (sk) localStorage.setItem('uiSkinV2', sk); }, [colorTheme, lang, skin]);
   let expect403 = false; // a test that asks for a refusal on purpose
   page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text()) && !(expect403 && /status of 403/.test(m.text()))) failures.push(`[${theme}] console: ${m.text()}`); });
   page.on('pageerror', e => failures.push(`[${theme}] page: ${e.message}`));

@@ -110,7 +110,7 @@ const ONLY = process.env.SHOTS ? process.env.SHOTS.split(',') : null;
 for (const [name, p, o = {}] of SHOTS) {
   if (ONLY && !ONLY.includes(name)) continue;
   const page = await browser.newPage({ viewport: o.viewport || { width: 1440, height: 900 }, isMobile: !!o.mobile, hasTouch: !!o.mobile, locale: 'fr-FR', deviceScaleFactor: o.mobile ? 2 : 1 });
-  await page.addInitScript(([t, sk]) => { localStorage.setItem('theme', t); localStorage.setItem('uiLang', 'fr'); localStorage.setItem('uiSkin', sk); }, [o.theme || 'dark', o.skin || 'classic']);
+  await page.addInitScript(([t, sk]) => { localStorage.setItem('theme', t); localStorage.setItem('uiLang', 'fr'); localStorage.setItem('uiSkinV2', sk); }, [o.theme || 'dark', o.skin || 'classic']);
   await page.route('**/api/**', route => {
     const u = new URL(route.request().url());
     if (o.anonymous && (u.pathname.endsWith('/auth/me') || u.pathname === '/api/member/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
