@@ -617,9 +617,8 @@ router.delete('/managers/:id', requireSuperAdmin, async (req, res) => {
 router.get('/stats', requireSuperAdmin, async (req, res) => {
   try {
     let guilds = await globalQuery(
-      `SELECT g.guild_id, g.guild_name, g.guild_icon, g.status, g.maintenance_mode, g.member_count,
-              g.max_tickets, g.max_agents, g.transcript_retention_days, g.plan_id, p.name AS plan_name
-       FROM guilds g LEFT JOIN plans p ON p.id = g.plan_id ORDER BY g.guild_name`
+      `SELECT guild_id, guild_name, guild_icon, status, maintenance_mode, member_count
+       FROM guilds ORDER BY guild_name`
     );
     if (req.saUser.type !== 'superadmin') {
       const [mgr] = await globalQuery('SELECT assigned_guilds FROM managers WHERE id = ?', [req.saUser.id]);
@@ -682,33 +681,6 @@ router.get('/stats', requireSuperAdmin, async (req, res) => {
       daily: [...daily.values()],
       perGuild,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-// PATCH /api/sa/guilds/:guildId/limits — set per-guild resource limits
-router.patch('/guilds/:guildId/limits', requireSuperAdmin, async (req, res) => {
-  const { max_tickets, max_agents, transcript_retention_days } = req.body;
-  const isInt = v => v === undefined || (Number.isInteger(v) && v >= 0);
-  if (!isInt(max_tickets) || !isInt(max_agents) || !isInt(transcript_retention_days)) {
-    return res.status(400).json({ error: 'Valeurs entières positives requises (0 = illimité)' });
-  }
-  try {
-    const [guild] = await globalQuery('SELECT guild_id FROM guilds WHERE guild_id = ?', [req.params.guildId]);
-    if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
-    if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
-    const updates = [];
-    const values  = [];
-    if (max_tickets !== undefined)              { updates.push('max_tickets = ?');                values.push(max_tickets); }
-    if (max_agents !== undefined)               { updates.push('max_agents = ?');                 values.push(max_agents); }
-    if (transcript_retention_days !== undefined){ updates.push('transcript_retention_days = ?'); values.push(transcript_retention_days); }
-    if (!updates.length) return res.status(400).json({ error: 'Aucune valeur fournie' });
-    updates.push('plan_id = NULL'); // edited by hand: no longer follows a plan
-    values.push(guild.guild_id);
-    await globalQuery(`UPDATE guilds SET ${updates.join(', ')} WHERE guild_id = ?`, values);
-    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -898,89 +870,6 @@ router.get('/health', requireSuperAdmin, async (req, res) => {
     process: { uptimeS: Math.round(process.uptime()), node: process.version, rssMb: Math.round(mem.rss / 1048576), heapMb: Math.round(mem.heapUsed / 1048576), pid: process.pid },
     schemas: { latest: LATEST_VERSION, guilds: schemas },
   });
-});
-
-// ─── PLANS ───────────────────────────────────────────────────────────────────
-// A plan is a set of limits; assigning it copies the limits into the guild (the existing
-// enforcement keeps working), and editing it updates every guild on that plan.
-
-const LIMIT_KEYS = ['max_tickets', 'max_agents', 'transcript_retention_days'];
-
-function cleanPlan(body, partial = false) {
-  const out = {};
-  if (!partial || body.name !== undefined) {
-    if (typeof body.name !== 'string' || !body.name.trim() || body.name.length > 60) return { error: 'Nom invalide (60 caractères max)' };
-    out.name = body.name.trim();
-  }
-  if (body.description !== undefined) {
-    if (body.description !== null && (typeof body.description !== 'string' || body.description.length > 255)) return { error: 'Description invalide' };
-    out.description = body.description?.trim() || null;
-  }
-  for (const k of LIMIT_KEYS) {
-    if (body[k] === undefined) { if (!partial) out[k] = 0; continue; }
-    if (!Number.isInteger(body[k]) || body[k] < 0 || body[k] > 100000) return { error: `${k} : entier positif attendu` };
-    out[k] = body[k];
-  }
-  return { value: out };
-}
-
-
-router.get('/plans', requireSuperAdmin, async (req, res) => {
-  const plans = await globalQuery(`SELECT p.*, (SELECT COUNT(*) FROM guilds g WHERE g.plan_id = p.id) AS guild_count FROM plans p ORDER BY p.name`);
-  res.json(plans.map(p => ({ ...p, guild_count: Number(p.guild_count) })));
-});
-
-router.post('/plans', requireSuperAdmin, superadminOnly, async (req, res) => {
-  const { value, error } = cleanPlan(req.body);
-  if (error) return res.status(400).json({ error });
-  try {
-    const r = await globalQuery('INSERT INTO plans (name, description, max_tickets, max_agents, transcript_retention_days) VALUES (?, ?, ?, ?, ?)',
-      [value.name, value.description ?? null, value.max_tickets, value.max_agents, value.transcript_retention_days]);
-    res.json({ id: r.insertId, ...value, guild_count: 0 });
-  } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Une formule porte déjà ce nom' });
-    throw err;
-  }
-});
-
-router.patch('/plans/:id', requireSuperAdmin, superadminOnly, async (req, res) => {
-  const [plan] = await globalQuery('SELECT * FROM plans WHERE id = ?', [parseInt(req.params.id)]);
-  if (!plan) return res.status(404).json({ error: 'Formule introuvable' });
-  const { value, error } = cleanPlan(req.body, true);
-  if (error) return res.status(400).json({ error });
-  const keys = Object.keys(value);
-  if (keys.length) await globalQuery(`UPDATE plans SET ${keys.map(k => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map(k => value[k]), plan.id]);
-  const limits = LIMIT_KEYS.filter(k => value[k] !== undefined);
-  let propagated = 0;
-  if (limits.length) {
-    propagated = (await globalQuery(`UPDATE guilds SET ${limits.map(k => `${k} = ?`).join(', ')} WHERE plan_id = ?`, [...limits.map(k => value[k]), plan.id])).affectedRows;
-  }
-  res.json({ ...plan, ...value, propagated });
-});
-
-router.delete('/plans/:id', requireSuperAdmin, superadminOnly, async (req, res) => {
-  const id = parseInt(req.params.id);
-  // Guilds keep their current limits and become "custom"
-  await globalQuery('UPDATE guilds SET plan_id = NULL WHERE plan_id = ?', [id]);
-  const r = await globalQuery('DELETE FROM plans WHERE id = ?', [id]);
-  if (!r.affectedRows) return res.status(404).json({ error: 'Formule introuvable' });
-  res.json({ ok: true });
-});
-
-// PUT /api/sa/guilds/:guildId/plan { planId } — null: keep the limits, as custom
-router.put('/guilds/:guildId/plan', requireSuperAdmin, async (req, res) => {
-  const [guild] = await globalQuery('SELECT guild_id FROM guilds WHERE guild_id = ?', [req.params.guildId]);
-  if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
-  if (!await canAccessGuild(req, guild.guild_id)) return res.status(403).json({ error: 'Accès refusé' });
-  if (req.body.planId === null) {
-    await globalQuery('UPDATE guilds SET plan_id = NULL WHERE guild_id = ?', [guild.guild_id]);
-    return res.json({ ok: true, plan: null });
-  }
-  const [plan] = await globalQuery('SELECT * FROM plans WHERE id = ?', [parseInt(req.body.planId)]);
-  if (!plan) return res.status(400).json({ error: 'Formule introuvable' });
-  await globalQuery('UPDATE guilds SET plan_id = ?, max_tickets = ?, max_agents = ?, transcript_retention_days = ? WHERE guild_id = ?',
-    [plan.id, plan.max_tickets, plan.max_agents, plan.transcript_retention_days, guild.guild_id]);
-  res.json({ ok: true, plan });
 });
 
 // ─── SA JOURNAL ──────────────────────────────────────────────────────────────

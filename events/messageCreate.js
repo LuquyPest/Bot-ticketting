@@ -9,7 +9,6 @@ const { subjectButtons, faqButtons } = require('../utils/components');
 const { findFaqMatches } = require('../utils/faq');
 const { applicableFields, parseFieldAnswer, saveFieldValues, fieldsForTicket } = require('../utils/ticketFields');
 const { broadcast } = require('../utils/sse');
-const { globalQuery } = require('../utils/globalDb');
 const {
   emptyMessageEmbed, blacklistedEmbed, notInGuildEmbed,
   serverLimitEmbed, dailyLimitEmbed, serverSelectEmbed,
@@ -105,16 +104,6 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
   if (await isBlacklistedIn(db, user.id)) {
     await user.send({ embeds: [blacklistedEmbed()] }).catch(() => null);
     return;
-  }
-
-  // Check guild-wide concurrent ticket limit set by superadmin
-  const [guildLimits] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]).catch(() => [{}]);
-  if (guildLimits?.max_tickets > 0) {
-    const [{ openCount }] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [{ openCount: 0 }]);
-    if (openCount >= guildLimits.max_tickets) {
-      await user.send({ embeds: [serverLimitEmbed()] }).catch(() => null);
-      return;
-    }
   }
 
   const maxPerDay = config.max_tickets_per_day ?? 3;

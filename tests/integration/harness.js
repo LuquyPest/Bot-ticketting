@@ -368,9 +368,8 @@ async function main() {
   r = await req('DELETE', '/api/ticket-views/abc', { sid: sessions.F });
   check('identifiant non numérique dans l URL: pas d erreur 500', r.status < 500, r.status);
 
-  // H3 — super-admin ticket limit no longer breaks ticket creation
+  // H3 — a DM opens a ticket
   const { openTicketForGuild } = app('./events/messageCreate');
-  await globalQuery('UPDATE guilds SET max_tickets = 50 WHERE guild_id = ?', [G]);
   const dms = [];
   const mkUser = id => ({ id, username: 'u' + id.slice(-2), tag: 'u' + id.slice(-2), send: async p => dms.push({ id, p }) });
   const [cfg] = await db('SELECT * FROM guild_config LIMIT 1');
@@ -378,7 +377,7 @@ async function main() {
   const u1 = mkUser('200000000000000001');
   await openTicketForGuild(u1, 'bonjour', [], entry(), fakeClient, 'Sujet test');
   const [c1] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [u1.id]);
-  check('H3 ticket créé avec max_tickets > 0', Number(c1.n) === 1, JSON.stringify(c1));
+  check('H3 ticket créé depuis un MP', Number(c1.n) === 1, JSON.stringify(c1));
 
   // H4 — burst of DMs creates a single ticket and keeps every message
   const u2 = mkUser('200000000000000002');
@@ -1672,7 +1671,7 @@ async function main() {
     ok('SA : réinitialiser la 2FA d un manager', await req('POST', `/api/sa/managers/${mid}/reset-totp`, { sid: SA }));
     ok('SA : supprimer un manager', await req('DELETE', `/api/sa/managers/${mid}`, { sid: SA }));
     denied('SA : managers (manager)', await req('GET', '/api/sa/managers', { sid: sessions.MGR }));
-    for (const p of ['announcements', 'plans', 'settings/error-alert']) ok(`SA : ${p}`, await req('GET', `/api/sa/${p}`, { sid: SA }));
+    for (const p of ['announcements', 'settings/error-alert']) ok(`SA : ${p}`, await req('GET', `/api/sa/${p}`, { sid: SA }));
     ok('SA : déconnexion', await req('POST', '/api/sa/auth/logout', { sid: SA }));
     denied('SA : session terminée', await req('GET', '/api/sa/auth/me', { sid: SA }));
     await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G4]);
@@ -2638,26 +2637,22 @@ async function main() {
   const [c6] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [u6id]);
   check('MP: expiration traitée une seule fois', Number(c6.n) === 1, c6.n);
 
-  // ── Limite max_agents ──
-  const { agentCount } = app('./utils/limits');
-  await globalQuery('UPDATE guilds SET max_agents = ? WHERE guild_id = ?', [await agentCount(db), G]);
-  r = await req('PATCH', '/api/users/300000000000000001/role', { sid: sessions.F, body: { role: 'support' } });
-  check('max_agents: promotion refusée quand la limite est atteinte', r.status === 400 && /Limite/.test(r.body.error), JSON.stringify(r.body));
-  await globalQuery('UPDATE guilds SET max_agents = 0 WHERE guild_id = ?', [G]);
-  r = await req('PATCH', '/api/users/300000000000000001/role', { sid: sessions.F, body: { role: 'support' } });
-  check('max_agents: 0 = illimité', r.status === 200, r.status + JSON.stringify(r.body));
-
   // ── Rétention ──
   const { runRetentionPurge } = app('./utils/retention');
   await globalQuery("INSERT INTO login_logs (user_id, username, ip, user_agent, status, created_at) VALUES ('1', 'old', '1.1.1.1', 'ua', 'success', DATE_SUB(NOW(), INTERVAL 400 DAY))");
   await db("INSERT INTO audit_log (actor_id, actor_tag, action, created_at) VALUES ('1', 'old', 'config_update', DATE_SUB(NOW(), INTERVAL 400 DAY))");
   await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt, created_at) VALUES (?, 'x', '1', 'x', 0, '', '', DATE_SUB(NOW(), INTERVAL 10 DAY))", [st1.id]);
-  await globalQuery('UPDATE guilds SET transcript_retention_days = 5 WHERE guild_id = ?', [G]);
+  const cfgRet = app('./utils/config').config;
+  cfgRet.retention = { ...(cfgRet.retention || {}), transcriptDays: 5 };
   const beforeRecent = (await db('SELECT COUNT(*) AS n FROM audit_log WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)'))[0].n;
   const purged = await runRetentionPurge();
   const afterRecent = (await db('SELECT COUNT(*) AS n FROM audit_log WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)'))[0].n;
   check('rétention: anciens journaux et transcripts purgés', purged.login_logs >= 1 && purged.audit_log >= 1 && purged.transcripts >= 1, JSON.stringify(purged));
   check('rétention: données récentes conservées', Number(afterRecent) === Number(beforeRecent), `${beforeRecent} -> ${afterRecent}`);
+  cfgRet.retention.transcriptDays = 0;
+  await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt, created_at) VALUES (?, 'x', '1', 'x', 0, '', '', DATE_SUB(NOW(), INTERVAL 900 DAY))", [st1.id]);
+  check('rétention: transcripts conservés par défaut (TRANSCRIPT_RETENTION_DAYS absent)', (await runRetentionPurge()).transcripts === 0);
+  await db("DELETE FROM transcript_snapshots WHERE created_at < DATE_SUB(NOW(), INTERVAL 800 DAY)");
 
   // ── Automatismes BullMQ ──
   const { startWorkers, getQueue, JOBS } = app('./utils/jobQueue');
@@ -2688,18 +2683,22 @@ async function main() {
   const after = await req('GET', '/api/auth/discord');
   check('blocages: IP débloquée', r.status === 200 && after.status === 302, JSON.stringify([r.status, after.status]));
 
-  // ── SA: overview, limits, error journal ──
+  // ── SA: overview, error journal ──
   r = await req('GET', '/api/sa/stats', { sid: sessions.SAnew });
   const gStat = r.body.perGuild?.find(g => g.guild_id === G);
   check('SA stats: totaux et détail par serveur', r.status === 200 && r.body.totals.tickets > 0 && r.body.daily.length === 30 && gStat && typeof gStat.openTickets === 'number' && typeof gStat.staff === 'number', JSON.stringify(gStat));
   r = await req('GET', '/api/sa/stats', { sid: sessions.MGR });
   check('SA stats: manager sans le compteur d\'erreurs', r.status === 200 && r.body.errors24h === null, JSON.stringify(r.body.errors24h));
-  r = await req('PATCH', `/api/sa/guilds/${G}/limits`, { sid: sessions.SAnew, body: { max_tickets: 40, max_agents: 0, transcript_retention_days: 120 } });
-  const lim = (await req('GET', '/api/sa/stats', { sid: sessions.SAnew })).body.perGuild.find(g => g.guild_id === G);
-  check('SA limites: enregistrées et visibles', r.status === 200 && lim.max_tickets === 40 && lim.transcript_retention_days === 120, JSON.stringify(lim));
-  r = await req('PATCH', `/api/sa/guilds/${G}/limits`, { sid: sessions.SAnew, body: { max_tickets: -1 } });
-  check('SA limites: valeur négative refusée', r.status === 400, r.status);
-  await globalQuery('UPDATE guilds SET max_tickets = 0, transcript_retention_days = 0 WHERE guild_id = ?', [G]);
+  check('SA stats: plus de formule ni de limite', gStat && !('max_tickets' in gStat) && !('plan_name' in gStat), JSON.stringify(gStat));
+  r = await req('PATCH', `/api/sa/guilds/${G}/maintenance`, { sid: sessions.SAnew, body: { enabled: false } });
+  check('SA maintenance: enregistrée', r.status === 200, r.status);
+  r = await req('PATCH', `/api/sa/guilds/${G}/maintenance`, { sid: sessions.SAnew, body: { enabled: 'non' } });
+  check('SA maintenance: valeur invalide refusée', r.status === 400, r.status);
+  for (const p of [`/api/sa/guilds/${G}/limits`, `/api/sa/guilds/${G}/plan`, '/api/sa/plans']) {
+    r = await req(p.endsWith('plans') ? 'GET' : 'PATCH', p, { sid: sessions.SAnew, body: { max_tickets: 1 } });
+    check(`formules et limites retirées: ${p}`, r.status === 404, r.status);
+  }
+  check('formules et limites retirées: modules supprimés', ['./utils/limits', './utils/quotaAlert'].every(m => { try { require.resolve(path.join(ROOT, m)); return false; } catch { return true; } }));
 
   const errorLog = app('./utils/errorLog');
   errorLog.logError(G, 'test-ctx', new Error('boom unique'));
@@ -2761,44 +2760,6 @@ async function main() {
     check('alerte erreurs: désactivée → aucun envoi', res.skipped === 'disabled', JSON.stringify(res));
   }
 
-  // ── Plans (preset limits) and limit alerts ──
-  {
-    r = await req('POST', '/api/sa/plans', { sid: sessions.MGR, body: { name: 'x' } });
-    check('formules: création réservée au superadmin', r.status === 403, r.status);
-    r = await req('POST', '/api/sa/plans', { sid: sessions.SAnew, body: { name: 'Standard', max_tickets: 50, max_agents: 10, transcript_retention_days: 180 } });
-    const plan = r.body;
-    check('formules: formule créée', r.status === 200 && plan.id > 0, JSON.stringify(r.body));
-    r = await req('POST', '/api/sa/plans', { sid: sessions.SAnew, body: { name: 'Standard' } });
-    check('formules: nom unique', r.status === 400, r.status);
-    r = await req('PUT', `/api/sa/guilds/${G}/plan`, { sid: sessions.SAnew, body: { planId: plan.id } });
-    let [gp] = await globalQuery('SELECT plan_id, max_tickets, max_agents, transcript_retention_days FROM guilds WHERE guild_id = ?', [G]);
-    check('formules: attribution copie les limites', r.status === 200 && gp.plan_id === plan.id && gp.max_tickets === 50 && gp.max_agents === 10 && gp.transcript_retention_days === 180, JSON.stringify(gp));
-    r = await req('PATCH', `/api/sa/plans/${plan.id}`, { sid: sessions.SAnew, body: { max_tickets: 60 } });
-    [gp] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [G]);
-    check('formules: modification propagée aux serveurs', r.body.propagated === 1 && gp.max_tickets === 60, JSON.stringify([r.body, gp]));
-    r = await req('PATCH', `/api/sa/guilds/${G}/limits`, { sid: sessions.SAnew, body: { max_tickets: 2 } });
-    [gp] = await globalQuery('SELECT plan_id, max_tickets FROM guilds WHERE guild_id = ?', [G]);
-    check('formules: limites modifiées à la main → personnalisé', gp.plan_id === null && gp.max_tickets === 2, JSON.stringify(gp));
-
-    // Limit alert: 2 open tickets max, fill it up
-    const openNow = Number((await db("SELECT COUNT(*) AS n FROM tickets WHERE status = 'open'"))[0].n);
-    for (let i = openNow; i < 2; i++) await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status) VALUES ('24','u24','cqa','open')");
-    await globalQuery('UPDATE guilds SET max_tickets = 2, max_agents = 0 WHERE guild_id = ?', [G]);
-    for (const k of await redis.keys(`alert:quota:${G}:*`)) await redis.del(k);
-    memberDms.length = 0;
-    let sentQ = await app('./utils/quotaAlert').runQuotaCheck(fakeClient);
-    const qdm = memberDms.find(m => m.id === U.F)?.p?.embeds?.[0]?.data;
-    const [qev] = await db("SELECT details FROM audit_log WHERE action = 'quota_warning' ORDER BY id DESC LIMIT 1");
-    check('limites: fondateurs prévenus quand la limite est atteinte', sentQ.some(x => x.guildId === G && x.level === 'reached') && qdm?.title?.includes('Limite atteinte'), JSON.stringify([sentQ, qdm]));
-    check('limites: alerte journalisée sur le serveur', qev?.details?.limit === 'tickets', JSON.stringify(qev));
-    sentQ = await app('./utils/quotaAlert').runQuotaCheck(fakeClient);
-    check('limites: une alerte par jour au plus', !sentQ.some(x => x.guildId === G), JSON.stringify(sentQ));
-    await globalQuery('UPDATE guilds SET max_tickets = 0, max_agents = 0, transcript_retention_days = 0 WHERE guild_id = ?', [G]);
-    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = '24'");
-    r = await req('DELETE', `/api/sa/plans/${plan.id}`, { sid: sessions.SAnew });
-    check('formules: suppression', r.status === 200, r.status);
-  }
-
   // ── Global announcements ──
   {
     r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'x', body: 'y', showBanner: false, sendDm: false } });
@@ -2839,10 +2800,10 @@ async function main() {
     await new Promise(res => setTimeout(res, 200));
     r = await req('GET', '/api/sa/audit', { sid: sessions.MGR });
     check('journal SA: réservé au superadmin', r.status === 403, r.status);
-    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'guild_limits' } });
+    r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'guild_maintenance' } });
     const lim = r.body.rows?.find(x => x.guild_id === G);
-    check('journal SA: modification de limites enregistrée avec le serveur', r.status === 200 && lim && lim.actor_name === 'root' && JSON.stringify(lim.details).includes('max_tickets'), JSON.stringify(r.body.rows?.slice(0, 2)));
-    check('journal SA: action refusée (400) non enregistrée', !r.body.rows.some(x => JSON.stringify(x.details).includes('-1')));
+    check('journal SA: maintenance enregistrée avec le serveur', r.status === 200 && lim && lim.actor_name === 'root' && JSON.stringify(lim.details).includes('enabled'), JSON.stringify(r.body.rows?.slice(0, 2)));
+    check('journal SA: action refusée (400) non enregistrée', !r.body.rows.some(x => JSON.stringify(x.details).includes('"non"')));
     r = await req('GET', '/api/sa/audit', { sid: sessions.SAnew, query: { action: 'error_alert_update' } });
     const al = JSON.stringify((r.body.rows || []).find(x => x.details?.webhookUrl)?.details || {});
     check('journal SA: URL de webhook réduite à son origine', al.includes('https://127.0.0.1/…') && !al.includes('/hook'), al);

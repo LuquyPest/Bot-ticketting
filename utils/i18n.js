@@ -159,7 +159,6 @@ const D = {
     'panel.exists': 'ℹ️ Tu as déjà un ticket ouvert (#{id}). Écris au bot en message privé pour le suivre.',
     'panel.failed': '❌ Impossible de créer le ticket. Réessaie dans quelques instants.',
     'panel.blacklisted': '❌ Tu ne peux pas ouvrir de ticket.',
-    'panel.serverLimit': '❌ Le serveur a atteint sa limite de tickets simultanés. Réessaie plus tard.',
     'panel.dailyLimit': '❌ Tu as déjà ouvert {max} ticket(s) aujourd\'hui. Réessaie demain.',
   },
   en: {
@@ -306,7 +305,6 @@ const D = {
     'panel.exists': 'ℹ️ You already have an open ticket (#{id}). Message the bot privately to follow it.',
     'panel.failed': '❌ The ticket could not be created. Try again in a moment.',
     'panel.blacklisted': '❌ You cannot open a ticket.',
-    'panel.serverLimit': '❌ This server has reached its limit of open tickets. Try again later.',
     'panel.dailyLimit': '❌ You have already opened {max} ticket(s) today. Try again tomorrow.',
   },
 };

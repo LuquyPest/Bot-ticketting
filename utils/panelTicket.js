@@ -1,5 +1,4 @@
 const { createManager } = require('./ticketManager');
-const { globalQuery } = require('./globalDb');
 const { broadcast } = require('./sse');
 const { t } = require('./i18n');
 
@@ -8,15 +7,6 @@ async function openTicketFromPanel(interaction, client, db, btn, formContent, su
   const guildId = interaction.guildId;
 
   const tm = createManager(db, client, guildId);
-
-  // Guild-wide ticket limit check (superadmin)
-  const [limits] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]).catch(() => [{}]);
-  if (limits?.max_tickets > 0) {
-    const [{ openCount }] = await db('SELECT COUNT(*) as openCount FROM tickets WHERE status = "open"').catch(() => [{ openCount: 0 }]);
-    if (openCount >= limits.max_tickets) {
-      return interaction.editReply({ content: t('panel.serverLimit') });
-    }
-  }
 
   // Daily limit check
   const dailyCount = await tm.getDailyTicketCount(user.id);

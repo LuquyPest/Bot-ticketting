@@ -30,8 +30,9 @@ const ENV_MAP = {
   TRUST_PROXY_HOPS:      'trustProxyHops',
   TRUSTED_PROXY_HOST:    'trustedProxyHost',
   AUTO_APPROVE_GUILDS:   'autoApproveGuilds',
+  TRANSCRIPT_RETENTION_DAYS: 'retention.transcriptDays',
 };
-const NUMBERS  = new Set(['webServerPort', 'database.port', 'trustProxyHops']);
+const NUMBERS  = new Set(['webServerPort', 'database.port', 'trustProxyHops', 'retention.transcriptDays']);
 const BOOLEANS = new Set(['autoApproveGuilds']);
 // Values an environment variable may carry even when empty (an empty TRUSTED_PROXY_HOST disables the check)
 const EMPTY_ALLOWED = new Set(['TRUSTED_PROXY_HOST']);

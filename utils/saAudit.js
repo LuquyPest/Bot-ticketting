@@ -10,8 +10,6 @@ const ACTIONS = {
   'PATCH /guilds/:guildId/reactivate': 'guild_reactivate',
   'DELETE /guilds/:guildId': 'guild_delete',
   'PATCH /guilds/:guildId/maintenance': 'guild_maintenance',
-  'PATCH /guilds/:guildId/limits': 'guild_limits',
-  'PUT /guilds/:guildId/plan': 'guild_plan',
   'POST /guilds/:guildId/founders': 'founder_add',
   'DELETE /guilds/:guildId/founders/:userId': 'founder_remove',
   'POST /blocked/accounts/:type/:id/unlock': 'account_unlock',
@@ -31,9 +29,6 @@ const ACTIONS = {
   'PATCH /status-events/:id': 'status_event_update',
   'DELETE /status-events/:id': 'status_event_delete',
   'DELETE /announcements/:id': 'announcement_delete',
-  'POST /plans': 'plan_create',
-  'PATCH /plans/:id': 'plan_update',
-  'DELETE /plans/:id': 'plan_delete',
 };
 
 const SECRET_KEYS = /pass|secret|totp|code|token/i;

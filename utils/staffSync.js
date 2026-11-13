@@ -5,7 +5,6 @@
 const { parseJsonField } = require('./jsonField');
 const { recordEvent } = require('./audit');
 const { scheduleResync } = require('./channelVisibility');
-const { canAddAgent } = require('./limits');
 
 const SUPPORT_PERMS = ['view_tickets', 'reply_ticket', 'create_ticket', 'claim_ticket', 'close_ticket', 'manage_participants'];
 const CHIEF_PERMS   = [...SUPPORT_PERMS, 'view_transcripts', 'manage_users', 'view_audit'];
@@ -71,13 +70,6 @@ async function syncDiscordStaff(client, db, guildId, user) {
   }
 
   const wasStaff = row?.role === 'support' && row.discord_has_role === 1;
-  if (!wasStaff) {
-    const limit = await canAddAgent(db, guildId);
-    if (!limit.ok) {
-      await recordEvent(db, { actor: null, action: 'agent_limit_reached', targetType: 'user', targetId: user.id, details: { user: user.username, max: limit.max } });
-      return row?.role || null;
-    }
-  }
   const { supportId, chiefId } = await ensureStaffGrades(db);
   const gradeId = level === 'chief' ? chiefId : supportId;
   await db(

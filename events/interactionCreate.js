@@ -11,7 +11,7 @@ const { closeConfirmationEmbed, buildOldTicketsPageEmbed } = require('../utils/e
 const {
   sessionExpiredEmbed, relayedToTicketEmbed, subjectAskEmbed, choiceEmbed,
   ticketCreatingEmbed, ratingConfirmEmbed, ratingCommentEmbed, memberCloseConfirmEmbed, alreadyRatedEmbed,
-  blacklistedEmbed, serverLimitEmbed,
+  blacklistedEmbed,
 } = require('../utils/dmEmbeds');
 const { ratingCommentButton, memberCloseConfirmButtons } = require('../utils/components');
 
@@ -185,12 +185,6 @@ async function handleInteraction(client, interaction) {
           if (!ticket) return expired();
           const { isBlacklistedIn } = require('../utils/guildScan');
           if (await isBlacklistedIn(db, interaction.user.id)) return interaction.update({ embeds: [blacklistedEmbed()], components: [] });
-          // The server's open-ticket limit applies to reopened tickets too
-          const [lim] = await require('../utils/globalDb').globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]);
-          if (lim?.max_tickets > 0) {
-            const [{ n }] = await db("SELECT COUNT(*) AS n FROM tickets WHERE status = 'open'");
-            if (Number(n) >= lim.max_tickets) return interaction.update({ embeds: [serverLimitEmbed()], components: [] });
-          }
           await interaction.update({ embeds: [choiceEmbed(t('reopen.done', { id: ticket.id }))], components: [] });
           const tm = createManager(db, client, guildId);
           const member = { id: interaction.user.id, tag: interaction.user.username, username: interaction.user.username, source: 'discord', member: true, reason: 'Rouvert par le membre' };

@@ -104,7 +104,7 @@ export const MOCK = {
   '/api/sa/stats': { guilds: { total: 3, active: 2, pending: 1, suspended: 0 }, managers: 1, errors24h: 4,
     totals: { tickets: 340, openTickets: 12, opened30d: 80, closed30d: 75, staff: 9 },
     daily: Array.from({ length: 30 }, (_, i) => ({ day: new Date(now - (29 - i) * 864e5).toISOString().slice(0, 10), opened: (i * 7) % 6, closed: (i * 5) % 5 })),
-    perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, max_tickets: 10, staff: 5, max_agents: 0, opened30d: 50, avgRating: 4.5, transcript_retention_days: 90 }] },
+    perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, staff: 5, opened30d: 50, avgRating: 4.5 }] },
 };
 
 // 1×1 image served for attachment previews

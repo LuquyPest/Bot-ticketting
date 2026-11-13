@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { RefreshCw, Loader2, Gauge, AlertTriangle, WrenchIcon } from 'lucide-react';
+import { RefreshCw, Loader2, WrenchIcon } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { useSA } from './SAApp';
-import SALimitsModal from './SALimitsModal';
 
 const STATUS_LABEL = { active: 'Actif', pending: 'En attente', suspended: 'Suspendu' };
 const card = 'glass-dark rounded-2xl border border-overlay/8';
@@ -19,18 +18,6 @@ function Kpi({ label, value, sub, to }) {
     </div>
   );
   return to ? <Link to={to}>{body}</Link> : body;
-}
-
-// "3 / 10" with a warning tint once the usage reaches 90 % of a non-zero limit.
-function Usage({ used, max }) {
-  if (used == null) return <span className="text-ink-4">—</span>;
-  const near = max > 0 && used >= max * 0.9;
-  return (
-    <span className={`tabular-nums ${near ? 'text-amber-300 font-semibold' : 'text-ink-2'}`}>
-      {used}<span className="text-ink-4"> / {max > 0 ? max : '∞'}</span>
-      {near && <AlertTriangle size={11} className="inline ml-1 -mt-0.5" aria-label="Limite presque atteinte" />}
-    </span>
-  );
 }
 
 function ChartTooltip({ active, payload, label }) {
@@ -52,7 +39,6 @@ export default function SAOverview() {
   const { saUser } = useSA();
   const isSA = saUser?.type === 'superadmin';
   const [stats, setStats] = useState(null);
-  const [limitsOf, setLimitsOf] = useState(null);
 
   const load = useCallback(() => {
     api.get('/sa/stats').then(r => setStats(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur chargement'));
@@ -66,8 +52,6 @@ export default function SAOverview() {
 
   return (
     <div className="p-6 space-y-5 max-w-6xl">
-      {limitsOf && <SALimitsModal guild={limitsOf} onClose={() => setLimitsOf(null)} onSaved={load} />}
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-ink-1">Vue d'ensemble</h1>
@@ -103,20 +87,20 @@ export default function SAOverview() {
 
       <div className={`${card} overflow-hidden`}>
         <div className="px-5 py-4 border-b border-overlay/6">
-          <h2 className="text-sm font-semibold text-ink-1">Serveurs et limites</h2>
+          <h2 className="text-sm font-semibold text-ink-1">Serveurs</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Serveurs">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-overlay/6">
-                {['Serveur', 'Statut', 'Formule', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.', 'Transcripts', ''].map(h => (
+                {['Serveur', 'Statut', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-overlay/4">
               {stats.perGuild.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-ink-4">Aucun serveur</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-4">Aucun serveur</td></tr>
               )}
               {stats.perGuild.map(g => (
                 <tr key={g.guild_id} className="hover:bg-overlay/2">
@@ -128,18 +112,10 @@ export default function SAOverview() {
                     {STATUS_LABEL[g.status] || g.status}
                     {g.maintenance_mode && <WrenchIcon size={11} className="inline ml-1.5 text-orange-300" aria-label="Maintenance" />}
                   </td>
-                  <td className="px-4 py-3 text-ink-2 whitespace-nowrap">{g.plan_name || <span className="text-ink-4">Personnalisée</span>}</td>
-                  <td className="px-4 py-3"><Usage used={g.openTickets} max={g.max_tickets} /></td>
-                  <td className="px-4 py-3"><Usage used={g.staff} max={g.max_agents} /></td>
+                  <td className="px-4 py-3 tabular-nums text-ink-2">{g.openTickets ?? '—'}</td>
+                  <td className="px-4 py-3 tabular-nums text-ink-2">{g.staff ?? '—'}</td>
                   <td className="px-4 py-3 tabular-nums text-ink-2">{g.opened30d ?? '—'}</td>
                   <td className="px-4 py-3 tabular-nums text-ink-2">{g.avgRating != null ? `${g.avgRating} / 5` : '—'}</td>
-                  <td className="px-4 py-3 text-ink-2 whitespace-nowrap">{g.transcript_retention_days > 0 ? `${g.transcript_retention_days} j` : 'Illimité'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setLimitsOf(g)} title="Modifier les limites"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5">
-                      <Gauge size={13} /> Limites
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>

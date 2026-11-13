@@ -1,6 +1,6 @@
-// Data retention: purges old logs (global + per guild) and transcripts past each guild's
-// transcript_retention_days (super-admin limit, 0 = keep forever). Runs daily (utils/jobQueue.js).
-// Durations (days) can be set in config.json → "retention"; 0 disables a purge.
+// Data retention: purges old logs (global + per guild) and old transcripts. Runs daily
+// (utils/jobQueue.js). Durations (days) come from config.json → "retention" or, for transcripts,
+// TRANSCRIPT_RETENTION_DAYS; 0 disables a purge (transcripts are kept forever by default).
 const { globalQuery } = require('./globalDb');
 const { getTenantDb } = require('./tenantDb');
 const logger = require('./logger');
@@ -12,6 +12,7 @@ const DEFAULTS = {
   auditLogDays: 365,    // per-guild activity journal
   sessionsDays: 7,      // session tracking rows (sessions themselves expire after 24 h)
   saAuditDays: 730,     // super-admin panel journal
+  transcriptDays: 0,    // closed tickets' transcripts
 };
 
 function retentionSettings() {
@@ -37,12 +38,12 @@ async function runRetentionPurge() {
     transcripts: 0,
   };
 
-  const guilds = await globalQuery('SELECT guild_id, transcript_retention_days FROM guilds WHERE status IN ("active", "suspended")');
+  const guilds = await globalQuery('SELECT guild_id FROM guilds WHERE status IN ("active", "suspended")');
   for (const g of guilds) {
     try {
       const db = getTenantDb(g.guild_id);
       report.audit_log += await purge(db, 'audit_log', 'created_at', s.auditLogDays);
-      report.transcripts += await purge(db, 'transcript_snapshots', 'created_at', g.transcript_retention_days);
+      report.transcripts += await purge(db, 'transcript_snapshots', 'created_at', s.transcriptDays);
     } catch (err) {
       logger.error('retention purge error', { guildId: g.guild_id, err: err.message });
     }

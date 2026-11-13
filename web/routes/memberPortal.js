@@ -9,7 +9,6 @@ const { getTenantDb } = require('../../utils/tenantDb');
 const { createManager } = require('../../utils/ticketManager');
 const { isBlacklistedIn } = require('../../utils/guildScan');
 const { allowBurst } = require('../../utils/rateLimit');
-const { globalQuery } = require('../../utils/globalDb');
 
 const memberOf = req => req.session.member
   || (req.session.user && { id: req.session.user.id, username: req.session.user.username, avatar: req.session.user.avatar || null, viaDashboard: true });
@@ -143,11 +142,6 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
     const answers = Array.isArray(req.body?.answers) ? req.body.answers.map(a => String(a ?? '').trim().slice(0, 500)) : [];
     if (questions.some((q, i) => !answers[i])) return res.status(400).json({ error: 'Réponds à toutes les questions du formulaire' });
 
-    const [limits] = await globalQuery('SELECT max_tickets FROM guilds WHERE guild_id = ?', [guildId]);
-    if (limits?.max_tickets > 0) {
-      const [{ n }] = await db('SELECT COUNT(*) AS n FROM tickets WHERE status = "open"');
-      if (Number(n) >= limits.max_tickets) return res.status(429).json({ error: 'Ce serveur a atteint sa limite de tickets ouverts, réessaie plus tard' });
-    }
     const [cfg] = await db('SELECT max_tickets_per_day FROM guild_config WHERE id = 1');
     const tm = createManager(db, client, guildId);
     const maxPerDay = cfg?.max_tickets_per_day ?? 3;

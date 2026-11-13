@@ -332,8 +332,6 @@ router.post('/open', async (req, res) => {
     const guild = await client.guilds.fetch(req.guildId).catch(() => null);
     const member = await guild?.members.fetch(userId).catch(() => null);
     if (!member || member.user.bot) return res.status(404).json({ error: 'Membre introuvable sur le serveur' });
-    const limit = await require('../../utils/limits').canOpenTicket(req.guildDb, req.guildId);
-    if (!limit.ok) return res.status(409).json({ error: `Limite de ${limit.max} tickets ouverts atteinte sur ce serveur` });
 
     const { ticket } = await getManager(req).openTicketForMember(member.user, { subject, byUser: dashboardActor(req) });
     const [fresh] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [ticket.id]);

@@ -180,9 +180,6 @@ async function ensureGlobalTables(config) {
       )`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS inviter_discord_id VARCHAR(32) DEFAULT NULL`,
       `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS inviter_discord_tag VARCHAR(100) DEFAULT NULL`,
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS max_tickets INT NOT NULL DEFAULT 0`,
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS max_agents INT NOT NULL DEFAULT 0`,
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS transcript_retention_days INT NOT NULL DEFAULT 0`,
       `CREATE TABLE IF NOT EXISTS push_subscriptions (
         id          INT AUTO_INCREMENT PRIMARY KEY,
         user_id     VARCHAR(32) NOT NULL,
@@ -246,17 +243,6 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS split_view TINYINT(1) NOT NULL DEFAULT 0`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS tour_done VARCHAR(20) DEFAULT NULL`,
       `ALTER TABLE user_prefs ADD COLUMN IF NOT EXISTS ui_skin VARCHAR(10) DEFAULT NULL`,
-      // Plans: preset limits assigned to guilds (copied into guilds.max_*)
-      `CREATE TABLE IF NOT EXISTS plans (
-        id                        INT AUTO_INCREMENT PRIMARY KEY,
-        name                      VARCHAR(60) NOT NULL UNIQUE,
-        description               VARCHAR(255) DEFAULT NULL,
-        max_tickets               INT NOT NULL DEFAULT 0,
-        max_agents                INT NOT NULL DEFAULT 0,
-        transcript_retention_days INT NOT NULL DEFAULT 0,
-        created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`,
-      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS plan_id INT DEFAULT NULL`,
       // Journal of the super-admin panel (utils/saAudit.js)
       `CREATE TABLE IF NOT EXISTS sa_audit_log (
         id         BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -270,7 +256,7 @@ async function ensureGlobalTables(config) {
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_saa_created (created_at), INDEX idx_saa_guild (guild_id), INDEX idx_saa_action (action)
       )`,
-      // Super-admin settings (error alert, plans…), JSON values
+      // Super-admin settings (error alert, demo…), JSON values
       `CREATE TABLE IF NOT EXISTS sa_settings (
         k          VARCHAR(64) PRIMARY KEY,
         v          JSON NOT NULL,
