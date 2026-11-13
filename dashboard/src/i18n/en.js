@@ -470,7 +470,7 @@ export const ENTRIES = [
   ['créés avant cette date', 'created before this date'], ['créés à partir de cette date', 'created from this date'], ['ouvert, attente ou cours', 'ouvert, attente or cours (open, waiting, in progress)'],
   ['faible, normale ou urgente', 'faible, normale or urgente (low, normal, urgent)'], ['ouvert ou fermé', 'ouvert or fermé (open or closed)'],
   ['moi, personne ou un pseudo du staff', 'moi (me), personne (nobody) or a staff name'], ['dans le sujet', 'in the subject'], ['Recherche invalide', 'Invalid search'],
-  ['Affichage', 'Display'], ['Vue fractionnée des tickets', 'Split ticket view'],
+  ['Affichage', 'Display'], ['Vue fractionnée des tickets', 'Split ticket view'], ['Interface', 'Interface'], ['Classique', 'Classic'], ['Pro', 'Pro'],
   ['Sur grand écran, un ticket cliqué dans la liste s\'ouvre à droite de celle-ci, sans changer de page.', 'On a large screen, a ticket clicked in the list opens to its right, without changing page.'],
   ['Fermer le ticket', 'Close the ticket'], ['Ticket suivi', 'Followed ticket'],
 

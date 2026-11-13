@@ -141,11 +141,12 @@ router.post('/activity', requireAuth, (req, res) => {
 
 // GET/PUT /api/profile/prefs — interface preferences kept for every browser of the account
 // (splitView: the ticket list and the opened ticket side by side; tourDone: version of the
-// guided tour already seen). newAgent: staff account of the current server less than 14 days old
+// guided tour already seen; uiSkin: « classic » or « pro » interface). newAgent: staff account of the current server less than 14 days old
 // (the tour then starts by itself once).
 const TOUR_VERSION_RE = /^v\d{1,3}$/;
+const UI_SKINS = ['classic', 'pro'];
 router.get('/prefs', requireAuth, async (req, res) => {
-  const [row] = await globalQuery('SELECT split_view, tour_done FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
+  const [row] = await globalQuery('SELECT split_view, tour_done, ui_skin FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
   let newAgent = false;
   if (req.session.currentGuildId && !req.session.user.demo) {
     const [u] = await getTenantDb(req.session.currentGuildId)(
@@ -153,11 +154,12 @@ router.get('/prefs', requireAuth, async (req, res) => {
       [req.session.user.id]).catch(() => []);
     newAgent = !!Number(u?.recent);
   }
-  res.json({ splitView: !!row?.split_view, tourDone: row?.tour_done || null, newAgent });
+  res.json({ splitView: !!row?.split_view, tourDone: row?.tour_done || null, uiSkin: row?.ui_skin || null, newAgent });
 });
 router.put('/prefs', requireAuth, async (req, res) => {
-  const { splitView, tourDone } = req.body || {};
-  if (splitView === undefined && tourDone === undefined) return res.status(400).json({ error: 'Préférence invalide' });
+  const { splitView, tourDone, uiSkin } = req.body || {};
+  if (splitView === undefined && tourDone === undefined && uiSkin === undefined) return res.status(400).json({ error: 'Préférence invalide' });
+  if (uiSkin !== undefined && !UI_SKINS.includes(uiSkin)) return res.status(400).json({ error: 'Préférence invalide' });
   if (splitView !== undefined && typeof splitView !== 'boolean') return res.status(400).json({ error: 'Préférence invalide' });
   if (tourDone !== undefined && !TOUR_VERSION_RE.test(String(tourDone))) return res.status(400).json({ error: 'Préférence invalide' });
   if (splitView !== undefined) {
@@ -166,7 +168,10 @@ router.put('/prefs', requireAuth, async (req, res) => {
   if (tourDone !== undefined) {
     await globalQuery('INSERT INTO user_prefs (user_id, tour_done) VALUES (?, ?) ON DUPLICATE KEY UPDATE tour_done = VALUES(tour_done)', [req.session.user.id, tourDone]);
   }
-  res.json({ ok: true, ...(splitView !== undefined ? { splitView } : {}), ...(tourDone !== undefined ? { tourDone } : {}) });
+  if (uiSkin !== undefined) {
+    await globalQuery('INSERT INTO user_prefs (user_id, ui_skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE ui_skin = VALUES(ui_skin)', [req.session.user.id, uiSkin]);
+  }
+  res.json({ ok: true, ...(splitView !== undefined ? { splitView } : {}), ...(tourDone !== undefined ? { tourDone } : {}), ...(uiSkin !== undefined ? { uiSkin } : {}) });
 });
 
 // GET/PUT /api/profile/availability — available / busy / away (shown when assigning tickets)

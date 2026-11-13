@@ -8,6 +8,15 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.23',
+    date: '13 novembre 2026',
+    title: 'Interface « Pro »',
+    changes: [
+      { type: 'new',  text: 'Deux interfaces au choix (Profil → Affichage → Interface) : « Classique », et « Pro » — palette neutre, angles droits, sans effets de verre, dégradés, lueurs ni animations. Mêmes pages et mêmes fonctions, modes sombre et clair disponibles dans les deux. Le choix suit le compte sur tous les navigateurs' },
+      { type: 'tech', text: 'Tests : 874 vérifications automatiques ; le test de fumée passe aussi en interface Pro (sombre et claire)' },
+    ]
+  },
+  {
     version: 'v2.22.1',
     date: '13 novembre 2026',
     title: 'Barre latérale sans le menu Serveur',

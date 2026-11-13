@@ -15,7 +15,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'indigo', s
 
   return (
     <div
-      className="relative bg-surface-card rounded-2xl p-5 overflow-hidden
+      className="stat-card relative bg-surface-card rounded-2xl p-5 overflow-hidden
                  transition-all duration-200 group cursor-default"
       style={{
         border: '1px solid rgba(255,255,255,0.06)',
@@ -32,7 +32,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'indigo', s
     >
       {/* Top accent line */}
       <div
-        className="absolute top-0 left-0 right-0 h-[2px] opacity-60 group-hover:opacity-90 transition-opacity"
+        className="stat-accent absolute top-0 left-0 right-0 h-[2px] opacity-60 group-hover:opacity-90 transition-opacity"
         style={{ background: `linear-gradient(90deg, transparent 0%, ${c.bar} 35%, ${c.bar} 65%, transparent 100%)` }}
       />
 
@@ -59,7 +59,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'indigo', s
 
         {/* Icon */}
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5
+          className={`stat-icon w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5
                       transition-transform duration-200 group-hover:scale-110 ${c.icon}`}
           style={{ boxShadow: `0 0 16px ${c.ring}` }}
         >
@@ -69,7 +69,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'indigo', s
 
       {/* Bottom glow fade */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity"
+        className="stat-fade absolute bottom-0 left-0 right-0 h-12 pointer-events-none opacity-20 group-hover:opacity-30 transition-opacity"
         style={{ background: `radial-gradient(ellipse at 50% 100%, ${c.bar} 0%, transparent 70%)` }}
       />
     </div>

@@ -3242,6 +3242,10 @@ async function main() {
     const pr = await req('GET', '/api/profile/prefs', { sid: sessions.S1 });
     const bad = await req('PUT', '/api/profile/prefs', { sid: sessions.S1, body: { splitView: 'oui' } });
     check('préférences: vue fractionnée enregistrée', r2.status === 200 && pr.body.splitView === true && bad.status === 400, JSON.stringify([r2.body, pr.body, bad.status]));
+    const sk = await req('PUT', '/api/profile/prefs', { sid: sessions.S1, body: { uiSkin: 'pro' } });
+    const skGet = await req('GET', '/api/profile/prefs', { sid: sessions.S1 });
+    const skBad = await req('PUT', '/api/profile/prefs', { sid: sessions.S1, body: { uiSkin: 'neon' } });
+    check('préférences: interface Pro enregistrée (valeur inconnue refusée)', sk.status === 200 && skGet.body.uiSkin === 'pro' && skBad.status === 400, JSON.stringify([sk.body, skGet.body.uiSkin, skBad.status]));
   }
 
   // ── Team: period comparison, reopen rates, CSV exports, planned absences, guided tour ──

@@ -643,3 +643,96 @@ html.light .data-table tbody tr { border-bottom-color: rgba(20,20,42,0.05); }
 html.light .data-table tbody tr:hover { background: rgba(20,20,42,0.03); }
 html.light .shadow-card,
 html.light [class*="shadow-card"] { box-shadow: 0 1px 3px rgba(20,20,42,0.07), 0 0 0 1px rgba(20,20,42,0.06); }
+
+/* ─── Skin « Pro » (html[data-ui="pro"], Profil → Affichage) ─────────────
+   Neutral palette, square corners, no glass, gradient, glow or entrance animation. Everything
+   else (pages, components) is shared with the classic skin: only the tokens change. */
+html[data-ui="pro"] {
+  /* Tailwind radii: every rounded-* utility reads these */
+  --radius-xs: 2px; --radius-sm: 2px; --radius-md: 3px; --radius-lg: 4px;
+  --radius-xl: 4px; --radius-2xl: 4px; --radius-3xl: 4px; --radius-4xl: 4px;
+  --ui-radius-sm: 2px; --ui-radius-md: 3px; --ui-radius-lg: 4px; --ui-radius-xl: 4px; --ui-radius-2xl: 4px;
+
+  --color-base: #0f1115;
+  --color-surface: #14171c;
+  --color-surface-card: #181c22;
+  --color-surface-hover: #1f242b;
+  --color-surface-elevated: #232931;
+  --color-ink-1: #e8eaed;
+  --color-ink-2: #b7bdc6;
+  --color-ink-3: #9aa2ad;
+  --color-ink-4: #8793a0; /* ≥ 4.5:1 on every surface, blended rows included */
+  --color-primary: #2f6feb;
+  --color-primary-light: #7aa7ff;
+  --color-primary-dark: #2558c4;
+  --color-primary-muted: rgba(47, 111, 235, 0.14);
+  --color-primary-glow: transparent;
+  --border-focus: rgba(47, 111, 235, 0.6);
+  --color-border-focus: rgba(47, 111, 235, 0.6);
+  /* Brand violet / indigo utilities become the same blue */
+  --color-violet-200: #a9c1ff; --color-violet-300: #a9c1ff; --color-violet-400: #7aa7ff;
+  --color-violet-500: #2f6feb; --color-violet-600: #2558c4; --color-violet-700: #1f4aa6;
+  --color-indigo-300: #a9c1ff; --color-indigo-500: #2f6feb; --color-indigo-600: #2558c4;
+}
+html.light[data-ui="pro"] {
+  --color-base: #f3f4f6;
+  --color-surface: #fafafa;
+  --color-surface-card: #ffffff;
+  --color-surface-hover: #eceef1;
+  --color-surface-elevated: #ffffff;
+  --color-ink-1: #15181d;
+  --color-ink-2: #3a4049;
+  --color-ink-3: #4e5560;
+  --color-ink-4: #5c6470;
+  --color-primary: #2563eb;
+  --color-primary-light: #1d4ed8; /* used as text */
+  --color-primary-dark: #1e40af;
+  --color-violet-200: #1d4ed8; --color-violet-300: #1d4ed8; --color-violet-400: #1d4ed8;
+  --color-violet-500: #2563eb; --color-violet-600: #1e40af; --color-violet-700: #1e3a8a;
+  --color-indigo-300: #1d4ed8; --color-indigo-500: #2563eb; --color-indigo-600: #1e40af;
+  --border: rgba(21, 24, 29, 0.12);
+  --border-hover: rgba(21, 24, 29, 0.2);
+}
+html[data-ui="pro"] body {
+  font-feature-settings: normal;
+  font-variation-settings: 'opsz' 14;
+}
+/* Flat surfaces: no blur, no shadow, no glow */
+html[data-ui="pro"] .glass,
+html[data-ui="pro"] .glass-dark,
+html[data-ui="pro"] .glass-card {
+  background: var(--color-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-ui="pro"] [class*="backdrop-blur"] { backdrop-filter: none; -webkit-backdrop-filter: none; }
+html[data-ui="pro"] [class*="shadow-"] { --tw-shadow: 0 0 #0000; }
+html[data-ui="pro"] .shadow-card,
+html[data-ui="pro"] [class*="shadow-card"],
+html[data-ui="pro"] .btn-primary,
+html[data-ui="pro"] .btn-primary:hover,
+html[data-ui="pro"] .react-hot-toast > div { box-shadow: none !important; }
+html[data-ui="pro"] .card { border-color: var(--border); }
+html[data-ui="pro"] .input-base:focus { border-color: var(--color-primary); }
+/* Gradients become the plain brand colour */
+html[data-ui="pro"] [class*="bg-linear-to-"] { background-image: none; background-color: var(--color-primary); }
+html[data-ui="pro"] [class*="bg-linear-to-"].from-red-500 { background-color: var(--color-danger); }
+html[data-ui="pro"] [class*="bg-linear-to-"].from-surface-hover { background-color: var(--color-surface-elevated); }
+html[data-ui="pro"] [class*="bg-linear-to-"].from-transparent { background-color: transparent; }
+/* No decoration or motion */
+html[data-ui="pro"] :is(.animate-in, .animate-fade-in, .animate-slide-up, .animate-slide-down, .animate-scale-in, .animate-bubble-in, .animate-glow-pulse, .animate-mesh-drift) { animation: none; }
+html[data-ui="pro"] :is(.animate-orb-1, .animate-orb-2, .animate-orb-3) { display: none; }
+html[data-ui="pro"] .shimmer { animation: none; background: var(--color-surface-hover); }
+html[data-ui="pro"] .noise::after,
+html[data-ui="pro"] .glow-top::before,
+html[data-ui="pro"] .dot-pulse::after { content: none; }
+html[data-ui="pro"] .btn:active:not(:disabled) { transform: none; }
+html[data-ui="pro"] :is(.blur-lg, .blur-xl, .blur-2xl, .blur-3xl, [class*="blur-["]) { display: none; }
+/* Stat cards carry their glow as inline styles: overridden here */
+html[data-ui="pro"] .stat-card { box-shadow: none !important; border: 1px solid var(--border) !important; }
+html[data-ui="pro"] .stat-card :is(.stat-accent, .stat-fade) { display: none; }
+html[data-ui="pro"] .stat-card .stat-icon { box-shadow: none !important; transform: none !important; }
+/* Pills (badges, chips, tabs) are squared; avatars and status dots stay round */
+html[data-ui="pro"] :is(span, a, button, div).rounded-full[class*="px-"] { border-radius: var(--radius-sm); }
+html[data-ui="pro"] ::selection { background: rgba(47, 111, 235, 0.3); }
+html[data-ui="pro"] :focus-visible { outline-color: var(--color-primary); border-radius: 2px; }

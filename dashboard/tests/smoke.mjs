@@ -61,11 +61,13 @@ const RUNS = [
   { run: 'light', theme: 'light', viewport: { width: 1440, height: 900 } },
   { run: 'mobile', theme: 'dark', viewport: { width: 390, height: 844 }, mobile: true },
   { run: 'en', theme: 'dark', viewport: { width: 1440, height: 900 }, lang: 'en' },
+  { run: 'pro', theme: 'dark', viewport: { width: 1440, height: 900 }, skin: 'pro' },
+  { run: 'pro-light', theme: 'light', viewport: { width: 1440, height: 900 }, skin: 'pro' },
 ];
 
-for (const { run: theme, theme: colorTheme, viewport, mobile, lang } of RUNS) {
+for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RUNS) {
   const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile, locale: 'fr-FR' });
-  await page.addInitScript(([t, l]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); }, [colorTheme, lang]);
+  await page.addInitScript(([t, l, sk]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); if (sk) localStorage.setItem('uiSkin', sk); }, [colorTheme, lang, skin]);
   page.on('console', m => { if (m.type() === 'error' && !IGNORED.test(m.text())) failures.push(`[${theme}] console: ${m.text()}`); });
   page.on('pageerror', e => failures.push(`[${theme}] page: ${e.message}`));
   let anonymous = false;

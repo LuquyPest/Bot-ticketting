@@ -9,6 +9,7 @@ import { clearAllDrafts } from './hooks/useDraft';
 import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { adoptAccountSkin } from './ui/skin';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import { adoptAccountLang } from './i18n';
 import WhatsNew, { useWhatsNew } from './components/WhatsNew';
@@ -119,6 +120,7 @@ export default function App() {
         setUser(r.data);
         // Language chosen on another browser of the account
         api.get('/profile/language').then(l => adoptAccountLang(l.data.lang)).catch(() => {});
+        api.get('/profile/prefs').then(p => adoptAccountSkin(p.data.uiSkin)).catch(() => {});
       })
       .catch(() => {})
       .finally(() => setLoading(false));

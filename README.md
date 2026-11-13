@@ -13,7 +13,7 @@
 ![Redis 7](https://img.shields.io/badge/Redis-7-FF4438?style=flat-square&logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 <br>
-![Tests](https://img.shields.io/badge/tests-873_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-874_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
 ![Licence](https://img.shields.io/badge/licence-propriétaire-lightgrey?style=flat-square)
@@ -548,6 +548,8 @@ Les utilisateurs peuvent activer la **double authentification TOTP** depuis leur
 Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de passe ou TOTP), déconnexion automatique après 30 min d'inactivité, mot de passe manager de 12 caractères minimum.
 
 ### Pages disponibles
+
+**Deux interfaces** (Profil → Affichage → Interface, enregistré sur le compte comme la langue) : **Classique**, et **Pro** — palette neutre bleu/gris, angles droits, aucun effet de verre, dégradé, lueur ni animation d'entrée. Les deux partagent toutes les pages et fonctions, et chacune a un mode sombre et un mode clair. Techniquement, la peau Pro est un attribut `html[data-ui="pro"]` qui remplace les jetons de couleur et de rayon de `dashboard/src/index.css` (section « Skin Pro ») : rien n'est dupliqué dans les composants.
 
 La barre latérale range les pages en catégories repliables (**Support**, **Suivi**, **Équipe**, **Configuration**, **Administration**) ; chaque catégorie garde son état ouvert ou fermé dans le navigateur, celle de la page affichée s'ouvre d'elle-même, et une catégorie fermée signale les tickets non attribués et les nouveautés. Le changement de serveur se fait depuis la page `/select-guild` (« Mes serveurs »).
 
@@ -1122,7 +1124,7 @@ Chaque base de serveur enregistre les versions de schéma appliquées (table `sc
 
 ## Tests
 
-Suite d'intégration (`tests/integration/harness.js`, 873 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
+Suite d'intégration (`tests/integration/harness.js`, 874 vérifications) : elle démarre le vrai serveur web et la logique du bot contre une base MariaDB et un Redis, avec un faux client Discord, et vérifie les permissions, la visibilité, l'isolation entre serveurs, la 2FA, le journal, le parcours des messages privés, l'espace membre, le chiffrement, etc. Un **tour complet** appelle chaque route de l'API (avec un compte autorisé, et un compte qui doit être refusé pour les routes sensibles) et exécute chaque commande Discord dans un salon de ticket.
 
 ```bash
 npm run test:integration   # lance MariaDB + Redis jetables (Docker), exécute la suite, nettoie

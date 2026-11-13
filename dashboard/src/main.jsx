@@ -7,6 +7,9 @@ import './index.css';
 import { purgeOldDrafts } from './hooks/useDraft';
 import { startTranslation } from './i18n';
 import { installErrorReporting } from './utils/reportError';
+import { applySkin, readSkin } from './ui/skin';
+
+applySkin(readSkin());
 
 purgeOldDrafts();
 installErrorReporting();
