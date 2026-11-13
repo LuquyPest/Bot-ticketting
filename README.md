@@ -549,7 +549,7 @@ Comptes superadmin/manager : verrouillage de 15 min après 5 échecs (mot de pas
 
 ### Pages disponibles
 
-La barre latérale range les pages en catégories repliables (**Support**, **Suivi**, **Équipe**, **Configuration**, **Administration**) ; chaque catégorie garde son état ouvert ou fermé dans le navigateur, celle de la page affichée s'ouvre d'elle-même, et une catégorie fermée signale les tickets non attribués et les nouveautés.
+La barre latérale range les pages en catégories repliables (**Support**, **Suivi**, **Équipe**, **Configuration**, **Administration**) ; chaque catégorie garde son état ouvert ou fermé dans le navigateur, celle de la page affichée s'ouvre d'elle-même, et une catégorie fermée signale les tickets non attribués et les nouveautés. Le changement de serveur se fait depuis la page `/select-guild` (« Mes serveurs »).
 
 | Page | Accès | Description |
 |------|-------|-------------|

@@ -15,7 +15,6 @@ import NotificationBell from './NotificationBell';
 import RunningTimer from './RunningTimer';
 import { AVAILABILITY } from '../utils/availability';
 import CommandPalette from './CommandPalette';
-import GuildSwitcher from './GuildSwitcher';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -279,13 +278,8 @@ export default function Sidebar() {
 
         <RunningTimer />
 
-        {/* Guild switcher */}
-        <div className="px-2 pb-1 border-t border-overlay/6 pt-2">
-          <GuildSwitcher />
-        </div>
-
         {/* User footer */}
-        <div className="px-2 pb-3 pt-2">
+        <div className="px-2 pb-3 pt-2 border-t border-overlay/6">
           <div className="px-2.5 py-2.5 rounded-xl bg-overlay/3 border border-overlay/5">
           <div className="flex items-center gap-2.5">
             {/* Avatar — link to profile page */}

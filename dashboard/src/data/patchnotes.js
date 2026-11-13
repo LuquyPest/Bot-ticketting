@@ -8,6 +8,14 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v2.22.1',
+    date: '13 novembre 2026',
+    title: 'Barre latérale sans le menu Serveur',
+    changes: [
+      { type: 'impr', text: 'Le menu « Serveur » est retiré de la barre latérale (changement de serveur : page /select-guild)' },
+    ]
+  },
+  {
     version: 'v2.22',
     date: '13 novembre 2026',
     title: 'Rôles, menu par catégories et nouveau ticket',
