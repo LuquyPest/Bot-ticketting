@@ -78,6 +78,10 @@ const SHOTS = [
   ['dashboard-light', '/', { theme: 'light' }],
   ['ticket-mobile', `/tickets/${T.id}`, { viewport: { width: 390, height: 844 }, mobile: true }],
   ['login', '/login', { anonymous: true }],
+  // « Pro » skin (Profil → Affichage → Interface)
+  ['pro-dashboard', '/', { skin: 'pro' }],
+  ['pro-ticket', `/tickets/${T.id}`, { skin: 'pro' }],
+  ['pro-tickets-light', '/tickets', { skin: 'pro', theme: 'light' }],
 ];
 
 const server = await preview({ preview: { host: '127.0.0.1', port: 4176, strictPort: true, proxy: {} }, logLevel: 'error' });
@@ -86,7 +90,7 @@ const browser = await chromium.launch(process.env.CHROME ? { executablePath: pro
 
 for (const [name, p, o = {}] of SHOTS) {
   const page = await browser.newPage({ viewport: o.viewport || { width: 1440, height: 900 }, isMobile: !!o.mobile, hasTouch: !!o.mobile, locale: 'fr-FR', deviceScaleFactor: o.mobile ? 2 : 1 });
-  await page.addInitScript(t => { localStorage.setItem('theme', t); localStorage.setItem('uiLang', 'fr'); }, o.theme || 'dark');
+  await page.addInitScript(([t, sk]) => { localStorage.setItem('theme', t); localStorage.setItem('uiLang', 'fr'); localStorage.setItem('uiSkin', sk); }, [o.theme || 'dark', o.skin || 'classic']);
   await page.route('**/api/**', route => {
     const u = new URL(route.request().url());
     if (o.anonymous && (u.pathname.endsWith('/auth/me') || u.pathname === '/api/member/me')) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });

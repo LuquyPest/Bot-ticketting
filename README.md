@@ -87,6 +87,24 @@ Les membres écrivent au bot **en message privé** ; chaque demande devient un *
   </tr>
 </table>
 
+<h3 align="center">Interface « Pro »</h3>
+<p align="center"><sub>Au choix dans le profil : la même application, en palette neutre, angles droits, sans effets. Sombre ou clair.</sub></p>
+<p align="center">
+  <img src="docs/images/pro-dashboard.png" alt="Interface Pro : tableau de bord en mode sombre" width="100%">
+</p>
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/pro-ticket.png" alt="Interface Pro : fiche ticket">
+      <p align="center"><b>Fiche ticket</b></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/pro-tickets-light.png" alt="Interface Pro : liste des tickets en mode clair">
+      <p align="center"><b>Liste des tickets, mode clair</b></p>
+    </td>
+  </tr>
+</table>
+
 <table>
   <tr>
     <td width="230" valign="top"><img src="docs/images/ticket-mobile.png" alt="Fiche ticket sur téléphone" width="220"></td>
