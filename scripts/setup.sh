@@ -41,6 +41,9 @@ case "$PROXY" in
   3) COMPOSE_FILE="docker-compose.yml" ;;
   *) COMPOSE_FILE="docker-compose.yml:docker-compose.caddy.yml" ;;
 esac
+ask BACKUP "Sauvegarder les bases chaque nuit dans ./backups ? (o/n)" "o"
+[[ "$BACKUP" =~ ^[oOyY] ]] && COMPOSE_FILE="$COMPOSE_FILE:docker-compose.backup.yml"
+TZ_HOST="$(cat /etc/timezone 2>/dev/null || timedatectl show -p Timezone --value 2>/dev/null || echo UTC)"
 echo
 
 # VAPID keys for push notifications: from the published image, or a local Node, otherwise skipped
@@ -50,6 +53,7 @@ VAPID="$( (docker run --rm --entrypoint node ghcr.io/luquypest/bot-ticketting:la
 if [[ -n "$VAPID" ]]; then VAPID_PUBLIC_KEY="${VAPID% *}"; VAPID_PRIVATE_KEY="${VAPID#* }"; else echo "⚠️  Clés VAPID non générées (pas d'image ni de Node) : notifications push désactivées, voir INSTALL.md."; fi
 
 [[ -f .env ]] && { cp .env ".env.bak.$(date +%Y%m%d%H%M%S)"; echo "Ancien .env sauvegardé."; }
+mkdir -p backups && chmod 700 backups
 umask 077
 cat > .env <<ENV
 # Généré par scripts/setup.sh le $(date -I). Garde ce fichier privé (chmod 600) : il contient tous les secrets.
@@ -62,6 +66,7 @@ PUBLIC_URL=https://$PUBLIC_HOST
 ACME_EMAIL=$ACME_EMAIL
 VAPID_CONTACT=$ACME_EMAIL
 COMPOSE_FILE=$COMPOSE_FILE
+TZ=$TZ_HOST
 
 DB_ROOT_PASSWORD=$(gen)
 DB_PASSWORD=$(gen)
@@ -73,6 +78,8 @@ VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
 
 CONTACT_EMAIL=$ACME_EMAIL
 TICKETBOT_VERSION=latest
+BACKUP_TIME=03:00
+BACKUP_KEEP_DAYS=30
 ENV
 chmod 600 .env
 

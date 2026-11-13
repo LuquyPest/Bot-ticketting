@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Backs up every database (global + one per Discord server) to backups/ticketbot-<date>.sql.gz,
+# One-off backup of every database (global + one per Discord server) to backups/ticketbot-<date>.sql.gz,
 # then prunes the archives older than KEEP_DAYS (30). Redis only holds sessions and queues: not saved.
-#   scripts/backup.sh            cron: 0 3 * * * /chemin/Bot-ticketting/scripts/backup.sh
+# Nightly backups: the « backup » service (docker-compose.backup.yml) does the same every night.
+#   scripts/backup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ -f .env ]] || { echo ".env introuvable."; exit 1; }

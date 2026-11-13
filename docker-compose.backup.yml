@@ -1,0 +1,23 @@
+# Nightly backup of the databases into ./backups (BACKUP_TIME, BACKUP_KEEP_DAYS in .env).
+# Add it to COMPOSE_FILE in .env, e.g. docker-compose.yml:docker-compose.caddy.yml:docker-compose.backup.yml
+# Restore: scripts/restore.sh backups/ticketbot-<date>.sql.gz — keep a copy of .env too (ENCRYPTION_KEY).
+services:
+  backup:
+    image: mariadb:11
+    restart: unless-stopped
+    entrypoint: ["/backup.sh"]
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD manquant dans .env}
+      BACKUP_TIME: ${BACKUP_TIME:-03:00}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./docker/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
