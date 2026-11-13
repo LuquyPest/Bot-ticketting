@@ -278,6 +278,13 @@ app.use('/api', (err, req, res, next) => { // eslint-disable-line no-unused-vars
   res.status(status).json({ error: status >= 500 ? 'Erreur serveur' : (err.expose && err.message) || 'Requête invalide' });
 });
 
+// Browser tab icon: the bot's own Discord avatar (default Discord avatar when it has none)
+app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
+  const url = app.locals.client?.user?.displayAvatarURL?.({ extension: 'png', size: 64 });
+  if (!url) return res.status(404).end();
+  res.set('Cache-Control', 'public, max-age=3600').redirect(302, url);
+});
+
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

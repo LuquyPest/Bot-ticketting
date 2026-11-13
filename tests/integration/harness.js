@@ -181,7 +181,7 @@ async function main() {
     },
   };
   const fakeClient = {
-    isReady: () => true, user: { id: '1', username: 'Bot de test', displayAvatarURL: () => null },
+    isReady: () => true, user: { id: '1', username: 'Bot de test', displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png' },
     application: { fetch: async () => ({ owner: { id: U.F, username: 'F' } }) },
     guilds: { fetch: async id => (id === G ? guildObj : id === G2 ? g2Discord : null), cache: new Map([[G, { name: 'Serveur Test', iconURL: () => null, members: guildObj.members }]]) },
     channels: { fetch: async id => channels.get(id) || null },
@@ -461,6 +461,8 @@ async function main() {
     check('propriétaire: accès à la section Instance sans choisir de serveur', r.status === 200, r.status);
     r = await req('GET', '/api/instance/info');
     check('instance: infos publiques (nom du bot, démo désactivée par défaut)', r.status === 200 && r.body.name === 'Bot de test' && r.body.demo === false && !('ownerIds' in r.body), JSON.stringify(r.body));
+    r = await req('GET', '/favicon.png');
+    check('icône de l onglet: avatar du bot', r.status === 302 && r.headers.location === 'https://cdn.discordapp.com/embed/avatars/0.png', JSON.stringify([r.status, r.headers.location]));
     for (const p of ['/api/sa/auth/login', '/api/sa/stats', '/api/sa/managers']) {
       r = await req(p.endsWith('login') ? 'POST' : 'GET', p, { body: { username: 'root', password: 'x' } });
       check(`super-admin retiré: ${p}`, r.status === 404, r.status);

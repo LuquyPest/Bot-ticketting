@@ -8,8 +8,10 @@ import { purgeOldDrafts } from './hooks/useDraft';
 import { startTranslation } from './i18n';
 import { installErrorReporting } from './utils/reportError';
 import { applySkin, readSkin } from './ui/skin';
+import { loadInstanceInfo } from './hooks/useInstanceInfo';
 
 applySkin(readSkin());
+loadInstanceInfo(); // bot name in the tab title as early as possible
 
 purgeOldDrafts();
 installErrorReporting();

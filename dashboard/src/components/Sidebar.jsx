@@ -228,10 +228,13 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-overlay/6">
           <div className="relative w-9 h-9 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-violet-500 via-primary to-indigo-600
-                            flex items-center justify-center shadow-lg shadow-primary/30">
-              <Bot size={17} className="text-white" />
-            </div>
+            {info?.avatar ? (
+              <img src={info.avatar} alt="" className="w-9 h-9 rounded-xl object-cover" />
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Bot size={17} className="text-primary-light" />
+              </div>
+            )}
             {/* SSE status dot */}
             <span
               className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2

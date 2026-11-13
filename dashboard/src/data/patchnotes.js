@@ -8,6 +8,14 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.3',
+    date: '14 novembre 2026',
+    title: 'Le logo, c\'est ton bot',
+    changes: [
+      { type: 'impr', text: 'L\'avatar du bot remplace le logo en haut à gauche du dashboard et sert d\'icône d\'onglet ; le titre de l\'onglet porte son nom' },
+    ]
+  },
+  {
     version: 'v3.0.2',
     date: '13 novembre 2026',
     title: 'Connexion directe au serveur',
