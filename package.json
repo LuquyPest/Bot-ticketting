@@ -1,6 +1,6 @@
 {
   "name": "bot-ticketting",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Bot Discord de tickets par messages privés, avec dashboard web temps réel (multi-serveurs)",
   "main": "index.js",
   "scripts": {
