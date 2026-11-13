@@ -8,6 +8,14 @@ export const TAG = {
 
 export const VERSIONS = [
   {
+    version: 'v3.0.2',
+    date: '13 novembre 2026',
+    title: 'Connexion directe au serveur',
+    changes: [
+      { type: 'impr', text: 'Seul le propriétaire de l\'instance voit la liste des serveurs à la connexion ; un membre du staff qui n\'a accès qu\'à un serveur arrive directement sur son dashboard (la liste reste pour ceux qui en ont plusieurs)' },
+    ]
+  },
+  {
     version: 'v3.0.1',
     date: '13 novembre 2026',
     title: 'Correctif de la connexion Discord',

@@ -39,12 +39,19 @@ export default function GuildSelect() {
   const [inviting, setInviting]   = useState(null);
   const [error, setError]         = useState(null);
   const [selectErr, setSelectErr] = useState(null);
+  // Only the owner of the instance sees the server list; anyone else with a single server goes
+  // straight to its dashboard (the list stays for staff present on several servers)
+  const [direct, setDirect]       = useState(null);
 
   const fetchGuilds = useCallback(() => {
     setLoading(true);
     setError(null);
     api.get('/auth/guilds')
-      .then(r => setGuilds(r.data))
+      .then(r => {
+        setGuilds(r.data);
+        const mine = r.data.filter(g => g.status === 'active');
+        if (!user?.isOwner && mine.length === 1) setDirect(mine[0]);
+      })
       .catch(err => {
         if (err.response?.status === 401) {
           window.location.href = '/login';
@@ -53,7 +60,7 @@ export default function GuildSelect() {
         }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.isOwner]);
 
   useEffect(() => { fetchGuilds(); }, [fetchGuilds]);
 
@@ -65,6 +72,7 @@ export default function GuildSelect() {
       await selectGuild(guildId);
     } catch (err) {
       setSelecting(null);
+      setDirect(null);
       if (err.response?.status === 403) {
         setSelectErr('Tu n\'as pas accès au dashboard de ce serveur. Contacte le fondateur.');
       } else if (err.response?.status === 404) {
@@ -87,6 +95,15 @@ export default function GuildSelect() {
       setInviting(null);
     }
   };
+
+  useEffect(() => { if (direct) handleSelect(direct.id); }, [direct]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (direct) return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-base" role="status">
+      <Loader2 size={22} className="animate-spin text-primary-light" />
+      <p className="text-sm text-ink-3">Connexion à <span className="text-ink-1 font-semibold" translate="no">{direct.name}</span>…</p>
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-base px-4 py-10">

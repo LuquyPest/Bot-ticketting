@@ -142,6 +142,27 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RU
     console.log(`${found ? 'PASS' : 'FAIL'}  ${theme} recherche messages`);
   }
 
+  // Sign-in: the owner of the instance gets the server list, anyone else with a single server goes
+  // straight to its dashboard
+  if (theme === 'dark') {
+    anonymous = false;
+    const one = [{ id: '1', name: 'Sunset FA', icon: null, iconUrl: null, status: 'active' }];
+    for (const owner of [false, true]) {
+      let selected = false;
+      const me = { ...MOCK['/api/auth/me'], guildId: null, isOwner: owner };
+      await page.route('**/api/auth/me', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(me) }));
+      await page.route('**/api/auth/guilds', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(owner ? [...one, { id: '2', name: 'Autre serveur', icon: null, status: 'not_added' }] : one) }));
+      await page.route('**/api/auth/select-guild', r => { selected = true; me.guildId = '1'; r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+      await page.goto(base + '/select-guild', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(800);
+      const listed = await page.getByText('Mes serveurs').first().isVisible().catch(() => false);
+      const ok = owner ? listed && !selected && await page.getByText('Inviter le bot').first().isVisible().catch(() => false) : selected && !page.url().includes('/select-guild');
+      if (!ok) failures.push(`[${theme}] choix du serveur (${owner ? 'propriétaire : liste attendue' : 'utilisateur : connexion directe attendue'}) — url ${page.url()}, liste ${listed}, sélection ${selected}`);
+      console.log(`${ok ? 'PASS' : 'FAIL'}  ${theme} choix du serveur ${owner ? 'propriétaire (liste)' : 'utilisateur (direct)'}`);
+      await page.unroute('**/api/auth/me'); await page.unroute('**/api/auth/guilds'); await page.unroute('**/api/auth/select-guild');
+    }
+  }
+
   // A reply typed on a ticket is still there after leaving the page
   if (theme === 'dark') {
     anonymous = false;
