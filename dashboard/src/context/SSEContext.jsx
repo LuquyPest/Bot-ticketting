@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-export const SSEContext = createContext(null);
+const SSEContext = createContext(null);
 export const useSSECtx = () => useContext(SSEContext);
 
 const KNOWN_TYPES = [

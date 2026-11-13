@@ -1,7 +1,7 @@
 // Fake API data of the dashboard tests: used by the smoke test (tests/smoke.mjs) and by the
 // README screenshots (tests/readme-shots.mjs).
 export const now = Date.now(), iso = d => new Date(now - d * 60000).toISOString();
-export const ticket = (id, o = {}) => ({ id, owner_id: '2000000000000000' + String(id).padStart(2, '0'), owner_tag: 'membre' + id, channel_id: '9' + id, claimed_by: null,
+const ticket = (id, o = {}) => ({ id, owner_id: '2000000000000000' + String(id).padStart(2, '0'), owner_tag: 'membre' + id, channel_id: '9' + id, claimed_by: null,
   status: 'open', stage: 'open', stage_changed_at: iso(30 * id), subject: 'Problème de paiement ' + id, priority: id % 3 ? 'normal' : 'urgent',
   last_message_at: iso(10 * id), created_at: iso(60 * id), closed_at: null, assignees: [{ user_id: '1', username: 'Daryu', avatar: null }],
   sla: id % 2 ? { hours: 2, elapsedMinutes: 150, state: 'breached', since: iso(150) } : { hours: 4, elapsedMinutes: 60, state: 'ok', since: iso(60) }, ...o });

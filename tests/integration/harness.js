@@ -316,7 +316,6 @@ async function main() {
   const { generateSync: otpGenerate, createGuardrails } = require('otplib');
   const legacyRails = createGuardrails({ MIN_SECRET_BYTES: 10 });
   const generateSync = o => otpGenerate({ ...o, guardrails: legacyRails });
-  const bcrypt = require('bcrypt');
   const { seal } = app('./utils/secretBox');
   const { generateRecoveryCodes } = app('./utils/totp');
   const { createManager } = app('./utils/ticketManager');

@@ -52,7 +52,7 @@ function ensureFilesExist() {
 }
 
 function ensureDependenciesInstalled() {
-  ['discord.js', 'mysql2', 'bcrypt', 'otplib', 'qrcode'].forEach(pkg => {
+  ['discord.js', 'mysql2', 'otplib', 'qrcode'].forEach(pkg => {
     try { require.resolve(pkg, { paths: [ROOT] }); }
     catch { fail(`${pkg} n'est pas installé. Fais: npm install`); }
   });
