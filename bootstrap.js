@@ -206,33 +206,6 @@ async function ensureGlobalTables(config) {
       `ALTER TABLE superadmins ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0`,
       `ALTER TABLE managers ADD COLUMN IF NOT EXISTS locked_until DATETIME DEFAULT NULL`,
-      // Announcements from the super-admin to every server's founders (DM and/or dashboard banner)
-      `CREATE TABLE IF NOT EXISTS announcements (
-        id          INT AUTO_INCREMENT PRIMARY KEY,
-        title       VARCHAR(120) NOT NULL,
-        body        TEXT NOT NULL,
-        level       ENUM('info','warning') NOT NULL DEFAULT 'info',
-        show_banner TINYINT(1) NOT NULL DEFAULT 1,
-        send_dm     TINYINT(1) NOT NULL DEFAULT 0,
-        ends_at     DATETIME DEFAULT NULL,
-        dm_sent     INT NOT NULL DEFAULT 0,
-        created_by  VARCHAR(100) NOT NULL,
-        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`,
-      // Public status page (/status): incidents, maintenances and automatic outages
-      `CREATE TABLE IF NOT EXISTS status_events (
-        id          INT AUTO_INCREMENT PRIMARY KEY,
-        kind        ENUM('incident','maintenance') NOT NULL DEFAULT 'incident',
-        component   ENUM('bot','dashboard','all') NOT NULL DEFAULT 'all',
-        severity    ENUM('minor','major') NOT NULL DEFAULT 'minor',
-        title       VARCHAR(120) NOT NULL,
-        message     TEXT DEFAULT NULL,
-        auto        TINYINT(1) NOT NULL DEFAULT 0,
-        started_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        resolved_at DATETIME DEFAULT NULL,
-        created_by  VARCHAR(100) DEFAULT NULL,
-        INDEX idx_status_started (started_at)
-      )`,
       // Per-account preferences shared by every server (last patch notes version seen…)
       `CREATE TABLE IF NOT EXISTS user_prefs (
         user_id      VARCHAR(32) NOT NULL PRIMARY KEY,

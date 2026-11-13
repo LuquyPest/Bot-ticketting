@@ -188,12 +188,6 @@ app.post('/api/demo/start', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/status — public status page (no authentication, nothing internal)
-app.get('/api/status', async (req, res) => {
-  try { res.json(await require('../utils/statusPage').publicStatus(app.locals.client)); }
-  catch { res.status(503).json({ overall: 'down' }); }
-});
-
 // POST /api/client-errors — crash report from the dashboard or the member space (utils/reportError.js
 // on the client), written to the error journal with context "navigateur". Open to signed-out
 // visitors (the login page can crash too), hence the size limits and the per-IP rate limit.
@@ -264,10 +258,6 @@ app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
 app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
-// Super-admin announcements shown as a banner to founders
-app.use('/api/announcements', withGuild(['fondateur']), async (req, res) => {
-  res.json(await require('../utils/announcements').activeBanners().catch(() => []));
-});
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));
 app.use('/api/analytics',   withGuild(['support', 'fondateur']), require('./routes/analytics'));
 app.use('/api/goals',       withGuild(['support', 'fondateur']), require('./routes/goals'));

@@ -112,7 +112,7 @@ export default function Login() {
         </div>
         <div className="text-center mt-5"><DemoButton label="Découvrir le dashboard (démo)" /></div>
         <p className="text-xs text-ink-3 text-center mt-4">
-          Tu cherches tes tickets ? <a href="/espace" className="text-primary-light underline">Espace membre</a> · <a href="/status" className="text-primary-light underline">Statut du service</a>
+          Tu cherches tes tickets ? <a href="/espace" className="text-primary-light underline">Espace membre</a>
         </p>
       </div>
     </div>

@@ -10,7 +10,6 @@ import { SSEProvider } from './context/SSEContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { adoptAccountSkin } from './ui/skin';
-import AnnouncementBanner from './components/AnnouncementBanner';
 import { adoptAccountLang } from './i18n';
 import WhatsNew, { useWhatsNew } from './components/WhatsNew';
 
@@ -55,7 +54,6 @@ const Profiles    = lazy(() => import('./pages/Profiles'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
 const Health      = lazy(() => import('./pages/Health'));
 const GuestView   = lazy(() => import('./pages/GuestView'));
-const Status      = lazy(() => import('./pages/Status'));
 
 function PageLoader() {
   return (
@@ -161,7 +159,6 @@ export default function App() {
               } />
             ))}
             {/* Temporary guest access (read-only, token in the link's fragment) */}
-            <Route path="/status" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Status /></ErrorBoundary></Suspense>} />
             <Route path="/invite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><GuestView /></ErrorBoundary></Suspense>} />
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>
@@ -209,7 +206,6 @@ export default function App() {
                         <button onClick={async () => { await logout(); window.location.href = '/login'; }} className="ml-auto underline text-ink-3 hover:text-ink-1">Quitter la démo</button>
                       </div>
                     )}
-                    <AnnouncementBanner />
                     {whatsNew.unseen.length > 0 && <WhatsNew {...whatsNew} />}
                     <Suspense fallback={<PageLoader />}>
                       <Routes>

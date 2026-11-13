@@ -1647,7 +1647,7 @@ async function main() {
     r = await req('GET', '/api/auth/guilds', { sid: F });
     check('tour: serveurs Discord sans jeton → reconnexion', r.status === 401, r.status);
 
-    // Super-admin: servers (approve, suspend, reactivate, maintenance), managers, plans, announcements
+    // Super-admin: servers (approve, suspend, reactivate, maintenance), managers
     for (const k of await redis.keys('rl:*')) await redis.del(k); // earlier sign-in tests used up the limit
     await mk('SAt', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
     const SA = sessions.SAt;
@@ -1671,7 +1671,7 @@ async function main() {
     ok('SA : réinitialiser la 2FA d un manager', await req('POST', `/api/sa/managers/${mid}/reset-totp`, { sid: SA }));
     ok('SA : supprimer un manager', await req('DELETE', `/api/sa/managers/${mid}`, { sid: SA }));
     denied('SA : managers (manager)', await req('GET', '/api/sa/managers', { sid: sessions.MGR }));
-    for (const p of ['announcements', 'settings/error-alert']) ok(`SA : ${p}`, await req('GET', `/api/sa/${p}`, { sid: SA }));
+    for (const p of ['settings/error-alert']) ok(`SA : ${p}`, await req('GET', `/api/sa/${p}`, { sid: SA }));
     ok('SA : déconnexion', await req('POST', '/api/sa/auth/logout', { sid: SA }));
     denied('SA : session terminée', await req('GET', '/api/sa/auth/me', { sid: SA }));
     await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G4]);
@@ -2126,23 +2126,10 @@ async function main() {
     check('invités: expiration automatique', (await req('GET', '/api/guest/tickets', { headers: gCookie2 })).status === 401);
   }
 
-  // ── Public status page ──
+  // ── Discord watch (the public status page is gone: one instance, one owner) ──
   {
-    await globalQuery('DELETE FROM status_events');
-    fakeClient.isReady = () => true; fakeClient.ws = { status: 0 };
     let r = await req('GET', '/api/status');
-    check('statut: page publique sans connexion', r.status === 200 && r.body.overall === 'operational' && r.body.components.bot === 'operational' && r.body.days.length === 90, JSON.stringify(r.body).slice(0, 200));
-    check('statut: rien d interne exposé', !JSON.stringify(r.body).includes(G) && !JSON.stringify(r.body).includes('Test'), '');
-    await mk('SAst', { superAdmin: { id: 1, username: 'root', type: 'superadmin', lastSeen: Date.now() } });
-    r = await req('POST', '/api/sa/status-events', { sid: sessions.SAst, body: { kind: 'incident', component: 'dashboard', severity: 'minor', title: 'Lenteurs du dashboard', message: 'On regarde.' } });
-    const evId = r.body.id;
-    r = await req('GET', '/api/status');
-    check('statut: incident déclaré visible', r.body.overall === 'degraded' && r.body.components.dashboard === 'degraded' && r.body.current.some(e => e.title === 'Lenteurs du dashboard'), JSON.stringify(r.body.current));
-    await req('PATCH', `/api/sa/status-events/${evId}`, { sid: sessions.SAst, body: { resolved: true } });
-    r = await req('GET', '/api/status');
-    check('statut: incident résolu dans l historique', r.body.overall === 'operational' && r.body.history.some(e => e.id === evId && e.resolved_at), JSON.stringify(r.body.history));
-    check('statut: gestion réservée au super-admin', (await req('POST', '/api/sa/status-events', { sid: sessions.MGR, body: { title: 'x' } })).status === 403);
-    // Outage detected by the Discord watch: recorded and closed automatically
+    check('statut public retiré: /api/status inconnu', r.status === 404, r.status);
     const { setSetting, getSetting } = app('./utils/saSettings');
     const before = await getSetting('error_alert', {});
     await setSetting('error_alert', { ...before, discordUserIds: [], webhookUrl: null, discordDownMinutes: 5 });
@@ -2151,14 +2138,10 @@ async function main() {
     const { runDiscordWatch } = app('./utils/discordWatch');
     const t0 = Date.now();
     await runDiscordWatch({ isReady: () => false, ws: { status: 5 }, users: fakeClient.users }, t0);
-    await runDiscordWatch({ isReady: () => false, ws: { status: 5 }, users: fakeClient.users }, t0 + 6 * 60000);
-    fakeClient.isReady = () => false;
-    r = await req('GET', '/api/status');
-    check('statut: coupure du bot inscrite automatiquement', r.body.components.bot === 'down' && r.body.current.some(e => e.component === 'bot'), JSON.stringify(r.body.current));
-    fakeClient.isReady = () => true;
-    await runDiscordWatch({ isReady: () => true, ws: { status: 0 }, users: fakeClient.users }, t0 + 8 * 60000);
-    r = await req('GET', '/api/status');
-    check('statut: coupure close à la reconnexion', r.body.components.bot === 'operational' && !r.body.current.length && r.body.history.some(e => e.component === 'bot' && e.resolved_at), JSON.stringify(r.body).slice(0, 200));
+    const down = await runDiscordWatch({ isReady: () => false, ws: { status: 5 }, users: fakeClient.users }, t0 + 6 * 60000);
+    check('veille Discord: coupure signalée après le délai', down.alertSent === true, JSON.stringify(down));
+    const back = await runDiscordWatch({ isReady: () => true, ws: { status: 0 }, users: fakeClient.users }, t0 + 8 * 60000);
+    check('veille Discord: reconnexion signalée', back.recovered === true, JSON.stringify(back));
     await setSetting('error_alert', before);
   }
 
@@ -2760,29 +2743,11 @@ async function main() {
     check('alerte erreurs: désactivée → aucun envoi', res.skipped === 'disabled', JSON.stringify(res));
   }
 
-  // ── Global announcements ──
-  {
-    r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'x', body: 'y', showBanner: false, sendDm: false } });
-    check('annonces: au moins un canal', r.status === 400, r.status);
-    r = await req('POST', '/api/sa/announcements', { sid: sessions.MGR, body: { title: 'x', body: 'y', showBanner: true } });
-    check('annonces: réservées au superadmin', r.status === 403, r.status);
-    memberDms.length = 0;
-    r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'Maintenance dimanche', body: 'Coupure de 22 h à 23 h.', level: 'warning', showBanner: true, sendDm: true } });
-    const ann = r.body;
-    await new Promise(res => setTimeout(res, 400));
-    const annDm = memberDms.find(m => m.id === U.F)?.p?.embeds?.[0]?.data;
-    const [annRow] = await globalQuery('SELECT dm_sent FROM announcements WHERE id = ?', [ann.id]);
-    check('annonces: MP aux fondateurs', r.status === 200 && ann.recipients >= 1 && annDm?.title === 'Maintenance dimanche' && annRow.dm_sent >= 1, JSON.stringify([ann.recipients, annDm?.title, annRow]));
-    r = await req('GET', '/api/announcements', { sid: sessions.FV });
-    check('annonces: bandeau pour les fondateurs', r.status === 200 && r.body.some(x => x.id === ann.id && x.level === 'warning'), JSON.stringify(r.body));
-    r = await req('GET', '/api/announcements', { sid: sessions.S3T });
-    check('annonces: pas de bandeau pour le support', r.status === 403, r.status);
-    await globalQuery('UPDATE announcements SET ends_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [ann.id]);
-    r = await req('GET', '/api/announcements', { sid: sessions.FV });
-    check('annonces: bandeau expiré masqué', !r.body.some(x => x.id === ann.id), JSON.stringify(r.body));
-    r = await req('DELETE', `/api/sa/announcements/${ann.id}`, { sid: sessions.SAnew });
-    check('annonces: suppression', r.status === 200, r.status);
-  }
+  // ── Announcements are gone ──
+  r = await req('GET', '/api/announcements', { sid: sessions.FV });
+  check('annonces retirées: /api/announcements inconnu', r.status === 404, r.status);
+  r = await req('POST', '/api/sa/announcements', { sid: sessions.SAnew, body: { title: 'x', body: 'y', showBanner: true } });
+  check('annonces retirées: plus de publication', r.status === 404, r.status);
 
   // ── SA health page ──
   {

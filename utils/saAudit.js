@@ -22,13 +22,8 @@ const ACTIONS = {
   'DELETE /error-logs': 'errors_clear',
   'PUT /settings/error-alert': 'error_alert_update',
   'POST /settings/error-alert/test': 'error_alert_test',
-  'POST /announcements': 'announcement_create',
-  'POST /status-events': 'status_event_create',
   'PUT /demo': 'demo_toggle',
   'POST /demo/reset': 'demo_reset',
-  'PATCH /status-events/:id': 'status_event_update',
-  'DELETE /status-events/:id': 'status_event_delete',
-  'DELETE /announcements/:id': 'announcement_delete',
 };
 
 const SECRET_KEYS = /pass|secret|totp|code|token/i;

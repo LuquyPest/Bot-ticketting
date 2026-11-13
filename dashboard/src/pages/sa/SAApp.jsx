@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert, LayoutDashboard, Bug, ScrollText, HeartPulse, Megaphone, Activity } from 'lucide-react';
+import { Bot, Building2, Users, LogOut, Loader2, ShieldAlert, LayoutDashboard, Bug, ScrollText, HeartPulse } from 'lucide-react';
 import api from '../../api';
 
 const SALogin    = lazy(() => import('./SALogin'));
@@ -8,8 +8,6 @@ const SAOverview = lazy(() => import('./SAOverview'));
 const SAErrors   = lazy(() => import('./SAErrors'));
 const SAJournal  = lazy(() => import('./SAJournal'));
 const SAHealth   = lazy(() => import('./SAHealth'));
-const SAAnnouncements = lazy(() => import('./SAAnnouncements'));
-const SAStatus = lazy(() => import('./SAStatus'));
 const SAGuilds   = lazy(() => import('./SAGuilds'));
 const SAManagers = lazy(() => import('./SAManagers'));
 const SABlocked  = lazy(() => import('./SABlocked'));
@@ -48,9 +46,7 @@ function SALayout({ children }) {
     ...(saUser?.type === 'superadmin' ? [
       { to: '/sa/managers', label: 'Managers', icon: Users },
       { to: '/sa/blocked',  label: 'Blocages', icon: ShieldAlert },
-      { to: '/sa/announcements', label: 'Annonces', icon: Megaphone },
       { to: '/sa/health',   label: 'Santé',    icon: HeartPulse },
-      { to: '/sa/status',   label: 'Statut public', icon: Activity },
       { to: '/sa/errors',   label: 'Erreurs',  icon: Bug },
       { to: '/sa/journal',  label: 'Journal',  icon: ScrollText },
     ] : [])
@@ -146,12 +142,6 @@ export default function SAApp() {
           <Route path="login" element={<SALogin />} />
           <Route path="overview" element={
             <RequireSA><SALayout><SAOverview /></SALayout></RequireSA>
-          } />
-          <Route path="announcements" element={
-            <RequireSA><SALayout><SAAnnouncements /></SALayout></RequireSA>
-          } />
-          <Route path="status" element={
-            <RequireSA><SALayout><SAStatus /></SALayout></RequireSA>
           } />
           <Route path="health" element={
             <RequireSA><SALayout><SAHealth /></SALayout></RequireSA>
