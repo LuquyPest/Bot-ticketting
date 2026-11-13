@@ -298,7 +298,7 @@ async function checkUserTotp(req, res) {
 
   const attempts = req.session.totpDisableAttempts || 0;
   if (attempts >= TOTP_DISABLE_MAX) {
-    req.session.destroy(() => {});
+    await new Promise(resolve => req.session.destroy(() => resolve()));
     res.status(429).json({ error: 'Trop de tentatives — reconnecte-toi' });
     return false;
   }

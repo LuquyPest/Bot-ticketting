@@ -14,6 +14,7 @@ export const VERSIONS = [
     changes: [
       { type: 'new',  text: 'Adresse /demo : ouvre directement la démonstration (lien du site de documentation) ; indique simplement qu\'elle est désactivée quand le propriétaire l\'a coupée' },
       { type: 'fix',  text: 'Sécurité : les copies du .env et le dossier des sauvegardes ne sont plus copiés dans une image construite sur le serveur' },
+      { type: 'fix',  text: 'Déconnexion après inactivité, trop de codes 2FA faux ou compte retiré : la session est effacée avant la réponse, sans délai pendant lequel elle restait utilisable' },
     ]
   },
   {

@@ -38,7 +38,7 @@ async function idleExpired(req, res, db, guildId) {
   const last = req.session.lastActivityAt || (req.session.lastActivityAt = Date.now());
   if (Date.now() - last > minutes * 60000) {
     const sid = req.session.id;
-    req.session.destroy(() => {});
+    await new Promise(resolve => req.session.destroy(() => resolve()));
     globalQuery('DELETE FROM user_sessions WHERE session_id = ?', [sid]).catch(() => {});
     res.status(401).json({ error: `Déconnecté après ${minutes} min d'inactivité`, code: 'idle' });
     return true;

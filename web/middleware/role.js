@@ -33,7 +33,7 @@ module.exports = function requireRole(...roles) {
       }
 
       if (!dbUser) {
-        req.session.destroy(() => {});
+        await new Promise(resolve => req.session.destroy(() => resolve()));
         return res.status(401).json({ error: 'Utilisateur introuvable dans ce serveur' });
       }
 
