@@ -24,6 +24,13 @@ module.exports = {
     await Promise.all(guilds.map(g => syncGuild(client, g)));
     logger.info('Synchronisation terminée');
 
+    // A public bot can be invited by anyone, and every server is active on arrival
+    const app = await client.application?.fetch().catch(() => null);
+    const { allowedGuilds } = require('../utils/config').config;
+    if (app?.botPublic && !allowedGuilds?.length) {
+      logger.warn('Bot public sans ALLOWED_GUILDS : n\'importe qui peut l\'ajouter à son serveur, qui sera activé. Décoche « Public Bot » dans le portail Discord ou renseigne ALLOWED_GUILDS.');
+    }
+
     // Tenant migrations are idempotent: apply them to every active guild, not only when a server arrives.
     // The scheduled jobs wait for them ('tenantsMigrated', index.js): a job would otherwise query
     // a table a new version has not created yet.

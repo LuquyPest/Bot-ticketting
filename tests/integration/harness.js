@@ -361,6 +361,9 @@ async function main() {
     const loose = createProxyTrust({ hops: 1, host: 'introuvable', lookup: async () => { throw new Error('ENOTFOUND'); }, refreshMs: 0 });
     await loose.ready;
     check('proxy: sans nom résolu, nombre de sauts seul', loose('10.0.0.1', 0) && !loose('10.0.0.1', 1), '');
+    const none = createProxyTrust({ hops: 1, host: '', refreshMs: 0 });
+    check('proxy: sans reverse proxy, en-tête cru d un proxy local (boucle, réseau privé, Docker)', none('127.0.0.1', 0) && none('::ffff:172.17.0.1', 0) && none('192.168.1.10', 0) && none('::1', 0));
+    check('proxy: sans reverse proxy, en-tête d un client Internet ignoré (pas d usurpation d IP)', !none('203.0.113.7', 0) && !none('::ffff:8.8.8.8', 0) && !none('2001:db8::1', 0) && !loose('198.51.100.4', 0));
   }
   // Without a body (or with another Content-Type) a route answers 400, it does not crash
   r = await req('POST', '/api/tickets/1/notes', { sid: sessions.F });
@@ -443,9 +446,9 @@ async function main() {
     inst.resetOwnerCache();
     check('propriétaire: propriétaire de l application Discord', (await inst.ownerIds(fakeClient)).includes(U.F) && !(await inst.isOwner(fakeClient, U.S1)));
     inst.resetOwnerCache();
-    const teamClient = { application: { fetch: async () => ({ owner: { ownerId: U.S2, members: new Map([[U.S3, { id: U.S3, role: 'admin' }], ['100000000000000005', { id: '100000000000000005', role: 'read_only' }]]) } }) } };
+    const teamClient = { application: { fetch: async () => ({ owner: { ownerId: U.S2, members: new Map([[U.S3, { id: U.S3, role: 'admin' }], ['100000000000000005', { id: '100000000000000005', role: 'read_only' }], ['100000000000000006', { id: '100000000000000006' }]]) } }) } };
     const team = await inst.ownerIds(teamClient);
-    check('propriétaire: application d une équipe → propriétaire et admins', team.includes(U.S2) && team.includes(U.S3) && !team.includes('100000000000000005'), JSON.stringify(team));
+    check('propriétaire: application d une équipe → propriétaire et admins', team.includes(U.S2) && team.includes(U.S3) && !team.includes('100000000000000005') && !team.includes('100000000000000006'), JSON.stringify(team));
     inst.resetOwnerCache();
     const cfgO = app('./utils/config').config;
     cfgO.ownerIds = ['100000000000000007'];

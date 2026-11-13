@@ -19,7 +19,8 @@ async function ownerIds(client) {
     const owner = app?.owner;
     if (owner?.members) { // Team
       if (owner.ownerId) ids.add(owner.ownerId);
-      for (const m of owner.members.values()) if (m.role === 'admin' || m.role === undefined) ids.add(m.id ?? m.user?.id);
+      // Admins only; a member whose role is unknown is not trusted
+      for (const m of owner.members.values()) if (m.role === 'admin') ids.add(m.id ?? m.user?.id);
     } else if (owner?.id) {
       ids.add(owner.id);
     }

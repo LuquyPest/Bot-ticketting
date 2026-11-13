@@ -14,6 +14,8 @@ export const VERSIONS = [
     changes: [
       { type: 'impr', text: 'L\'avatar du bot remplace le logo en haut à gauche du dashboard et sert d\'icône d\'onglet ; le titre de l\'onglet porte son nom' },
       { type: 'tech', text: 'README refait : court, avec des captures de l\'interface Pro ; dépendance bcrypt retirée (plus utilisée depuis la v3.0)' },
+      { type: 'fix',  text: 'Sécurité : sans reverse proxy nommé, l\'adresse X-Forwarded-For n\'est plus crue venant d\'un client Internet (usurpation d\'IP impossible) ; propriétaires d\'une application d\'équipe limités aux admins ; conteneur de sauvegarde réduit aux droits nécessaires ; avertissement au démarrage si le bot est public sans ALLOWED_GUILDS' },
+      { type: 'tech', text: 'Tests : 876 vérifications automatiques' },
     ]
   },
   {

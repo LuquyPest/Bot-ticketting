@@ -6,6 +6,15 @@ services:
     image: mariadb:11
     restart: unless-stopped
     entrypoint: ["/backup.sh"]
+    # Root inside the container only to write into ./backups and hand the archives to its owner
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD manquant dans .env}
       BACKUP_TIME: ${BACKUP_TIME:-03:00}
