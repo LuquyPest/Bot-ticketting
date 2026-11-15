@@ -1,112 +1,179 @@
 # Installation
 
-One server, Docker, a domain name: twenty minutes. Every install is independent — your bot, your database, your data, no link to the author or to any other instance. You are its only administrator: no account to create, you sign in with your Discord account.
+One server, Docker, a domain name: **about twenty minutes**, step by step. Every install is independent — your bot, your database, your data, no link to the author or to any other instance. You are its only administrator: no account to create, you sign in with your Discord account.
 
-*Version française : [Installation](../guide/installation).* The dashboard itself is available in French and English (per-user setting).
+*Version française : [Installation](../guide/installation).* Screenshots show the French interface; the dashboard follows your browser language (English or French).
 
-## 1. What you need
+::: tip Using Portainer, Coolify, Unraid or CasaOS?
+A standalone compose file can be pasted straight into your tool: [Portainer, Coolify, Unraid, CasaOS](./tools).
+:::
+
+## What you are setting up
+
+![Your domain leads to your server, which runs the bot connected to Discord](/images/guide-overview.png)
+
+Three things to connect: **your Discord application** (step 3), **your server** that runs the bot (steps 1, 4 and 5) and **your domain** that leads to it (step 2).
+
+## What you need
 
 | | Why |
 |---|---|
-| A Linux server (1 GB of RAM is enough) with **Docker** and **Docker Compose v2** | everything runs in containers: MariaDB, Redis, the bot and its dashboard |
-| A **domain name** pointing to that server (`tickets.example.com`) | Discord only allows signing in to the dashboard over HTTPS on a public address |
-| **Ports 80 and 443** open | automatic HTTPS certificates (Let's Encrypt) — unless you already run a reverse proxy |
-| A **Discord application** (step 2) | the bot itself and the "Sign in with Discord" button |
+| A **Linux server** (a VPS, 1 GB of RAM is enough) | The bot runs all the time; a machine at home works too if it stays on |
+| A **domain name** (or a subdomain, like `tickets.example.com`) | Discord only allows signing in to the dashboard over HTTPS on a public address |
+| **Ports 80 and 443** open | For the automatic HTTPS certificate |
+| A **Discord account** | It becomes the owner of your instance |
 
-Installing Docker: <https://docs.docker.com/engine/install/>.
+## Step 1 — Install Docker
 
-## 2. Create the Discord application
+On the server, over SSH. The official method, for Debian or Ubuntu:
 
-On <https://discord.com/developers/applications>:
+![Install Docker then check its version](/images/install-docker.png)
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER   # then log out and back in
+```
+
+::: tip Check
+`docker compose version` must answer with a version number. Other systems: [docs.docker.com/engine/install](https://docs.docker.com/engine/install/).
+:::
+
+## Step 2 — Point the domain
+
+At your domain provider (OVH, Gandi, Cloudflare, Namecheap…), open the **DNS zone** and add an **A** record to the IP address of the server:
+
+![Add an A record in the DNS zone](/images/guide-dns.png)
+
+| Type | Name | Value |
+|---|---|---|
+| `A` | `tickets` (for `tickets.example.com`) | the IPv4 address of the server |
+
+::: tip Check
+`ping tickets.example.com` must answer with the address of your server. Propagation takes from a few minutes to an hour.
+:::
+
+## Step 3 — Create the bot on Discord
+
+Open the [Discord developer portal](https://discord.com/developers/applications) and sign in with the account that will administer the instance.
+
+### Create the application
+
+1. **New Application** → give it the name of your bot → **Create**.
+2. **General Information** page: copy the **Application ID**.
 
 ![Developer portal: New Application, then copy the Application ID](/images/guide-discord-app.png)
 
-1. **New Application**, name it after your bot.
-2. **Bot** tab → **Reset Token** → copy the **token** (it is shown once). Untick **Public Bot**: only you will be able to invite the bot.
-3. Still under **Bot**, *Privileged Gateway Intents*: enable **Server Members Intent** and **Message Content Intent** (without them the bot cannot read direct messages).
+### The bot
+
+3. **Bot** tab:
+   - **Reset Token** → copy the **token** (it will never be shown again);
+   - untick **Public Bot**: only you will be able to invite the bot;
+   - under *Privileged Gateway Intents*, enable **Server Members Intent** and **Message Content Intent**, then **Save Changes**.
+
 ![Bot tab: Reset Token, Public Bot off, intents on](/images/guide-discord-bot.png)
 
-4. **OAuth2** tab → copy the **Client Secret** (*Reset Secret* if needed). The **Application ID** is on *General Information*.
-5. Still under **OAuth2** → *Redirects* → **Add Redirect**: `https://tickets.example.com/api/auth/discord/callback` (your domain, exactly this path). Save.
+### Signing in to the dashboard
+
+4. **OAuth2** tab:
+   - **Reset Secret** → copy the **Client Secret**;
+   - under *Redirects*, **Add Redirect**: `https://tickets.example.com/api/auth/discord/callback` (with your domain, exactly this ending) → **Save Changes**.
 
 ![OAuth2 tab: Reset Secret, redirect URL](/images/guide-discord-oauth.png)
 
-You now have three values: the token, the Application ID and the Client Secret. **The Discord account that owns this application owns the instance** (for a team application: the team owner and admins).
+You now have three values: the **Application ID**, the **token** and the **Client Secret**.
 
-## 3. Install
+::: warning Never share the token or the Client Secret
+They give control of your bot. If they leak: **Reset Token** / **Reset Secret** in the portal, then run `scripts/setup.sh` again.
+:::
+
+## Step 4 — Install and configure
 
 ```bash
 git clone https://github.com/LuquyPest/Bot-ticketting.git
 cd Bot-ticketting
-scripts/setup.sh
+scripts/setup.sh --lang en
 ```
 
-![setup.sh asks its questions, then writes .env](/images/install-setup.png)
+The script asks a few questions and **generates everything else**: passwords, encryption keys, notification keys. The token and the Client Secret are typed without being shown.
 
-The script (prompts in French) asks for the token, the application ID, the client secret, your domain, your e-mail, the HTTPS mode and the nightly backup, then generates every password and secret into `.env` (private file, `chmod 600`).
+![setup.sh asks its questions then writes the .env file](/images/install-setup.png)
 
-Three HTTPS modes:
+| Question | Answer |
+|---|---|
+| Language | **2** English (or `--lang en` as above) |
+| HTTPS | **1** (bundled Caddy) in most cases. **2** if you already run Traefik, **3** if you have your own reverse proxy |
+| Back up every night | **y**: an encrypted backup of every database, every night, in `backups/` |
+| Check every week | **y**: the latest archive is decrypted and tested on Sundays ([details](./backups#automatic-check)) |
+| Copy off the server | Optional: the rclone wizard creates the destination (S3, Backblaze, SFTP…) — [details](./backups#off-the-server) |
+| « Update » button | Optional: updates from the dashboard — [what it implies](./updates#update-from-the-dashboard) |
 
-- **Bundled Caddy** (default): nothing to configure, automatic certificates. Needs ports 80 and 443.
-- **Existing Traefik**: the bot joins the `proxy` Docker network with labels for the `web`/`websecure` entrypoints and the `letsencrypt` resolver; edit `docker-compose.traefik.yml` if your names differ.
-- **None**: the dashboard listens on `127.0.0.1:3000`; put your own proxy in front (Nginx: `proxy_buffering off;` for the real-time stream) and set `TRUSTED_PROXY_HOST` or `TRUST_PROXY_HOPS` in `.env`.
+Everything is written to the `.env` file, private (readable by you only). Keep a copy of it off the server: it holds the keys that decrypt the transcripts and the backups.
 
-Then:
+## Step 5 — Start
 
 ```bash
-docker compose pull          # published image (ghcr.io/luquypest/bot-ticketting)
-docker compose up -d
-docker compose logs -f bot   # « Tout est prêt » = running; Ctrl+C leaves the logs
+docker compose pull && docker compose up -d
+docker compose logs -f bot
 ```
 
-![Containers start, then the bot connects to Discord](/images/install-start.png)
+Docker downloads the published image and starts the database, Redis, the bot, Caddy and the backup. The bot checks its configuration and connects to Discord:
 
-The first visit to `https://tickets.example.com` may wait a minute for the certificate.
+![Containers starting, then the bot](/images/install-start.png)
 
-Without the script, copy `.env.example` to `.env` and fill it in by hand: every variable is commented.
+« **Connecté en tant que** » (signed in as): it works. `Ctrl+C` leaves the logs (the bot keeps running).
 
-## 4. First start
+::: tip If it does not start
+The error message says what is missing. The usual cases are in [Troubleshooting](./troubleshooting#installation).
+:::
 
-![Sign-in page of the dashboard](/images/install-login.png)
+## Step 6 — Sign in
 
-1. **Sign in**: open `https://tickets.example.com` and sign in with Discord, using the account that owns the application. You are recognised as the **owner of the instance**.
-2. **Invite the bot**: the server picker offers « Inviter le bot » on every server where you have *Manage Server*. The server is **ready as soon as the bot joins**: you are its founder and get a DM with the dashboard link.
-![Server picker: « Inviter le bot » (invite the bot) and « Accéder » (open)](/images/install-servers.png)
+Open `https://tickets.example.com` (the first time, the HTTPS certificate can take a minute) and click **Sign in with Discord**, with the account that owns the application.
 
-3. **Settings**: in the dashboard, *Paramètres* → access roles (which Discord roles are staff), ticket channel category, welcome messages… Everything is done from the dashboard, nothing in files.
-4. **Instance section** (Administration menu, or « Gérer l'instance » on the server picker): your servers and their founders, bot health, errors and their alert (DM to you by default), the log, blocked addresses and the demonstration server (off by default).
+![Dashboard sign-in page](/images/install-login.png)
 
-To let someone else manage the instance, add their Discord ID to `OWNER_IDS` (`.env`) and restart. To let them manage a single server, make them a founder of that server instead.
+The dashboard carries the name and avatar of your bot. You are recognised as the **owner of the instance**.
 
-## 5. Day to day
+## Step 7 — Invite the bot to your server
+
+The **My servers** page lists the Discord servers where you have the *Manage Server* permission. Click **Invite the bot** on yours and confirm in the Discord window.
+
+![My servers: « Invite the bot » on a server, « Open » on a server already active](/images/install-servers.png)
+
+The server is **ready as soon as the bot joins**: you are its founder and you get a DM with the link to the dashboard. Click **Open**.
+
+## Step 8 — Set the essentials
+
+**On Discord**, the quickest: type `/setup` on your server. The wizard has you pick the staff roles, creates the ticket categories if you want, and posts a panel. Or, **in the dashboard**:
+
+**Settings → Access and security**: pick the Discord roles of your staff.
+
+![Settings → Access and security: support and chief support roles](/images/install-roles.png)
+
+**Settings → Tickets**: pick the categories where tickets go, one per stage, then **Save**.
+
+![Settings → Tickets: ticket format, categories and stage deadlines](/images/install-categories.png)
+
+Then send a direct message to the bot from another account: the ticket shows up in **Tickets** and in the « Open » category of your server. **It is installed.**
+
+What comes next — subjects, messages, grades, FAQ, panels: [First steps](./first-steps).
+
+## Day to day
 
 | Action | Command |
 |---|---|
-| Update | `docker compose pull && docker compose up -d` — see [Updates (French)](../guide/mise-a-jour) |
-| Back up | automatic every night into `backups/`, encrypted with `BACKUP_KEY` (`backup` service); on demand: `scripts/backup.sh`. The key is also shown to the owner in **Paramètres → Accès et sécurité** (Settings → Access and security): keep it off the server with a copy of `.env` (`ENCRYPTION_KEY` decrypts the transcripts) |
-| Restore | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` (integrity checked before anything is written) |
-| Logs | `docker compose logs -f bot` |
-| Restart | `docker compose restart bot` |
-| Stop | `docker compose down` (data stays in the Docker volumes) |
-| Remove everything | `docker compose down -v` — also deletes the databases |
-| Pin a version | `TICKETBOT_VERSION=v3.0` in `.env` instead of `latest` |
+| Update | `docker compose pull && docker compose up -d` — [Updates](./updates) |
+| Back up now | `scripts/backup.sh` — [Backups](./backups) |
+| Restore | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` |
+| Read the logs | `docker compose logs -f bot` |
+| Restart the bot | `docker compose restart bot` |
+| Stop everything | `docker compose down` (the data stays) |
+| Stay on a version | `TICKETBOT_VERSION=v3.1.0` in `.env` instead of `latest` |
 
-## 6. Troubleshooting
+::: details Installing without the script
+Copy `.env.example` to `.env` and fill it in: every variable is commented there, and all of them are described in [Configuration](./configuration). Generate each secret with `openssl rand -hex 32`.
+:::
 
-**"Aucune configuration trouvée" at start** → `.env` is missing or empty; run `scripts/setup.sh` again.
-
-**The bot ignores direct messages** → *Message Content Intent* is off (step 2.3). After enabling it, `docker compose restart bot`.
-
-**"Invalid OAuth2 redirect_uri" when signing in** → the redirect URL in the Discord portal must be exactly `https://<your domain>/api/auth/discord/callback`, and `PUBLIC_URL` in `.env` must be `https://<your domain>` without a trailing slash.
-
-**No HTTPS certificate** → DNS does not point to the server yet, or ports 80/443 are closed (firewall, router). `docker compose logs caddy` says why.
-
-**No « Instance » section or invite button** → you are not signed in with the account that owns the Discord application (developer portal → *General Information* → *Owner*). Add your ID to `OWNER_IDS` if intended, then `docker compose up -d`.
-
-**The bot leaves a server right after joining** → `ALLOWED_GUILDS` is set and this server is not in it.
-
-**Use my own privacy policy** → the built-in `/confidentialite` page fits most cases (with the `CONTACT_EMAIL` address); for your own, put its address in `PRIVACY_URL`.
-
-**I want to keep a `config.json`** → still supported: mount it into the container (commented lines in `docker-compose.yml`). Environment variables override its values.
-
-Questions: [GitHub Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions); bugs: [open an issue](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose).
+::: details Using your own reverse proxy (Nginx, Traefik…)
+With choice **3**, the dashboard listens on `127.0.0.1:3000`: point your proxy at it. For Nginx, add `proxy_buffering off;` (real time). With an existing **Traefik** (choice **2**), the bot joins the Docker network `proxy` with the entrypoints `web` / `websecure` and the resolver `letsencrypt`: adapt `docker-compose.traefik.yml` if yours have other names.
+:::

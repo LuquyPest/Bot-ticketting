@@ -33,8 +33,8 @@ Règles du dépôt :
 - Messages de commit en **français**, style conventionnel (`feat:`, `fix:`, `docs:`, `chore:`…).
 - Toute évolution du schéma d'une base de serveur est une **nouvelle migration** à la fin de `utils/tenantMigrations.js` ; on ne modifie jamais une version déjà publiée. Les tables globales évoluent dans `bootstrap.js` (`ADD COLUMN IF NOT EXISTS`).
 - Les appels API qui modifient quelque chose exigent l'en-tête `X-Requested-With: XMLHttpRequest`.
-- Une fonctionnalité visible s'accompagne d'une entrée dans `dashboard/src/data/patchnotes.js` (source des notes de release et de la page Versions du site) et de sa page dans la documentation (`docs/guide/`, aperçu local : `cd docs && npm ci && npm run dev`).
-- Textes de l'interface en français dans le code ; la traduction anglaise est dans `dashboard/src/i18n/en.js`.
+- Une fonctionnalité visible s'accompagne d'une entrée dans `dashboard/src/data/patchnotes.js` (source des notes de release et de la page Versions du site) et de sa page dans la documentation, en français (`docs/guide/`) et en anglais (`docs/en/`) — aperçu local : `cd docs && npm ci && npm run dev`.
+- Textes de l'interface en français dans le code ; la traduction anglaise est dans `dashboard/src/i18n/en.js`. Les messages du bot aux membres existent en six langues : français et anglais dans `utils/i18n.js`, les autres dans `utils/locales/` — une nouvelle clé s'ajoute dans toutes (la suite d'intégration le vérifie).
 
 ## Publier une version (mainteneurs)
 

@@ -7,11 +7,11 @@ Tu installes ton instance, tu branches ton bot Discord : il est à toi.
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-880_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-934_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
-![Langues](https://img.shields.io/badge/langues-FR_·_EN-ec4899?style=flat-square)
+![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
-**[Documentation](https://docs.bot.daryu.xyz)** · **[Installer](https://docs.bot.daryu.xyz/guide/installation)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)** · **[Contribuer](CONTRIBUTING.md)**
+**[Documentation](https://docs.bot.daryu.xyz)** · **[English docs](https://docs.bot.daryu.xyz/en/)** · **[Installer](https://docs.bot.daryu.xyz/guide/installation)** · **[Démo](https://ticket.sunset-fa.fr/demo)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)**
 
 <img src="docs/public/images/dashboard.png" alt="Tableau de bord" width="100%">
 
@@ -39,11 +39,12 @@ Un membre écrit au bot en **message privé** ; sa demande devient un **ticket**
 ## Fonctionnalités
 
 - **Tickets** : sujets, formulaires d'ouverture, FAQ proposée avant d'ouvrir, priorités, étapes et Kanban, tags, notes internes, modèles de réponse et macros, fusion, transcripts, notation en fin de ticket.
-- **Équipe** : grades et permissions fines, rôles rattachés à des tags (tickets visibles d'eux seuls), tickets confidentiels, file personnelle, absences, objectifs, statistiques et rapports PDF.
+- **Équipe** : grades et permissions fines, rôles rattachés à des tags (tickets visibles d'eux seuls), tickets confidentiels, file personnelle, absences, objectifs, statistiques, rapports PDF et statistiques publiques dans un salon.
+- **Membres** : réponses en MP dans leur langue (français, anglais, espagnol, allemand, italien, portugais), espace web pour suivre et ouvrir des tickets.
 - **Automatismes** : rappels, escalade, inactivité, délais par étape (SLA), messages programmés, rapport hebdomadaire et mensuel, incidents annoncés aux membres.
-- **Intégrations** : API publique documentée, webhooks sortants, panels Discord à boutons, notifications push.
+- **Intégrations** : API publique documentée, webhooks sortants, panels Discord à boutons, notifications push, reprise des tickets ouverts d'un autre bot (Ticket Tool, Tickets…).
 - **Sécurité** : 2FA (imposable par serveur), transcripts et secrets chiffrés, journal de toutes les actions, alerte de nouvel appareil, allowlist IP, déconnexion après inactivité.
-- **Instance** : réservée au propriétaire du bot (le propriétaire de l'application Discord) — serveurs, fondateurs, santé, erreurs et alertes, journal. Pas de compte à créer : connexion Discord.
+- **Instance** : réservée au propriétaire du bot (le propriétaire de l'application Discord) — serveurs, fondateurs, santé, erreurs et alertes, journal, sauvegardes vérifiées, mise à jour en un clic. Pas de compte à créer : connexion Discord.
 
 ## Installer
 
@@ -51,16 +52,16 @@ Il faut un serveur avec Docker, un nom de domaine et une [application Discord](h
 
 ```bash
 git clone https://github.com/LuquyPest/Bot-ticketting.git && cd Bot-ticketting
-scripts/setup.sh                              # quelques questions → .env complet, secrets générés
+scripts/setup.sh                              # quelques questions (FR ou EN) → .env complet, secrets générés
 docker compose pull && docker compose up -d
 ```
 
-Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée. Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://docs.bot.daryu.xyz/guide/installation)** (*[English](https://docs.bot.daryu.xyz/en/installation)*).
+Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée, et `/setup` sur Discord règle l'essentiel en trois clics. Avec Portainer, Coolify, Unraid ou CasaOS : [un seul fichier compose](https://docs.bot.daryu.xyz/guide/outils). Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://docs.bot.daryu.xyz/guide/installation)** (*[English](https://docs.bot.daryu.xyz/en/installation)*).
 
 | | |
 |---|---|
-| Mise à jour | `docker compose pull && docker compose up -d` — migrations automatiques ([Mises à jour](https://docs.bot.daryu.xyz/guide/mise-a-jour)) |
-| Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité) ; la clé est dans Paramètres → Accès et sécurité pour le propriétaire ; restauration : `scripts/restore.sh` |
+| Mise à jour | `docker compose pull && docker compose up -d`, ou un bouton dans le dashboard — migrations automatiques ([Mises à jour](https://docs.bot.daryu.xyz/guide/mise-a-jour)) |
+| Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité), vérifiée chaque semaine, copiable hors du serveur (S3, B2, SFTP…) ; restauration : `scripts/restore.sh` |
 | HTTPS | Caddy inclus (Let's Encrypt), ou ton Traefik, ou ton propre proxy |
 | Configuration | tout dans `.env`, chaque variable est commentée dans [.env.example](.env.example) |
 
@@ -69,7 +70,7 @@ Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'
 Node 22, discord.js 14, Express 5, MariaDB 11 (une base par serveur Discord), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
-npm run test:integration                                  # 880 vérifications sur MariaDB + Redis jetables
+npm run test:integration                                  # 934 vérifications sur MariaDB + Redis jetables
 cd dashboard && npx vite build && node tests/smoke.mjs    # pages du dashboard + accessibilité (axe-core)
 ```
 
@@ -77,6 +78,6 @@ La CI rejoue les deux à chaque push ; un tag `vX.Y` (`scripts/release.sh`) publ
 
 ## Licence
 
-L'auteur fait tourner sa propre instance, démonstration comprise : [ticket.sunset-fa.fr](https://ticket.sunset-fa.fr/login). Ton installation ne lui parle jamais.
+L'auteur fait tourner sa propre instance, démonstration comprise : [ticket.sunset-fa.fr/demo](https://ticket.sunset-fa.fr/demo). Ton installation ne lui parle jamais (seule la recherche de nouvelles versions interroge GitHub, et `UPDATE_CHECK=off` la coupe).
 
 [AGPL-3.0](LICENSE) : libre d'installer, de modifier et d'héberger pour d'autres, à condition de publier ses modifications sous la même licence.

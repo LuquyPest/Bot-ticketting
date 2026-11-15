@@ -37,7 +37,7 @@ Pour rester sur une version précise, mets `TICKETBOT_VERSION=v3.0` dans `.env` 
 
 ## Revenir en arrière
 
-Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `TICKETBOT_VERSION=` suivi de la version précédente dans `.env`, puis `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz`.
+Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `TICKETBOT_VERSION=` suivi de la version précédente dans `.env`, puis `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc`.
 
 ## Sauvegardes chiffrées (v3.0.4)
 

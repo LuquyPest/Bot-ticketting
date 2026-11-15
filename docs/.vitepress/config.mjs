@@ -48,6 +48,49 @@ const guide = [
   },
 ];
 
+// English guide (docs/en/): same pages, flat URLs
+const guideEn = [
+  {
+    text: 'Getting started',
+    items: [
+      { text: 'Overview', link: '/en/overview' },
+      { text: 'Installation', link: '/en/installation' },
+      { text: 'Portainer, Coolify, Unraid…', link: '/en/tools' },
+      { text: 'Configuration', link: '/en/configuration' },
+      { text: 'First steps', link: '/en/first-steps' },
+    ],
+  },
+  {
+    text: 'Using it',
+    items: [
+      { text: 'Tickets', link: '/en/tickets' },
+      { text: 'Team and permissions', link: '/en/team' },
+      { text: 'Discord commands', link: '/en/commands' },
+      { text: 'Member space', link: '/en/member-space' },
+      { text: 'Automations', link: '/en/automations' },
+      { text: 'Integrations', link: '/en/integrations' },
+    ],
+  },
+  {
+    text: 'Running it',
+    items: [
+      { text: 'Instance section', link: '/en/instance' },
+      { text: 'Backups', link: '/en/backups' },
+      { text: 'Updates', link: '/en/updates' },
+      { text: 'Security', link: '/en/security' },
+      { text: 'Troubleshooting', link: '/en/troubleshooting' },
+    ],
+  },
+  {
+    text: 'Project',
+    items: [
+      { text: 'Versions', link: '/en/versions' },
+      { text: 'Contributing', link: '/en/contributing' },
+      { text: 'Report a vulnerability', link: '/en/report-a-vulnerability' },
+    ],
+  },
+];
+
 export default withMermaid(defineConfig({
   base,
   lang: 'fr-FR',
@@ -75,12 +118,8 @@ export default withMermaid(defineConfig({
       { text: 'Installation', link: '/guide/installation' },
       { text: 'Versions', link: '/guide/versions' },
       { text: 'Démo', link: 'https://ticket.sunset-fa.fr/demo' },
-      { text: 'English', link: '/en/installation' },
     ],
-    sidebar: {
-      '/guide/': guide,
-      '/en/': [{ text: 'English', items: [{ text: 'Installation', link: '/en/installation' }, { text: 'French guide', link: '/guide/' }] }],
-    },
+    sidebar: { '/guide/': guide },
     socialLinks: [{ icon: 'github', link: REPO }],
     search: {
       provider: 'local',
@@ -92,6 +131,9 @@ export default withMermaid(defineConfig({
             resetButtonTitle: 'Effacer',
             footer: { selectText: 'ouvrir', navigateText: 'naviguer', closeText: 'fermer' },
           },
+        },
+        locales: {
+          en: { translations: { button: { buttonText: 'Search', buttonAriaLabel: 'Search' }, modal: { noResultsText: 'No results for', resetButtonTitle: 'Clear', footer: { selectText: 'open', navigateText: 'navigate', closeText: 'close' } } } },
         },
       },
     },
@@ -107,6 +149,38 @@ export default withMermaid(defineConfig({
     footer: {
       message: 'Logiciel libre sous licence <a href="https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE">AGPL-3.0</a>.',
       copyright: `<a href="${REPO}">LuquyPest/Bot-ticketting</a>`,
+    },
+  },
+  locales: {
+    root: { label: 'Français', lang: 'fr-FR' },
+    en: {
+      label: 'English',
+      lang: 'en-US',
+      link: '/en/',
+      title: 'Ticket Bot',
+      description: 'Discord support through direct messages, run from a web dashboard. Free software, self-hosted.',
+      themeConfig: {
+        nav: [
+          { text: 'Guide', link: '/en/overview', activeMatch: '^/en/(?!$)' },
+          { text: 'Installation', link: '/en/installation' },
+          { text: 'Versions', link: '/en/versions' },
+          { text: 'Demo', link: 'https://ticket.sunset-fa.fr/demo' },
+        ],
+        sidebar: { '/en/': guideEn },
+        editLink: { pattern: `${REPO}/edit/main/docs/:path`, text: 'Edit this page on GitHub' },
+        lastUpdated: { text: 'Updated on', formatOptions: { dateStyle: 'long' } },
+        docFooter: { prev: 'Previous page', next: 'Next page' },
+        outline: { level: [2, 3], label: 'On this page' },
+        returnToTopLabel: 'Back to top',
+        sidebarMenuLabel: 'Menu',
+        darkModeSwitchLabel: 'Theme',
+        lightModeSwitchTitle: 'Light theme',
+        darkModeSwitchTitle: 'Dark theme',
+        footer: {
+          message: 'Free software under the <a href="https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE">AGPL-3.0</a> licence.',
+          copyright: `<a href="${REPO}">LuquyPest/Bot-ticketting</a>`,
+        },
+      },
     },
   },
   mermaid: { theme: 'neutral' },

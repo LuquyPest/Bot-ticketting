@@ -27,9 +27,9 @@ Le bot a besoin de **Gérer les salons** et **Gérer les rôles** pour créer de
 
 ## 3. Messages et langue
 
-Dans **Paramètres** :
-- **Général** : message de bienvenue envoyé en MP à l'ouverture, message de fermeture ;
-- **Langue du bot** : langue des messages aux membres — français, anglais, ou automatique (celle de leur Discord) ;
+Dans **Paramètres → Général** :
+- **Messages** : message de bienvenue envoyé en MP à l'ouverture, message de fermeture ;
+- **Langue du bot** : langue des messages aux membres — français, anglais, espagnol, allemand, italien, portugais, ou automatique (celle de leur Discord) ;
 - **Apparence du bot sur ce serveur** : pseudo et photo du bot, visibles sur ce serveur uniquement.
 
 ## 4. L'équipe

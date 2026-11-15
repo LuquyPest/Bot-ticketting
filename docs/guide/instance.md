@@ -24,7 +24,7 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 |---|---|
 | **Vue d'ensemble** | Serveurs, tickets ouverts, tickets par jour sur 30 jours, staff, erreurs des dernières 24 heures, tableau par serveur |
 | **Serveurs** | Suspendre, réactiver, mettre en maintenance, supprimer (le bot quitte le serveur et sa base est effacée) ; nommer ou retirer des fondateurs |
-| **Santé** | Connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; serveur de démonstration |
+| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; serveur de démonstration |
 | **Erreurs** | Journal centralisé des erreurs du bot, du dashboard et des navigateurs, avec filtres ; **alerte** par MP (au propriétaire par défaut) ou webhook au-delà d'un seuil, et en cas de déconnexion de Discord |
 | **Journal** | Chaque modification faite depuis la section, avec son auteur et le serveur concerné |
 | **Blocages** | Adresses IP bloquées par les limites de connexion ou d'API, avec déblocage |

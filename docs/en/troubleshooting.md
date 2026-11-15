@@ -1,0 +1,56 @@
+# Troubleshooting
+
+## Installation
+
+**« Aucune configuration trouvée » (no configuration found) at start-up**
+`.env` is missing or empty: run `scripts/setup.sh` again.
+
+**« Invalid OAuth2 redirect_uri » when signing in**
+The redirect address in the Discord portal must be exactly `https://<your domain>/api/auth/discord/callback`, and `PUBLIC_URL` is `https://<your domain>` without a trailing slash.
+
+**The HTTPS certificate does not come (Caddy)**
+DNS does not point to the server yet, or ports 80 and 443 are closed: `docker compose logs caddy` says why.
+
+**The `backup` service refuses to start**
+`BACKUP_KEY` is missing from `.env`: `echo "BACKUP_KEY=$(openssl rand -hex 32)" >> .env`.
+
+**MariaDB refuses the connection**
+`DB_HOST` must stay `db`. With a `config.json`, its `database.password` must equal `DB_PASSWORD`.
+
+## Discord bot
+
+**The bot does not answer direct messages**
+Turn on **Message Content Intent** in the Discord portal (*Bot* tab), then `docker compose restart bot`.
+
+**Slash commands do not show up**
+Wait a minute or two. Otherwise: `docker compose restart bot`.
+
+**The bot leaves a server as soon as it joins**
+`ALLOWED_GUILDS` is set and this server is not in it: add its ID or empty the variable.
+
+**Channels of restricted tickets stay visible**
+The bot lacks the **Manage Roles** permission: **Server health** reports it. Re-invite it or give it the permission.
+
+## Dashboard
+
+**I see neither the Instance section nor « Invite the bot »**
+You are not signed in with the account that owns the Discord application. Add your ID to `OWNER_IDS` if that is intended, then `docker compose up -d`.
+
+**Stuck on the waiting page (« New »)**
+A founder has to give you a grade in **Team**.
+
+**A staff member does not see the server**
+Check that their Discord role is in **Settings → Access and security**, then that they sign in again.
+
+**« Insufficient permission » everywhere**
+A support has no rights without a grade: check the grade tied to their role, or give them a grade with at least `view_tickets`.
+
+**I lost my phone (2FA)**
+Use a backup code on the verification screen, then set up 2FA again from your profile.
+
+**Real time does not work behind my own proxy**
+Nginx: `proxy_buffering off;`, `proxy_cache off;`, `proxy_read_timeout 3600s;`.
+
+## Still stuck?
+
+Ask your question in the [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions), or open an [issue](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose) with the version, the steps and the logs (`docker compose logs bot`) — **without any token or secret**. English is welcome.
