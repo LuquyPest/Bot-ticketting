@@ -531,6 +531,12 @@ export const ENTRIES = [
   ['Publier maintenant', 'Publish now'], ['Voir le message sur Discord', 'View the message on Discord'], ['Statistiques publiées', 'Statistics published'],
   ['Sauvegarde d\'abord les paramètres', 'Save the settings first'], ['Choisis un salon puis sauvegarde : le message est ensuite mis à jour toutes les heures.', 'Pick a channel then save: the message is then updated every hour.'],
   ['Assistant /setup', '/setup wizard'],
+  ['Importer depuis un autre bot', 'Import from another bot'], ['Catégorie de l\'autre bot', 'Category of the other bot'], ['Analyser', 'Scan'],
+  ['Reprend les tickets ouverts d\'un autre bot de tickets : chaque salon de la catégorie choisie devient un ticket de ce bot.', 'Takes over the open tickets of another ticket bot: each channel of the chosen category becomes a ticket of this bot.'],
+  ['Ticket Tool, Tickets, Helper.gg… Choisis la catégorie où l\'autre bot range ses tickets : chaque salon devient un ticket de ce bot, rattaché au membre trouvé dans ses permissions. Rien n\'est supprimé.', 'Ticket Tool, Tickets, Helper.gg… Pick the category where the other bot keeps its tickets: each channel becomes a ticket of this bot, linked to the member found in its permissions. Nothing is deleted.'],
+  ['Aucun salon textuel dans cette catégorie.', 'No text channel in this category.'], ['déjà repris', 'already taken over'], ['membre introuvable', 'member not found'],
+  ['Copier les 100 derniers messages dans l\'historique', 'Copy the last 100 messages into the history'], ['Prévenir chaque membre en MP', 'Tell each member by DM'],
+  ['Déplacer les salons dans la catégorie « Ouvert »', 'Move the channels into the « Open » category'], ['Non repris :', 'Not taken over:'], ['Choisir…', 'Choose…'],
 ];
 
 export const TEMPLATES = [
@@ -588,4 +594,5 @@ export const TEMPLATES = [
   ['{} disponible', '{1} available'], ['Vérifié il y a {}.', 'Checked {1} ago.'], ['il y a {}', '{1} ago'], ['Échec il y a {}', 'Failed {1} ago'],
   ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
   ['Réponse en moins de {} h', 'Answered within {1} h'],
+  ['Reprendre {} ticket(s)', 'Take over {1} ticket(s)'], ['{} ticket(s) repris', '{1} ticket(s) taken over'],
 ];

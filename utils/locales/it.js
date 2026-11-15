@@ -157,4 +157,6 @@ module.exports = {
   'stats.min': '{m} min',
   'stats.hours': '{h} h {m}',
   'stats.days': '{d} g {h} h',
+  'adopted.title': '🔄 Il tuo ticket continua qui',
+  'adopted.body': 'Il supporto di **{guild}** ora usa questo bot. Il tuo ticket (#{id}) resta aperto: rispondi a questo messaggio privato per continuare la conversazione.',
 };

@@ -36,3 +36,16 @@ Chaque membre du staff peut recevoir les nouveaux messages et réponses en notif
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles, règles, procédures) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.
+
+## Venir d'un autre bot de tickets
+
+**Paramètres → Sauvegarde → Importer depuis un autre bot** reprend les tickets **encore ouverts** d'un autre bot (Ticket Tool, Tickets, Helper.gg…), sans rien supprimer :
+
+1. choisis la catégorie Discord où l'autre bot range ses tickets, puis **Analyser** ;
+2. pour chaque salon, le dashboard retrouve le membre qui l'a ouvert (dans les permissions du salon, ou une mention dans son sujet) ; les salons sans membre identifiable sont signalés ;
+3. coche les salons à reprendre et **Reprendre** : chacun devient un ticket de ce bot.
+
+Options : copier les 100 derniers messages du salon dans l'historique du ticket (messages du membre et réponses du staff ; ceux des bots sont ignorés), prévenir chaque membre en MP — dans sa langue — qu'il peut désormais répondre au bot, et déplacer les salons dans la catégorie « Ouvert ». Ensuite, retire l'ancien bot de ton serveur : les nouveaux tickets passent par celui-ci.
+
+Les anciens tickets **déjà fermés** ne sont pas importés : aucun de ces bots ne permet d'exporter ses données. Garde leurs transcripts là où l'autre bot les a mis.
+

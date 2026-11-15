@@ -175,6 +175,8 @@ const D = {
     'stats.min': '{m} min',
     'stats.hours': '{h} h {m}',
     'stats.days': '{d} j {h} h',
+    'adopted.title': '🔄 Ton ticket continue ici',
+    'adopted.body': 'Le support de **{guild}** utilise désormais ce bot. Ton ticket (#{id}) reste ouvert : réponds simplement à ce message privé pour continuer la conversation.',
   },
   en: {
     'empty': 'Send a text message or an attachment to contact the support team.',
@@ -334,6 +336,8 @@ const D = {
     'stats.min': '{m} min',
     'stats.hours': '{h} h {m}',
     'stats.days': '{d} d {h} h',
+    'adopted.title': '🔄 Your ticket continues here',
+    'adopted.body': 'The **{guild}** support now uses this bot. Your ticket (#{id}) is still open: just reply to this private message to continue the conversation.',
   },
 };
 

@@ -2818,6 +2818,53 @@ async function main() {
     check('stats publiques: publication inscrite au journal', Number(audited) >= 3, String(audited));
   }
 
+  // ── Taking over the open tickets of another bot (utils/botImport.js) ──
+  {
+    const { OverwriteType } = require('discord.js');
+    const IMP_CAT = '960000000000000080', C1 = '960000000000000081', C2 = '960000000000000082', C3 = '960000000000000083';
+    const M5 = '200000000000000005', M6 = '200000000000000006';
+    const ow = (id, view = true) => ({ id, type: OverwriteType.Member, allow: { has: () => view } });
+    const msgs = (list) => new Map(list.map((m, k) => [String(k), { createdTimestamp: Date.now() - (10 - k) * 60000, attachments: new Map(), ...m }]));
+    channels.set(IMP_CAT, mkChannel(IMP_CAT, G, 4, 'tickets-autre-bot'));
+    const parented = [];
+    const mkImp = (id, name, extra) => {
+      const c = mkChannel(id, G, 0, name);
+      Object.assign(c, { parentId: IMP_CAT, createdAt: new Date(Date.now() - 86400000), topic: null,
+        permissionOverwrites: { cache: new Map(), edit: async () => {} }, setParent: async p => parented.push([id, p]) }, extra);
+      channels.set(id, c); return c;
+    };
+    mkImp(C1, 'ticket-0042', { permissionOverwrites: { cache: new Map([[U.S1, ow(U.S1)], ['1', ow('1')], [M5, ow(M5)]]), edit: async () => {} },
+      messages: { fetch: async () => msgs([
+        { author: { id: M5, username: 'member05' }, content: 'Bonjour, mon paiement a échoué' },
+        { author: { id: '555555555555555555', username: 'TicketTool', bot: true }, content: 'Welcome!' },
+        { author: { id: U.S1, username: 'S1' }, content: 'On regarde ça' },
+      ]) } });
+    mkImp(C2, 'ticket-0043', { topic: `Ticket ouvert par <@${M6}>`, messages: { fetch: async () => new Map() } });
+    mkImp(C3, 'ticket-0044', { messages: { fetch: async () => new Map() } });
+    r = await req('GET', '/api/bot-import/scan', { sid: sessions.S1, query: { categoryId: IMP_CAT } });
+    check('import: réservé aux fondateurs', r.status === 403, r.status);
+    r = await req('GET', '/api/bot-import/scan', { sid: sessions.F, query: { categoryId: FOREIGN_CH } });
+    check('import: catégorie d\'un autre serveur refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('GET', '/api/bot-import/scan', { sid: sessions.F, query: { categoryId: IMP_CAT } });
+    const byCh = Object.fromEntries((r.body.channels || []).map(c => [c.channelId, c]));
+    check('import: membre trouvé dans les permissions (staff et bot ignorés) ou dans le sujet du salon', r.status === 200 && byCh[C1]?.owner?.id === M5 && byCh[C2]?.owner?.id === M6 && byCh[C3]?.owner === null, JSON.stringify(r.body.channels));
+    const dmBefore = memberDms.length;
+    r = await req('POST', '/api/bot-import/adopt', { sid: sessions.F, body: { categoryId: IMP_CAT, items: [{ channelId: C1 }, { channelId: C2 }, { channelId: C3 }], history: true, notify: true, move: true } });
+    const [t1i] = await db('SELECT id, owner_id, subject, status FROM tickets WHERE channel_id = ?', [C1]);
+    const notesI = t1i ? await db('SELECT author_id, source, content FROM ticket_notes WHERE ticket_id = ? ORDER BY id', [t1i.id]) : [];
+    check('import: tickets créés, salon sans membre ignoré avec la raison', r.status === 200 && r.body.adopted.length === 2 && r.body.skipped.length === 1 && /introuvable/.test(r.body.skipped[0].reason) && t1i?.owner_id === M5 && t1i.status === 'open' && t1i.subject === 'ticket-0042', JSON.stringify(r.body));
+    check('import: historique copié (membre = message du membre, staff = réponse, bot ignoré)', notesI.some(n => n.source === 'user' && /paiement/.test(n.content)) && notesI.some(n => n.source === 'reply' && n.author_id === U.S1) && !notesI.some(n => /Welcome/.test(n.content)) && notesI.some(n => n.source === 'system' && /2 message/.test(n.content)), JSON.stringify(notesI));
+    const dmI = memberDms.slice(dmBefore).filter(m => m.id === M5 || m.id === M6);
+    check('import: membres prévenus en MP, salons déplacés dans « Ouvert »', dmI.length === 2 && /continue/.test(dmI[0].p.embeds[0].title) && parented.length === 2, JSON.stringify([dmI.map(d => d.p.embeds[0].title), parented]));
+    r = await req('POST', '/api/bot-import/adopt', { sid: sessions.F, body: { categoryId: IMP_CAT, items: [{ channelId: C1 }] } });
+    check('import: un salon déjà repris ne l\'est pas deux fois', r.status === 200 && r.body.adopted.length === 0 && /Déjà/.test(r.body.skipped[0]?.reason), JSON.stringify(r.body));
+    r = await req('POST', '/api/bot-import/adopt', { sid: sessions.F, body: { categoryId: IMP_CAT, items: [{ channelId: OWN_CH, ownerId: M5 }] } });
+    check('import: salon hors de la catégorie refusé', r.status === 200 && r.body.adopted.length === 0 && /absent/.test(r.body.skipped[0]?.reason), JSON.stringify(r.body));
+    const [aI] = await db("SELECT details FROM audit_log WHERE action = 'bot_import' ORDER BY id DESC LIMIT 1");
+    check('import: inscrit au journal', !!aI, JSON.stringify(aI));
+    for (const c of [C1, C2]) await db("UPDATE tickets SET status = 'closed' WHERE channel_id = ?", [c]);
+  }
+
   // ── /setup: wizard on Discord (commands/setup.js) ──
   {
     const setup = app('./commands/setup');

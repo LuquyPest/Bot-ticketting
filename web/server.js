@@ -267,6 +267,7 @@ app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));
 app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./routes/profiles'));
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
+app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
 app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));

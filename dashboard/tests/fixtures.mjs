@@ -115,6 +115,10 @@ export const MOCK = {
   },
   '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/Bot-ticketting/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
   '/api/instance/demo': { enabled: true },
+  '/api/bot-import/scan': { category: { id: '21', name: 'Tickets' }, channels: [
+    { channelId: '31', name: 'ticket-0042', owner: { id: '2', tag: 'lucas.m' }, adopted: false },
+    { channelId: '32', name: 'ticket-0043', owner: null, adopted: false },
+    { channelId: '33', name: 'ticket-0040', owner: null, adopted: true }] },
   '/api/config/public-stats': { stats: { days: 30, targetHours: 2, resolved: 184, firstResponseMedianMin: 23, withinTargetPct: 91, resolutionMedianMin: 260, satisfaction: { average: 4.7, count: 63 } }, messageUrl: 'https://discord.com/channels/1/2/3' },
 };
 

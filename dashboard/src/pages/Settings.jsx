@@ -9,6 +9,7 @@ import ConfigHistory from '../components/ConfigHistory';
 import PortalBranding from '../components/PortalBranding';
 import BackupKey from '../components/BackupKey';
 import PublicStats from '../components/PublicStats';
+import BotImport from '../components/BotImport';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -845,6 +846,10 @@ export default function Settings() {
         <div role="tabpanel" id="panel-sauvegarde" aria-labelledby="tab-sauvegarde" className="space-y-5">
       <Section title="Sauvegarde et transfert">
         <ConfigTransfer />
+      </Section>
+
+      <Section title="Importer depuis un autre bot" description="Reprend les tickets ouverts d'un autre bot de tickets : chaque salon de la catégorie choisie devient un ticket de ce bot.">
+        <BotImport categories={categories} />
       </Section>
 
       <Section title="Historique des modifications" description="Qui a changé quel réglage, avec l'ancienne et la nouvelle valeur. « Revenir à l'état d'avant » annule ce changement et tous les suivants.">
