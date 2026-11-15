@@ -545,6 +545,13 @@ export const ENTRIES = [
   ['Couper les métriques ? Le jeton actuel cessera de fonctionner.', 'Turn the metrics off? The current token will stop working.'],
   ['Métriques Prometheus activées ou coupées', 'Prometheus metrics turned on or off'],
   ['Modèle partagé avec tous les serveurs', 'Template shared with every server'],
+  // Restoring one server (Instance → Santé)
+  ['Restaurer un serveur', 'Restore a server'],
+  ['Remet un seul serveur Discord dans l\'état d\'une sauvegarde ; les autres ne bougent pas. Ses données d\'avant sont gardées : la restauration s\'annule tant que la copie existe.', 'Puts a single Discord server back to the state of a backup; the others do not move. Its previous data is kept: the restore can be cancelled as long as the copy exists.'],
+  ['Sauvegarde', 'Backup'], ['Serveur', 'Server'], ['Aucune archive pour l\'instant.', 'No archive yet.'],
+  ['Pour confirmer, recopie l\'identifiant du serveur :', 'To confirm, type the server ID again:'],
+  ['Annuler la restauration', 'Cancel the restore'], ['Supprimer la copie', 'Delete the copy'], ['Restauration annulée', 'Restore cancelled'], ['Copie supprimée', 'Copy deleted'],
+  ['Restauration d\'un serveur demandée', 'Server restore requested'], ['Serveur restauré', 'Server restored'], ['Restauration échouée', 'Restore failed'], ['Copie d\'avant restauration supprimée', 'Pre-restore copy deleted'],
 ];
 
 export const TEMPLATES = [
@@ -603,5 +610,8 @@ export const TEMPLATES = [
   ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
   ['Réponse en moins de {} h', 'Answered within {1} h'],
   ['· jeton créé le {}', '· token created on {1}'],
+  ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
+  ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
+  ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],
   ['Reprendre {} ticket(s)', 'Take over {1} ticket(s)'], ['{} ticket(s) repris', '{1} ticket(s) taken over'],
 ];

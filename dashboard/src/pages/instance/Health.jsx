@@ -181,6 +181,92 @@ function BackupsCard({ b }) {
   );
 }
 
+// Restoring one Discord server from a nightly archive (done by the backup service)
+function RestoreCard() {
+  const [st, setSt] = useState(null);
+  const [guilds, setGuilds] = useState([]);
+  const [archive, setArchive] = useState('');
+  const [guildId, setGuildId] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => api.get('/instance/restore').then(r => setSt(r.data)).catch(() => {}), []);
+  useEffect(() => {
+    load();
+    api.get('/instance/guilds').then(r => setGuilds(r.data.filter(g => g.status === 'active'))).catch(() => {});
+  }, [load]);
+  // While a restore runs, its result is fetched every 3 seconds
+  useEffect(() => { if (!st?.pending) return undefined; const t = setInterval(load, 3000); return () => clearInterval(t); }, [st?.pending, load]);
+  if (!st) return null;
+  const nameOf = id => guilds.find(g => g.guild_id === id)?.guild_name || id;
+  const act = async (fn, okMsg) => {
+    setBusy(true);
+    try { await fn(); if (okMsg) toast.success(okMsg); await load(); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const start = () => act(async () => { await api.post('/instance/restore', { archive, guildId, confirm }); setConfirm(''); }, null);
+  const rollback = id => window.confirm(`Annuler la restauration de ${nameOf(id)} ? Ses tables d'avant reviennent, celles restaurées sont gardées à leur place.`)
+    && act(() => api.post(`/instance/restore/${id}/rollback`), 'Restauration annulée');
+  const dropPrev = id => window.confirm(`Supprimer définitivement la copie d'avant restauration de ${nameOf(id)} ?`)
+    && act(() => api.delete(`/instance/restore/${id}/previous`), 'Copie supprimée');
+  const select = 'w-full bg-surface border border-overlay/8 rounded-lg px-2.5 py-1.5 text-xs text-ink-1';
+  return (
+    <div className={card}>
+      <h2 className="text-sm font-semibold text-ink-1 mb-1">Restaurer un serveur</h2>
+      <p className="text-xs text-ink-3 mb-3">Remet un seul serveur Discord dans l'état d'une sauvegarde ; les autres ne bougent pas. Ses données d'avant sont gardées : la restauration s'annule tant que la copie existe.</p>
+      {!st.available ? (
+        <p className="text-xs text-ink-3">Indisponible : le service de sauvegarde n'est pas installé ou pas à jour (<code className="text-ink-2">docker compose up -d</code> après la mise à jour).</p>
+      ) : st.pending ? (
+        <p className="text-xs text-ink-2 inline-flex items-center gap-2" role="status"><Loader2 size={13} className="animate-spin" />Restauration de {nameOf(st.pending.guildId)} depuis {st.pending.archive}…</p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="text-xs text-ink-3">Sauvegarde
+            <select value={archive} onChange={e => setArchive(e.target.value)} className={`${select} mt-1`}>
+              <option value="">Choisir…</option>
+              {st.archives.map(a => <option key={a.file} value={a.file}>{fmtTime(a.at)} · {fmtBytes(a.bytes)}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-ink-3">Serveur
+            <select value={guildId} onChange={e => { setGuildId(e.target.value); setConfirm(''); }} className={`${select} mt-1`}>
+              <option value="">Choisir…</option>
+              {guilds.map(g => <option key={g.guild_id} value={g.guild_id}>{g.guild_name || g.guild_id}</option>)}
+            </select>
+          </label>
+          {archive && guildId && (
+            <>
+              <label className="text-xs text-ink-3 sm:col-span-2">Pour confirmer, recopie l'identifiant du serveur : <code className="text-ink-2" translate="no">{guildId}</code>
+                <input value={confirm} onChange={e => setConfirm(e.target.value.trim())} inputMode="numeric" className={`${select} mt-1`} />
+              </label>
+              <div className="sm:col-span-2">
+                <button onClick={start} disabled={busy || confirm !== guildId}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600/15 text-red-300 border border-red-600/30 hover:bg-red-600/25 disabled:opacity-50">
+                  Restaurer {nameOf(guildId)}
+                </button>
+              </div>
+            </>
+          )}
+          {!st.archives.length && <p className="text-xs text-ink-4 sm:col-span-2">Aucune archive pour l'instant.</p>}
+        </div>
+      )}
+      {st.last && (
+        <p className={`text-xs mt-3 ${st.last.ok ? 'text-emerald-400' : 'text-red-400'}`} role="status">
+          {st.last.ok ? 'Dernière restauration' : 'Dernière restauration échouée'} : {nameOf(st.last.guildId)}, {fmtTime(st.last.at)} — {st.last.message}
+        </p>
+      )}
+      {st.previous.length > 0 && (
+        <ul className="mt-3 space-y-1.5 text-xs">
+          {st.previous.map(id => (
+            <li key={id} className="flex flex-wrap items-center gap-2 bg-overlay/3 rounded-lg px-3 py-2">
+              <span className="flex-1 min-w-0 text-ink-2">Copie d'avant restauration : {nameOf(id)}</span>
+              <button onClick={() => rollback(id)} disabled={busy} className="px-2.5 py-1 rounded-md border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Annuler la restauration</button>
+              <button onClick={() => dropPrev(id)} disabled={busy} className="px-2.5 py-1 rounded-md border border-overlay/8 text-ink-3 hover:text-red-400 disabled:opacity-50">Supprimer la copie</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function Health() {
   const [h, setH] = useState(null);
   const load = useCallback(() => {
@@ -271,6 +357,8 @@ export default function Health() {
       </div>
 
       <BackupsCard b={h.backups} />
+
+      <RestoreCard />
 
       <div className={card}>
         <h2 className="text-sm font-semibold text-ink-1 mb-1">Schéma des bases</h2>

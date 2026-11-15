@@ -2,10 +2,21 @@
 # Restores an encrypted backup into the running MariaDB (existing ticketbot_* data is replaced).
 # The archive's HMAC is checked first; decryption happens inside the db container with BACKUP_KEY.
 #   scripts/restore.sh backups/ticketbot-20261113-030000.sql.gz.enc
+#   scripts/restore.sh backups/ticketbot-20261113-030000.sql.gz.enc --guild <ID>   → one server only
 #   (old plain archives .sql.gz from before v3.0.4 are still accepted)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-FILE="${1:-}"; [[ -f "$FILE" ]] || { echo "Usage : scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc"; exit 1; }
+FILE="${1:-}"; [[ -f "$FILE" ]] || { echo "Usage : scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc [--guild <ID du serveur>]"; exit 1; }
+
+# One server: done by the backup service (its other servers and the bot keep running), see docker/backup.sh
+if [[ "${2:-}" == "--guild" ]]; then
+  GUILD="${3:-}"; [[ "$GUILD" =~ ^[0-9]{17,20}$ ]] || { echo "Identifiant de serveur invalide : $GUILD"; exit 1; }
+  read -rp "Remettre le serveur $GUILD dans l'état de $FILE ? Ses tables actuelles sont gardées dans ticketbot_guild_${GUILD}_prev. (oui/non) " ok; [[ "$ok" == "oui" ]] || exit 1
+  docker compose run --rm backup restore-guild "$(basename "$FILE")" "$GUILD"
+  docker compose restart bot
+  echo "✅ Serveur restauré. Annuler : Instance → Santé → Restaurer un serveur."
+  exit 0
+fi
 KEY="$(grep -E '^BACKUP_KEY=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
 
 if [[ "$FILE" == *.enc ]]; then

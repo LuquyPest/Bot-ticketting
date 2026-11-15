@@ -46,4 +46,11 @@ async function closeAll() {
   _pools.clear();
 }
 
-module.exports = { cleanParams, getTenantDb, getDbName, closeAll };
+// Drops the connections of one server (its tables were swapped by a restore)
+async function closeTenant(guildId) {
+  const pool = _pools.get(guildId);
+  _pools.delete(guildId);
+  if (pool) await pool.end().catch(() => {});
+}
+
+module.exports = { cleanParams, getTenantDb, getDbName, closeAll, closeTenant };

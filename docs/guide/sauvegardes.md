@@ -29,6 +29,21 @@ Note `BACKUP_KEY` et `ENCRYPTION_KEY` dans un gestionnaire de mots de passe. Si 
 
 Pour restaurer sur une **nouvelle machine** : installe le bot, remets ton ancien `.env` (mêmes clés), copie l'archive et son `.hmac` dans `backups/`, puis lance la restauration.
 
+### Un seul serveur
+
+Pour remettre **un seul serveur Discord** dans l'état d'une sauvegarde sans toucher aux autres : **Instance → Santé → Restaurer un serveur**. Choisis l'archive et le serveur, recopie son identifiant pour confirmer. Le bot et les autres serveurs continuent de tourner.
+
+1. Le service de sauvegarde vérifie l'archive (HMAC) et reconstruit la base du serveur dans une base temporaire.
+2. Ses tables prennent la place des tables actuelles **en une seule opération** : rien n'est à moitié restauré.
+3. Les tables d'avant sont gardées dans `ticketbot_guild_<ID>_prev` : **Annuler la restauration** les remet en place, **Supprimer la copie** les efface. Cette copie n'entre pas dans les sauvegardes nocturnes.
+4. Le bot applique ses migrations si l'archive vient d'une version plus ancienne.
+
+En ligne de commande : `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc --guild <ID du serveur>`.
+
+::: tip Pourquoi le service de sauvegarde ?
+Le bot ne lit jamais les archives et n'a pas le mot de passe administrateur de la base : il dépose une demande dans `backups/requests`, et c'est le service `backup`, qui a déjà les deux, qui restaure. Après la mise à jour, `docker compose up -d` recrée ce service avec la nouvelle version.
+:::
+
 ## Vérification automatique
 
 Une sauvegarde qu'on n'a jamais relue peut être inutilisable le jour où on en a besoin. Avec `BACKUP_VERIFY` dans `.env`, le service relit la dernière archive juste après l'avoir faite : contrôle d'intégrité, déchiffrement, décompression et présence de la fin du dump SQL. Rien n'est écrit en clair pendant la vérification.

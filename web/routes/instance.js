@@ -408,6 +408,33 @@ router.get('/backup-key', async (req, res) => {
   res.json({ configured: !!key, key });
 });
 
+// ─── RESTORING ONE SERVER (utils/backupRestore.js, docker/backup.sh) ─────────
+
+// GET /api/instance/restore — archives, restore in progress, last result, copies from before a restore
+router.get('/restore', async (req, res, next) => {
+  try { res.json(await require('../../utils/backupRestore').restoreState()); } catch (err) { next(err); }
+});
+
+// POST /api/instance/restore { archive, guildId, confirm } — confirm: the server ID, typed again
+router.post('/restore', async (req, res) => {
+  const { archive, guildId, confirm } = req.body || {};
+  if (String(confirm || '') !== String(guildId || '')) return res.status(400).json({ error: 'Confirme en recopiant l\'identifiant du serveur' });
+  try { res.json(await require('../../utils/backupRestore').requestRestore(req.owner, { archive, guildId })); }
+  catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
+});
+
+// POST /api/instance/restore/:guildId/rollback — puts back the tables from before the restore
+router.post('/restore/:guildId/rollback', async (req, res) => {
+  try { res.json(await require('../../utils/backupRestore').rollback(req.params.guildId)); }
+  catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
+});
+
+// DELETE /api/instance/restore/:guildId/previous — deletes the copy from before the restore
+router.delete('/restore/:guildId/previous', async (req, res) => {
+  try { await require('../../utils/backupRestore').dropPrevious(req.params.guildId); res.json({ ok: true }); }
+  catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
+});
+
 // ─── HEALTH ──────────────────────────────────────────────────────────────────
 
 const timed = async fn => { const t = Date.now(); try { await fn(); return { ok: true, ms: Date.now() - t }; } catch (err) { return { ok: false, ms: Date.now() - t, error: err.message }; } };

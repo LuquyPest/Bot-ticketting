@@ -29,6 +29,21 @@ Store `BACKUP_KEY` and `ENCRYPTION_KEY` in a password manager. If the server is 
 
 To restore on a **new machine**: install the bot, put your old `.env` back (same keys), copy the archive and its `.hmac` into `backups/`, then run the restore.
 
+### A single server
+
+To put **a single Discord server** back to the state of a backup without touching the others: **Instance → Health → Restore a server**. Pick the archive and the server, type its ID again to confirm. The bot and the other servers keep running.
+
+1. The backup service checks the archive (HMAC) and rebuilds the server's database in a temporary database.
+2. Its tables replace the current ones **in a single operation**: nothing is half restored.
+3. The previous tables are kept in `ticketbot_guild_<ID>_prev`: **Cancel the restore** puts them back, **Delete the copy** erases them. This copy is not part of the nightly backups.
+4. The bot applies its migrations if the archive comes from an older version.
+
+From the command line: `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc --guild <server ID>`.
+
+::: tip Why the backup service?
+The bot never reads the archives and does not have the database administrator password: it drops a request into `backups/requests`, and the `backup` service, which already has both, does the restore. After the update, `docker compose up -d` recreates this service with the new version.
+:::
+
 ## Automatic check
 
 A backup nobody ever read back may be unusable the day you need it. With `BACKUP_VERIFY` in `.env`, the service reads the latest archive back right after making it: integrity check, decryption, decompression and presence of the end of the SQL dump. Nothing is written in clear during the check.

@@ -3047,6 +3047,61 @@ async function main() {
     check('métriques: coupées → 404, chaque changement au journal de l instance', r.status === 404 && Number(audit.n) >= 3, [r.status, audit.n].join());
   }
 
+  // ── Restoring one server (utils/backupRestore.js; the backup service is simulated) ──
+  {
+    const os = require('os'), fsx = require('fs');
+    const cfgR = app('./utils/config').config;
+    const br = app('./utils/backupRestore');
+    const statusDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-status-'));
+    const reqDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-req-'));
+    const GR = '987654321098765432';
+    await globalQuery("INSERT IGNORE INTO guilds (guild_id, guild_name, status) VALUES (?, 'Serveur à restaurer', 'active')", [GR]);
+    await app('./utils/tenantSchema').ensureTenantSchema(GR);
+    r = await req('GET', '/api/instance/restore', { sid: sessions.OWN });
+    check('restauration: indisponible sans service de sauvegarde', r.status === 200 && r.body.available === false, JSON.stringify(r.body));
+    cfgR.backupStatusDir = statusDir; cfgR.backupRequestsDir = reqDir;
+    const ARCH = 'ticketbot-20261115-030000.sql.gz.enc';
+    fsx.writeFileSync(path.join(statusDir, 'archives.json'), JSON.stringify([{ file: ARCH, bytes: 1234, at: '2026-11-15T03:00:00Z' }, { file: '../../etc/passwd', bytes: 1, at: '2026-11-15T03:00:00Z' }]));
+    r = await req('GET', '/api/instance/restore', { sid: sessions.OWN });
+    check('restauration: archives lues dans le statut du service (noms invalides écartés)', r.body.available === true && r.body.archives.length === 1 && r.body.archives[0].file === ARCH, JSON.stringify(r.body));
+    r = await req('GET', '/api/instance/restore', { sid: sessions.NOWN });
+    check('restauration: réservée au propriétaire', r.status === 403, r.status);
+    r = await req('POST', '/api/instance/restore', { sid: sessions.OWN, body: { archive: ARCH, guildId: GR, confirm: 'non' } });
+    check('restauration: confirmation par l identifiant exigée', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/instance/restore', { sid: sessions.OWN, body: { archive: 'ticketbot-20990101-000000.sql.gz.enc', guildId: GR, confirm: GR } });
+    const rBad = await req('POST', '/api/instance/restore', { sid: sessions.OWN, body: { archive: ARCH, guildId: '111111111111111112', confirm: '111111111111111112' } });
+    check('restauration: archive absente et serveur inconnu refusés', r.status === 400 && rBad.status === 404, [r.status, rBad.status].join());
+    r = await req('POST', '/api/instance/restore', { sid: sessions.OWN, body: { archive: ARCH, guildId: GR, confirm: GR } });
+    const reqId = r.body.id;
+    const reqText = fsx.readFileSync(path.join(reqDir, 'restore.req'), 'utf8');
+    check('restauration: demande écrite pour le service de sauvegarde', r.status === 200 && reqText === `archive=${ARCH}\nguild=${GR}\nid=${reqId}\n`, reqText);
+    r = await req('POST', '/api/instance/restore', { sid: sessions.OWN, body: { archive: ARCH, guildId: GR, confirm: GR } });
+    const st = await req('GET', '/api/instance/restore', { sid: sessions.OWN });
+    check('restauration: une seule à la fois, en cours affichée', r.status === 409 && st.body.pending?.id === reqId, JSON.stringify(st.body.pending));
+    // The backup service did its job: tables swapped, the old ones in _prev, result written
+    const target = `ticketbot_guild_${GR}`;
+    await globalQuery(`CREATE DATABASE IF NOT EXISTS \`${target}_prev\``);
+    await globalQuery(`CREATE TABLE \`${target}_prev\`.marker_before (x INT)`);
+    await globalQuery(`DELETE FROM \`${target}\`.schema_migrations ORDER BY version DESC LIMIT 1`);
+    fsx.unlinkSync(path.join(reqDir, 'restore.req'));
+    fsx.writeFileSync(path.join(statusDir, 'restore.json'), JSON.stringify({ ok: true, at: new Date().toISOString(), guild: GR, file: ARCH, request: reqId, message: '42 tables restaurées' }));
+    r = await req('GET', '/api/instance/restore', { sid: sessions.OWN });
+    const [mig] = await getTenantDb(GR)('SELECT MAX(version) AS v FROM schema_migrations');
+    const [aud] = await globalQuery("SELECT COUNT(*) AS n FROM instance_audit_log WHERE action = 'guild_restore_done' AND guild_id = ?", [GR]);
+    check('restauration: terminée → migrations appliquées, journal, copie d avant listée', !r.body.pending && r.body.last.ok && Number(mig.v) === app('./utils/tenantMigrations').LATEST_VERSION && Number(aud.n) === 1 && r.body.previous.includes(GR), JSON.stringify([r.body, mig, aud]));
+    r = await req('POST', `/api/instance/restore/${GR}/rollback`, { sid: sessions.OWN });
+    const nowTables = (await globalQuery('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = ?', [target])).map(x => x.t);
+    const prevTables = (await globalQuery('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = ?', [`${target}_prev`])).map(x => x.t);
+    check('restauration: annulation → tables d avant remises, restaurées gardées dans la copie', r.status === 200 && nowTables.includes('marker_before') && prevTables.includes('tickets') && !prevTables.includes('marker_before'), JSON.stringify([r.body, nowTables.length, prevTables.length]));
+    r = await req('DELETE', `/api/instance/restore/${GR}/previous`, { sid: sessions.OWN });
+    const [left] = await globalQuery('SELECT COUNT(*) AS n FROM information_schema.schemata WHERE schema_name = ?', [`${target}_prev`]);
+    check('restauration: copie d avant supprimée', r.status === 200 && Number(left.n) === 0, JSON.stringify(left));
+    await globalQuery(`DROP DATABASE IF EXISTS \`${target}\``);
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [GR]);
+    delete cfgR.backupStatusDir; delete cfgR.backupRequestsDir;
+    fsx.rmSync(statusDir, { recursive: true, force: true }); fsx.rmSync(reqDir, { recursive: true, force: true });
+  }
+
   // ── Session store on ioredis (utils/sessionStore.js): same keys and format as connect-redis ──
   {
     const { RedisSessionStore } = app('./utils/sessionStore');

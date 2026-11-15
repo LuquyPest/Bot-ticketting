@@ -7,7 +7,7 @@ Tu installes ton instance, tu branches ton bot Discord : il est à toi.
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-961_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-971_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
@@ -61,7 +61,7 @@ Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'
 | | |
 |---|---|
 | Mise à jour | `docker compose pull && docker compose up -d`, ou un bouton dans le dashboard — migrations automatiques ([Mises à jour](https://docs.bot.daryu.xyz/guide/mise-a-jour)) |
-| Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité), vérifiée chaque semaine, copiable hors du serveur (S3, B2, SFTP…) ; restauration : `scripts/restore.sh` |
+| Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité), vérifiée chaque semaine, copiable hors du serveur (S3, B2, SFTP…) ; restauration de tout ou d'un seul serveur, depuis le dashboard ou `scripts/restore.sh` |
 | HTTPS | Caddy inclus (Let's Encrypt), ou ton Traefik, ou ton propre proxy |
 | Configuration | tout dans `.env`, chaque variable est commentée dans [.env.example](.env.example) |
 
@@ -70,7 +70,7 @@ Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'
 Node 22, discord.js 14, Express 5, MariaDB 11 (une base par serveur Discord), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
-npm run test:integration                                  # 961 vérifications sur MariaDB + Redis jetables
+npm run test:integration                                  # 971 vérifications sur MariaDB + Redis jetables
 cd dashboard && npx vite build && node tests/smoke.mjs    # pages du dashboard + accessibilité (axe-core)
 ```
 

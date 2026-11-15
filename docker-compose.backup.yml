@@ -35,9 +35,12 @@ services:
         limits:
           memory: 128M
 
-  # The bot only reads the results of the backups (never the archives)
+  # The bot only reads the results of the backups (never the archives), and may ask the backup
+  # service to restore one server (request file in ./backups/requests, Instance → Santé)
   bot:
     environment:
       BACKUP_STATUS_DIR: /app/backup-status
+      BACKUP_REQUESTS_DIR: /app/backup-requests
     volumes:
       - ./backups/status:/app/backup-status:ro
+      - ./backups/requests:/app/backup-requests
