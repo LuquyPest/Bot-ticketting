@@ -83,7 +83,7 @@ To let someone else manage the instance, add their Discord ID to `OWNER_IDS` (`.
 | Action | Command |
 |---|---|
 | Update | `docker compose pull && docker compose up -d` — see [Updates (French)](../guide/mise-a-jour) |
-| Back up | automatic every night into `backups/`, encrypted with `BACKUP_KEY` (`backup` service); on demand: `scripts/backup.sh`. The key is also shown to the owner in **Paramètres → Sécurité**: keep it off the server with a copy of `.env` (`ENCRYPTION_KEY` decrypts the transcripts) |
+| Back up | automatic every night into `backups/`, encrypted with `BACKUP_KEY` (`backup` service); on demand: `scripts/backup.sh`. The key is also shown to the owner in **Paramètres → Accès et sécurité** (Settings → Access and security): keep it off the server with a copy of `.env` (`ENCRYPTION_KEY` decrypts the transcripts) |
 | Restore | `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc` (integrity checked before anything is written) |
 | Logs | `docker compose logs -f bot` |
 | Restart | `docker compose restart bot` |

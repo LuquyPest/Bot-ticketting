@@ -17,6 +17,7 @@ export const VERSIONS = [
       { type: 'new',  text: 'Copie des sauvegardes hors du serveur avec rclone (S3, Backblaze B2, SFTP, Google Drive…) : service facultatif offsite, archives déjà chiffrées' },
       { type: 'new',  text: 'Vérification automatique des sauvegardes (BACKUP_VERIFY=weekly ou daily) : intégrité, déchiffrement et fin du dump contrôlés sans rien écrire en clair' },
       { type: 'new',  text: 'Instance → Santé : dernière sauvegarde, dernière vérification et dernière copie hors du serveur ; alerte au propriétaire si l\'une échoue ou manque depuis 26 h' },
+      { type: 'impr', text: 'Paramètres rangés en onglets (Général, Accès et sécurité, Tickets, Salons, Fonctionnalités, Intégrations, Sauvegarde), avec l\'onglet dans l\'adresse et un rappel des modifications non enregistrées' },
       { type: 'impr', text: 'scripts/setup.sh en français ou en anglais, et propose la vérification, la copie hors du serveur et le bouton de mise à jour' },
       { type: 'impr', text: 'Le dashboard suit la langue du navigateur tant que personne n\'a choisi (anglais hors navigateur français)' },
       { type: 'fix',  text: 'Une sauvegarde dont le dump échouait pouvait être enregistrée comme réussie : chaque étape est maintenant contrôlée' },

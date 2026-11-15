@@ -136,9 +136,13 @@ Le serveur est **prêt dès que le bot arrive** : tu en es fondateur et tu reço
 
 ## Étape 8 — Régler l'essentiel
 
-**Paramètres → Rôles d'accès** : choisis les rôles Discord de ton staff et les catégories où ranger les tickets.
+**Paramètres → Accès et sécurité** : choisis les rôles Discord de ton staff.
 
-![Paramètres → Rôles d'accès : rôles du staff et catégories des étapes](/images/install-roles.png)
+![Paramètres → Accès et sécurité : rôles support et chef support](/images/install-roles.png)
+
+**Paramètres → Tickets** : choisis les catégories où ranger les tickets, une par étape, puis **Sauvegarder**.
+
+![Paramètres → Tickets : format des tickets, catégories et délais des étapes](/images/install-categories.png)
 
 Puis envoie un message privé au bot depuis un autre compte : le ticket apparaît dans **Tickets** et dans la catégorie « Ouvert » de ton serveur. **C'est installé.**
 

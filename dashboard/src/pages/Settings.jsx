@@ -1,5 +1,6 @@
-import React, { cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
-import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot } from 'lucide-react';
+import React, { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
@@ -9,7 +10,7 @@ import PortalBranding from '../components/PortalBranding';
 import BackupKey from '../components/BackupKey';
 import { useAuth } from '../App';
 
-// What each ticket format does (Paramètres → Rôles d'accès)
+// What each ticket format does (Paramètres → Tickets)
 const TICKET_MODE_HINT = {
   auto: 'Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets deviennent des fils privés du salon choisi ci-contre.',
   channel: 'Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets sont refusés : le membre est prévenu et les fondateurs reçoivent un MP.',
@@ -143,6 +144,46 @@ function RoleMultiPicker({ value, onChange, roles, loading }) {
   );
 }
 
+// Tabs of the page; the current one is kept in the address (?tab=) so a link can open it directly
+const TABS = [
+  { id: 'general',       label: 'Général',            icon: Settings2 },
+  { id: 'acces',         label: 'Accès et sécurité',  icon: ShieldCheck },
+  { id: 'tickets',       label: 'Tickets',            icon: Ticket },
+  { id: 'salons',        label: 'Salons',             icon: Hash },
+  { id: 'fonctions',     label: 'Fonctionnalités',    icon: Sparkles },
+  { id: 'integrations',  label: 'Intégrations',       icon: Plug },
+  { id: 'sauvegarde',    label: 'Sauvegarde',         icon: Archive },
+];
+
+// Accessible tab list: arrow keys, Home / End, roving focus
+function TabList({ current, onChange }) {
+  const refs = useRef({});
+  const move = (e, i) => {
+    const n = TABS.length;
+    const next = e.key === 'ArrowRight' ? (i + 1) % n : e.key === 'ArrowLeft' ? (i - 1 + n) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    onChange(TABS[next].id);
+    refs.current[TABS[next].id]?.focus();
+  };
+  return (
+    <div role="tablist" aria-label="Catégories de paramètres" className="flex gap-1 overflow-x-auto border-b border-overlay/6 -mx-1 px-1">
+      {TABS.map((t, i) => {
+        const Icon = t.icon;
+        const active = t.id === current;
+        return (
+          <button key={t.id} ref={el => { refs.current[t.id] = el; }} role="tab" type="button" id={`tab-${t.id}`}
+            aria-selected={active} aria-controls={`panel-${t.id}`} tabIndex={active ? 0 : -1}
+            onClick={() => onChange(t.id)} onKeyDown={e => move(e, i)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors ${active ? 'border-primary text-ink-1 font-medium' : 'border-transparent text-ink-3 hover:text-ink-1'}`}>
+            <Icon size={14} aria-hidden="true" />{t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Settings() {
   const { user } = useAuth();
   const [cfg, setCfg]               = useState(null);
@@ -155,6 +196,10 @@ export default function Settings() {
   const [grades, setGrades] = useState([]);
   const [historyKey, setHistoryKey] = useState(0);
   const [discordLoading, setDL]     = useState(true);
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.some(t => t.id === params.get('tab')) ? params.get('tab') : 'general';
+  const setTab = id => setParams(p => { const n = new URLSearchParams(p); n.set('tab', id); return n; }, { replace: true });
+  const [savedJson, setSavedJson] = useState(null);
 
   // Bot identity (per-guild)
   const [botIdentity, setBotIdentity]       = useState(null);
@@ -166,7 +211,7 @@ export default function Settings() {
 
   const load = () => {
     setLoading(true);
-    api.get('/config').then(r => setCfg(r.data)).finally(() => setLoading(false));
+    api.get('/config').then(r => { setCfg(r.data); setSavedJson(JSON.stringify(r.data)); }).finally(() => setLoading(false));
   };
 
   const loadBotIdentity = () => {
@@ -296,6 +341,7 @@ export default function Settings() {
         apiKeysEnabled:           cfg.apiKeysEnabled ? 1 : 0,
       });
       toast.success('Configuration sauvegardée !');
+      setSavedJson(JSON.stringify(cfg));
       setHistoryKey(k => k + 1);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur lors de la sauvegarde');
@@ -311,17 +357,27 @@ export default function Settings() {
   };
   const removeSubject = (i) => set('ticketSubjects', cfg.ticketSubjects.filter((_, idx) => idx !== i));
 
+  const dirty = useMemo(() => !!cfg && savedJson !== null && JSON.stringify(cfg) !== savedJson, [cfg, savedJson]);
+  // Leaving the page with unsaved changes asks first
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = e => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
   if (loading) return <div className="p-6 text-ink-3">Chargement...</div>;
   if (!cfg) return <div className="p-6 text-red-400">Impossible de charger la configuration.</div>;
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl">
+    <div className="p-6 space-y-5 max-w-5xl">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink-1">Paramètres</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {dirty && <span className="text-xs text-amber-300" role="status">Modifications non enregistrées</span>}
           <button onClick={load}
             className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-surface transition-colors"
             title="Recharger">
@@ -336,6 +392,10 @@ export default function Settings() {
         </div>
       </div>
 
+      <TabList current={tab} onChange={setTab} />
+
+      {tab === 'general' && (
+        <div role="tabpanel" id="panel-general" aria-labelledby="tab-general" className="space-y-5">
       {/* Bot Discord identity (per-guild) */}
       <Section
         title="Apparence du bot sur ce serveur"
@@ -465,6 +525,10 @@ export default function Settings() {
         <SubjectRules subjects={cfg.ticketSubjects || []} />
       </Section>
 
+        </div>
+      )}
+      {tab === 'acces' && (
+        <div role="tabpanel" id="panel-acces" aria-labelledby="tab-acces" className="space-y-5">
       {/* Access roles + category */}
       <Section title="Rôles d'accès" description="Rôles Discord ayant accès au bot et au dashboard. Leurs membres obtiennent automatiquement un compte dashboard avec le grade associé (retiré s'ils perdent le rôle).">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -488,6 +552,34 @@ export default function Settings() {
             </Field>
           ))}
         </div>
+      </Section>
+
+      <Section title="Sécurité">
+        <Field label="Double authentification obligatoire" hint="Les comptes concernés sans 2FA ne peuvent plus accéder au dashboard tant qu'ils ne l'ont pas activée (depuis leur profil). Active d'abord la tienne.">
+          <select value={cfg.require2fa || 'none'} onChange={e => set('require2fa', e.target.value)} className={BASE}>
+            <option value="none">Non imposée</option>
+            <option value="founders">Imposée aux fondateurs</option>
+            <option value="staff">Imposée à tout le staff</option>
+          </select>
+        </Field>
+        <Field label="Déconnexion après inactivité" hint="Sans clic, frappe ni défilement pendant cette durée, le compte est déconnecté (un avertissement s'affiche une minute avant). S'applique à tout le staff, fondateurs compris.">
+          <select value={cfg.idleTimeoutMinutes ?? 0} onChange={e => set('idleTimeoutMinutes', Number(e.target.value))} className={BASE}>
+            <option value={0}>Jamais</option>
+            {[15, 30, 60, 120, 240, 480].map(m => <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} heure${m > 60 ? 's' : ''}`}</option>)}
+          </select>
+        </Field>
+        {user?.isOwner && (
+          <Field label="Clé des sauvegardes" hint="Déchiffre les sauvegardes nocturnes de l'instance (tous les serveurs). Réservée au propriétaire de l'instance ; chaque affichage est inscrit au journal de l'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.">
+            <BackupKey />
+          </Field>
+        )}
+      </Section>
+
+        </div>
+      )}
+      {tab === 'tickets' && (
+        <div role="tabpanel" id="panel-tickets" aria-labelledby="tab-tickets" className="space-y-5">
+      <Section title="Tickets sur Discord" description="Où et sous quelle forme les tickets sont créés sur le serveur, et combien de temps chaque étape peut durer.">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Field label="Format des tickets sur Discord" hint={TICKET_MODE_HINT[cfg.ticketMode || 'auto']}>
             <select value={cfg.ticketMode || 'auto'} onChange={e => set('ticketMode', e.target.value)}
@@ -529,37 +621,6 @@ export default function Settings() {
           ))}
         </div>
       </Section>
-
-      {/* Limits */}
-      <Section title="Sauvegarde et transfert">
-        <ConfigTransfer />
-      </Section>
-
-      <Section title="Historique des modifications" description="Qui a changé quel réglage, avec l'ancienne et la nouvelle valeur. « Revenir à l'état d'avant » annule ce changement et tous les suivants.">
-        <ConfigHistory key={historyKey} channels={channels} categories={categories} roles={roles} grades={grades} onRestored={load} />
-      </Section>
-
-      <Section title="Sécurité">
-        <Field label="Double authentification obligatoire" hint="Les comptes concernés sans 2FA ne peuvent plus accéder au dashboard tant qu'ils ne l'ont pas activée (depuis leur profil). Active d'abord la tienne.">
-          <select value={cfg.require2fa || 'none'} onChange={e => set('require2fa', e.target.value)} className={BASE}>
-            <option value="none">Non imposée</option>
-            <option value="founders">Imposée aux fondateurs</option>
-            <option value="staff">Imposée à tout le staff</option>
-          </select>
-        </Field>
-        <Field label="Déconnexion après inactivité" hint="Sans clic, frappe ni défilement pendant cette durée, le compte est déconnecté (un avertissement s'affiche une minute avant). S'applique à tout le staff, fondateurs compris.">
-          <select value={cfg.idleTimeoutMinutes ?? 0} onChange={e => set('idleTimeoutMinutes', Number(e.target.value))} className={BASE}>
-            <option value={0}>Jamais</option>
-            {[15, 30, 60, 120, 240, 480].map(m => <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} heure${m > 60 ? 's' : ''}`}</option>)}
-          </select>
-        </Field>
-        {user?.isOwner && (
-          <Field label="Clé des sauvegardes" hint="Déchiffre les sauvegardes nocturnes de l'instance (tous les serveurs). Réservée au propriétaire de l'instance ; chaque affichage est inscrit au journal de l'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.">
-            <BackupKey />
-          </Field>
-        )}
-      </Section>
-
       <Section title="Limites et délais">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Alerte note basse (étoiles)" hint="Une note inférieure ou égale prévient les fondateurs et chefs support — 0 = désactivé">
@@ -589,6 +650,25 @@ export default function Settings() {
         </div>
       </Section>
 
+      {/* Escalation */}
+      <Section title="Escalade automatique"
+        description="Un ticket urgent sans réponse staff déclenche une alerte puis une fermeture.">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Délai d'alerte (h)" hint="Sans réponse avant alerte Discord">
+            <input type="number" min={1} max={48} value={cfg.escalationAlertHours ?? 2}
+              onChange={e => set('escalationAlertHours', parseInt(e.target.value))} className={NUM_INPUT} />
+          </Field>
+          <Field label="Délai de fermeture (h)" hint="Sans réponse avant fermeture auto">
+            <input type="number" min={1} max={168} value={cfg.escalationCloseHours ?? 4}
+              onChange={e => set('escalationCloseHours', parseInt(e.target.value))} className={NUM_INPUT} />
+          </Field>
+        </div>
+      </Section>
+
+        </div>
+      )}
+      {tab === 'salons' && (
+        <div role="tabpanel" id="panel-salons" aria-labelledby="tab-salons" className="space-y-5">
       {/* Log channels */}
       <Section title="Salons de logs">
         <div className="space-y-3">
@@ -629,33 +709,10 @@ export default function Settings() {
         </div>
       </Section>
 
-      {/* Escalation */}
-      <Section title="Escalade automatique"
-        description="Un ticket urgent sans réponse staff déclenche une alerte puis une fermeture.">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Délai d'alerte (h)" hint="Sans réponse avant alerte Discord">
-            <input type="number" min={1} max={48} value={cfg.escalationAlertHours ?? 2}
-              onChange={e => set('escalationAlertHours', parseInt(e.target.value))} className={NUM_INPUT} />
-          </Field>
-          <Field label="Délai de fermeture (h)" hint="Sans réponse avant fermeture auto">
-            <input type="number" min={1} max={168} value={cfg.escalationCloseHours ?? 4}
-              onChange={e => set('escalationCloseHours', parseInt(e.target.value))} className={NUM_INPUT} />
-          </Field>
         </div>
-      </Section>
-
-      {/* Integrations */}
-      <Section title="Intégrations">
-        <Field label="Webhook URL" hint="Facultatif — notifications externes sur les événements tickets">
-          <input type="url" value={cfg.webhookUrl || ''} onChange={e => set('webhookUrl', e.target.value)}
-            placeholder="https://discord.com/api/webhooks/…" className={BASE} />
-        </Field>
-        <Field label="Webhook Secret" hint="Optionnel — clé HMAC-SHA256 pour vérifier les signatures (min 16 caractères)">
-          <input type="password" value={cfg.webhookSecret || ''} onChange={e => set('webhookSecret', e.target.value || null)}
-            placeholder="••••••••••••••••" autoComplete="off" className={BASE} />
-        </Field>
-      </Section>
-
+      )}
+      {tab === 'fonctions' && (
+        <div role="tabpanel" id="panel-fonctions" aria-labelledby="tab-fonctions" className="space-y-5">
       {/* Feature flags */}
       <Section title="Fonctionnalités" description="Active ou désactive les fonctionnalités avancées pour ce serveur.">
         <FeatureToggle
@@ -719,6 +776,21 @@ export default function Settings() {
           hint="Classement staff hebdomadaire / mensuel sur la page d'accueil"
           checked={cfg.leaderboardEnabled !== false} onChange={v => set('leaderboardEnabled', v)}
         />
+      </Section>
+        </div>
+      )}
+      {tab === 'integrations' && (
+        <div role="tabpanel" id="panel-integrations" aria-labelledby="tab-integrations" className="space-y-5">
+      {/* Integrations */}
+      <Section title="Intégrations">
+        <Field label="Webhook URL" hint="Facultatif — notifications externes sur les événements tickets">
+          <input type="url" value={cfg.webhookUrl || ''} onChange={e => set('webhookUrl', e.target.value)}
+            placeholder="https://discord.com/api/webhooks/…" className={BASE} />
+        </Field>
+        <Field label="Webhook Secret" hint="Optionnel — clé HMAC-SHA256 pour vérifier les signatures (min 16 caractères)">
+          <input type="password" value={cfg.webhookSecret || ''} onChange={e => set('webhookSecret', e.target.value || null)}
+            placeholder="••••••••••••••••" autoComplete="off" className={BASE} />
+        </Field>
         <FeatureToggle
           label="Webhooks sortants"
           hint="Appels HTTP sur les événements tickets (ouverture, fermeture, claim…)"
@@ -746,6 +818,21 @@ export default function Settings() {
           checked={cfg.apiKeysEnabled} onChange={v => set('apiKeysEnabled', v)}
         />
       </Section>
+
+        </div>
+      )}
+      {tab === 'sauvegarde' && (
+        <div role="tabpanel" id="panel-sauvegarde" aria-labelledby="tab-sauvegarde" className="space-y-5">
+      <Section title="Sauvegarde et transfert">
+        <ConfigTransfer />
+      </Section>
+
+      <Section title="Historique des modifications" description="Qui a changé quel réglage, avec l'ancienne et la nouvelle valeur. « Revenir à l'état d'avant » annule ce changement et tous les suivants.">
+        <ConfigHistory key={historyKey} channels={channels} categories={categories} roles={roles} grades={grades} onRestored={load} />
+      </Section>
+
+        </div>
+      )}
     </div>
   );
 }

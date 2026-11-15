@@ -98,8 +98,10 @@ const SHOTS = [
   // Installation guide
   ['install-login', '/login', { ...PRO, anonymous: true, viewport: { width: 1100, height: 720 }, crop: 'div.max-w-sm' }],
   ['install-servers', '/select-guild', { ...PRO, me: { guildId: null, role: null }, viewport: { width: 1100, height: 720 }, crop: 'div.max-w-lg' }],
-  ['install-roles', '/settings', { ...PRO, viewport: { width: 1300, height: 900 }, element: section("Rôles d'accès"), config: {
+  ['install-roles', '/settings?tab=acces', { ...PRO, viewport: { width: 1300, height: 900 }, element: section("Rôles d'accès"), config: {
     supportRoleIds: ['11'], chiefRoleIds: ['12'], ticketCategoryId: '21', waitingCategoryId: '22', inProgressCategoryId: '23', ticketMode: 'auto', ticketSubjects: ['Paiement', 'Compte', 'Signalement', 'Autre'] } }],
+  ['install-categories', '/settings?tab=tickets', { ...PRO, viewport: { width: 1300, height: 1000 }, element: section('Tickets sur Discord'), config: {
+    supportRoleIds: ['11'], chiefRoleIds: ['12'], ticketCategoryId: '21', waitingCategoryId: '22', inProgressCategoryId: '23', ticketMode: 'auto', slaOpenHours: 4, slaWaitingHours: 48, slaInProgressHours: 24 } }],
 ];
 
 const server = await preview({ preview: { host: '127.0.0.1', port: 4176, strictPort: true, proxy: {} }, logLevel: 'error' });

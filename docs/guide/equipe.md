@@ -10,7 +10,7 @@
 
 Le **fondateur** d'un serveur est la personne qui a invité le bot (à défaut, le propriétaire du serveur) ; il peut en nommer d'autres. Le **propriétaire de l'instance** est fondateur sur tous les serveurs.
 
-**Accès par rôle Discord** : les membres qui ont un rôle *support* ou *chef support* choisi dans **Paramètres → Rôles d'accès** obtiennent un compte à leur connexion, avec le grade associé. Ils le perdent avec le rôle Discord (vérifié à la connexion puis toutes les 5 minutes). Les comptes gérés à la main dans **Équipe** ne sont jamais touchés par cette synchronisation.
+**Accès par rôle Discord** : les membres qui ont un rôle *support* ou *chef support* choisi dans **Paramètres → Accès et sécurité** obtiennent un compte à leur connexion, avec le grade associé. Ils le perdent avec le rôle Discord (vérifié à la connexion puis toutes les 5 minutes). Les comptes gérés à la main dans **Équipe** ne sont jamais touchés par cette synchronisation.
 
 À la connexion, un membre du staff qui n'a accès qu'à un serveur arrive directement sur son dashboard.
 
@@ -41,7 +41,7 @@ Un grade peut avoir un **parent** : les membres du parent voient aussi ce que vo
 ## Double authentification
 
 - Chacun peut activer la **2FA** (application TOTP) dans son **Profil**, avec 10 codes de secours.
-- Un fondateur peut l'**imposer** aux fondateurs ou à tout le staff (**Paramètres → Sécurité**).
+- Un fondateur peut l'**imposer** aux fondateurs ou à tout le staff (**Paramètres → Accès et sécurité**).
 - **Déconnexion après inactivité** réglable (15 minutes à 8 heures).
 - Une connexion depuis un **nouvel appareil** envoie un MP au titulaire du compte.
 

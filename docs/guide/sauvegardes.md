@@ -17,7 +17,7 @@ Les archives de plus de 30 jours sont supprimées (`BACKUP_KEEP_DAYS`). Sans `BA
 
 ## La clé
 
-`BACKUP_KEY` est dans le `.env`, et le propriétaire de l'instance la retrouve dans le dashboard : **Paramètres → Sécurité → Clé des sauvegardes** (masquée par défaut, chaque affichage est inscrit au journal de l'instance). Elle n'est montrée qu'au propriétaire, car les archives contiennent tous les serveurs.
+`BACKUP_KEY` est dans le `.env`, et le propriétaire de l'instance la retrouve dans le dashboard : **Paramètres → Accès et sécurité → Clé des sauvegardes** (masquée par défaut, chaque affichage est inscrit au journal de l'instance). Elle n'est montrée qu'au propriétaire, car les archives contiennent tous les serveurs.
 
 ::: danger Garde-la hors du serveur
 Note `BACKUP_KEY` et `ENCRYPTION_KEY` dans un gestionnaire de mots de passe. Si le serveur est perdu, sans elles les sauvegardes et les transcripts sont **définitivement illisibles**.

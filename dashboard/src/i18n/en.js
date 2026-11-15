@@ -319,7 +319,7 @@ export const ENTRIES = [
   ['Nouvelle clé', 'New key'], ['Nouvelle clé API', 'New API key'], ['Nom de la clé', 'Key name'], ['Expiration (optionnel)', 'Expiry (optional)'],
   ['Aucune clé API créée', 'No API key created'], ['Clé API créée — sauvegarde-la maintenant, elle ne sera plus affichée !', 'API key created — save it now, it will not be shown again!'], ['Clé créée — copie-la maintenant !', 'Key created — copy it now!'],
   ['J\'ai sauvegardé ma clé', 'I saved my key'], ['Clé révoquée', 'Key revoked'], ['Erreur révocation', 'Revocation error'], ['Dernière utilisation :', 'Last used:'],
-  ['L\'API publique n\'est pas activée pour ce serveur. Active-la dans les Paramètres → Fonctionnalités.', 'The public API is not enabled for this server. Turn it on in Settings → Features.'], ['Lire les tickets', 'Read tickets'],
+  ['L\'API publique n\'est pas activée pour ce serveur. Active-la dans les Paramètres → Intégrations.', 'The public API is not enabled for this server. Turn it on in Settings → Integrations.'], ['Lire les tickets', 'Read tickets'],
   ['Documentation de l\'API', 'API documentation'], ['Adresse et authentification', 'Address and authentication'], ['Toutes les routes commencent par', 'Every route starts with'], ['. Chaque requête porte la clé :', '. Every request carries the key:'],
   ['Les erreurs répondent', 'Errors answer'], ['avec le code HTTP : 401 (clé absente, invalide, révoquée ou expirée), 403 (permission manquante ou API désactivée sur le serveur), 404, 429 (trop de requêtes).', 'with the HTTP code: 401 (key missing, invalid, revoked or expired), 403 (missing permission or API disabled on the server), 404, 429 (too many requests).'],
   ['Documentation indisponible.', 'Documentation unavailable.'], ['permission', 'permission'], ['chemin', 'path'], ['requête', 'query'], ['Réponse', 'Response'], ['OpenAPI (JSON)', 'OpenAPI (JSON)'],
@@ -513,6 +513,17 @@ export const ENTRIES = [
   ['Clé des sauvegardes', 'Backup key'], ['Clé des sauvegardes affichée', 'Backup key shown'], ['Afficher la clé', 'Show the key'], ['Masquer la clé', 'Hide the key'],
   ['Copier la clé', 'Copy the key'], ['Clé copiée', 'Key copied'], ['Restauration :', 'Restore:'],
   ['Déchiffre les sauvegardes nocturnes de l\'instance (tous les serveurs). Réservée au propriétaire de l\'instance ; chaque affichage est inscrit au journal de l\'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.', 'Decrypts the nightly backups of the instance (every server). Reserved to the owner of the instance; every display is written to the instance log. Keep it off the server: without it, a backup is lost.'],
+  // ── v3.1: settings tabs, version and backups in Instance → Santé ──
+  ['Accès et sécurité', 'Access and security'], ['Salons', 'Channels'], ['Intégrations', 'Integrations'], ['Sauvegarde', 'Backup'],
+  ['Catégories de paramètres', 'Settings categories'], ['Modifications non enregistrées', 'Unsaved changes'], ['Tickets sur Discord', 'Tickets on Discord'],
+  ['Où et sous quelle forme les tickets sont créés sur le serveur, et combien de temps chaque étape peut durer.', 'Where and in what form tickets are created on the server, and how long each stage may last.'],
+  ['Version', 'Version'], ['Vérification…', 'Checking…'], ['Mettre à jour', 'Update'], ['à jour', 'up to date'], ['Notes de version', 'Release notes'],
+  ['Pas encore vérifié.', 'Not checked yet.'], ['Vérification désactivée (UPDATE_CHECK=off).', 'Check disabled (UPDATE_CHECK=off).'],
+  ['Mise à jour lancée', 'Update started'], ['Tu as la dernière version', 'You have the latest version'],
+  ['La dernière mise à jour a échoué — voir le détail', 'The last update failed — see the details'],
+  ['Sauvegardes', 'Backups'], ['Service de sauvegarde absent.', 'No backup service.'], ['Dernière sauvegarde chiffrée', 'Last encrypted backup'],
+  ['Vérification d\'une archive', 'Archive check'], ['Copie hors du serveur', 'Off-site copy'], ['aucune pour l\'instant', 'none yet'],
+  ['désactivée (BACKUP_VERIFY)', 'disabled (BACKUP_VERIFY)'], ['non configurée', 'not configured'], ['Pour mettre à jour :', 'To update:'],
 ];
 
 export const TEMPLATES = [
@@ -567,4 +578,6 @@ export const TEMPLATES = [
   ['Les membres se connectent avec Discord sur {}/espace pour retrouver leurs tickets, leur statut et l\'historique de leurs échanges (jamais les notes internes)', 'Members sign in with Discord on {1}/espace to find their tickets, their status and the history of their conversations (never internal notes)'],
   ['Nom de la variable pour « {} » (lettres minuscules, chiffres et _ ; vide = automatique)', 'Variable name for « {1} » (lowercase letters, digits and _; empty = automatic)'],
   ['Dernière utilisation : {}', 'Last used: {1}'],
+  ['{} disponible', '{1} available'], ['Vérifié il y a {}.', 'Checked {1} ago.'], ['il y a {}', '{1} ago'], ['Échec il y a {}', 'Failed {1} ago'],
+  ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
 ];

@@ -60,7 +60,7 @@ Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'
 | | |
 |---|---|
 | Mise à jour | `docker compose pull && docker compose up -d` — migrations automatiques ([Mises à jour](https://docs.bot.daryu.xyz/guide/mise-a-jour)) |
-| Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité) ; la clé est dans Paramètres → Sécurité pour le propriétaire ; restauration : `scripts/restore.sh` |
+| Sauvegarde | chaque nuit dans `backups/`, **chiffrée** (AES-256 + contrôle d'intégrité) ; la clé est dans Paramètres → Accès et sécurité pour le propriétaire ; restauration : `scripts/restore.sh` |
 | HTTPS | Caddy inclus (Let's Encrypt), ou ton Traefik, ou ton propre proxy |
 | Configuration | tout dans `.env`, chaque variable est commentée dans [.env.example](.env.example) |
 

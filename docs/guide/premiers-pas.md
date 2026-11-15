@@ -4,9 +4,12 @@ Le bot vient d'arriver sur ton serveur et tu es connecté au dashboard comme **f
 
 ## 1. Rôles d'accès et catégories
 
-**Paramètres → Rôles d'accès** :
+**Paramètres → Accès et sécurité** :
 
 - **Rôles support** et **rôles chef support** : les membres Discord qui ont ces rôles obtiennent un compte sur le dashboard à leur connexion, avec le grade correspondant (*Support* ou *Chef support*, créés automatiquement). S'ils perdent le rôle, l'accès leur est retiré.
+
+**Paramètres → Tickets** :
+
 - **Catégories des étapes** : une catégorie Discord par étape (*Ouvert*, *En attente*, *En cours*). Changer l'étape d'un ticket déplace son salon.
 - **Format des tickets sur Discord** : un salon par ticket (par défaut, avec des fils privés au-delà de 500 salons), salons uniquement, ou fils privés uniquement.
 
@@ -16,7 +19,7 @@ Le bot a besoin de **Gérer les salons** et **Gérer les rôles** pour créer de
 
 ## 2. Sujets de ticket
 
-**Paramètres → Sujets de ticket** : la liste proposée au membre en boutons (« Paiement », « Compte », « Signalement »…). Pour chaque sujet, des **règles automatiques** peuvent ajouter un tag, fixer une priorité ou réserver le ticket à un grade. Une règle se déclenche par sujet ou par mots-clés du premier message.
+**Paramètres → Général → Sujets de ticket** : la liste proposée au membre en boutons (« Paiement », « Compte », « Signalement »…). Pour chaque sujet, des **règles automatiques** peuvent ajouter un tag, fixer une priorité ou réserver le ticket à un grade. Une règle se déclenche par sujet ou par mots-clés du premier message.
 
 ## 3. Messages et langue
 
@@ -39,8 +42,8 @@ Dans **Paramètres** :
 | **Formulaires** | Un questionnaire étape par étape avant la création du ticket |
 | **Panels** | Publier dans un salon un message à boutons pour ouvrir un ticket sans passer par les MP |
 | **Tags** et **Rôles** | Classer les tickets, et réserver certains tags à une partie de l'équipe |
-| **Paramètres → Salons de logs** | Garder une trace des ouvertures, fermetures et escalades dans des salons |
-| **Paramètres → Sécurité** | Imposer la 2FA, déconnecter après inactivité, voir la clé des sauvegardes (propriétaire) |
+| **Paramètres → Salons** | Garder une trace des ouvertures, fermetures et escalades dans des salons |
+| **Paramètres → Accès et sécurité** | Imposer la 2FA, déconnecter après inactivité, voir la clé des sauvegardes (propriétaire) |
 
 ## 6. Tester
 

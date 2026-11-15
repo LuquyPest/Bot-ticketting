@@ -85,7 +85,7 @@ export default function ApiKeys() {
   if (!data?.enabled) return (
     <div className="p-6 max-w-xl">
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-300">
-        L'API publique n'est pas activée pour ce serveur. Active-la dans les Paramètres → Fonctionnalités.
+        L'API publique n'est pas activée pour ce serveur. Active-la dans les Paramètres → Intégrations.
       </div>
     </div>
   );

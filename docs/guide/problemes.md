@@ -40,7 +40,7 @@ Tu n'es pas connecté avec le compte propriétaire de l'application Discord. Ajo
 Un fondateur doit t'attribuer un grade dans **Équipe**.
 
 **Un membre du staff ne voit pas le serveur**
-Vérifie que son rôle Discord est dans **Paramètres → Rôles d'accès**, puis qu'il se reconnecte.
+Vérifie que son rôle Discord est dans **Paramètres → Accès et sécurité**, puis qu'il se reconnecte.
 
 **« Permission insuffisante » partout**
 Un support n'a aucun droit sans grade : vérifie le grade associé à son rôle, ou attribue-lui un grade avec au moins `view_tickets`.

@@ -6,7 +6,7 @@
 
 ## API publique
 
-Activable par serveur (**Paramètres → Fonctionnalités → API publique**), avec des **clés API** (page **Clés API**) créées par les fondateurs : permissions au choix, date d'expiration facultative. Seule une empreinte de la clé est conservée.
+Activable par serveur (**Paramètres → Intégrations → API publique**), avec des **clés API** (page **Clés API**) créées par les fondateurs : permissions au choix, date d'expiration facultative. Seule une empreinte de la clé est conservée.
 
 | Méthode | Route | Permission |
 |---|---|---|
@@ -35,4 +35,4 @@ Chaque membre du staff peut recevoir les nouveaux messages et réponses en notif
 
 ## Sauvegarde de la configuration
 
-**Paramètres → Sauvegarde et transfert** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles, règles, procédures) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.
+**Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles, règles, procédures) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

@@ -196,7 +196,7 @@ function createManager(db, client, guildId) {
       if (err.code !== 30013 && !/maximum number of (guild )?channels/i.test(err.message || '')) throw err;
       if (mode === 'auto' && cfg.thread_parent_channel_id) return createTicketThread(cfg, user, subject);
       await require('./guildHealth').alertCapacity(db, client, gid, mode === 'auto'
-        ? 'Le serveur n\'a plus de place pour un salon de ticket et aucun salon des fils n\'est choisi (Paramètres → Format des tickets).'
+        ? 'Le serveur n\'a plus de place pour un salon de ticket et aucun salon des fils n\'est choisi (Paramètres → Tickets → Format des tickets).'
         : 'Le serveur n\'a plus de place pour un salon de ticket (limite Discord de 500 salons) : les nouveaux tickets sont refusés. Ferme des tickets ou passe au format « Salons, puis fils privés ».').catch(() => null);
       const full = new Error('Plus de place pour un nouveau salon de ticket');
       full.code = 'TICKET_CAPACITY';

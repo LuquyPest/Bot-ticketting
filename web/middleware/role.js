@@ -40,7 +40,7 @@ module.exports = function requireRole(...roles) {
       req.session.user.role = dbUser.role;
       const role = dbUser.role;
 
-      // Mandatory 2FA for this server (Paramètres → Sécurité)
+      // Mandatory 2FA for this server (Paramètres → Accès et sécurité)
       if (role === 'fondateur' || role === 'support') {
         const policy = await guildPolicy(db);
         if (requiredFor(policy, role) && !(await hasTotp(req.session.user.id))) {
