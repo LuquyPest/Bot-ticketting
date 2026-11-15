@@ -18,6 +18,7 @@ const ACTIONS = {
   'POST /settings/error-alert/test': 'error_alert_test',
   'PUT /demo': 'demo_toggle',
   'POST /demo/reset': 'demo_reset',
+  'PUT /metrics': 'metrics_toggle',
 };
 
 const SECRET_KEYS = /pass|secret|totp|code|token/i;

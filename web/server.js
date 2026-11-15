@@ -292,6 +292,9 @@ app.use('/api', (err, req, res, next) => { // eslint-disable-line no-unused-vars
   res.status(status).json({ error: status >= 500 ? 'Erreur serveur' : (err.expose && err.message) || 'Requête invalide' });
 });
 
+// Prometheus (utils/metrics.js): 404 until the owner turns it on in Instance → Santé, then Bearer token
+app.get('/metrics', apiLimiter, require('../utils/metrics').metricsHandler);
+
 // Browser tab icon: the bot's own Discord avatar (default Discord avatar when it has none)
 app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
   const url = app.locals.client?.user?.displayAvatarURL?.({ extension: 'png', size: 64 });

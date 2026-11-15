@@ -24,7 +24,7 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 |---|---|
 | **Overview** | Servers, open tickets, tickets per day over 30 days, staff, errors of the last 24 hours, table per server |
 | **Servers** | Suspend, reactivate, put in maintenance, delete (the bot leaves the server and its database is erased); name or remove founders |
-| **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database; demonstration server |
+| **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database; demonstration server, [Prometheus metrics](#monitoring-prometheus) |
 | **Errors** | Central log of the errors of the bot, the dashboard and browsers, with filters; **alert** by DM (to the owner by default) or webhook beyond a threshold, and when the bot is disconnected from Discord |
 | **Log** | Every change made from the section, with its author and the server concerned |
 | **Blocks** | IP addresses blocked by the sign-in or API limits, with unblocking |
@@ -32,6 +32,33 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 ## Demonstration
 
 A fictitious server filled with realistic data, open to everyone from the sign-in page (« Discover the dashboard ») or directly at the `/demo` address of your domain. **Off by default**, it is turned on in **Instance → Health**. Isolated from everything else: no DM leaves it, actions towards Discord and the outside are refused, and it is reset every night.
+
+## Monitoring (Prometheus)
+
+To follow the instance in **Prometheus**, **Grafana** or **Uptime Kuma**. **Off by default**: **Instance → Health → Prometheus metrics → Turn on** creates a token, shown only once (only its fingerprint is kept). The address `https://your-domain/metrics` then answers whoever presents this token, and `404` to everyone while it is off.
+
+```yaml
+scrape_configs:
+  - job_name: ticketbot
+    scheme: https
+    authorization:
+      credentials: tbm_…        # the token
+    static_configs:
+      - targets: ['tickets.example.com']
+```
+
+| Metric | Content |
+|---|---|
+| `ticketbot_tickets_open`, `_unassigned`, `_waiting` | Open tickets, with nobody assigned, waiting — per server (`guild_id`, `guild`) |
+| `ticketbot_tickets_opened_24h`, `_closed_24h` | Opened and closed over 24 hours |
+| `ticketbot_oldest_unanswered_ticket_seconds` | Age of the oldest open ticket without a staff answer |
+| `ticketbot_discord_connected`, `_discord_ping_seconds` | Connection to Discord |
+| `ticketbot_database_up`, `ticketbot_redis_up` (and `_latency_seconds`) | Database and Redis |
+| `ticketbot_jobs{state}` | Scheduled jobs waiting, running, failed |
+| `ticketbot_backup_last_success_timestamp_seconds{kind}`, `ticketbot_backup_problems` | [Backups](./backups): last success, check, off-site copy |
+| `ticketbot_update_available`, `ticketbot_info{version}` | Version |
+
+Numbers only: no ticket subject, no member name. Values are computed at most every 15 seconds. **Uptime Kuma**: *HTTP(s) - Keyword* monitor on `/metrics`, header `Authorization: Bearer tbm_…`, keyword `ticketbot_discord_connected 1`.
 
 ## Privacy
 

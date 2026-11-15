@@ -24,7 +24,7 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 |---|---|
 | **Vue d'ensemble** | Serveurs, tickets ouverts, tickets par jour sur 30 jours, staff, erreurs des dernières 24 heures, tableau par serveur |
 | **Serveurs** | Suspendre, réactiver, mettre en maintenance, supprimer (le bot quitte le serveur et sa base est effacée) ; nommer ou retirer des fondateurs |
-| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; serveur de démonstration |
+| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; serveur de démonstration, [métriques Prometheus](#supervision-prometheus) |
 | **Erreurs** | Journal centralisé des erreurs du bot, du dashboard et des navigateurs, avec filtres ; **alerte** par MP (au propriétaire par défaut) ou webhook au-delà d'un seuil, et en cas de déconnexion de Discord |
 | **Journal** | Chaque modification faite depuis la section, avec son auteur et le serveur concerné |
 | **Blocages** | Adresses IP bloquées par les limites de connexion ou d'API, avec déblocage |
@@ -32,6 +32,33 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 ## Démonstration
 
 Un serveur fictif rempli de données réalistes, ouvert à tous depuis la page de connexion (« Découvrir le dashboard ») ou directement à l'adresse `/demo` de ton domaine. **Désactivé par défaut**, il s'active dans **Instance → Santé**. Isolé de tout le reste : aucun MP n'en part, les actions vers Discord et vers l'extérieur sont refusées, et il est remis à zéro chaque nuit.
+
+## Supervision (Prometheus)
+
+Pour suivre l'instance dans **Prometheus**, **Grafana** ou **Uptime Kuma**. **Désactivé par défaut** : **Instance → Santé → Métriques Prometheus → Activer** crée un jeton, affiché une seule fois (seule son empreinte est gardée). L'adresse `https://ton-domaine/metrics` répond alors à qui présente ce jeton, et `404` à tout le monde tant que c'est coupé.
+
+```yaml
+scrape_configs:
+  - job_name: ticketbot
+    scheme: https
+    authorization:
+      credentials: tbm_…        # le jeton
+    static_configs:
+      - targets: ['tickets.example.com']
+```
+
+| Métrique | Contenu |
+|---|---|
+| `ticketbot_tickets_open`, `_unassigned`, `_waiting` | Tickets ouverts, sans personne assignée, en attente — par serveur (`guild_id`, `guild`) |
+| `ticketbot_tickets_opened_24h`, `_closed_24h` | Ouverts et fermés sur 24 heures |
+| `ticketbot_oldest_unanswered_ticket_seconds` | Âge du plus vieux ticket ouvert sans réponse du staff |
+| `ticketbot_discord_connected`, `_discord_ping_seconds` | Connexion à Discord |
+| `ticketbot_database_up`, `ticketbot_redis_up` (et `_latency_seconds`) | Base et Redis |
+| `ticketbot_jobs{state}` | Tâches planifiées en attente, en cours, en échec |
+| `ticketbot_backup_last_success_timestamp_seconds{kind}`, `ticketbot_backup_problems` | [Sauvegardes](./sauvegardes) : dernière réussite, vérification, copie hors du serveur |
+| `ticketbot_update_available`, `ticketbot_info{version}` | Version |
+
+Uniquement des chiffres : aucun sujet de ticket ni nom de membre. Les valeurs sont recalculées au plus toutes les 15 secondes. **Uptime Kuma** : moniteur *HTTP(s) - Mot-clé* sur `/metrics`, en-tête `Authorization: Bearer tbm_…`, mot-clé `ticketbot_discord_connected 1`.
 
 ## Confidentialité
 

@@ -38,6 +38,57 @@ function DemoCard() {
   );
 }
 
+// Prometheus endpoint: off by default; turning it on creates a token shown once
+function MetricsCard() {
+  const [m, setM] = useState(null);
+  const [token, setToken] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.get('/instance/metrics').then(r => setM(r.data)).catch(() => {}); }, []);
+  if (!m) return null;
+  const change = async enabled => {
+    if (m.enabled && !window.confirm(enabled ? 'Créer un nouveau jeton ? L\'ancien cessera de fonctionner.' : 'Couper les métriques ? Le jeton actuel cessera de fonctionner.')) return;
+    setBusy(true);
+    try {
+      const r = await api.put('/instance/metrics', { enabled });
+      setToken(r.data.token || null);
+      setM(v => ({ ...v, enabled: r.data.enabled, createdAt: r.data.enabled ? Date.now() : null }));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const copy = () => navigator.clipboard?.writeText(token).then(() => toast.success('Jeton copié')).catch(() => {});
+  return (
+    <div className="glass-dark rounded-2xl border border-overlay/8 px-5 py-4 space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-ink-1">Métriques Prometheus {m.enabled ? <span className="text-emerald-400 text-xs">· activées</span> : <span className="text-ink-4 text-xs">· désactivées</span>}</p>
+          <p className="text-xs text-ink-3 mt-0.5">Pour Prometheus, Grafana ou Uptime Kuma : tickets ouverts, file d'attente, Discord, base, Redis, sauvegardes. Uniquement des chiffres.</p>
+        </div>
+        {m.enabled && <button onClick={() => change(true)} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Nouveau jeton</button>}
+        <button onClick={() => change(!m.enabled)} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">{m.enabled ? 'Désactiver' : 'Activer'}</button>
+      </div>
+      {m.enabled && (
+        <p className="text-xs text-ink-3">Adresse : <code className="text-ink-2" translate="no">{m.url}</code>{m.createdAt ? ` · jeton créé le ${fmtTime(m.createdAt)}` : ''}</p>
+      )}
+      {token && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2" role="status">
+          <p className="text-xs font-semibold text-amber-300">Copie ce jeton maintenant : il ne sera plus jamais affiché.</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="flex-1 min-w-0 break-all text-xs text-ink-1 bg-surface rounded-lg px-2 py-1.5" translate="no">{token}</code>
+            <button onClick={copy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">Copier</button>
+          </div>
+          <pre className="text-[11px] text-ink-3 bg-surface rounded-lg p-2 overflow-x-auto" translate="no" tabIndex={0}>{`scrape_configs:
+  - job_name: ticketbot
+    scheme: https
+    authorization:
+      credentials: ${token}
+    static_configs:
+      - targets: ['${(m.url || '').replace(/^https?:\/\//, '').replace(/\/metrics$/, '')}']`}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const fmtBytes = b => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(b / 1024))} Ko`);
 const ago = t => (t ? fmtDur(Math.max(60, Math.round((Date.now() - t) / 1000))) : null);
 
@@ -155,6 +206,8 @@ export default function Health() {
       <VersionCard />
 
       <DemoCard />
+
+      <MetricsCard />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div className={card}>

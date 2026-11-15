@@ -2987,6 +2987,40 @@ async function main() {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 
+  // ── Prometheus (utils/metrics.js) ──
+  {
+    const metrics = app('./utils/metrics');
+    r = await req('GET', '/metrics');
+    check('métriques: absentes tant que le propriétaire ne les active pas', r.status === 404, r.status);
+    r = await req('PUT', '/api/instance/metrics', { sid: sessions.NOWN, body: { enabled: true } });
+    check('métriques: activation réservée au propriétaire', r.status === 403, r.status);
+    r = await req('PUT', '/api/instance/metrics', { sid: sessions.OWN, body: { enabled: true } });
+    const token = r.body.token;
+    check('métriques: activées, jeton rendu une seule fois', r.status === 200 && /^tbm_/.test(token || ''), JSON.stringify(r.body));
+    const st = await req('GET', '/api/instance/metrics', { sid: sessions.OWN });
+    const [stored] = await globalQuery("SELECT v FROM instance_settings WHERE k = 'metrics'");
+    check('métriques: jeton jamais relu ni stocké en clair', st.body.enabled === true && !JSON.stringify(st.body).includes(token) && !JSON.stringify(stored.v).includes(token), JSON.stringify(st.body));
+    r = await req('GET', '/metrics');
+    const bad = await req('GET', '/metrics', { headers: { Authorization: 'Bearer tbm_faux' } });
+    check('métriques: jeton exigé', r.status === 401 && bad.status === 401, [r.status, bad.status].join());
+    metrics.clearMetricsCache();
+    r = await req('GET', '/metrics', { headers: { Authorization: `Bearer ${token}` } });
+    const text = String(r.body);
+    check('métriques: format Prometheus, tickets par serveur, base, Redis, version', r.status === 200 && /# TYPE ticketbot_tickets_open gauge/.test(text) && new RegExp(`ticketbot_tickets_open\\{guild_id="${G}",guild="[^"]*"\\} \\d+`).test(text) && /ticketbot_database_up 1/.test(text) && /ticketbot_redis_up 1/.test(text) && /ticketbot_info\{version="v[\d.]+"\} 1/.test(text), text.slice(0, 500));
+    check('métriques: aucun sujet ni nom de membre', !/owner_tag|subject/i.test(text), '');
+    check('métriques: échappement des étiquettes', metrics.render([['x', 'gauge', 'h', [[{ guild: 'a"b\\c\nd' }, 1]]]]).includes('x{guild="a\\"b\\\\c d"} 1'), metrics.render([['x', 'gauge', 'h', [[{ guild: 'a"b\\c\nd' }, 1]]]]));
+    const again = await req('PUT', '/api/instance/metrics', { sid: sessions.OWN, body: { enabled: true } });
+    metrics.clearMetricsCache();
+    r = await req('GET', '/metrics', { headers: { Authorization: `Bearer ${token}` } });
+    const r2 = await req('GET', '/metrics', { headers: { Authorization: `Bearer ${again.body.token}` } });
+    check('métriques: un nouveau jeton remplace l ancien', r.status === 401 && r2.status === 200, [r.status, r2.status].join());
+    await req('PUT', '/api/instance/metrics', { sid: sessions.OWN, body: { enabled: false } });
+    metrics.clearMetricsCache();
+    r = await req('GET', '/metrics', { headers: { Authorization: `Bearer ${again.body.token}` } });
+    const [audit] = await globalQuery("SELECT COUNT(*) AS n FROM instance_audit_log WHERE action = 'metrics_toggle'");
+    check('métriques: coupées → 404, chaque changement au journal de l instance', r.status === 404 && Number(audit.n) >= 3, [r.status, audit.n].join());
+  }
+
   // ── New versions and one-click update (utils/updates.js, docker/updater.sh) ──
   {
     const up = app('./utils/updates');

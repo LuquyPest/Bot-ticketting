@@ -537,6 +537,13 @@ export const ENTRIES = [
   ['Aucun salon textuel dans cette catégorie.', 'No text channel in this category.'], ['déjà repris', 'already taken over'], ['membre introuvable', 'member not found'],
   ['Copier les 100 derniers messages dans l\'historique', 'Copy the last 100 messages into the history'], ['Prévenir chaque membre en MP', 'Tell each member by DM'],
   ['Déplacer les salons dans la catégorie « Ouvert »', 'Move the channels into the « Open » category'], ['Non repris :', 'Not taken over:'], ['Choisir…', 'Choose…'],
+  // Prometheus (Instance → Santé)
+  ['Métriques Prometheus', 'Prometheus metrics'], ['· activées', '· on'], ['· désactivées', '· off'], ['Nouveau jeton', 'New token'],
+  ['Pour Prometheus, Grafana ou Uptime Kuma : tickets ouverts, file d\'attente, Discord, base, Redis, sauvegardes. Uniquement des chiffres.', 'For Prometheus, Grafana or Uptime Kuma: open tickets, queue, Discord, database, Redis, backups. Numbers only.'],
+  ['Adresse :', 'Address:'], ['Copie ce jeton maintenant : il ne sera plus jamais affiché.', 'Copy this token now: it will never be shown again.'], ['Copier', 'Copy'], ['Jeton copié', 'Token copied'],
+  ['Créer un nouveau jeton ? L\'ancien cessera de fonctionner.', 'Create a new token? The old one will stop working.'],
+  ['Couper les métriques ? Le jeton actuel cessera de fonctionner.', 'Turn the metrics off? The current token will stop working.'],
+  ['Métriques Prometheus activées ou coupées', 'Prometheus metrics turned on or off'],
 ];
 
 export const TEMPLATES = [
@@ -594,5 +601,6 @@ export const TEMPLATES = [
   ['{} disponible', '{1} available'], ['Vérifié il y a {}.', 'Checked {1} ago.'], ['il y a {}', '{1} ago'], ['Échec il y a {}', 'Failed {1} ago'],
   ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
   ['Réponse en moins de {} h', 'Answered within {1} h'],
+  ['· jeton créé le {}', '· token created on {1}'],
   ['Reprendre {} ticket(s)', 'Take over {1} ticket(s)'], ['{} ticket(s) repris', '{1} ticket(s) taken over'],
 ];

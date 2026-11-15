@@ -455,6 +455,21 @@ router.post('/update', async (req, res) => {
   catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
 });
 
+// ─── PROMETHEUS (utils/metrics.js) ───────────────────────────────────────────
+
+// GET /api/instance/metrics — on or off, and since when (the token itself is never shown again)
+router.get('/metrics', async (req, res) => {
+  const s = await require('../../utils/metrics').metricsSettings();
+  res.json({ enabled: !!s.enabled, createdAt: s.createdAt || null, url: config.webServerBaseUrl ? `${config.webServerBaseUrl}/metrics` : '/metrics' });
+});
+
+// PUT /api/instance/metrics { enabled } — on: a new token, returned once (the previous one stops working)
+router.put('/metrics', async (req, res) => {
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'enabled doit être un booléen' });
+  res.set('Cache-Control', 'no-store');
+  res.json(await require('../../utils/metrics').setMetrics(req.body.enabled));
+});
+
 // ─── INSTANCE JOURNAL ──────────────────────────────────────────────────────────────
 
 // GET /api/instance/audit?actor=&action=&guild_id=&page= — journal of the instance section
