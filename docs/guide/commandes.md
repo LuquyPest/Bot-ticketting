@@ -2,6 +2,16 @@
 
 Les commandes sont réservées au staff, sur un serveur actif. Elles appliquent les mêmes règles que le dashboard : le compte doit être *support* ou *fondateur*, un *support* doit avoir la permission de grade indiquée, et dans le salon d'un ticket restreint, seuls ceux qui peuvent le voir peuvent agir. Les fondateurs ont tous les droits.
 
+## Configurer le serveur : `/setup`
+
+Pour les **fondateurs** (et le propriétaire de l'instance), visible des membres qui ont *Gérer le serveur*. Un assistant en trois étapes, en message visible de toi seul :
+
+1. **Rôles du staff** : rôles support et, au choix, chef support ;
+2. **Catégories** : une par étape (*Ouvert*, *En attente*, *En cours*), existantes ou **créées par le bot**, masquées à tout le monde sauf au staff ;
+3. **Panel** : un message avec un bouton « Ouvrir un ticket » dans le salon choisi, ou rien.
+
+Les réglages passent par les mêmes contrôles que le dashboard et apparaissent dans **Paramètres → Sauvegarde → Historique** (source « Assistant /setup »). La suite — sujets, messages, grades, FAQ — se règle sur le dashboard.
+
 ## Dans un ticket
 
 | Commande | Permission | Effet |

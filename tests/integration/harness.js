@@ -2818,6 +2818,62 @@ async function main() {
     check('stats publiques: publication inscrite au journal', Number(audited) >= 3, String(audited));
   }
 
+  // ── /setup: wizard on Discord (commands/setup.js) ──
+  {
+    const setup = app('./commands/setup');
+    const SUP_ROLE = '800000000000000001';
+    // Fake interaction: records reply / update / editReply payloads
+    const mkI = (userId, extra = {}) => {
+      const out = [];
+      const i = { guildId: G, user: { id: userId, username: userId === U.F ? 'F' : 'S1' }, values: [], out,
+        reply: async p => out.push(['reply', p]), update: async p => out.push(['update', p]), deferUpdate: async () => out.push(['defer']),
+        editReply: async p => out.push(['edit', p]), ...extra };
+      return i;
+    };
+    const last = i => i.out[i.out.length - 1]?.[1];
+    const title = p => p?.embeds?.[0]?.data?.title || '';
+    let i = mkI(U.S1);
+    await setup.execute(fakeClient, i);
+    check('/setup: réservé aux fondateurs', /fondateurs/.test(last(i)?.content || ''), JSON.stringify(last(i)));
+    const cmdJson = setup.data.toJSON();
+    check('/setup: masquée aux membres sans « Gérer le serveur »', cmdJson.default_member_permissions === String(require('discord.js').PermissionFlagsBits.ManageGuild), cmdJson.default_member_permissions);
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketCategoryId: null, waitingCategoryId: null } }); // so the wizard changes something
+    i = mkI(U.F);
+    await setup.execute(fakeClient, i);
+    check('/setup: étape 1, rôles du staff, en message éphémère', /1\/3/.test(title(last(i))) && last(i).flags === require('discord.js').MessageFlags.Ephemeral, title(last(i)));
+    const step = async (customId, values = []) => { const x = mkI(U.F, { customId, values }); await setup.handleComponent(fakeClient, x); return x; };
+    let x = await step('setup:support', [SUP_ROLE]);
+    const nextBtn = last(x).components[2].components[0].data;
+    check('/setup: « Continuer » actif une fois un rôle support choisi', nextBtn.custom_id === 'setup:next1' && !nextBtn.disabled, JSON.stringify(nextBtn));
+    x = await step('setup:next1');
+    check('/setup: étape 2, catégories', /2\/3/.test(title(last(x))), title(last(x)));
+    await step('setup:cat_open', [CAT_OPEN]);
+    await step('setup:cat_waiting', [CAT_WAIT]);
+    x = await step('setup:next2');
+    check('/setup: étape 3, panel', /3\/3/.test(title(last(x))), title(last(x)));
+    await step('setup:panel', [OWN_CH]);
+    const sentBefore = sent.length;
+    x = await step('setup:finish');
+    const [cfgS] = await db('SELECT support_role_ids, ticket_category_id, waiting_category_id FROM guild_config WHERE id = 1');
+    const panelMsg = sent.slice(sentBefore).find(m => m.id === OWN_CH)?.p;
+    const [panelRow] = await db("SELECT channel_id, message_id FROM ticket_panels WHERE name = 'Panel (assistant /setup)' ORDER BY id DESC LIMIT 1");
+    check('/setup: réglages enregistrés', app('./utils/jsonField').parseJsonField(cfgS.support_role_ids, []).includes(SUP_ROLE) && cfgS.ticket_category_id === CAT_OPEN && cfgS.waiting_category_id === CAT_WAIT, JSON.stringify(cfgS));
+    check('/setup: panel publié avec son bouton', panelRow?.channel_id === OWN_CH && !!panelRow.message_id && /^panel_btn_\d+$/.test(panelMsg?.components?.[0]?.components?.[0]?.data?.custom_id || ''), JSON.stringify([panelRow, panelMsg?.components?.[0]?.components?.[0]?.data]));
+    check('/setup: récapitulatif final', /terminée/.test(title(last(x))), title(last(x)));
+    const [hist] = await db("SELECT source FROM config_history ORDER BY id DESC LIMIT 1");
+    const [aud] = await db("SELECT action FROM audit_log WHERE action = 'setup_wizard' ORDER BY id DESC LIMIT 1");
+    check('/setup: historique (source « setup ») et journal', hist?.source === 'setup' && !!aud, JSON.stringify([hist, aud]));
+    x = await step('setup:next1');
+    check('/setup: assistant expiré une fois terminé', /expiré/.test(last(x)?.content || ''), JSON.stringify(last(x)));
+    // Same validation as the Settings page: a category of another server is refused
+    const bad = await setup.applySetup(fakeClient, G, { id: U.F, username: 'F' }, { support: [SUP_ROLE], chief: [], categories: { open: FOREIGN_CH }, panelChannel: null });
+    check('/setup: salon d\'un autre serveur refusé', /n'appartient pas/.test(bad.error || ''), JSON.stringify(bad));
+    const cats = await setup.createCategories(fakeClient, G, [SUP_ROLE]);
+    const catCh = channels.get(cats.open);
+    const ow = catCh?.opts?.permissionOverwrites || [];
+    check('/setup: catégories créées, masquées à @everyone, visibles du staff', Object.keys(cats).length === 3 && catCh.type === 4 && ow.some(o => o.id === G && o.deny?.length) && ow.some(o => o.id === SUP_ROLE && o.allow?.length), JSON.stringify(ow, (k, v) => (typeof v === 'bigint' ? String(v) : v)));
+  }
+
   // ── Backup results (docker/backup.sh, docker/offsite.sh → status files) ──
   {
     const cfgBS = app('./utils/config').config;

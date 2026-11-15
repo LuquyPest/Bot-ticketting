@@ -255,3 +255,5 @@ router.delete('/:id/publish', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.buildDiscordEmbed = buildDiscordEmbed;
+module.exports.buildDiscordComponents = buildDiscordComponents;

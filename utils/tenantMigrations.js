@@ -438,6 +438,13 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS public_stats_target_hours INT NOT NULL DEFAULT 2',
     ],
   },
+  {
+    version: 33,
+    name: 'Historique des réglages : changements faits par l\'assistant /setup',
+    statements: [
+      `ALTER TABLE config_history MODIFY COLUMN source ENUM('settings','import','restore','setup') NOT NULL DEFAULT 'settings'`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

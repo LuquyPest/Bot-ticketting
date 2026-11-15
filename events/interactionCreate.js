@@ -77,6 +77,11 @@ async function handleInteraction(client, interaction) {
         return interaction.reply({ content: 'Cette commande s\'utilise uniquement sur un serveur.', flags: MessageFlags.Ephemeral });
       }
 
+      // Setup wizard (/setup): its buttons and select menus
+      if ((interaction.isButton() || interaction.isAnySelectMenu?.()) && interaction.guildId && interaction.customId?.startsWith('setup:')) {
+        return require('../commands/setup').handleComponent(client, interaction);
+      }
+
       if (interaction.isButton()) {
 
         // ── Sujet (DM) ── configured subject, or « Autre sujet » to type it

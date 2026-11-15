@@ -530,6 +530,7 @@ export const ENTRIES = [
   ['Tickets résolus', 'Tickets resolved'], ['Première réponse (médiane)', 'First response (median)'], ['Résolution (médiane)', 'Resolution (median)'], ['Satisfaction', 'Satisfaction'],
   ['Publier maintenant', 'Publish now'], ['Voir le message sur Discord', 'View the message on Discord'], ['Statistiques publiées', 'Statistics published'],
   ['Sauvegarde d\'abord les paramètres', 'Save the settings first'], ['Choisis un salon puis sauvegarde : le message est ensuite mis à jour toutes les heures.', 'Pick a channel then save: the message is then updated every hour.'],
+  ['Assistant /setup', '/setup wizard'],
 ];
 
 export const TEMPLATES = [

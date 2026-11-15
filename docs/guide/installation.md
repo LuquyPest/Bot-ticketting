@@ -136,6 +136,8 @@ Le serveur est **prêt dès que le bot arrive** : tu en es fondateur et tu reço
 
 ## Étape 8 — Régler l'essentiel
 
+**Sur Discord**, le plus rapide : tape `/setup` sur ton serveur. L'assistant te fait choisir les rôles du staff, crée les catégories des tickets si tu veux, et publie un panel. Ou, **sur le dashboard** :
+
 **Paramètres → Accès et sécurité** : choisis les rôles Discord de ton staff.
 
 ![Paramètres → Accès et sécurité : rôles support et chef support](/images/install-roles.png)

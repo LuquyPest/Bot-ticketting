@@ -2,6 +2,10 @@
 
 Le bot vient d'arriver sur ton serveur et tu es connecté au dashboard comme **fondateur**. Quelques réglages, et les membres peuvent ouvrir leurs premiers tickets.
 
+::: tip Le plus rapide : `/setup` sur Discord
+La commande `/setup` règle en trois clics les rôles du staff, les catégories (le bot peut les créer) et un panel. Le détail de chaque réglage suit ci-dessous.
+:::
+
 ## 1. Rôles d'accès et catégories
 
 **Paramètres → Accès et sécurité** :

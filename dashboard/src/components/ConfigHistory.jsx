@@ -27,7 +27,7 @@ const FIELD_LABELS = {
   webhooksEnabled: 'Webhooks', webhookEvents: 'Événements du webhook', apiKeysEnabled: 'Clés API',
   subjectWelcomeMessages: 'Messages de bienvenue par sujet', ipAllowlist: 'Adresses IP autorisées',
 };
-const SOURCE = { settings: null, import: 'Import', restore: 'Restauration' };
+const SOURCE = { settings: null, import: 'Import', restore: 'Restauration', setup: 'Assistant /setup' };
 const CHANNEL_KEYS = /ChannelId$|CategoryId$/;
 const LANG = { fr: 'Français', en: 'Anglais', auto: 'Automatique' };
 const TWO_FA = { none: 'Non', founders: 'Fondateurs', staff: 'Tout le staff' };
