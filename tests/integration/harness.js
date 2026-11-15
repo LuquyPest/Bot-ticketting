@@ -825,8 +825,24 @@ async function main() {
     const keysOf = l => new Set([...src.slice(src.indexOf(`  ${l}: {`), src.indexOf('\n  },', src.indexOf(`  ${l}: {`))).matchAll(/^    '([\w.]+)':/gm)].map(m => m[1]));
     const fr = keysOf('fr'), en = keysOf('en');
     check('langues: dictionnaire anglais complet', fr.size > 50 && [...fr].every(k => en.has(k)) && [...en].every(k => fr.has(k)), JSON.stringify([...fr].filter(k => !en.has(k))));
+    {
+      const D = i18n.DICTIONARIES;
+      const vars = str => [...String(str).matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join(',');
+      const bad = [];
+      for (const l of ['es', 'de', 'it', 'pt']) {
+        for (const k of fr) { if (D[l][k] === undefined) bad.push(`${l}:${k} manquant`); else if (vars(D[l][k]) !== vars(D.fr[k])) bad.push(`${l}:${k} variables`); }
+        for (const k of Object.keys(D[l])) if (!fr.has(k)) bad.push(`${l}:${k} en trop`);
+      }
+      check('langues: espagnol, allemand, italien et portugais complets, mêmes variables', bad.length === 0, JSON.stringify(bad.slice(0, 10)));
+      check('langues: langue Discord → langue du bot', i18n.fromLocale('es-419') === 'es' && i18n.fromLocale('pt-BR') === 'pt' && i18n.fromLocale('de') === 'de' && i18n.fromLocale('it') === 'it' && i18n.fromLocale('ja') === 'en' && i18n.fromLocale('fr') === 'fr', '');
+      const de = await i18n.withLang('de', () => i18n.t('welcome.title', { id: 7 }));
+      check('langues: message en allemand avec variables', de === '🎫 Ticket #7 erstellt', de);
+    }
     r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'klingon' } });
     check('langues: valeur inconnue refusée', r.status === 400, r.status);
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'es' } });
+    const cfgEs = await req('GET', '/api/config', { sid: sessions.FV });
+    check('langues: espagnol enregistré (colonne élargie par la migration 31)', r.status === 200 && cfgEs.body.botLanguage === 'es', JSON.stringify([r.status, r.body, cfgEs.body.botLanguage]));
     r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'en' } });
     const ML2 = '200000000000000017';
     memberRoles.set(ML2, new Map());

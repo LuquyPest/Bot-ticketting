@@ -471,10 +471,14 @@ export default function Settings() {
       {/* Language of the bot's messages to members */}
       <Section title="Langue du bot">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Langue des messages aux membres" hint="MP du bot : bienvenue, questions, notifications, boutons. Les textes personnalisés restent tels quels.">
+          <Field label="Langue des messages aux membres" hint="MP du bot : bienvenue, questions, notifications, boutons. En automatique : la langue Discord du membre parmi celles-ci, l'anglais sinon. Les textes personnalisés restent tels quels.">
             <select value={cfg.botLanguage || 'fr'} onChange={e => set('botLanguage', e.target.value)} className={BASE}>
               <option value="fr">Français</option>
               <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="de">Deutsch</option>
+              <option value="it">Italiano</option>
+              <option value="pt">Português (Brasil)</option>
               <option value="auto">Automatique (langue Discord du membre)</option>
             </select>
           </Field>

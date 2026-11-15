@@ -16,7 +16,7 @@ Le membre peut aussi ouvrir un ticket depuis un **panel** à boutons publié dan
 Au moment du sujet, le membre peut demander un ticket **confidentiel** (signalement d'un membre du staff, harcèlement…). Seuls les **fondateurs** le voient, partout : liste, fiche, recherche, statistiques, notifications, salon Discord fermé au staff avant le premier message. Chaque consultation est inscrite au journal.
 :::
 
-**Langue** : les messages du bot suivent le réglage du serveur — français, anglais, ou la langue Discord du membre. Les textes personnalisés (bienvenue, fermeture, FAQ) et les réponses du staff restent tels qu'écrits.
+**Langue** : les messages du bot suivent le réglage du serveur (**Paramètres → Général → Langue du bot**) — français, anglais, espagnol, allemand, italien, portugais, ou **automatique** : la langue Discord du membre si elle est l'une de celles-ci, l'anglais sinon. Les textes personnalisés (bienvenue, fermeture, FAQ) et les réponses du staff restent tels qu'écrits.
 
 ## Côté staff
 

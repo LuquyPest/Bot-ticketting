@@ -113,7 +113,7 @@ const VALIDATORS = {
   escalationAlertChannelId: SNOWFLAKE,
   escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
-  botLanguage:              v => ['fr', 'en', 'auto'].includes(v),
+  botLanguage:              v => ['fr', 'en', 'es', 'de', 'it', 'pt', 'auto'].includes(v),
   require2fa:               v => ['none', 'founders', 'staff'].includes(v),
   memberReopenDays:         v => Number.isInteger(v) && v >= 0 && v <= 90,
   notifyMemberStage:        v => v === 0 || v === 1 || v === true || v === false,

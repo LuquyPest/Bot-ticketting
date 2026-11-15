@@ -1,18 +1,20 @@
-// Language of the messages the bot sends to members (French or English).
+// Language of the messages the bot sends to members: French, English, Spanish, German, Italian or
+// Portuguese (dictionaries of the last four in utils/locales/).
 // The current language travels with the async call chain (AsyncLocalStorage): entry points
 // (DM received, button clicked, staff reply, automation) call withLang(), and every message
 // builder simply calls t(). Staff-facing texts (dashboard, staff DMs, channel logs) stay French.
 //
-// Per guild (guild_config.bot_language): 'fr' | 'en' | 'auto'. In 'auto', the member's Discord
+// Per guild (guild_config.bot_language): 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'auto'. In 'auto', the member's Discord
 // language is used (remembered from their last interaction with the bot), else the server's.
 const { AsyncLocalStorage } = require('async_hooks');
 
 const als = new AsyncLocalStorage();
-const LANGS = ['fr', 'en'];
+const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
 
 const lang = () => als.getStore() || 'fr';
 const withLang = (l, fn) => als.run(LANGS.includes(l) ? l : 'fr', fn);
-const fromLocale = locale => (String(locale || '').toLowerCase().startsWith('fr') ? 'fr' : 'en');
+// Discord locale (fr, en-US, es-ES, es-419, de, it, pt-BR…) → supported language, English otherwise
+const fromLocale = locale => { const p = String(locale || '').toLowerCase().slice(0, 2); return LANGS.includes(p) ? p : 'en'; };
 
 const D = {
   fr: {
@@ -309,8 +311,10 @@ const D = {
   },
 };
 
+for (const l of ['es', 'de', 'it', 'pt']) D[l] = require(`./locales/${l}`);
+
 function t(key, vars = {}) {
-  const s = D[lang()][key] ?? D.fr[key] ?? key;
+  const s = D[lang()]?.[key] ?? D.en[key] ?? D.fr[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
 }
 
@@ -330,7 +334,7 @@ async function guildLanguage(guildId) {
   let setting = 'fr';
   try {
     const [row] = await require('./tenantDb').getTenantDb(guildId)('SELECT bot_language FROM guild_config WHERE id = 1');
-    if (['fr', 'en', 'auto'].includes(row?.bot_language)) setting = row.bot_language;
+    if ([...LANGS, 'auto'].includes(row?.bot_language)) setting = row.bot_language;
   } catch { /* guild not ready */ }
   guildCache.set(guildId, { at: Date.now(), setting });
   return setting;
@@ -363,4 +367,4 @@ async function sendToMember(client, userOrId, guildId, build) {
 
 const clearGuildLanguageCache = guildId => guildCache.delete(guildId);
 
-module.exports = { t, lang, memberLang, inMemberLang, sendToMember, rememberLocale, clearGuildLanguageCache };
+module.exports = { t, lang, withLang, memberLang, inMemberLang, sendToMember, rememberLocale, clearGuildLanguageCache, LANGS, DICTIONARIES: D, fromLocale };

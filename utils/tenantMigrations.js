@@ -422,6 +422,13 @@ const MIGRATIONS = [
         CONSTRAINT fk_srt_tag FOREIGN KEY (tag_id) REFERENCES ticket_tags(id) ON DELETE CASCADE)`,
     ],
   },
+  {
+    version: 31,
+    name: 'Messages aux membres en espagnol, allemand, italien et portugais',
+    statements: [
+      `ALTER TABLE guild_config MODIFY COLUMN bot_language ENUM('fr','en','es','de','it','pt','auto') NOT NULL DEFAULT 'fr'`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
