@@ -70,6 +70,7 @@ services:
       CONTACT_EMAIL: ${CONTACT_EMAIL:-}
       TRANSCRIPT_RETENTION_DAYS: ${TRANSCRIPT_RETENTION_DAYS:-}
       BACKUP_KEY: ${BACKUP_KEY:-}
+      UPDATE_CHECK: ${UPDATE_CHECK:-}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
       TRUSTED_PROXY_HOST: ${TRUSTED_PROXY_HOST:-}
     # Optional config.json instead of (or on top of) the variables above:

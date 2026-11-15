@@ -2769,6 +2769,82 @@ async function main() {
     check('santé: versions de schéma', r.body.schemas.latest === tm2.LATEST_VERSION && r.body.schemas.guilds.some(g => g.guildId === G && g.version === tm2.LATEST_VERSION), JSON.stringify(r.body.schemas));
   }
 
+  // ── Backup results (docker/backup.sh, docker/offsite.sh → status files) ──
+  {
+    const cfgBS = app('./utils/config').config;
+    const bs = app('./utils/backupStatus');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tb-backup-status-'));
+    cfgBS.backupStatusDir = dir;
+    const iso = t => new Date(t).toISOString().replace(/\.\d+Z$/, 'Z');
+    fs.writeFileSync(path.join(dir, 'backup.json'), JSON.stringify({ ok: true, at: iso(Date.now() - 3600e3), file: 'ticketbot-x.sql.gz.enc', bytes: 1234, message: '' }));
+    fs.writeFileSync(path.join(dir, 'verify.json'), JSON.stringify({ ok: true, at: iso(Date.now() - 3600e3), file: 'ticketbot-x.sql.gz.enc', bytes: 1234, message: '' }));
+    r = await req('GET', '/api/instance/health', { sid: sessions.OWN });
+    check('sauvegardes: état lu et affiché dans Santé, sans problème', r.body.backups?.configured === true && r.body.backups.backup.ok && r.body.backups.verify.ok && r.body.backups.problems.length === 0, JSON.stringify(r.body.backups));
+    fs.writeFileSync(path.join(dir, 'verify.json'), JSON.stringify({ ok: false, at: iso(Date.now()), file: 'x', bytes: 0, message: 'HMAC en échec' }));
+    fs.writeFileSync(path.join(dir, 'offsite.json'), JSON.stringify({ ok: true, at: iso(Date.now() - 30 * 3600e3), file: 'x', bytes: 0, remote: 'b2', message: '' }));
+    const st = bs.backupStatus();
+    check('sauvegardes: vérification en échec et copie distante en retard signalées', st.problems.some(p => p.key.startsWith('verify-failed')) && st.problems.some(p => p.key.startsWith('offsite-stale')), JSON.stringify(st.problems));
+    fs.writeFileSync(path.join(dir, 'backup.json'), JSON.stringify({ ok: true, at: iso(Date.now() - 27 * 3600e3), file: 'x', bytes: 1, message: '' }));
+    check('sauvegardes: aucune sauvegarde depuis 26 h signalée', bs.backupStatus().problems.some(p => p.key.startsWith('backup-stale')), JSON.stringify(bs.backupStatus().problems));
+    fs.writeFileSync(path.join(dir, 'backup.json'), '{pas du json');
+    check('sauvegardes: fichier d\'état illisible = aucune sauvegarde connue, sans planter', bs.backupStatus().problems.some(p => p.key === 'backup-none'), JSON.stringify(bs.backupStatus().problems));
+    const w1 = await bs.runBackupWatch(fakeClient);
+    const w2 = await bs.runBackupWatch(fakeClient);
+    check('sauvegardes: alerte envoyée une fois par problème', w1.sent && w2.skipped === 'déjà signalé', JSON.stringify([w1, w2]));
+    for (const k of await redis.keys('alert:backup:*')) await redis.del(k);
+    delete cfgBS.backupStatusDir;
+    check('sauvegardes: sans service de sauvegarde, rien à afficher', bs.backupStatus().configured === false, '');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
+  // ── New versions and one-click update (utils/updates.js, docker/updater.sh) ──
+  {
+    const up = app('./utils/updates');
+    const cfgU = app('./utils/config').config;
+    check('mise à jour: comparaison des versions', up.compareVersions('v3.0.10', '3.0.9') > 0 && up.compareVersions('v3.1', '3.0.12') > 0 && up.compareVersions('v3.0.7', '3.0.7') === 0 && up.compareVersions('v2.24', '3.0.0') < 0, '');
+    const fakeFetch = async () => ({ ok: true, json: async () => ({ tag_name: 'v99.0.0', html_url: 'https://github.com/x/y/releases/tag/v99.0.0', body: 'Notes', published_at: '2026-11-15T00:00:00Z' }) });
+    await up.checkLatest({ fetchImpl: fakeFetch });
+    r = await req('GET', '/api/instance/update', { sid: sessions.NOWN });
+    check('mise à jour: état réservé au propriétaire', r.status === 403, r.status);
+    r = await req('GET', '/api/instance/update', { sid: sessions.OWN });
+    check('mise à jour: nouvelle version détectée', r.status === 200 && r.body.available === true && r.body.latest === 'v99.0.0' && r.body.current === 'v' + require('../../package.json').version && r.body.updater.connected === false, JSON.stringify(r.body));
+    const evil = async () => ({ ok: true, json: async () => ({ tag_name: '<script>', html_url: 'javascript:alert(1)' }) });
+    let refused = false; try { await up.checkLatest({ fetchImpl: evil }); } catch { refused = true; }
+    check('mise à jour: version publiée illisible refusée', refused, '');
+    r = await req('POST', '/api/instance/update', { sid: sessions.OWN, body: {} });
+    check('mise à jour: refusée sans service updater en marche', r.status === 409, JSON.stringify(r.body));
+    const poll = (headers, tag = 'latest') => req('GET', '/api/updater/poll', { query: { tag }, headers });
+    r = await poll({ Authorization: 'Bearer x'.repeat(10) });
+    check('updater: refusé sans UPDATER_TOKEN configuré', r.status === 401, r.status);
+    cfgU.updater = { token: 'u'.repeat(64) };
+    const auth = { Authorization: 'Bearer ' + 'u'.repeat(64) };
+    r = await poll({ Authorization: 'Bearer ' + 'v'.repeat(64) });
+    const rProxy = await poll({ ...auth, 'X-Forwarded-For': '1.2.3.4' });
+    check('updater: mauvais jeton ou passage par le proxy public refusés', r.status === 401 && rProxy.status === 401, JSON.stringify([r.status, rProxy.status]));
+    r = await poll(auth, 'v3.0.5');
+    const pinned = await req('POST', '/api/instance/update', { sid: sessions.OWN, body: {} });
+    check('mise à jour: version épinglée refusée avec explication', r.body.update === false && pinned.status === 409 && /épinglée/.test(pinned.body.error), JSON.stringify([r.body, pinned.body]));
+    await poll(auth);
+    r = await req('POST', '/api/instance/update', { sid: sessions.NOWN, body: {} });
+    check('mise à jour: demande réservée au propriétaire', r.status === 403, r.status);
+    r = await req('POST', '/api/instance/update', { sid: sessions.OWN, body: {} });
+    const again = await req('POST', '/api/instance/update', { sid: sessions.OWN, body: {} });
+    check('mise à jour: demandée une seule fois', r.status === 200 && r.body.to === 'v99.0.0' && again.status === 409, JSON.stringify([r.body, again.body]));
+    const p1 = await poll(auth), p2 = await poll(auth);
+    let st = await req('GET', '/api/instance/update', { sid: sessions.OWN });
+    check('updater: reçoit la demande une seule fois, état « en cours »', p1.body.update === true && p2.body.update === false && st.body.status.state === 'running' && st.body.updater.connected, JSON.stringify([p1.body, p2.body, st.body.status]));
+    r = await req('POST', '/api/updater/result', { headers: auth, body: { ok: true, log: 'Pulled\nStarted' } });
+    st = await req('GET', '/api/instance/update', { sid: sessions.OWN });
+    check('updater: résultat enregistré', r.status === 200 && st.body.status.state === 'done' && /Started/.test(st.body.status.log), JSON.stringify(st.body.status));
+    r = await req('POST', '/api/updater/result', { body: { ok: false } });
+    check('updater: résultat refusé sans jeton', r.status === 401, r.status);
+    const [ja] = await globalQuery("SELECT action FROM instance_audit_log WHERE action LIKE '%update%' ORDER BY id DESC LIMIT 1");
+    check('mise à jour: demande inscrite au journal de l\'instance', !!ja, JSON.stringify(ja));
+    for (const k of ['updater:seen', 'updater:request', 'updater:status']) await redis.del(k);
+    await globalQuery("DELETE FROM instance_settings WHERE k = 'update_check'");
+    delete cfgU.updater;
+  }
+
   // ── Journal of the instance section ──
   {
     await new Promise(res => setTimeout(res, 200));

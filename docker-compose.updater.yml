@@ -1,0 +1,32 @@
+# One-click update from the dashboard (Instance → Santé → « Mettre à jour »). Optional.
+# Add it to COMPOSE_FILE in .env, e.g. docker-compose.yml:docker-compose.caddy.yml:docker-compose.updater.yml
+# and set UPDATER_TOKEN (openssl rand -hex 32) and PROJECT_DIR (absolute path of this folder) in .env.
+# This service holds the Docker socket (that is root on the host): it only pulls the bot image and
+# recreates the bot container, when the bot says the owner asked for it. The bot itself never
+# touches Docker. Leave it out if you prefer updating by hand (docker compose pull && docker compose up -d).
+services:
+  updater:
+    image: docker:28-cli
+    restart: unless-stopped
+    entrypoint: ["/updater.sh"]
+    # Same absolute path as on the host: docker compose resolves ./backups and the other bind mounts from it
+    working_dir: ${PROJECT_DIR:?PROJECT_DIR manquant dans .env (chemin absolu du dossier, ex. /opt/ticketbot)}
+    environment:
+      UPDATER_TOKEN: ${UPDATER_TOKEN:?UPDATER_TOKEN manquant dans .env (openssl rand -hex 32)}
+      TICKETBOT_VERSION: ${TICKETBOT_VERSION:-latest}
+    volumes:
+      - ./docker/updater.sh:/updater.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PROJECT_DIR}:${PROJECT_DIR}:ro
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - bot
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  bot:
+    environment:
+      UPDATER_TOKEN: ${UPDATER_TOKEN:-}

@@ -167,6 +167,19 @@ app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 
+// ── Updater service (docker-compose.updater.yml, utils/updates.js) ──
+// Reachable only from inside the Docker network (refused through the proxy) with UPDATER_TOKEN
+app.get('/api/updater/poll', async (req, res, next) => {
+  const updates = require('../utils/updates');
+  if (!updates.updaterAuthorized(req)) return res.status(401).json({ error: 'Non autorisé' });
+  try { res.json(await updates.poll(String(req.query.tag || ''))); } catch (err) { next(err); }
+});
+app.post('/api/updater/result', async (req, res, next) => {
+  const updates = require('../utils/updates');
+  if (!updates.updaterAuthorized(req)) return res.status(401).json({ error: 'Non autorisé' });
+  try { await updates.result({ ok: req.body?.ok === true || req.body?.ok === 'true', log: req.body?.log }); res.json({ ok: true }); } catch (err) { next(err); }
+});
+
 // ── Demonstration server (utils/demo.js) ──
 // POST /api/demo/start — founder session on the demo sandbox (when the owner turned it on)
 app.post('/api/demo/start', async (req, res, next) => {

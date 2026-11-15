@@ -40,6 +40,7 @@ const PAGES = [
   ['instance', '/instance/overview', "Vue d'ensemble"],
   ['instance-serveurs', '/instance/guilds', 'Daryu'],
   ['instance-blocages', '/instance/blocked', 'Aucune adresse bloquée'],
+  ['instance-sante', '/instance/health', 'Mettre à jour'],
   ['confidentialite', '/confidentialite', 'Données enregistrées', true],
   ['espace-login', '/espace', 'Se connecter avec Discord', true],
   ['espace', '/espace', 'Ancienne commande'],

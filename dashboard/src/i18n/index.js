@@ -8,8 +8,10 @@ const KEY = 'uiLang';
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE', 'INPUT']);
 
+// Nobody chose yet: the browser language (French for a French browser, English otherwise)
+const browserLang = () => { try { return /^fr\b/i.test(navigator.language || '') ? 'fr' : 'en'; } catch { return 'fr'; } };
 let lang = 'fr';
-try { lang = localStorage.getItem(KEY) === 'en' ? 'en' : 'fr'; } catch { /* storage unavailable */ }
+try { const saved = localStorage.getItem(KEY); lang = saved === 'en' || saved === 'fr' ? saved : browserLang(); } catch { lang = browserLang(); }
 
 export const getLang = () => lang;
 export const uiLocale = () => (lang === 'en' ? 'en-GB' : 'fr-FR');

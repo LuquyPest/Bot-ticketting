@@ -2,7 +2,28 @@
 
 Les versions sont publiées sur la page [Releases](https://github.com/LuquyPest/Bot-ticketting/releases) avec leurs notes (les mêmes que la page *Patchnotes* du dashboard). Chaque version a son image Docker : `ghcr.io/luquypest/bot-ticketting:v3.0`, et `latest` pointe sur la dernière.
 
-## Mise à jour ordinaire
+## Être prévenu
+
+Une fois par jour, l'instance regarde la dernière version publiée sur GitHub. Quand il y en a une nouvelle, **Instance → Santé** l'affiche avec un lien vers ses notes, et le propriétaire reçoit un MP (une seule fois par version). `UPDATE_CHECK=off` dans `.env` désactive cette vérification : l'instance n'appelle alors jamais GitHub.
+
+## Mettre à jour depuis le dashboard
+
+Avec le service facultatif `updater`, un bouton **Mettre à jour** apparaît dans **Instance → Santé** quand une version est disponible. Un clic : l'image est téléchargée, le bot redémarre (une minute environ) et le résultat s'affiche.
+
+1. Dans `.env` :
+   ```bash
+   echo "UPDATER_TOKEN=$(openssl rand -hex 32)" >> .env
+   echo "PROJECT_DIR=$(pwd)" >> .env
+   ```
+2. Ajoute `:docker-compose.updater.yml` à la fin de `COMPOSE_FILE`, puis `docker compose up -d`.
+
+::: warning Ce que ce service peut faire
+Pour redémarrer le bot, le service `updater` a accès au socket Docker, ce qui revient à être administrateur de la machine. Il est donc séparé du bot : il ne fait que demander au bot, sur le réseau Docker interne et avec `UPDATER_TOKEN`, si une mise à jour a été demandée, puis tire l'image du bot et recrée ce seul conteneur. Il n'exécute rien de ce que le bot lui envoie. Si tu préfères, laisse-le de côté et mets à jour à la main.
+:::
+
+Le bouton n'apparaît pas avec une version épinglée (`TICKETBOT_VERSION=v3.0.7`) : change la valeur dans `.env`. Il ne concerne que l'image publiée : si tu construis l'image toi-même depuis les sources, mets à jour avec `git pull && docker compose up -d --build`.
+
+## Mise à jour à la main
 
 ```bash
 scripts/backup.sh                              # par prudence

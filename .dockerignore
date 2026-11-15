@@ -9,6 +9,7 @@ config.json
 .env.*
 !.env.example
 backups/
+rclone/
 *.md
 LICENSE
 docker/

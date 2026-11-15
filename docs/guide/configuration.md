@@ -21,7 +21,7 @@ Tout se règle dans le fichier **`.env`** à la racine du dépôt, créé par `s
 
 | Variable | Rôle |
 |---|---|
-| `COMPOSE_FILE` | Fichiers compose utilisés, séparés par `:`. Base : `docker-compose.yml` ; ajoute `docker-compose.caddy.yml` (Caddy inclus, Let's Encrypt) **ou** `docker-compose.traefik.yml` (ton Traefik), et `docker-compose.backup.yml` (sauvegardes) |
+| `COMPOSE_FILE` | Fichiers compose utilisés, séparés par `:`. Base : `docker-compose.yml` ; ajoute `docker-compose.caddy.yml` (Caddy inclus, Let's Encrypt) **ou** `docker-compose.traefik.yml` (ton Traefik), `docker-compose.backup.yml` (sauvegardes), `docker-compose.offsite.yml` (copie hors du serveur) et `docker-compose.updater.yml` (bouton de mise à jour) |
 | `ACME_EMAIL` | E-mail pour Let's Encrypt (Caddy) |
 | `TICKETBOT_VERSION` | Version de l'image : `latest`, ou une version précise (`v3.0.4`) pour ne mettre à jour que quand tu le décides |
 | `BIND_ADDRESS` / `WEB_PORT` | Sans Caddy ni Traefik : adresse et port publiés sur la machine (`127.0.0.1:3000` par défaut, à mettre derrière ton propre proxy) |
@@ -53,6 +53,10 @@ Générés par `setup.sh` (`openssl rand -hex 32` à la main). **Garde une copie
 | `CONTACT_EMAIL` | E-mail de contact affiché sur la page de confidentialité |
 | `TRANSCRIPT_RETENTION_DAYS` | Durée de conservation des transcripts, en jours (vide : indéfiniment) |
 | `BACKUP_TIME` / `BACKUP_KEEP_DAYS` | Heure de la sauvegarde nocturne (03:00) et durée de conservation des archives (30 jours) |
+| `BACKUP_VERIFY` | Vérification automatique de la dernière archive : `off` (défaut), `weekly` ou `daily` — [Sauvegardes](./sauvegardes#verification-automatique) |
+| `BACKUP_REMOTE` | Destination rclone de la copie hors du serveur (`b2:mon-bucket/ticketbot`), avec `docker-compose.offsite.yml` |
+| `UPDATE_CHECK` | `off` : ne jamais vérifier les nouvelles versions sur GitHub |
+| `UPDATER_TOKEN` / `PROJECT_DIR` | Bouton « Mettre à jour » : jeton partagé avec le service `updater` et chemin absolu du dossier d'installation — [Mises à jour](./mise-a-jour#mettre-a-jour-depuis-le-dashboard) |
 
 ## Base de données
 

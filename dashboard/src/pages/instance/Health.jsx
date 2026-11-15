@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { uiLocale } from '../../i18n';
-import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertTriangle, ArrowUpCircle, ExternalLink, HardDriveDownload } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
@@ -38,6 +38,98 @@ function DemoCard() {
   );
 }
 
+const fmtBytes = b => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(b / 1024))} Ko`);
+const ago = t => (t ? fmtDur(Math.max(60, Math.round((Date.now() - t) / 1000))) : null);
+
+// Running version, latest release, one-click update through the updater service
+function VersionCard() {
+  const [u, setU] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => api.get('/instance/update').then(r => setU(r.data)).catch(() => {}), []);
+  useEffect(() => { load(); }, [load]);
+  const running = u?.status && ['requested', 'running'].includes(u.status.state);
+  // While an update runs, the bot restarts: poll until it answers with the new state
+  useEffect(() => { if (!running) return undefined; const t = setInterval(load, 5000); return () => clearInterval(t); }, [running, load]);
+  if (!u) return null;
+  const check = async () => {
+    setBusy(true);
+    try { const r = await api.post('/instance/update/check'); setU(r.data); toast.success(r.data.available ? `${r.data.latest} disponible` : 'Tu as la dernière version'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const update = async () => {
+    if (!window.confirm(`Mettre à jour vers ${u.latest} ? Le bot redémarre (environ une minute).`)) return;
+    try { await api.post('/instance/update'); toast.success('Mise à jour lancée'); load(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const st = u.status;
+  return (
+    <div className={card}>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] text-ink-4 mb-1">Version</p>
+          <p className="text-sm font-semibold text-ink-1">
+            {u.current}
+            {u.available ? <span className="ml-2 text-primary-light">→ {u.latest} disponible</span>
+              : u.latest ? <span className="ml-2 text-emerald-400 text-xs font-medium">à jour</span> : null}
+          </p>
+          <p className="text-[11px] text-ink-3 mt-1">
+            {u.checkDisabled ? 'Vérification désactivée (UPDATE_CHECK=off).'
+              : u.checkedAt ? `Vérifié il y a ${ago(u.checkedAt)}.` : 'Pas encore vérifié.'}
+            {u.url && <> <a href={u.url} target="_blank" rel="noopener noreferrer" className="text-primary-light hover:underline inline-flex items-center gap-0.5">Notes de version <ExternalLink size={10} aria-hidden="true" /></a></>}
+          </p>
+        </div>
+        {!u.checkDisabled && <button onClick={check} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">{busy ? 'Vérification…' : 'Vérifier'}</button>}
+        {u.available && u.updater.connected && !u.updater.pinned && !running && (
+          <button onClick={update} className="px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:bg-primary-light inline-flex items-center gap-1.5"><ArrowUpCircle size={13} aria-hidden="true" />Mettre à jour</button>
+        )}
+      </div>
+      {running && <p className="mt-3 text-xs text-amber-300 inline-flex items-center gap-1.5" role="status"><Loader2 size={12} className="animate-spin" aria-hidden="true" />Mise à jour vers {st.to} en cours : le bot redémarre, cette page se recharge seule.</p>}
+      {st?.state === 'done' && <p className="mt-3 text-xs text-emerald-400">Dernière mise à jour réussie ({st.from} → {st.now}), il y a {ago(st.at)}.</p>}
+      {st?.state === 'failed' && (
+        <details className="mt-3 text-xs"><summary className="text-red-400 cursor-pointer">La dernière mise à jour a échoué — voir le détail</summary>
+          <pre className="mt-2 p-2 rounded-lg bg-overlay/4 text-ink-2 whitespace-pre-wrap max-h-48 overflow-auto">{st.log || '—'}</pre></details>
+      )}
+      {u.available && !u.updater.connected && (
+        <p className="mt-3 text-[11px] text-ink-3">Pour mettre à jour : <code className="text-ink-2">docker compose pull && docker compose up -d</code> sur le serveur. Pour un bouton ici, ajoute le service <code className="text-ink-2">docker-compose.updater.yml</code> (<a href="https://docs.bot.daryu.xyz/guide/mise-a-jour" target="_blank" rel="noopener noreferrer" className="text-primary-light hover:underline">guide</a>).</p>
+      )}
+      {u.available && u.updater.pinned && <p className="mt-3 text-[11px] text-ink-3">Version épinglée : <code className="text-ink-2">TICKETBOT_VERSION={u.updater.pinned}</code> dans .env. Remplace-la par <code className="text-ink-2">latest</code> ou par la nouvelle version.</p>}
+    </div>
+  );
+}
+
+// Last backup, last check of an archive, last off-site copy (status files of the backup services)
+function BackupsCard({ b }) {
+  if (!b?.configured) {
+    return (
+      <div className={card}>
+        <p className="text-[11px] text-ink-4 mb-1">Sauvegardes</p>
+        <p className="text-sm text-ink-2">Service de sauvegarde absent.</p>
+        <p className="text-[11px] text-ink-3 mt-1">Ajoute <code className="text-ink-2">docker-compose.backup.yml</code> à COMPOSE_FILE (<a href="https://docs.bot.daryu.xyz/guide/sauvegardes" target="_blank" rel="noopener noreferrer" className="text-primary-light hover:underline">guide</a>).</p>
+      </div>
+    );
+  }
+  const row = (label, s, empty, detail) => (
+    <li className="flex flex-wrap items-center justify-between gap-2 bg-overlay/3 rounded-lg px-3 py-2">
+      <span className="text-ink-2">{label}</span>
+      {!s ? <span className="text-ink-4">{empty}</span>
+        : s.ok ? <span className="inline-flex items-center gap-2"><State ok label="OK" /><span className="text-ink-3">il y a {ago(s.at)}{detail ? ` · ${detail(s)}` : ''}</span></span>
+          : <span title={s.message}><State label={`Échec il y a ${ago(s.at)}`} /></span>}
+    </li>
+  );
+  return (
+    <div className={card}>
+      <h2 className="text-sm font-semibold text-ink-1 mb-3 inline-flex items-center gap-2"><HardDriveDownload size={15} aria-hidden="true" />Sauvegardes</h2>
+      {b.problems.length > 0 && <div role="alert" className="mb-3"><ul className="text-xs text-amber-300 space-y-1">{b.problems.map(p => <li key={p.key}>{p.text}</li>)}</ul></div>}
+      <ul className="space-y-1.5 text-xs">
+        {row('Dernière sauvegarde chiffrée', b.backup, 'aucune pour l\'instant', s => fmtBytes(s.bytes))}
+        {row('Vérification d\'une archive', b.verify, 'désactivée (BACKUP_VERIFY)', null)}
+        {row('Copie hors du serveur', b.offsite, 'non configurée', s => s.remote || null)}
+      </ul>
+    </div>
+  );
+}
+
 export default function Health() {
   const [h, setH] = useState(null);
   const load = useCallback(() => {
@@ -59,6 +151,8 @@ export default function Health() {
         </div>
         <button onClick={load} className="p-2 rounded-lg text-ink-3 hover:text-ink-1 hover:bg-overlay/5" title="Actualiser"><RefreshCw size={15} /></button>
       </div>
+
+      <VersionCard />
 
       <DemoCard />
 
@@ -85,7 +179,7 @@ export default function Health() {
         </div>
       </div>
 
-      <div className={`${card} overflow-x-auto`}>
+      <div className={`${card} overflow-x-auto`} tabIndex={0} role="region" aria-label="Tâches planifiées">
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h2 className="text-sm font-semibold text-ink-1">Tâches planifiées</h2>
           {h.jobs?.counts && (
@@ -122,6 +216,8 @@ export default function Health() {
           </table>
         )}
       </div>
+
+      <BackupsCard b={h.backups} />
 
       <div className={card}>
         <h2 className="text-sm font-semibold text-ink-1 mb-1">Schéma des bases</h2>

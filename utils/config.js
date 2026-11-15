@@ -34,6 +34,9 @@ const ENV_MAP = {
   PRIVACY_URL:           'privacyUrl',
   CONTACT_EMAIL:         'contactEmail',
   BACKUP_KEY:            'backupKey',
+  BACKUP_STATUS_DIR:     'backupStatusDir',
+  UPDATER_TOKEN:         'updater.token',
+  UPDATE_CHECK:          'updateCheck',
   TRANSCRIPT_RETENTION_DAYS: 'retention.transcriptDays',
 };
 const NUMBERS  = new Set(['webServerPort', 'database.port', 'trustProxyHops', 'retention.transcriptDays']);

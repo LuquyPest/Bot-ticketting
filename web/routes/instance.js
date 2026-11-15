@@ -431,7 +431,28 @@ router.get('/health', async (req, res) => {
     database, redis, jobs,
     process: { uptimeS: Math.round(process.uptime()), node: process.version, rssMb: Math.round(mem.rss / 1048576), heapMb: Math.round(mem.heapUsed / 1048576), pid: process.pid },
     schemas: { latest: LATEST_VERSION, guilds: schemas },
+    backups: require('../../utils/backupStatus').backupStatus(),
   });
+});
+
+// ─── VERSION AND UPDATE (utils/updates.js) ───────────────────────────────────
+
+// GET /api/instance/update — running version, latest release, updater service, last update
+router.get('/update', async (req, res, next) => {
+  try { res.json(await require('../../utils/updates').updateState()); } catch (err) { next(err); }
+});
+
+// POST /api/instance/update/check — checks GitHub right away
+router.post('/update/check', async (req, res) => {
+  const updates = require('../../utils/updates');
+  try { await updates.checkLatest(); res.json(await updates.updateState()); }
+  catch (err) { res.status(502).json({ error: `Vérification impossible : ${err.message}` }); }
+});
+
+// POST /api/instance/update — asks the updater service to pull the image and restart the bot
+router.post('/update', async (req, res) => {
+  try { res.json(await require('../../utils/updates').requestUpdate(req.owner)); }
+  catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
 });
 
 // ─── INSTANCE JOURNAL ──────────────────────────────────────────────────────────────
