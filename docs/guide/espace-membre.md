@@ -2,6 +2,8 @@
 
 Les membres se connectent sur **`/espace`** de ton domaine avec Discord et retrouvent tous leurs tickets, ouverts et fermés, sur chacun de tes serveurs — y compris ceux où ils ont été ajoutés comme participants.
 
+L'espace existe en **six langues** — français, anglais, espagnol, allemand, italien, portugais : celle du navigateur (anglais pour une autre langue), modifiable en bas de page. Les messages d'erreur et l'échange téléchargé suivent la même langue.
+
 - **Suivre** : statut formulé pour eux (« en attente de ta réponse », « pris en charge »…), conversation avec le staff, note donnée, téléchargement de l'échange.
 - **Répondre** depuis le web, exactement comme en MP (mêmes limites, même salon côté staff).
 - **Ouvrir un ticket** : serveur, sujet, champs et formulaire du sujet, avec les entrées de FAQ qui ressemblent à la demande proposées pendant la saisie.

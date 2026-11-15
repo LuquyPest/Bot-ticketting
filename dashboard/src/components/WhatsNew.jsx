@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, X } from 'lucide-react';
 import api from '../api';
-import { TAG, VERSIONS, LATEST_VERSION, compareVersions } from '../data/patchnotes';
+import { TAG, VERSIONS, LATEST_VERSION, compareVersions, localizedVersion } from '../data/patchnotes';
+import { getLang } from '../i18n';
 
 // « Nouveautés » card for founders: changes released since their last visit (versions newer than
 // the last one they marked as seen). On a first visit only the latest version is shown.
@@ -23,7 +24,7 @@ export function useWhatsNew(enabled) {
 export default function WhatsNew({ unseen, markSeen }) {
   const [open, setOpen] = useState(false);
   if (!unseen.length) return null;
-  const changes = unseen.flatMap(v => v.changes.map(c => ({ ...c, version: v.version })));
+  const changes = unseen.flatMap(v => localizedVersion(v, getLang()).changes.map(c => ({ ...c, version: v.version })));
   const shown = open ? changes : changes.slice(0, 4);
   return (
     <section className="mx-4 sm:mx-6 mt-4 rounded-2xl border border-primary/25 bg-primary/5 p-4" aria-labelledby="whats-new-title">

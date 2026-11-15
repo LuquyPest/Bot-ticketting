@@ -95,23 +95,27 @@ async function memberTicket(userId, guildId, ticketId, client) {
   };
 }
 
-const fmt = d => new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+const LOCALES = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-BR' };
 
-// Standalone HTML transcript of the member's conversation
-function memberTranscriptHtml({ guild, ticket, messages }, username) {
-  const rows = messages.filter(m => !m.deleted).map(m => m.kind === 'event'
-    ? `<p class="ev">${escapeHtml(m.content)} · ${fmt(m.created_at)}</p>`
-    : `<div class="m ${m.kind === 'staff' ? 's' : 'u'}"><b>${escapeHtml(m.kind === 'me' ? username : m.author || 'Membre')}</b> <span>${fmt(m.created_at)}</span><p>${escapeHtml(m.content)}</p></div>`).join('\n');
-  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+// Standalone HTML transcript of the member's conversation, in the language of the member space
+function memberTranscriptHtml({ guild, ticket, messages }, username, lang = 'fr') {
+  const { t, withLang } = require('./i18n');
+  return withLang(lang, () => {
+    const fmt = d => new Date(d).toLocaleString(LOCALES[lang] || 'fr-FR', { timeZone: 'Europe/Paris' });
+    const rows = messages.filter(m => !m.deleted).map(m => m.kind === 'event'
+      ? `<p class="ev">${escapeHtml(m.content)} · ${fmt(m.created_at)}</p>`
+      : `<div class="m ${m.kind === 'staff' ? 's' : 'u'}"><b>${escapeHtml(m.kind === 'me' ? username : m.author || t('portal.member'))}</b> <span>${fmt(m.created_at)}</span><p>${escapeHtml(m.content)}</p></div>`).join('\n');
+    return `<!DOCTYPE html><html lang="${LOCALES[lang] ? lang : 'fr'}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ticket #${ticket.id} — ${escapeHtml(guild.name)}</title>
 <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px;color:#1f2330;background:#fff}
 h1{font-size:20px;margin:0}.meta{color:#5b6075;font-size:13px;margin:4px 0 24px}.m{margin:12px 0;padding:10px 14px;border-radius:12px;background:#f2f3f7}
 .m.s{background:#ecebff}.m b{font-size:13px}.m span{color:#6b7085;font-size:12px}.m p{margin:6px 0 0;white-space:pre-wrap;word-break:break-word}
 .ev{text-align:center;color:#6b7085;font-size:12px;margin:14px 0}</style></head><body>
 <h1>Ticket #${ticket.id}${ticket.subject ? ` — ${escapeHtml(ticket.subject)}` : ''}</h1>
-<p class="meta">${escapeHtml(guild.name)} · ouvert le ${fmt(ticket.created_at)}${ticket.closed_at ? ` · fermé le ${fmt(ticket.closed_at)}` : ''}</p>
-${rows || '<p class="ev">Aucun message</p>'}
+<p class="meta">${escapeHtml(guild.name)} · ${escapeHtml(t('portal.openedOn', { date: fmt(ticket.created_at) }))}${ticket.closed_at ? ` · ${escapeHtml(t('portal.closedOn', { date: fmt(ticket.closed_at) }))}` : ''}</p>
+${rows || `<p class="ev">${escapeHtml(t('portal.noMessages'))}</p>`}
 </body></html>`;
+  });
 }
 
 // Link to a ticket in the member space, or null when the server turned the space off (cached 1 min)

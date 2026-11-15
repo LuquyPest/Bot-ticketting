@@ -1,55 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages } from 'lucide-react';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
 import { readableText } from '../utils/color';
 import { useInstanceInfo } from '../hooks/useInstanceInfo';
 import { privacyHref } from './Privacy';
 
-// Member web space: a member signs in with Discord and reads their own tickets (no staff data).
-// French by default, English when the browser asks for it.
-const LANG = (navigator.language || 'fr').toLowerCase().startsWith('fr') ? 'fr' : 'en';
-const STR = {
-  fr: {
-    title: 'Mes tickets', subtitle: 'Retrouve tes demandes au support, leur statut et vos échanges.',
-    login: 'Se connecter avec Discord', loginHint: 'Seule ton identité Discord est demandée. Tu ne vois que tes propres tickets.',
-    logout: 'Se déconnecter', none: 'Aucun ticket pour l\'instant.', noneHint: 'Pour ouvrir un ticket, envoie un message privé au bot sur Discord.',
-    back: 'Mes tickets', transcript: 'Télécharger l\'échange', noMessages: 'Aucun message', you: 'Toi', member: 'Membre',
-    participant: 'Participant', rating: 'Ta note', opened: 'Ouvert le', closed: 'Fermé le', notFound: 'Ticket introuvable.',
-    error: { invalid_state: 'La connexion a expiré, réessaie.', oauth_failed: 'La connexion Discord a échoué, réessaie.', no_code: 'Connexion annulée.' },
-    status: { closed: 'Fermé', merged: 'Regroupé avec un autre ticket', waiting: 'En attente de ta réponse', in_progress: 'En cours de traitement', assigned: 'Pris en charge', received: 'Reçu, en attente de prise en charge' },
-    reply: 'Tu peux aussi répondre en message privé au bot sur Discord.',
-    deleted: 'Message supprimé', edited: 'modifié',
-    tabs: { tickets: 'Mes tickets', new: 'Ouvrir un ticket', help: 'Aide' },
-    replyPh: 'Écris ta réponse…', send: 'Envoyer', sent: 'Message envoyé', closedTicket: 'Ce ticket est fermé.',
-    server: 'Serveur', subject: 'Sujet', subjectPh: 'Sujet de ta demande', message: 'Ta demande', messagePh: 'Explique ton problème le plus précisément possible.',
-    confidential: 'Demande confidentielle : seuls les fondateurs du serveur pourront lire ce ticket (signalement, harcèlement…)', confidentialBadge: 'Confidentiel',
-    optional: 'facultatif', form: 'Quelques questions', open: 'Ouvrir le ticket', noGuild: 'Aucun serveur disponible : tu dois être membre d\'un serveur qui utilise ce bot.',
-    faqTitle: 'Questions fréquentes', faqSearch: 'Chercher dans l\'aide…', faqNone: 'Aucune réponse ne correspond.', faqEmpty: 'Ce serveur n\'a pas encore de page d\'aide.',
-    stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.', privacy: 'Confidentialité',
-  },
-  en: {
-    title: 'My tickets', subtitle: 'Find your support requests, their status and your conversations.',
-    login: 'Sign in with Discord', loginHint: 'Only your Discord identity is requested. You only see your own tickets.',
-    logout: 'Sign out', none: 'No tickets yet.', noneHint: 'To open a ticket, send a direct message to the bot on Discord.',
-    back: 'My tickets', transcript: 'Download the conversation', noMessages: 'No messages', you: 'You', member: 'Member',
-    participant: 'Participant', rating: 'Your rating', opened: 'Opened', closed: 'Closed', notFound: 'Ticket not found.',
-    error: { invalid_state: 'The sign-in expired, please try again.', oauth_failed: 'Discord sign-in failed, please try again.', no_code: 'Sign-in cancelled.' },
-    status: { closed: 'Closed', merged: 'Merged with another ticket', waiting: 'Waiting for your answer', in_progress: 'Being handled', assigned: 'Taken in charge', received: 'Received, waiting to be taken in charge' },
-    reply: 'You can also answer by messaging the bot privately on Discord.',
-    deleted: 'Message deleted', edited: 'edited',
-    tabs: { tickets: 'My tickets', new: 'Open a ticket', help: 'Help' },
-    replyPh: 'Write your answer…', send: 'Send', sent: 'Message sent', closedTicket: 'This ticket is closed.',
-    server: 'Server', subject: 'Subject', subjectPh: 'Subject of your request', message: 'Your request', messagePh: 'Describe your problem as precisely as possible.',
-    confidential: 'Confidential request: only the server founders will be able to read this ticket (report, harassment…)', confidentialBadge: 'Confidential',
-    optional: 'optional', form: 'A few questions', open: 'Open the ticket', noGuild: 'No server available: you must be a member of a server that uses this bot.',
-    faqTitle: 'Frequently asked questions', faqSearch: 'Search the help…', faqNone: 'No answer matches.', faqEmpty: 'This server has no help page yet.',
-    stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.', privacy: 'Privacy',
-  },
-}[LANG];
+import { STR, MEMBER_LANG, MEMBER_LANGS, memberLocale, setMemberLang } from '../i18n/member';
 
-const fmt = d => (d ? new Date(d).toLocaleString(LANG === 'fr' ? 'fr-FR' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+// Member web space: a member signs in with Discord and reads their own tickets (no staff data).
+// In the six languages of the bot (i18n/member.js); the API answers in the same language.
+api.defaults.headers.common['X-Member-Lang'] = MEMBER_LANG;
+
+const fmt = d => (d ? new Date(d).toLocaleString(memberLocale, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 
 function statusOf(t) {
   if (t.merged_into) return { label: STR.status.merged, cls: 'bg-overlay/6 text-ink-2 border-overlay/10' };
@@ -94,7 +58,7 @@ function GuildBanner({ guild }) {
 function Shell({ me, onLogout, children }) {
   const info = useInstanceInfo();
   return (
-    <div data-no-translate className="min-h-screen bg-base">
+    <div data-no-translate lang={MEMBER_LANG} className="min-h-screen bg-base">
       <header className="border-b border-overlay/6 bg-surface/60">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Ticket size={18} className="text-primary-light" />
@@ -123,8 +87,15 @@ function Shell({ me, onLogout, children }) {
         </nav>
       )}
       <main className="max-w-3xl mx-auto px-4 py-6">{children}</main>
-      <footer className="max-w-3xl mx-auto px-4 pb-8 text-center">
+      <footer className="max-w-3xl mx-auto px-4 pb-8 flex flex-wrap items-center justify-center gap-4">
         <a href={privacyHref(info)} className="text-xs text-ink-3 underline hover:text-ink-1">{STR.privacy}</a>
+        <label className="inline-flex items-center gap-1.5 text-xs text-ink-3">
+          <Languages size={12} aria-hidden="true" />
+          <select value={MEMBER_LANG} onChange={e => setMemberLang(e.target.value)} aria-label={STR.language}
+            className="bg-transparent text-xs text-ink-2 border border-overlay/8 rounded-md px-1.5 py-0.5">
+            {MEMBER_LANGS.map(([code, name]) => <option key={code} value={code} lang={code}>{name}</option>)}
+          </select>
+        </label>
       </footer>
     </div>
   );
@@ -242,7 +213,7 @@ function TicketView({ guildId, ticketId, me }) {
               {STR.rating} {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} className={i <= t.rating ? 'text-amber-400 fill-amber-400' : 'text-ink-4'} />)}
             </span>
           )}
-          <a href={`/api/member/tickets/${guildId}/${ticketId}/transcript`}
+          <a href={`/api/member/tickets/${guildId}/${ticketId}/transcript?lang=${MEMBER_LANG}`}
             className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1 hover:border-overlay/15">
             <Download size={12} /> {STR.transcript}
           </a>

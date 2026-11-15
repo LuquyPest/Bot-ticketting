@@ -7,11 +7,11 @@ const { broadcast } = require('../utils/sse');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('removeuser')
-    .setDescription('Retire un utilisateur des participants DM lies au ticket')
+    .setDescription('Retire un utilisateur des participants DM liés au ticket')
     .addUserOption(option =>
       option
         .setName('utilisateur')
-        .setDescription('Utilisateur a retirer')
+        .setDescription('Utilisateur à retirer')
         .setRequired(true)
     ),
 

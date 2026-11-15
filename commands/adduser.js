@@ -9,11 +9,11 @@ const { t, sendToMember } = require('../utils/i18n');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('adduser')
-    .setDescription('Ajoute un utilisateur en participant DM lie au ticket')
+    .setDescription('Ajoute un utilisateur en participant DM lié au ticket')
     .addUserOption(option =>
       option
         .setName('utilisateur')
-        .setDescription('Utilisateur a ajouter en DM lie')
+        .setDescription('Utilisateur à ajouter en DM lié')
         .setRequired(true)
     ),
 

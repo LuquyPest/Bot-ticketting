@@ -43,6 +43,7 @@ const guide = [
     items: [
       { text: 'Versions', link: '/guide/versions' },
       { text: 'Contribuer', link: '/guide/contribuer' },
+      { text: 'Aider à traduire', link: '/guide/traduire' },
       { text: 'Signaler une faille', link: '/guide/signaler-une-faille' },
     ],
   },
@@ -86,6 +87,7 @@ const guideEn = [
     items: [
       { text: 'Versions', link: '/en/versions' },
       { text: 'Contributing', link: '/en/contributing' },
+      { text: 'Help translate', link: '/en/translate' },
       { text: 'Report a vulnerability', link: '/en/report-a-vulnerability' },
     ],
   },

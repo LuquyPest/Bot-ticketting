@@ -6,109 +6,140 @@ export const TAG = {
   tech: { label: 'Technique',   cls: 'bg-overlay/6 text-ink-2 border-overlay/8' },
 };
 
+// English (GitHub releases, English docs, dashboard in English): each version since v3.0 carries
+// titleEn and an « en » text per change; older versions stay in French.
+const MONTHS = { janvier: 'January', février: 'February', mars: 'March', avril: 'April', mai: 'May', juin: 'June', juillet: 'July', août: 'August', septembre: 'September', octobre: 'October', novembre: 'November', décembre: 'December' };
+export const TAG_EN = { new: 'New', fix: 'Fix', impr: 'Improvement', tech: 'Technical' };
+export const dateEn = d => String(d).replace(/[a-zéû]+/g, m => MONTHS[m] || m);
+export function localizedVersion(v, lang) {
+  if (lang !== 'en' || !v.titleEn) return v;
+  return { ...v, title: v.titleEn, date: dateEn(v.date), changes: v.changes.map(c => ({ ...c, text: c.en || c.text })) };
+}
+
 export const VERSIONS = [
+  {
+    version: 'v3.2.0',
+    date: '15 novembre 2026',
+    title: 'Six langues partout',
+    titleEn: 'Six languages everywhere',
+    changes: [
+      { type: 'new',  text: 'Commandes Discord dans la langue de l\'application Discord de chacun : descriptions, options et choix en français, anglais, espagnol, allemand, italien et portugais (anglais pour les autres langues) ; les noms des commandes ne changent pas', en: 'Discord commands in the language of each person\'s Discord app: descriptions, options and choices in French, English, Spanish, German, Italian and Portuguese (English for other languages); command names do not change' },
+      { type: 'new',  text: 'Espace membre en six langues, celle du navigateur par défaut et modifiable en bas de page ; les messages d\'erreur et l\'échange téléchargé suivent la même langue', en: 'Member space in six languages, the browser\'s by default and changeable at the bottom of the page; error messages and the downloaded conversation follow the same language' },
+      { type: 'impr', text: 'Notes de version en anglais (releases GitHub, page Versions du site anglais, dashboard en anglais), depuis la v3.0', en: 'Release notes in English (GitHub releases, Versions page of the English site, dashboard in English), from v3.0 on' },
+      { type: 'impr', text: 'Page « Aider à traduire » dans la documentation et modèle d\'issue « Traduction » : chaque fichier de traduction, et comment proposer une correction sans rien installer', en: '« Help translate » page in the documentation and « Translation » issue template: every translation file, and how to suggest a fix without installing anything' },
+    ]
+  },
   {
     version: 'v3.1.0',
     date: '15 novembre 2026',
     title: 'Mises à jour en un clic, sauvegardes hors du serveur',
+    titleEn: "One-click updates, backups off the server",
     changes: [
-      { type: 'new',  text: 'Instance → Santé : version en cours et dernière version publiée, avec ses notes ; MP au propriétaire à chaque nouvelle version (UPDATE_CHECK=off pour ne jamais interroger GitHub)' },
-      { type: 'new',  text: 'Bouton « Mettre à jour » avec le service facultatif updater (docker-compose.updater.yml) : l\'image est tirée, le bot redémarre et le résultat s\'affiche ; le bot lui-même n\'a jamais accès à Docker' },
-      { type: 'new',  text: 'Copie des sauvegardes hors du serveur avec rclone (S3, Backblaze B2, SFTP, Google Drive…) : service facultatif offsite, archives déjà chiffrées' },
-      { type: 'new',  text: 'Vérification automatique des sauvegardes (BACKUP_VERIFY=weekly ou daily) : intégrité, déchiffrement et fin du dump contrôlés sans rien écrire en clair' },
-      { type: 'new',  text: 'Instance → Santé : dernière sauvegarde, dernière vérification et dernière copie hors du serveur ; alerte au propriétaire si l\'une échoue ou manque depuis 26 h' },
-      { type: 'new',  text: 'Modèles d\'installation pour Portainer, Unraid, Dockge, Coolify et CasaOS (dossier deploy/) : un seul fichier compose, sans le reste du dépôt' },
-      { type: 'new',  text: 'Importer depuis un autre bot (Paramètres → Sauvegarde) : les tickets ouverts de Ticket Tool, Tickets, Helper.gg… deviennent des tickets de ce bot, membre retrouvé dans les permissions du salon, avec au choix l\'historique récent, un MP au membre et le déplacement dans « Ouvert »' },
-      { type: 'new',  text: 'Commande /setup (fondateurs) : assistant en trois étapes sur Discord — rôles du staff, catégories existantes ou créées par le bot, panel « Ouvrir un ticket » — avec les mêmes contrôles et le même historique que le dashboard' },
-      { type: 'new',  text: 'Statistiques publiques du support (Paramètres → Salons) : un message mis à jour toutes les heures dans le salon choisi, avec tickets résolus, première réponse, part des réponses dans l\'objectif, résolution et satisfaction sur 30 jours ; uniquement des chiffres' },
-      { type: 'new',  text: 'Messages du bot aux membres en espagnol, allemand, italien et portugais (Brésil), en plus du français et de l\'anglais ; en automatique, la langue Discord du membre est reconnue parmi les six' },
-      { type: 'impr', text: 'Paramètres rangés en onglets (Général, Accès et sécurité, Tickets, Salons, Fonctionnalités, Intégrations, Sauvegarde), avec l\'onglet dans l\'adresse et un rappel des modifications non enregistrées' },
-      { type: 'impr', text: 'scripts/setup.sh en français ou en anglais, et propose la vérification, la copie hors du serveur et le bouton de mise à jour' },
-      { type: 'impr', text: 'Le dashboard suit la langue du navigateur tant que personne n\'a choisi (anglais hors navigateur français)' },
-      { type: 'fix',  text: 'Une sauvegarde dont le dump échouait pouvait être enregistrée comme réussie : chaque étape est maintenant contrôlée' },
+      { type: 'new',  text: 'Instance → Santé : version en cours et dernière version publiée, avec ses notes ; MP au propriétaire à chaque nouvelle version (UPDATE_CHECK=off pour ne jamais interroger GitHub)', en: "Instance → Health: running version and latest published version, with its notes; DM to the owner for each new version (UPDATE_CHECK=off to never query GitHub)" },
+      { type: 'new',  text: 'Bouton « Mettre à jour » avec le service facultatif updater (docker-compose.updater.yml) : l\'image est tirée, le bot redémarre et le résultat s\'affiche ; le bot lui-même n\'a jamais accès à Docker', en: "« Update » button with the optional updater service (docker-compose.updater.yml): the image is pulled, the bot restarts and the result is shown; the bot itself never has access to Docker" },
+      { type: 'new',  text: 'Copie des sauvegardes hors du serveur avec rclone (S3, Backblaze B2, SFTP, Google Drive…) : service facultatif offsite, archives déjà chiffrées', en: "Backups copied off the server with rclone (S3, Backblaze B2, SFTP, Google Drive…): optional offsite service, archives already encrypted" },
+      { type: 'new',  text: 'Vérification automatique des sauvegardes (BACKUP_VERIFY=weekly ou daily) : intégrité, déchiffrement et fin du dump contrôlés sans rien écrire en clair', en: "Automatic backup check (BACKUP_VERIFY=weekly or daily): integrity, decryption and end of dump checked without writing anything in clear" },
+      { type: 'new',  text: 'Instance → Santé : dernière sauvegarde, dernière vérification et dernière copie hors du serveur ; alerte au propriétaire si l\'une échoue ou manque depuis 26 h', en: "Instance → Health: last backup, last check and last off-site copy; alert to the owner if one fails or has been missing for 26 h" },
+      { type: 'new',  text: 'Modèles d\'installation pour Portainer, Unraid, Dockge, Coolify et CasaOS (dossier deploy/) : un seul fichier compose, sans le reste du dépôt', en: "Install templates for Portainer, Unraid, Dockge, Coolify and CasaOS (deploy/ folder): a single compose file, without the rest of the repository" },
+      { type: 'new',  text: 'Importer depuis un autre bot (Paramètres → Sauvegarde) : les tickets ouverts de Ticket Tool, Tickets, Helper.gg… deviennent des tickets de ce bot, membre retrouvé dans les permissions du salon, avec au choix l\'historique récent, un MP au membre et le déplacement dans « Ouvert »', en: "Import from another bot (Settings → Backup): open tickets of Ticket Tool, Tickets, Helper.gg… become tickets of this bot, member found in the channel permissions, with optionally the recent history, a DM to the member and a move into « Open »" },
+      { type: 'new',  text: 'Commande /setup (fondateurs) : assistant en trois étapes sur Discord — rôles du staff, catégories existantes ou créées par le bot, panel « Ouvrir un ticket » — avec les mêmes contrôles et le même historique que le dashboard', en: "/setup command (founders): three-step wizard on Discord — staff roles, existing categories or categories created by the bot, « Open a ticket » panel — with the same checks and history as the dashboard" },
+      { type: 'new',  text: 'Statistiques publiques du support (Paramètres → Salons) : un message mis à jour toutes les heures dans le salon choisi, avec tickets résolus, première réponse, part des réponses dans l\'objectif, résolution et satisfaction sur 30 jours ; uniquement des chiffres', en: "Public support statistics (Settings → Channels): a message updated every hour in the chosen channel, with resolved tickets, first response, share of responses within target, resolution and satisfaction over 30 days; numbers only" },
+      { type: 'new',  text: 'Messages du bot aux membres en espagnol, allemand, italien et portugais (Brésil), en plus du français et de l\'anglais ; en automatique, la langue Discord du membre est reconnue parmi les six', en: "Bot messages to members in Spanish, German, Italian and Portuguese (Brazil), besides French and English; in automatic mode, the member's Discord language is recognised among the six" },
+      { type: 'impr', text: 'Paramètres rangés en onglets (Général, Accès et sécurité, Tickets, Salons, Fonctionnalités, Intégrations, Sauvegarde), avec l\'onglet dans l\'adresse et un rappel des modifications non enregistrées', en: "Settings organised in tabs (General, Access and security, Tickets, Channels, Features, Integrations, Backup), with the tab in the address and a reminder of unsaved changes" },
+      { type: 'impr', text: 'scripts/setup.sh en français ou en anglais, et propose la vérification, la copie hors du serveur et le bouton de mise à jour', en: "scripts/setup.sh in French or English, and offers the check, the off-site copy and the update button" },
+      { type: 'impr', text: 'Le dashboard suit la langue du navigateur tant que personne n\'a choisi (anglais hors navigateur français)', en: "The dashboard follows the browser language until someone picks one (English outside French browsers)" },
+      { type: 'fix',  text: 'Une sauvegarde dont le dump échouait pouvait être enregistrée comme réussie : chaque étape est maintenant contrôlée', en: "A backup whose dump failed could be recorded as successful: every step is now checked" },
     ]
   },
   {
     version: 'v3.0.7',
     date: '14 novembre 2026',
     title: 'Interface Pro par défaut',
+    titleEn: "Pro interface by default",
     changes: [
-      { type: 'impr', text: 'L\'interface « Pro » est celle par défaut ; « Classique » reste au choix dans Profil → Affichage, et un choix déjà enregistré sur le compte est conservé' },
+      { type: 'impr', text: 'L\'interface « Pro » est celle par défaut ; « Classique » reste au choix dans Profil → Affichage, et un choix déjà enregistré sur le compte est conservé', en: "The « Pro » interface is the default one; « Classic » can still be picked in Profile → Display, and a choice already saved on the account is kept" },
     ]
   },
   {
     version: 'v3.0.6',
     date: '14 novembre 2026',
     title: 'Dépendances à jour',
+    titleEn: "Dependencies up to date",
     changes: [
-      { type: 'tech', text: 'Première image publiée depuis la v3.0.4 : elle contient aussi tout le contenu de la v3.0.5 (démonstration en un clic, corrections de sécurité)' },
-      { type: 'tech', text: 'Dépendances mises à jour : discord.js 14.28, BullMQ 6.7, connect-redis 10, pdfkit 0.20, Vite 8.3, actions GitHub' },
-      { type: 'tech', text: 'Image arm64 construite sur une machine ARM native plutôt qu\'en émulation, qui faisait planter Node' },
+      { type: 'tech', text: 'Première image publiée depuis la v3.0.4 : elle contient aussi tout le contenu de la v3.0.5 (démonstration en un clic, corrections de sécurité)', en: "First image published since v3.0.4: it also holds everything from v3.0.5 (one-click demo, security fixes)" },
+      { type: 'tech', text: 'Dépendances mises à jour : discord.js 14.28, BullMQ 6.7, connect-redis 10, pdfkit 0.20, Vite 8.3, actions GitHub', en: "Dependencies updated: discord.js 14.28, BullMQ 6.7, connect-redis 10, pdfkit 0.20, Vite 8.3, GitHub actions" },
+      { type: 'tech', text: 'Image arm64 construite sur une machine ARM native plutôt qu\'en émulation, qui faisait planter Node', en: "arm64 image built on a native ARM machine instead of emulation, which made Node crash" },
     ]
   },
   {
     version: 'v3.0.5',
     date: '14 novembre 2026',
     title: 'Démonstration en un clic',
+    titleEn: "One-click demo",
     changes: [
-      { type: 'new',  text: 'Adresse /demo : ouvre directement la démonstration (lien du site de documentation) ; indique simplement qu\'elle est désactivée quand le propriétaire l\'a coupée' },
-      { type: 'fix',  text: 'Sécurité : les copies du .env et le dossier des sauvegardes ne sont plus copiés dans une image construite sur le serveur' },
-      { type: 'fix',  text: 'Déconnexion après inactivité, trop de codes 2FA faux ou compte retiré : la session est effacée avant la réponse, sans délai pendant lequel elle restait utilisable' },
+      { type: 'new',  text: 'Adresse /demo : ouvre directement la démonstration (lien du site de documentation) ; indique simplement qu\'elle est désactivée quand le propriétaire l\'a coupée', en: "/demo address: opens the demo directly (link of the documentation site); simply says it is disabled when the owner turned it off" },
+      { type: 'fix',  text: 'Sécurité : les copies du .env et le dossier des sauvegardes ne sont plus copiés dans une image construite sur le serveur', en: "Security: copies of .env and the backups folder are no longer copied into an image built on the server" },
+      { type: 'fix',  text: 'Déconnexion après inactivité, trop de codes 2FA faux ou compte retiré : la session est effacée avant la réponse, sans délai pendant lequel elle restait utilisable', en: "Sign-out after inactivity, too many wrong 2FA codes or removed account: the session is erased before the response, with no delay during which it stayed usable" },
     ]
   },
   {
     version: 'v3.0.4',
     date: '14 novembre 2026',
     title: 'Sauvegardes chiffrées',
+    titleEn: "Encrypted backups",
     changes: [
-      { type: 'new',  text: 'Les sauvegardes nocturnes sont chiffrées (AES-256, clé dérivée par PBKDF2) avec un contrôle d\'intégrité HMAC vérifié avant toute restauration ; jamais écrites en clair' },
-      { type: 'new',  text: 'Clé des sauvegardes affichée au propriétaire de l\'instance dans Paramètres → Sécurité (masquée par défaut, chaque affichage inscrit au journal de l\'instance)' },
-      { type: 'tech', text: 'Tests : 880 vérifications automatiques' },
+      { type: 'new',  text: 'Les sauvegardes nocturnes sont chiffrées (AES-256, clé dérivée par PBKDF2) avec un contrôle d\'intégrité HMAC vérifié avant toute restauration ; jamais écrites en clair', en: "Nightly backups are encrypted (AES-256, key derived with PBKDF2) with an HMAC integrity check verified before any restore; never written in clear" },
+      { type: 'new',  text: 'Clé des sauvegardes affichée au propriétaire de l\'instance dans Paramètres → Sécurité (masquée par défaut, chaque affichage inscrit au journal de l\'instance)', en: "Backup key shown to the instance owner in Settings → Security (hidden by default, each display recorded in the instance log)" },
+      { type: 'tech', text: 'Tests : 880 vérifications automatiques', en: "Tests: 880 automated checks" },
     ]
   },
   {
     version: 'v3.0.3',
     date: '14 novembre 2026',
     title: 'Le logo, c\'est ton bot',
+    titleEn: "The logo is your bot",
     changes: [
-      { type: 'impr', text: 'L\'avatar du bot remplace le logo en haut à gauche du dashboard et sert d\'icône d\'onglet ; le titre de l\'onglet porte son nom' },
-      { type: 'tech', text: 'README refait : court, avec des captures de l\'interface Pro ; dépendance bcrypt retirée (plus utilisée depuis la v3.0)' },
-      { type: 'fix',  text: 'Sécurité : sans reverse proxy nommé, l\'adresse X-Forwarded-For n\'est plus crue venant d\'un client Internet (usurpation d\'IP impossible) ; propriétaires d\'une application d\'équipe limités aux admins ; conteneur de sauvegarde réduit aux droits nécessaires ; avertissement au démarrage si le bot est public sans ALLOWED_GUILDS' },
-      { type: 'tech', text: 'Tests : 876 vérifications automatiques' },
+      { type: 'impr', text: 'L\'avatar du bot remplace le logo en haut à gauche du dashboard et sert d\'icône d\'onglet ; le titre de l\'onglet porte son nom', en: "The bot's avatar replaces the logo at the top left of the dashboard and serves as the tab icon; the tab title carries its name" },
+      { type: 'tech', text: 'README refait : court, avec des captures de l\'interface Pro ; dépendance bcrypt retirée (plus utilisée depuis la v3.0)', en: "README redone: short, with screenshots of the Pro interface; bcrypt dependency removed (unused since v3.0)" },
+      { type: 'fix',  text: 'Sécurité : sans reverse proxy nommé, l\'adresse X-Forwarded-For n\'est plus crue venant d\'un client Internet (usurpation d\'IP impossible) ; propriétaires d\'une application d\'équipe limités aux admins ; conteneur de sauvegarde réduit aux droits nécessaires ; avertissement au démarrage si le bot est public sans ALLOWED_GUILDS', en: "Security: without a named reverse proxy, the X-Forwarded-For address is no longer trusted from an Internet client (IP spoofing impossible); owners of a team application limited to admins; backup container reduced to the rights it needs; warning at startup if the bot is public without ALLOWED_GUILDS" },
+      { type: 'tech', text: 'Tests : 876 vérifications automatiques', en: "Tests: 876 automated checks" },
     ]
   },
   {
     version: 'v3.0.2',
     date: '13 novembre 2026',
     title: 'Connexion directe au serveur',
+    titleEn: "Straight to the server",
     changes: [
-      { type: 'impr', text: 'Seul le propriétaire de l\'instance voit la liste des serveurs à la connexion ; un membre du staff qui n\'a accès qu\'à un serveur arrive directement sur son dashboard (la liste reste pour ceux qui en ont plusieurs)' },
+      { type: 'impr', text: 'Seul le propriétaire de l\'instance voit la liste des serveurs à la connexion ; un membre du staff qui n\'a accès qu\'à un serveur arrive directement sur son dashboard (la liste reste pour ceux qui en ont plusieurs)', en: "Only the instance owner sees the server list at sign-in; a staff member with access to a single server lands directly on its dashboard (the list stays for those who have several)" },
     ]
   },
   {
     version: 'v3.0.1',
     date: '13 novembre 2026',
     title: 'Correctif de la connexion Discord',
+    titleEn: "Discord sign-in fix",
     changes: [
-      { type: 'fix',  text: 'Connexion avec Discord : « Erreur serveur » sur une installation sans config.json (configuration par .env uniquement)' },
-      { type: 'tech', text: 'Tests : 873 vérifications automatiques, dont la connexion Discord sans config.json' },
+      { type: 'fix',  text: 'Connexion avec Discord : « Erreur serveur » sur une installation sans config.json (configuration par .env uniquement)', en: "Sign in with Discord: « Server error » on an install without config.json (configuration through .env only)" },
+      { type: 'tech', text: 'Tests : 873 vérifications automatiques, dont la connexion Discord sans config.json', en: "Tests: 873 automated checks, including Discord sign-in without config.json" },
     ]
   },
   {
     version: 'v3.0',
     date: '13 novembre 2026',
     title: 'Instance personnelle : ton bot, sans intermédiaire',
+    titleEn: "Personal instance: your bot, no middleman",
     changes: [
-      { type: 'new',  text: 'Le propriétaire de l\'application Discord administre son instance depuis la nouvelle section « Instance » du dashboard, avec sa connexion Discord : serveurs, fondateurs, santé, erreurs, journal, adresses bloquées. Co-propriétaires possibles avec OWNER_IDS' },
-      { type: 'new',  text: 'Un serveur est prêt dès que le bot le rejoint : plus de validation. Seul le propriétaire obtient le lien d\'invitation ; ALLOWED_GUILDS limite les serveurs acceptés' },
-      { type: 'new',  text: 'Le dashboard, les MP et les exports portent le nom et l\'avatar de ton bot' },
-      { type: 'new',  text: 'Page de confidentialité intégrée (/confidentialite), remplaçable par PRIVACY_URL, liée depuis la connexion et l\'espace membre' },
-      { type: 'new',  text: 'Sauvegarde automatique des bases chaque nuit (service backup, proposé par setup.sh)' },
-      { type: 'impr', text: 'Serveur de démonstration en option, désactivé par défaut (Instance → Santé)' },
-      { type: 'impr', text: 'Alertes d\'erreurs et de déconnexion Discord envoyées au propriétaire par défaut' },
-      { type: 'impr', text: 'Retirés, car propres à un service hébergé pour des clients : panneau super-admin et ses comptes, managers, formules et limites par serveur, annonces, page de statut publique' },
-      { type: 'tech', text: 'Conservation des transcripts : TRANSCRIPT_RETENTION_DAYS. Mise à jour depuis la v2 : voir UPGRADE.md' },
-      { type: 'tech', text: 'Tests : 871 vérifications automatiques' },
+      { type: 'new',  text: 'Le propriétaire de l\'application Discord administre son instance depuis la nouvelle section « Instance » du dashboard, avec sa connexion Discord : serveurs, fondateurs, santé, erreurs, journal, adresses bloquées. Co-propriétaires possibles avec OWNER_IDS', en: "The owner of the Discord application administers their instance from the new « Instance » section of the dashboard, signed in with Discord: servers, founders, health, errors, log, blocked addresses. Co-owners possible with OWNER_IDS" },
+      { type: 'new',  text: 'Un serveur est prêt dès que le bot le rejoint : plus de validation. Seul le propriétaire obtient le lien d\'invitation ; ALLOWED_GUILDS limite les serveurs acceptés', en: "A server is ready as soon as the bot joins it: no more approval. Only the owner gets the invite link; ALLOWED_GUILDS limits the accepted servers" },
+      { type: 'new',  text: 'Le dashboard, les MP et les exports portent le nom et l\'avatar de ton bot', en: "The dashboard, DMs and exports carry the name and avatar of your bot" },
+      { type: 'new',  text: 'Page de confidentialité intégrée (/confidentialite), remplaçable par PRIVACY_URL, liée depuis la connexion et l\'espace membre', en: "Built-in privacy page (/confidentialite), replaceable with PRIVACY_URL, linked from the sign-in page and the member space" },
+      { type: 'new',  text: 'Sauvegarde automatique des bases chaque nuit (service backup, proposé par setup.sh)', en: "Automatic backup of the databases every night (backup service, offered by setup.sh)" },
+      { type: 'impr', text: 'Serveur de démonstration en option, désactivé par défaut (Instance → Santé)', en: "Demo server optional, disabled by default (Instance → Health)" },
+      { type: 'impr', text: 'Alertes d\'erreurs et de déconnexion Discord envoyées au propriétaire par défaut', en: "Error and Discord disconnection alerts sent to the owner by default" },
+      { type: 'impr', text: 'Retirés, car propres à un service hébergé pour des clients : panneau super-admin et ses comptes, managers, formules et limites par serveur, annonces, page de statut publique', en: "Removed, since they belonged to a service hosted for customers: super-admin panel and its accounts, managers, plans and per-server limits, announcements, public status page" },
+      { type: 'tech', text: 'Conservation des transcripts : TRANSCRIPT_RETENTION_DAYS. Mise à jour depuis la v2 : voir UPGRADE.md', en: "Transcript retention: TRANSCRIPT_RETENTION_DAYS. Upgrading from v2: see UPGRADE.md" },
+      { type: 'tech', text: 'Tests : 871 vérifications automatiques', en: "Tests: 871 automated checks" },
     ]
   },
   {

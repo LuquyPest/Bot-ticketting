@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollText, ChevronDown, ChevronUp } from 'lucide-react';
 
-import { TAG, VERSIONS } from '../data/patchnotes';
+import { TAG, VERSIONS, localizedVersion } from '../data/patchnotes';
+import { getLang } from '../i18n';
 import { useAuth } from '../App';
 
 function VersionCard({ v }) {
@@ -59,7 +60,7 @@ export default function Patchnotes() {
       </div>
 
       <div className="space-y-3">
-        {VERSIONS.map(v => <VersionCard key={v.version} v={v} />)}
+        {VERSIONS.map(v => <VersionCard key={v.version} v={localizedVersion(v, getLang())} />)}
       </div>
     </div>
   );

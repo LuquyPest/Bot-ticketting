@@ -8,12 +8,12 @@ const { sendDiscordReply } = require('../utils/discordReply');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('areply')
-    .setDescription('Reponse anonyme')
+    .setDescription('Réponse anonyme')
     .addStringOption(option =>
-      option.setName('message').setDescription('Message a envoyer').setRequired(false)
+      option.setName('message').setDescription('Message à envoyer').setRequired(false)
     )
     .addAttachmentOption(option =>
-      option.setName('fichier').setDescription('Fichier a envoyer').setRequired(false)
+      option.setName('fichier').setDescription('Fichier à envoyer').setRequired(false)
     ),
 
   async execute(client, interaction) {

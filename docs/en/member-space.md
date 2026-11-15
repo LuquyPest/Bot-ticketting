@@ -1,6 +1,6 @@
 # Member space
 
-Members sign in on **`/espace`** of your domain with Discord and find all their tickets, open and closed, on each of your servers — including those where they were added as participants. This space is in French.
+Members sign in on **`/espace`** of your domain with Discord and find all their tickets, open and closed, on each of your servers — including those where they were added as participants. The space comes in **six languages** — English, French, Spanish, German, Italian, Portuguese: the browser's language (English for any other), changeable at the bottom of the page. Error messages and the downloaded conversation follow the same language.
 
 - **Follow**: a status written for them (« waiting for your answer », « being handled »…), the conversation with the staff, the rating they gave, a download of the exchange.
 - **Reply** from the web, exactly as by DM (same limits, same channel on the staff side).

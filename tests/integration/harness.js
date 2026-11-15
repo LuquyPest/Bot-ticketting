@@ -838,6 +838,38 @@ async function main() {
       const de = await i18n.withLang('de', () => i18n.t('welcome.title', { id: 7 }));
       check('langues: message en allemand avec variables', de === '🎫 Ticket #7 erstellt', de);
     }
+    {
+      // Slash commands translated for Discord: every text, within Discord's limits
+      const cmds = require(path.join(ROOT, 'deploy-commands.js')).buildCommands();
+      const bad = [];
+      const NAME = /^[-_\p{L}\p{N}]{1,32}$/u;
+      const walk = (n, where) => {
+        if (n.description !== undefined) {
+          if (!n.description_localizations?.fr || !n.description_localizations?.de || !n.description_localizations?.['pt-BR']) bad.push(`${where}: description non traduite`);
+          for (const d of [n.description, ...Object.values(n.description_localizations || {})]) if (!d || d.length > 100) bad.push(`${where}: longueur ${d?.length}`);
+        }
+        const seen = {};
+        for (const o of n.options || []) {
+          for (const [loc, name] of Object.entries(o.name_localizations || {})) {
+            if (!NAME.test(name) || name !== name.toLowerCase()) bad.push(`${where}.${o.name}: nom ${loc} invalide`);
+            const k = `${loc}:${name}`; if (seen[k]) bad.push(`${where}: nom ${k} en double`); seen[k] = 1;
+          }
+          for (const c of o.choices || []) if (!c.name_localizations?.fr) bad.push(`${where}.${o.name}#${c.value}: choix non traduit`);
+          walk(o, `${where}.${o.name}`);
+        }
+      };
+      for (const c of cmds) walk(c, c.name);
+      const reply = cmds.find(c => c.name === 'reply');
+      check('commandes Discord: descriptions, options et choix traduits en 6 langues, dans les limites de Discord', cmds.length >= 20 && bad.length === 0, JSON.stringify(bad.slice(0, 8)));
+      check('commandes Discord: anglais par défaut, français conservé, noms de commandes inchangés', reply.description === 'Replies to the member' && reply.description_localizations.fr === 'Répond au membre' && reply.options[0].name === 'message' && reply.options[1].name_localizations['en-US'] === 'file', JSON.stringify(reply.options[1]));
+    }
+    {
+      const pn = await import(path.join(ROOT, 'dashboard/src/data/patchnotes.js'));
+      const v3 = pn.VERSIONS.filter(v => pn.compareVersions(v.version, 'v3.0') >= 0);
+      const missing = v3.filter(v => !v.titleEn || v.changes.some(c => !c.en)).map(v => v.version);
+      check('notes de version: chaque version depuis la v3.0 traduite en anglais', v3.length >= 9 && missing.length === 0, JSON.stringify(missing));
+      check('notes de version: date anglaise', pn.dateEn('15 novembre 2026') === '15 November 2026' && pn.dateEn('1 août 2026') === '1 August 2026', pn.dateEn('1 août 2026'));
+    }
     r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'klingon' } });
     check('langues: valeur inconnue refusée', r.status === 400, r.status);
     r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { botLanguage: 'es' } });
@@ -1278,6 +1310,8 @@ async function main() {
     check('espace membre: ticket d un autre introuvable', r.status === 404, r.status);
     r = await req('GET', `/api/member/tickets/${G}/${tA}/transcript`, { sid: sessions.MEM });
     check('espace membre: transcript de sa conversation', r.status === 200 && /attachment/.test(r.headers['content-disposition']) && r.body.includes('jamais arrivée') && !r.body.includes('NOTE-INTERNE-SECRETE'), r.status);
+    r = await req('GET', `/api/member/tickets/${G}/${tA}/transcript`, { sid: sessions.MEM, query: { lang: 'it' } });
+    check('espace membre: transcript dans la langue de la page', r.status === 200 && r.body.includes('<html lang="it">') && r.body.includes('aperto il'), r.body.slice(0, 600));
     r = await req('GET', '/api/tickets', { sid: sessions.MEM });
     check('espace membre: aucun accès au dashboard', r.status >= 400 && r.status < 500, r.status);
     await db('UPDATE guild_config SET member_portal_enabled = 0 WHERE id = 1');
@@ -1453,6 +1487,10 @@ async function main() {
     check('espace membre: champ invalide refusé', r.status === 400 && /nombre/.test(r.body.error), JSON.stringify(r.body));
     r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: [], content: 'Paiement bloqué' } });
     check('espace membre: questions obligatoires', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, headers: { 'X-Member-Lang': 'de' }, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: [], content: 'Paiement bloqué' } });
+    const rEs = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, headers: { 'Accept-Language': 'es-ES,es;q=0.9' }, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: [], content: 'Paiement bloqué' } });
+    const rJa = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, headers: { 'Accept-Language': 'ja' }, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: [], content: 'Paiement bloqué' } });
+    check('espace membre: erreurs dans la langue choisie, sinon celle du navigateur, anglais par défaut', r.body.error === 'Beantworte alle Fragen des Formulars' && rEs.body.error === 'Responde a todas las preguntas del formulario' && rJa.body.error === 'Answer every question of the form', JSON.stringify([r.body, rEs.body, rJa.body]));
     memberDms.length = 0;
     r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MW, body: { subject: 'Paiement', fields: { [fid]: '1234' }, answers: ['Carte'], content: 'Paiement bloqué depuis le web' } });
     const wt = r.body.ticketId;

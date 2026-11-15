@@ -1,6 +1,8 @@
 # Discord commands
 
-Commands are for the staff, on an active server. They follow the same rules as the dashboard: the account must be *support* or *founder*, a *support* needs the grade permission shown, and in the channel of a restricted ticket, only those who can see it can act. Founders have every right. Command names and replies are in French.
+Commands are for the staff, on an active server. They follow the same rules as the dashboard: the account must be *support* or *founder*, a *support* needs the grade permission shown, and in the channel of a restricted ticket, only those who can see it can act. Founders have every right.
+
+Discord shows the descriptions, options and choices of the commands **in the language of each person's Discord app**: English, French, Spanish, German, Italian or Portuguese (English for any other language). Command names stay the same everywhere (`/reply`, `/claim`…); the replies of the bot to the staff are in French.
 
 ## Setting up the server: `/setup`
 
