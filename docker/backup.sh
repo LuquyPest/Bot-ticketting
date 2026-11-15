@@ -174,9 +174,14 @@ esac
 
 echo "Sauvegarde chiffrée quotidienne à $TIME ($(date +%Z)), conservation $KEEP jours, vérification : $VERIFY"
 list_archives
+# A new version of this script (git pull) is picked up by itself, once its syntax checks out
+SELF_MTIME="$(stat -c %Y "$0")"
 next=$(date -d "$(date +%F) $TIME" +%s)
 (( next <= $(date +%s) )) && next=$(( next + 86400 ))
 while true; do
+  if [[ "$(stat -c %Y "$0" 2>/dev/null)" != "$SELF_MTIME" ]] && bash -n "$0" 2>/dev/null; then
+    echo "Nouvelle version du script de sauvegarde : rechargement"; exec "$0"
+  fi
   # Restore requests from the dashboard are picked up within a few seconds
   handle_requests
   if (( $(date +%s) >= next )); then

@@ -26,7 +26,7 @@ async function runInactiveCheck(client) {
       const { toWarn, toClose } = await tm.getInactiveTickets(warningHours, closeHours);
 
       for (const ticket of toWarn) {
-        const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+        const channel = await tm.channelOf(ticket);
         if (!channel) continue;
         await channel.send(
           `⚠️ Ce ticket est inactif depuis plus de ${warningHours}h. Il sera fermé automatiquement dans ${closeHours - warningHours}h si aucun message n'est envoyé.`
@@ -35,7 +35,7 @@ async function runInactiveCheck(client) {
       }
 
       for (const ticket of toClose) {
-        const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+        const channel = await tm.channelOf(ticket);
         if (!channel) {
           await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [ticket.id]);
           await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'inactivité', channel: 'introuvable' } });

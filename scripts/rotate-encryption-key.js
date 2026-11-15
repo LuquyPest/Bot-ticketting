@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Re-encrypts every stored secret (2FA of the dashboard accounts) and every
+// Re-encrypts every stored secret (2FA of the dashboard accounts, passwords of the support
+// mailboxes) and every
 // transcript of every server with the current key (ENCRYPTION_KEY / dashboard.encryptionKey); transcripts
 // still in clear (written before encryption) are encrypted too. Run after setting the new key and
 // moving the old one to dashboard.previousEncryptionKeys (or once to encrypt old transcripts):
@@ -37,7 +38,33 @@ async function rotate() {
     }
   }
   report.transcripts = await rotateTranscripts(box);
+  report.emailPasswords = await rotateEmailPasswords(box);
   return report;
+}
+
+// Passwords of the support mailboxes (tickets by e-mail), one row per server
+async function rotateEmailPasswords(box) {
+  const { globalQuery } = require('../utils/globalDb');
+  const { getTenantDb } = require('../utils/tenantDb');
+  const out = { total: 0, rewritten: 0, failed: 0 };
+  for (const { guild_id } of await globalQuery("SELECT guild_id FROM guilds WHERE status IN ('active', 'suspended')")) {
+    const db = getTenantDb(guild_id);
+    const [row] = await db('SELECT imap_password, smtp_password FROM email_settings WHERE id = 1').catch(() => []);
+    if (!row) continue;
+    for (const col of ['imap_password', 'smtp_password']) {
+      if (!row[col]) continue;
+      out.total++;
+      if (box.isCurrent(row[col])) continue;
+      try {
+        await db(`UPDATE email_settings SET ${col} = ? WHERE id = 1`, [box.seal(box.open(row[col]))]);
+        out.rewritten++;
+      } catch (err) {
+        out.failed++;
+        console.error(`e-mail ${guild_id}/${col} : ${err.message}`);
+      }
+    }
+  }
+  return out;
 }
 
 // Transcripts, server by server, in small batches (they can be large)

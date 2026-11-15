@@ -11,6 +11,7 @@ const JOBS = {
   'pending-expiry':      { every: 15 * 1000,      run: client => require('../events/messageCreate').runPendingExpiry(client) },
   'ticket-reminders':    { every: 60 * 1000,      run: client => require('./ticketReminders').sendDueReminders(client) },
   'scheduled-messages':  { every: 60 * 1000,      run: client => require('./scheduledMessages').processPending(client) },
+  'email-fetch':         { every: 60 * 1000,      run: client => require('./emailTickets').runEmailFetch(client) },
   'escalation-check':    { every: 30 * 60 * 1000, run: client => require('./escalationChecker').runEscalationCheck(client) },
   'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },
   'user-inactive-check': { every: 60 * 60 * 1000, run: client => require('./userInactiveChecker').runUserInactiveCheck(client) },

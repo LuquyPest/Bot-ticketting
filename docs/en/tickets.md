@@ -22,7 +22,7 @@ When picking the subject, the member can ask for a **confidential** ticket (repo
 
 - **Reply** from the ticket view in the dashboard (with a file up to 8 MB, or a pasted screenshot), with `/reply`, or anonymously with `/areply` (shown as « Support »). A message typed directly in the Discord channel stays an internal note, never sent to the member.
 - **Contact a member** yourself: **New ticket** button on the Tickets page, `/contact`, or right-click a message → *Apps* → *Create a ticket*.
-- **Ticket format**: one channel per ticket, with overflow categories beyond 50 channels and private threads beyond 500; or channels only; or private threads only.
+- **Ticket format**: one channel per ticket, with overflow categories beyond 50 channels and private threads beyond 500; or channels only; or private threads only; or **no channel**: tickets live only in the dashboard (the staff replies there, members carry on by DM or in the member space, the transcript comes from the history) — handy for a small server or a staff that only works on the web.
 - **Temporary voice channel** (**Voice** button or `/vocal`), reserved to the member and the staff who can see the ticket, deleted when it closes.
 - **Close** from the channel or the dashboard: the transcript is generated automatically.
 

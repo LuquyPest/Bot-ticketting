@@ -35,7 +35,7 @@ async function runUserInactiveCheck(client) {
           footer: t('reply.footer', { id: ticket.id }),
         })] }));
         // Also warn in the ticket channel
-        const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+        const channel = await tm.channelOf(ticket);
         if (channel) {
           await channel.send(
             `⚠️ <@${ticket.owner_id}> n'a pas répondu depuis ${warnHours}h. Le ticket sera fermé automatiquement dans ${closeHours - warnHours}h si aucun message n'est envoyé.`
@@ -45,7 +45,7 @@ async function runUserInactiveCheck(client) {
       }
 
       for (const ticket of toClose) {
-        const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+        const channel = await tm.channelOf(ticket);
         if (!channel) {
           await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system (inactivité utilisateur)' WHERE id=?`, [ticket.id]);
           await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'inactivité du membre', channel: 'introuvable' } });

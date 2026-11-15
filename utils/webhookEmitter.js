@@ -106,4 +106,4 @@ async function fireTicketWebhook(db, event, payload) {
   } catch {}
 }
 
-module.exports = { fireTicketWebhook, safePostJson };
+module.exports = { fireTicketWebhook, safePostJson, resolveAndPin, isPrivateIp };

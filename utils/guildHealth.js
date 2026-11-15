@@ -106,7 +106,7 @@ async function checkGuildHealth(db, client, guildId) {
   }
   const total = guild.channels.cache.size;
   report.channelCount = { used: total, limit: 500 };
-  if (cfg.ticket_mode !== 'thread' && !(cfg.ticket_mode === 'auto' && cfg.thread_parent_channel_id) && total >= 480) report.problems.push({ id: 'guild_channels', text: `Le serveur approche de la limite de 500 salons (${total})` });
+  if (!['thread', 'database'].includes(cfg.ticket_mode) && !(cfg.ticket_mode === 'auto' && cfg.thread_parent_channel_id) && total >= 480) report.problems.push({ id: 'guild_channels', text: `Le serveur approche de la limite de 500 salons (${total})` });
   return report;
 }
 

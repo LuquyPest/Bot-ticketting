@@ -33,6 +33,26 @@ Chaque membre du staff peut recevoir les nouveaux messages et réponses en notif
 
 **Accès invités** (fondateurs) : un lien temporaire en lecture seule vers des tickets choisis, pour une personne extérieure sans compte Discord (modérateur d'un partenaire, conseil…). Durée d'une heure à 30 jours, notes internes incluses ou non, chaque consultation inscrite au journal, révocable à tout moment.
 
+## Tickets par e-mail
+
+Pour les personnes qui ne sont pas sur Discord : chaque e-mail reçu sur l'adresse du support ouvre un ticket, exactement comme un MP au bot (même salon, ou fil, ou aucun salon ; mêmes sujets, règles et automatismes). **Paramètres → Intégrations → Tickets par e-mail**, fondateurs :
+
+| | |
+|---|---|
+| **Adresse** | Celle du support (`support@ton-domaine`), avec un nom affiché facultatif |
+| **Réception (IMAP)** | Serveur, port 993 (TLS) ou 143, identifiant et mot de passe de la boîte : elle est lue **chaque minute**, chaque e-mail traité est marqué comme lu |
+| **Envoi (SMTP)** | Serveur, port 587, 465, 25 ou 2525, identifiant et mot de passe : les réponses partent de l'adresse du support |
+
+**Tester la connexion** vérifie les deux avant d'activer. Les mots de passe sont chiffrés en base (`ENCRYPTION_KEY`) et ne sont jamais réaffichés.
+
+**Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre.
+
+**Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. Les **pièces jointes** sont listées par leur nom mais pas conservées. L'espace membre reste réservé aux comptes Discord.
+
+::: tip Serveur mail sur ton réseau local
+Par sécurité, les serveurs IMAP et SMTP doivent avoir une adresse publique (le bot ne se connecte jamais à une adresse interne choisie depuis le dashboard). Pour un serveur mail chez toi, `EMAIL_ALLOW_PRIVATE_HOSTS=true` dans `.env`.
+:::
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles, règles, procédures) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

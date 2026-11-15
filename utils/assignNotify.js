@@ -32,7 +32,7 @@ async function notifyAssignee(db, client, guildId, ticketId, assignee, byUser) {
         { name: 'Sujet', value: ticket.subject || 'Sans sujet', inline: true },
         { name: 'Membre', value: ticket.owner_tag || '—', inline: true },
       );
-    if (ticket.channel_id) embed.addFields({ name: 'Salon', value: `<#${ticket.channel_id}>`, inline: true });
+    if (ticket.channel_id && !require('./virtualChannel').isVirtualChannelId(ticket.channel_id)) embed.addFields({ name: 'Salon', value: `<#${ticket.channel_id}>`, inline: true });
     if (base) embed.setURL(`${base.replace(/\/$/, '')}/tickets/${ticket.id}`).setTitle('Ouvrir dans le dashboard');
     embed.setFooter({ text: 'Désactivable depuis ton profil sur le dashboard' });
     await user.send({ embeds: [embed] }).catch(() => null);

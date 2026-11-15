@@ -41,7 +41,7 @@ To put **a single Discord server** back to the state of a backup without touchin
 From the command line: `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc --guild <server ID>`.
 
 ::: tip Why the backup service?
-The bot never reads the archives and does not have the database administrator password: it drops a request into `backups/requests`, and the `backup` service, which already has both, does the restore. After the update, `docker compose up -d` recreates this service with the new version.
+The bot never reads the archives and does not have the database administrator password: it drops a request into `backups/requests`, and the `backup` service, which already has both, does the restore. The service reloads its script by itself when an update changes it (`git pull`); if needed, `docker compose restart backup`.
 :::
 
 ## Automatic check

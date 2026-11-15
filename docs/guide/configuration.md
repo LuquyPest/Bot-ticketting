@@ -55,6 +55,7 @@ Générés par `setup.sh` (`openssl rand -hex 32` à la main). **Garde une copie
 | `BACKUP_TIME` / `BACKUP_KEEP_DAYS` | Heure de la sauvegarde nocturne (03:00) et durée de conservation des archives (30 jours) |
 | `BACKUP_VERIFY` | Vérification automatique de la dernière archive : `off` (défaut), `weekly` ou `daily` — [Sauvegardes](./sauvegardes#verification-automatique) |
 | `BACKUP_REMOTE` | Destination rclone de la copie hors du serveur (`b2:mon-bucket/ticketbot`), avec `docker-compose.offsite.yml` |
+| `EMAIL_ALLOW_PRIVATE_HOSTS` | `true` : autorise un serveur IMAP/SMTP sur ton réseau local pour les [tickets par e-mail](./integrations#tickets-par-e-mail) |
 | `UPDATE_CHECK` | `off` : ne jamais vérifier les nouvelles versions sur GitHub |
 | `UPDATER_TOKEN` / `PROJECT_DIR` | Bouton « Mettre à jour » : jeton partagé avec le service `updater` et chemin absolu du dossier d'installation — [Mises à jour](./mise-a-jour#mettre-a-jour-depuis-le-dashboard) |
 

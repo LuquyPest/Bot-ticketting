@@ -222,7 +222,7 @@ async function handleInteraction(client, interaction) {
           if (!confirm) {
             return interaction.reply({ embeds: [memberCloseConfirmEmbed(found.ticket)], components: [memberCloseConfirmButtons(found.ticket.id, guildId)], flags: MessageFlags.Ephemeral });
           }
-          const channel = await client.channels.fetch(found.ticket.channel_id).catch(() => null);
+          const channel = await require('../utils/virtualChannel').ticketChannel(client, found.db, found.ticket);
           if (!channel) return interaction.update({ content: t('close.unavailable'), embeds: [], components: [] });
           await interaction.update({ embeds: [choiceEmbed(t('close.closing', { id: found.ticket.id }))], components: [] });
           const tm = createManager(found.db, client, guildId);

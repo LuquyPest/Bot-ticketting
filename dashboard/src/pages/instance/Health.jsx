@@ -44,7 +44,7 @@ function MetricsCard() {
   const [token, setToken] = useState(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { api.get('/instance/metrics').then(r => setM(r.data)).catch(() => {}); }, []);
-  if (!m) return null;
+  if (!m || typeof m.enabled !== 'boolean') return null;
   const change = async enabled => {
     if (m.enabled && !window.confirm(enabled ? 'Créer un nouveau jeton ? L\'ancien cessera de fonctionner.' : 'Couper les métriques ? Le jeton actuel cessera de fonctionner.')) return;
     setBusy(true);
@@ -196,7 +196,7 @@ function RestoreCard() {
   }, [load]);
   // While a restore runs, its result is fetched every 3 seconds
   useEffect(() => { if (!st?.pending) return undefined; const t = setInterval(load, 3000); return () => clearInterval(t); }, [st?.pending, load]);
-  if (!st) return null;
+  if (!st?.archives) return null;
   const nameOf = id => guilds.find(g => g.guild_id === id)?.guild_name || id;
   const act = async (fn, okMsg) => {
     setBusy(true);
@@ -214,7 +214,7 @@ function RestoreCard() {
       <h2 className="text-sm font-semibold text-ink-1 mb-1">Restaurer un serveur</h2>
       <p className="text-xs text-ink-3 mb-3">Remet un seul serveur Discord dans l'état d'une sauvegarde ; les autres ne bougent pas. Ses données d'avant sont gardées : la restauration s'annule tant que la copie existe.</p>
       {!st.available ? (
-        <p className="text-xs text-ink-3">Indisponible : le service de sauvegarde n'est pas installé ou pas à jour (<code className="text-ink-2">docker compose up -d</code> après la mise à jour).</p>
+        <p className="text-xs text-ink-3">Indisponible : le service de sauvegarde n'est pas installé ou pas à jour (<code className="text-ink-2">docker compose restart backup</code> après la mise à jour).</p>
       ) : st.pending ? (
         <p className="text-xs text-ink-2 inline-flex items-center gap-2" role="status"><Loader2 size={13} className="animate-spin" />Restauration de {nameOf(st.pending.guildId)} depuis {st.pending.archive}…</p>
       ) : (

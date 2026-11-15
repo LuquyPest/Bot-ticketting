@@ -94,6 +94,11 @@ async function adoptChannels(client, guildId, db, actor, { categoryId, items, hi
     if (!member || !ownerUser || ownerUser.bot) { result.skipped.push({ channelId: found.channelId, name: found.name, reason: 'Membre introuvable sur le serveur' }); continue; }
     const channel = await fetchGuildChannel(client, guildId, found.channelId);
     if (!channel) { result.skipped.push({ channelId: found.channelId, name: found.name, reason: 'Salon inaccessible' }); continue; }
+    // An owner chosen by hand must have been able to read this channel: otherwise its history would
+    // become readable by them (member space) — a channel of someone else, handed to another member
+    if (ownerId !== found.owner?.id && !channel.permissionsFor?.(member)?.has?.(PermissionsBitField.Flags.ViewChannel)) {
+      result.skipped.push({ channelId: found.channelId, name: found.name, reason: 'Ce membre ne voit pas ce salon' }); continue;
+    }
 
     // The bot must be able to write in and manage the channel from now on
     await channel.permissionOverwrites?.edit?.(client.user.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, ManageChannels: true, AttachFiles: true }).catch(() => null);

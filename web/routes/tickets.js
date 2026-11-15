@@ -479,7 +479,7 @@ router.patch('/:id/status', async (req, res) => {
     const client = req.app.locals.client;
 
     if (status === 'closed') {
-      const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+      const channel = await tm.channelOf(ticket);
       if (channel) {
         await tm.closeTicketWithTranscript(channel, staffUser);
       } else {
@@ -606,6 +606,8 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
       };
     });
     refs.dm(userId, dm);
+    // Without a Discord channel (ticket format « database »), the history keeps the file of the DM
+    if (upload && !file_url) file_url = dm?.attachments?.first?.()?.url || null;
   }
 
   const staffUser = dashboardActor(req);
@@ -1453,7 +1455,7 @@ router.post('/bulk', async (req, res) => {
       const client = req.app.locals.client;
       const staffUser = dashboardActor(req);
       for (const ticket of tickets) {
-        const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+        const channel = await tm.channelOf(ticket);
         if (channel) {
           await channel.send(`🔒 Ticket fermé en masse par ${staffUser.tag}.`).catch(() => null);
           await tm.closeTicketWithTranscript(channel, staffUser).catch(() => null);

@@ -81,7 +81,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
   );
 
   for (const ticket of toClose) {
-    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    const channel = await tm.channelOf(ticket);
     if (!channel) {
       await db(`UPDATE tickets SET status='closed', closed_at=NOW() WHERE id=?`, [ticket.id]);
       await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'escalade sans réponse', channel: 'introuvable' } });

@@ -33,7 +33,7 @@ async function applyMacroActions({ client, db, guildId, tm, ticket, actions, act
   if (actions.close) {
     if (!can('close_ticket')) warnings.push('Fermeture : permission close_ticket manquante');
     else {
-      const channel = client ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+      const channel = client ? await tm.channelOf(ticket) : null;
       if (channel) { await tm.closeTicketWithTranscript(channel, actor); applied.push('Ticket fermé'); }
       else warnings.push('Fermeture : salon Discord introuvable');
     }

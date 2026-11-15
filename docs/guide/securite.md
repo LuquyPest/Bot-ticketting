@@ -32,7 +32,9 @@ Le projet a fait l'objet de plusieurs audits, dont un audit OWASP Top 10, tous c
 | **En-têtes** | Content-Security-Policy stricte (aucun script en ligne), HSTS, `X-Frame-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy` |
 | **CSRF** | Toute modification exige l'en-tête `X-Requested-With` |
 | **Injection SQL** | Requêtes paramétrées partout, noms de colonnes dynamiques tirés de listes blanches |
-| **SSRF** | Webhooks : résolution DNS et blocage des adresses privées et internes |
+| **SSRF** | Webhooks et serveurs des tickets par e-mail : résolution DNS, blocage des adresses privées et internes, adresse épinglée ; ports IMAP/SMTP standard uniquement |
+| **Tickets par e-mail** | Une réponse n'entre dans un ticket qu'avec le jeton du sujet **et** depuis l'adresse qui l'a ouvert ; réponses automatiques ignorées ; 10 e-mails par heure et par expéditeur, 60 nouveaux tickets par heure et par serveur ; mots de passe IMAP/SMTP chiffrés |
+| **Métriques** | `/metrics` absent tant que le propriétaire ne l'active pas, puis protégé par un jeton dont seule l'empreinte est gardée ; aucun nom ni sujet |
 | **Adresse IP** | `X-Forwarded-For` n'est cru que venant du reverse proxy lui-même |
 | **Pièces jointes** | Relais limité aux liens Discord et aux utilisateurs connectés |
 
@@ -40,9 +42,9 @@ Le projet a fait l'objet de plusieurs audits, dont un audit OWASP Top 10, tous c
 
 | | |
 |---|---|
-| **Chiffrement** | Secrets 2FA et transcripts en AES-256-GCM, sauvegardes chiffrées (AES-256 + HMAC) |
+| **Chiffrement** | Secrets 2FA, mots de passe des boîtes e-mail et transcripts en AES-256-GCM, sauvegardes chiffrées (AES-256 + HMAC) |
 | **Secrets** | Dans le `.env` (privé), jamais en ligne de commande ni dans le dépôt |
-| **Docker** | Image minimale (Alpine et Node.js seuls, sans npm ni gestionnaire de paquets JavaScript), bot en utilisateur non root, `no-new-privileges`, aucune capacité Linux ; MariaDB et Redis sur le réseau interne seulement, Redis protégé par mot de passe ; compte `botuser` limité aux bases du bot. Le service facultatif de mise à jour est le seul à accéder à Docker, et n'exécute rien de ce que le bot lui envoie |
+| **Docker** | Image minimale (Alpine et Node.js seuls, sans npm ni gestionnaire de paquets JavaScript), bot en utilisateur non root, `no-new-privileges`, aucune capacité Linux ; MariaDB et Redis sur le réseau interne seulement, Redis protégé par mot de passe ; compte `botuser` limité aux bases du bot. Le service facultatif de mise à jour est le seul à accéder à Docker, et n'exécute rien de ce que le bot lui envoie ; le bot ne lit jamais les archives de sauvegarde : une restauration est faite par le service de sauvegarde, sur une demande au format vérifié |
 | **Dépendances** | `npm audit` à chaque push, mises à jour Dependabot testées par la CI (tests, build du dashboard, du site et de l'image ; les mineures sont fusionnées seules quand tout est vert), actions GitHub épinglées par empreinte |
 
 ## Rotation de la clé de chiffrement

@@ -33,6 +33,26 @@ Each staff member can get new messages and replies as browser notifications (**P
 
 **Guest access** (founders): a temporary read-only link to chosen tickets, for an outside person without a Discord account (a partner's moderator, an adviser…). From one hour to 30 days, internal notes included or not, each view written to the log, revocable at any time.
 
+## Tickets by e-mail
+
+For people who are not on Discord: each e-mail received on the support address opens a ticket, exactly like a DM to the bot (same channel, or thread, or no channel; same subjects, rules and automations). **Settings → Integrations → Tickets by e-mail**, founders:
+
+| | |
+|---|---|
+| **Address** | The support one (`support@your-domain`), with an optional display name |
+| **Receiving (IMAP)** | Server, port 993 (TLS) or 143, username and password of the mailbox: it is read **every minute**, each handled e-mail is marked as read |
+| **Sending (SMTP)** | Server, port 587, 465, 25 or 2525, username and password: replies go out from the support address |
+
+**Test the connection** checks both before turning it on. Passwords are encrypted in the database (`ENCRYPTION_KEY`) and never shown again.
+
+**What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket.
+
+**Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. **Attachments** are listed by name but not kept. The member space stays reserved to Discord accounts.
+
+::: tip Mail server on your local network
+For safety, the IMAP and SMTP servers must have a public address (the bot never connects to an internal address chosen from the dashboard). For a mail server at home, `EMAIL_ALLOW_PRIVATE_HOSTS=true` in `.env`.
+:::
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ, templates, rules, checklists) and import on this server or another. Secrets are never exported.

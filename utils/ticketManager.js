@@ -7,6 +7,8 @@ const { sealTranscript, openTranscript } = require('./transcriptCrypto');
 const { sanitizeChannelName } = require('./sanitize');
 const { broadcast } = require('./sse');
 const { fireTicketWebhook } = require('./webhookEmitter');
+const { isVirtualChannelId, newVirtualChannelId, virtualChannel, ticketChannel } = require('./virtualChannel');
+require('./emailTickets'); // e-mail owners: never looked up on Discord
 const { fetchGuildChannel } = require('./discordGuard');
 const { recordEvent } = require('./audit');
 const { ticketContextAuthor } = require('./dmEmbeds');
@@ -147,6 +149,8 @@ function createManager(db, client, guildId) {
   //               Discord refuses one more channel (500 per server), opening is refused (TICKET_CAPACITY)
   //   'auto'    — the same, but a full server falls back to a private thread of thread_parent_channel_id
   //   'thread'  — always a private thread of thread_parent_channel_id (no channel limit at all)
+  //   'database'— no Discord channel at all: the ticket lives in the database and is handled from
+  //               the dashboard (utils/virtualChannel.js); the member still talks by DM
   // restricted: the support roles get no access at creation; syncTicketChannel then adds the
   // allowed staff members one by one (if it fails, nobody but the founders on the dashboard sees it).
   // For a thread, syncTicketChannel adds the allowed staff to it.
@@ -167,6 +171,7 @@ function createManager(db, client, guildId) {
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
     const mode = cfg.ticket_mode || 'auto';
+    if (mode === 'database') return virtualChannel(db, { channel_id: newVirtualChannelId(), subject });
     if (mode === 'thread') return createTicketThread(cfg, user, subject);
 
     const supportRoleIds = parseJsonField(cfg.support_role_ids);
@@ -241,7 +246,7 @@ function createManager(db, client, guildId) {
   async function createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential = false) {
     const existing = forceNew ? null : await getOpenTicketByOwnerId(user.id);
     if (existing) {
-      const ch = await client.channels.fetch(existing.channel_id).catch(() => null);
+      const ch = await ticketChannel(client, db, existing);
       if (ch) return { channel: ch, ticket: existing, created: false };
       await db(`UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag='system' WHERE id=?`, [existing.id]);
     }
@@ -294,7 +299,7 @@ function createManager(db, client, guildId) {
 
   // Posts a member's DM into a given open ticket (owner or participant). Returns null if unreachable.
   async function relayToTicket(ticket, user, content, attachments = []) {
-    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    const channel = await ticketChannel(client, db, ticket);
     if (!channel) return null;
 
     await sendUserContent(channel, user, content, attachments);
@@ -531,7 +536,7 @@ function createManager(db, client, guildId) {
       if (existing) return { ok: true, channel: existing, created: false };
     }
     const guild = await client.guilds.fetch(gid).catch(() => null);
-    const text = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    const text = await ticketChannel(client, db, ticket);
     if (!guild || !text) return { ok: false, error: 'Salon Discord introuvable' };
 
     const F = PermissionsBitField.Flags;
@@ -550,7 +555,7 @@ function createManager(db, client, guildId) {
     }
     if (!members.includes(ticket.owner_id)) return { ok: false, error: 'Le membre n\'est pas sur le serveur Discord' };
 
-    const textCategory = text.isThread() ? text.parent?.parentId : text.parentId;
+    const textCategory = text.virtual ? null : text.isThread() ? text.parent?.parentId : text.parentId;
     const parent = textCategory ? await categoryWithRoom(db, guild, await baseCategoryOf(db, textCategory)) : null;
     let voice;
     try {
@@ -693,11 +698,11 @@ function createManager(db, client, guildId) {
     const [ticket] = await db('SELECT id, channel_id, status FROM tickets WHERE id = ?', [ticketId]);
     if (!ticket || ticket.status !== 'open') return { ok: false, error: 'Ticket fermé ou introuvable' };
     const cfg = await getGuildConfig(db);
-    const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
+    const channel = await ticketChannel(client, db, ticket);
     if (!channel) return { ok: false, error: 'Salon Discord introuvable' };
-    // Threads stay in their channel: the stage is only recorded
+    // Threads and tickets without a channel: the stage is only recorded
     let category = null;
-    if (!channel.isThread()) {
+    if (!channel.isThread() && !channel.virtual) {
       const categoryId = cfg[STAGE_CATEGORY[stage]];
       if (!categoryId) return { ok: false, error: `Aucune catégorie Discord n'est associée à « ${STAGE_LABEL[stage]} » (Paramètres)` };
       category = await fetchGuildChannel(client, gid, categoryId);
@@ -737,7 +742,7 @@ function createManager(db, client, guildId) {
     if (source.owner_id !== target.owner_id) return { ok: false, error: 'Les deux tickets doivent appartenir au même membre' };
     const actorTag = byUser.username || byUser.tag || byUser.id;
 
-    const channel = source.channel_id ? await client.channels.fetch(source.channel_id).catch(() => null) : null;
+    const channel = await ticketChannel(client, db, source);
     const transcript = channel ? await saveTranscriptSnapshot(channel, byUser, source).catch(() => null) : null;
 
     const moved = await db('UPDATE ticket_notes SET ticket_id = ? WHERE ticket_id = ?', [targetId, sourceId]);
@@ -1016,6 +1021,7 @@ function createManager(db, client, guildId) {
   }
 
   return {
+    channelOf: ticket => ticketChannel(client, db, ticket),
     getGuildConfig,
     getOpenTicketByOwnerId,
     getOpenTicketByChannelId,

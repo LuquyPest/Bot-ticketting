@@ -22,7 +22,7 @@ Au moment du sujet, le membre peut demander un ticket **confidentiel** (signalem
 
 - **Répondre** depuis la fiche du dashboard (avec un fichier jusqu'à 8 Mo, ou une capture collée), par `/reply`, ou anonymement par `/areply` (affiché « Support »). Un message tapé directement dans le salon Discord reste une note interne, jamais envoyée au membre.
 - **Contacter un membre** soi-même : bouton **Nouveau ticket** de la page Tickets, `/contact`, ou clic droit sur un message → *Applications* → *Créer un ticket*.
-- **Format des tickets** : un salon par ticket, avec des catégories de débordement au-delà de 50 salons et des fils privés au-delà de 500 ; ou salons uniquement ; ou fils privés uniquement.
+- **Format des tickets** : un salon par ticket, avec des catégories de débordement au-delà de 50 salons et des fils privés au-delà de 500 ; ou salons uniquement ; ou fils privés uniquement ; ou **aucun salon** : les tickets ne vivent que dans le dashboard (le staff y répond, les membres continuent en MP ou dans l'espace membre, le transcript est tiré de l'historique) — pratique pour un petit serveur ou un staff qui ne travaille que sur le web.
 - **Salon vocal temporaire** (bouton **Vocal** ou `/vocal`), réservé au membre et au staff qui voit le ticket, supprimé à la fermeture.
 - **Fermer** depuis le salon ou le dashboard : le transcript est généré automatiquement.
 

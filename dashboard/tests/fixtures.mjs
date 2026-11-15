@@ -115,6 +115,11 @@ export const MOCK = {
   },
   '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/Bot-ticketting/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
   '/api/instance/demo': { enabled: true },
+  '/api/email': { enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
+    smtpHost: 'smtp.example.com', smtpPort: 587, smtpUser: 'support', smtpPasswordSet: true, lastFetchAt: new Date(Date.now() - 60000).toISOString(), lastError: null },
+  '/api/instance/metrics': { enabled: true, createdAt: Date.now() - 86400000, url: 'https://tickets.example.com/metrics' },
+  '/api/instance/restore': { available: true, archives: [{ file: 'ticketbot-20261115-030000.sql.gz.enc', bytes: 2400000, at: Date.now() - 3600000 }], pending: null,
+    last: { ok: true, at: Date.now() - 7200000, guildId: '1', file: 'ticketbot-20261114-030000.sql.gz.enc', request: 'x', message: '42 tables restaurées' }, previous: ['1'] },
   '/api/bot-import/scan': { category: { id: '21', name: 'Tickets' }, channels: [
     { channelId: '31', name: 'ticket-0042', owner: { id: '2', tag: 'lucas.m' }, adopted: false },
     { channelId: '32', name: 'ticket-0043', owner: null, adopted: false },

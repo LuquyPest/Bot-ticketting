@@ -10,6 +10,7 @@ import PortalBranding from '../components/PortalBranding';
 import BackupKey from '../components/BackupKey';
 import PublicStats from '../components/PublicStats';
 import BotImport from '../components/BotImport';
+import EmailSettings from '../components/EmailSettings';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -17,6 +18,7 @@ const TICKET_MODE_HINT = {
   auto: 'Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets deviennent des fils privés du salon choisi ci-contre.',
   channel: 'Un salon par ticket, avec des catégories « 2 », « 3 »… quand une catégorie est pleine. Quand le serveur atteint 500 salons, les nouveaux tickets sont refusés : le membre est prévenu et les fondateurs reçoivent un MP.',
   thread: 'Chaque ticket est un fil privé du salon choisi : aucune limite de salons. Le staff y est ajouté un par un (rôles support et comptes du dashboard) ; les étapes ne déplacent plus rien sur Discord.',
+  database: 'Aucun salon ni fil sur Discord : les tickets ne vivent que dans le dashboard, où le staff répond. Les membres écrivent toujours au bot en MP (ou dans l\'espace membre) et reçoivent les réponses en MP. Les commandes du staff dans les salons de tickets ne servent plus.',
 };
 
 // `description` / `hint`: shown on hover only, the page stays free of explanatory text
@@ -595,9 +597,10 @@ export default function Settings() {
               <option value="auto">Salons, puis fils privés quand il n'y a plus de place (recommandé)</option>
               <option value="channel">Salons uniquement</option>
               <option value="thread">Fils privés uniquement</option>
+              <option value="database">Aucun salon : tout dans le dashboard</option>
             </select>
           </Field>
-          {(cfg.ticketMode || 'auto') !== 'channel' && (
+          {!['channel', 'database'].includes(cfg.ticketMode || 'auto') && (
             <Field label={cfg.ticketMode === 'thread' ? 'Salon des fils de tickets' : 'Salon des fils (quand il n\'y a plus de place)'}
               hint="Les fils privés y sont créés. Ne donne pas « Gérer les fils » aux rôles support sur ce salon : ils verraient aussi les tickets confidentiels.">
               <ChannelPicker value={cfg.threadParentChannelId} onChange={v => set('threadParentChannelId', v)} channels={channels} loading={discordLoading} />
@@ -838,6 +841,10 @@ export default function Settings() {
           hint="Génère des clés d'API pour interagir avec le bot depuis des services externes"
           checked={cfg.apiKeysEnabled} onChange={v => set('apiKeysEnabled', v)}
         />
+      </Section>
+
+      <Section title="Tickets par e-mail" description="Chaque e-mail reçu sur l'adresse du support ouvre un ticket ; les réponses du staff partent par e-mail. Enregistré à part (mots de passe chiffrés).">
+        <EmailSettings />
       </Section>
 
         </div>

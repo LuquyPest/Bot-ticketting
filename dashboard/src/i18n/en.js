@@ -552,6 +552,18 @@ export const ENTRIES = [
   ['Pour confirmer, recopie l\'identifiant du serveur :', 'To confirm, type the server ID again:'],
   ['Annuler la restauration', 'Cancel the restore'], ['Supprimer la copie', 'Delete the copy'], ['Restauration annulée', 'Restore cancelled'], ['Copie supprimée', 'Copy deleted'],
   ['Restauration d\'un serveur demandée', 'Server restore requested'], ['Serveur restauré', 'Server restored'], ['Restauration échouée', 'Restore failed'], ['Copie d\'avant restauration supprimée', 'Pre-restore copy deleted'],
+  // Ticket format without any channel
+  ['Aucun salon : tout dans le dashboard', 'No channel: everything in the dashboard'],
+  ['Aucun salon ni fil sur Discord : les tickets ne vivent que dans le dashboard, où le staff répond. Les membres écrivent toujours au bot en MP (ou dans l\'espace membre) et reçoivent les réponses en MP. Les commandes du staff dans les salons de tickets ne servent plus.', 'No channel or thread on Discord: tickets live only in the dashboard, where the staff replies. Members still write to the bot by DM (or in the member space) and get the replies by DM. Staff commands in ticket channels are no longer used.'],
+  // Tickets by e-mail (Settings → Integrations)
+  ['Tickets par e-mail', 'Tickets by e-mail'],
+  ['Chaque e-mail reçu sur l\'adresse du support ouvre un ticket ; les réponses du staff partent par e-mail. Enregistré à part (mots de passe chiffrés).', 'Each e-mail received on the support address opens a ticket; staff replies go out by e-mail. Saved separately (encrypted passwords).'],
+  ['Créer un ticket pour chaque e-mail reçu sur l\'adresse du support', 'Create a ticket for each e-mail received on the support address'],
+  ['Adresse du support', 'Support address'], ['Nom affiché (facultatif)', 'Display name (optional)'],
+  ['Réception (IMAP)', 'Receiving (IMAP)'], ['Envoi (SMTP)', 'Sending (SMTP)'], ['Identifiant', 'Username'], ['Mot de passe', 'Password'], ['Port', 'Port'],
+  ['•••••••• (inchangé)', '•••••••• (unchanged)'], ['Tester la connexion', 'Test the connection'], ['connexion réussie', 'connection succeeded'],
+  ['Tickets par e-mail activés', 'Tickets by e-mail turned on'], ['Réglages enregistrés', 'Settings saved'], ['La boîte est lue chaque minute.', 'The mailbox is read every minute.'],
+  ['Tickets par e-mail modifiés', 'Tickets by e-mail changed'],
 ];
 
 export const TEMPLATES = [
@@ -610,6 +622,7 @@ export const TEMPLATES = [
   ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
   ['Réponse en moins de {} h', 'Answered within {1} h'],
   ['· jeton créé le {}', '· token created on {1}'],
+  ['Boîte lue le {}', 'Mailbox read on {1}'], ['IMAP : {}', 'IMAP: {1}'], ['SMTP : {}', 'SMTP: {1}'],
   ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],

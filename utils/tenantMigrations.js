@@ -445,6 +445,47 @@ const MIGRATIONS = [
       `ALTER TABLE config_history MODIFY COLUMN source ENUM('settings','import','restore','setup') NOT NULL DEFAULT 'settings'`,
     ],
   },
+  {
+    version: 34,
+    name: 'Format de ticket « base de données » : aucun salon Discord',
+    statements: [
+      "ALTER TABLE guild_config MODIFY ticket_mode ENUM('channel','auto','thread','database') NOT NULL DEFAULT 'auto'",
+    ],
+  },
+  {
+    version: 35,
+    name: 'Tickets par e-mail (boîte IMAP, envoi SMTP)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS email_settings (
+        id            TINYINT PRIMARY KEY,
+        enabled       TINYINT(1) NOT NULL DEFAULT 0,
+        address       VARCHAR(254) DEFAULT NULL,
+        display_name  VARCHAR(100) DEFAULT NULL,
+        imap_host     VARCHAR(255) DEFAULT NULL,
+        imap_port     INT NOT NULL DEFAULT 993,
+        imap_user     VARCHAR(254) DEFAULT NULL,
+        imap_password TEXT DEFAULT NULL,
+        smtp_host     VARCHAR(255) DEFAULT NULL,
+        smtp_port     INT NOT NULL DEFAULT 587,
+        smtp_user     VARCHAR(254) DEFAULT NULL,
+        smtp_password TEXT DEFAULT NULL,
+        last_fetch_at DATETIME DEFAULT NULL,
+        last_error    VARCHAR(300) DEFAULT NULL,
+        updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS email_contacts (
+        owner_id   VARCHAR(32) PRIMARY KEY,
+        address    VARCHAR(254) NOT NULL,
+        name       VARCHAR(100) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS email_threads (
+        ticket_id       INT PRIMARY KEY,
+        last_message_id VARCHAR(255) DEFAULT NULL,
+        updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

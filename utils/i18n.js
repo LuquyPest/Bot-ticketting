@@ -434,6 +434,10 @@ async function sendToMember(client, userOrId, guildId, build) {
   // The demo sandbox never writes to anyone: a visitor could otherwise add any Discord ID as a
   // participant and have the bot send them messages and files
   if (guildId === require('./demo').DEMO_GUILD_ID) return null;
+  // Someone who opened their ticket by e-mail: the message goes out as an e-mail (utils/emailTickets.js)
+  const targetId = typeof userOrId === 'string' ? userOrId : userOrId?.id;
+  const email = require('./emailTickets');
+  if (email.isEmailOwner(targetId)) return inMemberLang(targetId, guildId, client, () => email.sendToEmailOwner(guildId, targetId, build));
   const user = typeof userOrId === 'string' ? await client?.users.fetch(userOrId).catch(() => null) : userOrId;
   if (!user) return null;
   return inMemberLang(user.id, guildId, client, async () => user.send(await build(user)).catch(() => null));

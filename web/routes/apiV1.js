@@ -144,9 +144,10 @@ endpoint({
     // api: true keeps the closure out of staff stats (see closeTicketWithTranscript)
     const closedBy = { id: req.apiKey.created_by, tag: `API · ${req.apiKey.name}`, username: `API · ${req.apiKey.name}`, api: true };
     const client = req.app.locals.client;
-    const channel = client && ticket.channel_id ? await client.channels.fetch(ticket.channel_id).catch(() => null) : null;
+    const tmApi = createManager(req.guildDb, client, req.guildId);
+    const channel = client ? await tmApi.channelOf(ticket) : null;
     if (channel) {
-      await createManager(req.guildDb, client, req.guildId).closeTicketWithTranscript(channel, closedBy);
+      await tmApi.closeTicketWithTranscript(channel, closedBy);
     } else {
       await req.guildDb(
         'UPDATE tickets SET status = "closed", closed_at = NOW(), closed_by_tag = ? WHERE id = ?',

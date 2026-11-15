@@ -41,7 +41,7 @@ Pour remettre **un seul serveur Discord** dans l'état d'une sauvegarde sans tou
 En ligne de commande : `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc --guild <ID du serveur>`.
 
 ::: tip Pourquoi le service de sauvegarde ?
-Le bot ne lit jamais les archives et n'a pas le mot de passe administrateur de la base : il dépose une demande dans `backups/requests`, et c'est le service `backup`, qui a déjà les deux, qui restaure. Après la mise à jour, `docker compose up -d` recrée ce service avec la nouvelle version.
+Le bot ne lit jamais les archives et n'a pas le mot de passe administrateur de la base : il dépose une demande dans `backups/requests`, et c'est le service `backup`, qui a déjà les deux, qui restaure. Le service recharge son script de lui-même quand une mise à jour le modifie (`git pull`) ; au besoin, `docker compose restart backup`.
 :::
 
 ## Vérification automatique

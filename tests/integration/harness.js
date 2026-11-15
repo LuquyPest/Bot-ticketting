@@ -2926,7 +2926,13 @@ async function main() {
     check('import: salon hors de la catégorie refusé', r.status === 200 && r.body.adopted.length === 0 && /absent/.test(r.body.skipped[0]?.reason), JSON.stringify(r.body));
     const [aI] = await db("SELECT details FROM audit_log WHERE action = 'bot_import' ORDER BY id DESC LIMIT 1");
     check('import: inscrit au journal', !!aI, JSON.stringify(aI));
-    for (const c of [C1, C2]) await db("UPDATE tickets SET status = 'closed' WHERE channel_id = ?", [c]);
+    // Owner chosen by hand: only someone who could read the channel (otherwise its history would become theirs)
+    r = await req('POST', '/api/bot-import/adopt', { sid: sessions.F, body: { categoryId: IMP_CAT, items: [{ channelId: C3, ownerId: M5 }], history: true } });
+    check('import: propriétaire choisi à la main qui ne voyait pas le salon refusé', r.status === 200 && r.body.adopted.length === 0 && /ne voit pas/.test(r.body.skipped[0]?.reason), JSON.stringify(r.body));
+    channels.get(C3).permissionsFor = m => ({ has: () => m?.id === M5 });
+    r = await req('POST', '/api/bot-import/adopt', { sid: sessions.F, body: { categoryId: IMP_CAT, items: [{ channelId: C3, ownerId: M5 }], history: true } });
+    check('import: propriétaire choisi à la main qui voit le salon accepté', r.status === 200 && r.body.adopted.length === 1, JSON.stringify(r.body));
+    for (const c of [C1, C2, C3]) await db("UPDATE tickets SET status = 'closed' WHERE channel_id = ?", [c]);
   }
 
   // ── /setup: wizard on Discord (commands/setup.js) ──
@@ -3045,6 +3051,66 @@ async function main() {
     r = await req('GET', '/metrics', { headers: { Authorization: `Bearer ${again.body.token}` } });
     const [audit] = await globalQuery("SELECT COUNT(*) AS n FROM instance_audit_log WHERE action = 'metrics_toggle'");
     check('métriques: coupées → 404, chaque changement au journal de l instance', r.status === 404 && Number(audit.n) >= 3, [r.status, audit.n].join());
+  }
+
+  // ── Tickets by e-mail (utils/emailTickets.js): SMTP captured, incoming messages built by hand ──
+  {
+    const email = app('./utils/emailTickets');
+    const nodemailer = require('nodemailer');
+    const sent = [];
+    const realCreate = nodemailer.createTransport;
+    nodemailer.createTransport = () => ({ sendMail: async m => { sent.push(m); return { messageId: m.messageId }; }, verify: async () => true, close: () => {} });
+    r = await req('PUT', '/api/email', { sid: sessions.S1T, body: { enabled: false } });
+    check('e-mail: réglages réservés aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/email', { sid: sessions.F, body: { enabled: true, address: 'support@example.com', imapHost: 'imap.example.com', imapUser: 'support', smtpHost: 'smtp.example.com', smtpUser: 'support' } });
+    check('e-mail: activation refusée sans mots de passe', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/email', { sid: sessions.F, body: { enabled: true, address: 'support@example.com', imapHost: 'imap.example.com', imapPort: 3306, imapUser: 'support', smtpHost: 'smtp.example.com', smtpUser: 'support', imapPassword: 'x', smtpPassword: 'y' } });
+    check('e-mail: port non standard refusé (pas de connexion vers un autre service)', r.status === 400 && /IMAP/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('PUT', '/api/email', { sid: sessions.F, body: { enabled: true, address: 'Support@Example.com', displayName: 'Support Test', imapHost: 'imap.example.com', imapUser: 'support', smtpHost: 'smtp.example.com', smtpUser: 'support', imapPassword: 'SECRET-IMAP', smtpPassword: 'SECRET-SMTP' } });
+    const [rowE] = await db('SELECT imap_password, smtp_password FROM email_settings WHERE id = 1');
+    check('e-mail: activé, mots de passe chiffrés et jamais renvoyés', r.status === 200 && r.body.enabled && r.body.imapPasswordSet && !JSON.stringify(r.body).includes('SECRET') && /^enc:/.test(rowE.imap_password) && !rowE.smtp_password.includes('SECRET'), JSON.stringify(r.body));
+    r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...r.body, imapPassword: '', smtpPassword: '' } });
+    const [rowE2] = await db('SELECT imap_password FROM email_settings WHERE id = 1');
+    check('e-mail: mot de passe vide = inchangé', r.status === 200 && rowE2.imap_password === rowE.imap_password, JSON.stringify(r.body));
+    const testR = await req('POST', '/api/email/test', { sid: sessions.F });
+    check('e-mail: serveur résolu en adresse privée refusé (aucune connexion interne)', testR.status === 200 && /privée|introuvable/.test(testR.body.imap?.error || '') && /privée|introuvable/.test(testR.body.smtp?.error || ''), JSON.stringify(testR.body));
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const settings = await email.emailSettings(db, { withSecrets: true });
+    const mail = (from, name, subject, text, extra = {}) => ({ from: { value: [{ address: from, name }] }, subject, text, headers: new Map(Object.entries(extra.headers || {})), messageId: extra.messageId || `<m${Math.random()}@ext>`, inReplyTo: extra.inReplyTo, references: extra.references, attachments: extra.attachments || [] });
+    sent.length = 0;
+    let res = await email.processEmail(fakeClient, G, mail('Alice@Mail.test', 'Alice', 'Problème de commande', 'Bonjour, ma commande 77 n est pas arrivée.\n\nLe lun. 3 nov. 2026, Support a écrit :\n> ancien message', { attachments: [{ filename: 'facture.pdf' }] }), settings);
+    const tE = res.ticketId;
+    const [rowT] = await db('SELECT owner_id, owner_tag, subject FROM tickets WHERE id = ?', [tE]);
+    const [firstNote] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id LIMIT 1", [tE]);
+    check('e-mail: un e-mail ouvre un ticket (expéditeur, sujet, citation retirée, pièce jointe listée)', res.created && email.isEmailOwner(rowT.owner_id) && rowT.owner_tag === 'alice@mail.test' && rowT.subject === 'Problème de commande' && firstNote.content.includes('commande 77') && !firstNote.content.includes('ancien message') && firstNote.content.includes('facture.pdf'), JSON.stringify([rowT, firstNote]));
+    const welcome = sent.find(m => m.to?.address === 'alice@mail.test');
+    const tag = email.subjectTag(G, tE);
+    check('e-mail: accusé de réception par e-mail, sujet marqué [#id-jeton]', welcome && welcome.subject.startsWith(tag) && welcome.from.address === 'support@example.com' && welcome.text.length > 10, JSON.stringify(welcome && { s: welcome.subject, f: welcome.from }));
+    res = await email.processEmail(fakeClient, G, mail('alice@mail.test', 'Alice', `RE: ${tag} Problème de commande`, 'Voici le suivi : 1Z999.'), settings);
+    check('e-mail: la réponse arrive dans le même ticket', res.ticketId === tE && !res.created, JSON.stringify(res));
+    res = await email.processEmail(fakeClient, G, mail('mallory@evil.test', 'Mallory', `RE: ${tag} Problème de commande`, 'Injection'), settings);
+    const intoAlice = (await db("SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%Injection%'", [tE]))[0].n;
+    check('e-mail: un autre expéditeur avec le bon jeton n écrit pas dans le ticket d Alice', res.ticketId !== tE && Number(intoAlice) === 0, JSON.stringify(res));
+    res = await email.processEmail(fakeClient, G, mail('bob@mail.test', 'Bob', `${email.subjectTag(G, tE).replace(/-\w+\]/, '-00000000]')} x`, 'faux jeton'), settings);
+    check('e-mail: un faux jeton ouvre un autre ticket', res.created && res.ticketId !== tE, JSON.stringify(res));
+    res = await email.processEmail(fakeClient, G, mail('alice@mail.test', 'Alice', 'Absence', 'Je suis absente', { headers: { 'auto-submitted': 'auto-replied' } }), settings);
+    const res2 = await email.processEmail(fakeClient, G, mail('mailer-daemon@mail.test', '', 'Undelivered', 'x'), settings);
+    const res3 = await email.processEmail(fakeClient, G, mail('support@example.com', '', 'Boucle', 'x'), settings);
+    check('e-mail: réponses automatiques, retours d erreur et notre propre adresse ignorés', res.skipped && res2.skipped && res3.skipped, JSON.stringify([res, res2, res3]));
+    check('e-mail: fil reconnu par In-Reply-To', email.threadTicketId(G, { subject: 'x', inReplyTo: `<ticket-${tE}.${email.tokenFor(G, tE)}.1.ab@example.com>` }) === tE, '');
+    sent.length = 0;
+    r = await req('POST', `/api/tickets/${tE}/reply`, { sid: sessions.F, body: { content: 'Votre colis arrive demain.' } });
+    const replyMail = sent.find(m => m.to?.address === 'alice@mail.test');
+    check('e-mail: la réponse du staff part par e-mail, dans le fil du ticket', r.status === 200 && replyMail && replyMail.text.includes('Votre colis arrive demain') && replyMail.subject.startsWith(tag) && !!replyMail.inReplyTo, JSON.stringify(replyMail && { s: replyMail.subject, t: replyMail.text.slice(0, 200), irt: replyMail.inReplyTo }));
+    const { Client } = require('discord.js');
+    const realC = new Client({ intents: [] });
+    const errU = await realC.users.fetch(rowT.owner_id).then(() => null, e => e);
+    check('e-mail: un contact e-mail n est jamais demandé à Discord', errU?.code === 10013, String(errU));
+    await realC.destroy();
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id LIKE 'mail:%'");
+    await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    nodemailer.createTransport = realCreate;
   }
 
   // ── Restoring one server (utils/backupRestore.js; the backup service is simulated) ──
@@ -3397,6 +3463,44 @@ async function main() {
     r = await req('PATCH', '/api/config', { sid: sessions.F, body: { threadParentChannelId: CAT_OPEN } });
     check('fils: salon parent qui n est pas textuel refusé', r.status === 400, JSON.stringify(r.body));
     await db("UPDATE guild_config SET ticket_mode = 'auto', thread_parent_channel_id = NULL, support_role_ids = ? WHERE id = 1", [cfgT.support_role_ids == null ? null : JSON.stringify(cfgT.support_role_ids)]);
+
+    // ── Ticket format « database »: no Discord channel at all (utils/virtualChannel.js) ──
+    {
+      const vc = app('./utils/virtualChannel');
+      r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketMode: 'database' } });
+      check('sans salon: format « base de données » enregistré (migration 34)', r.status === 200, JSON.stringify(r.body));
+      const before = chanSeq;
+      const MD = '200000000000000061';
+      memberDms.length = 0;
+      const tmD = createManager(db, fakeClient, G);
+      const resD = await tmD.createTicket({ id: MD, username: 'member61', tag: 'member61', send: async () => {} }, 'Bonjour, ma commande est bloquée', [], 'Commande');
+      const tD = resD.ticket;
+      check('sans salon: ticket créé sans aucun salon ni fil Discord', resD.created && vc.isVirtualChannelId(tD.channel_id) && chanSeq === before, JSON.stringify([tD.channel_id, chanSeq, before]));
+      const again = await tmD.relayDmToTicket({ id: MD, username: 'member61', tag: 'member61' }, 'Voici le numéro : 4512', []);
+      const notesD = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id", [tD.id]);
+      check('sans salon: les MP du membre arrivent dans le même ticket', again?.ticket?.id === tD.id && notesD.length === 2 && notesD[1].content.includes('4512'), JSON.stringify(notesD));
+      r = await req('POST', `/api/tickets/${tD.id}/reply`, { sid: sessions.F, body: { content: 'Merci, on regarde votre commande.' } });
+      check('sans salon: réponse du staff depuis le dashboard, envoyée en MP', r.status === 200 && memberDms.some(d => d.id === MD && JSON.stringify(d.p).includes('on regarde votre commande')), JSON.stringify(r.body).slice(0, 200));
+      await req('POST', `/api/tickets/${tD.id}/notes`, { sid: sessions.F, body: { content: 'NOTE-INTERNE-DB' } });
+      const mv = await tmD.moveToStage(tD.id, 'waiting', { id: U.F, username: 'F', tag: 'F' });
+      check('sans salon: changement d étape sans catégorie Discord', mv.ok, JSON.stringify(mv));
+      r = await req('PATCH', `/api/tickets/${tD.id}/status`, { sid: sessions.F, body: { status: 'closed' } });
+      const [snap] = await db('SELECT html, txt, message_count FROM transcript_snapshots WHERE ticket_id = ? ORDER BY id DESC LIMIT 1', [tD.id]);
+      const txt = snap ? app('./utils/transcriptCrypto').openTranscript(snap.txt) : '';
+      check('sans salon: fermeture avec transcript tiré de l historique, sans les notes internes', r.status === 200 && snap && txt.includes('4512') && txt.includes('on regarde votre commande') && !txt.includes('NOTE-INTERNE-DB'), String(txt).slice(0, 300));
+      check('sans salon: le membre reçoit le message de fermeture et la demande de note', memberDms.filter(d => d.id === MD).length >= 3, String(memberDms.filter(d => d.id === MD).length));
+      const [closedD] = await db('SELECT * FROM tickets WHERE id = ?', [tD.id]);
+      await tmD.reopenTicket(closedD, { id: U.F, username: 'F', tag: 'F' });
+      const [reD] = await db('SELECT status, channel_id FROM tickets WHERE id = ?', [tD.id]);
+      check('sans salon: réouverture sans salon non plus', reD.status === 'open' && vc.isVirtualChannelId(reD.channel_id) && reD.channel_id !== tD.channel_id && chanSeq === before, JSON.stringify(reD));
+      await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tD.id]);
+      const { Client } = require('discord.js');
+      const real = new Client({ intents: [] });
+      const err = await real.channels.fetch(tD.channel_id).then(() => null, e => e);
+      check('sans salon: un identifiant virtuel n est jamais demandé à Discord', err?.code === 10003, String(err));
+      await real.destroy();
+      await db("UPDATE guild_config SET ticket_mode = 'auto' WHERE id = 1");
+    }
 
     // Fake DMs and channel messages that can be fetched, edited and deleted
     const msgs = new Map();
