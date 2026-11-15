@@ -62,6 +62,10 @@ export default withMermaid(defineConfig({
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Ticket Bot — support Discord par messages privés' }],
     ['meta', { property: 'og:description', content: 'Tickets Discord en MP, dashboard web temps réel, à héberger soi-même. Libre (AGPL-3.0).' }],
+    ['meta', { property: 'og:image', content: 'https://docs.bot.daryu.xyz/images/social-preview.png' }],
+    ['meta', { property: 'og:image:width', content: '1280' }],
+    ['meta', { property: 'og:image:height', content: '640' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
   ],
   themeConfig: {
     logo: '/logo.svg',

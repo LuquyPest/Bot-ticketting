@@ -74,3 +74,29 @@ jobs:
           path: dashboard/tests/screenshots/
       - name: Audit des dépendances embarquées
         run: npm audit --omit=dev --audit-level=high
+
+  docs:
+    name: Build du site de documentation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+      - run: npx vitepress build
+
+  image:
+    name: Build de l'image Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        run: docker build -t ticketbot:ci .
+      - name: L'image démarre Node et charge ses dépendances
+        run: docker run --rm --entrypoint node ticketbot:ci -e "require('discord.js'); require('connect-redis'); require('./utils/config'); console.log('ok')"

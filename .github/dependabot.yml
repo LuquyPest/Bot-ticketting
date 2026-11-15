@@ -2,6 +2,8 @@
 # sur laquelle la CI (.github/workflows/ci.yml) lance la suite d'intégration, le build du
 # dashboard et le test de fumée. Les correctifs et versions mineures sont regroupés en une
 # seule PR par écosystème ; les versions majeures arrivent une par une.
+# Les groupes « *-mineures » sont fusionnés automatiquement quand toute la CI est verte
+# (.github/workflows/dependabot-automerge.yml) ; le reste attend une relecture.
 version: 2
 updates:
   - package-ecosystem: npm
