@@ -524,6 +524,12 @@ export const ENTRIES = [
   ['Sauvegardes', 'Backups'], ['Service de sauvegarde absent.', 'No backup service.'], ['Dernière sauvegarde chiffrée', 'Last encrypted backup'],
   ['Vérification d\'une archive', 'Archive check'], ['Copie hors du serveur', 'Off-site copy'], ['aucune pour l\'instant', 'none yet'],
   ['désactivée (BACKUP_VERIFY)', 'disabled (BACKUP_VERIFY)'], ['non configurée', 'not configured'], ['Pour mettre à jour :', 'To update:'],
+  ['Statistiques publiques', 'Public statistics'], ['Objectif de première réponse (heures)', 'First response target (hours)'],
+  ['Un message dans un salon de ton choix, mis à jour toutes les heures : tickets résolus, temps de réponse et satisfaction sur 30 jours. Uniquement des chiffres : aucun nom ni sujet.', 'A message in a channel of your choice, updated every hour: tickets resolved, response times and satisfaction over 30 days. Figures only: no name nor subject.'],
+  ['Laisse vide pour ne rien publier', 'Leave empty to publish nothing'], ['Le message indique la part des tickets ayant reçu une première réponse dans ce délai', 'The message shows the share of tickets that got a first response within this time'],
+  ['Tickets résolus', 'Tickets resolved'], ['Première réponse (médiane)', 'First response (median)'], ['Résolution (médiane)', 'Resolution (median)'], ['Satisfaction', 'Satisfaction'],
+  ['Publier maintenant', 'Publish now'], ['Voir le message sur Discord', 'View the message on Discord'], ['Statistiques publiées', 'Statistics published'],
+  ['Sauvegarde d\'abord les paramètres', 'Save the settings first'], ['Choisis un salon puis sauvegarde : le message est ensuite mis à jour toutes les heures.', 'Pick a channel then save: the message is then updated every hour.'],
 ];
 
 export const TEMPLATES = [
@@ -580,4 +586,5 @@ export const TEMPLATES = [
   ['Dernière utilisation : {}', 'Last used: {1}'],
   ['{} disponible', '{1} available'], ['Vérifié il y a {}.', 'Checked {1} ago.'], ['il y a {}', '{1} ago'], ['Échec il y a {}', 'Failed {1} ago'],
   ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
+  ['Réponse en moins de {} h', 'Answered within {1} h'],
 ];

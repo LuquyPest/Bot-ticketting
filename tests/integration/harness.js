@@ -2785,6 +2785,39 @@ async function main() {
     check('santé: versions de schéma', r.body.schemas.latest === tm2.LATEST_VERSION && r.body.schemas.guilds.some(g => g.guildId === G && g.version === tm2.LATEST_VERSION), JSON.stringify(r.body.schemas));
   }
 
+  // ── Public statistics posted in a channel (utils/publicStats.js) ──
+  {
+    const STATS_CH = '900000000000000077';
+    const statsCh = mkChannel(STATS_CH, G);
+    const edits = [];
+    statsCh.messages = { fetch: async id => (id && typeof id === 'string' && id.startsWith('m') ? { id, edit: async p => edits.push(p) } : null) };
+    channels.set(STATS_CH, statsCh);
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { publicStatsChannelId: FOREIGN_CH } });
+    check('stats publiques: salon d\'un autre serveur refusé', r.status === 400, JSON.stringify([r.status, r.body]));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { publicStatsChannelId: STATS_CH, publicStatsTargetHours: 4 } });
+    const pv = await req('GET', '/api/config/public-stats', { sid: sessions.F });
+    check('stats publiques: salon et objectif enregistrés, chiffres calculés', r.status === 200 && pv.status === 200 && pv.body.stats.targetHours === 4 && typeof pv.body.stats.resolved === 'number' && pv.body.messageUrl === null, JSON.stringify([r.status, pv.body]));
+    const rS = await req('POST', '/api/config/public-stats/publish', { sid: sessions.S1, body: {} });
+    check('stats publiques: publication réservée aux fondateurs', rS.status === 403, rS.status);
+    const before = sent.length;
+    r = await req('POST', '/api/config/public-stats/publish', { sid: sessions.F, body: {} });
+    const posted = sent.slice(before).find(m => m.id === STATS_CH)?.p?.embeds?.[0]?.data;
+    const dump = JSON.stringify(posted || {});
+    check('stats publiques: message publié, sans nom ni sujet de ticket', r.status === 200 && r.body.ok && /Serveur Test/.test(posted?.title || '') && posted.fields?.length >= 1 && !/Problème|membre\d|staff\d/.test(dump), dump.slice(0, 400));
+    const pv2 = await req('GET', '/api/config/public-stats', { sid: sessions.F });
+    const before2 = sent.length;
+    r = await req('POST', '/api/config/public-stats/publish', { sid: sessions.F, body: {} });
+    check('stats publiques: le même message est mis à jour, pas de nouveau message', r.status === 200 && sent.length === before2 && edits.length === 1 && /discord\.com\/channels\//.test(pv2.body.messageUrl || ''), JSON.stringify([sent.length - before2, edits.length, pv2.body.messageUrl]));
+    const job = await app('./utils/publicStats').refreshAllPublicStats(fakeClient);
+    check('stats publiques: tâche horaire', job.updated >= 1 && edits.length === 2, JSON.stringify([job, edits.length]));
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { botLanguage: 'de' } });
+    await req('POST', '/api/config/public-stats/publish', { sid: sessions.F, body: {} });
+    check('stats publiques: dans la langue du serveur', /Support von/.test(edits[edits.length - 1]?.embeds?.[0]?.data?.title || ''), JSON.stringify(edits[edits.length - 1]?.embeds?.[0]?.data?.title));
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { botLanguage: 'fr', publicStatsChannelId: null } });
+    const [{ n: audited }] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'public_stats_publish'");
+    check('stats publiques: publication inscrite au journal', Number(audited) >= 3, String(audited));
+  }
+
   // ── Backup results (docker/backup.sh, docker/offsite.sh → status files) ──
   {
     const cfgBS = app('./utils/config').config;

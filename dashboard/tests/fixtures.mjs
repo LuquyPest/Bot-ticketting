@@ -115,6 +115,7 @@ export const MOCK = {
   },
   '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/Bot-ticketting/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
   '/api/instance/demo': { enabled: true },
+  '/api/config/public-stats': { stats: { days: 30, targetHours: 2, resolved: 184, firstResponseMedianMin: 23, withinTargetPct: 91, resolutionMedianMin: 260, satisfaction: { average: 4.7, count: 63 } }, messageUrl: 'https://discord.com/channels/1/2/3' },
 };
 
 // 1×1 image served for attachment previews

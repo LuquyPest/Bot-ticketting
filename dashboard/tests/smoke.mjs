@@ -23,6 +23,8 @@ const PAGES = [
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Voici la capture'],
   ['settings', '/settings', 'Paramètres'],
+  ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],
+  ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],
   ['analytics', '/analytics', 'Analytiques'],
   ['audit', '/audit', "Journal d'activité"],
   ['equipe', '/equipe', 'Équipe'],

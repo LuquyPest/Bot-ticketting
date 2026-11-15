@@ -22,6 +22,7 @@ const JOBS = {
   'guild-health':        { every: 15 * 60 * 1000, run: client => require('./guildHealth').runGuildHealthCheck(client) },
   'staff-absences':      { every: 5 * 60 * 1000,  run: () => require('./absences').runAbsenceCheck() },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
+  'public-stats':        { pattern: '5 * * * *',  run: client => require('./publicStats').refreshAllPublicStats(client) },
   'update-check':        { pattern: '40 6 * * *', run: client => require('./updates').runUpdateCheck(client) },
   'backup-watch':        { pattern: '20 * * * *', run: client => require('./backupStatus').runBackupWatch(client) },
   'demo-reset':          { pattern: '15 4 * * *', run: async () => { if (await require('./demo').demoEnabled()) await require('./demo').seedDemo(); } },

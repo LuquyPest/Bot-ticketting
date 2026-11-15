@@ -429,6 +429,15 @@ const MIGRATIONS = [
       `ALTER TABLE guild_config MODIFY COLUMN bot_language ENUM('fr','en','es','de','it','pt','auto') NOT NULL DEFAULT 'fr'`,
     ],
   },
+  {
+    version: 32,
+    name: 'Statistiques publiques du support dans un salon',
+    statements: [
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS public_stats_channel_id VARCHAR(32) DEFAULT NULL',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS public_stats_message_id VARCHAR(32) DEFAULT NULL',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS public_stats_target_hours INT NOT NULL DEFAULT 2',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

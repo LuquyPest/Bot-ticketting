@@ -8,7 +8,7 @@ const FORMAT = 'ticketbot-config';
 const VERSION = 1;
 
 // require_2fa is a security choice of each server: importing it could lock its founders out
-const SKIP_CONFIG = new Set(['id', 'updated_at', 'webhook_secret', 'support_grade_id', 'chief_grade_id', 'require_2fa']);
+const SKIP_CONFIG = new Set(['id', 'updated_at', 'webhook_secret', 'support_grade_id', 'chief_grade_id', 'require_2fa', 'public_stats_message_id']);
 const isDiscordIdColumn = c => /_channel_id$|_category_id$|_role_ids$/.test(c);
 const JSON_COLUMNS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist']);
 

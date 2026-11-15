@@ -40,6 +40,7 @@ const CHANNELS = {
   monthly_report_channel_id: { label: 'Rapport mensuel' },
   spam_alert_channel_id: { label: 'Alertes de spam' },
   escalation_alert_channel_id: { label: 'Alertes d\'escalade' },
+  public_stats_channel_id: { label: 'Statistiques publiques' },
 };
 const ROLES = { support_role_ids: 'Rôle support', chief_role_ids: 'Rôle chef support' };
 

@@ -20,6 +20,20 @@ Toutes les tâches planifiées passent par **BullMQ** (Redis) : chacune ne s'ex�
 | **Alerte d'erreurs** | Prévient le propriétaire au-delà d'un seuil d'erreurs |
 | **Rétention** | Chaque nuit, purge des journaux anciens et, si `TRANSCRIPT_RETENTION_DAYS` est fixé, des transcripts |
 | **Sauvegarde** | Chaque nuit à 3 h, sauvegarde chiffrée de toutes les bases ([détails](./sauvegardes)) |
+| **Statistiques publiques** | Toutes les heures, met à jour le message de statistiques du support dans le salon choisi ([détails](#statistiques-publiques)) |
+| **Surveillance des sauvegardes** | Toutes les heures : sauvegarde, vérification ou copie hors du serveur en échec ou en retard → MP au propriétaire |
+| **Nouvelles versions** | Chaque jour : MP au propriétaire quand une nouvelle version est publiée ([détails](./mise-a-jour)) |
+
+## Statistiques publiques
+
+**Paramètres → Salons → Statistiques publiques** : choisis un salon, et le bot y publie un message mis à jour toutes les heures, avec les chiffres des 30 derniers jours :
+
+- tickets résolus ;
+- première réponse (médiane), et part des tickets qui l'ont reçue dans le délai que tu fixes (2 h par défaut) ;
+- temps de résolution (médiane) ;
+- satisfaction moyenne et nombre d'avis.
+
+Le message ne contient que des chiffres, jamais de nom ni de sujet de ticket, et suit la langue du bot sur le serveur. Un même message est modifié à chaque fois ; **Publier maintenant** le met à jour tout de suite. Une ligne sans données (pas encore de note, par exemple) n'est pas affichée.
 
 ## Annoncer un problème connu
 

@@ -15,7 +15,7 @@ const FIELD_LABELS = {
   supportRoleIds: 'Rôles support', chiefRoleIds: 'Rôles chef support', supportGradeId: 'Grade des rôles support', chiefGradeId: 'Grade des rôles chef',
   closeLogChannelId: 'Salon — fermetures', claimLogChannelId: 'Salon — prises en charge', moveLogChannelId: 'Salon — déplacements',
   addUserLogChannelId: 'Salon — ajouts de membres', removeUserLogChannelId: 'Salon — retraits de membres',
-  weeklyReportChannelId: 'Salon — rapport hebdomadaire', monthlyReportChannelId: 'Salon — rapport mensuel',
+  weeklyReportChannelId: 'Salon — rapport hebdomadaire', publicStatsChannelId: 'Salon — statistiques publiques', publicStatsTargetHours: 'Statistiques publiques — objectif de réponse', monthlyReportChannelId: 'Salon — rapport mensuel',
   spamAlertChannelId: 'Salon — alertes spam', escalationAlertChannelId: 'Salon — escalades',
   escalationAlertHours: 'Escalade — alerte (h)', escalationCloseHours: 'Escalade — fermeture (h)',
   embedColor: 'Couleur des embeds', botLanguage: 'Langue du bot', require2fa: '2FA obligatoire',

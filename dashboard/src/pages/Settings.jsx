@@ -8,6 +8,7 @@ import ConfigTransfer from '../components/ConfigTransfer';
 import ConfigHistory from '../components/ConfigHistory';
 import PortalBranding from '../components/PortalBranding';
 import BackupKey from '../components/BackupKey';
+import PublicStats from '../components/PublicStats';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -323,6 +324,8 @@ export default function Settings() {
         monthlyReportChannelId:   sn(cfg.monthlyReportChannelId),
         spamAlertChannelId:       sn(cfg.spamAlertChannelId),
         escalationAlertChannelId: sn(cfg.escalationAlertChannelId),
+        publicStatsChannelId:     sn(cfg.publicStatsChannelId),
+        publicStatsTargetHours:   cfg.publicStatsTargetHours ?? 2,
         escalationAlertHours:     cfg.escalationAlertHours,
         escalationCloseHours:     cfg.escalationCloseHours,
         webhookUrl:               sn(cfg.webhookUrl),
@@ -713,6 +716,19 @@ export default function Settings() {
         </div>
       </Section>
 
+      <Section title="Statistiques publiques" description="Un message dans un salon de ton choix, mis à jour toutes les heures : tickets résolus, temps de réponse et satisfaction sur 30 jours. Uniquement des chiffres : aucun nom ni sujet.">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="Salon" hint="Laisse vide pour ne rien publier">
+            <ChannelPicker value={cfg.publicStatsChannelId} onChange={v => set('publicStatsChannelId', v)}
+              channels={channels} loading={discordLoading} />
+          </Field>
+          <Field label="Objectif de première réponse (heures)" hint="Le message indique la part des tickets ayant reçu une première réponse dans ce délai">
+            <input type="number" min={1} max={168} value={cfg.publicStatsTargetHours ?? 2}
+              onChange={e => set('publicStatsTargetHours', Math.max(1, Math.min(168, parseInt(e.target.value) || 1)))} className={NUM_INPUT} />
+          </Field>
+        </div>
+        <PublicStats channelId={cfg.publicStatsChannelId || null} savedChannelId={savedJson ? JSON.parse(savedJson).publicStatsChannelId || null : null} dirty={dirty} />
+      </Section>
         </div>
       )}
       {tab === 'fonctions' && (

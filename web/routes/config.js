@@ -6,7 +6,7 @@ const { foreignChannels, foreignRoles } = require('../../utils/discordGuard');
 const { diffConfig, recordHistory, listHistory, restorePlan } = require('../../utils/configHistory');
 
 const CHANNEL_FIELDS = ['ticketCategoryId', 'waitingCategoryId', 'inProgressCategoryId', 'threadParentChannelId', 'closeLogChannelId', 'claimLogChannelId', 'moveLogChannelId', 'addUserLogChannelId',
-  'removeUserLogChannelId', 'weeklyReportChannelId', 'monthlyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId'];
+  'removeUserLogChannelId', 'weeklyReportChannelId', 'monthlyReportChannelId', 'spamAlertChannelId', 'escalationAlertChannelId', 'publicStatsChannelId'];
 const ROLE_FIELDS = ['supportRoleIds', 'chiefRoleIds'];
 // Never written to the audit log in clear
 // Never written to the history in clear (the logo: too large to keep every version)
@@ -56,6 +56,8 @@ const FIELD_MAP = {
   portalLogo:                'portal_logo',
   portalColor:               'portal_color',
   portalWelcome:             'portal_welcome',
+  publicStatsChannelId:      'public_stats_channel_id',
+  publicStatsTargetHours:    'public_stats_target_hours',
   webhookUrl:                'webhook_url',
   webhookSecret:             'webhook_secret',
   // Phase 1 — feature flags
@@ -111,6 +113,8 @@ const VALIDATORS = {
   monthlyReportChannelId:   SNOWFLAKE,
   spamAlertChannelId:       SNOWFLAKE,
   escalationAlertChannelId: SNOWFLAKE,
+  publicStatsChannelId:     SNOWFLAKE,
+  publicStatsTargetHours:   v => Number.isInteger(v) && v >= 1 && v <= 168,
   escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
   botLanguage:              v => ['fr', 'en', 'es', 'de', 'it', 'pt', 'auto'].includes(v),
@@ -340,6 +344,33 @@ router.post('/history/:id/restore', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ─── Public statistics (utils/publicStats.js) ──────────────────────────────────
+
+// GET /api/config/public-stats — figures that the message shows, and a link to it
+router.get('/public-stats', async (req, res, next) => {
+  try {
+    const ps = require('../../utils/publicStats');
+    const [cfg] = await req.guildDb('SELECT public_stats_channel_id, public_stats_message_id, public_stats_target_hours FROM guild_config WHERE id = 1');
+    const stats = await ps.computePublicStats(req.guildDb, { targetHours: cfg?.public_stats_target_hours || 2 });
+    const url = cfg?.public_stats_channel_id && cfg?.public_stats_message_id
+      ? `https://discord.com/channels/${req.guildId}/${cfg.public_stats_channel_id}/${cfg.public_stats_message_id}` : null;
+    res.json({ stats, messageUrl: url });
+  } catch (err) { next(err); }
+});
+
+// POST /api/config/public-stats/publish — publishes or refreshes the message now
+router.post('/public-stats/publish', async (req, res) => {
+  try {
+    const r = await require('../../utils/publicStats').publishPublicStats(req.app.locals.client, req.guildId);
+    if (r.error) return res.status(400).json({ error: r.error });
+    await logAudit(req.session.user.id, req.session.user.username, 'public_stats_publish', 'guild', req.guildId, { channelId: r.channelId }, req.guildDb);
+    res.json(r);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Publication impossible' });
   }
 });
 
