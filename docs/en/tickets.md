@@ -32,7 +32,7 @@ When picking the subject, the member can ask for a **confidential** ticket (repo
 |---|---|
 | **Real time** | New messages without reloading; colleagues looking at the ticket or typing a reply shown live; confirmation if someone replied while you were typing |
 | **Replies** | *Reply* or *Internal note* mode, anonymous or signed, preview of the Discord rendering, drafts kept when you change page, edit or withdraw a reply already sent |
-| **Templates and macros** | Ready replies with variables (`{{username}}`, `{{ticket_id}}`, custom fields…), suggested by subject; a macro also applies actions (assign yourself, priority, tag, stage, close) |
+| **Templates and macros** | Ready replies with variables (`{{username}}`, `{{ticket_id}}`, custom fields…), suggested by subject; for you, for the server's staff, or — owner of the instance — for **all your servers** at once; a macro also applies actions (assign yourself, priority, tag, stage, close) |
 | **Organisation** | Assignment to several people, priority, stage, tags, title (the Discord channel follows), participants, linked tickets, merging two tickets of the same member |
 | **Follow-up** | Follow a ticket without being in charge, personal reminders (« Remind me »), `@name` or `@grade` mentions in notes, pinned notes |
 | **Help** | Similar tickets already solved with their answer, per-subject checklists, member profile (labels, history, staff thread) |

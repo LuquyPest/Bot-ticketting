@@ -18,6 +18,8 @@ A Discord server is **active as soon as the bot joins it**: its database is crea
 In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can add your bot to their server, and that server would be activated on your instance. `ALLOWED_GUILDS` further restricts the list of accepted servers; a warning shows at start-up if the bot is public without that list.
 :::
 
+**Several communities**: a reply template created with the **Every server** scope (ticket view → Templates) is offered to the staff of each of your servers, without being copied. The staff uses it, only you edit it; it cannot add a tag, since tags belong to each server.
+
 ## Pages
 
 | Page | |

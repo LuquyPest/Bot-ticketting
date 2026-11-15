@@ -32,7 +32,7 @@ Au moment du sujet, le membre peut demander un ticket **confidentiel** (signalem
 |---|---|
 | **Temps réel** | Nouveaux messages sans recharger ; collègues qui regardent le ticket ou écrivent une réponse affichés en direct ; confirmation si quelqu'un a répondu pendant que tu écrivais |
 | **Réponses** | Mode *Répondre* ou *Note interne*, anonyme ou signé, aperçu du rendu Discord, brouillons gardés si tu changes de page, correction ou retrait d'une réponse déjà envoyée |
-| **Modèles et macros** | Réponses prêtes avec variables (`{{username}}`, `{{ticket_id}}`, champs personnalisés…), suggérées selon le sujet ; une macro applique en plus des actions (s'attribuer, priorité, tag, étape, fermer) |
+| **Modèles et macros** | Réponses prêtes avec variables (`{{username}}`, `{{ticket_id}}`, champs personnalisés…), suggérées selon le sujet ; pour toi, pour le staff du serveur, ou — propriétaire de l'instance — pour **tous tes serveurs** à la fois ; une macro applique en plus des actions (s'attribuer, priorité, tag, étape, fermer) |
 | **Organisation** | Attribution à plusieurs personnes, priorité, étape, tags, titre (le salon Discord suit), participants, tickets liés, fusion de deux tickets du même membre |
 | **Suivi** | Suivre un ticket sans en être chargé, rappels personnels (« Me le rappeler »), mentions `@pseudo` ou `@grade` dans les notes, notes épinglées |
 | **Aide** | Tickets similaires déjà résolus avec leur réponse, procédures à cocher par sujet, profil du membre (étiquettes, historique, fil du staff) |

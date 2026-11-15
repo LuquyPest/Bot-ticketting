@@ -683,14 +683,15 @@ router.post('/:id/apply-template', async (req, res) => {
     const ticket = await loadTicket(req, res, 'reply_ticket');
     if (!ticket) return;
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
-    const tpl = await require('./templates').visibleTemplate(req, parseInt(req.body.templateId));
+    const tpl = await require('./templates').visibleTemplate(req, req.body.templateId);
     if (!tpl) return res.status(404).json({ error: 'Modèle introuvable' });
     const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
     if (!content) return res.status(400).json({ error: 'Contenu requis' });
     if (content.length > 2000) return res.status(400).json({ error: 'Contenu trop long (max 2000)' });
 
     await sendStaffReply(req, ticket, { content, anonymous: !!req.body.anonymous });
-    await req.guildDb('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
+    if (tpl.scope === 'instance') await require('../../utils/instanceTemplates').countInstanceTemplateUse(tpl.id);
+    else await req.guildDb('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
 
     const tm = getManager(req);
     const { applied, warnings } = await require('../../utils/macroActions').applyMacroActions({
@@ -1504,7 +1505,7 @@ router.post('/bulk', async (req, res) => {
     }
     if (action === 'send_template') {
       // Shared templates, or the user's own personal ones
-      const tpl = await require('./templates').visibleTemplate(req, parseInt(value));
+      const tpl = await require('./templates').visibleTemplate(req, value);
       if (!tpl) return res.status(400).json({ error: 'Template introuvable' });
       const tickets = await req.guildDb("SELECT * FROM tickets WHERE id IN (?) AND status = 'open'", [cleanIds]);
       for (const ticket of tickets) await sendStaffReply(req, ticket, { content: tpl.content, anonymous: false });

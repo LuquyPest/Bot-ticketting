@@ -544,6 +544,7 @@ export const ENTRIES = [
   ['Créer un nouveau jeton ? L\'ancien cessera de fonctionner.', 'Create a new token? The old one will stop working.'],
   ['Couper les métriques ? Le jeton actuel cessera de fonctionner.', 'Turn the metrics off? The current token will stop working.'],
   ['Métriques Prometheus activées ou coupées', 'Prometheus metrics turned on or off'],
+  ['Modèle partagé avec tous les serveurs', 'Template shared with every server'],
 ];
 
 export const TEMPLATES = [

@@ -18,6 +18,8 @@ Un serveur Discord est **actif dès que le bot le rejoint** : sa base est créé
 Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe qui peut ajouter ton bot à son serveur, et ce serveur serait activé sur ton instance. `ALLOWED_GUILDS` restreint en plus la liste des serveurs acceptés ; un avertissement s'affiche au démarrage si le bot est public sans cette liste.
 :::
 
+**Plusieurs communautés** : un modèle de réponse créé avec la portée **Tous les serveurs** (fiche ticket → Modèles) est proposé au staff de chacun de tes serveurs, sans être recopié. Le staff l'utilise, toi seul le modifies ; il ne peut pas ajouter de tag, puisque les tags sont propres à chaque serveur.
+
 ## Les pages
 
 | Page | |

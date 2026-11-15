@@ -190,6 +190,18 @@ async function ensureGlobalTables(config) {
         v          JSON NOT NULL,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
+      // Reply templates shared by every server of the instance (utils/instanceTemplates.js)
+      `CREATE TABLE IF NOT EXISTS instance_templates (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        name           VARCHAR(100) NOT NULL,
+        subject        VARCHAR(100) DEFAULT NULL,
+        content        TEXT NOT NULL,
+        actions        JSON DEFAULT NULL,
+        use_count      INT NOT NULL DEFAULT 0,
+        created_by_id  VARCHAR(32) NOT NULL,
+        created_by_tag VARCHAR(100) NOT NULL,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // Up to v2.24 the settings lived in sa_settings: carried over once (fails harmlessly without it)
       `INSERT IGNORE INTO instance_settings (k, v, updated_at) SELECT k, v, updated_at FROM sa_settings`,
       // 'bot_removed' (auto-reactivated on re-invite) vs 'admin' (manual suspension)

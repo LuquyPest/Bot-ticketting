@@ -960,6 +960,32 @@ async function main() {
   check('modèles: création refusée sans reply_ticket', r.status === 403, r.status);
   r = await req('POST', '/api/templates', { sid: sessions.S1T, body: { name: 'x', content: 'y', scope: 'public' } });
   check('modèles: portée invalide refusée', r.status === 400, r.status);
+  // Templates shared by every server of the instance (utils/instanceTemplates.js)
+  {
+    const itpl = app('./utils/instanceTemplates');
+    r = await req('POST', '/api/templates', { sid: sessions.S1T, body: { name: 'Pour tous', content: 'x', scope: 'instance' } });
+    check('modèles instance: réservés au propriétaire de l instance', r.status === 403, r.status);
+    r = await req('POST', '/api/templates', { sid: sessions.FV, body: { name: 'Tag', content: 'x', scope: 'instance', actions: { tagId: 1 } } });
+    check('modèles instance: pas de tag (propre à chaque serveur)', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/templates', { sid: sessions.FV, body: { name: 'Règlement commun', content: 'Bonjour {{username}}, voici le règlement.', scope: 'instance', subject: 'Règlement', actions: { stage: 'waiting' } } });
+    const iT = r.body;
+    check('modèles instance: créé par le propriétaire, identifiant préfixé', r.status === 200 && /^i\d+$/.test(iT.id) && iT.scope === 'instance' && iT.actions?.stage === 'waiting', JSON.stringify(r.body));
+    r = await req('GET', '/api/templates', { sid: sessions.S3T, query: { subject: 'Règlement' } });
+    const seen = r.body.find(t => t.id === iT.id);
+    check('modèles instance: proposés au staff du serveur, suggérés, non modifiables par lui', seen && seen.suggested === true && seen.editable === false, JSON.stringify(seen));
+    check('modèles instance: proposés sur les autres serveurs, jamais sur la démonstration', (await itpl.listInstanceTemplates(G2)).some(t => t.id === iT.id) && (await itpl.listInstanceTemplates(app('./utils/demo').DEMO_GUILD_ID)).length === 0, '');
+    r = await req('PATCH', `/api/templates/${iT.id}`, { sid: sessions.S3T, body: { name: 'Pirate' } });
+    const del = await req('DELETE', `/api/templates/${iT.id}`, { sid: sessions.S1T });
+    check('modèles instance: modification et suppression refusées au staff', r.status === 403 && del.status === 403, [r.status, del.status].join());
+    r = await req('POST', `/api/templates/${iT.id}/use`, { sid: sessions.S3T });
+    const [cnt] = await globalQuery('SELECT use_count FROM instance_templates WHERE id = ?', [Number(iT.id.slice(1))]);
+    check('modèles instance: utilisation comptée', r.status === 200 && cnt.use_count === 1, JSON.stringify(cnt));
+    r = await req('PATCH', `/api/templates/${iT.id}`, { sid: sessions.FV, body: { name: 'Règlement commun v2', scope: 'personal' } });
+    check('modèles instance: le propriétaire modifie, la portée ne change pas', r.status === 200 && r.body.name === 'Règlement commun v2' && r.body.scope === 'instance', JSON.stringify(r.body));
+    r = await req('DELETE', `/api/templates/${iT.id}`, { sid: sessions.FV });
+    const [gone] = await globalQuery('SELECT COUNT(*) AS n FROM instance_templates WHERE id = ?', [Number(iT.id.slice(1))]);
+    check('modèles instance: supprimé par le propriétaire', r.status === 200 && Number(gone.n) === 0, JSON.stringify(r.body));
+  }
 
   r = await req('GET', '/api/templates', { sid: sessions.S3T, query: { subject: 'Problème de paiement' } });
   const s3List = r.body.map(t => t.name);

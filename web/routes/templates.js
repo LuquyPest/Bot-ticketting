@@ -2,21 +2,28 @@ const express = require('express');
 const router = express.Router();
 const { recordEvent, dashboardActor } = require('../../utils/audit');
 
-// Reply templates: personal (only their author sees them) or shared with the whole staff.
+// Reply templates: personal (only their author sees them), shared with the whole staff, or shared
+// with every server of the instance (« instance », written by the owner: utils/instanceTemplates.js).
 // A template may be linked to a subject: it is then suggested on matching tickets.
 
-const SCOPES = ['personal', 'shared'];
+const SCOPES = ['personal', 'shared', 'instance'];
+const it = require('../../utils/instanceTemplates');
+const { isOwner } = require('../../utils/instance');
+const ownerOf = async req => !req.session.user.demo && await isOwner(req.app.locals.client, req.session.user.id);
 const COLUMNS = 'id, name, content, subject, scope, use_count, actions, created_by_id, created_by_tag, created_at';
 const { parseJsonField } = require('../../utils/jsonField');
 const withActions = t => ({ ...t, actions: t.actions ? parseJsonField(t.actions, null) : null });
 
 const canWrite = req => req.userIsFondateur || req.userPermissions?.has('reply_ticket');
-const canEdit = (req, tpl) => req.userIsFondateur || tpl.created_by_id === req.session.user.id;
+const canEdit = async (req, tpl) => (tpl.scope === 'instance' ? ownerOf(req) : req.userIsFondateur || tpl.created_by_id === req.session.user.id);
 
 const { matchesSubject } = require('../../utils/subjectMatch');
 
-// Templates the current user may see and use.
+// Templates the current user may see and use (id: a number, or « i12 » for an instance template).
 async function visibleTemplate(req, id) {
+  if (it.isInstanceId(id)) return it.getInstanceTemplate(req.guildId, id);
+  id = parseInt(id);
+  if (!id) return null;
   const [tpl] = await req.guildDb(
     `SELECT ${COLUMNS} FROM reply_templates WHERE id = ? AND (scope = 'shared' OR created_by_id = ?)`,
     [id, req.session.user.id]
@@ -73,9 +80,12 @@ router.get('/', async (req, res) => {
       `SELECT ${COLUMNS} FROM reply_templates WHERE scope = 'shared' OR created_by_id = ? ORDER BY name ASC`,
       [req.session.user.id]
     );
-    const templates = rows.map(t => ({
+    const all = [...rows, ...(await it.listInstanceTemplates(req.guildId))];
+    const owner = await ownerOf(req);
+    const templates = all.map(t => ({
       ...withActions(t),
       mine: t.created_by_id === req.session.user.id,
+      editable: t.scope === 'instance' ? owner : (req.userIsFondateur || t.created_by_id === req.session.user.id),
       suggested: subject ? matchesSubject(t.subject, subject) : false,
     }));
     templates.sort((a, b) => (b.suggested - a.suggested) || (b.use_count - a.use_count) || a.name.localeCompare(b.name));
@@ -91,6 +101,13 @@ router.post('/', async (req, res) => {
   try {
     const { fields, error } = cleanFields(req.body);
     if (error) return res.status(400).json({ error });
+    if (fields.scope === 'instance') {
+      if (!(await ownerOf(req))) return res.status(403).json({ error: 'Seul le propriétaire de l\'instance partage un modèle avec tous les serveurs' });
+      if (fields.actions && JSON.parse(fields.actions).tagId) return res.status(400).json({ error: 'Un modèle de l\'instance ne peut pas ajouter de tag (les tags sont propres à chaque serveur)' });
+      const id = await it.createInstanceTemplate(fields, req.session.user);
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'template_create', targetType: 'template', targetId: null, details: { name: fields.name, scope: 'instance', id } });
+      return res.json({ ...withActions(await it.getInstanceTemplate(req.guildId, id)), mine: true, editable: true, suggested: false });
+    }
     const result = await req.guildDb(
       'INSERT INTO reply_templates (name, content, subject, scope, actions, created_by_id, created_by_tag) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [fields.name, fields.content, fields.subject, fields.scope, fields.actions, req.session.user.id, req.session.user.username]
@@ -108,11 +125,20 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const tpl = await visibleTemplate(req, parseInt(req.params.id));
+    const tpl = await visibleTemplate(req, req.params.id);
     if (!tpl) return res.status(404).json({ error: 'Modèle introuvable' });
-    if (!canEdit(req, tpl)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!(await canEdit(req, tpl))) return res.status(403).json({ error: 'Accès refusé' });
     const { fields, error } = cleanFields(req.body, true);
     if (error) return res.status(400).json({ error });
+    if (tpl.scope === 'instance') {
+      // The scope of an instance template does not change (it would move between databases)
+      delete fields.scope;
+      if (fields.actions && JSON.parse(fields.actions).tagId) return res.status(400).json({ error: 'Un modèle de l\'instance ne peut pas ajouter de tag (les tags sont propres à chaque serveur)' });
+      await it.updateInstanceTemplate(tpl.id, fields);
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'template_update', targetType: 'template', targetId: null, details: { name: fields.name || tpl.name, scope: 'instance', id: tpl.id, fields: Object.keys(fields) } });
+      return res.json({ ...withActions(await it.getInstanceTemplate(req.guildId, tpl.id)), mine: tpl.created_by_id === req.session.user.id, editable: true });
+    }
+    if (fields.scope === 'instance') return res.status(400).json({ error: 'Portée invalide' });
     const keys = Object.keys(fields);
     if (!keys.length) return res.json(tpl);
     await req.guildDb(`UPDATE reply_templates SET ${keys.map(k => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map(k => fields[k]), tpl.id]);
@@ -126,18 +152,20 @@ router.patch('/:id', async (req, res) => {
 
 // POST /api/templates/:id/use — usage counter (most used templates are listed first)
 router.post('/:id/use', async (req, res) => {
-  const tpl = await visibleTemplate(req, parseInt(req.params.id));
+  const tpl = await visibleTemplate(req, req.params.id);
   if (!tpl) return res.status(404).json({ error: 'Modèle introuvable' });
-  await req.guildDb('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
+  if (tpl.scope === 'instance') await it.countInstanceTemplateUse(tpl.id);
+  else await req.guildDb('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
   res.json({ ok: true });
 });
 
 router.delete('/:id', async (req, res) => {
   try {
-    const tpl = await visibleTemplate(req, parseInt(req.params.id));
+    const tpl = await visibleTemplate(req, req.params.id);
     if (!tpl) return res.status(404).json({ error: 'Modèle introuvable' });
-    if (!canEdit(req, tpl)) return res.status(403).json({ error: 'Accès refusé' });
-    await req.guildDb('DELETE FROM reply_templates WHERE id = ?', [tpl.id]);
+    if (!(await canEdit(req, tpl))) return res.status(403).json({ error: 'Accès refusé' });
+    if (tpl.scope === 'instance') await it.deleteInstanceTemplate(tpl.id);
+    else await req.guildDb('DELETE FROM reply_templates WHERE id = ?', [tpl.id]);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'template_delete', targetType: 'template', targetId: tpl.id, details: { name: tpl.name } });
     res.json({ ok: true });
   } catch (err) {
@@ -148,4 +176,5 @@ router.delete('/:id', async (req, res) => {
 
 module.exports = router;
 module.exports.visibleTemplate = async (req, id) => { const t = await visibleTemplate(req, id); return t && withActions(t); };
+module.exports.withActions = withActions;
 module.exports.matchesSubject = matchesSubject;

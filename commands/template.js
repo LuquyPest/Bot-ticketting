@@ -8,10 +8,12 @@ const { applyMacroActions } = require('../utils/macroActions');
 const { parseJsonField } = require('../utils/jsonField');
 const { matchesSubject } = require('../web/routes/templates');
 
-// Templates the staff member may use: shared ones and their own personal ones
-const visibleTemplates = (db, userId) => db(
-  "SELECT id, name, content, subject, actions, use_count FROM reply_templates WHERE scope = 'shared' OR created_by_id = ?", [userId]
-);
+// Templates the staff member may use: shared ones, their own personal ones, and those of the instance
+const instanceTemplates = require('../utils/instanceTemplates');
+const visibleTemplates = async (db, userId, guildId) => [
+  ...(await db("SELECT id, name, content, subject, actions, use_count, 'server' AS scope FROM reply_templates WHERE scope = 'shared' OR created_by_id = ?", [userId])),
+  ...(await instanceTemplates.listInstanceTemplates(guildId)),
+];
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,7 +29,7 @@ module.exports = {
     if (!can('reply_ticket')) return interaction.respond([]);
     const [ticket] = await db("SELECT subject FROM tickets WHERE channel_id = ? AND status = 'open'", [interaction.channelId]);
     const typed = String(interaction.options.getFocused() || '').toLowerCase();
-    const rows = (await visibleTemplates(db, interaction.user.id))
+    const rows = (await visibleTemplates(db, interaction.user.id, interaction.guildId))
       .map(t => ({ ...t, suggested: ticket?.subject ? matchesSubject(t.subject, ticket.subject) : false }))
       .filter(t => !typed || t.name.toLowerCase().includes(typed))
       .sort((a, b) => (b.suggested - a.suggested) || (b.use_count - a.use_count) || a.name.localeCompare(b.name))
@@ -45,7 +47,7 @@ module.exports = {
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) return interaction.reply({ content: 'Pas un salon ticket.', flags: MessageFlags.Ephemeral });
-    const tpl = (await visibleTemplates(db, interaction.user.id)).find(t => String(t.id) === interaction.options.getString('modele', true));
+    const tpl = (await visibleTemplates(db, interaction.user.id, interaction.guildId)).find(t => String(t.id) === interaction.options.getString('modele', true));
     if (!tpl) return interaction.reply({ content: 'Modèle introuvable : choisis-le dans la liste proposée.', flags: MessageFlags.Ephemeral });
 
     const cfg = await tm.getGuildConfig(db);
@@ -58,7 +60,8 @@ module.exports = {
       client, db, tm, guildId: interaction.guildId, ticket, author: interaction.user, channel: interaction.channel,
       content: resolveTemplateVars(tpl.content, ticket, interaction.user.username, await require('../utils/ticketFields').fieldsForTicket(db, ticket.id)), anonymous: !!interaction.options.getBoolean('anonyme'),
     });
-    await db('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
+    if (tpl.scope === 'instance') await instanceTemplates.countInstanceTemplateUse(tpl.id);
+    else await db('UPDATE reply_templates SET use_count = use_count + 1 WHERE id = ?', [tpl.id]);
 
     const actions = tpl.actions ? parseJsonField(tpl.actions, null) : null;
     const { applied, warnings } = await applyMacroActions({

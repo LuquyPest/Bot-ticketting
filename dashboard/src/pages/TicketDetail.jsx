@@ -763,7 +763,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
       setNewTemplateActions({});
       setTemplates(t => [...t, { ...data, suggested: !!linked }]);
       setNewTemplateName('');
-      toast.success(newTemplateScope === 'shared' ? 'Modèle partagé avec le staff' : 'Modèle enregistré pour toi');
+      toast.success(newTemplateScope === 'instance' ? 'Modèle partagé avec tous les serveurs' : newTemplateScope === 'shared' ? 'Modèle partagé avec le staff' : 'Modèle enregistré pour toi');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setSavingTemplate(false); }
   };
@@ -1410,7 +1410,8 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                         ) : [
                           ['Suggérés pour ce sujet', t => t.suggested],
                           ['Mes modèles', t => !t.suggested && t.scope === 'personal'],
-                          ['Partagés avec le staff', t => !t.suggested && t.scope !== 'personal'],
+                          ['Partagés avec le staff', t => !t.suggested && t.scope === 'shared'],
+                          ['Tous les serveurs', t => !t.suggested && t.scope === 'instance'],
                         ].map(([label, inGroup]) => {
                           const group = templates.filter(inGroup);
                           if (!group.length) return null;
@@ -1446,7 +1447,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                                       <p className="text-[9px] text-ink-4 mt-0.5">par {tpl.created_by_tag}</p>
                                     )}
                                   </div>
-                                  {(user?.role === 'fondateur' || tpl.created_by_id === user?.id) && (
+                                  {(tpl.editable ?? (user?.role === 'fondateur' || tpl.created_by_id === user?.id)) && (
                                     <button onClick={(e) => deleteTemplate(tpl.id, e)} title="Supprimer le modèle"
                                       className="opacity-0 group-hover/tpl:opacity-100 text-ink-4
                                                  hover:text-red-400 transition-all shrink-0 mt-0.5">
@@ -1466,7 +1467,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                                        rounded-lg px-3 py-2 text-xs focus:outline-hidden focus:border-primary/50
                                        transition-all" />
                           <div className="flex gap-1 p-0.5 rounded-lg bg-surface border border-overlay/6" role="radiogroup" aria-label="Portée du modèle">
-                            {[['personal', 'Pour moi'], ['shared', 'Pour tout le staff']].map(([v, label]) => (
+                            {[['personal', 'Pour moi'], ['shared', 'Pour tout le staff'], ...(user?.isOwner ? [['instance', 'Tous les serveurs']] : [])].map(([v, label]) => (
                               <button key={v} type="button" role="radio" aria-checked={newTemplateScope === v} onClick={() => setNewTemplateScope(v)}
                                 className={`flex-1 py-1 rounded-md text-[11px] font-medium ${newTemplateScope === v ? 'bg-primary/15 text-ink-1' : 'text-ink-4 hover:text-ink-2'}`}>
                                 {label}
