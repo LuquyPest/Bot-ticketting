@@ -76,9 +76,8 @@ function auditLog(req, res, next) {
 
 // Session store: Redis (already a hard dependency for BullMQ).
 // Keys are `${SESSION_PREFIX}<sid>` — routes/sessions.js deletes them to revoke a session.
-const { RedisStore } = require('connect-redis');
-const { getSessionRedis, SESSION_PREFIX } = require('../utils/redis');
-const sessionStore = new RedisStore({ client: getSessionRedis(), prefix: SESSION_PREFIX, ttl: 86400 });
+const { RedisSessionStore } = require('../utils/sessionStore');
+const sessionStore = new RedisSessionStore();
 
 // Detect HTTPS from either the public base URL or the Discord callback URL.
 // When TLS is terminated by a reverse proxy (Traefik), webServerBaseUrl may

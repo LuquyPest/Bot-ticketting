@@ -3047,6 +3047,21 @@ async function main() {
     check('métriques: coupées → 404, chaque changement au journal de l instance', r.status === 404 && Number(audit.n) >= 3, [r.status, audit.n].join());
   }
 
+  // ── Session store on ioredis (utils/sessionStore.js): same keys and format as connect-redis ──
+  {
+    const { RedisSessionStore } = app('./utils/sessionStore');
+    const store = new RedisSessionStore();
+    const call = (fn, ...a) => new Promise((res, rej) => store[fn](...a, (e, d) => (e ? rej(e) : res(d))));
+    const sess = { cookie: { expires: new Date(Date.now() + 3600 * 1000).toISOString(), httpOnly: true }, user: { id: '1' } };
+    await call('set', 'test-sid', sess);
+    const ttl = await redis.ttl('sess:test-sid');
+    const back = await call('get', 'test-sid');
+    check('sessions: clé sess:<sid> en JSON, expiration du cookie', ttl > 3500 && ttl <= 3600 && back.user.id === '1' && JSON.parse(await redis.get('sess:test-sid')).user.id === '1', String(ttl));
+    await call('destroy', 'test-sid');
+    await call('set', 'test-sid2', { cookie: { expires: new Date(Date.now() - 1000).toISOString() } });
+    check('sessions: supprimée, et jamais écrite déjà expirée', !(await redis.exists('sess:test-sid')) && !(await redis.exists('sess:test-sid2')) && (await call('get', 'test-sid')) === null, '');
+  }
+
   // ── New versions and one-click update (utils/updates.js, docker/updater.sh) ──
   {
     const up = app('./utils/updates');

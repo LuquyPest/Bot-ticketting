@@ -42,7 +42,7 @@ Le projet a fait l'objet de plusieurs audits, dont un audit OWASP Top 10, tous c
 |---|---|
 | **Chiffrement** | Secrets 2FA et transcripts en AES-256-GCM, sauvegardes chiffrées (AES-256 + HMAC) |
 | **Secrets** | Dans le `.env` (privé), jamais en ligne de commande ni dans le dépôt |
-| **Docker** | Bot en utilisateur non root, `no-new-privileges`, aucune capacité Linux ; MariaDB et Redis sur le réseau interne seulement, Redis protégé par mot de passe ; compte `botuser` limité aux bases du bot. Le service facultatif de mise à jour est le seul à accéder à Docker, et n'exécute rien de ce que le bot lui envoie |
+| **Docker** | Image minimale (Alpine et Node.js seuls, sans npm ni gestionnaire de paquets JavaScript), bot en utilisateur non root, `no-new-privileges`, aucune capacité Linux ; MariaDB et Redis sur le réseau interne seulement, Redis protégé par mot de passe ; compte `botuser` limité aux bases du bot. Le service facultatif de mise à jour est le seul à accéder à Docker, et n'exécute rien de ce que le bot lui envoie |
 | **Dépendances** | `npm audit` à chaque push, mises à jour Dependabot testées par la CI (tests, build du dashboard, du site et de l'image ; les mineures sont fusionnées seules quand tout est vert), actions GitHub épinglées par empreinte |
 
 ## Rotation de la clé de chiffrement

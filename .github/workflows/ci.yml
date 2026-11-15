@@ -99,4 +99,4 @@ jobs:
       - name: Build
         run: docker build -t ticketbot:ci .
       - name: L'image démarre Node et charge ses dépendances
-        run: docker run --rm --entrypoint node ticketbot:ci -e "require('discord.js'); require('connect-redis'); require('./utils/config'); console.log('ok')"
+        run: docker run --rm --entrypoint node ticketbot:ci -e "require('discord.js'); require('ioredis'); require('./utils/sessionStore'); require('./utils/metrics'); require('./utils/config'); console.log('ok')"

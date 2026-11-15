@@ -42,7 +42,7 @@ The project has been through several audits, including an OWASP Top 10 audit, al
 |---|---|
 | **Encryption** | 2FA secrets and transcripts in AES-256-GCM, encrypted backups (AES-256 + HMAC) |
 | **Secrets** | In `.env` (private), never on a command line nor in the repository |
-| **Docker** | Bot as a non-root user, `no-new-privileges`, no Linux capability; MariaDB and Redis on the internal network only, Redis password-protected; `botuser` account limited to the bot's databases. The optional update service is the only one with access to Docker, and runs nothing the bot sends it |
+| **Docker** | Minimal image (Alpine and Node.js only, without npm or any JavaScript package manager), bot as a non-root user, `no-new-privileges`, no Linux capability; MariaDB and Redis on the internal network only, Redis password-protected; `botuser` account limited to the bot's databases. The optional update service is the only one with access to Docker, and runs nothing the bot sends it |
 | **Dependencies** | `npm audit` on every push, Dependabot updates tested by the CI (tests, build of the dashboard, the site and the image; minor ones merged automatically when everything is green), GitHub actions pinned by hash |
 
 ## Rotating the encryption key
