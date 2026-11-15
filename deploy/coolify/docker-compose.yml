@@ -1,0 +1,88 @@
+# Ticket Bot for Coolify (Project → New resource → Docker Compose Empty, paste this file).
+# Coolify generates the domain (SERVICE_FQDN_BOT) and the passwords (SERVICE_PASSWORD_*) and serves
+# HTTPS through its proxy. Fill in, in the Environment Variables tab:
+#   DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   Discord developer portal
+#   ENCRYPTION_KEY    openssl rand -hex 32  (64 hexadecimal characters; keep a copy off the server)
+# Then add https://<your domain>/api/auth/discord/callback to the OAuth2 redirects in the Discord portal.
+# Guide: https://docs.bot.daryu.xyz/guide/outils
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${SERVICE_PASSWORD_REDIS}
+      REDISCLI_AUTH: ${SERVICE_PASSWORD_REDIS}
+    command: sh -c 'exec redis-server --maxmemory 128mb --maxmemory-policy noeviction --appendonly no --requirepass "$$REDIS_PASSWORD"'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${SERVICE_PASSWORD_DBROOT}
+      MARIADB_DATABASE: ticketbot_global
+      MARIADB_USER: botuser
+      MARIADB_PASSWORD: ${SERVICE_PASSWORD_DB}
+    # Same grants as docker/mariadb-init.sql, written at start: no file of the repository is needed
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /docker-entrypoint-initdb.d/ticketbot.sql <<'SQL'
+        CREATE DATABASE IF NOT EXISTS `ticketbot_global` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        GRANT ALL PRIVILEGES ON `ticketbot_global`.* TO 'botuser'@'%';
+        GRANT ALL PRIVILEGES ON `ticketbot\_guild\_%`.* TO 'botuser'@'%';
+        FLUSH PRIVILEGES;
+        SQL
+        exec docker-entrypoint.sh mariadbd
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  bot:
+    image: ghcr.io/luquypest/bot-ticketting:${TICKETBOT_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      SERVICE_FQDN_BOT_3000: ""
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?DISCORD_TOKEN manquant}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID manquant}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?DISCORD_CLIENT_SECRET manquant}
+      PUBLIC_URL: ${SERVICE_FQDN_BOT}
+      SESSION_SECRET: ${SERVICE_PASSWORD_64_SESSION}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY manquant (openssl rand -hex 32)}
+      DB_PASSWORD: ${SERVICE_PASSWORD_DB}
+      REDIS_PASSWORD: ${SERVICE_PASSWORD_REDIS}
+      OWNER_IDS: ${OWNER_IDS:-}
+      ALLOWED_GUILDS: ${ALLOWED_GUILDS:-}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      TZ: ${TZ:-UTC}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  db_data:
+  redis_data:

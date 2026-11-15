@@ -12,6 +12,7 @@ const guide = [
     items: [
       { text: 'Présentation', link: '/guide/' },
       { text: 'Installation', link: '/guide/installation' },
+      { text: 'Portainer, Coolify, Unraid…', link: '/guide/outils' },
       { text: 'Configuration', link: '/guide/configuration' },
       { text: 'Premiers pas', link: '/guide/premiers-pas' },
     ],

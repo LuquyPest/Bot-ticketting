@@ -1,0 +1,93 @@
+# Ticket Bot — a single compose file, without the rest of the repository: for Portainer (Stacks →
+# Web editor), Unraid (Docker Compose Manager), Dockge, Synology Container Manager…
+# Guide: https://docs.bot.daryu.xyz/guide/outils
+#
+# Fill in the variables (environment editor of your tool, or an .env file next to this one):
+#   DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   Discord developer portal
+#   PUBLIC_URL        https address of the dashboard, e.g. https://tickets.example.com
+#   DB_ROOT_PASSWORD, DB_PASSWORD, REDIS_PASSWORD, SESSION_SECRET, ENCRYPTION_KEY
+#                     each one: openssl rand -hex 32  (64 hexadecimal characters)
+# The dashboard listens on port WEB_PORT (3000): put it behind your HTTPS reverse proxy
+# (Nginx Proxy Manager, Traefik, Caddy, SWAG…). Discord only accepts an https address.
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD manquant}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    command: sh -c 'exec redis-server --maxmemory 128mb --maxmemory-policy noeviction --appendonly no --requirepass "$$REDIS_PASSWORD"'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD manquant}
+      MARIADB_DATABASE: ticketbot_global
+      MARIADB_USER: botuser
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant}
+    # Same grants as docker/mariadb-init.sql, written at start: no file of the repository is needed
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /docker-entrypoint-initdb.d/ticketbot.sql <<'SQL'
+        CREATE DATABASE IF NOT EXISTS `ticketbot_global` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        GRANT ALL PRIVILEGES ON `ticketbot_global`.* TO 'botuser'@'%';
+        GRANT ALL PRIVILEGES ON `ticketbot\_guild\_%`.* TO 'botuser'@'%';
+        FLUSH PRIVILEGES;
+        SQL
+        exec docker-entrypoint.sh mariadbd
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  bot:
+    image: ghcr.io/luquypest/bot-ticketting:${TICKETBOT_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?DISCORD_TOKEN manquant}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID manquant}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?DISCORD_CLIENT_SECRET manquant}
+      PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL manquant (https://…)}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET manquant}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY manquant (openssl rand -hex 32)}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      OWNER_IDS: ${OWNER_IDS:-}
+      ALLOWED_GUILDS: ${ALLOWED_GUILDS:-}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      TZ: ${TZ:-UTC}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  db_data:
+  redis_data:

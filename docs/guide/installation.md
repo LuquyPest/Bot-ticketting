@@ -4,6 +4,10 @@ Un serveur, Docker, un nom de domaine : **une vingtaine de minutes**, étape par
 
 *English version: [Installation](../en/installation).*
 
+::: tip Tu utilises Portainer, Coolify, Unraid ou CasaOS ?
+Un fichier compose autonome se colle directement dans ton outil : [Portainer, Coolify, Unraid, CasaOS](./outils).
+:::
+
 ## Ce que tu vas mettre en place
 
 ![Ton domaine mène à ton serveur, qui fait tourner le bot relié à Discord](/images/guide-overview.png)
