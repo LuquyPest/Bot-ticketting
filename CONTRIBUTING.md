@@ -20,7 +20,7 @@ cd dashboard && npm run dev   # dashboard Vite avec rechargement, proxy vers l'A
 
 ## Avant d'ouvrir une pull request
 
-Les grandes évolutions sont décrites dans [`conception/`](conception/) avant d'être codées : la [v4](conception/v4.md) (Discord devient un canal parmi d'autres) y fixe le découpage en pull requests. Une PR de la v4 suit ce découpage et cite son issue.
+Les grandes évolutions sont décrites dans [`conception/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/conception) avant d'être codées : la [v4](https://github.com/LuquyPest/Bot-ticketting/blob/main/conception/v4.md) (Discord devient un canal parmi d'autres) y fixe le découpage en pull requests. Une PR de la v4 suit ce découpage et cite son issue.
 
 ```bash
 npm run test:integration                           # suite d'intégration (MariaDB + Redis jetables)
