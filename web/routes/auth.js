@@ -98,10 +98,10 @@ router.get('/guilds', async (req, res) => {
   }
 
   const accessToken = req.session.discordAccessToken;
-  // Signed in without Discord (e-mail and password): the active servers where the account is in the
+  // Signed in without Discord (password, Google, Microsoft, OIDC): the active servers where the account is in the
   // team, every active server for the owner of the instance — nothing is asked to Discord
   if (!accessToken) {
-    if (req.session.authMethod !== 'password') return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });
+    if (!req.session.authMethod) return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });
     try {
       const owner = await isOwner(req.app.locals.client, req.session.user.id);
       const active = await globalQuery("SELECT guild_id, guild_name, guild_icon FROM guilds WHERE status = 'active' AND guild_id <> '999999999999999999'");
@@ -257,10 +257,10 @@ router.post('/select-guild', async (req, res) => {
 });
 
 // GET /api/auth/discord — redirect to Discord OAuth
-router.get('/discord', (req, res) => {
+router.get('/discord', async (req, res) => {
   const config = cfg();
-  // No Discord application configured: the Discord sign-in is off (v4)
-  if (!config.clientId || !config.dashboard?.discordClientSecret) return res.redirect('/login?error=discord_off');
+  // No Discord application configured, or the Discord sign-in turned off in Instance → Connexion (v4)
+  if (!(await require('../../utils/loginProviders').discordLoginActive().catch(() => false))) return res.redirect('/login?error=discord_off');
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
   delete req.session.oauthPurpose; // dashboard sign-in, even after an unfinished member sign-in
@@ -315,6 +315,9 @@ router.get('/discord/callback', async (req, res) => {
       });
       return;
     }
+
+    // Turned off in Instance → Connexion while the person was on Discord's page
+    if (!(await require('../../utils/loginProviders').discordLoginActive())) return fail('discord_off');
 
     // The account of this person (created at the first sign-in, ID = Discord ID); a disabled
     // account cannot sign in
@@ -430,7 +433,7 @@ router.post('/totp-verify-login', async (req, res) => {
         role:     null,
       };
       req.session.discordAccessToken = pending.discordAccessToken;
-      if (pending.method === 'password') req.session.authMethod = 'password';
+      if (pending.method) req.session.authMethod = pending.method; // password, oidc
       req.session.lastActivityAt = Date.now();
       req.session.save(() => trackSession(req, pending.userId));
       res.json({ ok: true, redirect: '/select-guild' });

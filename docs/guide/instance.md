@@ -6,7 +6,7 @@ L'**instance**, c'est ton installation : tous ses **espaces** (un par équipe ou
 
 Le **propriétaire de l'instance** est le compte Discord qui possède l'application du bot (portail développeur → *General Information*). Pour une application d'équipe : le propriétaire et les admins de l'équipe. Tu peux ajouter des co-propriétaires avec `OWNER_IDS` dans le `.env`.
 
-- Il se connecte au dashboard avec son compte Discord, comme tout le monde : pas de compte à part, pas de mot de passe.
+- Il se connecte au dashboard comme tout le monde, avec les [moyens de connexion](#moyens-de-connexion) de l'instance.
 - Il est **fondateur dans chaque espace** de l'instance.
 - Lui seul voit la liste de tous les espaces à la connexion, obtient le lien d'invitation du bot et accède à la section **Instance** (menu Administration, ou `/instance`).
 
@@ -30,10 +30,28 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 |---|---|
 | **Vue d'ensemble** | Espaces, tickets ouverts, tickets par jour sur 30 jours, staff, erreurs des dernières 24 heures, tableau par espace |
 | **Espaces** | Créer, relier à Discord ou délier, suspendre, réactiver, mettre en maintenance, supprimer (sa base est effacée, le bot quitte le serveur Discord relié) ; nommer ou retirer des fondateurs |
+| **Connexion** | Les [moyens de connexion](#moyens-de-connexion) du dashboard : Discord, Google, Microsoft, OpenID Connect |
 | **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; espace de démonstration, [métriques Prometheus](#supervision-prometheus) |
 | **Erreurs** | Journal centralisé des erreurs du bot, du dashboard et des navigateurs, avec filtres ; **alerte** par MP (au propriétaire par défaut) ou webhook au-delà d'un seuil, et en cas de déconnexion de Discord |
 | **Journal** | Chaque modification faite depuis la section, avec son auteur et l'espace concerné |
 | **Blocages** | Adresses IP bloquées par les limites de connexion ou d'API, avec déblocage |
+
+## Moyens de connexion
+
+**Instance → Connexion** choisit comment on se connecte au dashboard. **L'adresse e-mail et le mot de passe** restent toujours possibles : c'est le secours si un fournisseur tombe.
+
+| Fournisseur | À régler |
+|---|---|
+| **Discord** | Rien : il utilise l'application Discord de l'instance. **Activé** sur une instance venue de la v3 |
+| **Google** | Console Google Cloud → API et services → Identifiants → *ID client OAuth* (application Web) : colle l'identifiant et le secret |
+| **Microsoft** | Portail Azure → Microsoft Entra ID → *Inscriptions d'applications* (plateforme Web), puis *Certificats et secrets*. Annuaire : `common` (tous les comptes), `organizations` (comptes professionnels) ou l'identifiant de ton annuaire |
+| **OpenID Connect** | Keycloak, Authentik, Okta, Zitadel… : un nom affiché, l'adresse du fournisseur (*issuer*, en `https://`), l'identifiant et le secret d'un client confidentiel |
+
+Chaque fournisseur affiche son **adresse de retour**, à déclarer telle quelle chez lui (`https://ton-domaine/api/auth/oidc/google/callback`, etc.). Les secrets sont chiffrés en base, jamais réaffichés, et masqués dans le journal de l'instance.
+
+**Qui peut se connecter ainsi** : personne ne reçoit de compte en se connectant ; les comptes viennent des [invitations](./equipe#les-comptes), de Discord ou de l'installation. À la première connexion Google, Microsoft ou OpenID Connect, l'identité est reliée au compte qui a **la même adresse e-mail confirmée**, et seulement si le fournisseur garantit cette adresse. Sinon, chacun la relie lui-même depuis **Profil → Connexion → Relier**, une fois connecté. Microsoft ne garantit pas les adresses de ses comptes : sauf si ton application renvoie la revendication facultative `xms_edov`, chacun relie Microsoft depuis son profil.
+
+**Discord** : couper la connexion Discord ne coupe pas l'intégration (bot, MP, salons, panels) ; l'espace membre garde aussi sa connexion Discord pour les demandeurs. Tu ne peux pas couper le dernier moyen de connexion de ton propre compte : définis d'abord un mot de passe ou relie un autre fournisseur dans **Profil → Connexion**.
 
 ## Démonstration
 

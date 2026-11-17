@@ -1,11 +1,11 @@
 // Accounts of the instance (v4, conception/v4.md §3.3): one per person, independent of the way
-// they sign in. Sign-in methods are identities (account_identities): today Discord; e-mail and
-// password, Google, Microsoft and OIDC come in later pull requests.
+// they sign in. Sign-in methods are identities (account_identities): Discord, and OpenID Connect
+// providers stored as oidc:<provider> (utils/loginProviders.js); plus e-mail and password.
 // An account born from a Discord sign-in has the Discord ID as its ID, so that everything that
 // already stores user IDs (staff accounts, assignees, notes, 2FA, preferences) stays valid.
 const { globalQuery } = require('./globalDb');
 
-const PROVIDERS = { discord: 'Discord' };
+const PROVIDERS = { discord: 'Discord', 'oidc:google': 'Google', 'oidc:microsoft': 'Microsoft', 'oidc:oidc': 'OpenID Connect' };
 
 // Discord sign-in: finds or creates the account, keeps its name and avatar up to date.
 // Returns the account ({ id, display_name, disabled… }).
@@ -78,9 +78,24 @@ async function passwordHashOf(accountId) {
   return row?.password_hash || null;
 }
 
+// OpenID Connect identities (v4 PR 12)
+async function accountByIdentity(provider, subject) {
+  const [row] = await globalQuery('SELECT account_id FROM account_identities WHERE provider = ? AND subject = ?', [provider, String(subject)]);
+  return row ? getAccount(row.account_id) : null;
+}
+async function linkIdentity(provider, subject, accountId) {
+  await globalQuery(
+    `INSERT INTO account_identities (provider, subject, account_id, last_used_at) VALUES (?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE last_used_at = IF(account_id = VALUES(account_id), NOW(), last_used_at)`,
+    [provider, String(subject), String(accountId)]
+  );
+}
+const unlinkIdentity = (provider, accountId) => globalQuery('DELETE FROM account_identities WHERE provider = ? AND account_id = ?', [provider, String(accountId)]);
+
 const touchLogin = accountId => globalQuery('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [String(accountId)]);
 
 module.exports = {
   signInWithDiscord, getAccount, loginMethods, PROVIDERS,
+  accountByIdentity, linkIdentity, unlinkIdentity,
   normEmail, findByVerifiedEmail, emailTaken, setVerifiedEmail, setPasswordHash, passwordHashOf, touchLogin,
 };

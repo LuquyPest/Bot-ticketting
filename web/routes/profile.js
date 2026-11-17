@@ -233,8 +233,31 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
 // ── 2FA routes ────────────────────────────────────────────────────────────────
 
 // GET /api/profile/login-methods — how this account signs in (Profil → Connexion)
+// + the providers this account can still link (Google, Microsoft, OIDC turned on in Instance → Connexion)
 router.get('/login-methods', requireAuth, async (req, res, next) => {
-  try { res.json(await require('../../utils/accounts').loginMethods(req.session.user.id)); } catch (err) { next(err); }
+  try {
+    const lp = require('../../utils/loginProviders');
+    const m = await require('../../utils/accounts').loginMethods(req.session.user.id);
+    const active = await lp.activeProviders();
+    const label = id => active.find(p => `oidc:${p.id}` === id)?.label;
+    m.identities = m.identities.map(i => ({ ...i, label: label(i.provider) || i.label, removable: i.provider.startsWith('oidc:') }));
+    m.available = active.filter(p => p.id !== 'discord' && !m.identities.some(i => i.provider === `oidc:${p.id}`));
+    res.json(m);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/profile/identities/:provider — unlink Google, Microsoft or OIDC, if another way to
+// sign in remains (password, or another provider turned on)
+router.delete('/identities/:provider', requireAuth, async (req, res, next) => {
+  const provider = String(req.params.provider);
+  if (!/^oidc:(google|microsoft|oidc)$/.test(provider)) return res.status(400).json({ error: 'Moyen de connexion inconnu' });
+  try {
+    const lp = require('../../utils/loginProviders');
+    const left = (await lp.methodsLeft(req.session.user.id, lp.usableWith(await lp.load()))).filter(x => x !== provider);
+    if (!left.length) return res.status(400).json({ error: 'C\'est ton seul moyen de connexion : il ne peut pas être retiré' });
+    await require('../../utils/accounts').unlinkIdentity(provider, req.session.user.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
 });
 
 // POST /api/profile/email { email } — sends the confirmation link (24 h) to that address; the
@@ -285,13 +308,16 @@ router.post('/password', requireAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/profile/password { current } — only if another way to sign in remains (Discord)
+// DELETE /api/profile/password { current } — only if another way to sign in remains (Discord, Google…)
 router.delete('/password', requireAuth, async (req, res) => {
   const accounts = require('../../utils/accounts');
   try {
     const m = await accounts.loginMethods(req.session.user.id);
     if (!m.password) return res.json({ ok: true });
-    if (!m.identities.length) return res.status(400).json({ error: 'C\'est ton seul moyen de connexion : il ne peut pas être retiré' });
+    // Another way to sign in must remain: an identity of a provider turned on
+    const lp = require('../../utils/loginProviders');
+    const left = (await lp.methodsLeft(req.session.user.id, lp.usableWith(await lp.load()))).filter(x => x !== 'password');
+    if (!left.length) return res.status(400).json({ error: 'C\'est ton seul moyen de connexion : il ne peut pas être retiré' });
     if (!(await require('../../utils/passwords').verifyPassword(String(req.body?.current || ''), await accounts.passwordHashOf(req.session.user.id)))) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
     await accounts.setPasswordHash(req.session.user.id, null);
     res.json({ ok: true });

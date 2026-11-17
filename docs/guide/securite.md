@@ -7,7 +7,8 @@ Le projet a fait l'objet de plusieurs audits, dont un audit OWASP Top 10, tous c
 | | |
 |---|---|
 | **Comptes** | Un compte par personne, créé à sa première connexion et désactivable ; **Profil → Connexion** liste ses moyens de connexion |
-| **Connexion** | Discord OAuth2, avec vérification de l'état (anti-CSRF du retour OAuth) ; ou adresse e-mail et mot de passe (voir ci-dessous) |
+| **Connexion** | Discord OAuth2, avec vérification de l'état (anti-CSRF du retour OAuth) ; adresse e-mail et mot de passe (voir ci-dessous) ; Google, Microsoft ou OpenID Connect ([moyens de connexion](./instance#moyens-de-connexion)) |
+| **OpenID Connect** | Flux *authorization code* avec `state`, `nonce` et PKCE (S256) ; jeton d'identité reçu directement du fournisseur, émetteur, application, expiration et nonce vérifiés ; liaison automatique à un compte seulement sur une adresse e-mail **vérifiée** par le fournisseur ; aucun compte créé à la connexion |
 | **Mots de passe** | Hachés avec scrypt (sel par compte), 10 caractères au moins ; 10 échecs en 15 minutes bloquent la connexion par mot de passe du compte ; même réponse et même temps de calcul que l'adresse existe ou non ; 2FA du compte appliquée |
 | **Sessions** | Cookie `Secure`, `HttpOnly`, `SameSite=Lax`, stockées dans Redis, régénérées à chaque changement de droits, révocables depuis le profil |
 | **2FA** | TOTP avec codes de secours, code jamais accepté deux fois, imposable par serveur |
@@ -23,7 +24,7 @@ Un compte peut aussi se connecter avec une **adresse e-mail et un mot de passe**
 2. **Mot de passe** : 10 caractères au moins. Le changer ferme tes autres sessions ; changer d'adresse le retire.
 3. Sur la page de connexion, **Adresse e-mail** et **Mot de passe** sous le bouton Discord. **Mot de passe oublié ?** envoie un lien valable 30 minutes ; l'utiliser ferme toutes les sessions du compte.
 
-Ces e-mails partent par l'[e-mail de l'instance](./instance#e-mail-de-l-instance), à configurer d'abord. On ne peut retirer le mot de passe que s'il reste un autre moyen de connexion (Discord).
+Ces e-mails partent par l'[e-mail de l'instance](./instance#e-mail-de-l-instance), à configurer d'abord. On ne peut retirer le mot de passe, ni délier un fournisseur, que s'il reste un autre moyen de connexion activé sur l'instance. Google, Microsoft et OpenID Connect se relient depuis la même page (**Relier**), si le propriétaire les a activés.
 
 ## Accès aux données
 

@@ -49,6 +49,8 @@ const PAGES = [
   ['instance-serveurs', '/instance/guilds', 'Daryu'],
   ['instance-blocages', '/instance/blocked', 'Aucune adresse bloquée'],
   ['instance-sante', '/instance/health', 'Mettre à jour'],
+  ['instance-connexion', '/instance/login', 'Adresse de retour à déclarer'],
+  ['login-fournisseurs', '/login', 'Continuer avec', true],
   ['confidentialite', '/confidentialite', 'Données enregistrées', true],
   ['espace-login', '/espace', 'Recevoir un lien de connexion', true],
   ['espace', '/espace', 'Ancienne commande'],

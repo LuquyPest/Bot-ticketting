@@ -31,6 +31,8 @@ A v3 instance moves to v4 **without doing anything**: update as usual (**Update*
 | Invite colleagues by e-mail, with a role and a grade | Team → Management → Invitations |
 | Create a space without Discord | Instance → Spaces → Create a space |
 | Link a space to a Discord server, or unlink it | Instance → Spaces → Link to Discord / Unlink from Discord |
+| Sign in with Google, Microsoft or an OpenID Connect provider (Keycloak, Authentik…) | Instance → Sign-in, then Profile → Sign-in → Link |
+| Turn off the Discord sign-in (the bot stays) | Instance → Sign-in |
 | One card per person, gathering their Discord account and e-mail address | Support → Contacts |
 | Let people without Discord open tickets | Settings → Features → Member web space → « Open to everyone by e-mail » |
 | Start an instance without Discord at all | `DISCORD_TOKEN` empty, first account through the install token ([installation](./installation)) |

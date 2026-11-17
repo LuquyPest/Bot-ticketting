@@ -8,7 +8,14 @@ const ticket = (id, o = {}) => ({ id, owner_id: '2000000000000000' + String(id).
 export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(now - (n - 1 - i) * 864e5).toISOString().slice(0, 10), count: (i * 7) % 5 + 1 }));
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
-  '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com' },
+  '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/instance/login-providers': {
+    callbackBase: 'https://ticket.example.com/api/auth/oidc', discordApp: true,
+    discord: { enabled: true, configured: true },
+    google: { enabled: true, clientId: '1234-abcd.apps.googleusercontent.com', secretSet: true, configured: true, callbackUrl: 'https://ticket.example.com/api/auth/oidc/google/callback' },
+    microsoft: { enabled: false, clientId: '', tenant: 'common', secretSet: false, configured: false, callbackUrl: 'https://ticket.example.com/api/auth/oidc/microsoft/callback' },
+    oidc: { enabled: false, name: '', issuer: '', clientId: '', secretSet: false, configured: false, callbackUrl: 'https://ticket.example.com/api/auth/oidc/oidc/callback' },
+  },
   '/api/roles': [
     { id: 1, name: 'Modération', color: '#ef4444', position: 0, members: [{ user_id: '2', username: 'Lina', avatar: null }], tags: [{ id: 1, name: 'Litige', color: '#f97316' }] },
     { id: 2, name: 'Comptabilité', color: '#22c55e', position: 1, members: [], tags: [] },
@@ -129,7 +136,7 @@ export const MOCK = {
     stats: { thisMonth: 12, lastMonth: 9, avgRating: 4.6, ratingCount: 20, avgResponseSeconds: 540, allTimeClosed: 120, allTimeClaimed: 140, rank: 1, totalStaff: 5 },
     heatmap: [], recentTickets: [] },
   '/api/profile/2fa': { enabled: true },
-  '/api/profile/login-methods': { account: { id: '1', displayName: 'Daryu', email: null, createdAt: iso(60 * 24 * 90) }, password: false, identities: [{ provider: 'discord', label: 'Discord', subject: '1', createdAt: iso(60 * 24 * 90), lastUsedAt: iso(30) }] },
+  '/api/profile/login-methods': { account: { id: '1', displayName: 'Daryu', email: null, createdAt: iso(60 * 24 * 90) }, password: false, identities: [{ provider: 'discord', label: 'Discord', subject: '1', createdAt: iso(60 * 24 * 90), lastUsedAt: iso(30) }], available: [{ id: 'google', label: 'Google' }] },
   '/api/email': { enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
     smtpHost: 'smtp.example.com', smtpPort: 587, smtpUser: 'support', smtpPasswordSet: true, lastFetchAt: new Date(Date.now() - 60000).toISOString(), lastError: null,
     attachments: { enabled: true, maxMb: 10, quotaMb: 500, retentionDays: 90, postDiscord: true, blocked: ['exe', 'bat'], usage: { files: 12, bytes: 8400000 } } },

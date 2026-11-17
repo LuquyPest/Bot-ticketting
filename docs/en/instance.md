@@ -6,7 +6,7 @@ The **instance** is your install: all its **spaces** (one per support team or co
 
 The **owner of the instance** is the Discord account that owns the bot's application (developer portal → *General Information*). For a team application: the owner and the admins of the team. You can add co-owners with `OWNER_IDS` in `.env`.
 
-- They sign in to the dashboard with their Discord account, like everyone: no separate account, no password.
+- They sign in to the dashboard like everyone, with the [ways to sign in](#ways-to-sign-in) of the instance.
 - They are a **founder in every space** of the instance.
 - Only they see the list of all spaces at sign-in, get the bot's invite link and reach the **Instance** section (Administration menu, or `/instance`).
 
@@ -30,10 +30,28 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 |---|---|
 | **Overview** | Spaces, open tickets, tickets per day over 30 days, staff, errors of the last 24 hours, table per space |
 | **Spaces** | Create, link to Discord or unlink, suspend, reactivate, put in maintenance, delete (its database is erased, the bot leaves the linked Discord server); name or remove founders |
+| **Sign-in** | The [ways to sign in](#ways-to-sign-in) to the dashboard: Discord, Google, Microsoft, OpenID Connect |
 | **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database; demonstration space, [Prometheus metrics](#monitoring-prometheus) |
 | **Errors** | Central log of the errors of the bot, the dashboard and browsers, with filters; **alert** by DM (to the owner by default) or webhook beyond a threshold, and when the bot is disconnected from Discord |
 | **Log** | Every change made from the section, with its author and the space concerned |
 | **Blocks** | IP addresses blocked by the sign-in or API limits, with unblocking |
+
+## Ways to sign in
+
+**Instance → Sign-in** chooses how people sign in to the dashboard. **E-mail address and password** always remain possible: it is the fallback if a provider is down.
+
+| Provider | To set |
+|---|---|
+| **Discord** | Nothing: it uses the instance's Discord application. **On** for an instance coming from v3 |
+| **Google** | Google Cloud console → APIs & Services → Credentials → *OAuth client ID* (Web application): paste the ID and the secret |
+| **Microsoft** | Azure portal → Microsoft Entra ID → *App registrations* (Web platform), then *Certificates & secrets*. Directory: `common` (every account), `organizations` (work accounts) or your directory ID |
+| **OpenID Connect** | Keycloak, Authentik, Okta, Zitadel…: a display name, the provider address (*issuer*, in `https://`), the ID and secret of a confidential client |
+
+Each provider shows its **redirect address**, to declare as is on its side (`https://your-domain/api/auth/oidc/google/callback`, etc.). Secrets are encrypted in the database, never shown again, and masked in the instance journal.
+
+**Who can sign in this way**: nobody gets an account by signing in; accounts come from [invitations](./team#accounts), from Discord or from the installation. At the first Google, Microsoft or OpenID Connect sign-in, the identity is linked to the account with **the same confirmed e-mail address**, and only if the provider vouches for that address. Otherwise everyone links it themselves from **Profile → Sign-in → Link**, once signed in. Microsoft does not vouch for its accounts' addresses: unless your application returns the optional claim `xms_edov`, everyone links Microsoft from their profile.
+
+**Discord**: turning off the Discord sign-in does not turn off the integration (bot, DMs, channels, panels); the member space also keeps its Discord sign-in for requesters. You cannot turn off the last way to sign in of your own account: first set a password or link another provider in **Profile → Sign-in**.
 
 ## Demonstration
 

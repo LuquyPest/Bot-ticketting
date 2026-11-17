@@ -38,7 +38,7 @@ features:
     link: /guide/equipe
     linkText: Organiser l'équipe
   - title: À toi, sans intermédiaire
-    details: Le propriétaire de l'application Discord administre son instance. Pas de compte à créer, sauvegardes chiffrées, mises à jour en une commande.
+    details: Ton instance, tes moyens de connexion (Discord, Google, Microsoft, OpenID Connect, mot de passe), sauvegardes chiffrées, mises à jour en une commande.
     link: /guide/instance
     linkText: La section Instance
   - title: Sécurité sérieuse

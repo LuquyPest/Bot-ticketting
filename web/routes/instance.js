@@ -23,8 +23,12 @@ router.get('/info', async (req, res) => {
     demo: await demoEnabled(),
     privacyUrl: config.privacyUrl || null,
     contactEmail: config.contactEmail || (/@/.test(config.vapid?.contact || '') ? config.vapid.contact.replace(/^mailto:/, '') : null),
-    // v4: the Discord sign-in only when its application is configured; the first installation
-    discordLogin: !!(config.clientId && config.dashboard?.discordClientSecret),
+    // v4: the sign-in providers turned on in Instance → Connexion (Discord only with its
+    // application); the first installation
+    ...await (async () => {
+      const active = await require('../../utils/loginProviders').activeProviders().catch(() => []);
+      return { discordLogin: active.some(p => p.id === 'discord'), providers: active.filter(p => p.id !== 'discord') };
+    })(),
     setupNeeded: await require('../../utils/installation').setupNeeded(client).catch(() => false),
   });
 });
@@ -32,6 +36,27 @@ router.get('/info', async (req, res) => {
 router.use(requireOwner);
 // Every successful change made from the section is journaled (instance_audit_log)
 router.use(instanceAuditMiddleware);
+
+// ─── SIGN-IN PROVIDERS (v4) ──────────────────────────────────────────────────
+
+// GET /api/instance/login-providers — Instance → Connexion (secrets never sent back)
+router.get('/login-providers', async (req, res, next) => {
+  try { res.json(await require('../../utils/loginProviders').publicSettings()); } catch (err) { next(err); }
+});
+
+// PUT /api/instance/login-providers { discord: { enabled }, google: { enabled, clientId, clientSecret }, … }
+// Refused if the owner making the change would keep no way to sign in
+router.put('/login-providers', async (req, res, next) => {
+  const lp = require('../../utils/loginProviders');
+  try {
+    const r = await lp.prepare(req.body);
+    if (r.error) return res.status(400).json({ error: r.error });
+    const left = await lp.methodsLeft(req.owner.id, lp.usableWith(r.settings));
+    if (!left.length) return res.status(400).json({ error: 'Tu n\'aurais plus aucun moyen de te connecter : définis d\'abord un mot de passe ou relie un autre fournisseur dans Profil → Connexion' });
+    await lp.save(r.settings);
+    res.json(await lp.publicSettings());
+  } catch (err) { next(err); }
+});
 
 // ─── GUILDS ──────────────────────────────────────────────────────────────────
 
