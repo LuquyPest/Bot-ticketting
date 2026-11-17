@@ -105,7 +105,7 @@ Le script pose quelques questions et **génère tout le reste** : mots de passe,
 | Sauvegarder chaque nuit | **o** : une sauvegarde chiffrée de toutes les bases, chaque nuit, dans `backups/` |
 | Vérifier chaque semaine | **o** : la dernière archive est déchiffrée et testée le dimanche ([détails](./sauvegardes#verification-automatique)) |
 | Copier hors du serveur | Facultatif : l'assistant de rclone crée la destination (S3, Backblaze, SFTP…) — [détails](./sauvegardes#ailleurs-que-sur-le-serveur) |
-| Bouton « Mettre à jour » | Facultatif : mises à jour depuis le dashboard — [ce que ça implique](./mise-a-jour#mettre-a-jour-depuis-le-dashboard) |
+| Bouton « Mettre à jour » | **o** (par défaut) : mises à jour en un clic depuis le dashboard — [ce que ça implique](./mise-a-jour#mettre-a-jour-depuis-le-dashboard) |
 
 Tout est écrit dans le fichier `.env`, privé (lisible par toi seul). Garde-en une copie hors du serveur : il contient les clés qui déchiffrent les transcripts et les sauvegardes.
 

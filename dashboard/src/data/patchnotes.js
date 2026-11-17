@@ -18,6 +18,16 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v3.2.1',
+    date: '17 novembre 2026',
+    title: 'Bouton « Mettre à jour » par défaut',
+    titleEn: '« Update » button by default',
+    changes: [
+      { type: 'impr', text: 'scripts/setup.sh active par défaut le service de mise à jour (bouton « Mettre à jour » du dashboard) : il suffit d\'appuyer sur Entrée ; « n » le laisse de côté', en: 'scripts/setup.sh turns on the update service by default (« Update » button of the dashboard): just press Enter; « n » leaves it out' },
+      { type: 'tech', text: 'web-push 4.0 (notifications push) ; Mermaid reste en 11 pour le site de documentation, le temps que son extension VitePress accepte la 12', en: 'web-push 4.0 (push notifications); Mermaid stays on 11 for the documentation site until its VitePress plugin accepts 12' },
+    ]
+  },
+  {
     version: 'v3.2.0',
     date: '15 novembre 2026',
     title: 'Six langues partout',

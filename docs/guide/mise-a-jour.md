@@ -8,7 +8,9 @@ Une fois par jour, l'instance regarde la dernière version publiée sur GitHub. 
 
 ## Mettre à jour depuis le dashboard
 
-Avec le service facultatif `updater`, un bouton **Mettre à jour** apparaît dans **Instance → Santé** quand une version est disponible. Un clic : l'image est téléchargée, le bot redémarre (une minute environ) et le résultat s'affiche.
+Avec le service `updater`, un bouton **Mettre à jour** apparaît dans **Instance → Santé** quand une version est disponible. Un clic : l'image est téléchargée, le bot redémarre (une minute environ) et le résultat s'affiche.
+
+`scripts/setup.sh` l'active par défaut. Sur une installation faite sans lui (ou avant la v3.2.1) :
 
 1. Dans `.env` :
    ```bash

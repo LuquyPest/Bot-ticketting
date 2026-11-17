@@ -92,7 +92,7 @@ t "Bouton « Mettre à jour » dans le dashboard : un petit service a alors acc�
   "« Update » button in the dashboard: a small service then gets access to Docker to restart the bot
 (equivalent to administrator access to the machine, kept apart from the bot)."
 echo
-ask UPDATER "$(t "L'activer ? (o/n)" "Enable it? (y/n)")" "$NY"
+ask UPDATER "$(t "L'activer ? (o/n, recommandé)" "Enable it? (y/n, recommended)")" "$YN"
 is_yes "$UPDATER" && COMPOSE_FILE="$COMPOSE_FILE:docker-compose.updater.yml"
 TZ_HOST="$(cat /etc/timezone 2>/dev/null || timedatectl show -p Timezone --value 2>/dev/null || echo UTC)"
 echo

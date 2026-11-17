@@ -8,7 +8,9 @@ Once a day, the instance looks at the latest version published on GitHub. When t
 
 ## Update from the dashboard
 
-With the optional `updater` service, an **Update** button shows up in **Instance → Health** when a version is available. One click: the image is downloaded, the bot restarts (about a minute) and the result is shown.
+With the `updater` service, an **Update** button shows up in **Instance → Health** when a version is available. One click: the image is downloaded, the bot restarts (about a minute) and the result is shown.
+
+`scripts/setup.sh` turns it on by default. On an install made without it (or before v3.2.1):
 
 1. In `.env`:
    ```bash

@@ -105,7 +105,7 @@ The script asks a few questions and **generates everything else**: passwords, en
 | Back up every night | **y**: an encrypted backup of every database, every night, in `backups/` |
 | Check every week | **y**: the latest archive is decrypted and tested on Sundays ([details](./backups#automatic-check)) |
 | Copy off the server | Optional: the rclone wizard creates the destination (S3, Backblaze, SFTP…) — [details](./backups#off-the-server) |
-| « Update » button | Optional: updates from the dashboard — [what it implies](./updates#update-from-the-dashboard) |
+| « Update » button | **y** (default): one-click updates from the dashboard — [what it implies](./updates#update-from-the-dashboard) |
 
 Everything is written to the `.env` file, private (readable by you only). Keep a copy of it off the server: it holds the keys that decrypt the transcripts and the backups.
 
