@@ -19,6 +19,7 @@ import { now, MOCK, PNG } from './fixtures.mjs';
 // [name, path, text that must be visible, anonymous visitor]
 const PAGES = [
   ['login', '/login', 'Discord', true],
+  ['reset-password', '/reset-password', 'Mot de passe oublié', true],
   ['dashboard', '/', 'Nouveautés depuis ta dernière visite'],
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Voici la capture'],

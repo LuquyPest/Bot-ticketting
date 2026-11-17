@@ -97,7 +97,28 @@ router.get('/guilds', async (req, res) => {
   }
 
   const accessToken = req.session.discordAccessToken;
-  if (!accessToken) return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });
+  // Signed in without Discord (e-mail and password): the active servers where the account is in the
+  // team, every active server for the owner of the instance — nothing is asked to Discord
+  if (!accessToken) {
+    if (req.session.authMethod !== 'password') return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });
+    try {
+      const owner = await isOwner(req.app.locals.client, req.session.user.id);
+      const active = await globalQuery("SELECT guild_id, guild_name, guild_icon FROM guilds WHERE status = 'active'");
+      const out = [];
+      for (const g of active) {
+        let member = owner;
+        if (!member) {
+          const [row] = await getTenantDb(g.guild_id)('SELECT role FROM dashboard_users WHERE user_id = ? AND role IN (\'support\', \'fondateur\')', [req.session.user.id]).catch(() => []);
+          member = !!row;
+        }
+        if (member) out.push({ id: g.guild_id, name: g.guild_name || g.guild_id, icon: null, iconUrl: g.guild_icon || null, status: 'active' });
+      }
+      return res.json(out);
+    } catch (err) {
+      console.error('auth/guilds (password) error:', err.message);
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
+  }
 
   try {
     const { data: discordGuilds } = await axios.get(
@@ -216,12 +237,14 @@ router.post('/select-guild', async (req, res) => {
     });
     const userData     = { ...req.session.user, role: dbUser.role };
     const accessToken  = req.session.discordAccessToken;
+    const authMethod   = req.session.authMethod;
 
     // Regenerate session ID after privilege change (prevents session fixation)
     req.session.regenerate(regenErr => {
       if (regenErr) return res.status(500).json({ error: 'Erreur serveur' });
       req.session.user               = userData;
       req.session.discordAccessToken = accessToken;
+      if (authMethod) req.session.authMethod = authMethod;
       req.session.currentGuildId     = guildId;
       res.json({ ok: true, guildId, role: dbUser.role });
     });
@@ -404,6 +427,7 @@ router.post('/totp-verify-login', async (req, res) => {
         role:     null,
       };
       req.session.discordAccessToken = pending.discordAccessToken;
+      if (pending.method === 'password') req.session.authMethod = 'password';
       req.session.lastActivityAt = Date.now();
       req.session.save(() => trackSession(req, pending.userId));
       res.json({ ok: true, redirect: '/select-guild' });
@@ -427,3 +451,5 @@ router.post('/logout', (req, res) => {
 });
 
 module.exports = router;
+// Shared with the e-mail and password sign-in (routes/passwordAuth.js)
+module.exports.helpers = { getClientIp, logLogin, trackSession, checkNewDeviceAlert };

@@ -7,12 +7,23 @@ The project has been through several audits, including an OWASP Top 10 audit, al
 | | |
 |---|---|
 | **Accounts** | One account per person, created at their first sign-in and can be disabled; **Profile → Sign-in** lists its sign-in methods |
-| **Sign-in** | Discord OAuth2 (more methods arrive with v4), with state verification (CSRF protection of the OAuth return) |
+| **Sign-in** | Discord OAuth2, with state verification (CSRF protection of the OAuth return); or e-mail address and password (see below) |
+| **Passwords** | Hashed with scrypt (salt per account), at least 10 characters; 10 failures in 15 minutes lock the password sign-in of the account; same answer and same computing time whether the address exists or not; the account's 2FA applies |
 | **Sessions** | `Secure`, `HttpOnly`, `SameSite=Lax` cookie, stored in Redis, regenerated on every change of rights, revocable from the profile |
 | **2FA** | TOTP with backup codes, a code never accepted twice, enforceable per server |
 | **New device** | DM to the account holder: device, IP address, date |
 | **Inactivity** | Adjustable automatic sign-out, also checked on the server side |
 | **Limits** | 20 sign-in attempts per 15 minutes and per address, 200 requests per minute on the API, DM anti-flood |
+
+## Signing in without Discord
+
+An account can also sign in with an **e-mail address and a password**, from **Profile → Sign-in**:
+
+1. **E-mail address**: enter it, then open the confirmation link you receive (valid 24 hours, once).
+2. **Password**: at least 10 characters. Changing it closes your other sessions; changing the address removes it.
+3. On the sign-in page, **E-mail address** and **Password** under the Discord button. **Forgot your password?** sends a link valid 30 minutes; using it closes every session of the account.
+
+These e-mails go out through the [e-mail of the instance](./instance#e-mail-of-the-instance), to be set up first. The password can only be removed if another way to sign in remains (Discord).
 
 ## Access to data
 

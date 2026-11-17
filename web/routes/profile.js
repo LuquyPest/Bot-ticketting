@@ -237,6 +237,70 @@ router.get('/login-methods', requireAuth, async (req, res, next) => {
   try { res.json(await require('../../utils/accounts').loginMethods(req.session.user.id)); } catch (err) { next(err); }
 });
 
+// POST /api/profile/email { email } — sends the confirmation link (24 h) to that address; the
+// address is linked to the account only once the link is opened (GET /api/auth/verify-email)
+router.post('/email', requireAuth, async (req, res) => {
+  const accounts = require('../../utils/accounts');
+  const { EMAIL_RE } = require('../../utils/emailTickets');
+  const email = accounts.normEmail(req.body?.email);
+  if (req.session.user.demo) return res.status(403).json({ error: 'Indisponible dans la démonstration' });
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Adresse e-mail invalide' });
+  if (!(await require('../../utils/rateLimit').allowBurst(`verifyemail:${req.session.user.id}`, 3, 15 * 60 * 1000))) return res.status(429).json({ error: 'Trop d\'envois, patiente un quart d\'heure' });
+  try {
+    if (await accounts.emailTaken(email, req.session.user.id)) return res.status(409).json({ error: 'Adresse déjà utilisée par un autre compte' });
+    const token = await require('../../utils/authTokens').createToken('verifyemail', { accountId: req.session.user.id, email }, 24 * 3600);
+    const base = (require('../../utils/config').config.webServerBaseUrl || '').replace(/\/$/, '');
+    await require('../../utils/instanceMail').sendInstanceMail({
+      to: email, template: 'verifyEmail', lang: /^fr\b/i.test(req.get('Accept-Language') || 'fr') ? 'fr' : 'en',
+      vars: { link: `${base}/api/auth/verify-email?token=${encodeURIComponent(token)}`, hours: 24 },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.status ? err.message : 'Envoi de l\'e-mail impossible' });
+  }
+});
+
+// POST /api/profile/password { current, password } — sets or changes the password (an address
+// confirmed first: it is the identifier to sign in); the current one is asked to change it
+router.post('/password', requireAuth, async (req, res) => {
+  const accounts = require('../../utils/accounts');
+  const { hashPassword, verifyPassword, passwordProblem } = require('../../utils/passwords');
+  if (req.session.user.demo) return res.status(403).json({ error: 'Indisponible dans la démonstration' });
+  try {
+    const account = await accounts.getAccount(req.session.user.id);
+    if (!account?.email || !account.email_verified) return res.status(400).json({ error: 'Relie et confirme d\'abord une adresse e-mail' });
+    if (account.has_password) {
+      if (!(await require('../../utils/rateLimit').allowBurst(`pwchange:${account.id}`, 5, 15 * 60 * 1000))) return res.status(429).json({ error: 'Trop de tentatives, patiente un quart d\'heure' });
+      if (!(await verifyPassword(String(req.body?.current || ''), await accounts.passwordHashOf(account.id)))) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+    }
+    const problem = passwordProblem(req.body?.password, { email: account.email });
+    if (problem) return res.status(400).json({ error: problem });
+    await accounts.setPasswordHash(account.id, await hashPassword(req.body.password));
+    // The other sessions of the account are closed when the password changes
+    if (account.has_password) await require('../../utils/sessionsRevoke').revokeAllSessions(account.id, { except: req.session.id });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('profile password error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/profile/password { current } — only if another way to sign in remains (Discord)
+router.delete('/password', requireAuth, async (req, res) => {
+  const accounts = require('../../utils/accounts');
+  try {
+    const m = await accounts.loginMethods(req.session.user.id);
+    if (!m.password) return res.json({ ok: true });
+    if (!m.identities.length) return res.status(400).json({ error: 'C\'est ton seul moyen de connexion : il ne peut pas être retiré' });
+    if (!(await require('../../utils/passwords').verifyPassword(String(req.body?.current || ''), await accounts.passwordHashOf(req.session.user.id)))) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+    await accounts.setPasswordHash(req.session.user.id, null);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('profile password delete error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/2fa', requireAuth, async (req, res) => {
   try {
     const [row] = await globalQuery('SELECT totp_enabled FROM user_totp WHERE user_id = ?', [req.session.user.id]);
