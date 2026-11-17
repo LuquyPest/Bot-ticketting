@@ -56,9 +56,9 @@ async function registerGuild(client, guild, { inviter = null, notify = true } = 
 
   if (!existing) {
     await globalQuery(
-      `INSERT INTO guilds (guild_id, guild_name, guild_icon, owner_discord_id, owner_discord_tag, inviter_discord_id, inviter_discord_tag, status, db_name, member_count)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
-      [guild.id, guild.name, guild.iconURL() || null, ownerId, ownerTag, inviter?.id || ownerId, inviter?.tag || ownerTag, getDbName(guild.id), guild.memberCount]
+      `INSERT INTO guilds (guild_id, guild_name, guild_icon, owner_discord_id, owner_discord_tag, inviter_discord_id, inviter_discord_tag, status, db_name, member_count, discord, discord_guild_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 1, ?)`,
+      [guild.id, guild.name, guild.iconURL() || null, ownerId, ownerTag, inviter?.id || ownerId, inviter?.tag || ownerTag, getDbName(guild.id), guild.memberCount, guild.id]
     );
     const [row] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [guild.id]);
     await activateGuild(client, row, { notify });

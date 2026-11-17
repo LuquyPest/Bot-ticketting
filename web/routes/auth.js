@@ -103,7 +103,7 @@ router.get('/guilds', async (req, res) => {
     if (req.session.authMethod !== 'password') return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });
     try {
       const owner = await isOwner(req.app.locals.client, req.session.user.id);
-      const active = await globalQuery("SELECT guild_id, guild_name, guild_icon FROM guilds WHERE status = 'active'");
+      const active = await globalQuery("SELECT guild_id, guild_name, guild_icon FROM guilds WHERE status = 'active' AND guild_id <> '999999999999999999'");
       const out = [];
       for (const g of active) {
         let member = owner;
@@ -128,13 +128,11 @@ router.get('/guilds', async (req, res) => {
 
     const MANAGE_GUILD = BigInt(0x20);
     const canManage = g => g.owner || ((BigInt(g.permissions) & MANAGE_GUILD) !== 0n);
-    if (!discordGuilds.length) return res.json([]);
-
     const ids = discordGuilds.map(g => g.id);
-    const dbGuilds = await globalQuery(
+    const dbGuilds = ids.length ? await globalQuery(
       `SELECT guild_id, status FROM guilds WHERE guild_id IN (${ids.map(() => '?').join(',')})`,
       ids
-    );
+    ) : [];
     const dbMap = new Map(dbGuilds.map(g => [g.guild_id, g.status]));
 
     // The owner of the instance sees every server they manage (to invite the bot); others see the
@@ -161,6 +159,8 @@ router.get('/guilds', async (req, res) => {
         : null,
       status: dbMap.get(g.id) ?? 'not_added',
     }));
+    // Spaces without a Discord server, where the account is in the team (all of them for the owner)
+    result.push(...await require('../../utils/spaces').discordlessSpacesFor(req.session.user.id, { owner }));
 
     res.json(result);
   } catch (err) {

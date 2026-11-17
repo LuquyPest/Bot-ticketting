@@ -3163,6 +3163,49 @@ async function main() {
     nodemailer.createTransport = realCreate;
   }
 
+  // ── Spaces without a Discord server (utils/spaces.js, v4 PR 7a) ──
+  {
+    const spaces = app('./utils/spaces');
+    const [gRow] = await globalQuery('SELECT discord, created_by FROM guilds WHERE guild_id = ?', [G]);
+    check('espaces: un serveur existant reste un serveur Discord', Number(gRow.discord) === 1 && gRow.created_by === null, JSON.stringify(gRow));
+    r = await req('POST', '/api/instance/guilds', { sid: sessions.NOWN, body: { name: 'Équipe e-mail' } });
+    const empty = await req('POST', '/api/instance/guilds', { sid: sessions.OWN, body: { name: '   ' } });
+    check('espaces: création réservée au propriétaire, nom obligatoire', r.status === 403 && empty.status === 400, [r.status, empty.status].join());
+    r = await req('POST', '/api/instance/guilds', { sid: sessions.OWN, body: { name: '  Équipe   e-mail ' } });
+    const SP = r.body.id;
+    const [sRow] = await globalQuery('SELECT guild_name, discord, discord_guild_id, created_by, status FROM guilds WHERE guild_id = ?', [SP]);
+    const sdb = getTenantDb(SP);
+    const [sCfg] = await sdb('SELECT ticket_mode FROM guild_config WHERE id = 1');
+    const [sFounder] = await sdb('SELECT role FROM dashboard_users WHERE user_id = ?', [U.F]);
+    check('espaces: espace sans Discord créé (identifiant 9…, base prête, aucun salon, créateur fondateur)', r.status === 200 && spaces.SPACE_ID_RE.test(SP) && sRow.guild_name === 'Équipe e-mail' && Number(sRow.discord) === 0 && sRow.discord_guild_id === null && sRow.created_by === U.F && sRow.status === 'active' && sCfg.ticket_mode === 'database' && sFounder?.role === 'fondateur', JSON.stringify([r.body, sRow, sCfg, sFounder]));
+    const [aud] = await globalQuery("SELECT COUNT(*) AS n FROM instance_audit_log WHERE action = 'space_create'");
+    check('espaces: création inscrite au journal de l instance', Number(aud.n) >= 1, '');
+    const { Client } = require('discord.js');
+    const realC = new Client({ intents: [] });
+    const errG = await realC.guilds.fetch(SP).then(() => null, e => e);
+    check('espaces: jamais demandé à Discord', errG?.code === 10004, String(errG));
+    await realC.destroy();
+    // Listed for the owner, whatever the way they signed in
+    await mk('OWNP', { user: { id: U.F, username: 'F', role: null }, authMethod: 'password' });
+    r = await req('GET', '/api/auth/guilds', { sid: sessions.OWNP });
+    const axios = require('axios');
+    const realGet = axios.get;
+    axios.get = async url => (String(url).includes('/users/@me/guilds') ? { data: [] } : realGet(url));
+    await mk('OWND', { user: { id: U.F, username: 'F', role: null }, discordAccessToken: 'tok' });
+    const viaDiscord = await req('GET', '/api/auth/guilds', { sid: sessions.OWND });
+    axios.get = realGet;
+    check('espaces: listé pour le propriétaire (connexion par mot de passe ou Discord)', r.body.some(g => g.id === SP) && viaDiscord.body.some(g => g.id === SP && g.discord === false), JSON.stringify([r.body.map(g => g.id), viaDiscord.body]));
+    r = await req('POST', '/api/auth/select-guild', { sid: sessions.OWNP, body: { guildId: SP } });
+    check('espaces: on entre dans l espace comme dans un serveur', r.status === 200 && r.body.role === 'fondateur', JSON.stringify(r.body));
+    // A ticket in this space has no channel, whatever its setting
+    await sdb("UPDATE guild_config SET ticket_mode = 'auto' WHERE id = 1");
+    const resS = await createManager(sdb, fakeClient, SP).createTicket({ id: '200000000000000081', username: 'm81', tag: 'm81', send: async () => {} }, 'Bonjour', [], 'Espace');
+    check('espaces: ticket sans salon même si le format dit « salons »', resS.created && app('./utils/virtualChannel').isVirtualChannelId(resS.ticket.channel_id), JSON.stringify(resS.ticket));
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [SP]);
+    await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${SP}\``);
+    await spaces.refresh();
+  }
+
   // ── Without Discord (v4 PR 6): optional token, first owner by install token ──
   {
     const inst = app('./utils/instance');

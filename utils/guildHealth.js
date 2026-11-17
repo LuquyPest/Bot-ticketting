@@ -142,7 +142,7 @@ async function runGuildHealthCheck(client, onlyGuildId = null) {
   if (!client?.isReady?.()) return [];
   const { globalQuery } = require('./globalDb');
   const { getTenantDb } = require('./tenantDb');
-  const guilds = await globalQuery("SELECT guild_id, guild_name FROM guilds WHERE status = 'active'" + (onlyGuildId ? ' AND guild_id = ?' : ''), onlyGuildId ? [onlyGuildId] : []);
+  const guilds = await globalQuery("SELECT guild_id, guild_name FROM guilds WHERE status = 'active' AND discord = 1" + (onlyGuildId ? ' AND guild_id = ?' : ''), onlyGuildId ? [onlyGuildId] : []);
   const sent = [];
   for (const g of guilds) {
     try {

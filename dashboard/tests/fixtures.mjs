@@ -100,7 +100,7 @@ export const MOCK = {
     totals: { tickets: 340, openTickets: 12, opened30d: 80, closed30d: 75, staff: 9 },
     daily: Array.from({ length: 30 }, (_, i) => ({ day: new Date(now - (29 - i) * 864e5).toISOString().slice(0, 10), opened: (i * 7) % 6, closed: (i * 5) % 5 })),
     perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, staff: 5, opened30d: 50, avgRating: 4.5 }] },
-  '/api/instance/guilds': [{ guild_id: '1', guild_name: 'Sunset FA', guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: 1200, created_at: iso(60 * 24 * 30) }],
+  '/api/instance/guilds': [{ guild_id: '9123456789012345678', guild_name: 'Support e-mail', guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: null, discord: 0, created_at: iso(60) }, { guild_id: '1', guild_name: 'Sunset FA', discord: 1, guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: 1200, created_at: iso(60 * 24 * 30) }],
   '/api/instance/blocked': { ips: [] },
   '/api/instance/health': {
     now: Date.now(), discord: { ok: true, status: 'prêt', pingMs: 42, guilds: 2, user: 'Ticket Bot#0001' },

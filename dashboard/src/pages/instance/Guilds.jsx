@@ -157,6 +157,33 @@ function FoundersModal({ guild, onClose }) {
   );
 }
 
+// A space without a Discord server (v4): tickets by e-mail, member space and dashboard only
+function NewSpace({ onCreated }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const create = async e => {
+    e.preventDefault();
+    setBusy(true);
+    try { await api.post('/instance/guilds', { name }); toast.success(`Espace « ${name} » créé`); setName(''); setOpen(false); onCreated(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-white">
+      Créer un espace
+    </button>
+  );
+  return (
+    <form onSubmit={create} className="flex items-center gap-2">
+      <input value={name} onChange={e => setName(e.target.value)} maxLength={100} autoFocus required placeholder="Nom de l'espace" aria-label="Nom de l'espace"
+        className="bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1 w-56" />
+      <button type="submit" disabled={busy || !name.trim()} className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-white disabled:opacity-50">Créer</button>
+      <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1">Annuler</button>
+    </form>
+  );
+}
+
 export default function Guilds() {
 
   const [guilds, setGuilds]       = useState([]);
@@ -241,12 +268,15 @@ export default function Guilds() {
           <h1 className="text-lg font-bold text-ink-1">Serveurs</h1>
           <p className="text-sm text-ink-3">{guilds.length} serveur(s) enregistré(s)</p>
         </div>
-        <button onClick={load} disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-ink-3
-                     hover:text-ink-1 hover:bg-overlay/5 transition-all border border-overlay/6">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <NewSpace onCreated={load} />
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-ink-3
+                       hover:text-ink-1 hover:bg-overlay/5 transition-all border border-overlay/6">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Tabs + search */}
@@ -306,7 +336,7 @@ export default function Guilds() {
                           <GuildIcon guild={guild} />
                           <div>
                             <p className="text-sm font-semibold text-ink-1 leading-tight">{guild.guild_name}</p>
-                            <p className="text-[10px] text-ink-4 font-mono">{guild.guild_id}</p>
+                            <p className="text-[10px] text-ink-4 font-mono">{guild.guild_id}{Number(guild.discord) === 0 ? <span className="ml-1.5 font-sans text-ink-3">· sans Discord</span> : ''}</p>
                           </div>
                         </div>
                       </td>

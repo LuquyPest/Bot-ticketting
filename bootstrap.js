@@ -220,6 +220,13 @@ async function ensureGlobalTables(config) {
         UNIQUE KEY uq_accounts_email (email)
       )`,
       `ALTER TABLE login_logs MODIFY status ENUM('success','2fa_required','blocked','disabled') NOT NULL DEFAULT 'success'`,
+      // Spaces (v4 PR 7): discord = 0 for a space without a Discord server (created from the
+      // dashboard); every other row — a server the bot joined — is a Discord one by default.
+      // discord_guild_id: the Discord server of the space; created_by: who created it from the dashboard.
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS discord TINYINT(1) NOT NULL DEFAULT 1`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS discord_guild_id VARCHAR(32) DEFAULT NULL`,
+      `ALTER TABLE guilds ADD COLUMN IF NOT EXISTS created_by VARCHAR(32) DEFAULT NULL`,
+      `UPDATE guilds SET discord_guild_id = guild_id WHERE discord = 1 AND discord_guild_id IS NULL AND guild_id <> '999999999999999999'`,
       // Owner of the instance without Discord (v4 PR 6, /installation)
       `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS instance_owner TINYINT(1) NOT NULL DEFAULT 0`,
       // Ways to sign in to an account: discord (subject = Discord ID), later oidc:<provider>

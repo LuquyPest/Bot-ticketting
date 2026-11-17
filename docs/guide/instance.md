@@ -20,6 +20,8 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 
 **Plusieurs communautés** : un modèle de réponse créé avec la portée **Tous les serveurs** (fiche ticket → Modèles) est proposé au staff de chacun de tes serveurs, sans être recopié. Le staff l'utilise, toi seul le modifies ; il ne peut pas ajouter de tag, puisque les tags sont propres à chaque serveur.
 
+**Un espace sans Discord** : **Instance → Serveurs → Créer un espace**. C'est un espace de support sans serveur Discord : tickets par [e-mail](./integrations#tickets-par-e-mail), espace membre, dashboard, avec ses propres réglages, son équipe et son journal, comme un serveur. Ses tickets n'ont pas de salon (format « Aucun salon »), et rien n'est jamais demandé à Discord à son sujet. Tu en es fondateur ; il apparaît dans **Mes serveurs** quelle que soit ta façon de te connecter.
+
 ## Les pages
 
 | Page | |
