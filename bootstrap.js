@@ -22,19 +22,21 @@ function readConfig() {
 const where = (envName, key) => `${envName} (variable d'environnement) ou ${key} (config.json)`;
 
 function validateConfig(config) {
-  if (!config.hasFile && !config.token) {
+  if (!config.hasFile && !config.token && !config.database?.password) {
     fail('Aucune configuration trouvée : ni config.json, ni variables d\'environnement. Lance scripts/setup.sh ou lis https://docs.bot.daryu.xyz/guide/installation');
   }
-  if (!config.token)    fail(`Champ manquant : ${where('DISCORD_TOKEN', 'token')}`);
-  if (!config.clientId) fail(`Champ manquant : ${where('DISCORD_CLIENT_ID', 'clientId')}`);
+  // Discord is optional (v4): the bot (DISCORD_TOKEN) and the Discord sign-in (DISCORD_CLIENT_ID +
+  // DISCORD_CLIENT_SECRET) are each used only when configured
+  if (config.token && !config.clientId) fail(`Champ manquant : ${where('DISCORD_CLIENT_ID', 'clientId')} (nécessaire avec DISCORD_TOKEN)`);
+  if (!config.token) info('Sans DISCORD_TOKEN : Datick démarre sans le bot Discord (dashboard, e-mail et API seulement).');
   if (!config.database?.password) fail(`Champ manquant : ${where('DB_PASSWORD', 'database.password')}`);
   if (config.webEnabled !== false) {
     if (!config.webServerBaseUrl) fail(`Champ manquant : ${where('PUBLIC_URL', 'webServerBaseUrl')}`);
     if (!config.dashboard?.sessionSecret) fail(`Champ manquant : ${where('SESSION_SECRET', 'dashboard.sessionSecret')}`);
     if (config.dashboard.sessionSecret.length < 32)
       fail('Secret de session trop court (min 32 caractères) — génère-en un avec : openssl rand -hex 32');
-    if (!config.dashboard?.discordClientSecret) fail(`Champ manquant : ${where('DISCORD_CLIENT_SECRET', 'dashboard.discordClientSecret')}`);
-    if (!config.dashboard?.discordCallbackUrl)  fail(`Champ manquant : ${where('DISCORD_CALLBACK_URL', 'dashboard.discordCallbackUrl')}`);
+    // Discord sign-in: only when both its values are there (else the sign-in page hides it)
+    if (config.clientId && !config.dashboard?.discordClientSecret) info('Sans DISCORD_CLIENT_SECRET : la connexion avec Discord est désactivée.');
     if (!config.webServerBaseUrl.startsWith('https://') && config.dashboard.discordCallbackUrl?.startsWith('https://')) {
       console.warn('⚠️  L\'URL publique utilise http:// mais l\'URL de retour OAuth utilise https://.');
       console.warn('   Le cookie de session sera Secure grâce à l\'URL de retour.');
@@ -218,6 +220,8 @@ async function ensureGlobalTables(config) {
         UNIQUE KEY uq_accounts_email (email)
       )`,
       `ALTER TABLE login_logs MODIFY status ENUM('success','2fa_required','blocked','disabled') NOT NULL DEFAULT 'success'`,
+      // Owner of the instance without Discord (v4 PR 6, /installation)
+      `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS instance_owner TINYINT(1) NOT NULL DEFAULT 0`,
       // Ways to sign in to an account: discord (subject = Discord ID), later oidc:<provider>
       `CREATE TABLE IF NOT EXISTS account_identities (
         provider     VARCHAR(40) NOT NULL,
@@ -285,8 +289,10 @@ async function main() {
     await ensureGlobalDatabase(config);
     await ensureGlobalTables(config);
 
-    await verifyDiscordToken(config);
-    await runNodeScript('deploy-commands.js', 'Déploiement des commandes slash');
+    if (config.token) {
+      await verifyDiscordToken(config);
+      await runNodeScript('deploy-commands.js', 'Déploiement des commandes slash');
+    }
 
     ok('Tout est prêt. Démarrage du bot multitenant.');
     launchBot();
@@ -298,4 +304,4 @@ async function main() {
 // Run when started directly (npm start); the test suite only imports the setup functions.
 if (require.main === module) main();
 
-module.exports = { ensureGlobalDatabase, ensureGlobalTables };
+module.exports = { ensureGlobalDatabase, ensureGlobalTables, validateConfig };

@@ -608,6 +608,14 @@ export const ENTRIES = [
   ['Adresse déjà utilisée par un autre compte', 'Address already used by another account'], ['Relie et confirme d\'abord une adresse e-mail', 'Link and confirm an e-mail address first'],
   ['Mot de passe actuel incorrect', 'Wrong current password'], ['C\'est ton seul moyen de connexion : il ne peut pas être retiré', 'It is your only way to sign in: it cannot be removed'],
   ['Le mot de passe ne doit pas contenir ton adresse e-mail', 'The password must not contain your e-mail address'], ['Mot de passe trop simple', 'Password too simple'],
+  // First installation without Discord (v4)
+  ['Première installation', 'First installation'], ['Ton nom', 'Your name'], ['Jeton d\'installation', 'Install token'],
+  ['Mot de passe (10 caractères au moins)', 'Password (at least 10 characters)'], ['Créer le compte du propriétaire', 'Create the owner\'s account'],
+  ['Crée le compte du propriétaire de l\'instance. Le jeton d\'installation est dans ton', 'Create the account of the owner of the instance. The install token is in your'],
+  ['ou dans les logs du démarrage.', 'or in the start-up logs.'], ['Cette instance a déjà un propriétaire.', 'This instance already has an owner.'],
+  [': crée le compte du propriétaire de l\'instance →', ': create the account of the owner of the instance →'],
+  ['La connexion avec Discord n\'est pas activée sur cette instance.', 'The Discord sign-in is not turned on on this instance.'],
+  ['Jeton d\'installation invalide', 'Invalid install token'], ['L\'instance a déjà un propriétaire', 'The instance already has an owner'],
 ];
 
 export const TEMPLATES = [

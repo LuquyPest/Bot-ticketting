@@ -36,7 +36,11 @@ async function ensureStaffGrades(db) {
 
 // Returns the staff level a Discord member gets from their roles: 'chief', 'support' or null.
 async function discordStaffLevel(client, db, guildId, userId) {
+  // Without the bot, or for an account that is not a Discord one (u_…): Discord cannot tell —
+  // undefined (unknown), which never revokes anything (see syncDiscordStaff)
+  if (!client?.isReady?.() || !/^\d{17,20}$/.test(String(userId))) return undefined;
   const guild = await client?.guilds.fetch(guildId).catch(() => null);
+  if (!guild) return undefined;
   const member = guild && await guild.members.fetch(userId).catch(() => null);
   if (!member) return null;
   const [cfg] = await db('SELECT support_role_ids, chief_role_ids FROM guild_config WHERE id = 1');
@@ -54,6 +58,8 @@ async function syncDiscordStaff(client, db, guildId, user) {
   if (!managedByRole) return row.role;
 
   const level = await discordStaffLevel(client, db, guildId, user.id);
+  // Discord unreachable or not used: the account keeps what it has
+  if (level === undefined) return row?.role || null;
 
   if (!level) {
     // Lost (or never had) the Discord role: revoke what the role had granted

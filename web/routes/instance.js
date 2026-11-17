@@ -23,6 +23,9 @@ router.get('/info', async (req, res) => {
     demo: await demoEnabled(),
     privacyUrl: config.privacyUrl || null,
     contactEmail: config.contactEmail || (/@/.test(config.vapid?.contact || '') ? config.vapid.contact.replace(/^mailto:/, '') : null),
+    // v4: the Discord sign-in only when its application is configured; the first installation
+    discordLogin: !!(config.clientId && config.dashboard?.discordClientSecret),
+    setupNeeded: await require('../../utils/installation').setupNeeded(client).catch(() => false),
   });
 });
 

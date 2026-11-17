@@ -10,12 +10,13 @@ Everything is set in the **`.env`** file at the root of the repository, created 
 
 | Variable | Role |
 |---|---|
-| `DISCORD_TOKEN` | Bot token (developer portal → *Bot* → *Reset Token*) |
+| `DISCORD_TOKEN` | Optional: bot token (developer portal → *Bot* → *Reset Token*). Without it, no bot: dashboard, e-mail and API only |
 | `DISCORD_CLIENT_ID` | Application ID (*General Information*) |
-| `DISCORD_CLIENT_SECRET` | OAuth2 secret (*OAuth2* → *Client Secret*) |
+| `DISCORD_CLIENT_SECRET` | Optional: OAuth2 secret (*OAuth2* → *Client Secret*). With `DISCORD_CLIENT_ID`, turns on the Discord sign-in |
 | `PUBLIC_HOST` | Domain of the dashboard, without `https://` (`tickets.example.com`) |
 | `PUBLIC_URL` | Full public address, in `https://`, without a trailing slash |
 | `DISCORD_CALLBACK_URL` | Optional: by default `PUBLIC_URL` + `/api/auth/discord/callback`, the address to register in the Discord portal |
+| `INSTALL_TOKEN` | Token to create the first owner on `/installation`, without Discord (`setup.sh` generates it); without it, a token is printed in the logs at start-up |
 
 ## HTTPS and containers
 

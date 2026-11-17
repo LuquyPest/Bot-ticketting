@@ -4,6 +4,10 @@ Un serveur, Docker, un nom de domaine : **une vingtaine de minutes**, étape par
 
 *English version: [Installation](../en/installation).*
 
+::: tip Sans Discord ?
+Discord est facultatif. `scripts/setup.sh` demande séparément le **bot Discord** (tickets par MP et salons) et la **connexion avec Discord**. Sans la connexion Discord, il génère un jeton d'installation et affiche l'adresse `https://ton-domaine/installation?token=…` : tu y crées le compte du propriétaire (e-mail, nom, mot de passe). Sans le bot, l'étape 3 ne sert qu'à la connexion, ou se saute entièrement.
+:::
+
 ::: tip Tu utilises Portainer, Coolify, Unraid ou CasaOS ?
 Un fichier compose autonome se colle directement dans ton outil : [Portainer, Coolify, Unraid, CasaOS](./outils).
 :::

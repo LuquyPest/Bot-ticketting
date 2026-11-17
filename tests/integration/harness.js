@@ -3163,6 +3163,61 @@ async function main() {
     nodemailer.createTransport = realCreate;
   }
 
+  // ── Without Discord (v4 PR 6): optional token, first owner by install token ──
+  {
+    const inst = app('./utils/instance');
+    const installation = app('./utils/installation');
+    const cfgD = app('./utils/config').config;
+    const { validateConfig } = app('bootstrap');
+    validateConfig({ hasFile: false, token: '', clientId: '', database: { password: 'x' }, webServerBaseUrl: 'https://t.example.com', dashboard: { sessionSecret: 'x'.repeat(40) } });
+    check('sans Discord: configuration valide sans token ni application Discord', true, '');
+    const JOBS = app('./utils/jobQueue').JOBS;
+    check('sans Discord: tâches propres à Discord marquées (sautées sans le bot)', ['discord-watch', 'guild-health', 'public-stats', 'weekly-report', 'monthly-report'].every(j => JOBS[j].discord) && !JOBS['email-fetch'].discord && !JOBS['retention-purge'].discord, '');
+    // An instance with no owner at all (no Discord application owner)
+    const realApp = fakeClient.application;
+    const realOwners = cfgD.ownerIds;
+    fakeClient.application = { fetch: async () => ({}) };
+    cfgD.ownerIds = [];
+    inst.resetOwnerCache();
+    r = await req('GET', '/api/instance/info');
+    check('sans Discord: installation signalée tant qu il n y a aucun propriétaire', r.status === 200 && r.body.setupNeeded === true, JSON.stringify(r.body));
+    const url = await installation.announceIfNeeded(fakeClient);
+    const token = new URL(url).searchParams.get('token');
+    r = await req('POST', '/api/installation/owner', { headers: { 'X-Forwarded-For': '10.7.0.1' }, body: { token: 'mauvais-jeton-0123456789', email: 'owner@example.com', displayName: 'Propriétaire', password: 'Une-phrase-longue 42' } });
+    check('installation: jeton invalide refusé', r.status === 403, JSON.stringify(r.body)); // ggignore
+    r = await req('POST', '/api/installation/owner', { headers: { 'X-Forwarded-For': '10.7.0.1' }, body: { token, email: 'Owner@Example.com', displayName: 'Propriétaire', password: 'court' } });
+    check('installation: mot de passe trop court refusé', r.status === 400, JSON.stringify(r.body)); // ggignore
+    r = await req('POST', '/api/installation/owner', { headers: { 'X-Forwarded-For': '10.7.0.1' }, body: { token, email: 'Owner@Example.com', displayName: 'Propriétaire', password: 'Une-phrase-longue 42' } }); // ggignore
+    const cookieO = (r.headers['set-cookie'] || []).find(c => c.startsWith('connect.sid='));
+    const [own] = await globalQuery("SELECT id, email, email_verified, instance_owner, password_hash FROM accounts WHERE email = 'owner@example.com'");
+    check('installation: compte du propriétaire créé (u_…), connecté', r.status === 200 && r.body.redirect === '/instance' && !!cookieO && /^u_[0-9a-f]{24}$/.test(own?.id) && Number(own.instance_owner) === 1 && Number(own.email_verified) === 1 && /^scrypt\$/.test(own.password_hash), JSON.stringify([r.body, own && own.id]));
+    check('installation: ce compte est propriétaire de l instance', await inst.isOwner(fakeClient, own.id), '');
+    r = await req('POST', '/api/installation/owner', { headers: { 'X-Forwarded-For': '10.7.0.1' }, body: { token, email: 'autre@example.com', displayName: 'Autre', password: 'Une-phrase-longue 42' } }); // ggignore
+    const info2 = await req('GET', '/api/instance/info');
+    check('installation: plus possible une fois le propriétaire créé', r.status === 410 && info2.body.setupNeeded === false, JSON.stringify([r.body, info2.body.setupNeeded]));
+    r = await req('POST', '/api/auth/password-login', { headers: { 'X-Forwarded-For': '10.7.0.1' }, body: { email: 'owner@example.com', password: 'Une-phrase-longue 42' } }); // ggignore
+    check('installation: le propriétaire se reconnecte par e-mail et mot de passe', r.status === 200, JSON.stringify(r.body));
+    await globalQuery('DELETE FROM accounts WHERE id = ?', [own.id]);
+    fakeClient.application = realApp;
+    cfgD.ownerIds = realOwners;
+    inst.resetOwnerCache();
+    // Discord sign-in off without its application
+    const secret = cfgD.dashboard.discordClientSecret;
+    cfgD.dashboard.discordClientSecret = '';
+    r = await req('GET', '/api/auth/discord', { headers: { 'X-Forwarded-For': '10.7.0.2' } });
+    const infoOff = await req('GET', '/api/instance/info');
+    check('sans Discord: connexion Discord coupée sans son application', r.status === 302 && r.headers.location === '/login?error=discord_off' && infoOff.body.discordLogin === false, JSON.stringify([r.headers.location, infoOff.body.discordLogin]));
+    cfgD.dashboard.discordClientSecret = secret;
+    // Discord cannot tell (bot absent, not a Discord account): access granted by a role is kept
+    const { syncDiscordStaff } = app('./utils/staffSync');
+    const SU = '100000000000000079';
+    await db("INSERT INTO dashboard_users (user_id, username, role, discord_has_role) VALUES (?, 'su', 'support', 1) ON DUPLICATE KEY UPDATE role = 'support', discord_has_role = 1", [SU]);
+    const role = await syncDiscordStaff({ isReady: () => false, guilds: { fetch: async () => null } }, db, G, { id: SU, username: 'su' });
+    const [still] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [SU]);
+    check('sans Discord: un accès donné par un rôle n est pas retiré quand Discord ne répond pas', role === 'support' && still.role === 'support', JSON.stringify([role, still]));
+    await db('DELETE FROM dashboard_users WHERE user_id = ?', [SU]);
+  }
+
   // ── E-mail and password sign-in (routes/passwordAuth.js, v4 PR 5) ──
   {
     const pw = app('./utils/passwords');

@@ -1,7 +1,8 @@
 // The instance and its owner. Whoever installs the bot owns the instance: the owner of the
 // Discord application (or, for an application owned by a team, its owner and admins), plus the
 // accounts listed in OWNER_IDS. The owner manages the instance from the dashboard (« Instance »
-// section) and is founder on every server of the instance. No separate account, no password.
+// section) and is founder on every server of the instance. Without Discord (v4), the first owner is an
+// account created on /installation with the install token (utils/installation.js).
 const { config } = require('./config');
 
 const CACHE_MS = 10 * 60 * 1000;
@@ -32,9 +33,24 @@ async function ownerIds(client) {
   return list;
 }
 
+// Owner accounts created without Discord (v4: /installation, accounts.instance_owner)
+async function isAccountOwner(userId) {
+  try {
+    const [row] = await require('./globalDb').globalQuery('SELECT 1 FROM accounts WHERE id = ? AND instance_owner = 1 AND disabled = 0', [String(userId)]);
+    return !!row;
+  } catch { return false; }
+}
+
 async function isOwner(client, userId) {
   if (!userId) return false;
-  return (await ownerIds(client)).includes(String(userId));
+  return (await ownerIds(client)).includes(String(userId)) || isAccountOwner(userId);
+}
+
+// No owner at all yet: neither on Discord (application, OWNER_IDS) nor among the accounts
+async function hasAnyOwner(client) {
+  if ((await ownerIds(client)).length) return true;
+  const [row] = await require('./globalDb').globalQuery('SELECT 1 FROM accounts WHERE instance_owner = 1 AND disabled = 0 LIMIT 1').catch(() => []);
+  return !!row;
 }
 
 // Name shown in the dashboard, the DMs and the exports: the bot's own Discord name
@@ -48,4 +64,4 @@ function instanceAvatar(client) {
 
 function resetOwnerCache() { cache = { ids: null, at: 0 }; }
 
-module.exports = { ownerIds, isOwner, instanceName, instanceAvatar, resetOwnerCache };
+module.exports = { ownerIds, isOwner, hasAnyOwner, instanceName, instanceAvatar, resetOwnerCache };

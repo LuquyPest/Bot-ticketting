@@ -12,6 +12,7 @@ const ERROR_MESSAGES = {
   no_permission: "Tu n'as pas le rôle requis.",
   oauth_failed:  "Erreur lors de la connexion Discord. Réessaie.",
   account_disabled: "Ce compte est désactivé. Contacte le propriétaire de l'instance.",
+  discord_off: "La connexion avec Discord n'est pas activée sur cette instance.",
   no_code:       "Code OAuth manquant.",
 };
 const EXPIRED_MESSAGES = { idle: 'Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.' };
@@ -117,6 +118,12 @@ export default function Login() {
           <div className="absolute top-0 left-8 right-8 h-px
                           bg-linear-to-r from-transparent via-primary/40 to-transparent rounded-full" />
 
+          {info?.setupNeeded && (
+            <a href="/installation" className="block mb-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-ink-1 hover:bg-primary/15">
+              <strong>Première installation</strong> : crée le compte du propriétaire de l'instance →
+            </a>
+          )}
+          {info?.discordLogin !== false && (<>
           <a
             href="/api/auth/discord"
             className="flex items-center justify-center gap-3 w-full py-3 px-4 rounded-xl
@@ -138,6 +145,7 @@ export default function Login() {
             <span className="text-[10px] text-ink-4 font-medium uppercase tracking-wider">ou</span>
             <div className="h-px flex-1 bg-overlay/6" />
           </div>
+          </>)}
 
           <PasswordForm onError={setError} />
 
