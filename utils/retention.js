@@ -34,6 +34,7 @@ async function runRetentionPurge() {
     instance_audit_log: await purge(globalQuery, 'instance_audit_log', 'created_at', s.instanceAuditDays),
     audit_log: 0,
     transcripts: 0,
+    email_attachments: 0,
   };
 
   const guilds = await globalQuery('SELECT guild_id FROM guilds WHERE status IN ("active", "suspended")');
@@ -42,6 +43,8 @@ async function runRetentionPurge() {
       const db = getTenantDb(g.guild_id);
       report.audit_log += await purge(db, 'audit_log', 'created_at', s.auditLogDays);
       report.transcripts += await purge(db, 'transcript_snapshots', 'created_at', s.transcriptDays);
+      // Attachments of the e-mails: each server's own setting (Paramètres → Intégrations)
+      report.email_attachments += (await require('./emailAttachments').runAttachmentRetention(g.guild_id, db)).files;
     } catch (err) {
       logger.error('retention purge error', { guildId: g.guild_id, err: err.message });
     }

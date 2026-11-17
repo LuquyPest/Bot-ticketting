@@ -47,7 +47,20 @@ Pour les personnes qui ne sont pas sur Discord : chaque e-mail reçu sur l'adres
 
 **Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre.
 
-**Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. Les **pièces jointes** sont listées par leur nom mais pas conservées. L'espace membre reste réservé aux comptes Discord.
+**Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. L'espace membre reste réservé aux comptes Discord.
+
+**Pièces jointes** : gardées sur le serveur, téléchargeables depuis la fiche ticket (sous leur message, aperçu pour les images), avec les mêmes droits que le ticket. Tout se règle dans la même section :
+
+| Réglage | Par défaut |
+|---|---|
+| Conserver les pièces jointes | oui (sinon, seul leur nom est noté) |
+| Taille maximale par fichier | 10 Mo (jusqu'à 25) |
+| Espace total du serveur | 500 Mo ; au-delà, les nouvelles ne sont plus gardées |
+| Garder après la fermeture du ticket | 90 jours (0 = toujours) ; supprimées chaque nuit après ce délai |
+| Types refusés | exécutables et scripts (`exe`, `bat`, `js`, `html`, `svg`…), modifiables |
+| Publier aussi dans le salon Discord | oui, jusqu'à 8 Mo par fichier |
+
+L'espace utilisé s'affiche, avec **Appliquer la conservation maintenant** et **Supprimer celles des tickets fermés**. Une pièce jointe refusée est notée avec la raison (« type refusé », « plus de 10 Mo »…). Les fichiers sont dans le volume Docker `attachments`, hors des sauvegardes nocturnes de la base.
 
 ::: tip Serveur mail sur ton réseau local
 Par sécurité, les serveurs IMAP et SMTP doivent avoir une adresse publique (le bot ne se connecte jamais à une adresse interne choisie depuis le dashboard). Pour un serveur mail chez toi, `EMAIL_ALLOW_PRIVATE_HOSTS=true` dans `.env`.

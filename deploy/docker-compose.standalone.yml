@@ -81,6 +81,9 @@ services:
         condition: service_healthy
     ports:
       - "${WEB_PORT:-3000}:3000"
+    # Attachments of the e-mails received for tickets (Paramètres → Intégrations → Tickets par e-mail)
+    volumes:
+      - attachments:/app/data/attachments
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
@@ -91,3 +94,4 @@ services:
 volumes:
   db_data:
   redis_data:
+  attachments:

@@ -10,8 +10,8 @@
 // opened it (a forged sender cannot write into someone else's ticket without the token).
 // Safety: the IMAP and SMTP hosts must resolve to public addresses (EMAIL_ALLOW_PRIVATE_HOSTS=true
 // for a mail server on the local network), standard ports only; automatic replies, bounces and
-// mailing lists are ignored; 10 messages per hour per sender and 60 new tickets per hour per server;
-// attachments are listed, not kept.
+// mailing lists are ignored; 10 messages per hour per sender and 60 new tickets per hour per server.
+// Attachments: kept or refused per the server's settings (utils/emailAttachments.js).
 const crypto = require('crypto');
 const { config } = require('./config');
 const { getTenantDb } = require('./tenantDb');
@@ -80,6 +80,9 @@ function cleanSettings(input = {}) {
 async function saveEmailSettings(db, input) {
   const { value, error } = cleanSettings(input);
   if (error) return { error };
+  const att = require('./emailAttachments').cleanAttachInput(input.attachments);
+  if (att.error) return { error: att.error };
+  Object.assign(value, att.value || {});
   const cols = Object.keys(value);
   await db(`INSERT INTO email_settings (id, ${cols.join(', ')}) VALUES (1, ${cols.map(() => '?').join(', ')})
             ON DUPLICATE KEY UPDATE ${cols.map(c => `${c} = VALUES(${c})`).join(', ')}`, cols.map(c => value[c]));
@@ -262,8 +265,17 @@ async function processEmailInLang(client, guildId, mail, s) {
   if (await tm.isBlacklisted(ownerId)) return { skipped: 'bloqué' };
   if (!(await require('./rateLimit').allowBurst(`mailin:${guildId}:${ownerId}`, 10, 3600 * 1000))) return { skipped: 'trop de messages' };
 
-  const files = (mail.attachments || []).filter(a => a.contentDisposition !== 'inline').map(a => `📎 ${String(a.filename || 'pièce jointe').slice(0, 100)} (pièce jointe reçue par e-mail, non conservée)`);
-  const body = [newText(mail), ...files].filter(Boolean).join('\n') || '*[aucun texte]*';
+  // Attachments (inline images of a signature excluded): kept or refused per the server's settings
+  const attach = require('./emailAttachments');
+  const decisions = await attach.decide(db, (mail.attachments || []).filter(a => a.contentDisposition !== 'inline' || !a.contentId), s);
+  const body = [newText(mail), ...decisions.map(d => d.line)].filter(Boolean).join('\n') || '*[aucun texte]*';
+  // Once the message is in its ticket: the kept files are written, linked to that note
+  const keepFiles = async ticket => {
+    if (!decisions.some(d => d.keep)) return;
+    const [note] = await db("SELECT MAX(id) AS id FROM ticket_notes WHERE ticket_id = ? AND author_id = ? AND source = 'user'", [ticket.id, ownerId]);
+    const rows = await attach.store(db, guildId, ticket.id, note?.id || null, decisions);
+    if (attach.attachSettings(s).postDiscord) await attach.postToChannel(await tm.channelOf(ticket), rows);
+  };
   await upsertContact(db, address, fromVal?.name || null);
   const user = userFor(ownerId, address, fromVal?.name || null, guildId);
 
@@ -273,6 +285,7 @@ async function processEmailInLang(client, guildId, mail, s) {
     const [t] = await db("SELECT * FROM tickets WHERE id = ? AND owner_id = ? AND status = 'open'", [threadId, ownerId]);
     if (t) {
       await tm.relayToTicket(t, user, body, []);
+      await keepFiles(t).catch(err => console.error('email: pièces jointes', guildId, err.message));
       if (mail.messageId) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [t.id, String(mail.messageId).slice(0, 255)]);
       return { ticketId: t.id, created: false };
     }
@@ -285,6 +298,7 @@ async function processEmailInLang(client, guildId, mail, s) {
   const subject = String(mail.subject || '').replace(/^\s*((re|fwd?|tr|aw|wg)\s*:\s*)+/i, '').trim().slice(0, 100) || null;
   const res = await tm.relayDmToTicket(user, body, [], subject);
   if (!res?.ticket) return { skipped: 'ticket impossible' };
+  await keepFiles(res.ticket).catch(err => console.error('email: pièces jointes', guildId, err.message));
   if (mail.messageId) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [res.ticket.id, String(mail.messageId).slice(0, 255)]);
   if (res.created) await tm.sendWelcomeDm(user, true, subject, res.ticket.id).catch(() => null);
   return { ticketId: res.ticket.id, created: !!res.created };

@@ -22,7 +22,8 @@ RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force \
 FROM alpine:3.24
 RUN apk add --no-cache libstdc++ libgcc \
  && addgroup -g 1000 -S node && adduser -u 1000 -S -G node -h /home/node -s /bin/sh node \
- && mkdir -p /app && chown node:node /app
+ && mkdir -p /app/data/attachments && chown -R node:node /app
+# /app/data/attachments: Docker volume « attachments » (files of the e-mails), owned by the bot
 COPY --from=deps /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 USER node

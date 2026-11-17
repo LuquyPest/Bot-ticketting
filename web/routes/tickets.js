@@ -525,6 +525,41 @@ router.get('/:id/notes', async (req, res) => {
   }
 });
 
+// GET /api/tickets/:id/attachments — files kept from the e-mails of the ticket (tickets by e-mail)
+router.get('/:id/attachments', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json(await require('../../utils/emailAttachments').listForTicket(req.guildDb, ticket.id));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/tickets/:id/attachments/:fileId — download (plain images may be shown in the page)
+router.get('/:id/attachments/:fileId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    await traceConfidential(req, ticket, 'attachment');
+    const found = await require('../../utils/emailAttachments').fileFor(req.guildDb, req.guildId, ticket.id, parseInt(req.params.fileId));
+    if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+    const name = encodeURIComponent(found.row.filename);
+    res.set({
+      'Content-Type': found.inline ? found.row.content_type : 'application/octet-stream',
+      'Content-Disposition': `${found.inline && req.query.inline === '1' ? 'inline' : 'attachment'}; filename*=UTF-8''${name}`,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+      'Cache-Control': 'private, no-store',
+    });
+    res.sendFile(found.file);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.post('/:id/notes', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');

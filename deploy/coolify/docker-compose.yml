@@ -76,6 +76,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - attachments:/app/data/attachments
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
@@ -86,3 +88,4 @@ services:
 volumes:
   db_data:
   redis_data:
+  attachments:
