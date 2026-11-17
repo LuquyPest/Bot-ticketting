@@ -35,6 +35,12 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 
 Un serveur fictif rempli de données réalistes, ouvert à tous depuis la page de connexion (« Découvrir le dashboard ») ou directement à l'adresse `/demo` de ton domaine. **Désactivé par défaut**, il s'active dans **Instance → Santé**. Isolé de tout le reste : aucun MP n'en part, les actions vers Discord et vers l'extérieur sont refusées, et il est remis à zéro chaque nuit.
 
+## E-mail de l'instance
+
+Le serveur d'envoi (SMTP) que Datick utilise pour **écrire lui-même aux personnes** : invitations, liens de connexion, réinitialisations de mot de passe. Il se règle dans **Instance → Santé → E-mail de l'instance** : serveur, port (587, 465, 25 ou 2525), identifiant et mot de passe facultatifs, adresse et nom de l'expéditeur. **Envoyer le test** vérifie tout de suite.
+
+Il est distinct des boîtes de support de chaque espace ([tickets par e-mail](./integrations#tickets-par-e-mail)), avec les mêmes protections : serveur à adresse publique seulement (`EMAIL_ALLOW_PRIVATE_HOSTS=true` pour un serveur chez toi), mot de passe chiffré et jamais réaffiché, chaque modification au journal de l'instance. Les e-mails partent en français ou en anglais selon la personne.
+
 ## Supervision (Prometheus)
 
 Pour suivre l'instance dans **Prometheus**, **Grafana** ou **Uptime Kuma**. **Désactivé par défaut** : **Instance → Santé → Métriques Prometheus → Activer** crée un jeton, affiché une seule fois (seule son empreinte est gardée). L'adresse `https://ton-domaine/metrics` répond alors à qui présente ce jeton, et `404` à tout le monde tant que c'est coupé.

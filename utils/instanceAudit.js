@@ -19,6 +19,8 @@ const ACTIONS = {
   'PUT /demo': 'demo_toggle',
   'POST /demo/reset': 'demo_reset',
   'PUT /metrics': 'metrics_toggle',
+  'PUT /email': 'instance_email_update',
+  'POST /email/test': 'instance_email_test',
   'POST /restore': 'guild_restore_request',
   'POST /restore/:guildId/rollback': 'guild_restore_rollback',
   'DELETE /restore/:guildId/previous': 'guild_restore_drop_prev',

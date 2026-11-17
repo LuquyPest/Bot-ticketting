@@ -482,6 +482,32 @@ router.post('/update', async (req, res) => {
   catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
 });
 
+// ─── E-MAIL OF THE INSTANCE (utils/instanceMail.js) ─────────────────────────
+
+// GET /api/instance/email — SMTP settings (the password is never sent back)
+router.get('/email', async (req, res, next) => {
+  try { res.json(await require('../../utils/instanceMail').mailSettings()); } catch (err) { next(err); }
+});
+
+// PUT /api/instance/email { enabled, host, port, user, password, from, fromName }
+router.put('/email', async (req, res, next) => {
+  try {
+    const { value, error } = await require('../../utils/instanceMail').saveMailSettings(req.body || {});
+    if (error) return res.status(400).json({ error });
+    res.json(value);
+  } catch (err) { next(err); }
+});
+
+// POST /api/instance/email/test { to, lang } — sends the test e-mail (5 per 10 minutes)
+router.post('/email/test', async (req, res) => {
+  if (!(await require('../../utils/rateLimit').allowBurst('instmail:test', 5, 10 * 60 * 1000))) return res.status(429).json({ error: 'Trop d\'essais, patiente quelques minutes' });
+  try {
+    res.json(await require('../../utils/instanceMail').sendInstanceMail({ to: String(req.body?.to || '').trim(), template: 'test', lang: req.body?.lang === 'en' ? 'en' : 'fr' }));
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.status ? err.message : `Envoi impossible : ${String(err.message).slice(0, 200)}` });
+  }
+});
+
 // ─── PROMETHEUS (utils/metrics.js) ───────────────────────────────────────────
 
 // GET /api/instance/metrics — on or off, and since when (the token itself is never shown again)
