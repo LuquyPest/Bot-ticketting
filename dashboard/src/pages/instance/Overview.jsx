@@ -59,7 +59,7 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-        <Kpi label="Serveurs actifs" value={guilds.active} sub={guilds.suspended ? `${guilds.suspended} suspendu(s)` : `${guilds.total} au total`} to="/instance/guilds" />
+        <Kpi label="Espaces actifs" value={guilds.active} sub={guilds.suspended ? `${guilds.suspended} suspendu(s)` : `${guilds.total} au total`} to="/instance/guilds" />
         <Kpi label="Tickets ouverts" value={totals.openTickets} sub={`${totals.tickets} au total`} />
         <Kpi label="Ouverts sur 30 jours" value={totals.opened30d} sub={`${totals.closed30d} fermés`} />
         <Kpi label="Membres du staff" value={totals.staff} />
@@ -83,20 +83,20 @@ export default function Overview() {
 
       <div className={`${card} overflow-hidden`}>
         <div className="px-5 py-4 border-b border-overlay/6">
-          <h2 className="text-sm font-semibold text-ink-1">Serveurs</h2>
+          <h2 className="text-sm font-semibold text-ink-1">Espaces</h2>
         </div>
-        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Serveurs">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Espaces">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-overlay/6">
-                {['Serveur', 'Statut', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.'].map(h => (
+                {['Espace', 'Statut', 'Tickets ouverts', 'Staff', 'Tickets (30 j)', 'Note moy.'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-overlay/4">
               {stats.perGuild.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-4">Aucun serveur</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-ink-4">Aucun espace</td></tr>
               )}
               {stats.perGuild.map(g => (
                 <tr key={g.guild_id} className="hover:bg-overlay/2">

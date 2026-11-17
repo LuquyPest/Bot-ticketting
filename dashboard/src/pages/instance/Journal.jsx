@@ -5,7 +5,7 @@ import api from '../../api';
 import toast from 'react-hot-toast';
 
 const LABELS = {
-  space_create: 'Espace créé', space_discord_link: 'Liaison à un serveur Discord demandée', space_discord_unlink: 'Serveur Discord délié', guild_suspend: 'Serveur suspendu', guild_reactivate: 'Serveur réactivé', guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance',
+  space_create: 'Espace créé', space_discord_link: 'Liaison à un serveur Discord demandée', space_discord_unlink: 'Serveur Discord délié', guild_suspend: 'Espace suspendu', guild_reactivate: 'Espace réactivé', guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance',
   founder_add: 'Fondateur nommé', founder_remove: 'Fondateur retiré', ip_unblock: 'IP débloquée',
   error_delete: 'Erreur supprimée', errors_clear: 'Journal d\'erreurs vidé', error_alert_update: 'Alerte d\'erreurs modifiée', error_alert_test: 'Test de l\'alerte',
   demo_toggle: 'Démonstration activée ou désactivée', demo_reset: 'Démonstration remise à zéro', metrics_toggle: 'Métriques Prometheus activées ou coupées', instance_email_update: 'E-mail de l\'instance modifié', instance_email_test: 'E-mail de test envoyé', guild_restore_request: 'Restauration d\'un serveur demandée', guild_restore_done: 'Serveur restauré', guild_restore_failed: 'Restauration échouée', guild_restore_rollback: 'Restauration annulée', guild_restore_drop_prev: 'Copie d\'avant restauration supprimée', backup_key_view: 'Clé des sauvegardes affichée',
@@ -48,7 +48,7 @@ export default function Journal() {
           <option value="">Toutes les actions</option>
           {Object.entries(LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <input value={filters.guild_id} onChange={e => set('guild_id', e.target.value.trim())} placeholder="ID du serveur" className={`${input} font-mono`} />
+        <input value={filters.guild_id} onChange={e => set('guild_id', e.target.value.trim())} placeholder="ID de l\'espace" className={`${input} font-mono`} />
       </div>
 
       <div className="glass-dark rounded-2xl border border-overlay/8 overflow-hidden">
@@ -61,7 +61,7 @@ export default function Journal() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-[11px] text-ink-4 border-b border-overlay/6">
-                  {['Date', 'Compte', 'Action', 'Serveur', 'Détails', 'IP'].map(h => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}
+                  {['Date', 'Compte', 'Action', 'Espace', 'Détails', 'IP'].map(h => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-overlay/4">

@@ -72,7 +72,7 @@ export default function ContactMember() {
                 {(searching || results.length > 0 || query.trim().length >= 2) && (
                   <ul className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-overlay/8 bg-surface-card shadow-xl" role="listbox">
                     {searching && <li className="px-3 py-2 text-xs text-ink-3">Recherche…</li>}
-                    {!searching && !results.length && <li className="px-3 py-2 text-xs text-ink-4">Aucun membre trouvé sur le serveur</li>}
+                    {!searching && !results.length && <li className="px-3 py-2 text-xs text-ink-4">Aucun membre trouvé sur le serveur Discord</li>}
                     {results.map(m => (
                       <li key={m.id}>
                         <button type="button" role="option" aria-selected="false" onClick={() => { setMember(m); setResults([]); }}

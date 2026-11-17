@@ -12,7 +12,7 @@ L'espace existe en **six langues** — français, anglais, espagnol, allemand, i
 
 ## Sans Discord : connexion par lien e-mail
 
-Dès que l'**e-mail de l'instance** est configuré (Instance → E-mail), la page de connexion propose « Recevoir un lien de connexion » : la personne saisit son adresse et reçoit un lien **valable 15 minutes, à usage unique**. Pas de mot de passe, pas de compte à créer.
+Dès que l'**e-mail de l'instance** est configuré (Instance → Santé), la page de connexion propose « Recevoir un lien de connexion » : la personne saisit son adresse et reçoit un lien **valable 15 minutes, à usage unique**. Pas de mot de passe, pas de compte à créer.
 
 - **Où elle peut ouvrir un ticket** : dans les espaces **ouverts à tous par e-mail** (Paramètres → Fonctionnalités → Espace membre web → « Ouvert à tous par e-mail »). Un espace créé sans Discord l'est d'office ; un serveur Discord ne l'est pas tant qu'un fondateur ne l'a pas coché.
 - **Les réponses du staff** lui arrivent par l'e-mail de l'instance, avec un lien vers la conversation ; elle répond depuis la page (les réponses à l'e-mail ne sont pas lues).

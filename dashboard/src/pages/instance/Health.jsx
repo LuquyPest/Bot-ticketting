@@ -31,7 +31,7 @@ function DemoCard() {
   return (
     <div className="glass-dark rounded-2xl border border-overlay/8 px-5 py-4 flex flex-wrap items-center gap-3">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-ink-1">Serveur de démonstration {demo.enabled ? <span className="text-emerald-400 text-xs">· activé</span> : <span className="text-ink-4 text-xs">· désactivé</span>}</p>
+        <p className="text-sm font-semibold text-ink-1">Espace de démonstration {demo.enabled ? <span className="text-emerald-400 text-xs">· activé</span> : <span className="text-ink-4 text-xs">· désactivé</span>}</p>
       </div>
       <button onClick={toggle} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">{demo.enabled ? 'Désactiver' : 'Activer'}</button>
       <button onClick={reset} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">{busy ? 'Réinitialisation…' : 'Réinitialiser maintenant'}</button>
@@ -212,8 +212,8 @@ function RestoreCard() {
   const select = 'w-full bg-surface border border-overlay/8 rounded-lg px-2.5 py-1.5 text-xs text-ink-1';
   return (
     <div className={card}>
-      <h2 className="text-sm font-semibold text-ink-1 mb-1">Restaurer un serveur</h2>
-      <p className="text-xs text-ink-3 mb-3">Remet un seul serveur Discord dans l'état d'une sauvegarde ; les autres ne bougent pas. Ses données d'avant sont gardées : la restauration s'annule tant que la copie existe.</p>
+      <h2 className="text-sm font-semibold text-ink-1 mb-1">Restaurer un espace</h2>
+      <p className="text-xs text-ink-3 mb-3">Remet un seul espace dans l'état d'une sauvegarde ; les autres ne bougent pas. Ses données d'avant sont gardées : la restauration s'annule tant que la copie existe.</p>
       {!st.available ? (
         <p className="text-xs text-ink-3">Indisponible : le service de sauvegarde n'est pas installé ou pas à jour (<code className="text-ink-2">docker compose restart backup</code> après la mise à jour).</p>
       ) : st.pending ? (
@@ -226,7 +226,7 @@ function RestoreCard() {
               {st.archives.map(a => <option key={a.file} value={a.file}>{fmtTime(a.at)} · {fmtBytes(a.bytes)}</option>)}
             </select>
           </label>
-          <label className="text-xs text-ink-3">Serveur
+          <label className="text-xs text-ink-3">Espace
             <select value={guildId} onChange={e => { setGuildId(e.target.value); setConfirm(''); }} className={`${select} mt-1`}>
               <option value="">Choisir…</option>
               {guilds.map(g => <option key={g.guild_id} value={g.guild_id}>{g.guild_name || g.guild_id}</option>)}
@@ -234,7 +234,7 @@ function RestoreCard() {
           </label>
           {archive && guildId && (
             <>
-              <label className="text-xs text-ink-3 sm:col-span-2">Pour confirmer, recopie l'identifiant du serveur : <code className="text-ink-2" translate="no">{guildId}</code>
+              <label className="text-xs text-ink-3 sm:col-span-2">Pour confirmer, recopie l'identifiant de l'espace : <code className="text-ink-2" translate="no">{guildId}</code>
                 <input value={confirm} onChange={e => setConfirm(e.target.value.trim())} inputMode="numeric" className={`${select} mt-1`} />
               </label>
               <div className="sm:col-span-2">

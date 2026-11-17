@@ -53,7 +53,7 @@ module.exports = async function guildMiddleware(req, res, next) {
   // Signed out (or member-space session only): 401, so the dashboard sends the user to the login page
   if (!req.session?.user) return res.status(401).json({ error: 'Non authentifié' });
   if (!guildId) {
-    return res.status(400).json({ error: 'Aucun serveur sélectionné' });
+    return res.status(400).json({ error: 'Aucun espace sélectionné' });
   }
 
   // Demonstration sandbox: not a registered server, reachable only by a demo session
@@ -78,7 +78,7 @@ module.exports = async function guildMiddleware(req, res, next) {
     }
 
     if (guild.maintenance_mode) {
-      return res.status(503).json({ error: 'Ce serveur est en maintenance — réessaie plus tard' });
+      return res.status(503).json({ error: 'Cet espace est en maintenance — réessaie plus tard' });
     }
 
     req.guildId = guildId;

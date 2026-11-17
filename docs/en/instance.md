@@ -1,38 +1,38 @@
 # Instance section
 
-The **instance** is your install: your Discord bot and every server it is on. It has one owner, and one place to manage it.
+The **instance** is your install: all its **spaces** (one per support team or community), with or without a linked Discord server. It has one owner, and one place to manage it.
 
 ## The owner
 
 The **owner of the instance** is the Discord account that owns the bot's application (developer portal → *General Information*). For a team application: the owner and the admins of the team. You can add co-owners with `OWNER_IDS` in `.env`.
 
 - They sign in to the dashboard with their Discord account, like everyone: no separate account, no password.
-- They are a **founder on every server** of the instance.
-- Only they see the list of all servers at sign-in, get the bot's invite link and reach the **Instance** section (Administration menu, or `/instance`).
+- They are a **founder in every space** of the instance.
+- Only they see the list of all spaces at sign-in, get the bot's invite link and reach the **Instance** section (Administration menu, or `/instance`).
 
-## Servers
+## Spaces
 
-A Discord server is **active as soon as the bot joins it**: its database is created, the person who invited the bot becomes its founder and gets a DM with the link to the dashboard. There is no approval step.
+A space is where tickets, a team and settings live (up to v3 it was called a « server »). Inviting the bot to a Discord server **creates a space linked to that server, active as soon as the bot arrives**: its database is created, the person who invited the bot becomes its founder and gets a DM with the link to the dashboard. There is no approval step.
 
 ::: warning Private bot
-In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can add your bot to their server, and that server would be activated on your instance. `ALLOWED_GUILDS` further restricts the list of accepted servers; a warning shows at start-up if the bot is public without that list.
+In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can add your bot to their server, and that server would become a space of your instance. `ALLOWED_GUILDS` further restricts the list of accepted Discord servers; a warning shows at start-up if the bot is public without that list.
 :::
 
-**Several communities**: a reply template created with the **Every server** scope (ticket view → Templates) is offered to the staff of each of your servers, without being copied. The staff uses it, only you edit it; it cannot add a tag, since tags belong to each server.
+**Several communities**: a reply template created with the **All spaces** scope (ticket view → Templates) is offered to the staff of each of your spaces, without being copied. The staff uses it, only you edit it; it cannot add a tag, since tags belong to each space.
 
-**A space without Discord**: **Instance → Servers → Create a space**. It is a support space without a Discord server: tickets by [e-mail](./integrations#tickets-by-e-mail), member space, dashboard, with its own settings, team and journal, like a server. Its tickets have no channel (« No channel » format), and nothing is ever asked to Discord about it. You are its founder; it shows up in **My servers** whatever the way you sign in.
+**A space without Discord**: **Instance → Spaces → Create a space**. It is a support space without a Discord server: tickets by [e-mail](./integrations#tickets-by-e-mail), member space, dashboard, with its own settings, team and journal. Its tickets have no channel (« No channel » format), nothing is ever asked to Discord about it, and the dashboard hides the Discord features there (panels, roles, server health, newsletter, channels). You are its founder; it shows up in **My spaces** whatever the way you sign in.
 
-**Linking or unlinking Discord**: on the row of a space without Discord, the **Link to Discord** button asks for the server ID then gives the bot's invite link, valid for one hour. When the bot arrives, the space becomes the server's: tickets, settings, team and journal are kept, no new space is created. Conversely, **Unlink from Discord** (confirmed by typing the name) keeps the space and all its content: its open tickets go on without a channel, the format switches to « No channel », and the bot leaves the server. Inviting the bot to that server again links it again.
+**Linking or unlinking Discord**: on the row of a space without Discord, the **Link to Discord** button asks for the Discord server ID then gives the bot's invite link, valid for one hour. When the bot arrives, the space becomes the server's: tickets, settings, team and journal are kept, no new space is created. Conversely, **Unlink from Discord** (confirmed by typing the name) keeps the space and all its content: its open tickets go on without a channel, the format switches to « No channel », and the bot leaves the server. Inviting the bot to that server again links it again.
 
 ## Pages
 
 | Page | |
 |---|---|
-| **Overview** | Servers, open tickets, tickets per day over 30 days, staff, errors of the last 24 hours, table per server |
-| **Servers** | Suspend, reactivate, put in maintenance, delete (the bot leaves the server and its database is erased); name or remove founders |
-| **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database; demonstration server, [Prometheus metrics](#monitoring-prometheus) |
+| **Overview** | Spaces, open tickets, tickets per day over 30 days, staff, errors of the last 24 hours, table per space |
+| **Spaces** | Create, link to Discord or unlink, suspend, reactivate, put in maintenance, delete (its database is erased, the bot leaves the linked Discord server); name or remove founders |
+| **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database; demonstration space, [Prometheus metrics](#monitoring-prometheus) |
 | **Errors** | Central log of the errors of the bot, the dashboard and browsers, with filters; **alert** by DM (to the owner by default) or webhook beyond a threshold, and when the bot is disconnected from Discord |
-| **Log** | Every change made from the section, with its author and the server concerned |
+| **Log** | Every change made from the section, with its author and the space concerned |
 | **Blocks** | IP addresses blocked by the sign-in or API limits, with unblocking |
 
 ## Demonstration

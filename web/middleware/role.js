@@ -17,7 +17,7 @@ module.exports = function requireRole(...roles) {
 
     const db = req.guildDb;
     if (!db) {
-      return res.status(400).json({ error: 'Aucun serveur sélectionné' });
+      return res.status(400).json({ error: 'Aucun espace sélectionné' });
     }
 
     try {
@@ -44,7 +44,7 @@ module.exports = function requireRole(...roles) {
       if (role === 'fondateur' || role === 'support') {
         const policy = await guildPolicy(db);
         if (requiredFor(policy, role) && !(await hasTotp(req.session.user.id))) {
-          return res.status(403).json({ error: 'Ce serveur impose la double authentification : active-la depuis ton profil', code: '2fa_required' });
+          return res.status(403).json({ error: 'Cet espace impose la double authentification : active-la depuis ton profil', code: '2fa_required' });
         }
       }
 

@@ -63,7 +63,7 @@ export default function GuildSelect() {
         if (err.response?.status === 401) {
           window.location.href = '/login';
         } else {
-          setError('Impossible de charger les serveurs.');
+          setError('Impossible de charger les espaces.');
         }
       })
       .finally(() => setLoading(false));
@@ -81,9 +81,9 @@ export default function GuildSelect() {
       setSelecting(null);
       setDirect(null);
       if (err.response?.status === 403) {
-        setSelectErr('Tu n\'as pas accès au dashboard de ce serveur. Contacte le fondateur.');
+        setSelectErr('Tu n\'as pas accès au dashboard de cet espace. Contacte le fondateur.');
       } else if (err.response?.status === 404) {
-        setSelectErr('Ce serveur n\'est pas encore actif.');
+        setSelectErr('Cet espace n\'est pas encore actif.');
       } else {
         setSelectErr('Erreur lors de la sélection — réessaie.');
       }
@@ -123,8 +123,8 @@ export default function GuildSelect() {
             <Bot size={26} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-ink-1">Mes serveurs</h1>
-            <p className="text-sm text-ink-3 mt-1">Choisis un serveur pour accéder au dashboard</p>
+            <h1 className="text-xl font-bold text-ink-1">Mes espaces</h1>
+            <p className="text-sm text-ink-3 mt-1">Choisis un espace pour accéder au dashboard</p>
           </div>
         </div>
 
@@ -157,11 +157,11 @@ export default function GuildSelect() {
 
           {!loading && !error && guilds.length === 0 && (
             <div className="px-5 py-12 text-center space-y-2">
-              <p className="text-sm text-ink-3">Aucun serveur trouvé.</p>
+              <p className="text-sm text-ink-3">Aucun espace trouvé.</p>
               <p className="text-xs text-ink-4">
                 {user?.isOwner
                   ? <>Invite le bot sur un serveur où tu as la permission « Gérer le serveur ».</>
-                  : <>Demande au fondateur du serveur de t'ajouter au staff.</>}
+                  : <>Demande au fondateur de l\'espace de t'ajouter au staff.</>}
               </p>
             </div>
           )}

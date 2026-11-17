@@ -152,6 +152,33 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RU
     console.log(`${found ? 'PASS' : 'FAIL'}  ${theme} recherche messages`);
   }
 
+  // With and without a linked Discord server: the Discord features only show when there is one
+  if (theme === 'dark') {
+    anonymous = false;
+    for (const discord of [true, false]) {
+      const me = { ...MOCK['/api/auth/me'], discord };
+      await page.route('**/api/auth/me', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(me) }));
+      await page.goto(base + '/settings', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(800);
+      const panels = await page.locator('a[href="/panels"]').count();
+      const salons = await page.getByRole('tab', { name: 'Salons' }).count();
+      await page.goto(base + '/settings?tab=acces', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(500);
+      const roles = await page.getByText('Rôles d\'accès').count();
+      await page.goto(base + '/settings?tab=tickets', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(500);
+      const sla = await page.getByText('Délai « Ouvert » (heures)', { exact: false }).count();
+      await page.goto(base + '/panels', { waitUntil: 'networkidle' });
+      await page.waitForTimeout(500);
+      const notice = await page.getByText('Fonction Discord').count();
+      const ok = discord ? panels > 0 && salons > 0 && roles > 0 && sla > 0 && notice === 0 : panels === 0 && salons === 0 && roles === 0 && sla > 0 && notice > 0;
+      if (!ok) failures.push(`[${theme}] ${discord ? 'avec' : 'sans'} Discord : panels ${panels}, onglet Salons ${salons}, rôles d'accès ${roles}, délais ${sla}, page Discord ${notice}`);
+      await page.screenshot({ path: path.join(OUT, `${theme}-${discord ? 'avec' : 'sans'}-discord.png`) });
+      console.log(`${ok ? 'PASS' : 'FAIL'}  ${theme} espace ${discord ? 'relié à Discord' : 'sans Discord'}`);
+      await page.unroute('**/api/auth/me');
+    }
+  }
+
   // Sign-in: the owner of the instance gets the server list, anyone else with a single server goes
   // straight to its dashboard
   if (theme === 'dark') {
@@ -165,7 +192,7 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RU
       await page.route('**/api/auth/select-guild', r => { selected = true; me.guildId = '1'; r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
       await page.goto(base + '/select-guild', { waitUntil: 'networkidle' });
       await page.waitForTimeout(800);
-      const listed = await page.getByText('Mes serveurs').first().isVisible().catch(() => false);
+      const listed = await page.getByText('Mes espaces').first().isVisible().catch(() => false);
       const ok = owner ? listed && !selected && await page.getByText('Inviter le bot').first().isVisible().catch(() => false) : selected && !page.url().includes('/select-guild');
       if (!ok) failures.push(`[${theme}] choix du serveur (${owner ? 'propriétaire : liste attendue' : 'utilisateur : connexion directe attendue'}) — url ${page.url()}, liste ${listed}, sélection ${selected}`);
       console.log(`${ok ? 'PASS' : 'FAIL'}  ${theme} choix du serveur ${owner ? 'propriétaire (liste)' : 'utilisateur (direct)'}`);

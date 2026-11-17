@@ -46,7 +46,7 @@ export default function IdleWatcher() {
     <div role="alertdialog" aria-live="assertive" aria-labelledby="idle-title"
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-amber-500/30 bg-surface-elevated p-4 shadow-2xl">
       <p id="idle-title" className="text-sm font-semibold text-ink-1">Tu vas être déconnecté dans moins d'une minute</p>
-      <p className="mt-1 text-xs text-ink-3">Aucune activité depuis {minutes} min sur ce serveur (réglage de sécurité des fondateurs).</p>
+      <p className="mt-1 text-xs text-ink-3">Aucune activité depuis {minutes} min sur cet espace (réglage de sécurité des fondateurs).</p>
       {/* Clicking (or pressing a key) is itself the activity that keeps the session */}
       <button onClick={() => setWarning(false)} className="mt-3 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold">Rester connecté</button>
     </div>
