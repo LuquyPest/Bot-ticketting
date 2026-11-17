@@ -36,7 +36,7 @@
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LuquyPest/Bot-ticketting.git"
+    "url": "https://github.com/LuquyPest/datick.git"
   },
   "devDependencies": {
     "cookie-signature": "^1.2.2"

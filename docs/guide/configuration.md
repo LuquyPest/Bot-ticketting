@@ -1,6 +1,6 @@
 # Configuration
 
-Tout se règle dans le fichier **`.env`** à la racine du dépôt, créé par `scripts/setup.sh`. Chaque variable est aussi commentée dans [`.env.example`](https://github.com/LuquyPest/Bot-ticketting/blob/main/.env.example). Le reste — rôles, catégories, messages, délais, webhooks… — se règle depuis le **dashboard** et vit en base de données.
+Tout se règle dans le fichier **`.env`** à la racine du dépôt, créé par `scripts/setup.sh`. Chaque variable est aussi commentée dans [`.env.example`](https://github.com/LuquyPest/datick/blob/main/.env.example). Le reste — rôles, catégories, messages, délais, webhooks… — se règle depuis le **dashboard** et vit en base de données.
 
 ::: tip Après une modification
 `docker compose up -d` suffit : seul le conteneur concerné redémarre.
@@ -65,7 +65,7 @@ Par défaut `db`, `3306`, `botuser`, `ticketbot_global` : les noms du compose. �
 
 ## Réglages rares : `config.json`
 
-Quelques réglages n'ont pas de variable. Mets-les dans un `config.json` (modèle : [`config.example.json`](https://github.com/LuquyPest/Bot-ticketting/blob/main/config.example.json)) et monte-le dans le conteneur (lignes commentées de `docker-compose.yml`). Les variables d'environnement l'emportent toujours sur lui.
+Quelques réglages n'ont pas de variable. Mets-les dans un `config.json` (modèle : [`config.example.json`](https://github.com/LuquyPest/datick/blob/main/config.example.json)) et monte-le dans le conteneur (lignes commentées de `docker-compose.yml`). Les variables d'environnement l'emportent toujours sur lui.
 
 | Clé | Défaut | Rôle |
 |---|---|---|

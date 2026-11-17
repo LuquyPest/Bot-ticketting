@@ -113,7 +113,7 @@ export const MOCK = {
       verify: { ok: true, at: Date.now() - 3600000, file: 'ticketbot-x.sql.gz.enc', bytes: 2400000, message: '' },
       offsite: { ok: false, at: Date.now() - 1800000, file: 'x', bytes: 0, remote: 'b2', message: 'clé d\'accès refusée' } },
   },
-  '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/Bot-ticketting/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
+  '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/datick/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
   '/api/instance/demo': { enabled: true },
   '/api/email': { enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
     smtpHost: 'smtp.example.com', smtpPort: 587, smtpUser: 'support', smtpPasswordSet: true, lastFetchAt: new Date(Date.now() - 60000).toISOString(), lastError: null,

@@ -1,12 +1,12 @@
 # Portainer, Coolify, Unraid, CasaOS
 
-Tu gères déjà tes services avec une interface ? Le dossier [`deploy/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/deploy) du dépôt contient un fichier compose **autonome** : il n'a besoin d'aucun autre fichier du dépôt, il suffit de le coller dans ton outil et de remplir les variables.
+Tu gères déjà tes services avec une interface ? Le dossier [`deploy/`](https://github.com/LuquyPest/datick/tree/main/deploy) du dépôt contient un fichier compose **autonome** : il n'a besoin d'aucun autre fichier du dépôt, il suffit de le coller dans ton outil et de remplir les variables.
 
 | Fichier | Pour |
 |---|---|
-| [`deploy/docker-compose.standalone.yml`](https://github.com/LuquyPest/Bot-ticketting/blob/main/deploy/docker-compose.standalone.yml) | Portainer, Unraid (Compose Manager), Dockge, Synology Container Manager, tout outil qui accepte un fichier compose |
-| [`deploy/coolify/docker-compose.yml`](https://github.com/LuquyPest/Bot-ticketting/blob/main/deploy/coolify/docker-compose.yml) | Coolify : domaine et mots de passe générés par Coolify |
-| [`deploy/casaos/docker-compose.yml`](https://github.com/LuquyPest/Bot-ticketting/blob/main/deploy/casaos/docker-compose.yml) | CasaOS : le fichier autonome avec la fiche de l'application |
+| [`deploy/docker-compose.standalone.yml`](https://github.com/LuquyPest/datick/blob/main/deploy/docker-compose.standalone.yml) | Portainer, Unraid (Compose Manager), Dockge, Synology Container Manager, tout outil qui accepte un fichier compose |
+| [`deploy/coolify/docker-compose.yml`](https://github.com/LuquyPest/datick/blob/main/deploy/coolify/docker-compose.yml) | Coolify : domaine et mots de passe générés par Coolify |
+| [`deploy/casaos/docker-compose.yml`](https://github.com/LuquyPest/datick/blob/main/deploy/casaos/docker-compose.yml) | CasaOS : le fichier autonome avec la fiche de l'application |
 
 ::: info Avant de commencer
 Il te faut l'**application Discord** (Application ID, token, Client Secret) : [étape 3 de l'installation](./installation#etape-3-—-creer-le-bot-sur-discord). Discord n'accepte la connexion au dashboard qu'en **HTTPS** : le dashboard doit passer par un reverse proxy (Nginx Proxy Manager, Traefik, Caddy, SWAG…), sauf avec Coolify qui s'en charge.
@@ -61,5 +61,5 @@ Avec le plugin **Docker Compose Manager** (Community Applications) :
 Ces fichiers contiennent la base, Redis et le bot. Ils n'incluent **pas** les services facultatifs de l'[installation complète](./installation) : sauvegardes chiffrées nocturnes, copie hors du serveur et bouton de mise à jour. Sauvegarde le volume de la base avec les outils de ta plateforme (ou passe à l'installation complète pour en profiter), et mets à jour en redéployant la stack : la nouvelle image est tirée et les migrations s'appliquent au démarrage.
 
 ::: tip Testé, pas partout
-Le fichier autonome est testé avec Docker Compose. Les interfaces de ces outils évoluent : si un écran ne correspond pas, [ouvre un ticket](https://github.com/LuquyPest/Bot-ticketting/issues) avec ce que tu vois.
+Le fichier autonome est testé avec Docker Compose. Les interfaces de ces outils évoluent : si un écran ne correspond pas, [ouvre un ticket](https://github.com/LuquyPest/datick/issues) avec ce que tu vois.
 :::

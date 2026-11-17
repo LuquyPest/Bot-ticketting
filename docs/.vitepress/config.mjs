@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
 
-const REPO = 'https://github.com/LuquyPest/Bot-ticketting';
+const REPO = 'https://github.com/LuquyPest/datick';
 // Published on GitHub Pages under the custom domain docs.bot.daryu.xyz (site root). Without a custom
-// domain the project would live under /Bot-ticketting/: DOCS_BASE=/Bot-ticketting/
+// domain the project would live under /datick/: DOCS_BASE=/datick/
 const base = process.env.DOCS_BASE || '/';
 
 const guide = [
@@ -149,8 +149,8 @@ export default withMermaid(defineConfig({
     lightModeSwitchTitle: 'Thème clair',
     darkModeSwitchTitle: 'Thème sombre',
     footer: {
-      message: 'Logiciel libre sous licence <a href="https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE">AGPL-3.0</a>.',
-      copyright: `<a href="${REPO}">LuquyPest/Bot-ticketting</a>`,
+      message: 'Logiciel libre sous licence <a href="https://github.com/LuquyPest/datick/blob/main/LICENSE">AGPL-3.0</a>.',
+      copyright: `<a href="${REPO}">LuquyPest/datick</a>`,
     },
   },
   locales: {
@@ -179,8 +179,8 @@ export default withMermaid(defineConfig({
         lightModeSwitchTitle: 'Light theme',
         darkModeSwitchTitle: 'Dark theme',
         footer: {
-          message: 'Free software under the <a href="https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE">AGPL-3.0</a> licence.',
-          copyright: `<a href="${REPO}">LuquyPest/Bot-ticketting</a>`,
+          message: 'Free software under the <a href="https://github.com/LuquyPest/datick/blob/main/LICENSE">AGPL-3.0</a> licence.',
+          copyright: `<a href="${REPO}">LuquyPest/datick</a>`,
         },
       },
     },

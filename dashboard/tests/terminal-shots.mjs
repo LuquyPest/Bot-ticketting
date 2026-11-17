@@ -14,7 +14,7 @@ const sessions = {
     ['Docker Compose version v5.5.1', 'hl'],
   ],
   'install-setup': [
-    ['git clone https://github.com/LuquyPest/Bot-ticketting.git && cd Bot-ticketting', 'cmd'],
+    ['git clone https://github.com/LuquyPest/datick.git && cd datick', 'cmd'],
     ['scripts/setup.sh', 'cmd'],
     ['── Datick : configuration ──────────────────────────────────────────', 'dim'],
     ["Crée d'abord l'application sur https://discord.com/developers/applications", 'dim'],
@@ -71,7 +71,7 @@ for (const [name, lines] of Object.entries(sessions)) {
     return k ? `<span class="${k}">${esc(t)}</span>` : esc(t);
   }).join('\n');
   const page = await b.newPage({ viewport: { width: 1028, height: 400 }, deviceScaleFactor: 2 });
-  await page.setContent(`<style>${css}</style><div class="w"><div class="t"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>Terminal — Bot-ticketting</span></div><pre>${body}</pre></div>`);
+  await page.setContent(`<style>${css}</style><div class="w"><div class="t"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>Terminal — datick</span></div><pre>${body}</pre></div>`);
   await page.locator('.w').screenshot({ path: `${out}/${name}.png`, omitBackground: true });
   await page.close();
   console.log('✓', name);
