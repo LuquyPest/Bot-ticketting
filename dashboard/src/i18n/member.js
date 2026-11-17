@@ -25,6 +25,12 @@ export function setMemberLang(next) {
 }
 
 const fr = {
+  loginEmail: 'Recevoir un lien de connexion', emailLabel: 'Adresse e-mail', or: 'ou',
+  linkSent: 'C\'est envoyé : ouvre le lien reçu par e-mail (valable 15 minutes). Pense à regarder dans les indésirables.',
+  emailHint: 'Un lien à usage unique t\'est envoyé par e-mail, sans mot de passe.', noLogin: 'Aucun moyen de connexion n\'est encore configuré sur cette instance.',
+  signingIn: 'Connexion en cours…', newLink: 'Demander un nouveau lien',
+  noneHintWeb: 'Ouvre un ticket depuis l\'onglet « Ouvrir un ticket ».', replyWeb: 'Les réponses du support t\'arrivent aussi par e-mail, avec un lien vers cette page.',
+  noGuildWeb: 'Aucun espace n\'accepte encore de demandes par e-mail sur cette instance.',
   title: 'Mes tickets', subtitle: 'Retrouve tes demandes au support, leur statut et vos échanges.',
   login: 'Se connecter avec Discord', loginHint: 'Seule ton identité Discord est demandée. Tu ne vois que tes propres tickets.',
   logout: 'Se déconnecter', none: 'Aucun ticket pour l\'instant.', noneHint: 'Pour ouvrir un ticket, envoie un message privé au bot sur Discord.',
@@ -44,6 +50,12 @@ const fr = {
 };
 
 const en = {
+  loginEmail: 'Get a sign-in link', emailLabel: 'E-mail address', or: 'or',
+  linkSent: 'Sent: open the link you received by e-mail (valid for 15 minutes). Check your spam folder too.',
+  emailHint: 'A single-use link is sent to you by e-mail, no password needed.', noLogin: 'No sign-in method is set up on this instance yet.',
+  signingIn: 'Signing in…', newLink: 'Ask for a new link',
+  noneHintWeb: 'Open a ticket from the « Open a ticket » tab.', replyWeb: 'The support answers also reach you by e-mail, with a link to this page.',
+  noGuildWeb: 'No space accepts requests by e-mail on this instance yet.',
   title: 'My tickets', subtitle: 'Find your support requests, their status and your conversations.',
   login: 'Sign in with Discord', loginHint: 'Only your Discord identity is requested. You only see your own tickets.',
   logout: 'Sign out', none: 'No tickets yet.', noneHint: 'To open a ticket, send a direct message to the bot on Discord.',
@@ -63,6 +75,12 @@ const en = {
 };
 
 const es = {
+  loginEmail: 'Recibir un enlace de inicio de sesión', emailLabel: 'Dirección de correo', or: 'o',
+  linkSent: 'Enviado: abre el enlace recibido por correo (válido 15 minutos). Revisa también la carpeta de spam.',
+  emailHint: 'Te enviamos por correo un enlace de un solo uso, sin contraseña.', noLogin: 'Todavía no hay ningún método de inicio de sesión configurado en esta instancia.',
+  signingIn: 'Iniciando sesión…', newLink: 'Pedir un nuevo enlace',
+  noneHintWeb: 'Abre un ticket desde la pestaña « Abrir un ticket ».', replyWeb: 'Las respuestas del soporte también te llegan por correo, con un enlace a esta página.',
+  noGuildWeb: 'Ningún espacio acepta todavía solicitudes por correo en esta instancia.',
   title: 'Mis tickets', subtitle: 'Encuentra tus solicitudes al soporte, su estado y vuestras conversaciones.',
   login: 'Iniciar sesión con Discord', loginHint: 'Solo se pide tu identidad de Discord. Solo ves tus propios tickets.',
   logout: 'Cerrar sesión', none: 'Todavía no hay tickets.', noneHint: 'Para abrir un ticket, envía un mensaje privado al bot en Discord.',
@@ -82,6 +100,12 @@ const es = {
 };
 
 const de = {
+  loginEmail: 'Anmeldelink erhalten', emailLabel: 'E-Mail-Adresse', or: 'oder',
+  linkSent: 'Gesendet: Öffne den Link aus der E-Mail (15 Minuten gültig). Sieh auch im Spam-Ordner nach.',
+  emailHint: 'Du erhältst einen Einmal-Link per E-Mail, ganz ohne Passwort.', noLogin: 'Auf dieser Instanz ist noch keine Anmeldemethode eingerichtet.',
+  signingIn: 'Anmeldung läuft…', newLink: 'Neuen Link anfordern',
+  noneHintWeb: 'Öffne ein Ticket über den Reiter « Ticket öffnen ».', replyWeb: 'Antworten des Supports erhältst du auch per E-Mail, mit einem Link zu dieser Seite.',
+  noGuildWeb: 'Auf dieser Instanz nimmt noch kein Bereich Anfragen per E-Mail an.',
   title: 'Meine Tickets', subtitle: 'Deine Support-Anfragen, ihr Status und eure Unterhaltungen.',
   login: 'Mit Discord anmelden', loginHint: 'Nur deine Discord-Identität wird abgefragt. Du siehst nur deine eigenen Tickets.',
   logout: 'Abmelden', none: 'Noch keine Tickets.', noneHint: 'Um ein Ticket zu öffnen, schreibe dem Bot auf Discord eine Direktnachricht.',
@@ -101,6 +125,12 @@ const de = {
 };
 
 const it = {
+  loginEmail: 'Ricevi un link di accesso', emailLabel: 'Indirizzo e-mail', or: 'oppure',
+  linkSent: 'Inviato: apri il link ricevuto via e-mail (valido 15 minuti). Controlla anche lo spam.',
+  emailHint: 'Ricevi via e-mail un link monouso, senza bisogno di password.', noLogin: 'Nessun metodo di accesso è ancora configurato su questa istanza.',
+  signingIn: 'Accesso in corso…', newLink: 'Richiedi un nuovo link',
+  noneHintWeb: 'Apri un ticket dalla scheda « Apri un ticket ».', replyWeb: 'Le risposte del supporto ti arrivano anche via e-mail, con un link a questa pagina.',
+  noGuildWeb: 'Nessuno spazio accetta ancora richieste via e-mail su questa istanza.',
   title: 'I miei ticket', subtitle: 'Ritrova le tue richieste al supporto, il loro stato e le vostre conversazioni.',
   login: 'Accedi con Discord', loginHint: 'Viene richiesta solo la tua identità Discord. Vedi solo i tuoi ticket.',
   logout: 'Esci', none: 'Ancora nessun ticket.', noneHint: 'Per aprire un ticket, invia un messaggio privato al bot su Discord.',
@@ -120,6 +150,12 @@ const it = {
 };
 
 const pt = {
+  loginEmail: 'Receber um link de login', emailLabel: 'Endereço de e-mail', or: 'ou',
+  linkSent: 'Enviado: abra o link recebido por e-mail (válido por 15 minutos). Verifique também o spam.',
+  emailHint: 'Um link de uso único é enviado para você por e-mail, sem precisar de senha.', noLogin: 'Nenhum método de login está configurado nesta instância ainda.',
+  signingIn: 'Entrando…', newLink: 'Pedir um novo link',
+  noneHintWeb: 'Abra um ticket pela aba « Abrir um ticket ».', replyWeb: 'As respostas do suporte também chegam por e-mail, com um link para esta página.',
+  noGuildWeb: 'Nenhum espaço aceita pedidos por e-mail nesta instância ainda.',
   title: 'Meus tickets', subtitle: 'Encontre suas solicitações ao suporte, o status delas e suas conversas.',
   login: 'Entrar com o Discord', loginHint: 'Só sua identidade do Discord é solicitada. Você só vê seus próprios tickets.',
   logout: 'Sair', none: 'Nenhum ticket por enquanto.', noneHint: 'Para abrir um ticket, envie uma mensagem privada ao bot no Discord.',

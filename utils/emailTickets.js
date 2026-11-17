@@ -19,6 +19,8 @@ const { seal, open } = require('./secretBox');
 
 const OWNER_RE = /^mail:[0-9a-f]{24}$/;
 const isEmailOwner = id => OWNER_RE.test(String(id || ''));
+// A requester Discord does not know: by e-mail (mail:…) or from the web portal (web:…)
+const isExternalOwner = id => /^(mail|web):[0-9a-f]{24}$/.test(String(id || ''));
 const ownerIdFor = address => `mail:${crypto.createHash('sha256').update(String(address).trim().toLowerCase()).digest('hex').slice(0, 24)}`;
 const EMAIL_RE = /^[^\s@<>"]{1,64}@[^\s@<>"]{1,253}\.[a-z]{2,}$/i;
 const IMAP_PORTS = [993, 143];
@@ -32,7 +34,7 @@ const { UserManager } = require('discord.js');
 if (!UserManager.prototype.fetch.__emailAware) {
   const original = UserManager.prototype.fetch;
   UserManager.prototype.fetch = function fetch(id, ...rest) {
-    if (isEmailOwner(id)) return Promise.reject(Object.assign(new Error('Unknown User'), { code: 10013, status: 404 }));
+    if (isExternalOwner(id)) return Promise.reject(Object.assign(new Error('Unknown User'), { code: 10013, status: 404 }));
     return original.call(this, id, ...rest);
   };
   UserManager.prototype.fetch.__emailAware = true;
@@ -355,7 +357,7 @@ async function runEmailFetch(client) {
 }
 
 module.exports = {
-  isEmailOwner, ownerIdFor, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
+  isEmailOwner, isExternalOwner, ownerIdFor, userFor, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
   fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
   smtpTransport, EMAIL_RE, SMTP_PORTS,
 };

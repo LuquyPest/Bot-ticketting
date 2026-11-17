@@ -570,6 +570,12 @@ const MIGRATIONS = [
       ...require('./contactsSync').SYNC_STATEMENTS,
     ],
   },
+  {
+    version: 40,
+    name: 'Portail : ouverture de tickets par connexion e-mail, sans Discord (v4)',
+    // Off for the existing spaces (nothing changes); on for a space created without Discord
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS portal_email_open TINYINT(1) NOT NULL DEFAULT 0'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

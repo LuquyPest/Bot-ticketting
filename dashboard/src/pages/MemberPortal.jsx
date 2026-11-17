@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail } from 'lucide-react';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
 import { readableText } from '../utils/color';
@@ -9,7 +9,8 @@ import { privacyHref } from './Privacy';
 
 import { STR, MEMBER_LANG, MEMBER_LANGS, memberLocale, setMemberLang } from '../i18n/member';
 
-// Member web space: a member signs in with Discord and reads their own tickets (no staff data).
+// Member web space: a member signs in with Discord or with a link received by e-mail, then follows,
+// answers and opens their own tickets (no staff data).
 // In the six languages of the bot (i18n/member.js); the API answers in the same language.
 api.defaults.headers.common['X-Member-Lang'] = MEMBER_LANG;
 
@@ -101,7 +102,20 @@ function Shell({ me, onLogout, children }) {
   );
 }
 
+// Sign-in: Discord and/or a link sent by e-mail, whichever the instance offers
 function LoginCard({ error }) {
+  const [options, setOptions] = useState(null);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [mailError, setMailError] = useState('');
+  useEffect(() => { api.get('/member/login-options').then(r => setOptions(r.data)).catch(() => setOptions({ discord: true, email: false })); }, []);
+  const sendLink = async e => {
+    e.preventDefault();
+    setBusy(true); setMailError('');
+    try { await api.post('/member/auth/email', { email: email.trim() }); setSent(true); } catch (err) { setMailError(err.response?.data?.error || STR.error2); }
+    setBusy(false);
+  };
   return (
     <div className="max-w-sm mx-auto mt-16 text-center space-y-5">
       <div>
@@ -109,16 +123,58 @@ function LoginCard({ error }) {
         <p className="text-sm text-ink-3 mt-1">{STR.subtitle}</p>
       </div>
       {error && <p className="text-sm text-red-400" role="alert">{STR.error[error] || STR.error.oauth_failed}</p>}
-      <a href="/api/member/auth/discord"
-        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#5865F2] hover:bg-[#4752c4] text-white font-semibold text-sm transition-colors">
-        {STR.login}
-      </a>
-      <p className="text-xs text-ink-4">{STR.loginHint}</p>
+      {!options ? <Loader2 className="animate-spin text-ink-4 mx-auto" /> : <>
+        {options.discord && <>
+          <a href="/api/member/auth/discord"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#5865F2] hover:bg-[#4752c4] text-white font-semibold text-sm transition-colors">
+            {STR.login}
+          </a>
+          <p className="text-xs text-ink-4">{STR.loginHint}</p>
+        </>}
+        {options.discord && options.email && (
+          <p className="flex items-center gap-3 text-xs text-ink-4"><span className="h-px flex-1 bg-overlay/8" />{STR.or}<span className="h-px flex-1 bg-overlay/8" /></p>
+        )}
+        {options.email && (sent ? <p className="text-sm text-emerald-400" role="status">{STR.linkSent}</p> : (
+          <form onSubmit={sendLink} className="space-y-2 text-left">
+            <label className="block">
+              <span className="text-sm text-ink-2 font-medium block mb-1">{STR.emailLabel}</span>
+              <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={254} className={INPUT} />
+            </label>
+            {mailError && <p className="text-sm text-red-400" role="alert">{mailError}</p>}
+            <button type="submit" disabled={busy || !email.trim()}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-50">
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />} {STR.loginEmail}
+            </button>
+            <p className="text-xs text-ink-4 text-center">{STR.emailHint}</p>
+          </form>
+        ))}
+        {!options.discord && !options.email && <p className="text-sm text-ink-3">{STR.noLogin}</p>}
+      </>}
     </div>
   );
 }
 
-function TicketList() {
+// Landing of the link received by e-mail: the token is in the fragment (#…), used once
+function EmailLinkLanding() {
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const token = window.location.hash.slice(1);
+    window.history.replaceState(null, '', window.location.pathname);
+    api.post('/member/auth/email/verify', { token })
+      .then(() => { window.location.href = '/espace'; })
+      .catch(err => setError(err.response?.data?.error || STR.error2));
+  }, []);
+  return (
+    <div className="max-w-sm mx-auto mt-16 text-center space-y-4">
+      {error ? <>
+        <p className="text-sm text-red-400" role="alert">{error}</p>
+        <Link to="/espace" className="inline-block text-sm text-primary-light underline">{STR.newLink}</Link>
+      </> : <p className="text-sm text-ink-3 inline-flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> {STR.signingIn}</p>}
+    </div>
+  );
+}
+
+function TicketList({ me }) {
   const [groups, setGroups] = useState(null);
   useEffect(() => { api.get('/member/tickets').then(r => setGroups(r.data)).catch(() => setGroups([])); }, []);
   if (!groups) return <div className="flex justify-center py-16"><Loader2 className="animate-spin text-ink-4" /></div>;
@@ -126,7 +182,7 @@ function TicketList() {
     <div className="text-center py-16 space-y-2">
       <Inbox size={28} className="mx-auto text-ink-4" />
       <p className="text-sm text-ink-2">{STR.none}</p>
-      <p className="text-xs text-ink-4">{STR.noneHint}</p>
+      <p className="text-xs text-ink-4">{me?.email ? STR.noneHintWeb : STR.noneHint}</p>
       <Link to="/espace/nouveau" className="inline-flex items-center gap-1.5 mt-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold"><Plus size={14} /> {STR.tabs.new}</Link>
     </div>
   );
@@ -248,7 +304,7 @@ function TicketView({ guildId, ticketId, me }) {
             onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && reply.trim()) send(); }}
             className="w-full bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-hidden focus:border-primary/50 resize-y" />
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[11px] text-ink-4">{STR.reply}</p>
+            <p className="text-[11px] text-ink-4">{me?.email ? STR.replyWeb : STR.reply}</p>
             {replyError && <p className="text-xs text-red-400" role="alert">{replyError}</p>}
             <button onClick={send} disabled={!reply.trim() || sending} style={accent(guild)}
               className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50">
@@ -307,7 +363,7 @@ function FaqList({ entries, query }) {
   );
 }
 
-function HelpPage() {
+function HelpPage({ me }) {
   const { guilds, guildId, setGuildId } = useGuilds();
   const [entries, setEntries] = useState(null);
   const [query, setQuery] = useState('');
@@ -317,7 +373,7 @@ function HelpPage() {
     api.get(`/member/guilds/${guildId}/faq`).then(r => setEntries(r.data)).catch(() => setEntries([]));
   }, [guildId]);
   if (!guilds) return <div className="flex justify-center py-16"><Loader2 className="animate-spin text-ink-4" /></div>;
-  if (!guilds.length) return <p className="text-sm text-ink-3 py-10 text-center">{STR.noGuild}</p>;
+  if (!guilds.length) return <p className="text-sm text-ink-3 py-10 text-center">{me?.email ? STR.noGuildWeb : STR.noGuild}</p>;
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink-1">{STR.faqTitle}</h1>
@@ -335,7 +391,7 @@ function HelpPage() {
   );
 }
 
-function NewTicket() {
+function NewTicket({ me }) {
   const navigate = useNavigate();
   const { guilds, guildId, setGuildId } = useGuilds();
   const [subjects, setSubjects] = useState(null);
@@ -374,7 +430,7 @@ function NewTicket() {
   };
 
   if (!guilds) return <div className="flex justify-center py-16"><Loader2 className="animate-spin text-ink-4" /></div>;
-  if (!guilds.length) return <p className="text-sm text-ink-3 py-10 text-center">{STR.noGuild}</p>;
+  if (!guilds.length) return <p className="text-sm text-ink-3 py-10 text-center">{me?.email ? STR.noGuildWeb : STR.noGuild}</p>;
   const ready = content.trim() && (!subjects?.length || subject) && form.questions.every((_, i) => answers[i]?.trim()) && form.fields.every(f => !f.required || String(fields[f.id] || '').trim());
 
   return (
@@ -443,14 +499,15 @@ export default function MemberPortal({ page }) {
   }, []);
   const logout = async () => { await api.post('/member/logout').catch(() => {}); window.location.href = '/espace'; };
 
+  if (page === 'connexion') return <Shell me={null} onLogout={logout}><EmailLinkLanding /></Shell>;
   if (me === undefined) return <div data-no-translate className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
   return (
     <Shell me={me} onLogout={logout}>
       {!me ? <LoginCard error={params.get('error')} />
-        : page === 'nouveau' ? <NewTicket />
-        : page === 'aide' ? <HelpPage />
+        : page === 'nouveau' ? <NewTicket me={me} />
+        : page === 'aide' ? <HelpPage me={me} />
         : guildId && ticketId ? <TicketView guildId={guildId} ticketId={ticketId} me={me} />
-        : <TicketList />}
+        : <TicketList me={me} />}
     </Shell>
   );
 }

@@ -50,7 +50,7 @@ const PAGES = [
   ['instance-blocages', '/instance/blocked', 'Aucune adresse bloquée'],
   ['instance-sante', '/instance/health', 'Mettre à jour'],
   ['confidentialite', '/confidentialite', 'Données enregistrées', true],
-  ['espace-login', '/espace', 'Se connecter avec Discord', true],
+  ['espace-login', '/espace', 'Recevoir un lien de connexion', true],
   ['espace', '/espace', 'Ancienne commande'],
   ['espace-ticket', '/espace/123456789012345678/1', 'Colis renvoyé'],
   ['espace-aide', '/espace/aide', 'Comment changer mon mot de passe'],

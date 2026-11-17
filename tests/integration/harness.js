@@ -3241,9 +3241,9 @@ async function main() {
     const SP = r.body.id;
     const [sRow] = await globalQuery('SELECT guild_name, discord, discord_guild_id, created_by, status FROM guilds WHERE guild_id = ?', [SP]);
     const sdb = getTenantDb(SP);
-    const [sCfg] = await sdb('SELECT ticket_mode FROM guild_config WHERE id = 1');
+    const [sCfg] = await sdb('SELECT ticket_mode, portal_email_open FROM guild_config WHERE id = 1');
     const [sFounder] = await sdb('SELECT role FROM dashboard_users WHERE user_id = ?', [U.F]);
-    check('espaces: espace sans Discord créé (identifiant 9…, base prête, aucun salon, créateur fondateur)', r.status === 200 && spaces.SPACE_ID_RE.test(SP) && sRow.guild_name === 'Équipe e-mail' && Number(sRow.discord) === 0 && sRow.discord_guild_id === null && sRow.created_by === U.F && sRow.status === 'active' && sCfg.ticket_mode === 'database' && sFounder?.role === 'fondateur', JSON.stringify([r.body, sRow, sCfg, sFounder]));
+    check('espaces: espace sans Discord créé (identifiant 9…, base prête, aucun salon, ouvert par e-mail, créateur fondateur)', r.status === 200 && spaces.SPACE_ID_RE.test(SP) && sRow.guild_name === 'Équipe e-mail' && Number(sRow.discord) === 0 && sRow.discord_guild_id === null && sRow.created_by === U.F && sRow.status === 'active' && sCfg.ticket_mode === 'database' && Number(sCfg.portal_email_open) === 1 && sFounder?.role === 'fondateur', JSON.stringify([r.body, sRow, sCfg, sFounder]));
     const [aud] = await globalQuery("SELECT COUNT(*) AS n FROM instance_audit_log WHERE action = 'space_create'");
     check('espaces: création inscrite au journal de l instance', Number(aud.n) >= 1, '');
     const { Client } = require('discord.js');
@@ -3560,6 +3560,115 @@ async function main() {
     await db('DELETE FROM grades WHERE id = ?', [gInv]);
     await db('DELETE FROM team_invitations');
     await globalQuery('DELETE FROM accounts WHERE id IN (?)', [[EX, accI?.id || 'x']]);
+  }
+
+  // ── Member space without Discord: sign-in link by e-mail, web requesters (v4 PR 10) ──
+  {
+    let ip = 0;
+    const H = () => ({ 'X-Forwarded-For': `10.10.${Math.floor(ip / 200)}.${ip++ % 200}` });
+    const pub = (method, path, opts = {}) => req(method, path, { ...opts, headers: { ...H(), ...(opts.headers || {}) } });
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const mails = [];
+    nodemailer.createTransport = () => ({ sendMail: async x => { mails.push(x); return {}; }, close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const web = app('./utils/webRequesters');
+    const linkOf = m => (m?.text.match(/\/espace\/connexion#([A-Za-z0-9_-]+)/) || [])[1] || '';
+
+    r = await req('GET', '/api/member/login-options');
+    const off = await pub('POST', '/api/member/auth/email', { body: { email: 'web1@example.com' } });
+    check('portail: connexion par e-mail indisponible sans e-mail de l instance', r.status === 200 && r.body.email === false && off.status === 409, JSON.stringify([r.body, off.body]));
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    r = await req('GET', '/api/member/login-options');
+    const bad = await pub('POST', '/api/member/auth/email', { body: { email: 'pas une adresse' } });
+    check('portail: proposée dès que l e-mail de l instance marche, adresse invalide refusée', r.body.email === true && bad.status === 400, JSON.stringify([r.body, bad.body]));
+    r = await pub('POST', '/api/member/auth/email', { body: { email: ' Web1@Example.com ' } });
+    const tok = linkOf(mails[0]);
+    const stored = await redis.get(`memberlink:${crypto.createHash('sha256').update(tok).digest('hex')}`);
+    const clear = await redis.keys('memberlink:*');
+    check('portail: lien envoyé (15 min), seul son hachage est gardé', r.status === 200 && mails[0]?.to === 'web1@example.com' && tok.length === 43 && /15 minutes/.test(mails[0].text) && JSON.parse(stored || '{}').email === 'web1@example.com' && !clear.some(k => k.includes(tok)), JSON.stringify([r.body, mails[0]?.text]));
+    r = await pub('POST', '/api/member/auth/email/verify', { body: { token: tok.slice(0, -2) + 'xx' } });
+    const forged = r.status;
+    r = await pub('POST', '/api/member/auth/email/verify', { body: { token: tok } });
+    const cookieW = (r.headers['set-cookie'] || []).find(c => c.startsWith('connect.sid='))?.split(';')[0];
+    const WID = web.webOwnerIdFor('web1@example.com');
+    const me = await req('GET', '/api/member/me', { headers: { Cookie: cookieW } });
+    check('portail: le lien ouvre l espace membre (identité web:…), un lien inventé est refusé', forged === 400 && r.status === 200 && !!cookieW && me.status === 200 && me.body.id === WID && /^web:[0-9a-f]{24}$/.test(WID) && me.body.email === 'web1@example.com', JSON.stringify([forged, r.body, me.body]));
+    r = await pub('POST', '/api/member/auth/email/verify', { body: { token: tok } });
+    const tokX = crypto.randomBytes(32).toString('base64url');
+    await redis.set(`memberlink:${crypto.createHash('sha256').update(tokX).digest('hex')}`, JSON.stringify({ email: 'web1@example.com', lang: 'fr' }), 'PX', 1);
+    await new Promise(res => setTimeout(res, 20));
+    const expired = await pub('POST', '/api/member/auth/email/verify', { body: { token: tokX } });
+    check('portail: lien à usage unique, lien expiré refusé', r.status === 400 && expired.status === 400 && /expiré/.test(expired.body.error), JSON.stringify([r.body, expired.body]));
+    mails.length = 0;
+    for (let i = 0; i < 4; i++) r = await pub('POST', '/api/member/auth/email', { body: { email: 'flood@example.com' } });
+    check('portail: quelques liens par adresse au plus, même réponse au-delà', r.status === 200 && mails.length === 3, String(mails.length));
+
+    // The spaces open to e-mail sign-ins
+    await mk('WEB1', { member: { id: WID, username: 'web1@example.com', avatar: null, email: 'web1@example.com' } });
+    await redis.del(`memberguilds:${WID}`);
+    r = await req('GET', '/api/member/guilds', { sid: sessions.WEB1 });
+    const closedOpen = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.WEB1, body: { content: 'Bonjour' } });
+    check('portail: un serveur Discord n est pas ouvert par e-mail par défaut', r.status === 200 && !r.body.some(g => g.id === G) && closedOpen.status === 404, JSON.stringify([r.body, closedOpen.status]));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { portalEmailOpen: true } });
+    await redis.del(`memberguilds:${WID}`);
+    const listed = await req('GET', '/api/member/guilds', { sid: sessions.WEB1 });
+    check('portail: un fondateur ouvre son espace aux connexions par e-mail', r.status === 200 && listed.body.some(g => g.id === G), JSON.stringify([r.body, listed.body]));
+
+    const [cfgW] = await db('SELECT ticket_subjects, max_tickets_per_day FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_subjects = '[]', max_tickets_per_day = 10 WHERE id = 1");
+    mails.length = 0;
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.WEB1, body: { subject: 'Commande', content: 'Ma commande est bloquée' } });
+    const wt = r.body.ticketId;
+    const [wT] = wt ? await db('SELECT owner_id, owner_tag FROM tickets WHERE id = ?', [wt]) : [];
+    const [wC] = await db('SELECT address FROM email_contacts WHERE owner_id = ?', [WID]);
+    check('portail: ticket ouvert sans Discord, demandeur web:… avec son adresse', r.status === 200 && wT?.owner_id === WID && wT.owner_tag === 'web1@example.com' && wC?.address === 'web1@example.com', JSON.stringify([r.body, wT, wC]));
+    check('portail: l accueil part par l e-mail de l instance, avec le lien du ticket', mails.some(m => m.to === 'web1@example.com' && m.subject.includes(`#${wt}`) && m.text.includes(`/espace/${G}/${wt}`)), JSON.stringify(mails.map(m => [m.to, m.subject])));
+    mails.length = 0;
+    await app('./utils/i18n').sendToMember(fakeClient, WID, G, () => ({ content: 'Réponse du staff : c est réglé' }));
+    check('portail: une réponse du staff arrive par e-mail, sans passer par Discord', mails.length === 1 && mails[0].text.includes('Réponse du staff : c est réglé') && mails[0].text.includes(`/espace/${G}/${wt}`), JSON.stringify(mails.map(m => m.text)));
+    r = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.WEB1, body: { content: 'Merci, je confirme' } });
+    const [wN] = await db("SELECT author_id FROM ticket_notes WHERE ticket_id = ? AND content = 'Merci, je confirme'", [wt]);
+    const view = await req('GET', `/api/member/tickets/${G}/${wt}`, { sid: sessions.WEB1 });
+    check('portail: le demandeur suit et répond depuis la page', r.status === 200 && wN?.author_id === WID && view.status === 200 && view.body.messages.some(m => m.kind === 'me' && m.content === 'Merci, je confirme'), JSON.stringify([r.body, view.body.messages]));
+
+    // Only the requester; the tickets opened by e-mail to the same address come along
+    const W2 = web.webOwnerIdFor('web2@example.com');
+    await mk('WEB2', { member: { id: W2, username: 'web2@example.com', avatar: null, email: 'web2@example.com' } });
+    r = await req('GET', `/api/member/tickets/${G}/${wt}`, { sid: sessions.WEB2 });
+    const list2 = await req('GET', '/api/member/tickets', { sid: sessions.WEB2 });
+    const reply2 = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.WEB2, body: { content: 'intrus' } });
+    check('portail: seul le demandeur voit et répond à ses tickets', r.status === 404 && reply2.status === 404 && !list2.body.some(g => g.tickets.some(t => t.id === wt)), JSON.stringify([r.status, reply2.status, list2.body]));
+    const MAILW = app('./utils/emailTickets').ownerIdFor('web1@example.com');
+    const { insertId: mt } = await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'web1@example.com', 'db-webmail', 'closed', 'Par e-mail')", [MAILW]);
+    r = await req('GET', '/api/member/tickets', { sid: sessions.WEB1 });
+    const mine = r.body.find(g => g.guild.id === G)?.tickets || [];
+    check('portail: on retrouve aussi ses tickets envoyés par e-mail à la même adresse', mine.some(t => t.id === wt && !t.participant) && mine.some(t => t.id === mt && !t.participant), JSON.stringify(mine.map(t => t.id)));
+
+    // Anti-spam at opening: a few per minute, a daily limit, blocked requesters
+    const burst = [];
+    for (let i = 0; i < 3; i++) burst.push((await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.WEB1, body: { subject: 'Encore', content: `Demande ${i}` } })).status);
+    check('portail: ouvertures en rafale limitées', burst.includes(429), burst.join());
+    await db("INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag) VALUES (?, 'web1', 'test', '1', 'F')", [MAILW]);
+    r = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.WEB1, body: { content: 'bloqué ?' } });
+    check('portail: bloqué sous une de ses identités = bloqué', r.status === 403, JSON.stringify(r.body));
+    await db('DELETE FROM blacklist WHERE user_id = ?', [MAILW]);
+
+    // The contact card knows the web identity and its address
+    const contacts = app('./utils/contacts');
+    await contacts.sync(db, { force: true });
+    const card = await contacts.resolve(db, WID);
+    check('portail: fiche contact avec l identité web et l adresse', card.contact?.email === 'web1@example.com' && card.identities.some(i => i.value === WID && i.kind === 'web'), JSON.stringify(card));
+
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await db('UPDATE guild_config SET ticket_subjects = ?, max_tickets_per_day = ?, portal_email_open = 0 WHERE id = 1', [cfgW.ticket_subjects == null || typeof cfgW.ticket_subjects === 'string' ? cfgW.ticket_subjects : JSON.stringify(cfgW.ticket_subjects), cfgW.max_tickets_per_day]);
+    const webTickets = (await db('SELECT id FROM tickets WHERE owner_id IN (?)', [[WID, MAILW]])).map(t => t.id);
+    if (webTickets.length) await db('DELETE FROM ticket_notes WHERE ticket_id IN (?)', [webTickets]);
+    await db('DELETE FROM tickets WHERE owner_id IN (?)', [[WID, MAILW]]);
+    await db('DELETE FROM email_contacts WHERE owner_id IN (?)', [[WID, MAILW]]);
+    await db('DELETE FROM contacts WHERE id IN (SELECT contact_id FROM contact_identities WHERE value IN (?))', [[WID, MAILW]]);
   }
 
   // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
