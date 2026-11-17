@@ -10,12 +10,13 @@ Tout se règle dans le fichier **`.env`** à la racine du dépôt, créé par `s
 
 | Variable | Rôle |
 |---|---|
-| `DISCORD_TOKEN` | Token du bot (portail développeur → *Bot* → *Reset Token*) |
+| `DISCORD_TOKEN` | Facultatif : token du bot (portail développeur → *Bot* → *Reset Token*). Sans lui, pas de bot : dashboard, e-mail et API seulement |
 | `DISCORD_CLIENT_ID` | ID de l'application (*General Information*) |
-| `DISCORD_CLIENT_SECRET` | Secret OAuth2 (*OAuth2* → *Client Secret*) |
+| `DISCORD_CLIENT_SECRET` | Facultatif : secret OAuth2 (*OAuth2* → *Client Secret*). Avec `DISCORD_CLIENT_ID`, active la connexion avec Discord |
 | `PUBLIC_HOST` | Domaine du dashboard, sans `https://` (`tickets.example.com`) |
 | `PUBLIC_URL` | Adresse publique complète, en `https://`, sans barre finale |
 | `DISCORD_CALLBACK_URL` | Facultatif : par défaut `PUBLIC_URL` + `/api/auth/discord/callback`, l'adresse à enregistrer dans le portail Discord |
+| `INSTALL_TOKEN` | Jeton pour créer le premier propriétaire sur `/installation`, sans Discord (`setup.sh` le génère) ; sans lui, un jeton est affiché dans les logs au démarrage |
 
 ## HTTPS et conteneurs
 

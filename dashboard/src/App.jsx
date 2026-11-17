@@ -16,6 +16,7 @@ import WhatsNew, { useWhatsNew } from './components/WhatsNew';
 const InstanceApp = lazy(() => import('./pages/instance/InstanceApp'));
 const Login       = lazy(() => import('./pages/Login'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Installation = lazy(() => import('./pages/Installation'));
 const Pending     = lazy(() => import('./pages/Pending'));
 const GuildSelect = lazy(() => import('./pages/GuildSelect'));
 const Dashboard   = lazy(() => import('./pages/Dashboard'));
@@ -170,6 +171,7 @@ export default function App() {
                 <ErrorBoundary><Login /></ErrorBoundary>
               </Suspense>
             } />
+            <Route path="/installation" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Installation /></ErrorBoundary></Suspense>} />
             <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><ResetPassword /></ErrorBoundary></Suspense>} />
             <Route path="/totp-verify" element={
               <RequireAuth>

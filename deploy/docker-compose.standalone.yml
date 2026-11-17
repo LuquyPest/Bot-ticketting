@@ -3,7 +3,8 @@
 # Guide: https://docs.bot.daryu.xyz/guide/outils
 #
 # Fill in the variables (environment editor of your tool, or an .env file next to this one):
-#   DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   Discord developer portal
+#   DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   Discord developer portal (optional: without them,
+#   no Discord bot nor Discord sign-in; then INSTALL_TOKEN creates the first owner on /installation)
 #   PUBLIC_URL        https address of the dashboard, e.g. https://tickets.example.com
 #   DB_ROOT_PASSWORD, DB_PASSWORD, REDIS_PASSWORD, SESSION_SECRET, ENCRYPTION_KEY
 #                     each one: openssl rand -hex 32  (64 hexadecimal characters)
@@ -58,9 +59,10 @@ services:
     image: ghcr.io/luquypest/bot-ticketting:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
     restart: unless-stopped
     environment:
-      DISCORD_TOKEN: ${DISCORD_TOKEN:?DISCORD_TOKEN manquant}
-      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID manquant}
-      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?DISCORD_CLIENT_SECRET manquant}
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:-}
       PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL manquant (https://…)}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET manquant}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY manquant (openssl rand -hex 32)}

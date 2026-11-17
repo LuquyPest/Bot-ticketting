@@ -4,6 +4,10 @@ One server, Docker, a domain name: **about twenty minutes**, step by step. Every
 
 *Version française : [Installation](../guide/installation).* Screenshots show the French interface; the dashboard follows your browser language (English or French).
 
+::: tip Without Discord?
+Discord is optional. `scripts/setup.sh` asks separately for the **Discord bot** (tickets by DM and channels) and the **Discord sign-in**. Without the Discord sign-in, it generates an install token and shows the address `https://your-domain/installation?token=…`: there you create the owner's account (e-mail, name, password). Without the bot, step 3 is only for the sign-in, or is skipped altogether.
+:::
+
 ::: tip Using Portainer, Coolify, Unraid or CasaOS?
 A standalone compose file can be pasted straight into your tool: [Portainer, Coolify, Unraid, CasaOS](./tools).
 :::

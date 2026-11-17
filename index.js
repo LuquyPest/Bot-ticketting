@@ -66,7 +66,15 @@ if (config.webEnabled !== false) {
   httpServer = startWebServer(client);
 }
 
-client.login(config.token);
+// Without DISCORD_TOKEN (v4): no bot, but the databases are migrated and the automations start
+// all the same (Discord-only jobs skip themselves, utils/jobQueue.js)
+if (config.token) {
+  client.login(config.token);
+} else {
+  logger.info('Démarrage sans Discord : pas de bot, dashboard et automatismes seulement');
+  require('./events/ready').migrateTenants().finally(() => client.emit('tenantsMigrated'));
+  require('./utils/installation').announceIfNeeded(client).catch(err => logger.error('Installation', { err: err.message }));
+}
 
 client.once(Events.ClientReady, () => logger.info('Bot connecté', { tag: client.user.tag }));
 // All recurring automations (inactivity, escalation, reminders, scheduled messages,

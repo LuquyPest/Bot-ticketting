@@ -258,6 +258,8 @@ router.post('/select-guild', async (req, res) => {
 // GET /api/auth/discord — redirect to Discord OAuth
 router.get('/discord', (req, res) => {
   const config = cfg();
+  // No Discord application configured: the Discord sign-in is off (v4)
+  if (!config.clientId || !config.dashboard?.discordClientSecret) return res.redirect('/login?error=discord_off');
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
   delete req.session.oauthPurpose; // dashboard sign-in, even after an unfinished member sign-in

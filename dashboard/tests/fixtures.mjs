@@ -115,6 +115,7 @@ export const MOCK = {
   },
   '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/datick/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
   '/api/instance/demo': { enabled: true },
+  '/api/installation': { needed: true },
   '/api/instance/email': { enabled: true, host: 'smtp.example.com', port: 587, user: 'datick', passwordSet: true, from: 'datick@example.com', fromName: 'Datick' },
   '/api/profile': { profile: { userId: '1', username: 'Daryu', role: 'fondateur', bio: 'Support', bannerColor: '#6366f1', profilePictureUrl: null, discordAvatar: null, vacationMode: false, notifyAssignDm: true, notifyMentionDm: true, firstLogin: iso(60 * 24 * 90) },
     stats: { thisMonth: 12, lastMonth: 9, avgRating: 4.6, ratingCount: 20, avgResponseSeconds: 540, allTimeClosed: 120, allTimeClaimed: 140, rank: 1, totalStaff: 5 },

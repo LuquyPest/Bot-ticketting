@@ -42,16 +42,24 @@ gen() { openssl rand -hex 32; }
 YN="$(t o y)"; NY="n"
 
 echo "── Datick : $(t configuration setup) ──────────────────────────────────────────"
-t "Crée d'abord l'application sur https://discord.com/developers/applications
+# Discord is optional (v4): the bot (DMs, channels, commands) and the Discord sign-in are asked separately
+ask USE_BOT   "$(t "Utiliser le bot Discord (tickets par MP et salons) ? (o/n)" "Use the Discord bot (tickets by DM and channels)? (y/n)")" "$YN"
+ask USE_LOGIN "$(t "Se connecter au dashboard avec Discord ? (o/n)" "Sign in to the dashboard with Discord? (y/n)")" "$YN"
+DISCORD_TOKEN=""; DISCORD_CLIENT_ID=""; DISCORD_CLIENT_SECRET=""; INSTALL_TOKEN=""
+if is_yes "$USE_BOT" || is_yes "$USE_LOGIN"; then
+  t "Crée d'abord l'application sur https://discord.com/developers/applications
 (onglet Bot → Reset Token, décoche « Public Bot », active les intents « Server Members » et « Message Content » ;
  onglet OAuth2 → Client Secret). Le compte Discord propriétaire de cette application administrera l'instance." \
-  "First create the application on https://discord.com/developers/applications
+    "First create the application on https://discord.com/developers/applications
 (Bot tab → Reset Token, untick « Public Bot », enable the « Server Members » and « Message Content » intents;
  OAuth2 tab → Client Secret). The Discord account that owns this application will administer the instance."
-echo; echo
-ask DISCORD_TOKEN         "$(t "Token du bot Discord" "Discord bot token")" "" secret
-ask DISCORD_CLIENT_ID     "$(t "ID de l'application (Application ID)" "Application ID")"
-ask DISCORD_CLIENT_SECRET "$(t "Client Secret OAuth2" "OAuth2 Client Secret")" "" secret
+  echo; echo
+  is_yes "$USE_BOT" && ask DISCORD_TOKEN "$(t "Token du bot Discord" "Discord bot token")" "" secret
+  ask DISCORD_CLIENT_ID "$(t "ID de l'application (Application ID)" "Application ID")"
+  is_yes "$USE_LOGIN" && ask DISCORD_CLIENT_SECRET "$(t "Client Secret OAuth2" "OAuth2 Client Secret")" "" secret
+fi
+# Without the Discord sign-in, the first owner is created on /installation with this token
+is_yes "$USE_LOGIN" || INSTALL_TOKEN="$(openssl rand -hex 24)"
 ask PUBLIC_HOST           "$(t "Domaine public du dashboard (ex. tickets.example.com)" "Public domain of the dashboard (e.g. tickets.example.com)")"
 ask ACME_EMAIL            "$(t "Ton e-mail (certificats HTTPS et notifications push)" "Your e-mail (HTTPS certificates and push notifications)")"
 echo
@@ -113,6 +121,7 @@ cat > .env <<ENV
 DISCORD_TOKEN=$DISCORD_TOKEN
 DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID
 DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET
+INSTALL_TOKEN=$INSTALL_TOKEN
 
 PUBLIC_HOST=$PUBLIC_HOST
 PUBLIC_URL=https://$PUBLIC_HOST
@@ -142,6 +151,33 @@ ENV
 chmod 600 .env
 
 PORTS=""; [[ "$PROXY" == 1 || "$PROXY" == "" ]] && PORTS="$(t " (ports 80 et 443 ouverts)" " (ports 80 and 443 open)")"
+# Without the Discord sign-in: the first owner account is created on /installation
+if [[ -n "$INSTALL_TOKEN" ]]; then
+  if [[ "$LANG_UI" == en ]]; then cat <<MSG
+
+✅ .env written.
+
+Last steps:
+  1. Point the DNS of $PUBLIC_HOST to this server$PORTS
+  2. Start:    docker compose pull && docker compose up -d
+  3. Open https://$PUBLIC_HOST/installation?token=$INSTALL_TOKEN
+     and create the account of the owner of the instance (e-mail, name, password).
+     Then set the e-mail of the instance in Instance → Health to send invitations and password resets.
+MSG
+  else cat <<MSG
+
+✅ .env écrit.
+
+Dernières étapes :
+  1. Fais pointer le DNS de $PUBLIC_HOST vers ce serveur$PORTS
+  2. Démarre :   docker compose pull && docker compose up -d
+  3. Ouvre https://$PUBLIC_HOST/installation?token=$INSTALL_TOKEN
+     et crée le compte du propriétaire de l'instance (e-mail, nom, mot de passe).
+     Règle ensuite l'e-mail de l'instance dans Instance → Santé pour envoyer invitations et réinitialisations.
+MSG
+  fi
+  exit 0
+fi
 if [[ "$LANG_UI" == en ]]; then cat <<MSG
 
 ✅ .env written.

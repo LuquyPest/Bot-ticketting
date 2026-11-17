@@ -35,13 +35,20 @@ module.exports = {
     // The scheduled jobs wait for them ('tenantsMigrated', index.js): a job would otherwise query
     // a table a new version has not created yet.
     try {
-      const { ensureTenantSchema } = require('../utils/tenantSchema');
-      const active = await globalQuery('SELECT guild_id FROM guilds WHERE status = "active"').catch(() => []);
-      for (const { guild_id } of active) {
-        await ensureTenantSchema(guild_id).catch(err => logger.error('Migration tenant échouée', { guildId: guild_id, err: err.message }));
-      }
+      await migrateTenants();
     } finally {
       client.emit('tenantsMigrated');
     }
-  }
+    // Owner still to create (no Discord owner, no owner account): the install link in the logs
+    require('../utils/installation').announceIfNeeded(client).catch(() => null);
+  },
+  migrateTenants,
 };
+
+async function migrateTenants() {
+  const { ensureTenantSchema } = require('../utils/tenantSchema');
+  const active = await globalQuery('SELECT guild_id FROM guilds WHERE status = "active"').catch(() => []);
+  for (const { guild_id } of active) {
+    await ensureTenantSchema(guild_id).catch(err => logger.error('Migration tenant échouée', { guildId: guild_id, err: err.message }));
+  }
+}

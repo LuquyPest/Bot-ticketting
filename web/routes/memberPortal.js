@@ -33,6 +33,7 @@ function requireMember(req, res, next) {
 // GET /api/member/auth/discord — Discord sign-in (identity only), back through the dashboard callback
 router.get('/auth/discord', (req, res) => {
   const { config } = require('../../utils/config');
+  if (!config.clientId || !config.dashboard?.discordClientSecret) return res.redirect('/espace?error=discord_off');
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
   req.session.oauthPurpose = 'member';
