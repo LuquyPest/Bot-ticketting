@@ -3206,6 +3206,53 @@ async function main() {
     await spaces.refresh();
   }
 
+  // ── Linking a space to a Discord server, and unlinking it (utils/spaces.js, v4 PR 7b) ──
+  {
+    const spaces = app('./utils/spaces');
+    const { registerGuild } = app('./utils/guildActivation');
+    r = await req('POST', '/api/instance/guilds', { sid: sessions.OWN, body: { name: 'Espace à relier' } });
+    const S = r.body.id;
+    const X = '987650000000000123';
+    const sdb = getTenantDb(S);
+    const tk = await sdb("INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, status) VALUES ('db-relier1', 'mail:aaaaaaaaaaaaaaaaaaaaaaaa', 'a@b.c', 'Avant liaison', 'open')");
+    await globalQuery("INSERT INTO login_logs (user_id, username, ip, guild_id) VALUES (?, 'F', '127.0.0.1', ?)", [U.F, S]);
+    r = await req('POST', `/api/instance/guilds/${S}/discord/link`, { sid: sessions.NOWN, body: { discordGuildId: X } });
+    const bad = await req('POST', `/api/instance/guilds/${S}/discord/link`, { sid: sessions.OWN, body: { discordGuildId: '12' } });
+    const taken = await req('POST', `/api/instance/guilds/${S}/discord/link`, { sid: sessions.OWN, body: { discordGuildId: G } });
+    check('relier: réservé au propriétaire, identifiant invalide ou serveur déjà pris refusés', r.status === 403 && bad.status === 400 && taken.status === 409, [r.status, bad.status, taken.status].join());
+    r = await req('POST', `/api/instance/guilds/${S}/discord/link`, { sid: sessions.OWN, body: { discordGuildId: X } });
+    const u = new URL(r.body.url || 'http://x');
+    check('relier: lien d invitation du bot vers ce serveur', r.status === 200 && u.hostname === 'discord.com' && u.searchParams.get('guild_id') === X && u.searchParams.get('scope').includes('bot'), r.body.url);
+    // The bot arrives on X
+    const mkG = id => ({ id, name: 'Serveur Discord relié', ownerId: '300000000000000001', memberCount: 12, iconURL: () => null, leave: async () => {},
+      fetchOwner: async () => ({ id: '300000000000000001', user: { username: 'founder1' } }), fetchAuditLogs: async () => ({ entries: new Map() }) });
+    await registerGuild(fakeClient, mkG(X), { notify: false });
+    const [oldRow] = await globalQuery('SELECT COUNT(*) AS n FROM guilds WHERE guild_id = ?', [S]);
+    const [newRow] = await globalQuery('SELECT guild_name, discord, discord_guild_id, created_by FROM guilds WHERE guild_id = ?', [X]);
+    const [moved] = await getTenantDb(X)('SELECT subject FROM tickets WHERE id = ?', [Number(tk.insertId)]);
+    const [oldDb] = await globalQuery('SELECT COUNT(*) AS n FROM information_schema.schemata WHERE schema_name = ?', [`ticketbot_guild_${S}`]);
+    const [log] = await globalQuery('SELECT COUNT(*) AS n FROM login_logs WHERE guild_id = ?', [X]);
+    check('relier: à l arrivée du bot, l espace devient celui du serveur (tickets, traces), aucun nouvel espace', Number(oldRow.n) === 0 && Number(newRow?.discord) === 1 && newRow.discord_guild_id === X && newRow.created_by === U.F && moved?.subject === 'Avant liaison' && Number(oldDb.n) === 0 && Number(log.n) >= 1 && !spaces.isDiscordless(X), JSON.stringify([oldRow, newRow, moved, oldDb, log]));
+    // Unlinking
+    await getTenantDb(X)("UPDATE tickets SET channel_id = '987650000000009999' WHERE id = ?", [Number(tk.insertId)]);
+    r = await req('POST', `/api/instance/guilds/${X}/discord/unlink`, { sid: sessions.OWN, body: { confirm: 'pas le nom' } });
+    const un = await req('POST', `/api/instance/guilds/${X}/discord/unlink`, { sid: sessions.OWN, body: { confirm: 'Serveur Discord relié' } });
+    const [afterUn] = await globalQuery('SELECT discord, discord_guild_id, status FROM guilds WHERE guild_id = ?', [X]);
+    const [tkU] = await getTenantDb(X)('SELECT channel_id FROM tickets WHERE id = ?', [Number(tk.insertId)]);
+    const [cfgU] = await getTenantDb(X)('SELECT ticket_mode FROM guild_config WHERE id = 1');
+    check('délier: confirmation par le nom, espace gardé, tickets ouverts sans salon', r.status === 400 && un.status === 200 && un.body.openTickets === 1 && Number(afterUn.discord) === 0 && afterUn.discord_guild_id === null && /^db-u/.test(tkU.channel_id) && cfgU.ticket_mode === 'database' && spaces.isDiscordless(X), JSON.stringify([un.body, afterUn, tkU, cfgU]));
+    await app('./events/guildDelete').execute(fakeClient, { id: X, name: 'Serveur Discord relié' });
+    const [afterDel] = await globalQuery('SELECT status FROM guilds WHERE guild_id = ?', [X]);
+    check('délier: le départ du bot ne suspend pas l espace', afterDel.status === 'active', JSON.stringify(afterDel));
+    await registerGuild(fakeClient, mkG(X), { notify: false });
+    const [again] = await globalQuery('SELECT discord, discord_guild_id FROM guilds WHERE guild_id = ?', [X]);
+    check('délier: le bot réinvité sur le serveur relie de nouveau l espace', Number(again.discord) === 1 && again.discord_guild_id === X && !spaces.isDiscordless(X), JSON.stringify(again));
+    await globalQuery('DELETE FROM login_logs WHERE guild_id = ?', [X]);
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [X]);
+    await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${X}\``);
+    await spaces.refresh();
+  }
+
   // ── Without Discord (v4 PR 6): optional token, first owner by install token ──
   {
     const inst = app('./utils/instance');

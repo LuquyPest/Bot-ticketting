@@ -619,6 +619,14 @@ export const ENTRIES = [
   // Spaces (v4)
   ['Créer un espace', 'Create a space'], ['Nom de l\'espace', 'Name of the space'], ['Créer', 'Create'], ['· sans Discord', '· without Discord'],
   ['Espace créé', 'Space created'], ['Nom de l\'espace requis', 'Name of the space required'],
+  ['Relier à Discord', 'Link to Discord'], ['Délier de Discord', 'Unlink from Discord'], ['Inviter le bot', 'Invite the bot'], ['Préparer l\'invitation', 'Prepare the invitation'], ['Délier', 'Unlink'],
+  ['Invite le bot sur ce serveur avec ce lien (valable une heure). Dès qu\'il arrive, l\'espace devient celui du serveur : tickets, réglages et équipe sont conservés.', 'Invite the bot to this server with this link (valid for an hour). As soon as it arrives, the space becomes the server\'s: tickets, settings and team are kept.'],
+  ['Les personnes connectées à cet espace devront le rechoisir dans Mes serveurs.', 'People signed in to this space will have to pick it again in My servers.'],
+  ['Identifiant du serveur Discord (clic droit sur le serveur → Copier l\'identifiant, mode développeur activé).', 'ID of the Discord server (right-click the server → Copy Server ID, developer mode on).'],
+  ['Identifiant du serveur Discord', 'ID of the Discord server'],
+  ['Le bot quitte le serveur Discord. L\'espace, ses réglages, son équipe et ses tickets restent ; les tickets ouverts continuent dans le dashboard, par MP et par e-mail, sans salon.', 'The bot leaves the Discord server. The space, its settings, team and tickets stay; open tickets go on in the dashboard, by DM and by e-mail, without a channel.'],
+  ['Pour confirmer, recopie le nom de l\'espace :', 'To confirm, type the name of the space:'],
+  ['Liaison à un serveur Discord demandée', 'Link to a Discord server requested'], ['Serveur Discord délié', 'Discord server unlinked'],
 ];
 
 export const TEMPLATES = [
@@ -686,6 +694,8 @@ export const TEMPLATES = [
   ['Au moins {} caractères', 'At least {1} characters'], ['{} caractères au plus', '{1} characters at most'],
   ['E-mail de test envoyé à {}', 'Test e-mail sent to {1}'],
   ['Espace « {} » créé', 'Space « {1} » created'],
+  ['Relier à un serveur Discord — {}', 'Link to a Discord server — {1}'], ['Délier du serveur Discord — {}', 'Unlink from the Discord server — {1}'],
+  ['Serveur Discord délié : {} ticket(s) ouvert(s) continuent dans le dashboard', 'Discord server unlinked: {1} open ticket(s) go on in the dashboard'],
   ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],

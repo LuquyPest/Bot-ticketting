@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { uiLocale } from '../../i18n';
 import {
   Building2, CheckCircle, XCircle, RefreshCw,
-  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X
+  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X, Link2, Unlink
 } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -157,6 +157,63 @@ function FoundersModal({ guild, onClose }) {
   );
 }
 
+// Link a space to a Discord server (the bot is invited there, the space takes the server's ID when
+// it arrives), or unlink it (the bot leaves, the space and its tickets stay)
+function DiscordModal({ guild, onClose, onDone }) {
+  const linking = Number(guild.discord) === 0;
+  const [serverId, setServerId] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState(null);
+  const link = async () => {
+    setBusy(true);
+    try { const { data } = await api.post(`/instance/guilds/${guild.guild_id}/discord/link`, { discordGuildId: serverId }); setUrl(data.url); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const unlink = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/instance/guilds/${guild.guild_id}/discord/unlink`, { confirm });
+      toast.success(`Serveur Discord délié${data.openTickets ? ` : ${data.openTickets} ticket(s) ouvert(s) continuent dans le dashboard` : ''}`);
+      onDone();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const input = 'w-full bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1';
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={linking ? 'Relier à Discord' : 'Délier de Discord'}>
+      <div className="w-full max-w-md bg-surface-card border border-overlay/8 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink-1">{linking ? 'Relier à un serveur Discord' : 'Délier du serveur Discord'} — {guild.guild_name}</h2>
+          <button onClick={onClose} aria-label="Fermer" className="p-1 text-ink-3 hover:text-ink-1"><X size={14} /></button>
+        </div>
+        {linking ? (url ? (
+          <div className="space-y-2">
+            <p className="text-sm text-ink-2">Invite le bot sur ce serveur avec ce lien (valable une heure). Dès qu'il arrive, l'espace devient celui du serveur : tickets, réglages et équipe sont conservés.</p>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block px-4 py-2 rounded-xl bg-[#5865F2] text-white text-sm font-semibold">Inviter le bot</a>
+            <p className="text-xs text-ink-4">Les personnes connectées à cet espace devront le rechoisir dans Mes serveurs.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-ink-3">Identifiant du serveur Discord (clic droit sur le serveur → Copier l'identifiant, mode développeur activé).</p>
+            <input value={serverId} onChange={e => setServerId(e.target.value.trim())} inputMode="numeric" placeholder="123456789012345678" aria-label="Identifiant du serveur Discord" className={input} />
+            <button onClick={link} disabled={busy || !serverId} className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">Préparer l'invitation</button>
+          </div>
+        )) : (
+          <div className="space-y-2">
+            <p className="text-sm text-ink-3">Le bot quitte le serveur Discord. L'espace, ses réglages, son équipe et ses tickets restent ; les tickets ouverts continuent dans le dashboard, par MP et par e-mail, sans salon.</p>
+            <label className="block text-xs text-ink-3">Pour confirmer, recopie le nom de l'espace : <strong className="text-ink-2" translate="no">{guild.guild_name}</strong>
+              <input value={confirm} onChange={e => setConfirm(e.target.value)} className={`${input} mt-1`} />
+            </label>
+            <button onClick={unlink} disabled={busy || confirm.trim() !== guild.guild_name} className="px-4 py-2 rounded-xl bg-red-600/15 text-red-300 border border-red-600/30 text-sm font-semibold disabled:opacity-50">Délier</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // A space without a Discord server (v4): tickets by e-mail, member space and dashboard only
 function NewSpace({ onCreated }) {
   const [open, setOpen] = useState(false);
@@ -193,6 +250,7 @@ export default function Guilds() {
   const [confirm, setConfirm]     = useState(null); // { action, guild }
   const [actioning, setActioning] = useState(null);
   const [foundersOf, setFoundersOf] = useState(null); // guild whose founders modal is open
+  const [discordOf, setDiscordOf] = useState(null);   // space to link to / unlink from Discord
 
   const load = () => {
     setLoading(true);
@@ -246,6 +304,9 @@ export default function Guilds() {
     <div className="p-6 space-y-5 max-w-6xl">
       {foundersOf && (
         <FoundersModal guild={foundersOf} onClose={() => setFoundersOf(null)} />
+      )}
+      {discordOf && (
+        <DiscordModal guild={discordOf} onClose={() => setDiscordOf(null)} onDone={() => { setDiscordOf(null); load(); }} />
       )}
       {confirm && (
         <ConfirmModal
@@ -400,6 +461,12 @@ export default function Guilds() {
                                   label={guild.maintenance_mode ? 'Désactiver maintenance' : 'Mode maintenance'}
                                   cls={guild.maintenance_mode ? 'text-orange-400 hover:bg-orange-400/10 ring-1 ring-orange-400/30' : 'text-ink-3 hover:bg-amber-400/10 hover:text-amber-400'}
                                   onClick={() => doAction(guild.maintenance_mode ? 'maintenance_off' : 'maintenance_on', guild)}
+                                />
+                                <ActionBtn
+                                  icon={Number(guild.discord) === 0 ? Link2 : Unlink}
+                                  label={Number(guild.discord) === 0 ? 'Relier à Discord' : 'Délier de Discord'}
+                                  cls="text-ink-3 hover:bg-primary/10 hover:text-primary-light"
+                                  onClick={() => setDiscordOf(guild)}
                                 />
                                 <ActionBtn
                                   icon={Trash2} label="Supprimer"

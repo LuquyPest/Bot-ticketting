@@ -8,7 +8,8 @@ module.exports = {
     try {
       logger.info('Bot retiré d\'un serveur', { guildId: guild.id, guildName: guild.name });
       await globalQuery(
-        'UPDATE guilds SET status = "suspended", suspension_reason = "bot_removed" WHERE guild_id = ? AND status = "active"',
+        // A space unlinked from Discord (discord = 0) stays active: the bot left on purpose
+        'UPDATE guilds SET status = "suspended", suspension_reason = "bot_removed" WHERE guild_id = ? AND status = "active" AND discord = 1',
         [guild.id]
       );
     } catch (err) {
