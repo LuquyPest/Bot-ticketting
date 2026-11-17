@@ -43,6 +43,13 @@ export default function GuildSelect() {
   // straight to its dashboard (the list stays for staff present on several servers)
   const [direct, setDirect]       = useState(null);
 
+  // Back to an invitation opened before signing in (pages/Invitation.jsx)
+  useEffect(() => {
+    let t = null;
+    try { t = sessionStorage.getItem('datick.pendingInvitation'); } catch { /* storage off */ }
+    if (t) window.location.replace(`/invitation?token=${encodeURIComponent(t)}`);
+  }, []);
+
   const fetchGuilds = useCallback(() => {
     setLoading(true);
     setError(null);

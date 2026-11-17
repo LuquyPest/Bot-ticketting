@@ -116,6 +116,11 @@ export const MOCK = {
   '/api/instance/update': { current: 'v3.0.7', latest: 'v3.1.0', available: true, url: 'https://github.com/LuquyPest/datick/releases/tag/v3.1.0', notes: '', checkedAt: Date.now() - 7200000, checkDisabled: false, updater: { connected: true, lastSeen: Date.now(), pinned: null, configured: true }, status: { state: 'done', at: Date.now() - 86400000 * 3, from: 'v3.0.6', now: 'v3.0.7' } },
   '/api/instance/demo': { enabled: true },
   '/api/installation': { needed: true },
+  '/api/auth/invitation': { space: 'Sunset FA', email: 'nouveau@example.com', role: 'support', invitedBy: 'Daryu', expiresAt: iso(-60 * 24 * 6), signedIn: null, needsLogin: false },
+  '/api/invitations': [
+    { id: 2, email: 'nouveau@example.com', role: 'support', grade_id: 1, grade_name: 'Support', invited_by_tag: 'Daryu', created_at: iso(60), expires_at: iso(-60 * 24 * 6), accepted_at: null, revoked_at: null, status: 'pending' },
+    { id: 1, email: 'ancien@example.com', role: 'fondateur', grade_id: null, grade_name: null, invited_by_tag: 'Daryu', created_at: iso(60 * 24 * 3), expires_at: iso(-60 * 24 * 4), accepted_at: iso(60 * 24 * 2), revoked_at: null, status: 'accepted' },
+  ],
   '/api/instance/email': { enabled: true, host: 'smtp.example.com', port: 587, user: 'datick', passwordSet: true, from: 'datick@example.com', fromName: 'Datick' },
   '/api/profile': { profile: { userId: '1', username: 'Daryu', role: 'fondateur', bio: 'Support', bannerColor: '#6366f1', profilePictureUrl: null, discordAvatar: null, vacationMode: false, notifyAssignDm: true, notifyMentionDm: true, firstLogin: iso(60 * 24 * 90) },
     stats: { thisMonth: 12, lastMonth: 9, avgRating: 4.6, ratingCount: 20, avgResponseSeconds: 540, allTimeClosed: 120, allTimeClaimed: 140, rank: 1, totalStaff: 5 },

@@ -627,6 +627,15 @@ export const ENTRIES = [
   ['Le bot quitte le serveur Discord. L\'espace, ses réglages, son équipe et ses tickets restent ; les tickets ouverts continuent dans le dashboard, par MP et par e-mail, sans salon.', 'The bot leaves the Discord server. The space, its settings, team and tickets stay; open tickets go on in the dashboard, by DM and by e-mail, without a channel.'],
   ['Pour confirmer, recopie le nom de l\'espace :', 'To confirm, type the name of the space:'],
   ['Liaison à un serveur Discord demandée', 'Link to a Discord server requested'], ['Serveur Discord délié', 'Discord server unlinked'],
+  // ── Invitations (v4 PR 8) ──
+  ['Invitation', 'Invitation'], ['Inviter par e-mail', 'Invite by e-mail'], ['Inviter', 'Invite'], ['Révoquer', 'Revoke'], ['Invitation révoquée', 'Invitation revoked'],
+  ['La personne reçoit un lien valable 7 jours, utilisable une fois : il crée son compte ou ajoute le sien à l\'équipe.', 'The person gets a link valid for 7 days, usable once: it creates their account or adds theirs to the team.'],
+  ['Adresse e-mail à inviter', 'E-mail address to invite'], ['Rôle', 'Role'], ['Grade', 'Grade'], ['Sans grade', 'No grade'],
+  ['Acceptée', 'Accepted'], ['Révoquée', 'Revoked'], ['Expirée', 'Expired'],
+  ['Ton nom', 'Your name'],
+  ['Encore une fois', 'Once more'], ['Confirmer le mot de passe', 'Confirm the password'], ['Rejoindre l\'équipe', 'Join the team'], ['Ouvrir le dashboard', 'Open the dashboard'],
+  ['Se connecter', 'Sign in'], ['Chargement…', 'Loading…'],
+  ['Invitation introuvable', 'Invitation not found'],
 ];
 
 export const TEMPLATES = [
@@ -700,4 +709,10 @@ export const TEMPLATES = [
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],
   ['Reprendre {} ticket(s)', 'Take over {1} ticket(s)'], ['{} ticket(s) repris', '{1} ticket(s) taken over'],
+  ['Invitation envoyée à {}', 'Invitation sent to {1}'], ['par {}, {}', 'by {1}, {2}'],
+  ['Tu fais maintenant partie de l\'équipe de {}.', 'You are now part of the team of {1}.'],
+  ['Un compte utilise déjà l\'adresse {} : connecte-toi, tu reviendras ici ensuite.', 'An account already uses the address {1}: sign in, you will come back here afterwards.'],
+  ['Crée ton compte pour {}.', 'Create your account for {1}.'],
+  ['{} t\'invite à rejoindre l\'équipe de {}, rôle {}.', '{1} invites you to join the team of {2}, role {3}.'],
+  ['Connecté en tant que {} : ce compte rejoindra l\'équipe.', 'Signed in as {1}: this account will join the team.'],
 ];

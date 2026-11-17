@@ -518,6 +518,29 @@ const MIGRATIONS = [
       "ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS staff_language ENUM('fr','en','es','de','it','pt','auto') NOT NULL DEFAULT 'fr'",
     ],
   },
+  {
+    version: 38,
+    name: 'Invitations dans l\'équipe par e-mail (v4)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS team_invitations (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        email          VARCHAR(254) NOT NULL,
+        role           ENUM('support','fondateur') NOT NULL DEFAULT 'support',
+        grade_id       INT DEFAULT NULL,
+        token_hash     CHAR(64) NOT NULL,
+        invited_by_id  VARCHAR(32) NOT NULL,
+        invited_by_tag VARCHAR(100) NOT NULL,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at     DATETIME NOT NULL,
+        accepted_at    DATETIME DEFAULT NULL,
+        accepted_by    VARCHAR(32) DEFAULT NULL,
+        revoked_at     DATETIME DEFAULT NULL,
+        UNIQUE KEY uniq_ti_token (token_hash),
+        INDEX idx_ti_email (email),
+        CONSTRAINT fk_ti_grade FOREIGN KEY (grade_id) REFERENCES grades(id) ON DELETE SET NULL
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

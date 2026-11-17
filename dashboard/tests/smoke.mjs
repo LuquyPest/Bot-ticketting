@@ -21,6 +21,7 @@ const PAGES = [
   ['login', '/login', 'Discord', true],
   ['reset-password', '/reset-password', 'Mot de passe oublié', true],
   ['installation', '/installation', 'Créer le compte du propriétaire', true],
+  ['invitation', '/invitation?token=x', 'Rejoindre l\'équipe', true],
   ['dashboard', '/', 'Nouveautés depuis ta dernière visite'],
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Voici la capture'],

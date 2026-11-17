@@ -30,6 +30,82 @@ const ROLE_STYLES = {
 };
 const ROLE_LABELS = { fondateur: 'Fondateur', support: 'Support', nouveau: 'Nouveau' };
 
+// ─── Invitations (utils/invitations.js) ────────────────────────────
+const INV_STATUS = {
+  pending:  { label: 'En attente', cls: 'text-amber-400' },
+  accepted: { label: 'Acceptée',   cls: 'text-emerald-400' },
+  revoked:  { label: 'Révoquée',   cls: 'text-ink-4' },
+  expired:  { label: 'Expirée',    cls: 'text-ink-4' },
+};
+
+function Invitations({ me, grades, onAccepted }) {
+  const [list, setList] = useState([]);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('support');
+  const [gradeId, setGradeId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const isFounder = me?.role === 'fondateur';
+
+  const load = useCallback(() => {
+    api.get('/invitations').then(r => setList(r.data)).catch(() => null);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const send = async e => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.post('/invitations', { email, role, gradeId: gradeId || null });
+      toast.success(`Invitation envoyée à ${email}`);
+      setEmail(''); setGradeId('');
+      load(); onAccepted?.();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const revoke = async id => {
+    try { await api.delete(`/invitations/${id}`); toast.success('Invitation révoquée'); load(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  return (
+    <section aria-labelledby="inv-title" className="bg-surface-card border border-overlay/6 rounded-xl p-4 space-y-3">
+      <h2 id="inv-title" className="text-sm font-semibold text-ink-1">Inviter par e-mail</h2>
+      <p className="text-xs text-ink-3">La personne reçoit un lien valable 7 jours, utilisable une fois : il crée son compte ou ajoute le sien à l'équipe.</p>
+      <form onSubmit={send} className="flex flex-wrap gap-2">
+        <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="adresse@exemple.fr" aria-label="Adresse e-mail à inviter"
+          className="flex-1 min-w-48 bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary/50" />
+        <select value={role} onChange={e => setRole(e.target.value)} aria-label="Rôle" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-2 text-sm">
+          <option value="support">Support</option>
+          {isFounder && <option value="fondateur">Fondateur</option>}
+        </select>
+        {role === 'support' && grades.length > 0 && (
+          <select value={gradeId} onChange={e => setGradeId(e.target.value)} aria-label="Grade" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-2 text-sm">
+            <option value="">Sans grade</option>
+            {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        )}
+        <button type="submit" disabled={busy || !email} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50">Inviter</button>
+      </form>
+      {list.length > 0 && (
+        <ul className="divide-y divide-overlay/6 text-sm">
+          {list.map(i => (
+            <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+              <span className="text-ink-1 truncate" translate="no">{i.email}</span>
+              <span className="text-xs text-ink-3">{ROLE_LABELS[i.role]}</span>
+              {i.grade_name && <span className="text-xs text-ink-3" translate="no">{i.grade_name}</span>}
+              <span className={`text-xs ${INV_STATUS[i.status]?.cls}`}>{INV_STATUS[i.status]?.label}</span>
+              <span className="text-xs text-ink-4">{`par ${i.invited_by_tag}, ${fmtDate(i.created_at)}`}</span>
+              {i.status === 'pending' && (
+                <button onClick={() => revoke(i.id)} className="ml-auto text-xs text-red-400 hover:underline">Révoquer</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 // ─── Gestion tab ───────────────────────────────────────────────────
 function GestionTab({ me }) {
   const [users, setUsers] = useState([]);
@@ -119,6 +195,8 @@ function GestionTab({ me }) {
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
+
+      {canManage && <Invitations me={me} grades={grades} onAccepted={load} />}
 
       <div className="bg-surface-card border border-overlay/6 rounded-xl overflow-hidden">
         <table className="w-full text-sm">

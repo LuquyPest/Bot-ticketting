@@ -14,6 +14,13 @@ The **founder** of a server is the person who invited the bot (failing that, the
 
 At sign-in, a staff member with access to only one server lands straight on its dashboard.
 
+**Inviting by e-mail**: **Team → Management → Invite by e-mail**, with the role (*Support* or *Founder*) and, for support, a grade, since without a grade they have no rights. The person gets a link valid for **7 days**, usable **once**:
+- without an account, they create one (name and password), the address being confirmed by the link;
+- with an account that already uses this address, they sign in first, then come back to the invitation;
+- already signed in, that account joins the team.
+
+The invitation leaves through the [instance e-mail](./instance), which must be set up. The list shows pending, accepted, revoked and expired invitations; **Revoke** cancels a link not used yet, and inviting the same address again replaces the pending invitation. Only a founder invites a founder; a member with the `manage_users` permission invites to the support role, with a grade whose permissions they already hold. An invited member is managed by hand: the Discord role sync never removes them.
+
 ## Grades
 
 A grade is a set of permissions. Every action of the dashboard and of the Discord commands is checked on the server side.
@@ -27,7 +34,7 @@ A grade is a set of permissions. Every action of the dashboard and of the Discor
 | `manage_participants` | Adding or removing participants |
 | `create_ticket` | Opening a ticket for a member |
 | `view_transcripts` | Reading transcripts |
-| `manage_users` | Giving grades (not to oneself, nor a grade more powerful than one's own) |
+| `manage_users` | Giving grades (not to oneself, nor a grade more powerful than one's own), inviting to the support role |
 | `manage_grades` | Creating and editing grades, restricting who can see a ticket |
 | `manage_settings` | Tags, FAQ, fields, checklists, incidents, server health |
 | `view_audit` | Reading the log |

@@ -3391,6 +3391,111 @@ async function main() {
     await globalQuery('DELETE FROM accounts WHERE id = ?', [PA]);
   }
 
+  // ── Invitations to the team by e-mail (utils/invitations.js, v4 PR 8) ──
+  {
+    let ip = 0;
+    const H = () => ({ 'X-Forwarded-For': `10.8.${Math.floor(ip / 200)}.${ip++ % 200}` });
+    const pub = (method, path, opts = {}) => req(method, path, { ...opts, headers: { ...H(), ...(opts.headers || {}) } });
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const mails = [];
+    nodemailer.createTransport = () => ({ sendMail: async x => { mails.push(x); return {}; }, close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const tokenOf = m => decodeURIComponent((m?.text.match(/\/invitation\?token=(\S+)/) || [])[1] || '');
+
+    r = await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite1@example.com' } });
+    check('invitations: refusées sans e-mail de l instance', r.status === 409 && /E-mail/.test(r.body.error), JSON.stringify(r.body));
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    const IS = '100000000000000081';
+    await db("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'Sans droit', 'support')", [IS]);
+    await mk('IS', { user: { id: IS, username: 'Sans droit', role: null }, currentGuildId: G });
+    r = await req('POST', '/api/invitations', { sid: sessions.IS, body: { email: 'invite1@example.com' } });
+    const listNo = await req('GET', '/api/invitations', { sid: sessions.IS });
+    check('invitations: réservées aux fondateurs et à manage_users', r.status === 403 && listNo.status === 403, `${r.status} ${listNo.status}`);
+    r = await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'pas une adresse' } });
+    const badRole = await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite1@example.com', role: 'nouveau' } });
+    check('invitations: adresse ou rôle invalides refusés', r.status === 400 && badRole.status === 400, `${r.status} ${badRole.status}`);
+
+    const { insertId: gInv } = await db("INSERT INTO grades (name, color) VALUES ('Invités support', '#123456')");
+    r = await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'Invite1@Example.com', role: 'support', gradeId: gInv } });
+    const tok1 = tokenOf(mails[0]);
+    const [row1] = await db('SELECT token_hash FROM team_invitations WHERE email = ?', ['invite1@example.com']);
+    check('invitations: e-mail envoyé avec un lien, seul le hachage du jeton est gardé', r.status === 201 && mails[0]?.to === 'invite1@example.com' && /Invitation/.test(mails[0]?.subject) && tok1.startsWith(`${G}.`) && row1.token_hash === crypto.createHash('sha256').update(tok1).digest('hex') && !JSON.stringify(r.body).includes(tok1.split('.')[1]), JSON.stringify([r.body, mails[0]?.subject]));
+    r = await req('GET', '/api/invitations', { sid: sessions.F });
+    check('invitations: listées en attente, sans jeton', r.status === 200 && r.body[0]?.email === 'invite1@example.com' && r.body[0].status === 'pending' && r.body[0].grade_name === 'Invités support' && !('token_hash' in r.body[0]), JSON.stringify(r.body[0]));
+    r = await pub('GET', '/api/auth/invitation', { query: { token: tok1 } });
+    check('invitations: la page montre l espace, le rôle et l auteur', r.status === 200 && r.body.email === 'invite1@example.com' && r.body.role === 'support' && r.body.invitedBy === 'F' && r.body.needsLogin === false && !!r.body.space, JSON.stringify(r.body));
+    r = await pub('POST', '/api/auth/invitation/accept', { body: { token: tok1, displayName: 'Invité Un', password: 'court' } });
+    const [still] = await db('SELECT accepted_at FROM team_invitations WHERE email = ?', ['invite1@example.com']);
+    check('invitations: mot de passe trop court refusé, l invitation reste valable', r.status === 400 && still.accepted_at === null, JSON.stringify(r.body));
+    r = await pub('POST', '/api/auth/invitation/accept', { body: { token: tok1, displayName: 'Invité Un', password: 'Une-phrase-longue 81' } }); // ggignore
+    const cookieI = (r.headers['set-cookie'] || []).find(c => c.startsWith('connect.sid='));
+    const [accI] = await globalQuery("SELECT id, email_verified, password_hash FROM accounts WHERE email = 'invite1@example.com'");
+    const [duI] = accI ? await db('SELECT role, discord_has_role FROM dashboard_users WHERE user_id = ?', [accI.id]) : [];
+    const [ugI] = accI ? await db('SELECT grade_id FROM user_grades WHERE user_id = ?', [accI.id]) : [];
+    check('invitations: acceptée → compte créé (adresse confirmée), dans l équipe avec son grade, connecté', r.status === 200 && r.body.created && !!cookieI && /^u_[0-9a-f]{24}$/.test(accI?.id) && Number(accI.email_verified) === 1 && /^scrypt\$/.test(accI.password_hash) && duI?.role === 'support' && Number(duI.discord_has_role) === 0 && Number(ugI?.grade_id) === Number(gInv), JSON.stringify([r.body, accI?.id, duI, ugI]));
+    r = await pub('POST', '/api/auth/invitation/accept', { body: { token: tok1, displayName: 'Autre', password: 'Une-phrase-longue 82' } }); // ggignore
+    const reGet = await pub('GET', '/api/auth/invitation', { query: { token: tok1 } });
+    check('invitations: réutilisation refusée', r.status === 410 && reGet.status === 410 && /déjà été utilisée/.test(r.body.error), JSON.stringify([r.body, reGet.body]));
+    r = await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite1@example.com' } });
+    check('invitations: une personne déjà dans l équipe n est pas réinvitée', r.status === 409, JSON.stringify(r.body));
+
+    // Revoked, expired, forged
+    mails.length = 0;
+    await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite2@example.com' } });
+    const tok2 = tokenOf(mails[0]);
+    const [i2] = await db("SELECT id FROM team_invitations WHERE email = 'invite2@example.com'");
+    r = await req('DELETE', `/api/invitations/${i2.id}`, { sid: sessions.F });
+    const acc2 = await pub('POST', '/api/auth/invitation/accept', { body: { token: tok2, displayName: 'Deux', password: 'Une-phrase-longue 83' } }); // ggignore
+    const again2 = await req('DELETE', `/api/invitations/${i2.id}`, { sid: sessions.F });
+    check('invitations: révoquée → lien refusé, aucun compte créé', r.status === 200 && acc2.status === 410 && /révoquée/.test(acc2.body.error) && again2.status === 404 && !(await globalQuery("SELECT 1 FROM accounts WHERE email = 'invite2@example.com'")).length, JSON.stringify([r.body, acc2.body]));
+    mails.length = 0;
+    await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite3@example.com' } });
+    const tok3 = tokenOf(mails[0]);
+    await db("UPDATE team_invitations SET expires_at = NOW() - INTERVAL 1 MINUTE WHERE email = 'invite3@example.com'");
+    r = await pub('POST', '/api/auth/invitation/accept', { body: { token: tok3, displayName: 'Trois', password: 'Une-phrase-longue 84' } }); // ggignore
+    const list3 = await req('GET', '/api/invitations', { sid: sessions.F });
+    check('invitations: expirée (7 jours) → refusée, listée comme expirée', r.status === 410 && /expiré/.test(r.body.error) && list3.body.find(i => i.email === 'invite3@example.com')?.status === 'expired', JSON.stringify(r.body));
+    const forged = `${G}.${'A'.repeat(43)}`;
+    const other = `${'1'.repeat(18)}.${tok3.split('.')[1]}`;
+    r = await pub('GET', '/api/auth/invitation', { query: { token: forged } });
+    const r2 = await pub('POST', '/api/auth/invitation/accept', { body: { token: other, displayName: 'X', password: 'Une-phrase-longue 85' } }); // ggignore
+    const r3 = await pub('GET', '/api/auth/invitation', { query: { token: 'nimportequoi' } });
+    check('invitations: jeton inventé ou d un autre espace inconnu', r.status === 404 && r2.status === 404 && r3.status === 404, `${r.status} ${r2.status} ${r3.status}`);
+    // A new invitation to the same address replaces the pending one
+    mails.length = 0;
+    await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite4@example.com' } });
+    await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'invite4@example.com' } });
+    const [old4] = await db("SELECT revoked_at FROM team_invitations WHERE email = 'invite4@example.com' ORDER BY id LIMIT 1");
+    r = await pub('GET', '/api/auth/invitation', { query: { token: tokenOf(mails[0]) } });
+    check('invitations: renvoyer remplace l invitation en attente', old4.revoked_at !== null && r.status === 410, JSON.stringify(old4));
+
+    // An address that already has an account: sign in first, then the account joins
+    const EX = '100000000000000082';
+    await globalQuery("INSERT INTO accounts (id, email, email_verified, display_name) VALUES (?, 'existe@example.com', 1, 'Existe')", [EX]);
+    mails.length = 0;
+    await req('POST', '/api/invitations', { sid: sessions.F, body: { email: 'existe@example.com', role: 'fondateur' } });
+    const tok5 = tokenOf(mails[0]);
+    r = await pub('GET', '/api/auth/invitation', { query: { token: tok5 } });
+    const anon = await pub('POST', '/api/auth/invitation/accept', { body: { token: tok5, displayName: 'Pirate', password: 'Une-phrase-longue 86' } }); // ggignore
+    check('invitations: adresse d un compte existant → connexion demandée, pas de second compte', r.body.needsLogin === true && anon.status === 409 && anon.body.needsLogin === true && (await globalQuery("SELECT id FROM accounts WHERE email = 'existe@example.com'")).length === 1, JSON.stringify([r.body, anon.body]));
+    await mk('EX', { user: { id: EX, username: 'Existe', role: null }, authMethod: 'password' });
+    r = await pub('POST', '/api/auth/invitation/accept', { sid: sessions.EX, body: { token: tok5 } });
+    const [du5] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [EX]);
+    const gl = await req('GET', '/api/auth/guilds', { sid: sessions.EX });
+    check('invitations: connecté, le compte rejoint l équipe avec le rôle invité et voit l espace', r.status === 200 && !r.body.created && du5?.role === 'fondateur' && gl.body.some?.(g => g.id === G), JSON.stringify([r.body, du5, gl.body]));
+    check('invitations: journal de l espace (envoi, révocation, acceptation)', (await db("SELECT action FROM audit_log WHERE action IN ('invitation_sent','invitation_revoked','invitation_accepted')")).length >= 4, '');
+
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await db('DELETE FROM dashboard_users WHERE user_id IN (?)', [[IS, EX, accI?.id || 'x']]);
+    await db('DELETE FROM user_grades WHERE grade_id = ?', [gInv]);
+    await db('DELETE FROM grades WHERE id = ?', [gInv]);
+    await db('DELETE FROM team_invitations');
+    await globalQuery('DELETE FROM accounts WHERE id IN (?)', [[EX, accI?.id || 'x']]);
+  }
+
   // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
   {
     const axios = require('axios');
