@@ -47,6 +47,23 @@ router.post('/guilds', async (req, res) => {
   }
 });
 
+// POST /api/instance/guilds/:guildId/discord/link { discordGuildId } — invite link of the bot for
+// that server; the space becomes that server's space when the bot arrives (utils/spaces.js)
+router.post('/guilds/:guildId/discord/link', async (req, res) => {
+  try { res.json(await require('../../utils/spaces').requestLink(req.params.guildId, String(req.body?.discordGuildId || '').trim())); }
+  catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
+});
+
+// POST /api/instance/guilds/:guildId/discord/unlink { confirm } — confirm: the name of the space
+router.post('/guilds/:guildId/discord/unlink', async (req, res) => {
+  try {
+    const [g] = await globalQuery('SELECT guild_name FROM guilds WHERE guild_id = ?', [req.params.guildId]);
+    if (!g) return res.status(404).json({ error: 'Espace introuvable' });
+    if (String(req.body?.confirm || '').trim() !== g.guild_name) return res.status(400).json({ error: 'Recopie le nom de l\'espace pour confirmer' });
+    res.json(await require('../../utils/spaces').unlinkDiscord(req.app.locals.client, req.params.guildId));
+  } catch (err) { res.status(err.status || 500).json({ error: err.status ? err.message : 'Erreur serveur' }); }
+});
+
 // GET /api/instance/guilds
 router.get('/guilds', async (req, res) => {
   try {

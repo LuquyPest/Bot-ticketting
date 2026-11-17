@@ -52,7 +52,22 @@ async function registerGuild(client, guild, { inviter = null, notify = true } = 
   const owner = await guild.fetchOwner().catch(() => null);
   const ownerId  = owner?.id || guild.ownerId;
   const ownerTag = owner?.user?.username || guild.ownerId;
-  const [existing] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [guild.id]);
+  let [existing] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [guild.id]);
+
+  // A space without Discord was waiting for this server (Instance → Serveurs → Relier à Discord):
+  // the space becomes the space of this server, instead of a new one (utils/spaces.js)
+  if (!existing) {
+    const waiting = await require('./spaces').takePendingLink(guild.id);
+    if (waiting) {
+      await require('./spaces').rekeySpace(waiting, guild);
+      [existing] = await globalQuery('SELECT * FROM guilds WHERE guild_id = ?', [guild.id]);
+    }
+  }
+  // A space unlinked from this server, and the bot is back on it: linked again
+  if (existing && Number(existing.discord) === 0) {
+    await globalQuery('UPDATE guilds SET discord = 1, discord_guild_id = ? WHERE guild_id = ?', [guild.id, guild.id]);
+    await require('./spaces').refresh();
+  }
 
   if (!existing) {
     await globalQuery(
