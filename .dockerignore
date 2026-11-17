@@ -18,3 +18,4 @@ tests/
 dashboard/tests/
 .claude/
 docs/
+data/

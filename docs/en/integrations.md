@@ -47,7 +47,20 @@ For people who are not on Discord: each e-mail received on the support address o
 
 **What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket.
 
-**Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. **Attachments** are listed by name but not kept. The member space stays reserved to Discord accounts.
+**Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The member space stays reserved to Discord accounts.
+
+**Attachments**: kept on the server, downloadable from the ticket view (under their message, preview for images), with the same rights as the ticket. Everything is set in the same section:
+
+| Setting | Default |
+|---|---|
+| Keep the attachments | yes (otherwise, only their name is noted) |
+| Maximum size per file | 10 MB (up to 25) |
+| Total space of the server | 500 MB; beyond it, new ones are no longer kept |
+| Keep after the ticket is closed | 90 days (0 = forever); deleted every night after that |
+| Refused types | executables and scripts (`exe`, `bat`, `js`, `html`, `svg`…), editable |
+| Also post in the Discord channel | yes, up to 8 MB per file |
+
+The space used is shown, with **Apply the retention now** and **Delete those of closed tickets**. A refused attachment is noted with the reason (« type refused », « over 10 MB »…). Files live in the `attachments` Docker volume, outside the nightly database backups.
 
 ::: tip Mail server on your local network
 For safety, the IMAP and SMTP servers must have a public address (the bot never connects to an internal address chosen from the dashboard). For a mail server at home, `EMAIL_ALLOW_PRIVATE_HOSTS=true` in `.env`.

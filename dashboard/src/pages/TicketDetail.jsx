@@ -221,6 +221,14 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     api.get(`/tickets/${id}/notes`).then(r => setNotes(r.data)).catch(() => {});
   }, [id]);
 
+  // Files kept from the e-mails of a ticket opened by e-mail, shown under their message
+  const [emailFiles, setEmailFiles] = useState([]);
+  const byEmail = String(ticket?.owner_id || '').startsWith('mail:');
+  useEffect(() => {
+    if (!byEmail) { setEmailFiles([]); return; }
+    api.get(`/tickets/${id}/attachments`).then(r => setEmailFiles(r.data)).catch(() => setEmailFiles([]));
+  }, [id, byEmail, notes.length]);
+
   useEffect(() => {
     loadTicket();
     loadNotes();
@@ -1216,6 +1224,23 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                                      ${isLeft ? 'rounded-tl-md' : 'rounded-tr-md'} ${note.deleted_at ? 'opacity-60 border-dashed' : ''}`}>
                       <MessageContent text={note.content} light={!isLeft} />
                     </div>
+                  )}
+                  {emailFiles.some(f => f.note_id === note.id) && (
+                    <ul className={`flex flex-wrap gap-2 max-w-sm ${isLeft ? '' : 'justify-end'}`} aria-label="Pièces jointes de l'e-mail">
+                      {emailFiles.filter(f => f.note_id === note.id).map(f => {
+                        const url = `/api/tickets/${id}/attachments/${f.id}`;
+                        const image = /^image\/(png|jpeg|gif|webp)$/.test(f.content_type);
+                        return (
+                          <li key={f.id}>
+                            <a href={url} download className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-overlay/8 bg-surface text-xs text-ink-2 hover:text-ink-1 hover:border-overlay/15" translate="no">
+                              {image ? <img src={`${url}?inline=1`} alt="" className="w-10 h-10 object-cover rounded" loading="lazy" /> : <Paperclip size={12} aria-hidden="true" />}
+                              <span className="truncate max-w-[10rem]">{f.filename}</span>
+                              <span className="text-ink-4">{f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(f.size / 1024))} Ko`}</span>
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
 
                   {/* Edited / deleted by the member in their DMs (previous versions kept for the staff) */}

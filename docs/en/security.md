@@ -36,7 +36,7 @@ The project has been through several audits, including an OWASP Top 10 audit, al
 | **Tickets by e-mail** | An answer enters a ticket only with the token of the subject **and** from the address that opened it; automatic replies ignored; 10 e-mails per hour per sender, 60 new tickets per hour per server; IMAP/SMTP passwords encrypted |
 | **Metrics** | `/metrics` absent until the owner turns it on, then protected by a token of which only the fingerprint is kept; no name or subject |
 | **IP address** | `X-Forwarded-For` is only trusted coming from the reverse proxy itself |
-| **Attachments** | Relay limited to Discord links and to signed-in users |
+| **Attachments** | Relay limited to Discord links and to signed-in users; those of the e-mails served only to the staff who can see the ticket, as downloads (`nosniff`, sandbox), under a random name, executable types refused |
 
 ## Data and infrastructure
 

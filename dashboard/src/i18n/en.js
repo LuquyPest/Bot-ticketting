@@ -564,6 +564,16 @@ export const ENTRIES = [
   ['•••••••• (inchangé)', '•••••••• (unchanged)'], ['Tester la connexion', 'Test the connection'], ['connexion réussie', 'connection succeeded'],
   ['Tickets par e-mail activés', 'Tickets by e-mail turned on'], ['Réglages enregistrés', 'Settings saved'], ['La boîte est lue chaque minute.', 'The mailbox is read every minute.'],
   ['Tickets par e-mail modifiés', 'Tickets by e-mail changed'],
+  // Attachments of the e-mails
+  ['Pièces jointes reçues', 'Attachments received'], ['Pièces jointes de l\'e-mail', 'Attachments of the e-mail'],
+  ['Conserver les pièces jointes sur le serveur (sinon, seul leur nom est noté dans le ticket)', 'Keep the attachments on the server (otherwise, only their name is noted in the ticket)'],
+  ['Taille maximale par fichier (Mo)', 'Maximum size per file (MB)'], ['Espace total (Mo)', 'Total space (MB)'],
+  ['Garder après la fermeture du ticket (jours, 0 = toujours)', 'Keep after the ticket is closed (days, 0 = forever)'],
+  ['Types refusés (extensions, séparées par des virgules)', 'Refused types (extensions, separated by commas)'],
+  ['Les publier aussi dans le salon Discord du ticket (8 Mo maximum par fichier)', 'Also post them in the ticket\'s Discord channel (8 MB maximum per file)'],
+  ['Appliquer la conservation maintenant', 'Apply the retention now'], ['Supprimer celles des tickets fermés', 'Delete those of closed tickets'],
+  ['Supprimer les pièces jointes de tous les tickets fermés ?', 'Delete the attachments of every closed ticket?'],
+  ['Pièces jointes des e-mails supprimées', 'Attachments of the e-mails deleted'],
 ];
 
 export const TEMPLATES = [
@@ -622,7 +632,10 @@ export const TEMPLATES = [
   ['Mettre à jour vers {} ? Le bot redémarre (environ une minute).', 'Update to {1}? The bot restarts (about a minute).'],
   ['Réponse en moins de {} h', 'Answered within {1} h'],
   ['· jeton créé le {}', '· token created on {1}'],
-  ['Boîte lue le {}', 'Mailbox read on {1}'], ['IMAP : {}', 'IMAP: {1}'], ['SMTP : {}', 'SMTP: {1}'],
+  ['Boîte lue le {}', 'Mailbox read on {1}'],
+  ['Utilisé : {} fichier(s), {} sur {} Mo', 'Used: {1} file(s), {2} out of {3} MB'], ['Utilisé : {} fichier(s), {}', 'Used: {1} file(s), {2}'],
+  ['{} fichier(s) supprimé(s)', '{1} file(s) deleted'],
+  ['Supprimer maintenant les pièces jointes des tickets fermés depuis plus de {} jours ?', 'Delete now the attachments of tickets closed more than {1} days ago?'], ['IMAP : {}', 'IMAP: {1}'], ['SMTP : {}', 'SMTP: {1}'],
   ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],

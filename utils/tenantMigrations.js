@@ -486,6 +486,31 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 36,
+    name: 'Pièces jointes des e-mails conservées',
+    statements: [
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS attach_enabled TINYINT(1) NOT NULL DEFAULT 1',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS attach_max_mb INT NOT NULL DEFAULT 10',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS attach_quota_mb INT NOT NULL DEFAULT 500',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS attach_retention_days INT NOT NULL DEFAULT 90',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS attach_post_discord TINYINT(1) NOT NULL DEFAULT 1',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS attach_blocked VARCHAR(600) DEFAULT NULL',
+      `CREATE TABLE IF NOT EXISTS email_attachments (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id    INT NOT NULL,
+        note_id      INT DEFAULT NULL,
+        filename     VARCHAR(150) NOT NULL,
+        content_type VARCHAR(100) NOT NULL DEFAULT 'application/octet-stream',
+        size         INT NOT NULL,
+        sha256       CHAR(64) NOT NULL,
+        stored_name  CHAR(32) NOT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ea_ticket (ticket_id),
+        CONSTRAINT fk_ea_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

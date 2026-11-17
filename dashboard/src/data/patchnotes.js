@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v3.3.0',
+    date: '17 novembre 2026',
+    title: 'Pièces jointes des e-mails',
+    titleEn: 'Attachments of the e-mails',
+    changes: [
+      { type: 'new',  text: 'Pièces jointes des tickets par e-mail gardées sur le serveur, téléchargeables sous leur message dans la fiche ticket (aperçu des images) et publiées dans le salon Discord du ticket ; taille par fichier, espace total, types refusés et durée de conservation après fermeture réglables (Paramètres → Intégrations), avec l\'espace utilisé et une purge manuelle', en: 'Attachments of tickets by e-mail kept on the server, downloadable under their message in the ticket view (image preview) and posted in the ticket\'s Discord channel; size per file, total space, refused types and retention after closing are configurable (Settings → Integrations), with the space used and a manual purge' },
+    ]
+  },
+  {
     version: 'v3.2.1',
     date: '17 novembre 2026',
     title: 'Bouton « Mettre à jour » par défaut',

@@ -102,6 +102,7 @@ const ACTIONS = {
   template_update:          ['Modèle de réponse modifié', 'config'],
   template_delete:          ['Modèle de réponse supprimé', 'config'],
   email_settings:           ['Tickets par e-mail modifiés', 'config'],
+  email_attachments_purge:  ['Pièces jointes des e-mails supprimées', 'config'],
   subject_rule_create:      ['Règle par sujet créée', 'config'],
   subject_rule_delete:      ['Règle par sujet supprimée', 'config'],
   field_create:             ['Champ personnalisé créé', 'config'],

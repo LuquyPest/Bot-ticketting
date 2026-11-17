@@ -36,6 +36,7 @@ const ENV_MAP = {
   BACKUP_KEY:            'backupKey',
   BACKUP_STATUS_DIR:     'backupStatusDir',
   BACKUP_REQUESTS_DIR:   'backupRequestsDir',
+  ATTACHMENTS_DIR:       'attachmentsDir',
   UPDATER_TOKEN:         'updater.token',
   UPDATE_CHECK:          'updateCheck',
   TRANSCRIPT_RETENTION_DAYS: 'retention.transcriptDays',

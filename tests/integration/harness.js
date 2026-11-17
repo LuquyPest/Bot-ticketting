@@ -3102,6 +3102,56 @@ async function main() {
     r = await req('POST', `/api/tickets/${tE}/reply`, { sid: sessions.F, body: { content: 'Votre colis arrive demain.' } });
     const replyMail = sent.find(m => m.to?.address === 'alice@mail.test');
     check('e-mail: la réponse du staff part par e-mail, dans le fil du ticket', r.status === 200 && replyMail && replyMail.text.includes('Votre colis arrive demain') && replyMail.subject.startsWith(tag) && !!replyMail.inReplyTo, JSON.stringify(replyMail && { s: replyMail.subject, t: replyMail.text.slice(0, 200), irt: replyMail.inReplyTo }));
+    // Attachments kept on the server (utils/emailAttachments.js)
+    {
+      const os = require('os'), fsx = require('fs');
+      const attDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-att-'));
+      app('./utils/config').config.attachmentsDir = attDir;
+      const ea = app('./utils/emailAttachments');
+      r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...(await req('GET', '/api/email', { sid: sessions.F })).body, attachments: { maxMb: 99 } } });
+      check('pièces jointes: réglage hors limites refusé', r.status === 400 && /entre 1 et 25/.test(r.body.error), JSON.stringify(r.body));
+      r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...(await req('GET', '/api/email', { sid: sessions.F })).body, attachments: { enabled: true, maxMb: 1, quotaMb: 10, retentionDays: 30, postDiscord: true, blocked: 'exe, .bat' } } });
+      check('pièces jointes: réglages enregistrés (taille, espace, conservation, types refusés)', r.status === 200 && r.body.attachments.maxMb === 1 && r.body.attachments.retentionDays === 30 && r.body.attachments.blocked.join() === 'exe,bat', JSON.stringify(r.body.attachments));
+      const settingsA = await email.emailSettings(db, { withSecrets: true });
+      const [tRow] = await db('SELECT channel_id FROM tickets WHERE id = ?', [tE]);
+      const chan = channels.get(tRow.channel_id);
+      const posted = [];
+      if (chan) { const orig = chan.send; chan.send = async p => { posted.push(p); return orig(p); }; }
+      const pdf = Buffer.from('%PDF-1.4 facture 77');
+      const png = Buffer.from('89504e470d0a1a0a0000', 'hex');
+      res = await email.processEmail(fakeClient, G, mail('alice@mail.test', 'Alice', `RE: ${tag} Problème de commande`, 'Voici la facture et la photo.', { attachments: [
+        { filename: 'facture.pdf', contentType: 'application/pdf', content: pdf, size: pdf.length },
+        { filename: 'photo.png', contentType: 'image/png', content: png, size: png.length },
+        { filename: 'virus.exe', contentType: 'application/octet-stream', content: Buffer.from('MZ'), size: 2 },
+        { filename: 'gros.zip', contentType: 'application/zip', content: Buffer.alloc(2 * 1048576), size: 2 * 1048576 },
+      ] }), settingsA);
+      const files = await req('GET', `/api/tickets/${tE}/attachments`, { sid: sessions.S1T });
+      const [noteA] = await db("SELECT id, content FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%Voici la facture%'", [tE]);
+      check('pièces jointes: gardées selon les réglages (type refusé, trop lourde)', res.ticketId === tE && files.status === 200 && files.body.length === 2 && files.body.every(f => f.note_id === noteA.id)
+        && /virus\.exe \(non conservée : type refusé\)/.test(noteA.content) && /gros\.zip \(non conservée : plus de 1 Mo\)/.test(noteA.content) && /facture\.pdf \(1 Ko\)/.test(noteA.content), JSON.stringify([files.body, noteA.content]));
+      const pdfRow = files.body.find(f => f.filename === 'facture.pdf');
+      r = await req('GET', `/api/tickets/${tE}/attachments/${pdfRow.id}`, { sid: sessions.S1T });
+      check('pièces jointes: téléchargement par le staff, jamais affiché avec le type de l expéditeur', r.status === 200 && r.body === pdf.toString() && r.headers['content-type'].startsWith('application/octet-stream') && /^attachment/.test(r.headers['content-disposition']) && r.headers['x-content-type-options'] === 'nosniff', JSON.stringify(r.headers));
+      const pngRow = files.body.find(f => f.filename === 'photo.png');
+      r = await req('GET', `/api/tickets/${tE}/attachments/${pngRow.id}`, { sid: sessions.S1T, query: { inline: '1' } });
+      check('pièces jointes: image affichable dans la page', r.status === 200 && r.headers['content-type'] === 'image/png' && /^inline/.test(r.headers['content-disposition']), JSON.stringify(r.headers));
+      r = await req('GET', `/api/tickets/${tE}/attachments/${pdfRow.id}`, { sid: sessions.MEM });
+      const other = await req('GET', `/api/tickets/${tE}/attachments/999999`, { sid: sessions.S1T });
+      check('pièces jointes: refusées sans accès au ticket, introuvable sinon', r.status >= 400 && r.status < 500 && other.status === 404, [r.status, other.status].join());
+      check('pièces jointes: publiées dans le salon Discord du ticket', !chan || posted.some(p => p.files?.length === 2 && /e-mail/.test(p.content)), JSON.stringify(posted.map(p => p.content)));
+      const usageR = await req('GET', '/api/email', { sid: sessions.F });
+      check('pièces jointes: espace utilisé affiché', usageR.body.attachments.usage.files === 2 && usageR.body.attachments.usage.bytes === pdf.length + png.length, JSON.stringify(usageR.body.attachments.usage));
+      const stored = fsx.readdirSync(path.join(attDir, G));
+      check('pièces jointes: fichiers sous un nom aléatoire, dans le dossier du serveur', stored.length === 2 && stored.every(f => /^[0-9a-f]{32}$/.test(f)), JSON.stringify(stored));
+      // Retention: ticket closed long ago → its files go; an orphan file goes too
+      fsx.writeFileSync(path.join(attDir, G, 'a'.repeat(32)), 'orphelin');
+      await db("UPDATE tickets SET status = 'closed', closed_at = NOW() - INTERVAL 40 DAY WHERE id = ?", [tE]);
+      const purged = await ea.runAttachmentRetention(G, db);
+      check('pièces jointes: supprimées après la durée de conservation (et fichiers orphelins)', purged.files === 3 && fsx.readdirSync(path.join(attDir, G)).length === 0 && (await db('SELECT COUNT(*) AS n FROM email_attachments'))[0].n == 0, JSON.stringify(purged));
+      await db("UPDATE tickets SET status = 'open', closed_at = NULL WHERE id = ?", [tE]);
+      delete app('./utils/config').config.attachmentsDir;
+      fsx.rmSync(attDir, { recursive: true, force: true });
+    }
     const { Client } = require('discord.js');
     const realC = new Client({ intents: [] });
     const errU = await realC.users.fetch(rowT.owner_id).then(() => null, e => e);

@@ -36,7 +36,7 @@ Le projet a fait l'objet de plusieurs audits, dont un audit OWASP Top 10, tous c
 | **Tickets par e-mail** | Une réponse n'entre dans un ticket qu'avec le jeton du sujet **et** depuis l'adresse qui l'a ouvert ; réponses automatiques ignorées ; 10 e-mails par heure et par expéditeur, 60 nouveaux tickets par heure et par serveur ; mots de passe IMAP/SMTP chiffrés |
 | **Métriques** | `/metrics` absent tant que le propriétaire ne l'active pas, puis protégé par un jeton dont seule l'empreinte est gardée ; aucun nom ni sujet |
 | **Adresse IP** | `X-Forwarded-For` n'est cru que venant du reverse proxy lui-même |
-| **Pièces jointes** | Relais limité aux liens Discord et aux utilisateurs connectés |
+| **Pièces jointes** | Relais limité aux liens Discord et aux utilisateurs connectés ; celles des e-mails servies seulement au staff qui voit le ticket, en téléchargement (`nosniff`, sandbox), sous un nom aléatoire, types exécutables refusés |
 
 ## Données et infrastructure
 
