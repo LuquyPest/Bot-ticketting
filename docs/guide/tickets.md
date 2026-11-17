@@ -35,8 +35,19 @@ Au moment du sujet, le membre peut demander un ticket **confidentiel** (signalem
 | **Modèles et macros** | Réponses prêtes avec variables (`{{username}}`, `{{ticket_id}}`, champs personnalisés…), suggérées selon le sujet ; pour toi, pour le staff du serveur, ou — propriétaire de l'instance — pour **tous tes serveurs** à la fois ; une macro applique en plus des actions (s'attribuer, priorité, tag, étape, fermer) |
 | **Organisation** | Attribution à plusieurs personnes, priorité, étape, tags, titre (le salon Discord suit), participants, tickets liés, fusion de deux tickets du même membre |
 | **Suivi** | Suivre un ticket sans en être chargé, rappels personnels (« Me le rappeler »), mentions `@pseudo` ou `@grade` dans les notes, notes épinglées |
-| **Aide** | Tickets similaires déjà résolus avec leur réponse, procédures à cocher par sujet, profil du membre (étiquettes, historique, fil du staff) |
+| **Aide** | Tickets similaires déjà résolus avec leur réponse, procédures à cocher par sujet, [fiche contact](#les-contacts) du demandeur (étiquettes, historique, fil du staff) |
 | **Temps** | Chronomètre par ticket et temps ajouté à la main, délai par étape (SLA) avec temps restant et alerte « Hors délai » |
+
+## Les contacts
+
+**Contacts** (menu Support) : une fiche par personne, quel que soit le canal. Chaque fiche regroupe ses **identités** : son compte Discord, son adresse pour les [tickets par e-mail](./integrations#tickets-par-e-mail), plus tard le portail web. Les fiches se créent d'elles-mêmes à partir des tickets, rien à saisir.
+
+- **La fiche** : tous les tickets de ses identités, la note moyenne qu'elle donne, le temps passé, les champs personnalisés, la liste noire, les étiquettes (*VIP*, *à surveiller*…) et la discussion du staff à son sujet. Un nom, une adresse et des notes libres (société, téléphone, contexte) se modifient sur la fiche.
+- **Fusionner** : quand `@pseudo` sur Discord et `marie@exemple.fr` sont la même personne, cherche l'autre contact depuis la fiche puis fusionne. Les identités, la discussion et les étiquettes rejoignent la fiche gardée ; les tickets ne bougent pas.
+- **Détacher** une identité, pour corriger une fusion par erreur : elle retrouve une fiche à elle. L'identité principale (celle d'origine de la fiche) reste.
+- **Confidentialité** : une fiche ne montre à chacun que les tickets qu'il a le droit de voir, chiffres compris ; un ticket restreint à un grade ou confidentiel n'y apparaît pas pour les autres.
+- **Droits** : lire demande `view_tickets` ; modifier, fusionner et détacher demandent `reply_ticket`. Chaque fusion et chaque détachement sont inscrits au journal.
+- L'**effacement des données** d'un membre (RGPD) retire aussi son identité de sa fiche, et la fiche si elle n'en a plus d'autre.
 
 ## La liste des tickets
 

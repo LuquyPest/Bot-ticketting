@@ -27,7 +27,7 @@ const NAV_GROUPS = [
     { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
     { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
     { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
-    { to: '/profils',     label: 'Profils',      icon: Contact,         roles: ['support','fondateur'] },
+    { to: '/profils',     label: 'Contacts',      icon: Contact,         roles: ['support','fondateur'] },
     { to: '/messages',    label: 'Programmés',   icon: Clock,           roles: ['fondateur'], perm: 'reply_ticket' },
   ] },
   { id: 'suivi', label: 'Suivi', items: [

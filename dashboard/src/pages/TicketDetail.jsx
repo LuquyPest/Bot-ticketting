@@ -1743,8 +1743,8 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                   <p className="text-[10px] text-ink-4">{p.author_tag} · {fmtDate(p.created_at, { dateStyle: 'short' })}</p>
                 </div>
               ))}
-              <button onClick={() => navigate(`/profils/${ticket.owner_id}`)} className="mt-2.5 text-[11px] font-medium text-primary-light hover:underline">
-                {memberSummary.count ? `Voir le profil et les ${memberSummary.count} message(s)` : 'Voir le profil · ajouter une note'}
+              <button onClick={() => navigate(`/profils/${encodeURIComponent(ticket.owner_id)}`)} className="mt-2.5 text-[11px] font-medium text-primary-light hover:underline">
+                {memberSummary.count ? `Voir la fiche contact et les ${memberSummary.count} message(s)` : 'Voir la fiche contact · ajouter une note'}
               </button>
             </div>
           )}

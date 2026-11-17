@@ -35,8 +35,19 @@ When picking the subject, the member can ask for a **confidential** ticket (repo
 | **Templates and macros** | Ready replies with variables (`{{username}}`, `{{ticket_id}}`, custom fields…), suggested by subject; for you, for the server's staff, or — owner of the instance — for **all your servers** at once; a macro also applies actions (assign yourself, priority, tag, stage, close) |
 | **Organisation** | Assignment to several people, priority, stage, tags, title (the Discord channel follows), participants, linked tickets, merging two tickets of the same member |
 | **Follow-up** | Follow a ticket without being in charge, personal reminders (« Remind me »), `@name` or `@grade` mentions in notes, pinned notes |
-| **Help** | Similar tickets already solved with their answer, per-subject checklists, member profile (labels, history, staff thread) |
+| **Help** | Similar tickets already solved with their answer, per-subject checklists, the requester's [contact card](#contacts) (labels, history, staff thread) |
 | **Time** | Per-ticket timer and time added by hand, per-stage deadline (SLA) with time left and an « Overdue » alert |
+
+## Contacts
+
+**Contacts** (Support menu): one card per person, whatever the channel. Each card gathers their **identities**: their Discord account, their address for [tickets by e-mail](./integrations#tickets-by-e-mail), later the web portal. Cards are created on their own from the tickets, nothing to type in.
+
+- **The card**: every ticket of its identities, the average rating they give, the time spent, the custom fields, the blacklist, the labels (*VIP*, *to watch*…) and the staff's discussion about them. A name, an address and free notes (company, phone, context) are edited on the card.
+- **Merging**: when `@username` on Discord and `marie@example.com` are the same person, look for the other contact from the card then merge. The identities, the discussion and the labels join the card that is kept; the tickets do not move.
+- **Detaching** an identity, to undo a merge by mistake: it gets a card of its own again. The primary identity (the one the card was created for) stays.
+- **Confidentiality**: a card shows each person only the tickets they may see, figures included; a ticket restricted to a grade or confidential does not show for the others.
+- **Rights**: reading needs `view_tickets`; editing, merging and detaching need `reply_ticket`. Every merge and every detach is written to the log.
+- **Erasing a member's data** (GDPR) also removes their identity from their card, and the card if it has no other one.
 
 ## The ticket list
 

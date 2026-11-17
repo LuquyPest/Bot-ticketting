@@ -2146,6 +2146,72 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tpS]);
   }
 
+  // ── Contacts: one card per person, several identities (utils/contacts.js, v4 PR 9) ──
+  {
+    const contacts = app('./utils/contacts');
+    const MD = '200000000000000091';
+    const MAIL = `mail:${crypto.createHash('sha256').update('marie@exemple.fr').digest('hex').slice(0, 24)}`;
+    const tD1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'marie_d', 'cct1', 'closed', 'Commande Discord')", [MD])).insertId;
+    const tD2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES (?, 'marie_d', 'cct2', 'closed', 'Restreint Discord', ?)", [MD, g2])).insertId;
+    const tM1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'marie@exemple.fr', 'db-cct3', 'open', 'Facture par e-mail')", [MAIL])).insertId;
+    await db("INSERT INTO email_contacts (owner_id, address, name) VALUES (?, 'marie@exemple.fr', 'Marie Durand') ON DUPLICATE KEY UPDATE name = VALUES(name)", [MAIL]);
+    await contacts.sync(db, { force: true });
+    const [cM] = await db('SELECT c.display_name, c.email, ci.kind FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id WHERE ci.value = ?', [MAIL]);
+    const [cD] = await db('SELECT c.display_name, ci.kind FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id WHERE ci.value = ?', [MD]);
+    check('contacts: créés à la volée depuis les tickets (Discord, e-mail avec son adresse)', cM?.kind === 'email' && cM.display_name === 'Marie Durand' && cM.email === 'marie@exemple.fr' && cD?.kind === 'discord' && cD.display_name === 'marie_d', JSON.stringify([cM, cD]));
+    r = await req('GET', '/api/profiles', { sid: sessions.FV, query: { q: 'marie@exemple' } });
+    check('contacts: annuaire, recherche par adresse, contact e-mail inclus', r.status === 200 && r.body.members.some(m => m.member_id === MAIL && m.kinds.join() === 'email' && m.tickets === 1), JSON.stringify(r.body.members));
+    r = await req('GET', `/api/profiles/${MAIL}`, { sid: sessions.FV });
+    check('contacts: fiche d un contact e-mail (avant : profils Discord seulement)', r.status === 200 && r.body.identities.length === 1 && r.body.contact.email === 'marie@exemple.fr' && r.body.tickets.some(t => t.id === tM1), JSON.stringify(r.body).slice(0, 300));
+    await req('POST', `/api/profiles/${MAIL}/posts`, { sid: sessions.FV, body: { content: 'Écrit depuis sa boîte pro' } });
+    await req('PUT', `/api/profiles/${MAIL}/labels`, { sid: sessions.FV, body: { labels: ['Pro'] } });
+    await req('PUT', `/api/profiles/${MD}/labels`, { sid: sessions.FV, body: { labels: ['VIP'] } });
+
+    r = await req('POST', `/api/profiles/${MD}/merge`, { sid: sessions.FV, body: { other: 'pas-un-id' } });
+    const self = await req('POST', `/api/profiles/${MD}/merge`, { sid: sessions.FV, body: { other: MD } });
+    check('contacts: fusion avec un identifiant invalide ou soi-même refusée', r.status === 400 && self.status === 400, `${r.status} ${self.status}`);
+    r = await req('POST', `/api/profiles/${MD}/merge`, { sid: sessions.FV, body: { other: MAIL } });
+    const viaMail = await req('GET', `/api/profiles/${MAIL}`, { sid: sessions.FV });
+    const viaDiscord = await req('GET', `/api/profiles/${MD}`, { sid: sessions.FV });
+    const ids = (viaMail.body.identities || []).map(i => `${i.kind}:${i.primary}`).sort().join();
+    check('contacts: fusion → une fiche Discord + e-mail, tous les tickets, quelle que soit l identité ouverte', r.status === 200 && viaMail.body.contact?.id === viaDiscord.body.contact?.id && ids === 'discord:true,email:false' && [tD1, tD2, tM1].every(id => viaMail.body.tickets.some(t => t.id === id)) && viaMail.body.member_id === MD, JSON.stringify([r.body, viaMail.body.identities, viaMail.body.tickets?.map(t => t.id)]));
+    const posts = await req('GET', `/api/profiles/${MD}/posts`, { sid: sessions.FV });
+    check('contacts: fusion → discussion et étiquettes réunies, adresse reprise', viaMail.body.labels.sort().join() === 'Pro,VIP' && posts.body.some(p => p.content === 'Écrit depuis sa boîte pro') && viaMail.body.contact.email === 'marie@exemple.fr', JSON.stringify([viaMail.body.labels, posts.body.length, viaMail.body.contact]));
+    r = await req('GET', '/api/profiles', { sid: sessions.FV, query: { q: 'marie' } });
+    const entries = r.body.members.filter(m => m.member_id === MD || m.member_id === MAIL);
+    check('contacts: une seule entrée dans l annuaire après fusion', entries.length === 1 && entries[0].kinds.join() === 'discord,email' && entries[0].tickets === 3, JSON.stringify(entries));
+    r = await req('GET', `/api/profiles/${MAIL}`, { sid: sessions.S3T });
+    check('contacts: confidentialité, la fiche fusionnée ne montre au staff que ses tickets visibles', r.status === 200 && r.body.tickets.some(t => t.id === tD1) && r.body.tickets.some(t => t.id === tM1) && !r.body.tickets.some(t => t.id === tD2) && r.body.stats.tickets === 2, JSON.stringify(r.body.tickets));
+    const dirS = await req('GET', '/api/profiles', { sid: sessions.S3T, query: { q: 'marie' } });
+    check('contacts: confidentialité, l annuaire compte les tickets visibles seulement', dirS.body.members.find(m => m.member_id === MD)?.tickets === 2, JSON.stringify(dirS.body.members));
+    const [{ n: kept }] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id IN (?)', [[MD, MAIL]]);
+    check('contacts: les tickets ne bougent pas', Number(kept) === 3, kept);
+
+    // The card itself
+    r = await req('PATCH', `/api/profiles/${MD}/contact`, { sid: sessions.FV, body: { email: 'pas une adresse' } });
+    const okP = await req('PATCH', `/api/profiles/${MD}/contact`, { sid: sessions.FV, body: { displayName: 'Marie D.', notes: 'Société Exemple' } });
+    check('contacts: nom et notes modifiables, adresse invalide refusée', r.status === 400 && okP.status === 200 && okP.body.contact.displayName === 'Marie D.' && okP.body.contact.notes === 'Société Exemple', JSON.stringify([r.body, okP.body]));
+    // Detaching
+    r = await req('DELETE', `/api/profiles/${MD}/identities/${MD}`, { sid: sessions.FV });
+    const det = await req('DELETE', `/api/profiles/${MD}/identities/${encodeURIComponent(MAIL)}`, { sid: sessions.FV });
+    const after = await req('GET', `/api/profiles/${MAIL}`, { sid: sessions.FV });
+    await contacts.sync(db, { force: true });
+    const [{ n: cards }] = await db('SELECT COUNT(DISTINCT contact_id) AS n FROM contact_identities WHERE value IN (?)', [[MD, MAIL]]);
+    check('contacts: une identité se détache (pas la principale) et retrouve sa fiche', r.status === 400 && det.status === 200 && after.body.identities.length === 1 && after.body.tickets.every(t => t.id === tM1) && Number(cards) === 2, JSON.stringify([r.body, det.body, after.body.identities]));
+    check('contacts: journal de la fusion et du détachement', (await db("SELECT COUNT(*) AS n FROM audit_log WHERE action IN ('contact_merge','contact_detach')"))[0].n >= 2, '');
+    // GDPR erasure: the identity leaves, an empty card goes
+    r = await req('DELETE', `/api/members/${MD}`, { sid: sessions.FV, body: { confirm: MD } });
+    await contacts.sync(db, { force: true });
+    const [gone] = await db('SELECT COUNT(*) AS n FROM contact_identities WHERE value = ?', [MD]);
+    const [{ n: orphan }] = await db('SELECT COUNT(*) AS n FROM contacts c LEFT JOIN contact_identities ci ON ci.contact_id = c.id WHERE ci.value IS NULL');
+    check('contacts: effacement RGPD → identité et fiche vide supprimées, non recréées', r.status === 200 && Number(gone.n) === 0 && Number(orphan) === 0, JSON.stringify([r.body, gone, orphan]));
+    await db('DELETE FROM tickets WHERE owner_id = ?', [MAIL]);
+    await db('DELETE FROM email_contacts WHERE owner_id = ?', [MAIL]);
+    await db('DELETE FROM member_notes WHERE member_id IN (?)', [[MD, MAIL]]);
+    await db('DELETE FROM member_profiles WHERE member_id IN (?)', [[MD, MAIL]]);
+    await db('DELETE FROM contacts WHERE id IN (SELECT contact_id FROM contact_identities WHERE value = ?)', [MAIL]);
+  }
+
   // ── Temporary guest access ──
   {
     for (const k of await redis.keys('rl:*')) await redis.del(k);

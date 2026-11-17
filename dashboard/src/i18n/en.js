@@ -108,7 +108,7 @@ export const ENTRIES = [
   ['Participants (', 'Participants ('], ['Ajouter le participant', 'Add the participant'], ['Retirer le participant', 'Remove the participant'], ['Discord ID...', 'Discord ID...'],
   ['+ Ajouter un tag...', '+ Add a tag...'], ['Aucun tag', 'No tags'], ['Tickets similaires', 'Similar tickets'], ['Reprendre cette réponse', 'Reuse this reply'],
   ['Réponse reprise dans la zone de saisie : adapte-la avant d\'envoyer', 'Reply copied into the editor: adapt it before sending'], ['Résolu', 'Resolved'],
-  ['Le membre', 'The member'], ['Voir le profil · ajouter une note', 'View the profile · add a note'], ['Temps passé', 'Time spent'], ['au total', 'in total'],
+  ['Le membre', 'The member'], ['Voir la fiche contact · ajouter une note', 'View the contact card · add a note'], ['Temps passé', 'Time spent'], ['au total', 'in total'],
   ['Démarrer le chrono', 'Start the stopwatch'], ['Arrêter ·', 'Stop ·'], ['Arrêter le chrono', 'Stop the stopwatch'], ['Minutes à ajouter', 'Minutes to add'],
   ['Note (facultatif)', 'Note (optional)'], ['Note du temps ajouté', 'Note of the added time'], ['Ajouter ce temps', 'Add this time'], ['(ajouté)', '(added)'],
   ['Retirer cette entrée', 'Remove this entry'], ['en cours', 'running'], ['Procédure ·', 'Procedure ·'], ['Satisfaction', 'Satisfaction'], ['Note basse', 'Low rating'],
@@ -636,6 +636,14 @@ export const ENTRIES = [
   ['Encore une fois', 'Once more'], ['Confirmer le mot de passe', 'Confirm the password'], ['Rejoindre l\'équipe', 'Join the team'], ['Ouvrir le dashboard', 'Open the dashboard'],
   ['Se connecter', 'Sign in'], ['Chargement…', 'Loading…'],
   ['Invitation introuvable', 'Invitation not found'],
+  // ── Contacts (v4 PR 9) ──
+  ['Contacts', 'Contacts'], ['Une fiche par personne, quel que soit le canal : Discord, e-mail, web.', 'One card per person, whatever the channel: Discord, e-mail, web.'],
+  ['Une fiche par personne, quel que soit le canal (Discord, e-mail, web) : ses tickets, ses étiquettes (VIP, à surveiller…) et les échanges du staff à son sujet.', 'One card per person, whatever the channel (Discord, e-mail, web): their tickets, their labels (VIP, to watch…) and the staff\'s discussions about them.'],
+  ['Rechercher un contact', 'Search a contact'], ['Nom, adresse e-mail, pseudo ou ID…', 'Name, e-mail address, username or ID…'], ['Aucun contact trouvé', 'No contact found'],
+  ['Fiche contact', 'Contact card'], ['Identités', 'Identities'], ['principale', 'primary'], ['Détacher', 'Detach'], ['Web', 'Web'], ['E-mail', 'E-mail'],
+  ['Fusionner avec un autre contact…', 'Merge with another contact…'], ['Rechercher un contact à fusionner', 'Search a contact to merge'],
+  ['Nom du contact', 'Name of the contact'], ['Adresse e-mail du contact', 'E-mail address of the contact'], ['Notes sur le contact', 'Notes about the contact'],
+  ['Notes (société, téléphone, contexte…)', 'Notes (company, phone, context…)'], ['Fiche enregistrée', 'Card saved'], ['Contacts fusionnés', 'Contacts merged'], ['Identité détachée', 'Identity detached'], ['Contact', 'Contact'],
 ];
 
 export const TEMPLATES = [
@@ -673,7 +681,7 @@ export const TEMPLATES = [
   ['Supprimer le grade "{}" ?', 'Delete the grade « {1} »?'], ['Supprimer le panel "{}" ? Le message Discord sera aussi supprimé.', 'Delete the panel « {1} »? The Discord message will be deleted too.'],
   ['Supprimer le tag "{}" ?', 'Delete the tag « {1} »?'], ['Suspendre le serveur {} ?', 'Suspend the server {1}?'],
   ['Ticket fusionné dans #{}', 'Ticket merged into #{1}'], ['Ticket passé en « {} »', 'Ticket moved to « {1} »'], ['Titre mis à jour — salon Discord : {}', 'Title updated — Discord channel: {1}'],
-  ['Historique de {}', 'History of {1}'], ['Voir le profil et les {} message(s)', 'View the profile and the {1} message(s)'], ['Voir les {} autres', 'See the {1} others'], ['Vue « {} » enregistrée', 'View « {1} » saved'], ['« {} » est ta vue par défaut', '« {1} » is your default view'],
+  ['Historique de {}', 'History of {1}'], ['Voir la fiche contact et les {} message(s)', 'View the contact card and the {1} message(s)'], ['Voir les {} autres', 'See the {1} others'], ['Vue « {} » enregistrée', 'View « {1} » saved'], ['« {} » est ta vue par défaut', '« {1} » is your default view'],
   ['équipe : {} par personne', 'team: {1} per person'], ['équipe : {} · {} ticket(s)', 'team: {1} · {2} ticket(s)'], ['Étape {}', 'Step {1}'], ['sur {} ticket(s)', 'over {1} ticket(s)'], ['{} ticket(s)', '{1} ticket(s)'],
   ['{} note(s)', '{1} rating(s)'], ['Note {}/5 de {} sur le ticket #{} — à recontacter', 'Rating {1}/5 from {2} on ticket #{3} — to contact again'], ['{} t\'a attribué le ticket #{}', '{1} assigned you ticket #{2}'],
   ['{} t\'a mentionné dans le ticket #{} : {}', '{1} mentioned you in ticket #{2}: {3}'], ['Paramètres restaurés ({} réglage(s))', 'Settings restored ({1} setting(s))'],
@@ -715,4 +723,7 @@ export const TEMPLATES = [
   ['Crée ton compte pour {}.', 'Create your account for {1}.'],
   ['{} t\'invite à rejoindre l\'équipe de {}, rôle {}.', '{1} invites you to join the team of {2}, role {3}.'],
   ['Connecté en tant que {} : ce compte rejoindra l\'équipe.', 'Signed in as {1}: this account will join the team.'],
+  ['Fusionner {} dans cette fiche ? Ses identités, sa discussion et ses étiquettes rejoignent celle-ci ; les tickets ne bougent pas.', 'Merge {1} into this card? Their identities, discussion and labels join this one; the tickets do not move.'],
+  ['Détacher {} ? Cette identité retrouve une fiche à elle.', 'Detach {1}? This identity gets a card of its own again.'],
+  ['Détacher {}', 'Detach {1}']
 ];
