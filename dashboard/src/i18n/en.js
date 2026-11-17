@@ -582,6 +582,12 @@ export const ENTRIES = [
   // Profile → Sign-in methods (v4)
   ['Connexion', 'Sign-in'], ['Mot de passe : défini', 'Password: set'], ['Mot de passe : aucun', 'Password: none'],
   ['Ce compte est désactivé. Contacte le propriétaire de l\'instance.', 'This account is disabled. Contact the owner of the instance.'], ['Compte désactivé', 'Account disabled'],
+  // E-mail of the instance (Instance → Santé)
+  ['E-mail de l\'instance', 'E-mail of the instance'], ['· activé', '· on'], ['· désactivé', '· off'],
+  ['Le serveur d\'envoi que Datick utilise pour écrire aux personnes : invitations, liens de connexion, réinitialisations de mot de passe. Les boîtes de support de chaque espace se règlent à part.', 'The sending server Datick uses to write to people: invitations, sign-in links, password resets. The support mailboxes of each space are set separately.'],
+  ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
+  ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
+  ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
 ];
 
 export const TEMPLATES = [
@@ -646,6 +652,7 @@ export const TEMPLATES = [
   ['Supprimer maintenant les pièces jointes des tickets fermés depuis plus de {} jours ?', 'Delete now the attachments of tickets closed more than {1} days ago?'], ['IMAP : {}', 'IMAP: {1}'], ['SMTP : {}', 'SMTP: {1}'],
   ['Dernière utilisation : {}', 'Last used: {1}'],
   ['Compte créé le {}. La connexion par e-mail et mot de passe, et par Google ou Microsoft, arrive bientôt.', 'Account created on {1}. Signing in with an e-mail and password, or with Google or Microsoft, is coming soon.'],
+  ['E-mail de test envoyé à {}', 'Test e-mail sent to {1}'],
   ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],

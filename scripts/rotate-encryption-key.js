@@ -39,7 +39,18 @@ async function rotate() {
   }
   report.transcripts = await rotateTranscripts(box);
   report.emailPasswords = await rotateEmailPasswords(box);
+  report.instanceEmail = await rotateInstanceEmail(box);
   return report;
+}
+
+// Password of the SMTP server of the instance (Instance → Santé → E-mail de l'instance)
+async function rotateInstanceEmail(box) {
+  const { getSetting, setSetting } = require('../utils/instanceSettings');
+  const s = await getSetting('instance_email', {});
+  if (!s.password) return { total: 0, rewritten: 0, failed: 0 };
+  if (box.isCurrent(s.password)) return { total: 1, rewritten: 0, failed: 0 };
+  try { await setSetting('instance_email', { ...s, password: box.seal(box.open(s.password)) }); return { total: 1, rewritten: 1, failed: 0 }; }
+  catch (err) { console.error(`e-mail de l'instance : ${err.message}`); return { total: 1, rewritten: 0, failed: 1 }; }
 }
 
 // Passwords of the support mailboxes (tickets by e-mail), one row per server

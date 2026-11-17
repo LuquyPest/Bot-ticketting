@@ -35,6 +35,12 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 
 A fictitious server filled with realistic data, open to everyone from the sign-in page (« Discover the dashboard ») or directly at the `/demo` address of your domain. **Off by default**, it is turned on in **Instance → Health**. Isolated from everything else: no DM leaves it, actions towards Discord and the outside are refused, and it is reset every night.
 
+## E-mail of the instance
+
+The sending server (SMTP) Datick uses to **write to people itself**: invitations, sign-in links, password resets. It is set in **Instance → Health → E-mail of the instance**: server, port (587, 465, 25 or 2525), optional username and password, sender address and name. **Send the test** checks it right away.
+
+It is distinct from the support mailboxes of each space ([tickets by e-mail](./integrations#tickets-by-e-mail)), with the same protections: server with a public address only (`EMAIL_ALLOW_PRIVATE_HOSTS=true` for a server at home), password encrypted and never shown again, every change in the instance journal. E-mails go out in French or English depending on the person.
+
 ## Monitoring (Prometheus)
 
 To follow the instance in **Prometheus**, **Grafana** or **Uptime Kuma**. **Off by default**: **Instance → Health → Prometheus metrics → Turn on** creates a token, shown only once (only its fingerprint is kept). The address `https://your-domain/metrics` then answers whoever presents this token, and `404` to everyone while it is off.

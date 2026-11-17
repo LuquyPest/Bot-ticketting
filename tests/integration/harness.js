@@ -3198,6 +3198,44 @@ async function main() {
     await globalQuery('DELETE FROM accounts WHERE id = ?', [ACC]);
   }
 
+  // ── E-mail of the instance (utils/instanceMail.js, v4 PR 4) ──
+  {
+    const im = app('./utils/instanceMail');
+    const T = require(path.join(ROOT, 'utils/locales/mails.js'));
+    const keysOf = o => Object.keys(o).sort().join();
+    const varsOf = str => [...String(str).matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join();
+    const sameVars = Object.keys(T.fr).every(k => typeof T.fr[k] === 'string' ? varsOf(T.fr[k]) === varsOf(T.en[k]) : varsOf(T.fr[k].subject + T.fr[k].text) === varsOf(T.en[k].subject + T.en[k].text));
+    check('e-mail instance: modèles FR et EN complets, mêmes variables', keysOf(T.fr) === keysOf(T.en) && sameVars, '');
+    const m = im.renderMail('loginLink', 'en', { link: 'https://x.test/l/abc', minutes: 15 });
+    check('e-mail instance: modèle rendu (texte, HTML échappé, lien cliquable)', m.subject === 'Your sign-in link to Datick' && m.text.includes('https://x.test/l/abc') && m.text.includes('15 minutes') && m.html.includes('<a href="https://x.test/l/abc">') && im.renderMail('test', 'de').subject.startsWith('Datick'), JSON.stringify(m.subject));
+    r = await req('PUT', '/api/instance/email', { sid: sessions.NOWN, body: { enabled: true } });
+    check('e-mail instance: réservé au propriétaire', r.status === 403, r.status);
+    r = await req('PUT', '/api/instance/email', { sid: sessions.OWN, body: { enabled: true, host: 'smtp.example.com', port: 3306, from: 'datick@example.com' } });
+    const r2 = await req('PUT', '/api/instance/email', { sid: sessions.OWN, body: { enabled: true, port: 587 } });
+    check('e-mail instance: port non standard et activation incomplète refusés', r.status === 400 && r2.status === 400, JSON.stringify([r.body, r2.body]));
+    r = await req('PUT', '/api/instance/email', { sid: sessions.OWN, body: { enabled: true, host: 'smtp.example.com', port: 587, user: 'datick', password: 'SECRET-SMTP-I', from: 'Datick@Example.com', fromName: 'Datick' } });
+    const [rowI] = await globalQuery("SELECT v FROM instance_settings WHERE k = 'instance_email'");
+    const [auditI] = await globalQuery("SELECT details FROM instance_audit_log WHERE action = 'instance_email_update' ORDER BY id DESC LIMIT 1");
+    check('e-mail instance: enregistré, mot de passe chiffré, jamais renvoyé ni journalisé', r.status === 200 && r.body.passwordSet && r.body.from === 'datick@example.com' && !JSON.stringify(r.body).includes('SECRET') && !JSON.stringify(rowI.v).includes('SECRET') && !JSON.stringify(auditI.details).includes('SECRET'), JSON.stringify([r.body, auditI]));
+    r = await req('POST', '/api/instance/email/test', { sid: sessions.OWN, body: { to: 'owner@example.com' } });
+    check('e-mail instance: serveur résolu en adresse privée refusé', r.status === 502 && /privée|introuvable/.test(r.body.error), JSON.stringify(r.body));
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const sentI = [];
+    let opts = null;
+    nodemailer.createTransport = o => { opts = o; return { sendMail: async x => { sentI.push(x); return {}; }, close: () => {} }; };
+    r = await req('POST', '/api/instance/email/test', { sid: sessions.OWN, body: { to: 'owner@example.com', lang: 'en' } });
+    check('e-mail instance: test envoyé avec les bons réglages', r.status === 200 && sentI[0]?.to === 'owner@example.com' && sentI[0].from.address === 'datick@example.com' && sentI[0].subject === 'Datick e-mail test' && opts.auth?.pass === 'SECRET-SMTP-I' && opts.port === 587, JSON.stringify([r.body, sentI[0]?.subject]));
+    r = await req('POST', '/api/instance/email/test', { sid: sessions.OWN, body: { to: 'pas-une-adresse' } });
+    check('e-mail instance: destinataire invalide refusé', r.status === 400, JSON.stringify(r.body));
+    await req('PUT', '/api/instance/email', { sid: sessions.OWN, body: { enabled: false } });
+    r = await req('POST', '/api/instance/email/test', { sid: sessions.OWN, body: { to: 'owner@example.com' } });
+    check('e-mail instance: désactivé → envoi refusé', r.status === 409, JSON.stringify(r.body));
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+  }
+
   // ── Datick: the name shown without a Discord bot, the release publishes both image names ──
   {
     const inst = app('./utils/instance');

@@ -107,7 +107,8 @@ async function smtpTransport(s) {
   return nodemailer.createTransport({
     host: await pinnedHost(s.smtp_host), port: s.smtp_port, secure: s.smtp_port === 465,
     requireTLS: s.smtp_port === 587, tls: { servername: s.smtp_host },
-    auth: { user: s.smtp_user, pass: s.smtp_password },
+    // No account: a relay that accepts the server without signing in (local network, port 25)
+    auth: s.smtp_user ? { user: s.smtp_user, pass: s.smtp_password } : undefined,
     connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000,
   });
 }
@@ -356,4 +357,5 @@ async function runEmailFetch(client) {
 module.exports = {
   isEmailOwner, ownerIdFor, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
   fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
+  smtpTransport, EMAIL_RE, SMTP_PORTS,
 };
