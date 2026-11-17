@@ -35,6 +35,18 @@ router.use(instanceAuditMiddleware);
 
 // ─── GUILDS ──────────────────────────────────────────────────────────────────
 
+// POST /api/instance/guilds { name } — a space without a Discord server (v4)
+router.post('/guilds', async (req, res) => {
+  try {
+    const r = await require('../../utils/spaces').createSpace({ name: req.body?.name, by: req.owner });
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json(r.space);
+  } catch (err) {
+    console.error('space create error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // GET /api/instance/guilds
 router.get('/guilds', async (req, res) => {
   try {

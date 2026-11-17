@@ -616,6 +616,9 @@ export const ENTRIES = [
   [': crée le compte du propriétaire de l\'instance →', ': create the account of the owner of the instance →'],
   ['La connexion avec Discord n\'est pas activée sur cette instance.', 'The Discord sign-in is not turned on on this instance.'],
   ['Jeton d\'installation invalide', 'Invalid install token'], ['L\'instance a déjà un propriétaire', 'The instance already has an owner'],
+  // Spaces (v4)
+  ['Créer un espace', 'Create a space'], ['Nom de l\'espace', 'Name of the space'], ['Créer', 'Create'], ['· sans Discord', '· without Discord'],
+  ['Espace créé', 'Space created'], ['Nom de l\'espace requis', 'Name of the space required'],
 ];
 
 export const TEMPLATES = [
@@ -682,6 +685,7 @@ export const TEMPLATES = [
   ['Compte créé le {}. La connexion par Google ou Microsoft arrive bientôt.', 'Account created on {1}. Signing in with Google or Microsoft is coming soon.'],
   ['Au moins {} caractères', 'At least {1} characters'], ['{} caractères au plus', '{1} characters at most'],
   ['E-mail de test envoyé à {}', 'Test e-mail sent to {1}'],
+  ['Espace « {} » créé', 'Space « {1} » created'],
   ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],

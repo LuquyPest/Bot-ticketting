@@ -6,6 +6,7 @@ const logger = require('./utils/logger');
 require('./utils/errorLog').captureConsoleErrors();
 const { startWebServer } = require('./web/server');
 const { startWorkers }  = require('./utils/jobQueue');
+require('./utils/spaces').refresh().catch(() => null); // spaces without Discord: known before any Discord call
 
 const client = new Client({
   intents: [

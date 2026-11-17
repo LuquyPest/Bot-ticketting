@@ -9,6 +9,7 @@ const { broadcast } = require('./sse');
 const { fireTicketWebhook } = require('./webhookEmitter');
 const { isVirtualChannelId, newVirtualChannelId, virtualChannel, ticketChannel } = require('./virtualChannel');
 require('./emailTickets'); // e-mail owners: never looked up on Discord
+const { isDiscordless } = require('./spaces'); // spaces without a Discord server: never looked up either
 const { fetchGuildChannel } = require('./discordGuard');
 const { recordEvent } = require('./audit');
 const { ticketContextAuthor } = require('./dmEmbeds');
@@ -173,10 +174,12 @@ function createManager(db, client, guildId) {
 
   async function createTicketChannel(user, subject = null, { restricted = false } = {}) {
     const cfg = await getGuildConfig(db);
+    const mode = cfg.ticket_mode || 'auto';
+    // No channel at all (« database » format, or a space without a Discord server): decided before
+    // anything is asked to Discord — without the bot, the guild is never found
+    if (mode === 'database' || isDiscordless(gid)) return virtualChannel(db, { channel_id: newVirtualChannelId(), subject });
     const guild = await client.guilds.fetch(gid).catch(() => null);
     if (!guild) throw new Error('Guild introuvable');
-    const mode = cfg.ticket_mode || 'auto';
-    if (mode === 'database') return virtualChannel(db, { channel_id: newVirtualChannelId(), subject });
     if (mode === 'thread') return createTicketThread(cfg, user, subject);
 
     const supportRoleIds = parseJsonField(cfg.support_role_ids);

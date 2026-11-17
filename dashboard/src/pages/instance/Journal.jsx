@@ -5,7 +5,7 @@ import api from '../../api';
 import toast from 'react-hot-toast';
 
 const LABELS = {
-  guild_suspend: 'Serveur suspendu', guild_reactivate: 'Serveur réactivé', guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance',
+  space_create: 'Espace créé', guild_suspend: 'Serveur suspendu', guild_reactivate: 'Serveur réactivé', guild_delete: 'Serveur supprimé', guild_maintenance: 'Maintenance',
   founder_add: 'Fondateur nommé', founder_remove: 'Fondateur retiré', ip_unblock: 'IP débloquée',
   error_delete: 'Erreur supprimée', errors_clear: 'Journal d\'erreurs vidé', error_alert_update: 'Alerte d\'erreurs modifiée', error_alert_test: 'Test de l\'alerte',
   demo_toggle: 'Démonstration activée ou désactivée', demo_reset: 'Démonstration remise à zéro', metrics_toggle: 'Métriques Prometheus activées ou coupées', instance_email_update: 'E-mail de l\'instance modifié', instance_email_test: 'E-mail de test envoyé', guild_restore_request: 'Restauration d\'un serveur demandée', guild_restore_done: 'Serveur restauré', guild_restore_failed: 'Restauration échouée', guild_restore_rollback: 'Restauration annulée', guild_restore_drop_prev: 'Copie d\'avant restauration supprimée', backup_key_view: 'Clé des sauvegardes affichée',

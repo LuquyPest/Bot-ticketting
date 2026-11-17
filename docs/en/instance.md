@@ -20,6 +20,8 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 
 **Several communities**: a reply template created with the **Every server** scope (ticket view → Templates) is offered to the staff of each of your servers, without being copied. The staff uses it, only you edit it; it cannot add a tag, since tags belong to each server.
 
+**A space without Discord**: **Instance → Servers → Create a space**. It is a support space without a Discord server: tickets by [e-mail](./integrations#tickets-by-e-mail), member space, dashboard, with its own settings, team and journal, like a server. Its tickets have no channel (« No channel » format), and nothing is ever asked to Discord about it. You are its founder; it shows up in **My servers** whatever the way you sign in.
+
 ## Pages
 
 | Page | |

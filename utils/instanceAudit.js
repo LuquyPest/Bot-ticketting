@@ -5,6 +5,7 @@ const { globalQuery } = require('./globalDb');
 
 // "METHOD /route/pattern" -> action
 const ACTIONS = {
+  'POST /guilds': 'space_create',
   'PATCH /guilds/:guildId/suspend': 'guild_suspend',
   'PATCH /guilds/:guildId/reactivate': 'guild_reactivate',
   'DELETE /guilds/:guildId': 'guild_delete',
