@@ -3163,6 +3163,89 @@ async function main() {
     nodemailer.createTransport = realCreate;
   }
 
+  // ── E-mail and password sign-in (routes/passwordAuth.js, v4 PR 5) ──
+  {
+    const pw = app('./utils/passwords');
+    const accounts = app('./utils/accounts');
+    const h = await pw.hashPassword('cheval correct batterie');
+    check('mots de passe: scrypt salé, vérification exacte', /^scrypt\$32768\$8\$1\$/.test(h) && await pw.verifyPassword('cheval correct batterie', h) && !(await pw.verifyPassword('cheval correct batteriE', h)) && h !== await pw.hashPassword('cheval correct batterie'), h.slice(0, 30));
+    // Fake passwords of the tests, not secrets (ggignore: GitGuardian false positive)
+    check('mots de passe: règles (longueur, adresse, trop simple)', pw.passwordProblem('court') && pw.passwordProblem('aaaaaaaaaaaa') && pw.passwordProblem('marie.durand-2026', { email: 'marie.durand@x.fr' }) && pw.passwordProblem('Une-phrase-longue 42') === null, ''); // ggignore
+    const t0 = Date.now(); await pw.verifyPassword('x', null); const tNone = Date.now() - t0;
+    const t1 = Date.now(); await pw.verifyPassword('x', h); const tReal = Date.now() - t1;
+    check('mots de passe: compte inconnu = même travail (pas d énumération par le temps)', tNone > tReal / 3 && tNone < tReal * 3, `${tNone} ms / ${tReal} ms`);
+    // An account that links an address (confirmation link) then sets a password
+    const PA = '100000000000000078';
+    await globalQuery("INSERT INTO accounts (id, display_name) VALUES (?, 'Compte 78') ON DUPLICATE KEY UPDATE display_name = 'Compte 78'", [PA]);
+    await globalQuery("INSERT IGNORE INTO account_identities (provider, subject, account_id) VALUES ('discord', ?, ?)", [PA, PA]);
+    await mk('PA', { user: { id: PA, username: 'Compte 78', role: null } });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const mails = [];
+    nodemailer.createTransport = () => ({ sendMail: async x => { mails.push(x); return {}; }, close: () => {} });
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    r = await req('POST', '/api/profile/password', { sid: sessions.PA, body: { password: 'Une-phrase-longue 42' } });
+    check('mots de passe: refusé sans adresse confirmée', r.status === 400 && /adresse/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('POST', '/api/profile/email', { sid: sessions.PA, body: { email: 'Compte78@Example.com' } });
+    const link = (mails[0]?.text.match(/https?:\/\/\S+verify-email\?token=(\S+)/) || [])[1];
+    check('adresse: lien de confirmation envoyé', r.status === 200 && mails[0]?.to === 'compte78@example.com' && !!link, JSON.stringify([r.body, mails[0]?.subject]));
+    r = await req('GET', '/api/auth/verify-email', { query: { token: decodeURIComponent(link) } });
+    const again = await req('GET', '/api/auth/verify-email', { query: { token: decodeURIComponent(link) } });
+    const [accE] = await globalQuery('SELECT email, email_verified FROM accounts WHERE id = ?', [PA]);
+    check('adresse: confirmée par le lien, lien à usage unique', r.headers.location === '/profile?email=verified' && again.headers.location === '/profile?email=expired' && accE.email === 'compte78@example.com' && Number(accE.email_verified) === 1, JSON.stringify([r.headers.location, again.headers.location, accE]));
+    r = await req('POST', '/api/profile/password', { sid: sessions.PA, body: { password: 'court' } });
+    const setPw = await req('POST', '/api/profile/password', { sid: sessions.PA, body: { password: 'Une-phrase-longue 42' } });
+    const [accP] = await globalQuery('SELECT password_hash FROM accounts WHERE id = ?', [PA]);
+    check('mots de passe: trop court refusé, puis défini (haché)', r.status === 400 && setPw.status === 200 && /^scrypt\$/.test(accP.password_hash) && !accP.password_hash.includes('phrase'), JSON.stringify([r.body, setPw.body]));
+    // Sign-in
+    r = await req('POST', '/api/auth/password-login', { body: { email: 'compte78@example.com', password: 'mauvais mot de passe' } });
+    const unknown = await req('POST', '/api/auth/password-login', { body: { email: 'personne@example.com', password: 'mauvais mot de passe' } });
+    check('connexion: même réponse pour un mauvais mot de passe et une adresse inconnue', r.status === 401 && unknown.status === 401 && r.body.error === unknown.body.error, JSON.stringify([r.body, unknown.body]));
+    r = await req('POST', '/api/auth/password-login', { body: { email: 'Compte78@example.com', password: 'Une-phrase-longue 42' } });
+    const cookie = (r.headers['set-cookie'] || []).find(c => c.startsWith('connect.sid='));
+    check('connexion: e-mail et mot de passe acceptés, session ouverte', r.status === 200 && r.body.redirect === '/select-guild' && !!cookie, JSON.stringify(r.body));
+    // The servers of the account, without Discord
+    await db("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'Compte 78', 'support') ON DUPLICATE KEY UPDATE role = 'support'", [PA]);
+    await mk('PAW', { user: { id: PA, username: 'Compte 78', role: null }, authMethod: 'password' });
+    r = await req('GET', '/api/auth/guilds', { sid: sessions.PAW });
+    check('connexion: serveurs de l équipe listés sans Discord', r.status === 200 && r.body.some(g => g.id === G) && r.body.every(g => g.status === 'active'), JSON.stringify(r.body).slice(0, 200));
+    // Lockout after 10 failures
+    for (let i = 0; i < 10; i++) await req('POST', '/api/auth/password-login', { headers: { 'X-Forwarded-For': `10.9.0.${i}` }, body: { email: 'compte78@example.com', password: `faux ${i} xxxxxxxx` } });
+    r = await req('POST', '/api/auth/password-login', { body: { email: 'compte78@example.com', password: 'Une-phrase-longue 42' } });
+    check('connexion: bloquée après 10 échecs, même avec le bon mot de passe', r.status === 429, JSON.stringify(r.body));
+    // Reset by e-mail
+    mails.length = 0;
+    r = await req('POST', '/api/auth/password-reset', { body: { email: 'compte78@example.com' } });
+    const r2 = await req('POST', '/api/auth/password-reset', { body: { email: 'personne@example.com' } });
+    const resetToken = decodeURIComponent((mails[0]?.text.match(/reset-password\?token=(\S+)/) || [])[1] || '');
+    check('réinitialisation: même réponse pour toute adresse, e-mail seulement au compte', r.status === 200 && r2.status === 200 && r.body.message === r2.body.message && mails.length === 1 && !!resetToken, JSON.stringify([r.body, mails.length]));
+    await redis.set(`sess:pa-autre`, JSON.stringify({ cookie: {}, user: { id: PA } }), 'EX', 600);
+    await globalQuery("INSERT INTO user_sessions (session_id, user_id, ip, user_agent) VALUES ('pa-autre', ?, '1.1.1.1', 'test') ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)", [PA]).catch(() => null);
+    r = await req('POST', '/api/auth/password-reset/confirm', { body: { token: resetToken, password: 'court' } });
+    const ok = await req('POST', '/api/auth/password-reset/confirm', { body: { token: resetToken, password: 'Nouvelle-phrase 2026' } });
+    const reuse = await req('POST', '/api/auth/password-reset/confirm', { body: { token: resetToken, password: 'Encore-une-autre 2026' } });
+    check('réinitialisation: mot de passe trop court refusé sans perdre le lien, puis changé, lien à usage unique', r.status === 400 && ok.status === 200 && reuse.status === 400, JSON.stringify([r.body, ok.body, reuse.body]));
+    check('réinitialisation: les autres sessions du compte sont fermées', !(await redis.exists('sess:pa-autre')), '');
+    r = await req('POST', '/api/auth/password-login', { body: { email: 'compte78@example.com', password: 'Nouvelle-phrase 2026' } });
+    check('réinitialisation: le blocage est levé et le nouveau mot de passe fonctionne', r.status === 200, JSON.stringify(r.body));
+    // 2FA still applies
+    await globalQuery('INSERT INTO user_totp (user_id, totp_secret, totp_enabled) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE totp_enabled = 1', [PA, seal('JBSWY3DPEHPK3PXP')]);
+    r = await req('POST', '/api/auth/password-login', { body: { email: 'compte78@example.com', password: 'Nouvelle-phrase 2026' } });
+    check('connexion: la 2FA du compte s applique', r.status === 200 && r.body.totp === true, JSON.stringify(r.body));
+    await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [PA]);
+    // Removing the password: only if another way remains
+    r = await req('DELETE', '/api/profile/password', { sid: sessions.PA, body: { current: 'mauvais' } });
+    const rm = await req('DELETE', '/api/profile/password', { sid: sessions.PA, body: { current: 'Nouvelle-phrase 2026' } });
+    check('mots de passe: retrait avec le mot de passe actuel, Discord restant', r.status === 400 && rm.status === 200 && !(await accounts.loginMethods(PA)).password, JSON.stringify([r.body, rm.body]));
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await db('DELETE FROM dashboard_users WHERE user_id = ?', [PA]);
+    await globalQuery('DELETE FROM account_identities WHERE account_id = ?', [PA]);
+    await globalQuery('DELETE FROM accounts WHERE id = ?', [PA]);
+  }
+
   // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
   {
     const axios = require('axios');

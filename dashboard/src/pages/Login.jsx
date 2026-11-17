@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bot, AlertCircle, Zap } from 'lucide-react';
+import { Bot, AlertCircle, Zap, Loader2 } from 'lucide-react';
 import { useAuth } from '../App';
+import api from '../api';
 import DemoButton from '../components/DemoButton';
 import { useInstanceInfo } from '../hooks/useInstanceInfo';
 import { privacyHref } from './Privacy';
@@ -14,6 +15,33 @@ const ERROR_MESSAGES = {
   no_code:       "Code OAuth manquant.",
 };
 const EXPIRED_MESSAGES = { idle: 'Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.' };
+
+// E-mail and password, for an account that set one in Profil → Connexion
+function PasswordForm({ onError }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async e => {
+    e.preventDefault();
+    setBusy(true); onError('');
+    try {
+      const { data } = await api.post('/auth/password-login', { email, password });
+      window.location.href = data.totp ? '/totp-verify' : (data.redirect || '/select-guild');
+    } catch (err) { onError(err.response?.data?.error || 'Erreur, réessaie.'); setBusy(false); }
+  };
+  const input = 'w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-primary/50';
+  return (
+    <form onSubmit={submit} className="space-y-2.5 mt-5">
+      <input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Adresse e-mail" aria-label="Adresse e-mail" className={input} />
+      <input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe" aria-label="Mot de passe" className={input} />
+      <button type="submit" disabled={busy || !email || !password}
+        className="w-full py-2.5 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5 disabled:opacity-50 inline-flex items-center justify-center gap-2">
+        {busy && <Loader2 size={14} className="animate-spin" />} Se connecter
+      </button>
+      <p className="text-right"><a href="/reset-password" className="text-xs text-ink-3 hover:text-ink-1 underline">Mot de passe oublié ?</a></p>
+    </form>
+  );
+}
 
 export default function Login() {
   const { user } = useAuth();
@@ -104,6 +132,14 @@ export default function Login() {
             </svg>
             Connexion avec Discord
           </a>
+
+          <div className="flex items-center gap-2 mt-5">
+            <div className="h-px flex-1 bg-overlay/6" />
+            <span className="text-[10px] text-ink-4 font-medium uppercase tracking-wider">ou</span>
+            <div className="h-px flex-1 bg-overlay/6" />
+          </div>
+
+          <PasswordForm onError={setError} />
 
           <div className="flex items-center gap-2 mt-5">
             <div className="h-px flex-1 bg-overlay/6" />
