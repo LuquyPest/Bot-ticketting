@@ -18,7 +18,7 @@ const FIELD_LABELS = {
   weeklyReportChannelId: 'Salon — rapport hebdomadaire', publicStatsChannelId: 'Salon — statistiques publiques', publicStatsTargetHours: 'Statistiques publiques — objectif de réponse', monthlyReportChannelId: 'Salon — rapport mensuel',
   spamAlertChannelId: 'Salon — alertes spam', escalationAlertChannelId: 'Salon — escalades',
   escalationAlertHours: 'Escalade — alerte (h)', escalationCloseHours: 'Escalade — fermeture (h)',
-  embedColor: 'Couleur des embeds', botLanguage: 'Langue du bot', require2fa: '2FA obligatoire',
+  embedColor: 'Couleur des embeds', botLanguage: 'Langue du bot', staffLanguage: 'Langue du bot pour le staff', require2fa: '2FA obligatoire',
   memberReopenDays: 'Réouverture par le membre (jours)', notifyMemberStage: 'Membre prévenu des changements d\'étape',
   lowRatingThreshold: 'Seuil de note basse', memberPortalEnabled: 'Espace membre web', botDisplayName: 'Nom du bot', webhookUrl: 'URL du webhook', webhookSecret: 'Secret du webhook',
   intakeFormEnabled: 'Formulaire d\'ouverture', staffReminderEnabled: 'Rappels au staff', staffReminderHours: 'Rappel au staff (h)',
@@ -29,7 +29,7 @@ const FIELD_LABELS = {
 };
 const SOURCE = { settings: null, import: 'Import', restore: 'Restauration', setup: 'Assistant /setup' };
 const CHANNEL_KEYS = /ChannelId$|CategoryId$/;
-const LANG = { fr: 'Français', en: 'Anglais', auto: 'Automatique' };
+const LANG = { fr: 'Français', en: 'Anglais', es: 'Espagnol', de: 'Allemand', it: 'Italien', pt: 'Portugais', auto: 'Automatique' };
 const TWO_FA = { none: 'Non', founders: 'Fondateurs', staff: 'Tout le staff' };
 
 // Short, readable rendering of a setting value (names instead of Discord ids)
@@ -42,7 +42,7 @@ function useFormatter({ channels, categories, roles, grades }) {
     }
     if (key === 'supportRoleIds' || key === 'chiefRoleIds') return v.map(id => `@${roles.find(r => r.id === id)?.name || id}`).join(', ');
     if (key === 'supportGradeId' || key === 'chiefGradeId') return grades.find(g => g.id === v)?.name || `grade ${v}`;
-    if (key === 'botLanguage') return LANG[v] || v;
+    if (key === 'botLanguage' || key === 'staffLanguage') return LANG[v] || v;
     if (key === 'require2fa') return TWO_FA[v] || v;
     if (typeof v === 'boolean' || ((v === 0 || v === 1) && /Enabled$|^notify/.test(key))) return v ? 'Activé' : 'Désactivé';
     if (Array.isArray(v)) return v.join(', ');

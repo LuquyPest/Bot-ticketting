@@ -87,7 +87,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
       await recordEvent(db, { actor: SYSTEM_CLOSER, action: 'ticket_close', ticketId: ticket.id, details: { reason: 'escalade sans réponse', channel: 'introuvable' } });
       continue;
     }
-    await channel.send('⏱️ Ce ticket urgent est fermé automatiquement après inactivité prolongée.').catch(() => null);
+    await channel.send((await require('./staffI18n').staffT(guild_id, { client }))('escalation.closed')).catch(() => null);
     await tm.closeTicketWithTranscript(channel, SYSTEM_CLOSER).catch(console.error);
   }
 }

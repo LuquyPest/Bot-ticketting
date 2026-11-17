@@ -20,19 +20,20 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: '❌ Cette commande doit être utilisée dans un ticket.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     }
 
     const result = await tm.moveToStage(ticket.id, interaction.options.getString('etape', true), interaction.user)
-      .catch(() => ({ ok: false, error: 'Impossible de déplacer le ticket.' }));
+      .catch(() => ({ ok: false, error: L('move.failed') }));
     if (!result.ok) return interaction.reply({ content: `❌ ${result.error}`, flags: MessageFlags.Ephemeral });
     await tm.updateChannelTopic(ticket.id).catch(() => null);
-    return interaction.reply({ content: `✅ Ticket passé en **${result.label}**.`, flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: L('move.done', { stage: L(`stage.${interaction.options.getString('etape', true)}`) }), flags: MessageFlags.Ephemeral });
   }
 };

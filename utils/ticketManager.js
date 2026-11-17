@@ -61,14 +61,16 @@ function chunkText(text, size = EMBED_CHUNK) {
 
 // Posts a user's message (any length, any number of attachments) as one or more embeds.
 async function sendUserContent(channel, user, content, attachments = []) {
+  if (channel?.virtual) return;
+  const L = await require('./staffI18n').staffT(channel?.guildId || channel?.guild?.id || null, { client: channel?.client });
   const files = attachments.map(f => f.url).join('\n');
   const body = [content, files && `📎 **Fichiers**\n${files}`].filter(Boolean).join('\n\n') || '*[aucun texte]*';
   const chunks = chunkText(body);
-  const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const time = L.time();
   for (const [i, chunk] of chunks.entries()) {
     const embed = new EmbedBuilder().setColor(0x4e5058).setDescription(chunk);
-    if (i === 0) embed.setAuthor({ name: `${user.tag} · utilisateur` });
-    if (i === chunks.length - 1) embed.setFooter({ text: chunks.length > 1 ? `${time} · ${chunks.length} parties` : time });
+    if (i === 0) embed.setAuthor({ name: L('tm.user', { tag: user.tag }) });
+    if (i === chunks.length - 1) embed.setFooter({ text: chunks.length > 1 ? L('tm.parts', { time, n: chunks.length }) : time });
     await channel.send({ embeds: [embed] });
   }
 }
@@ -128,6 +130,9 @@ function createManager(db, client, guildId) {
     const ids = [ticket.owner_id, ...participants.map(r => r.user_id)];
     return [...new Set(ids)];
   }
+
+  // Staff texts of this server (utils/staffI18n.js): messages everyone sees in its channels
+  const staffL = () => require('./staffI18n').staffT(gid, { client });
 
   async function createTicketDb(channelId, user, subject = null, confidential = false) {
     const visibility = confidential ? require('./gradePermissions').CONFIDENTIAL : null;
@@ -257,22 +262,24 @@ function createManager(db, client, guildId) {
     // Thread: the allowed staff members are added to it.
     if (confidential || channel.isThread()) await require('./channelVisibility').syncTicketChannel(db, client, gid, ticket).catch(() => null);
 
+    const L = await staffL();
+    const mention = require('./emailTickets').isEmailOwner(user.id) ? user.tag : `<@${user.id}>`;
     const embed = new EmbedBuilder()
       .setColor(0x6366f1)
-      .setAuthor({ name: 'Nouveau ticket' })
+      .setAuthor({ name: L('tm.new') })
       .setTitle(`Ticket #${ticket.id}`)
-      .setDescription(`Bienvenue <@${user.id}> ! Notre équipe va traiter ta demande dans les plus brefs délais.`)
+      .setDescription(L('tm.welcome', { user: mention }))
       .addFields(
-        { name: '👤 Utilisateur', value: `<@${user.id}>`, inline: true },
-        { name: '📂 Sujet', value: ticket.subject || 'Non défini', inline: true },
-        { name: '🔵 Priorité', value: 'Normale', inline: true }
+        { name: L('field.user'), value: mention, inline: true },
+        { name: L('field.subject'), value: ticket.subject || L('notSet'), inline: true },
+        { name: L('field.priorityIcon'), value: L('prio.normal'), inline: true }
       )
-      .setFooter({ text: 'Ticket ouvert' })
+      .setFooter({ text: L('tm.opened') })
       .setTimestamp();
 
-    await channel.send({ embeds: [embed], components: [ticketButtons()] });
+    await channel.send({ embeds: [embed], components: [ticketButtons(L)] });
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
-    await setTicketTopic(channel, `#${ticket.id} · ${user.tag} · 🔵 Normal · Libre${topicSub}`);
+    await setTicketTopic(channel, `#${ticket.id} · ${user.tag} · 🔵 ${L('prio.normal')} · ${L('free')}${topicSub}`);
 
     fireTicketWebhook(db, 'ticket_open', { ticketId: ticket.id, ownerTag: user.tag, subject: ticket.subject }).catch(() => null);
     await recordEvent(db, { actor: user, action: 'ticket_open', ticketId: ticket.id, details: { subject: ticket.subject || null, ...(confidential ? { confidential: true } : {}) } });
@@ -439,16 +446,18 @@ function createManager(db, client, guildId) {
         const duration = mins !== null ? (mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}min`) : '—';
         // Confidential: the staff log channel never learns who wrote or about what
         const confidential = ticket.visibility_grade_id === require('./gradePermissions').CONFIDENTIAL;
+        const L = await staffL();
+        const ownerShown = require('./emailTickets').isEmailOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
         const closeLogEmbed = new EmbedBuilder()
           .setColor(0x6366f1)
-          .setTitle(`🔒 Ticket #${ticket.id} fermé${confidential ? ' (confidentiel)' : ''}`)
+          .setTitle(`${L('tm.closeLog', { id: ticket.id })}${confidential ? L('tm.confidential') : ''}`)
           .addFields(
-            { name: '👤 Utilisateur', value: confidential ? '—' : `<@${ticket.owner_id}>`, inline: true },
-            { name: '🛡️ Fermé par', value: closedByUser.tag, inline: true },
-            { name: '⏱️ Durée', value: duration, inline: true }
+            { name: L('field.user'), value: confidential ? '—' : ownerShown, inline: true },
+            { name: L('field.closedBy'), value: closedByUser.tag, inline: true },
+            { name: L('field.duration'), value: duration, inline: true }
           );
-        if (ticket.subject && !confidential) closeLogEmbed.addFields({ name: '📂 Sujet', value: ticket.subject, inline: true });
-        closeLogEmbed.setFooter({ text: `Transcript #${transcript?.transcriptId || 'aucun'}` }).setTimestamp();
+        if (ticket.subject && !confidential) closeLogEmbed.addFields({ name: L('field.subject'), value: ticket.subject, inline: true });
+        closeLogEmbed.setFooter({ text: transcript?.transcriptId ? L('tm.transcriptN', { id: transcript.transcriptId }) : L('tm.transcriptN', { id: L('none') }) }).setTimestamp();
         await logCh.send({ embeds: [closeLogEmbed] }).catch(() => null);
       }
     }
@@ -470,21 +479,23 @@ function createManager(db, client, guildId) {
       [channel.id, ticket.id]
     );
     if (restricted || channel.isThread()) await require('./channelVisibility').syncTicketChannel(db, client, gid, { ...ticket, channel_id: channel.id }).catch(() => null);
+    const L = await staffL();
+    const ownerShown = require('./emailTickets').isEmailOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
     const reopenEmbed = new EmbedBuilder()
       .setColor(0x10b981)
-      .setAuthor({ name: 'Ticket réouvert' })
+      .setAuthor({ name: L('tm.reopened') })
       .setTitle(`Ticket #${ticket.id}`)
-      .setDescription(`Bienvenue à nouveau <@${ticket.owner_id}> ! Le ticket a été réouvert.`)
+      .setDescription(L('tm.welcomeBack', { user: ownerShown }))
       .addFields(
-        { name: '👤 Utilisateur', value: `<@${ticket.owner_id}>`, inline: true },
-        { name: '📂 Sujet', value: ticket.subject || 'Non défini', inline: true },
-        { name: '🔵 Priorité', value: 'Normale', inline: true }
+        { name: L('field.user'), value: ownerShown, inline: true },
+        { name: L('field.subject'), value: ticket.subject || L('notSet'), inline: true },
+        { name: L('field.priorityIcon'), value: L('prio.normal'), inline: true }
       )
-      .setFooter({ text: 'Ticket réouvert' })
+      .setFooter({ text: L('tm.reopened') })
       .setTimestamp();
-    await channel.send({ embeds: [reopenEmbed], components: [ticketButtons()] });
+    await channel.send({ embeds: [reopenEmbed], components: [ticketButtons(L)] });
     const topicSub = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
-    await setTicketTopic(channel, `#${ticket.id} · ${ticket.owner_tag} · 🔵 Normal · Libre${topicSub}`);
+    await setTicketTopic(channel, `#${ticket.id} · ${ticket.owner_tag} · 🔵 ${L('prio.normal')} · ${L('free')}${topicSub}`);
     await recordEvent(db, { actor: reopenedByUser, action: 'ticket_reopen', ticketId: ticket.id, details: reopenedByUser?.reason ? { reason: reopenedByUser.reason } : null });
     await sendToMember(client, ticket.owner_id, gid, () => ({ embeds: [new EmbedBuilder()
       .setColor(0x10b981)
@@ -502,12 +513,13 @@ function createManager(db, client, guildId) {
     const { channel, ticket } = await createTicket(user, '', [], subject, { forceNew: true });
     await db('UPDATE tickets SET opened_by_id = ? WHERE id = ?', [String(byUser.id), ticket.id]);
     const by = byUser.username || byUser.tag;
-    await channel.send({ content: `📩 Ticket ouvert par **${by}** pour contacter <@${user.id}>.`, allowedMentions: { parse: [] } }).catch(() => null);
+    const L = await staffL();
+    await channel.send({ content: L('tm.contactBy', { by, user: `<@${user.id}>` }), allowedMentions: { parse: [] } }).catch(() => null);
     if (quote) {
       const text = [quote.content, ...(quote.attachments || [])].filter(Boolean).join('\n');
-      const embed = new EmbedBuilder().setColor(0x4e5058).setAuthor({ name: `${user.tag || user.username} · message d'origine` })
+      const embed = new EmbedBuilder().setColor(0x4e5058).setAuthor({ name: L('tm.origin', { tag: user.tag || user.username }) })
         .setDescription((text || '*[aucun texte]*').slice(0, 4000));
-      if (quote.url) embed.addFields({ name: 'Source', value: `[Voir le message](${quote.url})${quote.channelId ? ` dans <#${quote.channelId}>` : ''}` });
+      if (quote.url) embed.addFields({ name: L('field.source'), value: `${L('tm.seeMessage', { url: quote.url })}${quote.channelId ? L('tm.inChannel', { channel: `<#${quote.channelId}>` }) : ''}` });
       await channel.send({ embeds: [embed] }).catch(() => null);
       await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, 'user')",
         [ticket.id, user.id, user.tag || user.username, [text, quote.url].filter(Boolean).join('\n')]);
@@ -568,7 +580,7 @@ function createManager(db, client, guildId) {
     }
     await db('UPDATE tickets SET voice_channel_id = ? WHERE id = ?', [voice.id, ticket.id]);
     const url = `https://discord.com/channels/${gid}/${voice.id}`;
-    await text.send(`🔊 Salon vocal ouvert par **${byUser.username || byUser.tag}** : <#${voice.id}>`).catch(() => null);
+    await text.send((await staffL())('tm.voiceOpen', { by: byUser.username || byUser.tag, channel: `<#${voice.id}>` })).catch(() => null);
     const { ticketNoticeDmEmbed } = require('./dmEmbeds');
     for (const uid of await getAllLinkedUserIds(ticket.id)) {
       await sendToMember(client, uid, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, ticket, {
@@ -590,7 +602,7 @@ function createManager(db, client, guildId) {
       await recordEvent(db, { actor: byUser, action: 'ticket_voice_close', ticketId: ticket.id });
       if (ticket.status === 'open') {
         const text = await client.channels.fetch(ticket.channel_id).catch(() => null);
-        await text?.send(`🔇 Salon vocal fermé par **${byUser.username || byUser.tag}**.`).catch(() => null);
+        await text?.send((await staffL())('tm.voiceClosed', { by: byUser.username || byUser.tag })).catch(() => null);
       }
     }
     broadcast('ticket', { id: ticket.id, voice_channel_id: null, voiceUrl: null }, gid);
@@ -666,8 +678,9 @@ function createManager(db, client, guildId) {
     if (cfg.claim_log_channel_id) {
       const logCh = await fetchGuildChannel(client, gid, cfg.claim_log_channel_id);
       if (logCh?.isTextBased()) {
-        const by = byUser && byUser.id !== user.id ? ` par ${byUser.tag || byUser.username}` : '';
-        await logCh.send(`Ticket #${ticketId} attribué à ${tag} (${user.id})${by}`).catch(() => null);
+        const L = await staffL();
+        const by = byUser && byUser.id !== user.id ? L('tm.by', { by: byUser.tag || byUser.username }) : '';
+        await logCh.send(`${L('tm.assignLog', { id: ticketId, tag, uid: user.id })}${by}`).catch(() => null);
       }
     }
     return true;
@@ -717,8 +730,10 @@ function createManager(db, client, guildId) {
     // stage_changed_at must be computed before stage is overwritten)
     await db('UPDATE tickets SET stage_changed_at = IF(stage = ?, stage_changed_at, NOW()), stage = ? WHERE id = ?', [stage, stage, ticketId]);
     await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
-    await logMoveTicket(ticketId, category ? `${STAGE_LABEL[stage]} (${category.name})` : STAGE_LABEL[stage], byUser);
-    await channel.send(`📂 Ticket passé en **${STAGE_LABEL[stage]}** par **${byUser.username || byUser.tag}**.`).catch(() => null);
+    const stageName = (await staffL())(`stage.${stage}`);
+    await logMoveTicket(ticketId, category ? `${stageName} (${category.name})` : stageName, byUser);
+    const Lst = await staffL();
+    await channel.send(Lst('tm.stageMoved', { stage: Lst(`stage.${stage}`), by: byUser.username || byUser.tag })).catch(() => null);
     // Optional: tell the member (guild setting notify_member_stage)
     if (cfg.notify_member_stage && before?.stage !== stage) {
       const [t2] = await db('SELECT id, owner_id, subject FROM tickets WHERE id = ?', [ticketId]);
@@ -766,7 +781,7 @@ function createManager(db, client, guildId) {
     await recordEvent(db, { actor: byUser, action: 'ticket_merge', ticketId: sourceId, details });
 
     const targetChannel = target.channel_id ? await client.channels.fetch(target.channel_id).catch(() => null) : null;
-    await targetChannel?.send(`🔀 Le ticket #${sourceId}${source.subject ? ` « ${source.subject} »` : ''} a été fusionné ici par **${actorTag}**.`).catch(() => null);
+    await targetChannel?.send((await staffL())('tm.mergedHere', { id: sourceId, subject: source.subject ? ` « ${source.subject} »` : '', by: actorTag })).catch(() => null);
     await channel?.delete(`Fusionné dans le ticket #${targetId}`).catch(() => null);
     await closeVoiceChannel(sourceId).catch(() => null);
 
@@ -858,7 +873,7 @@ function createManager(db, client, guildId) {
     await db('UPDATE tickets SET warned_inactive=1 WHERE id=?', [ticketId]);
   }
 
-  const PRIO_TOPIC = { low: '🟢 Faible', normal: '🔵 Normal', urgent: '🔴 Urgente' };
+  const PRIO_EMOJI = { low: '🟢', normal: '🔵', urgent: '🔴' };
 
   async function updateChannelTopic(ticketId) {
     const [ticket] = await db('SELECT * FROM tickets WHERE id=?', [ticketId]);
@@ -868,8 +883,9 @@ function createManager(db, client, guildId) {
     const assignees = await getAssignees(ticketId);
     const claimerName = assignees.length
       ? assignees.slice(0, 3).map(a => a.username).join(', ') + (assignees.length > 3 ? ` +${assignees.length - 3}` : '')
-      : 'Libre';
-    const prio = PRIO_TOPIC[ticket.priority] || ticket.priority;
+      : (await staffL())('free');
+    const Lp = await staffL();
+    const prio = PRIO_EMOJI[ticket.priority] ? `${PRIO_EMOJI[ticket.priority]} ${Lp(`prio.${ticket.priority}`)}` : ticket.priority;
     const subjectPart = ticket.subject ? ` · ${ticket.subject.slice(0, 40)}` : '';
     await setTicketTopic(channel, `#${ticket.id} · ${ticket.owner_tag} · ${prio} · ${claimerName}${subjectPart}`);
   }
@@ -878,7 +894,7 @@ function createManager(db, client, guildId) {
     const cfg = await getGuildConfig(db);
     if (!cfg.move_log_channel_id) return;
     const ch = await fetchGuildChannel(client, gid, cfg.move_log_channel_id);
-    if (ch?.isTextBased()) await ch.send(`Ticket #${ticketId} déplacé vers ${categoryName} par ${movedByUser.tag} (${movedByUser.id})`).catch(() => null);
+    if (ch?.isTextBased()) await ch.send((await staffL())('tm.moveLog', { id: ticketId, category: categoryName, by: movedByUser.tag, uid: movedByUser.id })).catch(() => null);
   }
 
   async function logAddUser(ticketId, targetUserId, addedByUser) {
@@ -886,7 +902,7 @@ function createManager(db, client, guildId) {
     const cfg = await getGuildConfig(db);
     if (!cfg.add_user_log_channel_id) return;
     const ch = await fetchGuildChannel(client, gid, cfg.add_user_log_channel_id);
-    if (ch?.isTextBased()) await ch.send(`Utilisateur ${targetUserId} ajouté au ticket #${ticketId} par ${addedByUser.tag}`).catch(() => null);
+    if (ch?.isTextBased()) await ch.send((await staffL())('tm.addLog', { uid: targetUserId, id: ticketId, by: addedByUser.tag })).catch(() => null);
   }
 
   async function logRemoveUser(ticketId, targetUserId, removedByUser) {
@@ -894,7 +910,7 @@ function createManager(db, client, guildId) {
     const cfg = await getGuildConfig(db);
     if (!cfg.remove_user_log_channel_id) return;
     const ch = await fetchGuildChannel(client, gid, cfg.remove_user_log_channel_id);
-    if (ch?.isTextBased()) await ch.send(`Utilisateur ${targetUserId} retiré du ticket #${ticketId} par ${removedByUser.tag}`).catch(() => null);
+    if (ch?.isTextBased()) await ch.send((await staffL())('tm.removeLog', { uid: targetUserId, id: ticketId, by: removedByUser.tag })).catch(() => null);
   }
 
   async function getLastClosedTicketByOwnerId(userId) {

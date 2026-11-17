@@ -12,6 +12,7 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'close_ticket'))) return;
@@ -22,15 +23,15 @@ module.exports = {
 
     const ticket = await tm.getLastClosedTicketByOwnerId(userId);
     if (!ticket) {
-      return interaction.editReply({ content: 'Aucun ticket fermé trouvé pour cet utilisateur.' });
+      return interaction.editReply({ content: L('reopen.none') });
     }
     const { discordStaffCanSee } = require('../utils/gradePermissions');
     if (!(await discordStaffCanSee(db, interaction.user.id, ticket))) {
-      return interaction.editReply({ content: '❌ Ce ticket est réservé à certains grades.' });
+      return interaction.editReply({ content: L('restricted') });
     }
 
     const channel = await tm.reopenTicket(ticket, interaction.user);
 
-    await interaction.editReply({ content: `Ticket #${ticket.id} réouvert dans ${channel}.` });
+    await interaction.editReply({ content: L('reopen.done', { id: ticket.id, channel: channel?.virtual ? L('inDashboard') : `${channel}` }) });
   }
 };

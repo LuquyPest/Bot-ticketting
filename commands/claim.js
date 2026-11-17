@@ -9,27 +9,29 @@ module.exports = {
     .setDescription('S\'ajoute aux personnes assignées au ticket'),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    const Ls = await require('../utils/staffI18n').forInteraction(interaction, { shared: true });
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'claim_ticket'))) return;
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: '❌ Pas un salon ticket.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     }
 
     // Several staff members can be assigned to the same ticket
     const added = await tm.addAssignee(ticket.id, interaction.user, interaction.user);
     if (!added) {
-      return interaction.reply({ content: 'Tu es déjà assigné à ce ticket.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('claim.already'), flags: MessageFlags.Ephemeral });
     }
     await tm.updateChannelTopic(ticket.id).catch(() => null);
     const claimEmbed = new EmbedBuilder()
       .setColor(0x1abc9c)
-      .setTitle('✋ Ticket pris en charge')
+      .setTitle(Ls('claim.title'))
       .addFields(
-        { name: 'Staff', value: `<@${interaction.user.id}>`, inline: true },
-        { name: 'Heure', value: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), inline: true }
+        { name: Ls('field.staff'), value: `<@${interaction.user.id}>`, inline: true },
+        { name: Ls('field.time'), value: Ls.time(), inline: true }
       );
     await interaction.reply({ embeds: [claimEmbed] });
   }

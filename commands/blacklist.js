@@ -25,6 +25,7 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureChiefSupport(interaction, client, db))) return;
@@ -36,13 +37,13 @@ module.exports = {
       const raison = interaction.options.getString('raison') || null;
 
       if (user.bot) {
-        return interaction.reply({ content: 'Impossible de blacklister un bot.', flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: L('blacklist.bot'), flags: MessageFlags.Ephemeral });
       }
 
       await tm.addToBlacklist(user.id, user.username, raison, interaction.user);
 
       await interaction.reply({
-        content: `${user.username} a été ajouté à la blacklist.${raison ? `\nRaison : ${raison}` : ''}`,
+        content: `${L('blacklist.added', { user: user.username })}${raison ? `\n${L('blacklist.reason', { reason: raison })}` : ''}`,
         flags: MessageFlags.Ephemeral
       });
 
@@ -55,10 +56,10 @@ module.exports = {
       const removed = await tm.removeFromBlacklist(user.id, interaction.user);
 
       if (!removed) {
-        return interaction.reply({ content: `${user.username} n'est pas dans la blacklist.`, flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: L('blacklist.notIn', { user: user.username }), flags: MessageFlags.Ephemeral });
       }
 
-      await interaction.reply({ content: `${user.username} a été retiré de la blacklist.`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: L('blacklist.removed', { user: user.username }), flags: MessageFlags.Ephemeral });
       await sendToMember(client, user, interaction.guildId, () => t('unblacklisted'));
       return;
     }
@@ -67,17 +68,17 @@ module.exports = {
       const list = await tm.getBlacklist();
 
       if (!list.length) {
-        return interaction.reply({ content: 'La blacklist est vide.', flags: MessageFlags.Ephemeral });
+        return interaction.reply({ content: L('blacklist.empty'), flags: MessageFlags.Ephemeral });
       }
 
       const embed = new EmbedBuilder()
-        .setTitle('Blacklist')
+        .setTitle(L('blacklist.title'))
         .setDescription(
           list.slice(0, 20).map(row =>
-            `**${row.user_tag}** (${row.user_id})\nRaison : ${row.reason || '-'}\nAjouté par : ${row.added_by_tag}`
+            `**${row.user_tag}** (${row.user_id})\n${L('blacklist.entry', { reason: row.reason || '-', by: row.added_by_tag })}`
           ).join('\n\n')
         )
-        .setFooter({ text: `${list.length} utilisateur(s) bloqué(s)` })
+        .setFooter({ text: L('blacklist.count', { n: list.length }) })
         .setTimestamp();
 
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });

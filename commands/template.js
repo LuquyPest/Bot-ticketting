@@ -41,19 +41,20 @@ module.exports = {
   },
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
-    if (!ticket) return interaction.reply({ content: 'Pas un salon ticket.', flags: MessageFlags.Ephemeral });
+    if (!ticket) return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     const tpl = (await visibleTemplates(db, interaction.user.id, interaction.guildId)).find(t => String(t.id) === interaction.options.getString('modele', true));
-    if (!tpl) return interaction.reply({ content: 'Modèle introuvable : choisis-le dans la liste proposée.', flags: MessageFlags.Ephemeral });
+    if (!tpl) return interaction.reply({ content: L('template.notFound'), flags: MessageFlags.Ephemeral });
 
     const cfg = await tm.getGuildConfig(db);
     const cooldown = (cfg.reply_rate_limit_seconds ?? 3) * 1000;
     const remaining = await checkRateLimit(`reply:${interaction.user.id}:${interaction.guildId}`, cooldown);
-    if (remaining > 0) return interaction.reply({ content: `Attends encore ${remaining}s avant de renvoyer une réponse.`, flags: MessageFlags.Ephemeral });
+    if (remaining > 0) return interaction.reply({ content: L('cooldown', { s: remaining }), flags: MessageFlags.Ephemeral });
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await sendDiscordReply({
@@ -67,7 +68,7 @@ module.exports = {
     const { applied, warnings } = await applyMacroActions({
       client, db, guildId: interaction.guildId, tm, ticket, actions, actor: interaction.user, can: await staffPermissionChecker(db, interaction.user.id),
     });
-    const summary = [`Modèle « ${tpl.name} » envoyé.`, applied.length ? `Actions : ${applied.join(', ')}.` : null, ...warnings.map(w => `⚠️ ${w}`)];
+    const summary = [L('template.sent', { name: tpl.name }), applied.length ? L('template.actions', { list: applied.join(', ') }) : null, ...warnings.map(w => `⚠️ ${w}`)];
     await interaction.editReply({ content: summary.filter(Boolean).join('\n') }).catch(() => null);
   },
 };
