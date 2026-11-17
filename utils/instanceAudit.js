@@ -23,6 +23,7 @@ const ACTIONS = {
   'POST /demo/reset': 'demo_reset',
   'PUT /metrics': 'metrics_toggle',
   'PUT /email': 'instance_email_update',
+  'PUT /login-providers': 'login_providers_update',
   'POST /email/test': 'instance_email_test',
   'POST /restore': 'guild_restore_request',
   'POST /restore/:guildId/rollback': 'guild_restore_rollback',
@@ -31,14 +32,22 @@ const ACTIONS = {
 
 const SECRET_KEYS = /pass|secret|totp|code|token/i;
 
+// Secrets masked at any depth (Instance → Connexion sends { google: { clientSecret } })
+function cleanValue(k, v, depth = 0) {
+  if (SECRET_KEYS.test(k)) return '[masqué]';
+  // Webhook URLs carry their token in the path
+  if (typeof v === 'string' && /^https?:\/\//.test(v)) return `${new URL(v).origin}/…`;
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    if (depth >= 3) return '[…]';
+    return Object.fromEntries(Object.entries(v).map(([k2, v2]) => [k2, cleanValue(k2, v2, depth + 1)]));
+  }
+  return v;
+}
+
 function cleanDetails(req) {
   const details = {};
   for (const [k, v] of Object.entries(req.params || {})) if (k !== 'guildId') details[k] = v;
-  for (const [k, v] of Object.entries(req.body && typeof req.body === 'object' ? req.body : {})) {
-    if (SECRET_KEYS.test(k)) { details[k] = '[masqué]'; continue; }
-    // Webhook URLs carry their token in the path
-    details[k] = typeof v === 'string' && /^https?:\/\//.test(v) ? `${new URL(v).origin}/…` : v;
-  }
+  for (const [k, v] of Object.entries(req.body && typeof req.body === 'object' ? req.body : {})) details[k] = cleanValue(k, v);
   if (req.query && Object.keys(req.query).length) details.filters = req.query;
   return Object.keys(details).length ? details : null;
 }

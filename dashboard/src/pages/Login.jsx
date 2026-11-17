@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bot, AlertCircle, Zap, Loader2 } from 'lucide-react';
+import { Bot, AlertCircle, Zap, Loader2, KeyRound } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../api';
 import DemoButton from '../components/DemoButton';
@@ -14,6 +14,11 @@ const ERROR_MESSAGES = {
   account_disabled: "Ce compte est désactivé. Contacte le propriétaire de l'instance.",
   discord_off: "La connexion avec Discord n'est pas activée sur cette instance.",
   no_code:       "Code OAuth manquant.",
+  invalid_state: "La connexion a expiré ou a été lancée depuis un autre onglet. Réessaie.",
+  provider_off:  "Ce moyen de connexion n'est pas activé sur cette instance.",
+  oidc_no_account: "Aucun compte n'utilise cette adresse. Demande une invitation, ou connecte-toi autrement puis relie ce fournisseur dans Profil → Connexion.",
+  oidc_unverified: "Le fournisseur ne garantit pas ton adresse e-mail : connecte-toi autrement, puis relie-le dans Profil → Connexion.",
+  oidc_invalid:  "Réponse du fournisseur refusée. Réessaie, ou préviens le propriétaire de l'instance.",
 };
 const EXPIRED_MESSAGES = { idle: 'Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.' };
 
@@ -147,6 +152,21 @@ export default function Login() {
           </div>
           </>)}
 
+          {info?.providers?.length > 0 && (<>
+            <div className={`space-y-2 ${info?.discordLogin !== false ? 'mt-5' : ''}`}>
+              {info.providers.map(p => (
+                <a key={p.id} href={`/api/auth/oidc/${p.id}`}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5">
+                  <KeyRound size={15} aria-hidden="true" /> Continuer avec <span translate="no">{p.label}</span>
+                </a>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-5">
+              <div className="h-px flex-1 bg-overlay/6" />
+              <span className="text-[10px] text-ink-4 font-medium uppercase tracking-wider">ou</span>
+              <div className="h-px flex-1 bg-overlay/6" />
+            </div>
+          </>)}
           <PasswordForm onError={setError} />
 
           <div className="flex items-center gap-2 mt-5">

@@ -38,7 +38,7 @@ features:
     link: /en/team
     linkText: Organise the team
   - title: Yours, no middleman
-    details: The owner of the Discord application runs their instance. No account to create, encrypted backups, one-click updates.
+    details: Your instance, your ways to sign in (Discord, Google, Microsoft, OpenID Connect, password), encrypted backups, one-click updates.
     link: /en/instance
     linkText: The Instance section
   - title: Serious security

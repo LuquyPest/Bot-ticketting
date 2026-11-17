@@ -3710,6 +3710,135 @@ async function main() {
     await globalQuery('DELETE FROM accounts WHERE id = ?', [ACC]);
   }
 
+  // ── Sign-in providers (utils/loginProviders.js, routes/oidcAuth.js, v4 PR 12) ──
+  {
+    const axios = require('axios');
+    const realPost = axios.post, realGet = axios.get;
+    const lp = app('./utils/loginProviders');
+    let ipN = 0; // the sign-in limit counts per address: one address per few requests
+    const xff = () => ({ 'X-Forwarded-For': `10.0.13.${1 + (Math.floor(ipN++ / 4) % 250)}` });
+    const ISS = 'https://sso.example.test/realms/t';
+    const AO = 'u_oidc0000000000000000001', AL = 'u_oidc0000000000000000002';
+    const MAIL = 'oidc-person@example.test';
+    const now = () => Math.floor(Date.now() / 1000);
+    const jwt = c => ['e30', Buffer.from(JSON.stringify(c)).toString('base64url'), 'sig'].join('.');
+    let claims = () => ({});
+    const posts = [];
+    axios.get = async (url, opts) => (String(url) === `${ISS}/.well-known/openid-configuration`
+      ? { data: { issuer: ISS, authorization_endpoint: `${ISS}/auth`, token_endpoint: `${ISS}/token`, userinfo_endpoint: `${ISS}/userinfo` } }
+      : realGet(url, opts));
+    axios.post = async (url, body) => { posts.push({ url, body: String(body) }); return { data: { id_token: jwt(claims()), access_token: 'at' } }; };
+    await globalQuery('INSERT INTO accounts (id, email, email_verified, display_name) VALUES (?, ?, 1, ?), (?, NULL, 0, ?)', [AO, MAIL, 'Personne OIDC', AL, 'Compte à relier']);
+
+    r = await req('GET', '/api/instance/login-providers', { sid: sessions.OWN });
+    check('connexion: Discord activé par défaut sur une instance existante, OIDC coupé', r.status === 200 && r.body.discord.enabled === true && r.body.discord.configured === true && r.body.oidc.enabled === false && !('clientSecret' in r.body.google), JSON.stringify(r.body));
+    r = await req('GET', '/api/instance/login-providers', { sid: sessions.S1 });
+    check('connexion: réglages réservés au propriétaire de l instance', r.status === 403, r.status);
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { oidc: { enabled: true, issuer: ISS, clientId: 'cid' } } });
+    check('connexion: activer un fournisseur sans secret → refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { oidc: { enabled: true, issuer: 'http://sso.example.test', clientId: 'cid', clientSecret: 'oidc-client-value' } } }); // ggignore
+    check('connexion: adresse du fournisseur en http → refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { oidc: { enabled: true, name: 'SSO maison', issuer: ISS + '/', clientId: 'cid', clientSecret: 'oidc-client-value' } } }); // ggignore
+    const [rawLp] = await globalQuery("SELECT v FROM instance_settings WHERE k = 'login_providers'");
+    const [jLp] = await globalQuery("SELECT details FROM instance_audit_log WHERE action = 'login_providers_update' ORDER BY id DESC LIMIT 1");
+    check('connexion: fournisseur OIDC activé, secret chiffré en base et jamais renvoyé', r.status === 200 && r.body.oidc.enabled && r.body.oidc.secretSet === true && !JSON.stringify(r.body).includes('oidc-client-value') && !String(rawLp?.v).includes('oidc-client-value') && r.body.oidc.issuer === ISS, JSON.stringify([r.status, r.body.oidc]));
+    const jTxt = typeof jLp?.details === 'string' ? jLp.details : JSON.stringify(jLp?.details);
+    check('connexion: secret masqué dans le journal de l instance', !!jLp && !jTxt.includes('oidc-client-value') && jTxt.includes('masqué'), jTxt);
+    r = await req('GET', '/api/instance/info');
+    check('connexion: page de connexion → bouton du fournisseur avec son nom', r.body.discordLogin === true && r.body.providers.length === 1 && r.body.providers[0].id === 'oidc' && r.body.providers[0].label === 'SSO maison', JSON.stringify(r.body.providers));
+
+    const start = async (name, data = {}, link = false) => {
+      await mk(name, data);
+      const s = await req('GET', `/api/auth/oidc/oidc${link ? '?link=1' : ''}`, { sid: sessions[name], headers: xff() });
+      const u = new URL(s.headers.location || 'https://x.invalid');
+      return { s, u, state: u.searchParams.get('state'), nonce: u.searchParams.get('nonce') };
+    };
+    const back = (name, state) => req('GET', '/api/auth/oidc/oidc/callback', { sid: sessions[name], headers: xff(), query: { code: 'c0de', state } });
+    const good = (st, extra = {}) => () => ({ iss: ISS, aud: 'cid', sub: 'sub-1', exp: now() + 300, iat: now(), nonce: st.nonce, email: MAIL, email_verified: true, name: 'Personne', ...extra });
+
+    let st = await start('OI1');
+    const ch = st.u.searchParams.get('code_challenge');
+    check('oidc: départ vers le fournisseur avec state, nonce et PKCE S256', st.s.status === 302 && st.u.origin + st.u.pathname === `${ISS}/auth` && st.state?.length >= 30 && st.nonce?.length >= 30 && ch && st.u.searchParams.get('code_challenge_method') === 'S256' && st.u.searchParams.get('scope') === 'openid email profile', st.s.headers.location);
+    r = await back('OI1', 'faux-state');
+    check('oidc: retour avec un autre state → refusé', r.status === 302 && r.headers.location === '/login?error=invalid_state', r.headers.location);
+
+    st = await start('OI2'); claims = good(st);
+    r = await back('OI2', st.state);
+    const verifier = new URLSearchParams(posts.at(-1)?.body).get('code_verifier');
+    const pkceOk = !!verifier && crypto.createHash('sha256').update(verifier).digest('base64url') === new URL(st.s.headers.location).searchParams.get('code_challenge');
+    const [idn] = await globalQuery("SELECT account_id FROM account_identities WHERE provider = 'oidc:oidc' AND subject = 'sub-1'");
+    check('oidc: flux complet, adresse vérifiée → relié au compte existant et connecté', r.status === 302 && r.headers.location === '/select-guild' && idn?.account_id === AO, JSON.stringify([r.headers.location, idn]));
+    check('oidc: le code est échangé avec le vérificateur PKCE', pkceOk, verifier);
+    r = await back('OI2', st.state);
+    check('oidc: un retour ne sert qu une fois', r.headers.location === '/login?error=invalid_state', r.headers.location);
+
+    st = await start('OI3'); claims = good(st, { sub: 'sub-2', email_verified: false });
+    r = await back('OI3', st.state);
+    const [idn2] = await globalQuery("SELECT account_id FROM account_identities WHERE provider = 'oidc:oidc' AND subject = 'sub-2'");
+    check('oidc: adresse non vérifiée par le fournisseur → refus, rien de relié', r.headers.location === '/login?error=oidc_unverified' && !idn2, JSON.stringify([r.headers.location, idn2]));
+    st = await start('OI4'); claims = good(st, { nonce: 'autre' });
+    r = await back('OI4', st.state);
+    check('oidc: nonce différent → jeton refusé', r.headers.location === '/login?error=oidc_invalid', r.headers.location);
+    st = await start('OI5'); claims = good(st, { aud: 'autre-client' });
+    r = await back('OI5', st.state);
+    check('oidc: jeton pour une autre application → refusé', r.headers.location === '/login?error=oidc_invalid', r.headers.location);
+    st = await start('OI6'); claims = good(st, { iss: 'https://ailleurs.example.test' });
+    r = await back('OI6', st.state);
+    check('oidc: jeton d un autre émetteur → refusé', r.headers.location === '/login?error=oidc_invalid', r.headers.location);
+    st = await start('OI7'); claims = good(st, { exp: now() - 3600 });
+    r = await back('OI7', st.state);
+    check('oidc: jeton expiré → refusé', r.headers.location === '/login?error=oidc_invalid', r.headers.location);
+    st = await start('OI8'); claims = good(st, { sub: 'sub-9', email: 'inconnu@example.test' });
+    r = await back('OI8', st.state);
+    check('oidc: adresse vérifiée sans compte → aucun compte créé', r.headers.location === '/login?error=oidc_no_account', r.headers.location);
+    st = await start('OI9'); claims = good(st, { email: 'autre@example.test', email_verified: false });
+    r = await back('OI9', st.state);
+    check('oidc: identité déjà reliée → connexion même sans adresse vérifiée', r.headers.location === '/select-guild', r.headers.location);
+    await globalQuery("INSERT INTO user_totp (user_id, totp_secret, totp_enabled) VALUES (?, 'x', 1)", [AO]);
+    st = await start('OI10'); claims = good(st);
+    r = await back('OI10', st.state);
+    check('oidc: double authentification du compte demandée', r.headers.location === '/totp-verify', r.headers.location);
+    await globalQuery('DELETE FROM user_totp WHERE user_id = ?', [AO]);
+
+    // Link from Profil → Connexion, without any address
+    st = await start('OL1', { user: { id: AL, username: 'Compte à relier', role: null } }, true);
+    claims = good(st, { sub: 'sub-1' });
+    r = await back('OL1', st.state);
+    check('oidc: relier une identité déjà prise par un autre compte → refusé', r.headers.location === '/profile?link=oidc_taken', r.headers.location);
+    st = await start('OL2', { user: { id: AL, username: 'Compte à relier', role: null } }, true);
+    claims = good(st, { sub: 'sub-3', email: undefined, email_verified: undefined });
+    r = await back('OL2', st.state);
+    const [idn3] = await globalQuery("SELECT account_id FROM account_identities WHERE provider = 'oidc:oidc' AND subject = 'sub-3'");
+    check('oidc: relier depuis Profil → Connexion, sans adresse vérifiée', r.headers.location === '/profile?link=ok' && idn3?.account_id === AL, JSON.stringify([r.headers.location, idn3]));
+    await mk('OL3', { user: { id: AL, username: 'Compte à relier', role: null } });
+    r = await req('GET', '/api/profile/login-methods', { sid: sessions.OL3 });
+    check('oidc: Profil → Connexion affiche le fournisseur sous son nom', r.status === 200 && r.body.identities.some(i => i.provider === 'oidc:oidc' && i.label === 'SSO maison' && i.removable) && r.body.available.length === 0, JSON.stringify(r.body));
+    r = await req('DELETE', '/api/profile/identities/oidc:oidc', { sid: sessions.OL3 });
+    check('oidc: délier son seul moyen de connexion → refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('GET', '/api/auth/oidc/oidc?link=1', { headers: xff() });
+    check('oidc: relier sans être connecté → page de connexion', r.status === 302 && r.headers.location === '/login', r.headers.location);
+
+    // The owner cannot cut their last way to sign in
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { discord: { enabled: false } } });
+    check('connexion: couper Discord sans autre moyen pour le propriétaire → refusé', r.status === 400 && /aucun moyen/.test(r.body.error), JSON.stringify(r.body));
+    await globalQuery("INSERT INTO account_identities (provider, subject, account_id) VALUES ('oidc:oidc', 'sub-own', ?)", [U.F]);
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { discord: { enabled: false } } });
+    const offD = await req('GET', '/api/auth/discord', { headers: xff() });
+    const infoD = await req('GET', '/api/instance/info');
+    check('connexion: Discord coupé quand un autre moyen reste → bouton retiré, connexion refusée', r.status === 200 && offD.headers.location === '/login?error=discord_off' && infoD.body.discordLogin === false, JSON.stringify([r.status, offD.headers.location, infoD.body.discordLogin]));
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { oidc: { enabled: false } } });
+    check('connexion: couper ensuite le dernier fournisseur du propriétaire → refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/instance/login-providers', { sid: sessions.OWN, body: { discord: { enabled: true }, oidc: { enabled: false } } });
+    const offO = await req('GET', '/api/auth/oidc/oidc', { headers: xff() });
+    check('oidc: fournisseur coupé → départ refusé', r.status === 200 && offO.headers.location === '/login?error=provider_off', JSON.stringify([r.status, offO.headers.location]));
+
+    axios.post = realPost; axios.get = realGet;
+    lp.resetCache();
+    await globalQuery("DELETE FROM instance_settings WHERE k = 'login_providers'");
+    await globalQuery("DELETE FROM account_identities WHERE provider LIKE 'oidc:%'");
+    await globalQuery('DELETE FROM accounts WHERE id IN (?, ?)', [AO, AL]);
+  }
+
   // ── E-mail of the instance (utils/instanceMail.js, v4 PR 4) ──
   {
     const im = app('./utils/instanceMail');

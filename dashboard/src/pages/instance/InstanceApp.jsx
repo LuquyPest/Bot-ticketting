@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, Link } from 'react-router-dom';
-import { Server, Building2, Loader2, ShieldAlert, LayoutDashboard, Bug, ScrollText, HeartPulse, ArrowLeft } from 'lucide-react';
+import { Server, Building2, Loader2, ShieldAlert, LayoutDashboard, Bug, ScrollText, HeartPulse, ArrowLeft, KeyRound } from 'lucide-react';
 import { useAuth } from '../../App';
 import { useInstanceInfo } from '../../hooks/useInstanceInfo';
 
@@ -10,6 +10,7 @@ const Health   = lazy(() => import('./Health'));
 const Errors   = lazy(() => import('./Errors'));
 const Journal  = lazy(() => import('./Journal'));
 const Blocked  = lazy(() => import('./Blocked'));
+const LoginProviders = lazy(() => import('./LoginProviders'));
 
 // Instance section: reserved to the owner of the instance (owner of the Discord application or
 // OWNER_IDS), reached from the dashboard with the same Discord sign-in.
@@ -17,6 +18,7 @@ const NAV = [
   { to: '/instance/overview', label: 'Vue d\'ensemble', icon: LayoutDashboard },
   { to: '/instance/guilds',   label: 'Espaces', icon: Building2 },
   { to: '/instance/health',   label: 'Santé',    icon: HeartPulse },
+  { to: '/instance/login',    label: 'Connexion', icon: KeyRound },
   { to: '/instance/errors',   label: 'Erreurs',  icon: Bug },
   { to: '/instance/journal',  label: 'Journal',  icon: ScrollText },
   { to: '/instance/blocked',  label: 'Blocages', icon: ShieldAlert },
@@ -97,6 +99,7 @@ export default function InstanceApp() {
         <Route path="overview" element={<Overview />} />
         <Route path="guilds"   element={<Guilds />} />
         <Route path="health"   element={<Health />} />
+        <Route path="login"    element={<LoginProviders />} />
         <Route path="errors"   element={<Errors />} />
         <Route path="journal"  element={<Journal />} />
         <Route path="blocked"  element={<Blocked />} />

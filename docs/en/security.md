@@ -7,7 +7,8 @@ The project has been through several audits, including an OWASP Top 10 audit, al
 | | |
 |---|---|
 | **Accounts** | One account per person, created at their first sign-in and can be disabled; **Profile → Sign-in** lists its sign-in methods |
-| **Sign-in** | Discord OAuth2, with state verification (CSRF protection of the OAuth return); or e-mail address and password (see below) |
+| **Sign-in** | Discord OAuth2, with state verification (CSRF protection of the OAuth return); e-mail address and password (see below); Google, Microsoft or OpenID Connect ([ways to sign in](./instance#ways-to-sign-in)) |
+| **OpenID Connect** | *Authorization code* flow with `state`, `nonce` and PKCE (S256); ID token received straight from the provider, issuer, application, expiry and nonce checked; automatic link to an account only on an e-mail address **verified** by the provider; no account created at sign-in |
 | **Passwords** | Hashed with scrypt (salt per account), at least 10 characters; 10 failures in 15 minutes lock the password sign-in of the account; same answer and same computing time whether the address exists or not; the account's 2FA applies |
 | **Sessions** | `Secure`, `HttpOnly`, `SameSite=Lax` cookie, stored in Redis, regenerated on every change of rights, revocable from the profile |
 | **2FA** | TOTP with backup codes, a code never accepted twice, enforceable per server |
@@ -23,7 +24,7 @@ An account can also sign in with an **e-mail address and a password**, from **Pr
 2. **Password**: at least 10 characters. Changing it closes your other sessions; changing the address removes it.
 3. On the sign-in page, **E-mail address** and **Password** under the Discord button. **Forgot your password?** sends a link valid 30 minutes; using it closes every session of the account.
 
-These e-mails go out through the [e-mail of the instance](./instance#e-mail-of-the-instance), to be set up first. The password can only be removed if another way to sign in remains (Discord).
+These e-mails go out through the [e-mail of the instance](./instance#e-mail-of-the-instance), to be set up first. The password can only be removed, and a provider unlinked, if another way to sign in turned on on the instance remains. Google, Microsoft and OpenID Connect are linked from the same page (**Link**), if the owner turned them on.
 
 ## Access to data
 

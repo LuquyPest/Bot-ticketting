@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { KeyRound, Loader2, Mail } from 'lucide-react';
+import { KeyRound, Link2, Loader2, Mail } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { uiLocale } from '../i18n';
@@ -8,8 +8,17 @@ const fmt = d => (d ? new Date(d).toLocaleString(uiLocale(), { dateStyle: 'mediu
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary/50';
 const BTN = 'px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50';
 
-// Profil → Connexion: the ways this account signs in — Discord, and an e-mail address (confirmed
-// by a link) with a password. Google, Microsoft and other providers come with the next steps.
+// Profil → Connexion: the ways this account signs in — Discord, Google, Microsoft or OpenID Connect
+// (linked from here, unlinked if another way remains), and an e-mail address (confirmed by a link)
+// with a password.
+const LINK_RESULT = {
+  ok: ['success', 'Fournisseur relié : tu peux t\'en servir pour te connecter'],
+  oidc_taken: ['error', 'Ce compte est déjà relié à une autre personne'],
+  provider_off: ['error', 'Ce moyen de connexion n\'est pas activé sur cette instance'],
+  invalid_state: ['error', 'La liaison a expiré, réessaie'],
+  oidc_invalid: ['error', 'Réponse du fournisseur refusée'],
+  oauth_failed: ['error', 'La liaison a échoué, réessaie'],
+};
 export default function LoginMethods() {
   const [data, setData] = useState(null);
   const [email, setEmail] = useState('');
@@ -24,6 +33,8 @@ export default function LoginMethods() {
     if (state === 'verified') toast.success('Adresse e-mail confirmée');
     else if (state === 'expired') toast.error('Lien de confirmation expiré ou déjà utilisé');
     else if (state === 'taken') toast.error('Adresse déjà utilisée par un autre compte');
+    const link = LINK_RESULT[new URLSearchParams(window.location.search).get('link')];
+    if (link) toast[link[0]](link[1]);
   }, []);
   if (data === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;
   if (data === false) return <p className="text-xs text-ink-4">Indisponible.</p>;
@@ -43,9 +54,22 @@ export default function LoginMethods() {
             <span className="font-medium text-ink-1">{i.label}</span>
             <span className="text-xs text-ink-4" translate="no">{i.subject}</span>
             <span className="ml-auto text-xs text-ink-3">Dernière utilisation : {fmt(i.lastUsedAt)}</span>
+            {i.removable && (
+              <button onClick={() => act(() => api.delete(`/profile/identities/${encodeURIComponent(i.provider)}`), 'Fournisseur délié')} disabled={busy}
+                className={`${BTN} border border-overlay/8 text-ink-3 hover:text-red-400`}>Délier</button>
+            )}
           </li>
         ))}
       </ul>
+      {data.available?.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {data.available.map(p => (
+            <a key={p.id} href={`/api/auth/oidc/${p.id}?link=1`} className={`${BTN} border border-overlay/8 text-ink-2 hover:text-ink-1 inline-flex items-center gap-1.5`}>
+              <Link2 size={12} aria-hidden="true" />Relier <span translate="no">{p.label}</span>
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-semibold text-ink-2 inline-flex items-center gap-1.5"><Mail size={13} aria-hidden="true" />Adresse e-mail</p>
@@ -66,13 +90,13 @@ export default function LoginMethods() {
             {data.password && <input type="password" autoComplete="current-password" value={current} onChange={e => setCurrent(e.target.value)} placeholder="Mot de passe actuel" aria-label="Mot de passe actuel" className={`${INPUT} max-w-[12rem]`} />}
             <input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Nouveau (10 caractères au moins)" aria-label="Nouveau mot de passe" className={`${INPUT} max-w-[15rem]`} />
             <button onClick={() => act(() => api.post('/profile/password', { current, password }), data.password ? 'Mot de passe changé, tes autres sessions sont fermées' : 'Mot de passe défini : tu peux te connecter avec ton adresse e-mail')} disabled={busy || !password} className={`${BTN} bg-primary text-white`}>{data.password ? 'Changer' : 'Définir'}</button>
-            {data.password && data.identities.length > 0 && (
+            {data.password && (
               <button onClick={() => act(() => api.delete('/profile/password', { data: { current } }), 'Mot de passe retiré')} disabled={busy || !current} className={`${BTN} border border-overlay/8 text-ink-3 hover:text-red-400`}>Retirer</button>
             )}
           </div>
         )}
       </div>
-      <p className="text-xs text-ink-4">Compte créé le {fmt(data.account?.createdAt)}. La connexion par Google ou Microsoft arrive bientôt.</p>
+      <p className="text-xs text-ink-4">Compte créé le {fmt(data.account?.createdAt)}.</p>
     </div>
   );
 }

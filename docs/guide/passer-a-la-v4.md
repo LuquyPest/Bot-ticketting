@@ -31,6 +31,8 @@ Une instance en v3 passe en v4 **sans rien faire** : mets à jour comme d'habitu
 | Inviter des collègues par e-mail, avec un rôle et un grade | Équipe → Gestion → Invitations |
 | Créer un espace sans Discord | Instance → Espaces → Créer un espace |
 | Relier un espace à un serveur Discord, ou l'en délier | Instance → Espaces → Relier à Discord / Délier de Discord |
+| Se connecter avec Google, Microsoft ou un fournisseur OpenID Connect (Keycloak, Authentik…) | Instance → Connexion, puis Profil → Connexion → Relier |
+| Couper la connexion Discord (le bot reste) | Instance → Connexion |
 | Une fiche par personne, qui regroupe son compte Discord et son adresse e-mail | Support → Contacts |
 | Laisser des personnes sans Discord ouvrir des tickets | Paramètres → Fonctionnalités → Espace membre web → « Ouvert à tous par e-mail » |
 | Démarrer une instance sans Discord du tout | `DISCORD_TOKEN` vide, premier compte par jeton d'installation ([installation](./installation)) |
