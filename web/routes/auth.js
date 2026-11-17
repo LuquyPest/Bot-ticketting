@@ -290,6 +290,14 @@ router.get('/discord/callback', async (req, res) => {
       return;
     }
 
+    // The account of this person (created at the first sign-in, ID = Discord ID); a disabled
+    // account cannot sign in
+    const account = await require('../../utils/accounts').signInWithDiscord(discordUser);
+    if (account?.disabled) {
+      logLogin(req, discordUser.id, discordUser.username, 'disabled');
+      return fail('account_disabled');
+    }
+
     const [totpRow] = await globalQuery(
       'SELECT totp_enabled FROM user_totp WHERE user_id = ? AND totp_enabled = 1',
       [discordUser.id]

@@ -6,7 +6,8 @@ The project has been through several audits, including an OWASP Top 10 audit, al
 
 | | |
 |---|---|
-| **Sign-in** | Discord OAuth2 only, with state verification (CSRF protection of the OAuth return) |
+| **Accounts** | One account per person, created at their first sign-in and can be disabled; **Profile → Sign-in** lists its sign-in methods |
+| **Sign-in** | Discord OAuth2 (more methods arrive with v4), with state verification (CSRF protection of the OAuth return) |
 | **Sessions** | `Secure`, `HttpOnly`, `SameSite=Lax` cookie, stored in Redis, regenerated on every change of rights, revocable from the profile |
 | **2FA** | TOTP with backup codes, a code never accepted twice, enforceable per server |
 | **New device** | DM to the account holder: device, IP address, date |

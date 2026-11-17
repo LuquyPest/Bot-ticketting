@@ -579,6 +579,9 @@ export const ENTRIES = [
   ['Réponses aux commandes et aux boutons, messages du bot dans les salons de tickets et les salons de journal. En automatique : la langue Discord de chacun pour ce que lui seul voit, la langue du serveur pour ce que tout le monde voit. Le dashboard a son propre choix de langue.', 'Replies to commands and buttons, bot messages in ticket channels and log channels. In automatic mode: each person\'s Discord language for what only they see, the server\'s language for what everyone sees. The dashboard has its own language choice.'],
   ['Automatique (langue Discord de chacun)', 'Automatic (each person\'s Discord language)'],
   ['Espagnol', 'Spanish'], ['Allemand', 'German'], ['Italien', 'Italian'], ['Portugais', 'Portuguese'],
+  // Profile → Sign-in methods (v4)
+  ['Connexion', 'Sign-in'], ['Mot de passe : défini', 'Password: set'], ['Mot de passe : aucun', 'Password: none'],
+  ['Ce compte est désactivé. Contacte le propriétaire de l\'instance.', 'This account is disabled. Contact the owner of the instance.'], ['Compte désactivé', 'Account disabled'],
 ];
 
 export const TEMPLATES = [
@@ -641,6 +644,8 @@ export const TEMPLATES = [
   ['Utilisé : {} fichier(s), {} sur {} Mo', 'Used: {1} file(s), {2} out of {3} MB'], ['Utilisé : {} fichier(s), {}', 'Used: {1} file(s), {2}'],
   ['{} fichier(s) supprimé(s)', '{1} file(s) deleted'],
   ['Supprimer maintenant les pièces jointes des tickets fermés depuis plus de {} jours ?', 'Delete now the attachments of tickets closed more than {1} days ago?'], ['IMAP : {}', 'IMAP: {1}'], ['SMTP : {}', 'SMTP: {1}'],
+  ['Dernière utilisation : {}', 'Last used: {1}'],
+  ['Compte créé le {}. La connexion par e-mail et mot de passe, et par Google ou Microsoft, arrive bientôt.', 'Account created on {1}. Signing in with an e-mail and password, or with Google or Microsoft, is coming soon.'],
   ['Restaurer {}', 'Restore {1}'], ['Copie d\'avant restauration : {}', 'Copy from before the restore: {1}'],
   ['Dernière restauration : {}', 'Last restore: {1}'], ['Dernière restauration échouée : {}', 'Last restore failed: {1}'],
   ['Restauration de {} depuis {}…', 'Restoring {1} from {2}…'],

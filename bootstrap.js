@@ -202,6 +202,32 @@ async function ensureGlobalTables(config) {
         created_by_tag VARCHAR(100) NOT NULL,
         created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // Accounts (v4, conception/v4.md §3.3): one per person, whatever the way they sign in.
+      // An account created by a Discord sign-in keeps the Discord ID as its ID: every table that
+      // stores a user ID (staff, assignees, notes…) keeps working without any copy.
+      `CREATE TABLE IF NOT EXISTS accounts (
+        id             VARCHAR(32) PRIMARY KEY,
+        email          VARCHAR(254) DEFAULT NULL,
+        email_verified TINYINT(1) NOT NULL DEFAULT 0,
+        display_name   VARCHAR(100) NOT NULL,
+        avatar         VARCHAR(255) DEFAULT NULL,
+        password_hash  VARCHAR(255) DEFAULT NULL,
+        disabled       TINYINT(1) NOT NULL DEFAULT 0,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_login_at  DATETIME DEFAULT NULL,
+        UNIQUE KEY uq_accounts_email (email)
+      )`,
+      `ALTER TABLE login_logs MODIFY status ENUM('success','2fa_required','blocked','disabled') NOT NULL DEFAULT 'success'`,
+      // Ways to sign in to an account: discord (subject = Discord ID), later oidc:<provider>
+      `CREATE TABLE IF NOT EXISTS account_identities (
+        provider     VARCHAR(40) NOT NULL,
+        subject      VARCHAR(255) NOT NULL,
+        account_id   VARCHAR(32) NOT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_used_at DATETIME DEFAULT NULL,
+        PRIMARY KEY (provider, subject),
+        INDEX idx_ai_account (account_id)
+      )`,
       // Up to v2.24 the settings lived in sa_settings: carried over once (fails harmlessly without it)
       `INSERT IGNORE INTO instance_settings (k, v, updated_at) SELECT k, v, updated_at FROM sa_settings`,
       // 'bot_removed' (auto-reactivated on re-invite) vs 'admin' (manual suspension)

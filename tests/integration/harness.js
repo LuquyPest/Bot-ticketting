@@ -3163,6 +3163,41 @@ async function main() {
     nodemailer.createTransport = realCreate;
   }
 
+  // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
+  {
+    const axios = require('axios');
+    const realPost = axios.post, realGet = axios.get;
+    const ACC = '100000000000000077';
+    let who = { id: ACC, username: 'compte77', global_name: 'Compte 77', avatar: 'abc' };
+    axios.post = async () => ({ data: { access_token: 'tok' } });
+    axios.get = async () => ({ data: who });
+    const signIn = async () => {
+      await mk('OA', { oauthState: 'st8' });
+      return req('GET', '/api/auth/discord/callback', { sid: sessions.OA, query: { code: 'c', state: 'st8' } });
+    };
+    r = await signIn();
+    const [acc] = await globalQuery('SELECT * FROM accounts WHERE id = ?', [ACC]);
+    const ids = await globalQuery('SELECT provider, subject, account_id FROM account_identities WHERE account_id = ?', [ACC]);
+    check('comptes: première connexion Discord → compte créé, ID = ID Discord', r.status === 302 && r.headers.location === '/select-guild' && acc?.display_name === 'Compte 77' && ids.length === 1 && ids[0].provider === 'discord' && ids[0].subject === ACC, JSON.stringify([r.status, r.headers.location, acc, ids]));
+    who = { ...who, global_name: 'Nouveau nom' };
+    r = await signIn();
+    const [acc2] = await globalQuery('SELECT display_name, last_login_at FROM accounts WHERE id = ?', [ACC]);
+    const [nAcc] = await globalQuery('SELECT COUNT(*) AS n FROM accounts WHERE id = ?', [ACC]);
+    check('comptes: connexion suivante → même compte, nom mis à jour', Number(nAcc.n) === 1 && acc2.display_name === 'Nouveau nom' && !!acc2.last_login_at, JSON.stringify(acc2));
+    await mk('ACC', { user: { id: ACC, username: 'compte77', role: null } });
+    r = await req('GET', '/api/profile/login-methods', { sid: sessions.ACC });
+    check('comptes: Profil → Connexion liste Discord, sans mot de passe', r.status === 200 && r.body.identities.length === 1 && r.body.identities[0].label === 'Discord' && r.body.password === false && r.body.account.id === ACC, JSON.stringify(r.body));
+    r = await req('GET', '/api/profile/login-methods');
+    check('comptes: moyens de connexion réservés au compte connecté', r.status === 401, r.status);
+    await globalQuery('UPDATE accounts SET disabled = 1 WHERE id = ?', [ACC]);
+    r = await signIn();
+    const [logD] = await globalQuery("SELECT status FROM login_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1", [ACC]);
+    check('comptes: compte désactivé → connexion refusée et notée au journal', r.status === 302 && r.headers.location === '/login?error=account_disabled' && logD?.status === 'disabled', JSON.stringify([r.headers.location, logD]));
+    axios.post = realPost; axios.get = realGet;
+    await globalQuery('DELETE FROM account_identities WHERE account_id = ?', [ACC]);
+    await globalQuery('DELETE FROM accounts WHERE id = ?', [ACC]);
+  }
+
   // ── Datick: the name shown without a Discord bot, the release publishes both image names ──
   {
     const inst = app('./utils/instance');
