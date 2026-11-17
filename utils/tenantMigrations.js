@@ -541,6 +541,35 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 39,
+    name: 'Contacts : une fiche par personne, plusieurs identités (Discord, e-mail, web) (v4)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS contacts (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        display_name VARCHAR(100) NOT NULL,
+        email        VARCHAR(254) DEFAULT NULL,
+        notes        TEXT DEFAULT NULL,
+        seed         VARCHAR(32) DEFAULT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_contact_seed (seed),
+        INDEX idx_contact_name (display_name)
+      )`,
+      `CREATE TABLE IF NOT EXISTS contact_identities (
+        value      VARCHAR(32) PRIMARY KEY,
+        contact_id INT NOT NULL,
+        kind       ENUM('discord','email','web') NOT NULL,
+        label      VARCHAR(254) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ci_contact (contact_id),
+        CONSTRAINT fk_ci_contact FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+      )`,
+      // The cards gather tickets by owner: profiles, directory and sync read tickets.owner_id
+      'CREATE INDEX IF NOT EXISTS idx_tickets_owner ON tickets (owner_id)',
+      ...require('./contactsSync').SYNC_STATEMENTS,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

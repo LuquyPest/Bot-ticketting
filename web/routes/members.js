@@ -32,8 +32,10 @@ async function collect(db, userId) {
   ]);
   const staffNotes = await db('SELECT author_tag, content, created_at FROM member_notes WHERE member_id = ? ORDER BY id', [userId]).catch(() => []);
   const [profileRow] = await db('SELECT labels FROM member_profiles WHERE member_id = ?', [userId]).catch(() => []);
+  // Contact card of this identity (utils/contacts.js): name, address and notes kept by the staff
+  const [contact] = await db('SELECT c.display_name, c.email, c.notes, c.created_at FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id WHERE ci.value = ?', [userId]).catch(() => []);
   const { openTranscript } = require('../../utils/transcriptCrypto');
-  return { tickets, notes, ratings, transcripts: transcripts.map(t => ({ ...t, txt: openTranscript(t.txt) })), participations, otherMessages, blacklist, journal, staffNotes, labels: profileRow?.labels || null };
+  return { tickets, notes, ratings, transcripts: transcripts.map(t => ({ ...t, txt: openTranscript(t.txt) })), participations, otherMessages, blacklist, journal, staffNotes, labels: profileRow?.labels || null, contact: contact || null };
 }
 
 // GET /api/members/:userId — what the server holds about this member
@@ -84,6 +86,15 @@ router.delete('/:userId', async (req, res) => {
   // Staff notes and labels about the member (profile)
   counts.profileNotes = (await db('DELETE FROM member_notes WHERE member_id = ?', [userId]).catch(() => ({ affectedRows: 0 }))).affectedRows;
   await db('DELETE FROM member_profiles WHERE member_id = ?', [userId]).catch(() => null);
+  // The identity leaves its contact card; a card left without identity goes with it
+  const [ident] = await db('SELECT contact_id FROM contact_identities WHERE value = ?', [userId]).catch(() => []);
+  if (ident) {
+    await db('DELETE FROM contact_identities WHERE value = ?', [userId]);
+    const [{ n }] = await db('SELECT COUNT(*) AS n FROM contact_identities WHERE contact_id = ?', [ident.contact_id]);
+    if (!Number(n)) await db('DELETE FROM contacts WHERE id = ?', [ident.contact_id]);
+    else await db('UPDATE contacts SET seed = NULL WHERE id = ? AND seed = ?', [ident.contact_id, userId]);
+    counts.contactRemoved = !Number(n);
+  }
   counts.journalAnonymised = (await db(
     // SET runs left to right: actor_tag must be rewritten before actor_id changes
     "UPDATE audit_log SET actor_tag = IF(actor_id = ?, '[membre supprimé]', actor_tag), actor_id = IF(actor_id = ?, 'supprime', actor_id), target_id = IF(target_id = ?, NULL, target_id), details = NULL WHERE actor_id = ? OR target_id = ?",

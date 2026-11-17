@@ -38,7 +38,7 @@ const PAGES = [
   ['acces-invites', '/acces-invites', 'Maître Dupont'],
   ['sante', '/sante', 'Gérer les rôles'],
   ['invite', '/invite', 'Litige commande', true],
-  ['profils', '/profils', 'Profils des membres'],
+  ['profils', '/profils', 'Une fiche par personne'],
   ['profil', '/profils/200000000000000005', 'Déjà remboursé deux fois'],
   ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],
   ['patchnotes', '/patchnotes', 'Patchnotes'],
