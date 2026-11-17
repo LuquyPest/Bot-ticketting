@@ -68,7 +68,7 @@ export default function Login() {
             <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-violet-500 to-indigo-600
                             opacity-30 blur-xl -z-10 animate-glow-pulse" />
           </div>
-          <h1 className="text-2xl font-bold text-ink-1 tracking-tight" translate="no">{info?.name || 'Ticket Dashboard'}</h1>
+          <h1 className="text-2xl font-bold text-ink-1 tracking-tight" translate="no">{info?.name || 'Datick'}</h1>
           <p className="text-sm text-ink-3 mt-1.5">Gestion des tickets de support</p>
         </div>
 

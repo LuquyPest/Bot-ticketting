@@ -1,4 +1,4 @@
-# Ticket Bot for CasaOS (App Store → Custom install → Import → Docker Compose). Same file as
+# Datick for CasaOS (App Store → Custom install → Import → Docker Compose). Same file as
 # deploy/docker-compose.standalone.yml, with the CasaOS app details at the end.
 # Guide: https://docs.bot.daryu.xyz/guide/outils
 #
@@ -55,7 +55,7 @@ services:
       start_period: 30s
 
   bot:
-    image: ghcr.io/luquypest/bot-ticketting:${TICKETBOT_VERSION:-latest}
+    image: ghcr.io/luquypest/bot-ticketting:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN:?DISCORD_TOKEN manquant}
@@ -105,8 +105,8 @@ x-casaos:
   index: /
   port_map: "3000"
   title:
-    en_us: Ticket Bot
-    fr_fr: Ticket Bot
+    en_us: Datick
+    fr_fr: Datick
   tagline:
     en_us: Discord support through DMs, with a real-time web dashboard
     fr_fr: Support Discord par messages privés, avec un dashboard web temps réel

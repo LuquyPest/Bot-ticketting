@@ -23,7 +23,7 @@ Everything is set in the **`.env`** file at the root of the repository, created 
 |---|---|
 | `COMPOSE_FILE` | Compose files in use, separated by `:`. Base: `docker-compose.yml`; add `docker-compose.caddy.yml` (bundled Caddy, Let's Encrypt) **or** `docker-compose.traefik.yml` (your Traefik), `docker-compose.backup.yml` (backups), `docker-compose.offsite.yml` (copy off the server) and `docker-compose.updater.yml` (update button) |
 | `ACME_EMAIL` | E-mail for Let's Encrypt (Caddy) |
-| `TICKETBOT_VERSION` | Image version: `latest`, or a precise version (`v3.1.0`) to update only when you decide |
+| `DATICK_VERSION` | Image version: `latest`, or a precise version (`v3.1.0`) to update only when you decide (the former name `TICKETBOT_VERSION` is still read) |
 | `BIND_ADDRESS` / `WEB_PORT` | Without Caddy or Traefik: address and port published on the machine (`127.0.0.1:3000` by default, to put behind your own proxy) |
 | `TRUST_PROXY_HOPS` | Number of proxies in front of the application (1; 2 behind Cloudflare), to know the real IP address of visitors |
 | `TRUSTED_PROXY_HOST` | Name of the proxy whose `X-Forwarded-For` header is trusted (set on its own by the Caddy and Traefik files). Empty: the header is only trusted from a local or private address |

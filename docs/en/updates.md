@@ -23,7 +23,7 @@ With the `updater` service, an **Update** button shows up in **Instance → Heal
 To restart the bot, the `updater` service has access to the Docker socket, which amounts to being administrator of the machine. So it is kept apart from the bot: it only asks the bot, over the internal Docker network and with `UPDATER_TOKEN`, whether an update was requested, then pulls the bot image and recreates that single container. It runs nothing the bot sends it. If you prefer, leave it out and update by hand.
 :::
 
-The button does not show with a pinned version (`TICKETBOT_VERSION=v3.1.0`): change the value in `.env`. It only concerns the published image: if you build the image yourself from the sources, update with `git pull && docker compose up -d --build`.
+The button does not show with a pinned version (`DATICK_VERSION=v3.1.0`): change the value in `.env`. It only concerns the published image: if you build the image yourself from the sources, update with `git pull && docker compose up -d --build`.
 
 ## Updating by hand
 
@@ -35,11 +35,11 @@ docker compose logs -f bot                     # « Tout est prêt » (all set) 
 
 **Database migrations apply on their own** at start-up, for the global database and for each Discord server, once each and in order. No command to run, no interruption for members: the bot is unavailable for the restart (a few seconds), direct messages received meanwhile are read when it is back.
 
-To stay on a precise version, set `TICKETBOT_VERSION=v3.1.0` in `.env` instead of `latest`; updating then means changing that value.
+To stay on a precise version, set `DATICK_VERSION=v3.1.0` in `.env` instead of `latest`; updating then means changing that value.
 
 ## Going back
 
-An earlier version does not know the newer migrations but almost always tolerates them (extra columns). If a version causes trouble: `TICKETBOT_VERSION=` followed by the previous version in `.env`, then `docker compose up -d`. When in doubt, restore the backup made before the update: `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc`.
+An earlier version does not know the newer migrations but almost always tolerates them (extra columns). If a version causes trouble: `DATICK_VERSION=` followed by the previous version in `.env`, then `docker compose up -d`. When in doubt, restore the backup made before the update: `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc`.
 
 ## Encrypted backups (v3.0.4)
 

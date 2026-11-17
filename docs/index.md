@@ -1,15 +1,15 @@
 ---
 layout: home
-title: Ticket Bot
+title: Datick
 titleTemplate: Support Discord par messages privés
 
 hero:
-  name: Ticket Bot
+  name: Datick
   text: Le support Discord par messages privés.
   tagline: Les membres écrivent au bot en MP, ton équipe répond depuis Discord ou un dashboard web temps réel. Tu l'installes chez toi, tu y branches ton bot Discord, il ne dépend de personne.
   image:
     src: /images/dashboard.png
-    alt: Tableau de bord de Ticket Bot
+    alt: Tableau de bord de Datick
   actions:
     - theme: brand
       text: Installer en 20 minutes

@@ -248,7 +248,7 @@ router.post('/2fa/setup', requireAuth, async (req, res) => {
     if (row?.totp_enabled) return res.status(400).json({ error: '2FA déjà activé' });
 
     const secret = newTotpSecret();
-    const otpUri = totpUri(req.session.user.username, 'TicketBot Dashboard', secret);
+    const otpUri = totpUri(req.session.user.username, 'Datick', secret);
     const qrDataUrl = await QRCode.toDataURL(otpUri);
 
     req.session.twoFaSetup = { secret, userId: req.session.user.id };

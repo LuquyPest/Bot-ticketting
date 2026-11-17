@@ -39,7 +39,7 @@ async function isOwner(client, userId) {
 
 // Name shown in the dashboard, the DMs and the exports: the bot's own Discord name
 function instanceName(client) {
-  return client?.user?.username || 'Ticket Bot';
+  return client?.user?.username || 'Datick';
 }
 
 function instanceAvatar(client) {

@@ -14,7 +14,7 @@ export default function RecoveryCodes({ codes, onDone }) {
   };
 
   const download = () => {
-    const url = URL.createObjectURL(new Blob([`Codes de secours 2FA — ${info?.name || 'Ticket Bot'}\n\n${text}\n`], { type: 'text/plain' }));
+    const url = URL.createObjectURL(new Blob([`Codes de secours 2FA — ${info?.name || 'Datick'}\n\n${text}\n`], { type: 'text/plain' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'codes-secours-2fa.txt';

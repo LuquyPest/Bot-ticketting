@@ -187,7 +187,7 @@ endpoint({
 
 const ERROR_TEXT = { 400: 'Requête invalide', 401: 'Clé manquante, invalide, révoquée ou expirée', 403: 'Permission manquante ou API désactivée', 404: 'Introuvable', 429: 'Trop de requêtes' };
 
-function buildOpenApi(name = 'Ticket Bot') {
+function buildOpenApi(name = 'Datick') {
   const { config } = require('../../utils/config');
   let server = '/api/v1';
   try { server = new URL('/api/v1', config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { /* relative */ }

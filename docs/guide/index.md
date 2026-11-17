@@ -1,6 +1,6 @@
 # Présentation
 
-Ticket Bot transforme les **messages privés** envoyés à ton bot Discord en **tickets** que ton équipe traite depuis Discord ou depuis un **dashboard web temps réel**. Chaque installation est indépendante : tu installes ton instance, tu y branches ton propre bot, et tu en es le seul administrateur.
+Datick transforme les **messages privés** envoyés à ton bot Discord en **tickets** que ton équipe traite depuis Discord ou depuis un **dashboard web temps réel**. Chaque installation est indépendante : tu installes ton instance, tu y branches ton propre bot, et tu en es le seul administrateur.
 
 ## Comment ça marche
 

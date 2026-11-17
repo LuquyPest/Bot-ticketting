@@ -41,7 +41,7 @@ ask() { # ask VAR "question" [default] [secret]
 gen() { openssl rand -hex 32; }
 YN="$(t o y)"; NY="n"
 
-echo "── Ticket Bot : $(t configuration setup) ──────────────────────────────────────────"
+echo "── Datick : $(t configuration setup) ──────────────────────────────────────────"
 t "Crée d'abord l'application sur https://discord.com/developers/applications
 (onglet Bot → Reset Token, décoche « Public Bot », active les intents « Server Members » et « Message Content » ;
  onglet OAuth2 → Client Secret). Le compte Discord propriétaire de cette application administrera l'instance." \
@@ -133,7 +133,7 @@ VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
 
 CONTACT_EMAIL=$ACME_EMAIL
-TICKETBOT_VERSION=latest
+DATICK_VERSION=latest
 BACKUP_TIME=03:00
 BACKUP_KEEP_DAYS=30
 BACKUP_VERIFY=$BACKUP_VERIFY

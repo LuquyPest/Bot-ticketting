@@ -1,6 +1,6 @@
 # Overview
 
-Ticket Bot turns the **direct messages** sent to your Discord bot into **tickets** that your team handles from Discord or from a **real-time web dashboard**. Every install is independent: you install your instance, plug in your own bot, and you are its only administrator.
+Datick turns the **direct messages** sent to your Discord bot into **tickets** that your team handles from Discord or from a **real-time web dashboard**. Every install is independent: you install your instance, plug in your own bot, and you are its only administrator.
 
 ## How it works
 

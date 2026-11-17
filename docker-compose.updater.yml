@@ -13,7 +13,7 @@ services:
     working_dir: ${PROJECT_DIR:?PROJECT_DIR manquant dans .env (chemin absolu du dossier, ex. /opt/ticketbot)}
     environment:
       UPDATER_TOKEN: ${UPDATER_TOKEN:?UPDATER_TOKEN manquant dans .env (openssl rand -hex 32)}
-      TICKETBOT_VERSION: ${TICKETBOT_VERSION:-latest}
+      TICKETBOT_VERSION: ${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
     volumes:
       - ./docker/updater.sh:/updater.sh:ro
       - /var/run/docker.sock:/var/run/docker.sock
