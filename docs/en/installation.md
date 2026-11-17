@@ -140,9 +140,9 @@ The dashboard carries the name and avatar of your bot. You are recognised as the
 
 ## Step 7 — Invite the bot to your server
 
-The **My servers** page lists the Discord servers where you have the *Manage Server* permission. Click **Invite the bot** on yours and confirm in the Discord window.
+The **My spaces** page lists your spaces and the Discord servers where you have the *Manage Server* permission. Click **Invite the bot** on yours and confirm in the Discord window.
 
-![My servers: « Invite the bot » on a server, « Open » on a server already active](/images/install-servers.png)
+![My spaces: « Invite the bot » on a server, « Open » on a server already active](/images/install-servers.png)
 
 The server is **ready as soon as the bot joins**: you are its founder and you get a DM with the link to the dashboard. Click **Open**.
 

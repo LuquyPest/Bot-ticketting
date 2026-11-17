@@ -140,9 +140,9 @@ Le dashboard porte le nom et l'avatar de ton bot. Tu es reconnu comme **proprié
 
 ## Étape 7 — Inviter le bot sur ton serveur
 
-La page **Mes serveurs** liste les serveurs Discord où tu as la permission *Gérer le serveur*. Clique **Inviter le bot** sur le tien et valide dans la fenêtre Discord.
+La page **Mes espaces** liste tes espaces et les serveurs Discord où tu as la permission *Gérer le serveur*. Clique **Inviter le bot** sur le tien et valide dans la fenêtre Discord.
 
-![Mes serveurs : « Inviter le bot » sur un serveur, « Accéder » sur un serveur déjà actif](/images/install-servers.png)
+![Mes espaces : « Inviter le bot » sur un serveur, « Accéder » sur un serveur déjà actif](/images/install-servers.png)
 
 Le serveur est **prêt dès que le bot arrive** : tu en es fondateur et tu reçois un MP avec le lien du dashboard. Clique **Accéder**.
 

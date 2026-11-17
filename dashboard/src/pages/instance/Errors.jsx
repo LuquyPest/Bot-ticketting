@@ -241,9 +241,9 @@ export default function Errors() {
                 </button>
               ))}
             </div>
-            <select value={filters.guild_id} onChange={e => set('guild_id', e.target.value)} className={input} aria-label="Serveur">
-              <option value="">Tous les serveurs</option>
-              <option value="none">Global (sans serveur)</option>
+            <select value={filters.guild_id} onChange={e => set('guild_id', e.target.value)} className={input} aria-label="Espace">
+              <option value="">Tous les espaces</option>
+              <option value="none">Global (sans espace)</option>
               {guilds.map(g => <option key={g.guild_id} value={g.guild_id}>{g.guild_name}</option>)}
             </select>
             <div className={`${input} flex items-center gap-2 flex-1 min-w-48 max-w-xs`}>

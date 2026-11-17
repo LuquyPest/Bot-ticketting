@@ -112,6 +112,19 @@ function RequireRole({ role, perm, children }) {
   return children;
 }
 
+// Discord features (panels, roles, server health, newsletter): only for a space linked to a
+// Discord server; otherwise a short explanation instead of a page that cannot work
+function RequireDiscord({ children }) {
+  const { user } = useAuth();
+  if (user?.discord !== false) return children;
+  return (
+    <div className="p-6 max-w-xl">
+      <h1 className="text-lg font-bold text-ink-1">Fonction Discord</h1>
+      <p className="text-sm text-ink-3 mt-2">Cet espace n'est relié à aucun serveur Discord. Le propriétaire de l'instance peut le relier depuis Instance → Espaces.</p>
+    </div>
+  );
+}
+
 export default function App() {
   const [user,        setUser]        = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -238,7 +251,7 @@ export default function App() {
                         <Route path="queue"      element={<ErrorBoundary><Queue /></ErrorBoundary>} />
                         <Route path="activite"   element={<ErrorBoundary><Activity /></ErrorBoundary>} />
                         <Route path="acces-invites" element={<RequireRole role="fondateur"><ErrorBoundary><GuestInvites /></ErrorBoundary></RequireRole>} />
-                        <Route path="sante" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Health /></ErrorBoundary></RequireRole>} />
+                        <Route path="sante" element={<RequireRole role="fondateur" perm="manage_settings"><RequireDiscord><ErrorBoundary><Health /></ErrorBoundary></RequireDiscord></RequireRole>} />
                         <Route path="profils" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="profils/:memberId" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="procedures" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Procedures /></ErrorBoundary></RequireRole>} />
@@ -259,7 +272,7 @@ export default function App() {
                           <RequireRole role="fondateur" perm="manage_grades"><ErrorBoundary><Grades /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="roles"      element={
-                          <RequireRole role="fondateur"><ErrorBoundary><Roles /></ErrorBoundary></RequireRole>
+                          <RequireRole role="fondateur"><RequireDiscord><ErrorBoundary><Roles /></ErrorBoundary></RequireDiscord></RequireRole>
                         } />
                         <Route path="audit"      element={
                           <RequireRole role="fondateur" perm="view_audit"><ErrorBoundary><Audit /></ErrorBoundary></RequireRole>
@@ -283,13 +296,13 @@ export default function App() {
                           <RequireRole role="fondateur"><ErrorBoundary><ApiKeys /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="newsletter" element={
-                          <RequireRole role="fondateur"><ErrorBoundary><Newsletter /></ErrorBoundary></RequireRole>
+                          <RequireRole role="fondateur"><RequireDiscord><ErrorBoundary><Newsletter /></ErrorBoundary></RequireDiscord></RequireRole>
                         } />
                         <Route path="login-logs" element={
                           <RequireRole role={['support','fondateur']}><ErrorBoundary><LoginLogs /></ErrorBoundary></RequireRole>
                         } />
                         <Route path="panels" element={
-                          <RequireRole role="fondateur"><ErrorBoundary><Panels /></ErrorBoundary></RequireRole>
+                          <RequireRole role="fondateur"><RequireDiscord><ErrorBoundary><Panels /></ErrorBoundary></RequireDiscord></RequireRole>
                         } />
                         <Route path="forms" element={
                           <RequireRole role="fondateur"><ErrorBoundary><Forms /></ErrorBoundary></RequireRole>

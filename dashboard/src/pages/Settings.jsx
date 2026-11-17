@@ -153,14 +153,14 @@ const TABS = [
   { id: 'general',       label: 'Général',            icon: Settings2 },
   { id: 'acces',         label: 'Accès et sécurité',  icon: ShieldCheck },
   { id: 'tickets',       label: 'Tickets',            icon: Ticket },
-  { id: 'salons',        label: 'Salons',             icon: Hash },
+  { id: 'salons',        label: 'Salons',             icon: Hash, discord: true },
   { id: 'fonctions',     label: 'Fonctionnalités',    icon: Sparkles },
   { id: 'integrations',  label: 'Intégrations',       icon: Plug },
   { id: 'sauvegarde',    label: 'Sauvegarde',         icon: Archive },
 ];
 
 // Accessible tab list: arrow keys, Home / End, roving focus
-function TabList({ current, onChange }) {
+function TabList({ tabs: TABS, current, onChange }) {
   const refs = useRef({});
   const move = (e, i) => {
     const n = TABS.length;
@@ -201,7 +201,10 @@ export default function Settings() {
   const [historyKey, setHistoryKey] = useState(0);
   const [discordLoading, setDL]     = useState(true);
   const [params, setParams] = useSearchParams();
-  const tab = TABS.some(t => t.id === params.get('tab')) ? params.get('tab') : 'general';
+  // Without a linked Discord server, what only concerns Discord is hidden (channels, roles, bot)
+  const discord = user?.discord !== false;
+  const tabs = TABS.filter(t => discord || !t.discord);
+  const tab = tabs.some(t => t.id === params.get('tab')) ? params.get('tab') : 'general';
   const setTab = id => setParams(p => { const n = new URLSearchParams(p); n.set('tab', id); return n; }, { replace: true });
   const [savedJson, setSavedJson] = useState(null);
 
@@ -400,11 +403,12 @@ export default function Settings() {
         </div>
       </div>
 
-      <TabList current={tab} onChange={setTab} />
+      <TabList tabs={tabs} current={tab} onChange={setTab} />
 
       {tab === 'general' && (
         <div role="tabpanel" id="panel-general" aria-labelledby="tab-general" className="space-y-5">
       {/* Bot Discord identity (per-guild) */}
+      {discord && (
       <Section
         title="Apparence du bot sur ce serveur"
         description="Pseudo et photo de profil visibles uniquement sur ce serveur Discord"
@@ -475,6 +479,7 @@ export default function Settings() {
           </div>
         </div>
       </Section>
+      )}
 
       {/* Language of the bot's messages to members */}
       <Section title="Langue du bot">
@@ -553,6 +558,7 @@ export default function Settings() {
       {tab === 'acces' && (
         <div role="tabpanel" id="panel-acces" aria-labelledby="tab-acces" className="space-y-5">
       {/* Access roles + category */}
+      {discord && (
       <Section title="Rôles d'accès" description="Rôles Discord ayant accès au bot et au dashboard. Leurs membres obtiennent automatiquement un compte dashboard avec le grade associé (retiré s'ils perdent le rôle).">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Field label="Rôles support" hint="Accès standard aux tickets">
@@ -576,6 +582,7 @@ export default function Settings() {
           ))}
         </div>
       </Section>
+      )}
 
       <Section title="Sécurité">
         <Field label="Double authentification obligatoire" hint="Les comptes concernés sans 2FA ne peuvent plus accéder au dashboard tant qu'ils ne l'ont pas activée (depuis leur profil). Active d'abord la tienne.">
@@ -592,7 +599,7 @@ export default function Settings() {
           </select>
         </Field>
         {user?.isOwner && (
-          <Field label="Clé des sauvegardes" hint="Déchiffre les sauvegardes nocturnes de l'instance (tous les serveurs). Réservée au propriétaire de l'instance ; chaque affichage est inscrit au journal de l'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.">
+          <Field label="Clé des sauvegardes" hint="Déchiffre les sauvegardes nocturnes de l'instance (tous les espaces). Réservée au propriétaire de l'instance ; chaque affichage est inscrit au journal de l'instance. Garde-la hors du serveur : sans elle, une sauvegarde est perdue.">
             <BackupKey />
           </Field>
         )}
@@ -602,7 +609,8 @@ export default function Settings() {
       )}
       {tab === 'tickets' && (
         <div role="tabpanel" id="panel-tickets" aria-labelledby="tab-tickets" className="space-y-5">
-      <Section title="Tickets sur Discord" description="Où et sous quelle forme les tickets sont créés sur le serveur, et combien de temps chaque étape peut durer.">
+      <Section title={discord ? 'Tickets sur Discord' : 'Délais par étape'} description={discord ? 'Où et sous quelle forme les tickets sont créés sur le serveur Discord, et combien de temps chaque étape peut durer.' : 'Combien de temps chaque étape d\'un ticket peut durer.'}>
+        {discord && <>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Field label="Format des tickets sur Discord" hint={TICKET_MODE_HINT[cfg.ticketMode || 'auto']}>
             <select value={cfg.ticketMode || 'auto'} onChange={e => set('ticketMode', e.target.value)}
@@ -632,6 +640,7 @@ export default function Settings() {
             </Field>
           ))}
         </div>
+        </>}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[
             ['slaOpenHours', 'Délai « Ouvert » (heures)'],
@@ -751,7 +760,7 @@ export default function Settings() {
       {tab === 'fonctions' && (
         <div role="tabpanel" id="panel-fonctions" aria-labelledby="tab-fonctions" className="space-y-5">
       {/* Feature flags */}
-      <Section title="Fonctionnalités" description="Active ou désactive les fonctionnalités avancées pour ce serveur.">
+      <Section title="Fonctionnalités" description="Active ou désactive les fonctionnalités avancées pour cet espace.">
         <FeatureToggle
           label="Formulaires d'intake"
           hint="Affiche un questionnaire configurable avant l'ouverture du ticket"
@@ -771,7 +780,7 @@ export default function Settings() {
             <input type="checkbox" checked={!!cfg.portalEmailOpen} onChange={e => set('portalEmailOpen', e.target.checked)} className="mt-1" />
             <span>
               Ouvert à tous par e-mail
-              <span className="block text-xs text-ink-4">Toute personne qui se connecte avec un lien reçu par e-mail peut ouvrir un ticket ici, sans compte Discord. Ses messages lui arrivent par l'e-mail de l'instance (Instance → E-mail).</span>
+              <span className="block text-xs text-ink-4">Toute personne qui se connecte avec un lien reçu par e-mail peut ouvrir un ticket ici, sans compte Discord. Ses messages lui arrivent par l'e-mail de l'instance (Instance → Santé).</span>
             </span>
           </label>
           <PortalBranding cfg={cfg} set={set} />
@@ -875,9 +884,11 @@ export default function Settings() {
         <ConfigTransfer />
       </Section>
 
+      {discord && (
       <Section title="Importer depuis un autre bot" description="Reprend les tickets ouverts d'un autre bot de tickets : chaque salon de la catégorie choisie devient un ticket de ce bot.">
         <BotImport categories={categories} />
       </Section>
+      )}
 
       <Section title="Historique des modifications" description="Qui a changé quel réglage, avec l'ancienne et la nouvelle valeur. « Revenir à l'état d'avant » annule ce changement et tous les suivants.">
         <ConfigHistory key={historyKey} channels={channels} categories={categories} roles={roles} grades={grades} onRestored={load} />

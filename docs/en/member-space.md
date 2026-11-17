@@ -10,7 +10,7 @@ Members sign in on **`/espace`** of your domain — with Discord, or **without a
 
 ## Without Discord: sign-in link by e-mail
 
-As soon as the **instance e-mail** is set up (Instance → E-mail), the sign-in page offers « Get a sign-in link »: the person types their address and receives a link **valid for 15 minutes, single use**. No password, no account to create.
+As soon as the **instance e-mail** is set up (Instance → Santé), the sign-in page offers « Get a sign-in link »: the person types their address and receives a link **valid for 15 minutes, single use**. No password, no account to create.
 
 - **Where they can open a ticket**: in the spaces **open to everyone by e-mail** (Settings → Features → Member web space → « Open to everyone by e-mail »). A space created without Discord is open from the start; a Discord server is not until a founder ticks it.
 - **Staff answers** reach them through the instance e-mail, with a link to the conversation; they answer from the page (replies to the e-mail are not read).

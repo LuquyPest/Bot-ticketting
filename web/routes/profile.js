@@ -13,7 +13,7 @@ function requireAuth(req, res, next) {
 
 function requireAuthWithGuild(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'Non authentifié' });
-  if (!req.session.currentGuildId) return res.status(400).json({ error: 'Aucun serveur sélectionné' });
+  if (!req.session.currentGuildId) return res.status(400).json({ error: 'Aucun espace sélectionné' });
   req.guildDb = getTenantDb(req.session.currentGuildId);
   next();
 }
@@ -400,7 +400,7 @@ router.post('/2fa/disable', requireAuth, async (req, res) => {
       const db = require('../../utils/tenantDb').getTenantDb(req.session.currentGuildId);
       const [u] = await db('SELECT role FROM dashboard_users WHERE user_id = ?', [req.session.user.id]).catch(() => []);
       if (u && requiredFor(await guildPolicy(db), u.role)) {
-        return res.status(400).json({ error: 'Ce serveur impose la double authentification : impossible de la désactiver' });
+        return res.status(400).json({ error: 'Cet espace impose la double authentification : impossible de la désactiver' });
       }
     }
     if (!(await checkUserTotp(req, res))) return;

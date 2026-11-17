@@ -46,8 +46,8 @@ export default function ApiDocs() {
       <section className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-2">
         <h2 className="text-sm font-semibold text-ink-2">Adresse et authentification</h2>
         <p className="text-sm text-ink-2">Toutes les routes commencent par <code className="px-1 rounded bg-overlay/6">{base}</code>. Chaque requête porte la clé :</p>
-        <CodeBlock code={'Authorization: Bearer tb_<id du serveur>_<64 caractères>'} />
-        <p className="text-xs text-ink-4">Les erreurs répondent <code>{'{ "error": "…" }'}</code> avec le code HTTP : 401 (clé absente, invalide, révoquée ou expirée), 403 (permission manquante ou API désactivée sur le serveur), 404, 429 (trop de requêtes).</p>
+        <CodeBlock code={'Authorization: Bearer tb_<id de l\'espace>_<64 caractères>'} />
+        <p className="text-xs text-ink-4">Les erreurs répondent <code>{'{ "error": "…" }'}</code> avec le code HTTP : 401 (clé absente, invalide, révoquée ou expirée), 403 (permission manquante ou API désactivée sur l\'espace), 404, 429 (trop de requêtes).</p>
       </section>
 
       {ops.map(({ path, method, op }) => {

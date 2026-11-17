@@ -192,7 +192,7 @@ function DiscordModal({ guild, onClose, onDone }) {
           <div className="space-y-2">
             <p className="text-sm text-ink-2">Invite le bot sur ce serveur avec ce lien (valable une heure). Dès qu'il arrive, l'espace devient celui du serveur : tickets, réglages et équipe sont conservés.</p>
             <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block px-4 py-2 rounded-xl bg-[#5865F2] text-white text-sm font-semibold">Inviter le bot</a>
-            <p className="text-xs text-ink-4">Les personnes connectées à cet espace devront le rechoisir dans Mes serveurs.</p>
+            <p className="text-xs text-ink-4">Les personnes connectées à cet espace devront le rechoisir dans Mes espaces.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -314,8 +314,8 @@ export default function Guilds() {
             confirm.action === 'delete'
               ? `Supprimer définitivement ${confirm.guild.guild_name} et toute sa base de données ? Le bot quittera aussi le serveur Discord.`
               : confirm.action === 'suspend'
-              ? `Suspendre le serveur ${confirm.guild.guild_name} ?`
-              : `Réactiver le serveur ${confirm.guild.guild_name} ?`
+              ? `Suspendre l\'espace ${confirm.guild.guild_name} ?`
+              : `Réactiver l\'espace ${confirm.guild.guild_name} ?`
           }
           danger={confirm.action === 'delete'}
           onConfirm={() => doAction(confirm.action, confirm.guild)}
@@ -326,8 +326,8 @@ export default function Guilds() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-ink-1">Serveurs</h1>
-          <p className="text-sm text-ink-3">{guilds.length} serveur(s) enregistré(s)</p>
+          <h1 className="text-lg font-bold text-ink-1">Espaces</h1>
+          <p className="text-sm text-ink-3">{guilds.length} espace(s) enregistré(s)</p>
         </div>
         <div className="flex items-center gap-2">
           <NewSpace onCreated={load} />
@@ -372,13 +372,13 @@ export default function Guilds() {
             <Loader2 size={22} className="animate-spin text-primary-light" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-sm text-ink-3">Aucun serveur trouvé</div>
+          <div className="py-16 text-center text-sm text-ink-3">Aucun espace trouvé</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-overlay/6">
-                  {['Serveur', 'Propriétaire', 'Statut', 'Membres', 'Créé le', 'Actions'].map(h => (
+                  {['Espace', 'Propriétaire', 'Statut', 'Membres', 'Créé le', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-ink-4 uppercase tracking-wide">
                       {h}
                     </th>

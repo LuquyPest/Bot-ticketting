@@ -3263,6 +3263,10 @@ async function main() {
     check('espaces: listé pour le propriétaire (connexion par mot de passe ou Discord)', r.body.some(g => g.id === SP) && viaDiscord.body.some(g => g.id === SP && g.discord === false), JSON.stringify([r.body.map(g => g.id), viaDiscord.body]));
     r = await req('POST', '/api/auth/select-guild', { sid: sessions.OWNP, body: { guildId: SP } });
     check('espaces: on entre dans l espace comme dans un serveur', r.status === 200 && r.body.role === 'fondateur', JSON.stringify(r.body));
+    await mk('OWNSP', { user: { id: U.F, username: 'F', role: 'fondateur' }, authMethod: 'password', currentGuildId: SP });
+    const meSpace = await req('GET', '/api/auth/me', { sid: sessions.OWNSP });
+    const meDiscord = await req('GET', '/api/auth/me', { sid: sessions.F });
+    check('espaces: le dashboard sait si un serveur Discord est relié (fonctions Discord masquées sinon)', meSpace.body.discord === false && meDiscord.body.discord === true, JSON.stringify([meSpace.body.discord, meDiscord.body.discord]));
     // A ticket in this space has no channel, whatever its setting
     await sdb("UPDATE guild_config SET ticket_mode = 'auto' WHERE id = 1");
     const resS = await createManager(sdb, fakeClient, SP).createTicket({ id: '200000000000000081', username: 'm81', tag: 'm81', send: async () => {} }, 'Bonjour', [], 'Espace');

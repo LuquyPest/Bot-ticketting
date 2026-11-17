@@ -33,16 +33,16 @@ export default function Privacy() {
         </ul>
 
         <H>Pourquoi</H>
-        <p>Uniquement pour traiter les demandes de support du serveur Discord concerné : les transmettre à son équipe, garder l'historique de l'échange et mesurer la qualité du support. Rien n'est vendu, ni utilisé à des fins publicitaires.</p>
+        <p>Uniquement pour traiter les demandes de support de l\'espace concerné : les transmettre à son équipe, garder l'historique de l'échange et mesurer la qualité du support. Rien n'est vendu, ni utilisé à des fins publicitaires.</p>
 
         <H>Qui y a accès</H>
-        <p>Le staff du serveur Discord où le ticket a été ouvert, selon ses droits, et le propriétaire du bot. Les données sont hébergées sur le serveur choisi par ce propriétaire ; elles ne sont pas transmises à des tiers, hormis Discord lui-même pour l'acheminement des messages.</p>
+        <p>Le staff de l\'espace où le ticket a été ouvert, selon ses droits, et le propriétaire du bot. Les données sont hébergées sur le serveur choisi par ce propriétaire ; elles ne sont pas transmises à des tiers, hormis Discord lui-même pour l'acheminement des messages.</p>
 
         <H>Durée de conservation</H>
-        <p>Les tickets et leurs transcripts sont conservés tant que le serveur Discord utilise le bot, sauf durée plus courte fixée par le propriétaire. Les journaux de connexion sont effacés après 90 jours.</p>
+        <p>Les tickets et leurs transcripts sont conservés tant que l\'espace existe, sauf durée plus courte fixée par le propriétaire. Les journaux de connexion sont effacés après 90 jours.</p>
 
         <H>Tes droits</H>
-        <p>Tu peux demander à consulter ou à supprimer tes données. Le staff du serveur dispose d'un outil de suppression complète (tickets, messages, historique).
+        <p>Tu peux demander à consulter ou à supprimer tes données. Le staff de l\'espace dispose d'un outil de suppression complète (tickets, messages, historique).
           {info?.contactEmail ? <> Contact : <a className="text-primary-light underline" href={`mailto:${info.contactEmail.replace(/^mailto:/, '')}`}>{info.contactEmail.replace(/^mailto:/, '')}</a>.</> : ' Adresse-toi au staff du serveur Discord.'}
         </p>
       </main>

@@ -42,10 +42,10 @@ const fr = {
   deleted: 'Message supprimé', edited: 'modifié',
   tabs: { tickets: 'Mes tickets', new: 'Ouvrir un ticket', help: 'Aide' },
   replyPh: 'Écris ta réponse…', send: 'Envoyer', sent: 'Message envoyé', closedTicket: 'Ce ticket est fermé.',
-  server: 'Serveur', subject: 'Sujet', subjectPh: 'Sujet de ta demande', message: 'Ta demande', messagePh: 'Explique ton problème le plus précisément possible.',
-  confidential: 'Demande confidentielle : seuls les fondateurs du serveur pourront lire ce ticket (signalement, harcèlement…)', confidentialBadge: 'Confidentiel',
+  server: 'Espace', subject: 'Sujet', subjectPh: 'Sujet de ta demande', message: 'Ta demande', messagePh: 'Explique ton problème le plus précisément possible.',
+  confidential: 'Demande confidentielle : seuls les fondateurs de l\'espace pourront lire ce ticket (signalement, harcèlement…)', confidentialBadge: 'Confidentiel',
   optional: 'facultatif', form: 'Quelques questions', open: 'Ouvrir le ticket', noGuild: 'Aucun serveur disponible : tu dois être membre d\'un serveur qui utilise ce bot.',
-  faqTitle: 'Questions fréquentes', faqSearch: 'Chercher dans l\'aide…', faqNone: 'Aucune réponse ne correspond.', faqEmpty: 'Ce serveur n\'a pas encore de page d\'aide.',
+  faqTitle: 'Questions fréquentes', faqSearch: 'Chercher dans l\'aide…', faqNone: 'Aucune réponse ne correspond.', faqEmpty: 'Cet espace n\'a pas encore de page d\'aide.',
   stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.', privacy: 'Confidentialité', language: 'Langue',
 };
 
@@ -67,10 +67,10 @@ const en = {
   deleted: 'Message deleted', edited: 'edited',
   tabs: { tickets: 'My tickets', new: 'Open a ticket', help: 'Help' },
   replyPh: 'Write your answer…', send: 'Send', sent: 'Message sent', closedTicket: 'This ticket is closed.',
-  server: 'Server', subject: 'Subject', subjectPh: 'Subject of your request', message: 'Your request', messagePh: 'Describe your problem as precisely as possible.',
-  confidential: 'Confidential request: only the server founders will be able to read this ticket (report, harassment…)', confidentialBadge: 'Confidential',
+  server: 'Space', subject: 'Subject', subjectPh: 'Subject of your request', message: 'Your request', messagePh: 'Describe your problem as precisely as possible.',
+  confidential: 'Confidential request: only the space founders will be able to read this ticket (report, harassment…)', confidentialBadge: 'Confidential',
   optional: 'optional', form: 'A few questions', open: 'Open the ticket', noGuild: 'No server available: you must be a member of a server that uses this bot.',
-  faqTitle: 'Frequently asked questions', faqSearch: 'Search the help…', faqNone: 'No answer matches.', faqEmpty: 'This server has no help page yet.',
+  faqTitle: 'Frequently asked questions', faqSearch: 'Search the help…', faqNone: 'No answer matches.', faqEmpty: 'This space has no help page yet.',
   stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.', privacy: 'Privacy', language: 'Language',
 };
 
@@ -92,10 +92,10 @@ const es = {
   deleted: 'Mensaje eliminado', edited: 'editado',
   tabs: { tickets: 'Mis tickets', new: 'Abrir un ticket', help: 'Ayuda' },
   replyPh: 'Escribe tu respuesta…', send: 'Enviar', sent: 'Mensaje enviado', closedTicket: 'Este ticket está cerrado.',
-  server: 'Servidor', subject: 'Asunto', subjectPh: 'Asunto de tu solicitud', message: 'Tu solicitud', messagePh: 'Explica tu problema con la mayor precisión posible.',
-  confidential: 'Solicitud confidencial: solo los fundadores del servidor podrán leer este ticket (denuncia, acoso…)', confidentialBadge: 'Confidencial',
+  server: 'Espacio', subject: 'Asunto', subjectPh: 'Asunto de tu solicitud', message: 'Tu solicitud', messagePh: 'Explica tu problema con la mayor precisión posible.',
+  confidential: 'Solicitud confidencial: solo los fundadores del espacio podrán leer este ticket (denuncia, acoso…)', confidentialBadge: 'Confidencial',
   optional: 'opcional', form: 'Algunas preguntas', open: 'Abrir el ticket', noGuild: 'Ningún servidor disponible: debes ser miembro de un servidor que use este bot.',
-  faqTitle: 'Preguntas frecuentes', faqSearch: 'Buscar en la ayuda…', faqNone: 'Ninguna respuesta coincide.', faqEmpty: 'Este servidor aún no tiene página de ayuda.',
+  faqTitle: 'Preguntas frecuentes', faqSearch: 'Buscar en la ayuda…', faqNone: 'Ninguna respuesta coincide.', faqEmpty: 'Este espacio aún no tiene página de ayuda.',
   stillStuck: '¿Sigues bloqueado?', maybe: 'Estas respuestas pueden ayudarte:', error2: 'Error, inténtalo de nuevo.', privacy: 'Privacidad', language: 'Idioma',
 };
 
@@ -117,10 +117,10 @@ const de = {
   deleted: 'Nachricht gelöscht', edited: 'bearbeitet',
   tabs: { tickets: 'Meine Tickets', new: 'Ticket öffnen', help: 'Hilfe' },
   replyPh: 'Schreibe deine Antwort…', send: 'Senden', sent: 'Nachricht gesendet', closedTicket: 'Dieses Ticket ist geschlossen.',
-  server: 'Server', subject: 'Betreff', subjectPh: 'Betreff deines Anliegens', message: 'Dein Anliegen', messagePh: 'Beschreibe dein Problem so genau wie möglich.',
-  confidential: 'Vertrauliche Anfrage: Nur die Gründer des Servers können dieses Ticket lesen (Meldung, Belästigung…)', confidentialBadge: 'Vertraulich',
+  server: 'Bereich', subject: 'Betreff', subjectPh: 'Betreff deines Anliegens', message: 'Dein Anliegen', messagePh: 'Beschreibe dein Problem so genau wie möglich.',
+  confidential: 'Vertrauliche Anfrage: Nur die Gründer des Bereichs können dieses Ticket lesen (Meldung, Belästigung…)', confidentialBadge: 'Vertraulich',
   optional: 'optional', form: 'Ein paar Fragen', open: 'Ticket öffnen', noGuild: 'Kein Server verfügbar: Du musst Mitglied eines Servers sein, der diesen Bot nutzt.',
-  faqTitle: 'Häufige Fragen', faqSearch: 'Hilfe durchsuchen…', faqNone: 'Keine Antwort passt.', faqEmpty: 'Dieser Server hat noch keine Hilfeseite.',
+  faqTitle: 'Häufige Fragen', faqSearch: 'Hilfe durchsuchen…', faqNone: 'Keine Antwort passt.', faqEmpty: 'Dieser Bereich hat noch keine Hilfeseite.',
   stillStuck: 'Immer noch nicht gelöst?', maybe: 'Diese Antworten könnten helfen:', error2: 'Fehler, versuche es erneut.', privacy: 'Datenschutz', language: 'Sprache',
 };
 
@@ -142,10 +142,10 @@ const it = {
   deleted: 'Messaggio eliminato', edited: 'modificato',
   tabs: { tickets: 'I miei ticket', new: 'Apri un ticket', help: 'Aiuto' },
   replyPh: 'Scrivi la tua risposta…', send: 'Invia', sent: 'Messaggio inviato', closedTicket: 'Questo ticket è chiuso.',
-  server: 'Server', subject: 'Oggetto', subjectPh: 'Oggetto della tua richiesta', message: 'La tua richiesta', messagePh: 'Descrivi il problema nel modo più preciso possibile.',
-  confidential: 'Richiesta riservata: solo i fondatori del server potranno leggere questo ticket (segnalazione, molestie…)', confidentialBadge: 'Riservato',
+  server: 'Spazio', subject: 'Oggetto', subjectPh: 'Oggetto della tua richiesta', message: 'La tua richiesta', messagePh: 'Descrivi il problema nel modo più preciso possibile.',
+  confidential: 'Richiesta riservata: solo i fondatori dello spazio potranno leggere questo ticket (segnalazione, molestie…)', confidentialBadge: 'Riservato',
   optional: 'facoltativo', form: 'Qualche domanda', open: 'Apri il ticket', noGuild: 'Nessun server disponibile: devi essere membro di un server che usa questo bot.',
-  faqTitle: 'Domande frequenti', faqSearch: 'Cerca nell\'aiuto…', faqNone: 'Nessuna risposta corrisponde.', faqEmpty: 'Questo server non ha ancora una pagina di aiuto.',
+  faqTitle: 'Domande frequenti', faqSearch: 'Cerca nell\'aiuto…', faqNone: 'Nessuna risposta corrisponde.', faqEmpty: 'Questo spazio non ha ancora una pagina di aiuto.',
   stillStuck: 'Ancora bloccato?', maybe: 'Queste risposte possono aiutarti:', error2: 'Errore, riprova.', privacy: 'Privacy', language: 'Lingua',
 };
 
@@ -167,10 +167,10 @@ const pt = {
   deleted: 'Mensagem excluída', edited: 'editada',
   tabs: { tickets: 'Meus tickets', new: 'Abrir um ticket', help: 'Ajuda' },
   replyPh: 'Escreva sua resposta…', send: 'Enviar', sent: 'Mensagem enviada', closedTicket: 'Este ticket está fechado.',
-  server: 'Servidor', subject: 'Assunto', subjectPh: 'Assunto da sua solicitação', message: 'Sua solicitação', messagePh: 'Explique seu problema da forma mais precisa possível.',
-  confidential: 'Solicitação confidencial: só os fundadores do servidor poderão ler este ticket (denúncia, assédio…)', confidentialBadge: 'Confidencial',
+  server: 'Espaço', subject: 'Assunto', subjectPh: 'Assunto da sua solicitação', message: 'Sua solicitação', messagePh: 'Explique seu problema da forma mais precisa possível.',
+  confidential: 'Solicitação confidencial: só os fundadores do espaço poderão ler este ticket (denúncia, assédio…)', confidentialBadge: 'Confidencial',
   optional: 'opcional', form: 'Algumas perguntas', open: 'Abrir o ticket', noGuild: 'Nenhum servidor disponível: você precisa ser membro de um servidor que usa este bot.',
-  faqTitle: 'Perguntas frequentes', faqSearch: 'Pesquisar na ajuda…', faqNone: 'Nenhuma resposta corresponde.', faqEmpty: 'Este servidor ainda não tem página de ajuda.',
+  faqTitle: 'Perguntas frequentes', faqSearch: 'Pesquisar na ajuda…', faqNone: 'Nenhuma resposta corresponde.', faqEmpty: 'Este espaço ainda não tem página de ajuda.',
   stillStuck: 'Ainda com dúvidas?', maybe: 'Estas respostas podem ajudar:', error2: 'Erro, tente de novo.', privacy: 'Privacidade', language: 'Idioma',
 };
 

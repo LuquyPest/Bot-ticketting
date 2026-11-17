@@ -158,7 +158,7 @@ export default function Login() {
           <div className="flex items-center justify-center gap-1.5 mt-4">
             <Zap size={11} className="text-primary-light/60" />
             <p className="text-xs text-ink-4 text-center">
-              Réservé aux membres autorisés du serveur
+              Réservé aux membres autorisés de l\'équipe
             </p>
           </div>
         </div>

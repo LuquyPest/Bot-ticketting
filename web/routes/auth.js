@@ -75,7 +75,8 @@ router.get('/me', async (req, res) => {
 
   try {
     const db = getTenantDb(guildId);
-    const base = { ...user, guildId, idleTimeoutMinutes: await require('../../utils/idleTimeout').idleMinutes(db, guildId) };
+    // discord: a Discord server is linked to the space (otherwise the Discord features are hidden)
+    const base = { ...user, guildId, discord: await require('../../utils/spaces').hasDiscord(guildId), idleTimeoutMinutes: await require('../../utils/idleTimeout').idleMinutes(db, guildId) };
     if (user.role === 'fondateur') {
       return res.json({ ...base, permissions: require('../../utils/gradePermissions').PERMISSIONS });
     }
@@ -229,7 +230,7 @@ router.post('/select-guild', async (req, res) => {
       dbUser = { role: 'fondateur' };
     }
 
-    if (!dbUser) return res.status(403).json({ error: 'Accès refusé — contacte le fondateur du serveur' });
+    if (!dbUser) return res.status(403).json({ error: 'Accès refusé — contacte le fondateur de l\'espace' });
 
     await recordEvent(db, {
       actor: { ...req.session.user, tag: req.session.user.username, source: 'dashboard' },

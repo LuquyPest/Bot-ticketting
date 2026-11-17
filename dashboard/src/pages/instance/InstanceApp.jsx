@@ -15,7 +15,7 @@ const Blocked  = lazy(() => import('./Blocked'));
 // OWNER_IDS), reached from the dashboard with the same Discord sign-in.
 const NAV = [
   { to: '/instance/overview', label: 'Vue d\'ensemble', icon: LayoutDashboard },
-  { to: '/instance/guilds',   label: 'Serveurs', icon: Building2 },
+  { to: '/instance/guilds',   label: 'Espaces', icon: Building2 },
   { to: '/instance/health',   label: 'Santé',    icon: HeartPulse },
   { to: '/instance/errors',   label: 'Erreurs',  icon: Bug },
   { to: '/instance/journal',  label: 'Journal',  icon: ScrollText },

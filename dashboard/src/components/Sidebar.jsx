@@ -40,18 +40,18 @@ const NAV_GROUPS = [
   { id: 'equipe', label: 'Équipe', items: [
     { to: '/equipe',      label: 'Équipe',       icon: Users,           roles: ['fondateur'] },
     { to: '/grades',      label: 'Grades',       icon: Shield,          roles: ['fondateur'], perm: 'manage_grades' },
-    { to: '/roles',       label: 'Rôles',        icon: UserCog,         roles: ['fondateur'] },
+    { to: '/roles',       label: 'Rôles',        icon: UserCog,         roles: ['fondateur'], discord: true },
   ] },
   { id: 'config', label: 'Configuration', items: [
     { to: '/settings',    label: 'Paramètres',   icon: Settings,        roles: ['fondateur'] },
     { to: '/tags',        label: 'Tags',         icon: Tag,             roles: ['fondateur'] },
-    { to: '/panels',      label: 'Panels',       icon: LayoutTemplate,  roles: ['fondateur'] },
+    { to: '/panels',      label: 'Panels',       icon: LayoutTemplate,  roles: ['fondateur'], discord: true },
     { to: '/forms',       label: 'Formulaires',  icon: ClipboardCheck,  roles: ['fondateur'] },
     { to: '/fields',      label: 'Champs',       icon: ListPlus,        roles: ['fondateur'], perm: 'manage_settings' },
     { to: '/faq',         label: 'FAQ',          icon: HelpCircle,      roles: ['fondateur'], perm: 'manage_settings' },
     { to: '/procedures',  label: 'Procédures',   icon: ListChecks,      roles: ['fondateur'], perm: 'manage_settings' },
     { to: '/incidents',   label: 'Incidents',    icon: Megaphone,       roles: ['fondateur'], perm: 'manage_settings' },
-    { to: '/sante',       label: 'Santé du serveur', icon: HeartPulse,  roles: ['fondateur'], perm: 'manage_settings' },
+    { to: '/sante',       label: 'Santé du serveur', icon: HeartPulse,  roles: ['fondateur'], perm: 'manage_settings', discord: true },
   ] },
   { id: 'admin', label: 'Administration', items: [
     { to: '/blacklist',   label: 'Blacklist',    icon: ShieldBan,       roles: ['fondateur'] },
@@ -59,7 +59,7 @@ const NAV_GROUPS = [
     { to: '/acces-invites', label: 'Accès invités', icon: KeyRound,     roles: ['fondateur'] },
     { to: '/transcripts', label: 'Transcripts',  icon: FileText,        roles: ['fondateur'], perm: 'view_transcripts' },
     { to: '/api-keys',    label: 'Clés API',     icon: Key,             roles: ['fondateur'] },
-    { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'] },
+    { to: '/newsletter',  label: 'Newsletter',   icon: Mail,            roles: ['fondateur'], discord: true },
     { to: '/patchnotes',  label: 'Patchnotes',   icon: ScrollText,      roles: ['fondateur'] },
     { to: '/instance',    label: 'Instance',     icon: Server,          owner: true },
   ] },
@@ -109,6 +109,8 @@ export default function Sidebar() {
 
   const allowed = item => {
     if (item.owner) return !!user?.isOwner;
+    // Discord features: hidden in a space without a linked Discord server
+    if (item.discord && user?.discord === false) return false;
     const role = user?.role;
     if (item.perm) return role === 'fondateur' || user?.permissions?.includes(item.perm);
     return item.roles.includes(role);

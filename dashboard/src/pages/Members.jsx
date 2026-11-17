@@ -63,7 +63,7 @@ export default function Members() {
                 </div>
               ))}
             </dl>
-            {summary.blacklisted && <p className="text-[11px] text-amber-300 mt-3">Ce membre est dans la blacklist du serveur.</p>}
+            {summary.blacklisted && <p className="text-[11px] text-amber-300 mt-3">Ce membre est dans la blacklist de l\'espace.</p>}
             <div className="flex gap-2 mt-4">
               <a href={`/api/members/${summary.userId}/export`}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-ink-1 border border-overlay/8 hover:bg-overlay/5">
