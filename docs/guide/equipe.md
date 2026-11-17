@@ -14,6 +14,13 @@ Le **fondateur** d'un serveur est la personne qui a invité le bot (à défaut, 
 
 À la connexion, un membre du staff qui n'a accès qu'à un serveur arrive directement sur son dashboard.
 
+**Inviter par e-mail** : **Équipe → Gestion → Inviter par e-mail**, avec le rôle (*Support* ou *Fondateur*) et, pour le support, un grade, puisque sans grade il n'a aucun droit. La personne reçoit un lien valable **7 jours**, qui ne sert qu'**une fois** :
+- sans compte, elle crée le sien (nom et mot de passe), l'adresse étant confirmée par le lien ;
+- avec un compte qui utilise déjà cette adresse, elle se connecte d'abord, puis revient à l'invitation ;
+- déjà connectée, c'est ce compte qui rejoint l'équipe.
+
+L'invitation part par l'[e-mail de l'instance](./instance), qui doit être configuré. La liste montre les invitations en attente, acceptées, révoquées et expirées ; **Révoquer** annule un lien pas encore utilisé, et inviter à nouveau la même adresse remplace l'invitation en attente. Seul un fondateur invite un fondateur ; un membre avec la permission `manage_users` invite au rôle support, avec un grade dont il a déjà les permissions. Un membre invité est géré à la main : la synchronisation des rôles Discord ne le retire jamais.
+
 ## Les grades
 
 Un grade est un ensemble de permissions. Chaque action du dashboard et des commandes Discord est vérifiée côté serveur.
@@ -27,7 +34,7 @@ Un grade est un ensemble de permissions. Chaque action du dashboard et des comma
 | `manage_participants` | Ajouter ou retirer des participants |
 | `create_ticket` | Ouvrir un ticket pour un membre |
 | `view_transcripts` | Consulter les transcripts |
-| `manage_users` | Attribuer des grades (pas à soi-même, ni un grade plus puissant que les siens) |
+| `manage_users` | Attribuer des grades (pas à soi-même, ni un grade plus puissant que les siens), inviter au rôle support |
 | `manage_grades` | Créer et modifier des grades, restreindre la visibilité d'un ticket |
 | `manage_settings` | Tags, FAQ, champs, procédures, incidents, santé du serveur |
 | `view_audit` | Consulter le journal |

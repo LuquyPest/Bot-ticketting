@@ -142,7 +142,7 @@ const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs ar
 
 // Strict limit on sign-in attempts only: /api/auth/me and /guilds are read on every page load and
 // stay under the general API limit (counting them blocked staff who simply reloaded a few pages)
-app.use(['/api/auth/discord', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/verify-email', '/api/installation/owner'], authLimiter);
+app.use(['/api/auth/discord', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/verify-email', '/api/auth/invitation', '/api/installation/owner'], authLimiter);
 app.use('/api/member/auth', authLimiter);
 app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
 app.use('/api/demo', authLimiter);
@@ -161,6 +161,7 @@ app.get('/t/:token', (req, res) => {
 app.use('/api/v1',       require('./routes/apiV1'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/auth',     require('./routes/passwordAuth')); // e-mail and password (v4)
+app.use('/api/auth',     require('./routes/invitationAccept')); // invitation links (v4)
 app.use('/api/installation', require('./routes/installation')); // first owner without Discord (v4)
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/push',     require('./routes/push'));
@@ -279,6 +280,7 @@ app.use('/api/api-keys',    withGuild(['fondateur']),            require('./rout
 app.use('/api/newsletter',  withGuild(['fondateur']),            require('./routes/newsletter'));
 app.use('/api/panels',      withGuild(['fondateur']),            require('./routes/panels'));
 app.use('/api/forms',       withGuild(['fondateur']),            require('./routes/forms'));
+app.use('/api/invitations', withGuild(['support', 'fondateur']), require('./routes/invitations'));
 app.use('/api/login-logs',  withGuild(['support', 'fondateur']), require('./routes/loginLogs'));
 
 app.use('/api/instance', require('./routes/instance')); // owner of the instance (GET /info is public)
