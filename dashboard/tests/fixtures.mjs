@@ -79,6 +79,7 @@ export const MOCK = {
   '/api/guest/me': { label: 'Maître Dupont', expiresAt: new Date(now + 864e5).toISOString(), includeNotes: false, guildName: 'Sunset FA' },
   '/api/guest/tickets': [{ id: 12, subject: 'Litige commande', status: 'closed', owner_tag: 'membre1', created_at: iso(9000) }],
   '/api/member/me': { id: '9', username: 'membre9', avatar: null },
+  '/api/member/login-options': { discord: true, email: true },
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
     { id: 2, subject: 'Ancienne commande', status: 'closed', stage: 'open', created_at: iso(9000), closed_at: iso(8000), assigned: true, participant: false, rating: 5 },

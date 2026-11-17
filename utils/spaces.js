@@ -59,8 +59,8 @@ async function createSpace({ name, by }) {
   );
   await require('./tenantSchema').ensureTenantSchema(id);
   const db = require('./tenantDb').getTenantDb(id);
-  // No Discord server: tickets live in the database only
-  await db("UPDATE guild_config SET ticket_mode = 'database' WHERE id = 1");
+  // No Discord server: tickets live in the database only, requesters come through the member space
+  await db("UPDATE guild_config SET ticket_mode = 'database', portal_email_open = 1 WHERE id = 1");
   await db("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, ?, 'fondateur') ON DUPLICATE KEY UPDATE role = 'fondateur'",
     [String(by.id), String(by.username || by.id).slice(0, 100)]);
   await refresh();

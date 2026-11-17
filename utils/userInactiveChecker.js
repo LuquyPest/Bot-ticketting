@@ -38,7 +38,7 @@ async function runUserInactiveCheck(client) {
         const channel = await tm.channelOf(ticket);
         if (channel) {
           const L = await require('./staffI18n').staffT(guild_id, { client });
-          const who = require('./emailTickets').isEmailOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
+          const who = require('./emailTickets').isExternalOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
           await channel.send(L('inactive.member', { user: who, h: warnHours, left: closeHours - warnHours })).catch(() => null);
         }
         await tm.markUserWarnedInactive(ticket.id);
