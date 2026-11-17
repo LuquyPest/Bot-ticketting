@@ -298,6 +298,7 @@ export default function Settings() {
         memberReopenDays:         cfg.memberReopenDays ?? 7,
         notifyMemberStage:        cfg.notifyMemberStage ? 1 : 0,
         memberPortalEnabled:      cfg.memberPortalEnabled === undefined || cfg.memberPortalEnabled ? 1 : 0,
+        portalEmailOpen:          cfg.portalEmailOpen ? 1 : 0,
         portalLogo:               cfg.portalLogo || null,
         portalColor:              /^#[0-9a-fA-F]{6}$/.test(cfg.portalColor || '') ? cfg.portalColor : null,
         portalWelcome:            cfg.portalWelcome?.trim() || null,
@@ -763,9 +764,16 @@ export default function Settings() {
         />
         <FeatureToggle
           label="Espace membre web"
-          hint={`Les membres se connectent avec Discord sur ${window.location.origin}/espace pour retrouver leurs tickets, leur statut et l'historique de leurs échanges (jamais les notes internes)`}
+          hint={`Les membres se connectent avec Discord ou par un lien reçu par e-mail sur ${window.location.origin}/espace pour retrouver leurs tickets, leur statut et l'historique de leurs échanges (jamais les notes internes)`}
           checked={cfg.memberPortalEnabled === undefined || !!cfg.memberPortalEnabled} onChange={v => set('memberPortalEnabled', v)}
         >
+          <label className="flex items-start gap-2 mb-3 text-sm text-ink-2">
+            <input type="checkbox" checked={!!cfg.portalEmailOpen} onChange={e => set('portalEmailOpen', e.target.checked)} className="mt-1" />
+            <span>
+              Ouvert à tous par e-mail
+              <span className="block text-xs text-ink-4">Toute personne qui se connecte avec un lien reçu par e-mail peut ouvrir un ticket ici, sans compte Discord. Ses messages lui arrivent par l'e-mail de l'instance (Instance → E-mail).</span>
+            </span>
+          </label>
           <PortalBranding cfg={cfg} set={set} />
         </FeatureToggle>
         <FeatureToggle

@@ -54,6 +54,7 @@ const FIELD_MAP = {
   notifyMemberStage:         'notify_member_stage',
   lowRatingThreshold:        'low_rating_threshold',
   memberPortalEnabled:       'member_portal_enabled',
+  portalEmailOpen:           'portal_email_open',
   portalLogo:                'portal_logo',
   portalColor:               'portal_color',
   portalWelcome:             'portal_welcome',
@@ -125,6 +126,7 @@ const VALIDATORS = {
   notifyMemberStage:        v => v === 0 || v === 1 || v === true || v === false,
   lowRatingThreshold:       v => Number.isInteger(v) && v >= 0 && v <= 4,
   memberPortalEnabled:      v => v === 0 || v === 1 || v === true || v === false,
+  portalEmailOpen:          v => v === 0 || v === 1 || v === true || v === false,
   // Member space branding: a small image embedded as a data URL (resized in the browser), so no
   // external host is needed and the CSP stays closed
   portalLogo:               v => v === null || (typeof v === 'string' && v.length <= 200_000 && /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/.test(v)),

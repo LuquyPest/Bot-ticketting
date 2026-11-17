@@ -190,6 +190,10 @@ const D = {
     'portal.tooManyTickets': 'Trop de tickets ouverts d\'un coup, patiente une minute',
     'portal.noAccount': 'Compte Discord introuvable',
     'portal.openFailed': 'Le ticket n\'a pas pu être ouvert, réessaie ou écris au bot en MP',
+    'portal.badEmail': 'Adresse e-mail invalide',
+    'portal.emailOff': 'La connexion par e-mail n\'est pas disponible sur cette instance',
+    'portal.mailFailed': 'L\'e-mail n\'a pas pu être envoyé, réessaie plus tard',
+    'portal.linkInvalid': 'Ce lien de connexion a expiré ou a déjà servi : demandes-en un nouveau',
     'portal.messageLength': 'Message vide ou trop long (2000 caractères max)',
     'portal.closed': 'Ce ticket est fermé',
     'portal.tooManyMessages': 'Trop de messages, patiente quelques secondes',
@@ -373,6 +377,10 @@ const D = {
     'portal.tooManyTickets': 'Too many tickets opened at once, wait a minute',
     'portal.noAccount': 'Discord account not found',
     'portal.openFailed': 'The ticket could not be opened, try again or message the bot privately',
+    'portal.badEmail': 'Invalid e-mail address',
+    'portal.emailOff': 'Signing in by e-mail is not available on this instance',
+    'portal.mailFailed': 'The e-mail could not be sent, try again later',
+    'portal.linkInvalid': 'This sign-in link has expired or was already used: ask for a new one',
     'portal.messageLength': 'Empty or too long message (2000 characters max)',
     'portal.closed': 'This ticket is closed',
     'portal.tooManyMessages': 'Too many messages, wait a few seconds',
@@ -438,6 +446,9 @@ async function sendToMember(client, userOrId, guildId, build) {
   const targetId = typeof userOrId === 'string' ? userOrId : userOrId?.id;
   const email = require('./emailTickets');
   if (email.isEmailOwner(targetId)) return inMemberLang(targetId, guildId, client, () => email.sendToEmailOwner(guildId, targetId, build));
+  // Someone from the web portal: an instance e-mail with a link to the conversation (utils/webRequesters.js)
+  const web = require('./webRequesters');
+  if (web.isWebOwner(targetId)) return inMemberLang(targetId, guildId, client, () => web.sendToWebOwner(guildId, targetId, build));
   const user = typeof userOrId === 'string' ? await client?.users.fetch(userOrId).catch(() => null) : userOrId;
   if (!user) return null;
   return inMemberLang(user.id, guildId, client, async () => user.send(await build(user)).catch(() => null));

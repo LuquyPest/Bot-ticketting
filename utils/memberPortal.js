@@ -1,7 +1,10 @@
-// Member web space: a member signed in with Discord sees their own tickets (as owner or
-// participant) on every active server that keeps the option on (guild_config.member_portal_enabled,
-// on by default), with the conversation they had with the staff. Never shown: internal notes,
-// staff messages typed in the Discord ticket channel, the identity behind anonymous replies.
+// Member web space: a member signed in with Discord, or with a link sent by e-mail (v4, identity
+// « web:<hash> »), sees their own tickets (as owner or participant) on every active space that
+// keeps the option on (guild_config.member_portal_enabled, on by default), with the conversation
+// they had with the staff. Never shown: internal notes, staff messages typed in the Discord ticket
+// channel, the identity behind anonymous replies.
+// A member signed in by e-mail also sees the tickets they opened by e-mail to the same address
+// (« mail:<hash> »): the link proved they read that mailbox.
 const { getActiveGuilds } = require('./guildScan');
 const { getTenantDb } = require('./tenantDb');
 const { escapeHtml } = require('./transcript');
@@ -20,10 +23,23 @@ async function portalEnabled(db) {
   return !cfg || cfg.member_portal_enabled === null || Number(cfg.member_portal_enabled) === 1;
 }
 
-const ownTicketsSql = `(t.owner_id = ? OR t.id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))`;
+const ownTicketsSql = `(t.owner_id IN (?) OR t.id IN (SELECT ticket_id FROM ticket_participants WHERE user_id IN (?)))`;
+
+// Identities of a signed-in member: { id, email? } → the owner IDs their tickets may carry
+function memberIds(member) {
+  if (!member?.email) return [String(member.id)];
+  return [String(member.id), require('./emailTickets').ownerIdFor(member.email)];
+}
+
+// Spaces where anyone may sign in by e-mail and open a ticket (Settings → member space)
+async function emailOpen(db) {
+  const [cfg] = await db('SELECT portal_email_open FROM guild_config WHERE id = 1').catch(() => []);
+  return Number(cfg?.portal_email_open) === 1;
+}
 
 // [{ guild: { id, name, icon }, tickets: [...] }], most recent activity first
-async function listMemberTickets(userId, client) {
+async function listMemberTickets(member, client) {
+  const ids = memberIds(member);
   const out = [];
   for (const { guild_id, guild_name } of await getActiveGuilds()) {
     try {
@@ -35,13 +51,13 @@ async function listMemberTickets(userId, client) {
                 (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating
          FROM tickets t WHERE ${ownTicketsSql}
          ORDER BY COALESCE(t.last_message_at, t.created_at) DESC LIMIT 200`,
-        [userId, userId]
+        [ids, ids]
       );
       if (!tickets.length) continue;
       const g = client?.guilds?.cache?.get(guild_id);
       out.push({
         guild: { id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
-        tickets: tickets.map(({ owner_id, ...t }) => ({ ...t, assigned: !!Number(t.assigned), participant: owner_id !== userId })),
+        tickets: tickets.map(({ owner_id, ...t }) => ({ ...t, assigned: !!Number(t.assigned), participant: !ids.includes(owner_id) })),
       });
     } catch { /* tenant DB unavailable */ }
   }
@@ -50,15 +66,16 @@ async function listMemberTickets(userId, client) {
 }
 
 // Name shown for a message, as the member saw it in their DMs
-function authorLabel(note, userId) {
-  if (note.source === 'user') return note.author_id === userId ? null : note.author_tag;
+function authorLabel(note, ids) {
+  if (note.source === 'user') return ids.includes(note.author_id) ? null : note.author_tag;
   if (note.source === 'system') return null;
   if (note.source === 'scheduled' || /\(anonyme\)$/.test(note.author_tag)) return 'Support';
   return note.author_tag;
 }
 
 // { guild, ticket, messages } or null when the member may not see it
-async function memberTicket(userId, guildId, ticketId, client) {
+async function memberTicket(member, guildId, ticketId, client) {
+  const ids = memberIds(member);
   if (!SNOWFLAKE_RE.test(String(guildId)) || !(ticketId > 0)) return null;
   const guilds = await getActiveGuilds();
   const guild = guilds.find(g => g.guild_id === guildId);
@@ -71,7 +88,7 @@ async function memberTicket(userId, guildId, ticketId, client) {
             EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
             (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating
      FROM tickets t WHERE t.id = ? AND ${ownTicketsSql}`,
-    [ticketId, userId, userId]
+    [ticketId, ids, ids]
   );
   if (!ticket) return null;
   const notes = await db(
@@ -82,11 +99,11 @@ async function memberTicket(userId, guildId, ticketId, client) {
   const { owner_id, ...t } = ticket;
   return {
     guild: { id: guildId, name: g?.name || guild.guild_name || guildId, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
-    ticket: { ...t, assigned: !!Number(t.assigned), confidential: !!Number(t.confidential), participant: owner_id !== userId },
+    ticket: { ...t, assigned: !!Number(t.assigned), confidential: !!Number(t.confidential), participant: !ids.includes(owner_id) },
     messages: notes.map(n => ({
       id: n.id,
-      kind: n.source === 'user' ? (n.author_id === userId ? 'me' : 'member') : n.source === 'system' ? 'event' : 'staff',
-      author: authorLabel(n, userId),
+      kind: n.source === 'user' ? (ids.includes(n.author_id) ? 'me' : 'member') : n.source === 'system' ? 'event' : 'staff',
+      author: authorLabel(n, ids),
       content: n.deleted_at ? '' : n.content,
       deleted: !!n.deleted_at,
       edited: !!n.edited_at,
@@ -137,27 +154,30 @@ function portalUrl() {
   try { return new URL('/espace', config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { return null; }
 }
 
-// Servers where the member is on Discord and the member space is on (cached 5 min)
-async function memberGuilds(userId, client) {
+// Spaces where the member may open a ticket, with the member space on (cached 5 min): for a
+// Discord member, the servers they are on; signed in by e-mail, the spaces open to everyone
+async function memberGuilds(member, client) {
   const redis = require('./redis').getRedis();
-  const key = `memberguilds:${userId}`;
+  const key = `memberguilds:${member.id}`;
   const cached = await redis.get(key).catch(() => null);
   if (cached) return JSON.parse(cached);
   const out = [];
   for (const { guild_id, guild_name } of await getActiveGuilds()) {
     try {
       const g = client?.guilds?.cache?.get(guild_id);
-      if (!g || !(await g.members.fetch(userId).catch(() => null))) continue;
-      if (!(await portalEnabled(getTenantDb(guild_id)))) continue;
-      out.push({ id: guild_id, name: g.name || guild_name || guild_id, icon: g.iconURL?.({ size: 64 }) || null, ...(await guildBranding(getTenantDb(guild_id))) });
+      const db = getTenantDb(guild_id);
+      if (member.email) { if (!(await emailOpen(db))) continue; }
+      else if (!g || !(await g.members.fetch(member.id).catch(() => null))) continue;
+      if (!(await portalEnabled(db))) continue;
+      out.push({ id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) });
     } catch { /* tenant DB unavailable */ }
   }
   await redis.set(key, JSON.stringify(out), 'EX', 300).catch(() => null);
   return out;
 }
 
-async function isMemberGuild(userId, guildId, client) {
-  return (await memberGuilds(userId, client)).find(g => g.id === guildId) || null;
+async function isMemberGuild(member, guildId, client) {
+  return (await memberGuilds(member, client)).find(g => g.id === guildId) || null;
 }
 
 // Public help: active FAQ entries of a server
@@ -181,4 +201,4 @@ async function openingForm(guildId, subject) {
   return { subjects, fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type, required: !!f.required })), questions };
 }
 
-module.exports = { ticketWebUrl, listMemberTickets, memberTicket, memberTranscriptHtml, portalUrl, memberGuilds, isMemberGuild, guildFaq, openingForm };
+module.exports = { memberIds, emailOpen, ticketWebUrl, listMemberTickets, memberTicket, memberTranscriptHtml, portalUrl, memberGuilds, isMemberGuild, guildFaq, openingForm };

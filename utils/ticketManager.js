@@ -266,7 +266,7 @@ function createManager(db, client, guildId) {
     if (confidential || channel.isThread()) await require('./channelVisibility').syncTicketChannel(db, client, gid, ticket).catch(() => null);
 
     const L = await staffL();
-    const mention = require('./emailTickets').isEmailOwner(user.id) ? user.tag : `<@${user.id}>`;
+    const mention = require('./emailTickets').isExternalOwner(user.id) ? user.tag : `<@${user.id}>`;
     const embed = new EmbedBuilder()
       .setColor(0x6366f1)
       .setAuthor({ name: L('tm.new') })
@@ -450,7 +450,7 @@ function createManager(db, client, guildId) {
         // Confidential: the staff log channel never learns who wrote or about what
         const confidential = ticket.visibility_grade_id === require('./gradePermissions').CONFIDENTIAL;
         const L = await staffL();
-        const ownerShown = require('./emailTickets').isEmailOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
+        const ownerShown = require('./emailTickets').isExternalOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
         const closeLogEmbed = new EmbedBuilder()
           .setColor(0x6366f1)
           .setTitle(`${L('tm.closeLog', { id: ticket.id })}${confidential ? L('tm.confidential') : ''}`)
@@ -483,7 +483,7 @@ function createManager(db, client, guildId) {
     );
     if (restricted || channel.isThread()) await require('./channelVisibility').syncTicketChannel(db, client, gid, { ...ticket, channel_id: channel.id }).catch(() => null);
     const L = await staffL();
-    const ownerShown = require('./emailTickets').isEmailOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
+    const ownerShown = require('./emailTickets').isExternalOwner(ticket.owner_id) ? ticket.owner_tag : `<@${ticket.owner_id}>`;
     const reopenEmbed = new EmbedBuilder()
       .setColor(0x10b981)
       .setAuthor({ name: L('tm.reopened') })
