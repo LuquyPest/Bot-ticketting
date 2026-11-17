@@ -6,6 +6,7 @@ import api from '../api';
 const STATUS_CONFIG = {
   success:      { label: 'Succès',       cls: 'bg-emerald-500/15 text-emerald-300' },
   '2fa_required': { label: '2FA requis', cls: 'bg-amber-500/15 text-amber-300' },
+  disabled:       { label: 'Compte désactivé', cls: 'bg-red-500/15 text-red-300' },
   blocked:      { label: 'Bloqué',       cls: 'bg-red-500/15 text-red-400' },
 };
 

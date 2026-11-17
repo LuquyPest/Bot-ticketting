@@ -39,6 +39,7 @@ const PAGES = [
   ['profil', '/profils/200000000000000005', 'Déjà remboursé deux fois'],
   ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],
   ['patchnotes', '/patchnotes', 'Patchnotes'],
+  ['profile', '/profile', 'Dernière utilisation'],
   ['docs-api', '/docs-api', 'Documentation de l'],
   ['roles', '/roles', 'Comptabilité'],
   ['instance', '/instance/overview', "Vue d'ensemble"],

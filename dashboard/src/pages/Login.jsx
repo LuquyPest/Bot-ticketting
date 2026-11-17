@@ -10,6 +10,7 @@ const ERROR_MESSAGES = {
   not_in_guild: "Tu n'es pas membre du serveur Discord.",
   no_permission: "Tu n'as pas le rôle requis.",
   oauth_failed:  "Erreur lors de la connexion Discord. Réessaie.",
+  account_disabled: "Ce compte est désactivé. Contacte le propriétaire de l'instance.",
   no_code:       "Code OAuth manquant.",
 };
 const EXPIRED_MESSAGES = { idle: 'Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.' };

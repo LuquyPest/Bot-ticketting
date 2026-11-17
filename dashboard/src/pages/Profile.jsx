@@ -11,6 +11,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import usePushNotifications from '../hooks/usePushNotifications';
 import RecoveryCodes from '../components/RecoveryCodes';
+import LoginMethods from '../components/LoginMethods';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -493,7 +494,7 @@ export default function Profile() {
             <div>
               <label className="text-sm text-ink-2 font-medium block mb-1">Couleur de bannière</label>
               <div className="flex items-center gap-2">
-                <input type="color" value={bannerColor} onChange={e => setBannerColor(e.target.value)}
+                <input type="color" value={bannerColor} onChange={e => setBannerColor(e.target.value)} aria-label="Couleur de bannière"
                   className="w-10 h-9 rounded-lg border border-overlay/8 bg-transparent cursor-pointer p-0.5 shrink-0" />
                 <input type="text" value={bannerColor} onChange={e => setBannerColor(e.target.value)}
                   pattern="^#[0-9a-fA-F]{6}$" placeholder="#6366f1"
@@ -521,7 +522,7 @@ export default function Profile() {
 
             {/* Assignment DM */}
             <label className="flex items-center gap-3 cursor-pointer">
-              <div onClick={() => setNotifyAssignDm(v => !v)} role="switch" aria-checked={notifyAssignDm}
+              <div onClick={() => setNotifyAssignDm(v => !v)} role="switch" aria-checked={notifyAssignDm} aria-label="MP Discord quand on m'attribue un ticket"
                 className={`w-10 h-5 rounded-full transition-colors shrink-0
                            ${notifyAssignDm ? 'bg-primary' : 'bg-overlay/10'}`}>
                 <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform
@@ -537,7 +538,7 @@ export default function Profile() {
 
             {/* Mention DM */}
             <label className="flex items-center gap-3 cursor-pointer">
-              <div onClick={() => setNotifyMentionDm(v => !v)} role="switch" aria-checked={notifyMentionDm}
+              <div onClick={() => setNotifyMentionDm(v => !v)} role="switch" aria-checked={notifyMentionDm} aria-label="MP Discord quand on me mentionne dans une note"
                 className={`w-10 h-5 rounded-full transition-colors shrink-0 ${notifyMentionDm ? 'bg-primary' : 'bg-overlay/10'}`}>
                 <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${notifyMentionDm ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
@@ -556,6 +557,11 @@ export default function Profile() {
               {saving ? 'Sauvegarde…' : 'Sauvegarder'}
             </button>
           </div>
+        </Section>
+
+        {/* Ways to sign in to this account (v4) */}
+        <Section title="Connexion">
+          <LoginMethods />
         </Section>
 
         {/* Security / 2FA */}

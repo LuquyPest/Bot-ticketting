@@ -232,6 +232,11 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
 
 // ── 2FA routes ────────────────────────────────────────────────────────────────
 
+// GET /api/profile/login-methods — how this account signs in (Profil → Connexion)
+router.get('/login-methods', requireAuth, async (req, res, next) => {
+  try { res.json(await require('../../utils/accounts').loginMethods(req.session.user.id)); } catch (err) { next(err); }
+});
+
 router.get('/2fa', requireAuth, async (req, res) => {
   try {
     const [row] = await globalQuery('SELECT totp_enabled FROM user_totp WHERE user_id = ?', [req.session.user.id]);

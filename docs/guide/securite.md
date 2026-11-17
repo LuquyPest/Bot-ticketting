@@ -6,7 +6,8 @@ Le projet a fait l'objet de plusieurs audits, dont un audit OWASP Top 10, tous c
 
 | | |
 |---|---|
-| **Connexion** | Discord OAuth2 uniquement, avec vérification de l'état (anti-CSRF du retour OAuth) |
+| **Comptes** | Un compte par personne, créé à sa première connexion et désactivable ; **Profil → Connexion** liste ses moyens de connexion |
+| **Connexion** | Discord OAuth2 (d'autres moyens arrivent avec la v4), avec vérification de l'état (anti-CSRF du retour OAuth) |
 | **Sessions** | Cookie `Secure`, `HttpOnly`, `SameSite=Lax`, stockées dans Redis, régénérées à chaque changement de droits, révocables depuis le profil |
 | **2FA** | TOTP avec codes de secours, code jamais accepté deux fois, imposable par serveur |
 | **Nouvel appareil** | MP au titulaire du compte : appareil, adresse IP, date |
