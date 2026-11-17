@@ -13,7 +13,7 @@ Tu installes ton instance, tu branches ton bot Discord : il est à toi.
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
-**[Documentation](https://docs.bot.daryu.xyz)** · **[English docs](https://docs.bot.daryu.xyz/en/)** · **[Installer](https://docs.bot.daryu.xyz/guide/installation)** · **[Démo](https://ticket.sunset-fa.fr/demo)** · **[Releases](https://github.com/LuquyPest/Bot-ticketting/releases)**
+**[Documentation](https://docs.bot.daryu.xyz)** · **[English docs](https://docs.bot.daryu.xyz/en/)** · **[Installer](https://docs.bot.daryu.xyz/guide/installation)** · **[Démo](https://ticket.sunset-fa.fr/demo)** · **[Releases](https://github.com/LuquyPest/datick/releases)**
 
 <img src="docs/public/images/dashboard.png" alt="Tableau de bord" width="100%">
 
@@ -53,7 +53,7 @@ Un membre écrit au bot en **message privé** ; sa demande devient un **ticket**
 Il faut un serveur avec Docker, un nom de domaine et une [application Discord](https://discord.com/developers/applications).
 
 ```bash
-git clone https://github.com/LuquyPest/Bot-ticketting.git && cd Bot-ticketting
+git clone https://github.com/LuquyPest/datick.git && cd datick
 scripts/setup.sh                              # quelques questions (FR ou EN) → .env complet, secrets générés
 docker compose pull && docker compose up -d
 ```

@@ -53,4 +53,4 @@ Nginx : `proxy_buffering off;`, `proxy_cache off;`, `proxy_read_timeout 3600s;`.
 
 ## Toujours bloqué ?
 
-Pose ta question dans les [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions), ou ouvre une [issue](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose) avec la version, les étapes et les logs (`docker compose logs bot`) — **sans token ni secret**.
+Pose ta question dans les [Discussions](https://github.com/LuquyPest/datick/discussions), ou ouvre une [issue](https://github.com/LuquyPest/datick/issues/new/choose) avec la version, les étapes et les logs (`docker compose logs bot`) — **sans token ni secret**.

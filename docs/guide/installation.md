@@ -89,8 +89,8 @@ Ils donnent le contrôle de ton bot. S'ils fuient : **Reset Token** / **Reset Se
 ## Étape 4 — Installer et configurer
 
 ```bash
-git clone https://github.com/LuquyPest/Bot-ticketting.git
-cd Bot-ticketting
+git clone https://github.com/LuquyPest/datick.git
+cd datick
 scripts/setup.sh
 ```
 

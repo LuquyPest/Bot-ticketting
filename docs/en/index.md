@@ -22,7 +22,7 @@ hero:
       link: /en/overview
     - theme: alt
       text: GitHub
-      link: https://github.com/LuquyPest/Bot-ticketting
+      link: https://github.com/LuquyPest/datick
 
 features:
   - title: Tickets in direct messages

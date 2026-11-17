@@ -1,6 +1,6 @@
 # Configuration
 
-Everything is set in the **`.env`** file at the root of the repository, created by `scripts/setup.sh`. Each variable is also commented in [`.env.example`](https://github.com/LuquyPest/Bot-ticketting/blob/main/.env.example). The rest — roles, categories, messages, deadlines, webhooks… — is set from the **dashboard** and lives in the database.
+Everything is set in the **`.env`** file at the root of the repository, created by `scripts/setup.sh`. Each variable is also commented in [`.env.example`](https://github.com/LuquyPest/datick/blob/main/.env.example). The rest — roles, categories, messages, deadlines, webhooks… — is set from the **dashboard** and lives in the database.
 
 ::: tip After a change
 `docker compose up -d` is enough: only the container concerned restarts.
@@ -65,7 +65,7 @@ By default `db`, `3306`, `botuser`, `ticketbot_global`: the names from the compo
 
 ## Rare settings: `config.json`
 
-A few settings have no variable. Put them in a `config.json` (template: [`config.example.json`](https://github.com/LuquyPest/Bot-ticketting/blob/main/config.example.json)) and mount it into the container (commented lines of `docker-compose.yml`). Environment variables always win over it.
+A few settings have no variable. Put them in a `config.json` (template: [`config.example.json`](https://github.com/LuquyPest/datick/blob/main/config.example.json)) and mount it into the container (commented lines of `docker-compose.yml`). Environment variables always win over it.
 
 | Key | Default | Role |
 |---|---|---|

@@ -11,7 +11,7 @@ const { getSetting, setSetting } = require('./instanceSettings');
 const { config } = require('./config');
 const logger = require('./logger');
 
-const REPO = 'LuquyPest/Bot-ticketting';
+const REPO = 'LuquyPest/datick';
 const CHECK_KEY = 'update_check';
 const SEEN_KEY = 'updater:seen';        // last poll of the updater { at, tag }
 const REQUEST_KEY = 'updater:request';  // the owner asked for an update { at, by, from, to }

@@ -6,19 +6,19 @@ The bot talks to members in **six languages**: French, English, Spanish, German,
 
 | What | Languages | File |
 |---|---|---|
-| Direct messages from the bot to members | 6 | [`utils/i18n.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/utils/i18n.js) (French, English) and [`utils/locales/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/utils/locales) (`es.js`, `de.js`, `it.js`, `pt.js`) |
-| Replies of the bot to the staff (commands, buttons, channels) | 6 | [`utils/locales/staff.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/utils/locales/staff.js) |
-| Discord commands (descriptions, options, choices) | 6 | [`utils/locales/commands.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/utils/locales/commands.js) |
-| Member space (`/espace`) | 6 | [`dashboard/src/i18n/member.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/dashboard/src/i18n/member.js) |
-| Staff dashboard | French, English | [`dashboard/src/i18n/en.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/dashboard/src/i18n/en.js) |
-| Release notes | French, English | [`dashboard/src/data/patchnotes.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/dashboard/src/data/patchnotes.js) (`titleEn`, `en`) |
-| Documentation | French, English | [`docs/guide/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/docs/guide) and [`docs/en/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/docs/en) |
+| Direct messages from the bot to members | 6 | [`utils/i18n.js`](https://github.com/LuquyPest/datick/blob/main/utils/i18n.js) (French, English) and [`utils/locales/`](https://github.com/LuquyPest/datick/tree/main/utils/locales) (`es.js`, `de.js`, `it.js`, `pt.js`) |
+| Replies of the bot to the staff (commands, buttons, channels) | 6 | [`utils/locales/staff.js`](https://github.com/LuquyPest/datick/blob/main/utils/locales/staff.js) |
+| Discord commands (descriptions, options, choices) | 6 | [`utils/locales/commands.js`](https://github.com/LuquyPest/datick/blob/main/utils/locales/commands.js) |
+| Member space (`/espace`) | 6 | [`dashboard/src/i18n/member.js`](https://github.com/LuquyPest/datick/blob/main/dashboard/src/i18n/member.js) |
+| Staff dashboard | French, English | [`dashboard/src/i18n/en.js`](https://github.com/LuquyPest/datick/blob/main/dashboard/src/i18n/en.js) |
+| Release notes | French, English | [`dashboard/src/data/patchnotes.js`](https://github.com/LuquyPest/datick/blob/main/dashboard/src/data/patchnotes.js) (`titleEn`, `en`) |
+| Documentation | French, English | [`docs/guide/`](https://github.com/LuquyPest/datick/tree/main/docs/guide) and [`docs/en/`](https://github.com/LuquyPest/datick/tree/main/docs/en) |
 
 ## Suggest a fix
 
 **Without installing anything**: open the file on GitHub, click the pencil (*Edit this file*), fix the text, then *Propose changes*: GitHub creates the pull request for you.
 
-**Or simply**: open a [« Translation » issue](https://github.com/LuquyPest/Bot-ticketting/issues/new?template=translation.md) with the current text and your suggestion.
+**Or simply**: open a [« Translation » issue](https://github.com/LuquyPest/datick/issues/new?template=translation.md) with the current text and your suggestion.
 
 ## The rules
 

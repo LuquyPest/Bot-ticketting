@@ -8,7 +8,7 @@ import { data as versions } from '../guide/versions.data.js';
 
 # Versions
 
-Each version has its Docker image (`ghcr.io/luquypest/bot-ticketting:<version>`) and its [release](https://github.com/LuquyPest/Bot-ticketting/releases) page. To update: [Updates](./updates). Notes are in English from v3.0 on; older versions stay in French.
+Each version has its Docker image (`ghcr.io/luquypest/bot-ticketting:<version>`) and its [release](https://github.com/LuquyPest/datick/releases) page. To update: [Updates](./updates). Notes are in English from v3.0 on; older versions stay in French.
 
 <div v-for="v in versions.map(x => x.en)" :key="v.version" class="tb-version">
   <h2 :id="v.version">{{ v.version }} <small>{{ v.date }}</small></h2>

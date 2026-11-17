@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Datick',
     changes: [
       { type: 'new',  text: 'Le projet s\'appelle désormais Datick : interface, e-mails, documentation et README. Le nom affiché reste celui de ton bot Discord quand il y en a un', en: 'The project is now called Datick: interface, e-mails, documentation and README. The name shown is still your Discord bot\'s when there is one' },
+      { type: 'tech', text: 'Le dépôt GitHub s\'appelle LuquyPest/datick (les anciennes adresses redirigent, les git pull existants continuent de marcher) ; la vérification des nouvelles versions interroge le nouveau nom', en: 'The GitHub repository is now LuquyPest/datick (former addresses redirect, existing git pulls keep working); the new-version check queries the new name' },
       { type: 'tech', text: 'Image Docker publiée sous ghcr.io/luquypest/datick et sous l\'ancien nom ghcr.io/luquypest/bot-ticketting pendant toute la v4 ; variable DATICK_VERSION (TICKETBOT_VERSION toujours lue) : rien à changer sur une installation existante', en: 'Docker image published as ghcr.io/luquypest/datick and under the former name ghcr.io/luquypest/bot-ticketting for the whole v4; DATICK_VERSION variable (TICKETBOT_VERSION still read): nothing to change on an existing install' },
     ]
   },

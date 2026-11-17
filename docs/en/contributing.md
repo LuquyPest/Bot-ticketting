@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for your interest in the project. It is under the [AGPL-3.0](https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE) licence: you may install it, modify it and host it for others, provided you publish your changes under the same licence.
+Thanks for your interest in the project. It is under the [AGPL-3.0](https://github.com/LuquyPest/datick/blob/main/LICENSE) licence: you may install it, modify it and host it for others, provided you publish your changes under the same licence.
 
 ## Where to ask, where to report
 
-- **Question, idea, help installing** → [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions) (English welcome).
-- **Bug** → [« Bug » issue](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose), with the version (*Patchnotes* page of the dashboard or image tag), the steps and the logs (`docker compose logs bot`), **without any token or secret**.
+- **Question, idea, help installing** → [Discussions](https://github.com/LuquyPest/datick/discussions) (English welcome).
+- **Bug** → [« Bug » issue](https://github.com/LuquyPest/datick/issues/new/choose), with the version (*Patchnotes* page of the dashboard or image tag), the steps and the logs (`docker compose logs bot`), **without any token or secret**.
 - **Security flaw** → never in public: see [Report a vulnerability](./report-a-vulnerability).
 
 ## Running the project in development

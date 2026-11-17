@@ -1,11 +1,11 @@
 # Contribuer
 
-Merci de t'intéresser au projet. Il est sous licence [AGPL-3.0](https://github.com/LuquyPest/Bot-ticketting/blob/main/LICENSE) : tu peux l'installer, le modifier et l'héberger pour d'autres, à condition de publier tes modifications sous la même licence.
+Merci de t'intéresser au projet. Il est sous licence [AGPL-3.0](https://github.com/LuquyPest/datick/blob/main/LICENSE) : tu peux l'installer, le modifier et l'héberger pour d'autres, à condition de publier tes modifications sous la même licence.
 
 ## Où poser une question, où signaler
 
-- **Question, idée, aide à l'installation** → [Discussions](https://github.com/LuquyPest/Bot-ticketting/discussions).
-- **Bug** → [issue « Bug »](https://github.com/LuquyPest/Bot-ticketting/issues/new/choose), avec la version (page *Patchnotes* du dashboard ou tag de l'image), les étapes et les logs (`docker compose logs bot`), **sans token ni secret**.
+- **Question, idée, aide à l'installation** → [Discussions](https://github.com/LuquyPest/datick/discussions).
+- **Bug** → [issue « Bug »](https://github.com/LuquyPest/datick/issues/new/choose), avec la version (page *Patchnotes* du dashboard ou tag de l'image), les étapes et les logs (`docker compose logs bot`), **sans token ni secret**.
 - **Faille de sécurité** → jamais en public : voir [Signaler une faille](https://docs.bot.daryu.xyz/guide/signaler-une-faille).
 
 ## Lancer le projet en développement
@@ -20,7 +20,7 @@ cd dashboard && npm run dev   # dashboard Vite avec rechargement, proxy vers l'A
 
 ## Avant d'ouvrir une pull request
 
-Les grandes évolutions sont décrites dans [`conception/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/conception) avant d'être codées : la [v4](https://github.com/LuquyPest/Bot-ticketting/blob/main/conception/v4.md) (Discord devient un canal parmi d'autres) y fixe le découpage en pull requests. Une PR de la v4 suit ce découpage et cite son issue.
+Les grandes évolutions sont décrites dans [`conception/`](https://github.com/LuquyPest/datick/tree/main/conception) avant d'être codées : la [v4](https://github.com/LuquyPest/datick/blob/main/conception/v4.md) (Discord devient un canal parmi d'autres) y fixe le découpage en pull requests. Une PR de la v4 suit ce découpage et cite son issue.
 
 ```bash
 npm run test:integration                           # suite d'intégration (MariaDB + Redis jetables)
