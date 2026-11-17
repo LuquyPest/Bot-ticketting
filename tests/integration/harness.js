@@ -3163,6 +3163,57 @@ async function main() {
     nodemailer.createTransport = realCreate;
   }
 
+  // ── Language of the bot for the staff (utils/staffI18n.js, utils/locales/staff.js) ──
+  {
+    const si = app('./utils/staffI18n');
+    const vars = str => [...String(str).matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join(',');
+    const bad = [];
+    for (const [k, v] of Object.entries(si.STRINGS)) {
+      if (!Array.isArray(v) || v.length !== 6 || v.some(x => typeof x !== 'string' || !x)) bad.push(`${k}: 6 textes attendus`);
+      else if (v.some(x => vars(x) !== vars(v[0]))) bad.push(`${k}: variables`);
+    }
+    check('staff: chaque texte en 6 langues, mêmes variables', Object.keys(si.STRINGS).length > 100 && bad.length === 0, JSON.stringify(bad.slice(0, 8)));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { staffLanguage: 'klingon' } });
+    check('staff: langue inconnue refusée', r.status === 400, r.status);
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { staffLanguage: 'de' } });
+    const cfgS = await req('GET', '/api/config', { sid: sessions.F });
+    const Lde = await si.staffT(G);
+    check('staff: allemand enregistré (migration 37) et appliqué', r.status === 200 && cfgS.body.staffLanguage === 'de' && Lde('claim.title') === '✋ Ticket übernommen', JSON.stringify([r.body, cfgS.body.staffLanguage]));
+    // Messages in the channel of a new ticket, and its buttons
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { staffLanguage: 'en' } });
+    const before = sent.length;
+    const resS = await createManager(db, fakeClient, G).createTicket({ id: '200000000000000071', username: 'member71', tag: 'member71', send: async () => {} }, 'Hello', [], 'Lang test', { forceNew: true });
+    const posted = sent.slice(before).map(x => x.p);
+    const card = posted.find(p => p?.embeds?.[0]?.data?.author?.name);
+    const btns = card?.components?.[0]?.components?.map(b => b.data.label) || [];
+    check('staff: salon du ticket en anglais (fiche, boutons)', card?.embeds[0].data.author.name === 'New ticket' && card.embeds[0].data.fields.some(f => f.name === '📂 Subject') && btns.includes('🔒 Close the ticket'), JSON.stringify([card?.embeds?.[0]?.data, btns]));
+    const userMsg = posted.find(p => p?.embeds?.[0]?.data?.author?.name?.endsWith('· user'));
+    check('staff: message du membre recopié avec les mots du staff', !!userMsg, JSON.stringify(posted.map(p => p?.embeds?.[0]?.data?.author)));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [resS.ticket.id]);
+    // Automatic: the reader's Discord language for what only they see, the server's for the rest
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { staffLanguage: 'auto' } });
+    const Lme = await si.forInteraction({ guildId: G, locale: 'es-ES', client: fakeClient });
+    const Lall = await si.forInteraction({ guildId: G, locale: 'es-ES', client: fakeClient }, { shared: true });
+    check('staff: automatique = langue Discord de chacun, sinon celle du serveur', Lme.lang === 'es' && Lme('perm.denied') === '❌ Permiso denegado.' && Lall.lang === 'fr', `${Lme.lang} ${Lall.lang}`);
+    // A refused command answers in that language too
+    const replies = [];
+    const fakeI = { guildId: G, channelId: null, locale: 'it', client: fakeClient, user: { id: '200000000000000072', username: 'nobody' }, reply: async p => { replies.push(p); } };
+    const okPerm = await app('./utils/permissions').ensureSupport(fakeI, fakeClient, db, 'reply_ticket');
+    check('staff: refus de permission dans la langue de la personne', okPerm === false && replies[0]?.content === '❌ Permesso negato.', JSON.stringify(replies));
+    const outS = [];
+    await app('./commands/setup').execute(fakeClient, { guildId: G, locale: 'en-US', client: fakeClient, user: { id: U.F, username: 'F' }, reply: async p => outS.push(p) });
+    const setupTitle = outS[0]?.embeds?.[0]?.data?.title || '';
+    const setupBtns = outS[0]?.components?.[2]?.components?.map(b => b.data.label) || [];
+    check('staff: assistant /setup dans la langue Discord du fondateur', setupTitle === '🧭 Setup — 1/3 · Staff roles' && setupBtns.includes('Continue') && setupBtns.includes('Cancel'), JSON.stringify([setupTitle, setupBtns]));
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { staffLanguage: 'fr' } });
+    // Notes copied from the dashboard never end up in a transcript, whatever their language
+    const { buildTranscripts } = app('./utils/transcript');
+    const mkMsg = (id, content, bot) => ({ id, createdTimestamp: Date.now() + Number(id), content, author: { id: bot ? '1' : '2', tag: bot ? 'Bot' : 'Membre', username: 'x', bot, displayAvatarURL: () => null }, attachments: new Map(), embeds: [] });
+    const fakeCh = { name: 'ticket', messages: { fetch: async () => new (require('discord.js').Collection)([['1', mkMsg('1', 'Bonjour', false)], ['2', mkMsg('2', '📌 **Dashboard note** · F\nSECRET-EN', true)], ['3', mkMsg('3', '📌 **Note dashboard** · F\nSECRET-FR', true)]]) } };
+    const tr = await buildTranscripts(fakeCh, { ticketId: 1 });
+    check('staff: notes internes recopiées du dashboard absentes du transcript', tr.txt.includes('Bonjour') && !tr.txt.includes('SECRET-EN') && !tr.txt.includes('SECRET-FR'), tr.txt);
+  }
+
   // ── Restoring one server (utils/backupRestore.js; the backup service is simulated) ──
   {
     const os = require('os'), fsx = require('fs');

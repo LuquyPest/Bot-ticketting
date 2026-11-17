@@ -11,15 +11,16 @@ module.exports = {
       .addChoices({ name: 'Ouvrir', value: 'open' }, { name: 'Fermer', value: 'close' })),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
     const tm = createManager(db, client, interaction.guildId);
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
-    if (!ticket) return interaction.reply({ content: 'Pas un ticket ouvert.', flags: MessageFlags.Ephemeral });
+    if (!ticket) return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (interaction.options.getString('action') === 'close') {
       const closed = await tm.closeVoiceChannel(ticket.id, interaction.user);
-      return interaction.editReply({ content: closed ? 'Salon vocal fermé.' : 'Ce ticket n\'a pas de salon vocal.' });
+      return interaction.editReply({ content: closed ? L('vocal.closed') : L('vocal.none') });
     }
     const r = await tm.openVoiceChannel(ticket.id, interaction.user);
     await interaction.editReply({ content: r.ok ? `🔊 <#${r.channel.id}>` : `❌ ${r.error}` });

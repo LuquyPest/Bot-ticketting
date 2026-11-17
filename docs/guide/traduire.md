@@ -7,6 +7,7 @@ Le bot parle aux membres en **six langues** : français, anglais, espagnol, alle
 | Quoi | Langues | Fichier |
 |---|---|---|
 | Messages privés du bot aux membres | 6 | [`utils/i18n.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/utils/i18n.js) (français, anglais) et [`utils/locales/`](https://github.com/LuquyPest/Bot-ticketting/tree/main/utils/locales) (`es.js`, `de.js`, `it.js`, `pt.js`) |
+| Réponses du bot au staff (commandes, boutons, salons) | 6 | [`utils/locales/staff.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/utils/locales/staff.js) |
 | Commandes Discord (descriptions, options, choix) | 6 | [`utils/locales/commands.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/utils/locales/commands.js) |
 | Espace membre (`/espace`) | 6 | [`dashboard/src/i18n/member.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/dashboard/src/i18n/member.js) |
 | Dashboard du staff | français, anglais | [`dashboard/src/i18n/en.js`](https://github.com/LuquyPest/Bot-ticketting/blob/main/dashboard/src/i18n/en.js) |

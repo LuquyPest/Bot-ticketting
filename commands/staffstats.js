@@ -16,6 +16,8 @@ module.exports = {
     .setDescription('Affiche les statistiques des admins sur les tickets'),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    const Ls = await require('../utils/staffI18n').forInteraction(interaction, { shared: true });
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureChiefSupport(interaction, client, db))) return;
@@ -23,7 +25,7 @@ module.exports = {
     const stats = await tm.getAdminStats();
 
     if (!stats.length) {
-      return interaction.reply({ content: '❌ Aucune statistique disponible.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('stats.none'), flags: MessageFlags.Ephemeral });
     }
 
     const description = stats.slice(0, 20).map((row, index) => {
@@ -36,16 +38,16 @@ module.exports = {
 
       const lines = [
         `**${index + 1}. ${row.admin_tag}**`,
-        `Claims : **${row.tickets_claimed}** | Fermetures : **${row.tickets_closed}**`,
-        avgResponse !== null ? `Temps de réponse moyen : **${formatDuration(avgResponse)}**` : null,
-        avgRating !== null ? `Note moyenne : **${avgRating}/5** ⭐ (${row.total_ratings} avis)` : null
+        Ls('stats.line', { claims: row.tickets_claimed, closes: row.tickets_closed }),
+        avgResponse !== null ? Ls('stats.response', { d: formatDuration(avgResponse) }) : null,
+        avgRating !== null ? Ls('stats.rating', { avg: avgRating, n: row.total_ratings }) : null
       ].filter(Boolean);
 
       return lines.join('\n');
     }).join('\n\n');
 
     const embed = new EmbedBuilder()
-      .setTitle('📊 Statistiques staff')
+      .setTitle(Ls('stats.title'))
       .setDescription(description)
       .setTimestamp();
 

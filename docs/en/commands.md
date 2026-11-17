@@ -2,7 +2,9 @@
 
 Commands are for the staff, on an active server. They follow the same rules as the dashboard: the account must be *support* or *founder*, a *support* needs the grade permission shown, and in the channel of a restricted ticket, only those who can see it can act. Founders have every right.
 
-Discord shows the descriptions, options and choices of the commands **in the language of each person's Discord app**: English, French, Spanish, German, Italian or Portuguese (English for any other language). Command names stay the same everywhere (`/reply`, `/claim`…); the replies of the bot to the staff are in French.
+Discord shows the descriptions, options and choices of the commands **in the language of each person's Discord app**: English, French, Spanish, German, Italian or Portuguese (English for any other language). Command names stay the same everywhere (`/reply`, `/claim`…)
+
+The **replies of the bot to the staff** (commands, buttons, `/setup`) and its messages in ticket and log channels follow **Settings → General → Bot language for the staff**: French (default), English, Spanish, German, Italian, Portuguese, or **automatic** — each person's Discord language for what only they see, the server's for what everyone sees. It is independent of the language of the messages to members. Detailed error messages coming from the dashboard (move, merge…) stay in French.
 
 ## Setting up the server: `/setup`
 

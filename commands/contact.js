@@ -13,6 +13,7 @@ module.exports = {
     .addStringOption(o => o.setName('sujet').setDescription('Sujet du ticket').setRequired(false).setMaxLength(100)),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'create_ticket'))) return;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -21,6 +22,6 @@ module.exports = {
       client, db, tm, guildId: interaction.guildId, member: interaction.options.getUser('membre'), staff: interaction.user,
       subject: interaction.options.getString('sujet'), message: interaction.options.getString('message'),
     });
-    await interaction.editReply({ content: r.error ? `❌ ${r.error}` : `✅ Ticket #${r.ticket.id} ouvert : <#${r.channel.id}>` });
+    await interaction.editReply({ content: r.error ? `❌ ${r.error}` : L('contact.opened', { id: r.ticket.id, channel: r.channel.virtual ? L('inDashboard') : `<#${r.channel.id}>` }) });
   },
 };

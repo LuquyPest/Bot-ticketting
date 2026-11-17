@@ -18,29 +18,31 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    const Ls = await require('../utils/staffI18n').forInteraction(interaction, { shared: true });
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'manage_participants'))) return;
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: 'Pas un ticket valide.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     }
 
     const user = interaction.options.getUser('utilisateur');
 
     if (user.bot) {
-      return interaction.reply({ content: 'Impossible d ajouter un bot.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('adduser.bot'), flags: MessageFlags.Ephemeral });
     }
 
     if (user.id === ticket.owner_id) {
-      return interaction.reply({ content: 'Cet utilisateur est deja le proprietaire principal du ticket.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('adduser.owner'), flags: MessageFlags.Ephemeral });
     }
 
     const existingOpenTicket = await tm.getAnyOpenTicketForUser(user.id);
     if (existingOpenTicket) {
       return interaction.reply({
-        content: `Impossible d'ajouter ${user.username} : il a deja un ticket ouvert (ticket #${existingOpenTicket.id}). Ferme ce ticket d'abord, ou utilise /removeuser sur son ticket actuel.`,
+        content: L('adduser.busy', { user: user.username, id: existingOpenTicket.id }),
         flags: MessageFlags.Ephemeral
       });
     }
@@ -53,7 +55,7 @@ module.exports = {
       title: t('added.title'), description: t('added.body'), footer: t('reply.footer', { id: ticket.id }),
     })] }));
 
-    await interaction.reply({ content: `Utilisateur ajoute en participant DM lie : ${user.username}`, flags: MessageFlags.Ephemeral });
-    await interaction.channel.send(`--- ${interaction.user.username} : a ajoute ${user.username} comme participant DM lie au ticket`);
+    await interaction.reply({ content: L('adduser.done', { user: user.username }), flags: MessageFlags.Ephemeral });
+    await interaction.channel.send(Ls('adduser.log', { by: interaction.user.username, user: user.username }));
   }
 };

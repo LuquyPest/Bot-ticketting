@@ -69,12 +69,14 @@ async function handleInteraction(client, interaction) {
       // Pending, suspended or maintenance guilds: the bot stays inert (commands, buttons, panels, modals)
       if (interaction.guildId && !(await isGuildOperational(interaction.guildId))) {
         if (interaction.isRepliable()) {
-          await interaction.reply({ content: '❌ Le bot n\'est pas actif sur ce serveur (en attente, suspendu ou en maintenance).', flags: MessageFlags.Ephemeral }).catch(() => null);
+          const L = await require('../utils/staffI18n').forInteraction(interaction);
+          await interaction.reply({ content: L('guildInactive'), flags: MessageFlags.Ephemeral }).catch(() => null);
         }
         return;
       }
       if (interaction.isChatInputCommand() && !interaction.guildId && !client.commands?.get(interaction.commandName)?.dm) {
-        return interaction.reply({ content: 'Cette commande s\'utilise uniquement sur un serveur.', flags: MessageFlags.Ephemeral });
+        const { translate } = require('../utils/staffI18n');
+        return interaction.reply({ content: translate(require('../utils/i18n').fromLocale(interaction.locale), 'guildOnly'), flags: MessageFlags.Ephemeral });
       }
 
       // Setup wizard (/setup): its buttons and select menus
@@ -292,6 +294,7 @@ async function handleInteraction(client, interaction) {
           : interaction.customId.startsWith('ticket_close_with_transcript') ? 'close_ticket'
           : 'view_tickets';
         if (!(await ensureSupport(interaction, client, db, buttonPermission))) return;
+        const L = await require('../utils/staffI18n').forInteraction(interaction);
 
         if (interaction.customId.startsWith('oldtickets_')) {
           const parts = interaction.customId.split('_');
@@ -300,7 +303,7 @@ async function handleInteraction(client, interaction) {
           const currentPage = Number(parts[3]) || 0;
           const tickets = await tm.getOldTicketsByUserId(userId, interaction.user.id);
           if (!tickets.length) {
-            return interaction.reply({ content: 'Aucun ticket trouvé.', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: L('oldtickets.empty'), flags: MessageFlags.Ephemeral });
           }
           let newPage = currentPage;
           if (action === 'prev') newPage -= 1;
@@ -311,32 +314,32 @@ async function handleInteraction(client, interaction) {
 
         const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
         if (!ticket) {
-          return interaction.reply({ content: 'Ce salon n est pas un ticket ouvert.', flags: MessageFlags.Ephemeral });
+          return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
         }
 
         if (interaction.customId === 'ticket_transcript') {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
           const saved = await tm.saveTranscriptSnapshot(interaction.channel, interaction.user);
           if (!saved) {
-            return interaction.editReply({ content: 'Impossible de generer le transcript.' });
+            return interaction.editReply({ content: L('transcript.failed') });
           }
           const token = hostTranscript(saved.html);
           const url = buildUrl(client.config.webServerBaseUrl, token);
-          return interaction.editReply({ content: `Transcript enregistré (ID : ${saved.transcriptId})\nLien valable 10 minutes : ${url}` });
+          return interaction.editReply({ content: L('transcript.saved', { id: saved.transcriptId, url }) });
         }
 
         if (interaction.customId === 'ticket_close_with_transcript') {
-          return interaction.reply({ embeds: [closeConfirmationEmbed()], components: [closeConfirmationButtons()], flags: MessageFlags.Ephemeral });
+          return interaction.reply({ embeds: [closeConfirmationEmbed(L)], components: [closeConfirmationButtons(L)], flags: MessageFlags.Ephemeral });
         }
 
         if (interaction.customId === 'ticket_close_with_transcript_confirm') {
-          await interaction.update({ content: 'Fermeture du ticket et generation du transcript...', embeds: [], components: [] });
+          await interaction.update({ content: L('close.running'), embeds: [], components: [] });
           await tm.closeTicketWithTranscript(interaction.channel, interaction.user);
           return;
         }
 
         if (interaction.customId === 'ticket_close_with_transcript_cancel') {
-          return interaction.update({ content: 'Fermeture annulee.', embeds: [], components: [] });
+          return interaction.update({ content: L('close.cancelled'), embeds: [], components: [] });
         }
       }
 

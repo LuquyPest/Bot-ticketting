@@ -5,28 +5,31 @@ const {
   ButtonStyle
 } = require('discord.js');
 
-function ticketButtons() {
+const fr = key => require('./staffI18n').translate('fr', key);
+
+// L: staff texts (utils/staffI18n.js), French by default
+function ticketButtons(L = fr) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('ticket_close_with_transcript')
-      .setLabel('🔒 Fermer le ticket')
+      .setLabel(L('btn.close'))
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('ticket_transcript')
-      .setLabel('📋 Transcript')
+      .setLabel(L('btn.transcript'))
       .setStyle(ButtonStyle.Secondary)
   );
 }
 
-function closeConfirmationButtons() {
+function closeConfirmationButtons(L = fr) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('ticket_close_with_transcript_confirm')
-      .setLabel('Confirmer')
+      .setLabel(L('btn.confirm'))
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('ticket_close_with_transcript_cancel')
-      .setLabel('Annuler')
+      .setLabel(L('btn.cancel'))
       .setStyle(ButtonStyle.Secondary)
   );
 }

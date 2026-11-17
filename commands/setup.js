@@ -12,7 +12,8 @@ const { parseJsonField } = require('../utils/jsonField');
 const TTL_S = 15 * 60;
 const key = (guildId, userId) => `setup:${guildId}:${userId}`;
 const redis = () => require('../utils/redis').getRedis();
-const CATEGORY_NAMES = { open: '📨 Tickets ouverts', waiting: '⏳ Tickets en attente', progress: '🛠️ Tickets en cours' };
+const CATEGORY_KEYS = { open: 'setup.catNameOpen', waiting: 'setup.catNameWaiting', progress: 'setup.catNameProgress' };
+const FR = key => require('../utils/staffI18n').translate('fr', key);
 
 async function loadState(guildId, userId) {
   try { return JSON.parse(await redis().get(key(guildId, userId))) || null; } catch { return null; }
@@ -28,61 +29,61 @@ async function isFounder(client, db, userId) {
   return require('../utils/instance').isOwner(client, userId).catch(() => false);
 }
 
-const embed = (step, title, description) => new EmbedBuilder()
-  .setColor(0x2f6feb).setTitle(`🧭 Configuration — ${step}/3 · ${title}`).setDescription(description);
+const embed = (L, step, title, description) => new EmbedBuilder()
+  .setColor(0x2f6feb).setTitle(L('setup.step', { step, title })).setDescription(description);
 const btn = (id, label, style = ButtonStyle.Secondary, disabled = false) =>
   new ButtonBuilder().setCustomId(`setup:${id}`).setLabel(label).setStyle(style).setDisabled(disabled);
 
-function stepRoles(state) {
-  const support = new RoleSelectMenuBuilder().setCustomId('setup:support').setPlaceholder('Rôles support (accès aux tickets)').setMinValues(0).setMaxValues(10);
-  const chief = new RoleSelectMenuBuilder().setCustomId('setup:chief').setPlaceholder('Rôles chef support (facultatif)').setMinValues(0).setMaxValues(10);
+function stepRoles(state, L = FR) {
+  const support = new RoleSelectMenuBuilder().setCustomId('setup:support').setPlaceholder(L('setup.supportPh')).setMinValues(0).setMaxValues(10);
+  const chief = new RoleSelectMenuBuilder().setCustomId('setup:chief').setPlaceholder(L('setup.chiefPh')).setMinValues(0).setMaxValues(10);
   if (state.support.length) support.setDefaultRoles(state.support.slice(0, 10));
   if (state.chief.length) chief.setDefaultRoles(state.chief.slice(0, 10));
   return {
-    embeds: [embed(1, 'Rôles du staff', 'Les membres qui ont ces rôles Discord voient les tickets et obtiennent un compte sur le dashboard à leur connexion.\n\nChoisis au moins un rôle support.')],
+    embeds: [embed(L, 1, L('setup.rolesTitle'), L('setup.rolesBody'))],
     components: [
       new ActionRowBuilder().addComponents(support),
       new ActionRowBuilder().addComponents(chief),
-      new ActionRowBuilder().addComponents(btn('next1', 'Continuer', ButtonStyle.Primary, !state.support.length), btn('cancel', 'Annuler')),
+      new ActionRowBuilder().addComponents(btn('next1', L('setup.continue'), ButtonStyle.Primary, !state.support.length), btn('cancel', L('btn.cancel'))),
     ],
   };
 }
 
-function stepCategories(state) {
+function stepCategories(state, L = FR) {
   const pick = (id, ph, value) => {
     const m = new ChannelSelectMenuBuilder().setCustomId(`setup:${id}`).setPlaceholder(ph).setChannelTypes(ChannelType.GuildCategory).setMinValues(0).setMaxValues(1);
     if (value) m.setDefaultChannels([value]);
     return new ActionRowBuilder().addComponents(m);
   };
   return {
-    embeds: [embed(2, 'Catégories des tickets', 'Une catégorie Discord par étape : changer l\'étape d\'un ticket déplace son salon.\n\nChoisis des catégories existantes, ou laisse le bot les créer (masquées à tout le monde sauf au staff).')],
+    embeds: [embed(L, 2, L('setup.catsTitle'), L('setup.catsBody'))],
     components: [
-      pick('cat_open', 'Catégorie « Ouvert »', state.categories.open),
-      pick('cat_waiting', 'Catégorie « En attente » (facultatif)', state.categories.waiting),
-      pick('cat_progress', 'Catégorie « En cours » (facultatif)', state.categories.progress),
+      pick('cat_open', L('setup.catOpen'), state.categories.open),
+      pick('cat_waiting', L('setup.catWaiting'), state.categories.waiting),
+      pick('cat_progress', L('setup.catProgress'), state.categories.progress),
       new ActionRowBuilder().addComponents(
-        btn('create_cats', 'Créer les catégories pour moi', ButtonStyle.Success),
-        btn('next2', 'Continuer', ButtonStyle.Primary, !state.categories.open),
-        btn('back1', 'Retour'),
+        btn('create_cats', L('setup.createCats'), ButtonStyle.Success),
+        btn('next2', L('setup.continue'), ButtonStyle.Primary, !state.categories.open),
+        btn('back1', L('setup.back')),
       ),
     ],
   };
 }
 
-function stepPanel(state) {
-  const m = new ChannelSelectMenuBuilder().setCustomId('setup:panel').setPlaceholder('Salon du panel (facultatif)').setChannelTypes(ChannelType.GuildText).setMinValues(0).setMaxValues(1);
+function stepPanel(state, L = FR) {
+  const m = new ChannelSelectMenuBuilder().setCustomId('setup:panel').setPlaceholder(L('setup.panelPh')).setChannelTypes(ChannelType.GuildText).setMinValues(0).setMaxValues(1);
   if (state.panelChannel) m.setDefaultChannels([state.panelChannel]);
   return {
-    embeds: [embed(3, 'Panel', 'Un message avec un bouton « Ouvrir un ticket », dans le salon de ton choix. Les membres peuvent aussi toujours écrire au bot en message privé.\n\nChoisis un salon, ou termine sans panel.')],
+    embeds: [embed(L, 3, 'Panel', L('setup.panelBody'))],
     components: [
       new ActionRowBuilder().addComponents(m),
-      new ActionRowBuilder().addComponents(btn('finish', 'Terminer', ButtonStyle.Success), btn('back2', 'Retour')),
+      new ActionRowBuilder().addComponents(btn('finish', L('setup.finish'), ButtonStyle.Success), btn('back2', L('setup.back'))),
     ],
   };
 }
 
 // Creates the three stage categories, hidden from @everyone, visible to the bot and the staff roles
-async function createCategories(client, guildId, roleIds) {
+async function createCategories(client, guildId, roleIds, L = FR) {
   const guild = await client.guilds.fetch(guildId);
   const view = [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory];
   const overwrites = [
@@ -91,15 +92,15 @@ async function createCategories(client, guildId, roleIds) {
     ...roleIds.map(id => ({ id, allow: view })),
   ];
   const out = {};
-  for (const [k, name] of Object.entries(CATEGORY_NAMES)) {
-    const c = await guild.channels.create({ name, type: ChannelType.GuildCategory, permissionOverwrites: overwrites, reason: 'Assistant /setup' });
+  for (const [k, nameKey] of Object.entries(CATEGORY_KEYS)) {
+    const c = await guild.channels.create({ name: L(nameKey), type: ChannelType.GuildCategory, permissionOverwrites: overwrites, reason: 'Assistant /setup' });
     out[k] = c.id;
   }
   return out;
 }
 
 // Saves the settings and posts the panel. Returns { error } or { ok, panel: { channelId, messageId } | null }
-async function applySetup(client, guildId, user, state) {
+async function applySetup(client, guildId, user, state, L = FR) {
   const db = getTenantDb(guildId);
   const { applyConfigUpdates } = require('../web/routes/config');
   const fakeReq = { session: { user: { id: user.id, username: user.username } }, guildDb: db, guildId, app: { locals: { client } } };
@@ -115,7 +116,7 @@ async function applySetup(client, guildId, user, state) {
   if (state.panelChannel) {
     const { fetchGuildChannel } = require('../utils/discordGuard');
     const ch = await fetchGuildChannel(client, guildId, state.panelChannel);
-    if (!ch?.isTextBased?.()) return { error: 'Salon du panel introuvable' };
+    if (!ch?.isTextBased?.()) return { error: L('setup.panelMissing') };
     const ins = await db("INSERT INTO ticket_panels (name, title, description, color, footer_text, image_url) VALUES ('Panel (assistant /setup)', 'Support', ?, '#2f6feb', NULL, NULL)",
       ['Besoin d\'aide ? Clique sur le bouton : la conversation continue en message privé avec le bot.']);
     const panelId = ins.insertId;
@@ -132,18 +133,18 @@ async function applySetup(client, guildId, user, state) {
   return { ok: true, panel };
 }
 
-function summary(state, result) {
+function summary(state, result, L = FR) {
   const { config } = require('../utils/config');
   const lines = [
-    `**Rôles support** : ${state.support.map(id => `<@&${id}>`).join(', ')}`,
-    state.chief.length ? `**Chef support** : ${state.chief.map(id => `<@&${id}>`).join(', ')}` : null,
-    `**Catégories** : ${['open', 'waiting', 'progress'].map(k => (state.categories[k] ? `<#${state.categories[k]}>` : '—')).join(' · ')}`,
-    result.panel ? `**Panel** : publié dans <#${result.panel.channelId}>` : '**Panel** : aucun (les membres écrivent au bot en MP)',
+    L('setup.sumSupport', { roles: state.support.map(id => `<@&${id}>`).join(', ') }),
+    state.chief.length ? L('setup.sumChief', { roles: state.chief.map(id => `<@&${id}>`).join(', ') }) : null,
+    L('setup.sumCats', { list: ['open', 'waiting', 'progress'].map(k => (state.categories[k] ? `<#${state.categories[k]}>` : '—')).join(' · ') }),
+    result.panel ? L('setup.sumPanel', { channel: `<#${result.panel.channelId}>` }) : L('setup.sumNoPanel'),
     '',
-    'Le support est prêt : un message privé au bot ouvre un ticket.',
-    config.webServerBaseUrl ? `La suite (sujets, messages, grades, FAQ) se règle sur le dashboard : ${config.webServerBaseUrl}` : null,
+    L('setup.ready'),
+    config.webServerBaseUrl ? L('setup.next', { url: config.webServerBaseUrl }) : null,
   ].filter(l => l !== null);
-  return { embeds: [new EmbedBuilder().setColor(0x2ecc71).setTitle('✅ Configuration terminée').setDescription(lines.join('\n'))], components: [] };
+  return { embeds: [new EmbedBuilder().setColor(0x2ecc71).setTitle(L('setup.done')).setDescription(lines.join('\n'))], components: [] };
 }
 
 module.exports = {
@@ -154,8 +155,9 @@ module.exports = {
 
   async execute(client, interaction) {
     const db = getTenantDb(interaction.guildId);
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     if (!(await isFounder(client, db, interaction.user.id))) {
-      return interaction.reply({ content: '❌ Réservé aux fondateurs du serveur.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('setup.founders'), flags: MessageFlags.Ephemeral });
     }
     const [cfg] = await db('SELECT support_role_ids, chief_role_ids, ticket_category_id, waiting_category_id, in_progress_category_id FROM guild_config WHERE id = 1');
     const state = {
@@ -164,47 +166,50 @@ module.exports = {
       panelChannel: null,
     };
     await saveState(interaction.guildId, interaction.user.id, state);
-    return interaction.reply({ ...stepRoles(state), flags: MessageFlags.Ephemeral });
+    return interaction.reply({ ...stepRoles(state, L), flags: MessageFlags.Ephemeral });
   },
 
   // Buttons and select menus of the wizard (customId « setup:… »)
   async handleComponent(client, interaction) {
     const { guildId, user } = interaction;
     const db = getTenantDb(guildId);
-    if (!(await isFounder(client, db, user.id))) return interaction.reply({ content: '❌ Réservé aux fondateurs du serveur.', flags: MessageFlags.Ephemeral });
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    // Category names are seen by everyone on the server: the server's language in « auto »
+    const Ls = await require('../utils/staffI18n').forInteraction(interaction, { shared: true });
+    if (!(await isFounder(client, db, user.id))) return interaction.reply({ content: L('setup.founders'), flags: MessageFlags.Ephemeral });
     const state = await loadState(guildId, user.id);
-    if (!state) return interaction.update({ content: '⌛ Assistant expiré : relance `/setup`.', embeds: [], components: [] });
+    if (!state) return interaction.update({ content: L('setup.expired'), embeds: [], components: [] });
     const id = interaction.customId.slice('setup:'.length);
     const values = interaction.values || [];
 
-    if (id === 'support' || id === 'chief') { state[id] = values; await saveState(guildId, user.id, state); return interaction.update(stepRoles(state)); }
+    if (id === 'support' || id === 'chief') { state[id] = values; await saveState(guildId, user.id, state); return interaction.update(stepRoles(state, L)); }
     if (id.startsWith('cat_')) {
       state.categories[{ cat_open: 'open', cat_waiting: 'waiting', cat_progress: 'progress' }[id]] = values[0] || null;
-      await saveState(guildId, user.id, state); return interaction.update(stepCategories(state));
+      await saveState(guildId, user.id, state); return interaction.update(stepCategories(state, L));
     }
-    if (id === 'panel') { state.panelChannel = values[0] || null; await saveState(guildId, user.id, state); return interaction.update(stepPanel(state)); }
-    if (id === 'cancel') { await redis().del(key(guildId, user.id)); return interaction.update({ content: 'Assistant annulé : rien n\'a été modifié.', embeds: [], components: [] }); }
-    if (id === 'next1') return interaction.update(stepCategories(state));
-    if (id === 'back1') return interaction.update(stepRoles(state));
-    if (id === 'next2') return interaction.update(stepPanel(state));
-    if (id === 'back2') return interaction.update(stepCategories(state));
+    if (id === 'panel') { state.panelChannel = values[0] || null; await saveState(guildId, user.id, state); return interaction.update(stepPanel(state, L)); }
+    if (id === 'cancel') { await redis().del(key(guildId, user.id)); return interaction.update({ content: L('setup.cancelled'), embeds: [], components: [] }); }
+    if (id === 'next1') return interaction.update(stepCategories(state, L));
+    if (id === 'back1') return interaction.update(stepRoles(state, L));
+    if (id === 'next2') return interaction.update(stepPanel(state, L));
+    if (id === 'back2') return interaction.update(stepCategories(state, L));
     if (id === 'create_cats') {
       await interaction.deferUpdate();
       try {
-        state.categories = await createCategories(client, guildId, [...new Set([...state.support, ...state.chief])]);
+        state.categories = await createCategories(client, guildId, [...new Set([...state.support, ...state.chief])], Ls);
         state.createdCategories = true;
       } catch (err) {
-        return interaction.editReply({ ...stepCategories(state), content: `❌ Création impossible (le bot a-t-il « Gérer les salons » ?) : ${err.message}` });
+        return interaction.editReply({ ...stepCategories(state, L), content: L('setup.createFailed', { error: err.message }) });
       }
       await saveState(guildId, user.id, state);
-      return interaction.editReply({ ...stepPanel(state), content: '✅ Catégories créées.' });
+      return interaction.editReply({ ...stepPanel(state, L), content: L('setup.catsCreated') });
     }
     if (id === 'finish') {
       await interaction.deferUpdate();
-      const result = await applySetup(client, guildId, user, state).catch(err => ({ error: err.message }));
-      if (result.error) return interaction.editReply({ ...stepPanel(state), content: `❌ ${result.error}` });
+      const result = await applySetup(client, guildId, user, state, L).catch(err => ({ error: err.message }));
+      if (result.error) return interaction.editReply({ ...stepPanel(state, L), content: `❌ ${result.error}` });
       await redis().del(key(guildId, user.id));
-      return interaction.editReply({ content: '', ...summary(state, result) });
+      return interaction.editReply({ content: '', ...summary(state, result, L) });
     }
     return interaction.deferUpdate();
   },

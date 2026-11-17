@@ -29,18 +29,19 @@ module.exports = {
   },
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'close_ticket'))) return;
     const can = await staffPermissionChecker(db, interaction.user.id);
-    if (!can('reply_ticket')) return interaction.reply({ content: '❌ Ton grade ne donne pas la permission « Répondre aux tickets ».', flags: MessageFlags.Ephemeral });
+    if (!can('reply_ticket')) return interaction.reply({ content: L('perm.grade', { perm: L('perm.reply_ticket') }), flags: MessageFlags.Ephemeral });
 
     const { ticket, list } = await candidates(db, interaction.channelId, interaction.user.id);
-    if (!ticket) return interaction.reply({ content: 'Pas un salon ticket.', flags: MessageFlags.Ephemeral });
+    if (!ticket) return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     const target = list.find(t => t.id === interaction.options.getInteger('ticket', true));
-    if (!target) return interaction.reply({ content: 'Ticket cible invalide : choisis un autre ticket ouvert de ce membre.', flags: MessageFlags.Ephemeral });
+    if (!target) return interaction.reply({ content: L('merge.badTarget'), flags: MessageFlags.Ephemeral });
 
     // This channel is deleted by the merge: answer first
-    await interaction.reply({ content: `🔀 Fusion dans le ticket #${target.id} en cours…`, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: L('merge.running', { id: target.id }), flags: MessageFlags.Ephemeral });
     const result = await createManager(db, client, interaction.guildId).mergeTickets(ticket.id, target.id, interaction.user);
     if (!result.ok) await interaction.followUp({ content: `❌ ${result.error}`, flags: MessageFlags.Ephemeral }).catch(() => null);
   },

@@ -28,9 +28,8 @@ async function runInactiveCheck(client) {
       for (const ticket of toWarn) {
         const channel = await tm.channelOf(ticket);
         if (!channel) continue;
-        await channel.send(
-          `⚠️ Ce ticket est inactif depuis plus de ${warningHours}h. Il sera fermé automatiquement dans ${closeHours - warningHours}h si aucun message n'est envoyé.`
-        ).catch(() => null);
+        const L = await require('./staffI18n').staffT(guild_id, { client });
+        await channel.send(L('inactive.warn', { h: warningHours, left: closeHours - warningHours })).catch(() => null);
         await tm.markWarnedInactive(ticket.id);
       }
 
