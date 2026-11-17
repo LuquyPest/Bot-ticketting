@@ -60,7 +60,7 @@ async function safePostJson(webhookUrl, body, extraHeaders = {}) {
   const headers = {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
-    'User-Agent': 'TicketBot/1.0',
+    'User-Agent': 'Datick/1.0',
     'Host': url.hostname,
     ...extraHeaders,
   };

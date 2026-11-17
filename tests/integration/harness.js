@@ -3163,6 +3163,15 @@ async function main() {
     nodemailer.createTransport = realCreate;
   }
 
+  // ── Datick: the name shown without a Discord bot, the release publishes both image names ──
+  {
+    const inst = app('./utils/instance');
+    const wf = require('fs').readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
+    const compose = require('fs').readFileSync(path.join(ROOT, 'docker-compose.yml'), 'utf8');
+    check('datick: nom par défaut sans bot Discord, nom du bot sinon', inst.instanceName(null) === 'Datick' && inst.instanceName({ user: { username: 'Mon bot' } }) === 'Mon bot', '');
+    check('datick: image publiée sous le nouveau et l ancien nom, DATICK_VERSION avec repli', /\/datick"/.test(wf) && /\/bot-ticketting"/.test(wf) && compose.includes('${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}'), '');
+  }
+
   // ── Language of the bot for the staff (utils/staffI18n.js, utils/locales/staff.js) ──
   {
     const si = app('./utils/staffI18n');

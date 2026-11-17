@@ -23,7 +23,7 @@ Avec le service `updater`, un bouton **Mettre à jour** apparaît dans **Instanc
 Pour redémarrer le bot, le service `updater` a accès au socket Docker, ce qui revient à être administrateur de la machine. Il est donc séparé du bot : il ne fait que demander au bot, sur le réseau Docker interne et avec `UPDATER_TOKEN`, si une mise à jour a été demandée, puis tire l'image du bot et recrée ce seul conteneur. Il n'exécute rien de ce que le bot lui envoie. Si tu préfères, laisse-le de côté et mets à jour à la main.
 :::
 
-Le bouton n'apparaît pas avec une version épinglée (`TICKETBOT_VERSION=v3.0.7`) : change la valeur dans `.env`. Il ne concerne que l'image publiée : si tu construis l'image toi-même depuis les sources, mets à jour avec `git pull && docker compose up -d --build`.
+Le bouton n'apparaît pas avec une version épinglée (`DATICK_VERSION=v3.0.7`) : change la valeur dans `.env`. Il ne concerne que l'image publiée : si tu construis l'image toi-même depuis les sources, mets à jour avec `git pull && docker compose up -d --build`.
 
 ## Mise à jour à la main
 
@@ -35,11 +35,11 @@ docker compose logs -f bot                     # « Tout est prêt » = terminé
 
 Les **migrations de base de données s'appliquent toutes seules** au démarrage, pour la base globale et pour chaque serveur Discord, une seule fois chacune et dans l'ordre. Aucune commande à lancer, aucune interruption pour les membres : le bot est indisponible le temps du redémarrage (quelques secondes), les messages privés reçus pendant ce temps sont lus à la reprise.
 
-Pour rester sur une version précise, mets `TICKETBOT_VERSION=v3.0` dans `.env` au lieu de `latest` ; la mise à jour se fait alors en changeant cette valeur.
+Pour rester sur une version précise, mets `DATICK_VERSION=v3.0` dans `.env` au lieu de `latest` ; la mise à jour se fait alors en changeant cette valeur.
 
 ## Revenir en arrière
 
-Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `TICKETBOT_VERSION=` suivi de la version précédente dans `.env`, puis `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc`.
+Une version antérieure ne connaît pas les migrations plus récentes mais les tolère presque toujours (colonnes en plus). Si une version pose problème : `DATICK_VERSION=` suivi de la version précédente dans `.env`, puis `docker compose up -d`. En cas de doute, restaure la sauvegarde faite avant la mise à jour : `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc`.
 
 ## Sauvegardes chiffrées (v3.0.4)
 

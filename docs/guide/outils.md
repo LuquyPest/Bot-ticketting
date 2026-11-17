@@ -24,7 +24,7 @@ Chaque secret se génère avec `openssl rand -hex 32` (64 caractères hexadécim
 | `SESSION_SECRET` | `openssl rand -hex 32` |
 | `ENCRYPTION_KEY` | `openssl rand -hex 32` — **garde-la hors du serveur** : sans elle, les transcripts sont illisibles |
 | `WEB_PORT` | Port du dashboard sur la machine (3000 par défaut), vers lequel pointe ton reverse proxy |
-| `TICKETBOT_VERSION` | `latest`, ou une version précise |
+| `DATICK_VERSION` | `latest`, ou une version précise |
 
 Dans le portail Discord, ajoute ensuite `PUBLIC_URL` + `/api/auth/discord/callback` aux *Redirects* OAuth2.
 

@@ -16,7 +16,7 @@ const sessions = {
   'install-setup': [
     ['git clone https://github.com/LuquyPest/Bot-ticketting.git && cd Bot-ticketting', 'cmd'],
     ['scripts/setup.sh', 'cmd'],
-    ['── Ticket Bot : configuration ──────────────────────────────────────────', 'dim'],
+    ['── Datick : configuration ──────────────────────────────────────────', 'dim'],
     ["Crée d'abord l'application sur https://discord.com/developers/applications", 'dim'],
     ['', ''],
     ['Token du bot Discord : ', 'p', '(saisie masquée)'],

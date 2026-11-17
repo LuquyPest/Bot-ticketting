@@ -168,7 +168,7 @@ What comes next — subjects, messages, grades, FAQ, panels: [First steps](./fir
 | Read the logs | `docker compose logs -f bot` |
 | Restart the bot | `docker compose restart bot` |
 | Stop everything | `docker compose down` (the data stays) |
-| Stay on a version | `TICKETBOT_VERSION=v3.1.0` in `.env` instead of `latest` |
+| Stay on a version | `DATICK_VERSION=v3.1.0` in `.env` instead of `latest` |
 
 ::: details Installing without the script
 Copy `.env.example` to `.env` and fill it in: every variable is commented there, and all of them are described in [Configuration](./configuration). Generate each secret with `openssl rand -hex 32`.

@@ -144,7 +144,7 @@ function VersionCard() {
       {u.available && !u.updater.connected && (
         <p className="mt-3 text-[11px] text-ink-3">Pour mettre à jour : <code className="text-ink-2">docker compose pull && docker compose up -d</code> sur le serveur. Pour un bouton ici, ajoute le service <code className="text-ink-2">docker-compose.updater.yml</code> (<a href="https://docs.bot.daryu.xyz/guide/mise-a-jour" target="_blank" rel="noopener noreferrer" className="text-primary-light hover:underline">guide</a>).</p>
       )}
-      {u.available && u.updater.pinned && <p className="mt-3 text-[11px] text-ink-3">Version épinglée : <code className="text-ink-2">TICKETBOT_VERSION={u.updater.pinned}</code> dans .env. Remplace-la par <code className="text-ink-2">latest</code> ou par la nouvelle version.</p>}
+      {u.available && u.updater.pinned && <p className="mt-3 text-[11px] text-ink-3">Version épinglée : <code className="text-ink-2">DATICK_VERSION={u.updater.pinned}</code> dans .env. Remplace-la par <code className="text-ink-2">latest</code> ou par la nouvelle version.</p>}
     </div>
   );
 }

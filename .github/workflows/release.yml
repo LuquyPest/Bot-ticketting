@@ -74,7 +74,12 @@ jobs:
 
       - name: Nom de l'image (minuscules)
         id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+        # Datick (v4): published under the new name and the old one, so that existing installs keep
+        # updating without touching their .env (conception/v4.md §3.6)
+        run: |
+          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "brand=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/datick" >> "$GITHUB_OUTPUT"
+          echo "legacy=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/bot-ticketting" >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -93,7 +98,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ${{ steps.image.outputs.name }}
+          images: |
+            ${{ steps.image.outputs.brand }}
+            ${{ steps.image.outputs.legacy }}
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}
@@ -106,13 +113,14 @@ jobs:
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "$IMAGE@sha256:%s " *)
-          docker buildx imagetools inspect "$IMAGE:$GITHUB_REF_NAME"
+          docker buildx imagetools inspect "${{ steps.image.outputs.brand }}:$GITHUB_REF_NAME"
+          docker buildx imagetools inspect "${{ steps.image.outputs.legacy }}:$GITHUB_REF_NAME"
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: Notes de version depuis les patchnotes
-        run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" "${{ steps.image.outputs.name }}" > notes.md && cat notes.md
+        run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" "${{ steps.image.outputs.brand }}" > notes.md && cat notes.md
 
       - name: Release GitHub
         env:

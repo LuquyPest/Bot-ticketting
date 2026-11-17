@@ -1,15 +1,15 @@
 ---
 layout: home
-title: Ticket Bot
+title: Datick
 titleTemplate: Discord support through direct messages
 
 hero:
-  name: Ticket Bot
+  name: Datick
   text: Discord support through direct messages.
   tagline: Members DM the bot, your team answers from Discord or from a real-time web dashboard. You host it yourself, plug in your own Discord bot, and it depends on no one.
   image:
     src: /images/dashboard.png
-    alt: Ticket Bot dashboard
+    alt: Datick dashboard
   actions:
     - theme: brand
       text: Install in 20 minutes

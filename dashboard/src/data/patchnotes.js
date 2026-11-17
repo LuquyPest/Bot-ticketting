@@ -10,13 +10,23 @@ export const TAG = {
 // titleEn and an « en » text per change; older versions stay in French.
 const MONTHS = { janvier: 'January', février: 'February', mars: 'March', avril: 'April', mai: 'May', juin: 'June', juillet: 'July', août: 'August', septembre: 'September', octobre: 'October', novembre: 'November', décembre: 'December' };
 export const TAG_EN = { new: 'New', fix: 'Fix', impr: 'Improvement', tech: 'Technical' };
-export const dateEn = d => String(d).replace(/[a-zéû]+/g, m => MONTHS[m] || m);
+export const dateEn = d => (d === 'à venir' ? 'upcoming' : String(d).replace(/[a-zéû]+/g, m => MONTHS[m] || m));
 export function localizedVersion(v, lang) {
   if (lang !== 'en' || !v.titleEn) return v;
   return { ...v, title: v.titleEn, date: dateEn(v.date), changes: v.changes.map(c => ({ ...c, text: c.en || c.text })) };
 }
 
 export const VERSIONS = [
+  {
+    version: 'v4.0.0',
+    date: 'à venir',
+    title: 'Datick',
+    titleEn: 'Datick',
+    changes: [
+      { type: 'new',  text: 'Le projet s\'appelle désormais Datick : interface, e-mails, documentation et README. Le nom affiché reste celui de ton bot Discord quand il y en a un', en: 'The project is now called Datick: interface, e-mails, documentation and README. The name shown is still your Discord bot\'s when there is one' },
+      { type: 'tech', text: 'Image Docker publiée sous ghcr.io/luquypest/datick et sous l\'ancien nom ghcr.io/luquypest/bot-ticketting pendant toute la v4 ; variable DATICK_VERSION (TICKETBOT_VERSION toujours lue) : rien à changer sur une installation existante', en: 'Docker image published as ghcr.io/luquypest/datick and under the former name ghcr.io/luquypest/bot-ticketting for the whole v4; DATICK_VERSION variable (TICKETBOT_VERSION still read): nothing to change on an existing install' },
+    ]
+  },
   {
     version: 'v3.3.0',
     date: '17 novembre 2026',

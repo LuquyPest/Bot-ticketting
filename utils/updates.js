@@ -63,7 +63,7 @@ async function updateState() {
   const seen = await readJson(SEEN_KEY);
   const status = await readJson(STATUS_KEY);
   const connected = !!(seen && Date.now() - seen.at < UPDATER_ALIVE_MS);
-  // Pinned: TICKETBOT_VERSION is a precise version, a pull keeps the same image
+  // Pinned: DATICK_VERSION (or the older TICKETBOT_VERSION) is a precise version, a pull keeps the same image
   const pinned = connected && seen.tag && seen.tag !== 'latest' ? seen.tag : null;
   return {
     current: `v${current}`,
@@ -82,7 +82,7 @@ async function updateState() {
 async function requestUpdate(owner) {
   const state = await updateState();
   if (!state.updater.connected) throw Object.assign(new Error('Le service de mise à jour n\'est pas en marche'), { status: 409 });
-  if (state.updater.pinned) throw Object.assign(new Error(`Version épinglée (TICKETBOT_VERSION=${state.updater.pinned}) : change-la dans .env`), { status: 409 });
+  if (state.updater.pinned) throw Object.assign(new Error(`Version épinglée (DATICK_VERSION=${state.updater.pinned}) : change-la dans .env`), { status: 409 });
   if (state.status && ['requested', 'running'].includes(state.status.state) && Date.now() - state.status.at < RUNNING_TIMEOUT_MS) {
     throw Object.assign(new Error('Une mise à jour est déjà en cours'), { status: 409 });
   }

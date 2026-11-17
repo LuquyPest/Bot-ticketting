@@ -1,4 +1,4 @@
-# Ticket Bot — a single compose file, without the rest of the repository: for Portainer (Stacks →
+# Datick — a single compose file, without the rest of the repository: for Portainer (Stacks →
 # Web editor), Unraid (Docker Compose Manager), Dockge, Synology Container Manager…
 # Guide: https://docs.bot.daryu.xyz/guide/outils
 #
@@ -55,7 +55,7 @@ services:
       start_period: 30s
 
   bot:
-    image: ghcr.io/luquypest/bot-ticketting:${TICKETBOT_VERSION:-latest}
+    image: ghcr.io/luquypest/bot-ticketting:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN:?DISCORD_TOKEN manquant}

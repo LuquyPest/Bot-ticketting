@@ -96,7 +96,7 @@ const guideEn = [
 export default withMermaid(defineConfig({
   base,
   lang: 'fr-FR',
-  title: 'Ticket Bot',
+  title: 'Datick',
   description: 'Le support Discord par messages privés, piloté depuis un dashboard web. Logiciel libre, à héberger soi-même.',
   cleanUrls: true,
   lastUpdated: true,
@@ -106,7 +106,7 @@ export default withMermaid(defineConfig({
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}logo.svg` }],
     ['meta', { name: 'theme-color', content: '#2f6feb' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: 'Ticket Bot — support Discord par messages privés' }],
+    ['meta', { property: 'og:title', content: 'Datick — le support de ta communauté, sur Discord et par e-mail' }],
     ['meta', { property: 'og:description', content: 'Tickets Discord en MP, dashboard web temps réel, à héberger soi-même. Libre (AGPL-3.0).' }],
     ['meta', { property: 'og:image', content: 'https://docs.bot.daryu.xyz/images/social-preview.png' }],
     ['meta', { property: 'og:image:width', content: '1280' }],
@@ -159,7 +159,7 @@ export default withMermaid(defineConfig({
       label: 'English',
       lang: 'en-US',
       link: '/en/',
-      title: 'Ticket Bot',
+      title: 'Datick',
       description: 'Discord support through direct messages, run from a web dashboard. Free software, self-hosted.',
       themeConfig: {
         nav: [

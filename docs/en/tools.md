@@ -24,7 +24,7 @@ Generate each secret with `openssl rand -hex 32` (64 hexadecimal characters), or
 | `SESSION_SECRET` | `openssl rand -hex 32` |
 | `ENCRYPTION_KEY` | `openssl rand -hex 32` — **keep it off the server**: without it, transcripts are unreadable |
 | `WEB_PORT` | Port of the dashboard on the machine (3000 by default), which your reverse proxy points to |
-| `TICKETBOT_VERSION` | `latest`, or a precise version |
+| `DATICK_VERSION` | `latest`, or a precise version |
 
 Then, in the Discord portal, add `PUBLIC_URL` + `/api/auth/discord/callback` to the OAuth2 *Redirects*.
 
