@@ -292,6 +292,7 @@ export default function Settings() {
         welcomeMessage:           cfg.welcomeMessage || null,
         closeMessage:             cfg.closeMessage || null,
         botLanguage:              cfg.botLanguage || 'fr',
+        staffLanguage:            cfg.staffLanguage || 'fr',
         require2fa:               cfg.require2fa || 'none',
         idleTimeoutMinutes:       cfg.idleTimeoutMinutes ?? 0,
         memberReopenDays:         cfg.memberReopenDays ?? 7,
@@ -486,6 +487,17 @@ export default function Settings() {
               <option value="it">Italiano</option>
               <option value="pt">Português (Brasil)</option>
               <option value="auto">Automatique (langue Discord du membre)</option>
+            </select>
+          </Field>
+          <Field label="Langue du bot pour le staff" hint="Réponses aux commandes et aux boutons, messages du bot dans les salons de tickets et les salons de journal. En automatique : la langue Discord de chacun pour ce que lui seul voit, la langue du serveur pour ce que tout le monde voit. Le dashboard a son propre choix de langue.">
+            <select value={cfg.staffLanguage || 'fr'} onChange={e => set('staffLanguage', e.target.value)} className={BASE}>
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="de">Deutsch</option>
+              <option value="it">Italiano</option>
+              <option value="pt">Português (Brasil)</option>
+              <option value="auto">Automatique (langue Discord de chacun)</option>
             </select>
           </Field>
         </div>

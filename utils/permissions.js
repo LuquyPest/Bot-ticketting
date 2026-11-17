@@ -46,18 +46,19 @@ async function ensureSupport(interaction, client, db, permission = 'view_tickets
   const { syncDiscordStaff } = require('./staffSync');
   const { getUserPermissions, discordStaffCanSee } = require('./gradePermissions');
   const role = await syncDiscordStaff(client, db, interaction.guildId, interaction.user).catch(() => null);
-  if (role !== 'support' && role !== 'fondateur') return deny(interaction, '❌ Permission refusée.');
+  const L = await require('./staffI18n').forInteraction(interaction);
+  if (role !== 'support' && role !== 'fondateur') return deny(interaction, L('perm.denied'));
 
   if (role === 'support') {
     const perms = await getUserPermissions(interaction.user.id, db);
     if (!perms.has(permission)) {
-      return deny(interaction, `❌ Ton grade ne donne pas la permission « ${PERMISSION_LABELS[permission] || permission} ».`);
+      return deny(interaction, L('perm.grade', { perm: PERMISSION_LABELS[permission] ? L(`perm.${permission}`) : permission }));
     }
   }
   if (interaction.channelId) {
     const [ticket] = await db("SELECT id, visibility_grade_id FROM tickets WHERE channel_id = ? AND status = 'open' LIMIT 1", [interaction.channelId]);
     if (ticket && !(await discordStaffCanSee(db, interaction.user.id, ticket))) {
-      return deny(interaction, '❌ Ce ticket est réservé à certains grades ou rôles.');
+      return deny(interaction, L('restricted'));
     }
   }
   return true;
@@ -66,7 +67,8 @@ async function ensureSupport(interaction, client, db, permission = 'view_tickets
 async function ensureChiefSupport(interaction, client, db) {
   const allowed = await isChiefSupportMember(client, interaction.guild, interaction.user.id, db);
   if (!allowed) {
-    await interaction.reply({ content: '❌ Cette commande est réservée au chef support.', flags: MessageFlags.Ephemeral }).catch(() => null);
+    const L = await require('./staffI18n').forInteraction(interaction);
+    await interaction.reply({ content: L('perm.chief'), flags: MessageFlags.Ephemeral }).catch(() => null);
     return false;
   }
   return true;

@@ -13,6 +13,7 @@ module.exports = {
     .addAttachmentOption(o => o.setName('fichier').setDescription('Fichier à envoyer').setRequired(false)),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
@@ -21,21 +22,21 @@ module.exports = {
     const cooldown = ((cfg.reply_rate_limit_seconds ?? client.config?.replyRateLimitSeconds ?? 3)) * 1000;
     const remaining = await checkRateLimit(`reply:${interaction.user.id}:${interaction.guildId}`, cooldown);
     if (remaining > 0) {
-      return interaction.reply({ content: `Attends encore ${remaining}s avant de renvoyer une réponse.`, flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('cooldown', { s: remaining }), flags: MessageFlags.Ephemeral });
     }
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
-    if (!ticket) return interaction.reply({ content: 'Pas un ticket.', flags: MessageFlags.Ephemeral });
+    if (!ticket) return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
 
     const content = interaction.options.getString('message') || '';
     const file    = interaction.options.getAttachment('fichier');
-    if (!content && !file) return interaction.reply({ content: 'Message ou fichier requis.', flags: MessageFlags.Ephemeral });
+    if (!content && !file) return interaction.reply({ content: L('needContent'), flags: MessageFlags.Ephemeral });
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await sendDiscordReply({
       client, db, tm, guildId: interaction.guildId, ticket, author: interaction.user, channel: interaction.channel,
       content, fileUrl: file?.url || null, anonymous: false,
     });
-    await interaction.editReply({ content: 'Envoyé.' });
+    await interaction.editReply({ content: L('sent') });
   }
 };

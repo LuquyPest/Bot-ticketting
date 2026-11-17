@@ -574,6 +574,11 @@ export const ENTRIES = [
   ['Appliquer la conservation maintenant', 'Apply the retention now'], ['Supprimer celles des tickets fermés', 'Delete those of closed tickets'],
   ['Supprimer les pièces jointes de tous les tickets fermés ?', 'Delete the attachments of every closed ticket?'],
   ['Pièces jointes des e-mails supprimées', 'Attachments of the e-mails deleted'],
+  // Language of the bot for the staff
+  ['Langue du bot pour le staff', 'Bot language for the staff'],
+  ['Réponses aux commandes et aux boutons, messages du bot dans les salons de tickets et les salons de journal. En automatique : la langue Discord de chacun pour ce que lui seul voit, la langue du serveur pour ce que tout le monde voit. Le dashboard a son propre choix de langue.', 'Replies to commands and buttons, bot messages in ticket channels and log channels. In automatic mode: each person\'s Discord language for what only they see, the server\'s language for what everyone sees. The dashboard has its own language choice.'],
+  ['Automatique (langue Discord de chacun)', 'Automatic (each person\'s Discord language)'],
+  ['Espagnol', 'Spanish'], ['Allemand', 'German'], ['Italien', 'Italian'], ['Portugais', 'Portuguese'],
 ];
 
 export const TEMPLATES = [

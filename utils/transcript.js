@@ -612,8 +612,12 @@ function buildHtmlTranscript(channel, messages, ticketInfo = {}) {
 
 const { NOTE_PREFIX, NOTE_EMBED_AUTHOR } = require('./notePrefix');
 
+// Notes added from the dashboard are copied into the channel with « 📌 **Note dashboard** · … »
+// (in the staff language): they stay out of the transcript too
+const DASHBOARD_NOTE_PREFIXES = require('./staffI18n').allTranslations('note.dashboard').map(s => s.split('{')[0]);
 const isInternalNote = m =>
   m.content?.startsWith(NOTE_PREFIX) ||
+  (m.author?.bot && DASHBOARD_NOTE_PREFIXES.some(p => m.content?.startsWith(p))) ||
   (m.author?.bot && m.embeds?.some(e => e.author?.name?.startsWith(NOTE_EMBED_AUTHOR)));
 
 async function buildTranscripts(channel, ticketInfo = {}) {

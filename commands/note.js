@@ -16,16 +16,18 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    const Ls = await require('../utils/staffI18n').forInteraction(interaction, { shared: true });
     const db = getTenantDb(interaction.guildId);
     const cfg = await getGuildConfig(db);
     if (!cfg.internal_notes_enabled) {
-      return interaction.reply({ content: 'Les notes internes ne sont pas activées sur ce serveur.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('note.disabled'), flags: MessageFlags.Ephemeral });
     }
     if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const tm = createManager(db, client, interaction.guildId);
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
-    if (!ticket) return interaction.reply({ content: 'Pas un ticket ouvert.', flags: MessageFlags.Ephemeral });
+    if (!ticket) return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
 
     const content = interaction.options.getString('message');
 
@@ -40,9 +42,9 @@ module.exports = {
 
     const noteEmbed = new EmbedBuilder()
       .setColor(0xfee75c)
-      .setAuthor({ name: `${NOTE_EMBED_AUTHOR} — visible staff uniquement` })
+      .setAuthor({ name: `${NOTE_EMBED_AUTHOR} — ${Ls('note.staffOnly')}` })
       .setDescription(content)
-      .setFooter({ text: `${interaction.user.username} · ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` });
+      .setFooter({ text: `${interaction.user.username} · ${Ls.time()}` });
     await interaction.reply({ embeds: [noteEmbed] });
   }
 };

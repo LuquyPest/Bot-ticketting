@@ -48,6 +48,7 @@ const FIELD_MAP = {
   escalationAlertHours:      'escalation_alert_hours',
   escalationCloseHours:      'escalation_close_hours',
   botLanguage:               'bot_language',
+  staffLanguage:             'staff_language',
   require2fa:                'require_2fa',
   memberReopenDays:          'member_reopen_days',
   notifyMemberStage:         'notify_member_stage',
@@ -118,6 +119,7 @@ const VALIDATORS = {
   escalationAlertHours:     v => Number.isInteger(v) && v >= 1 && v <= 48,
   escalationCloseHours:     v => Number.isInteger(v) && v >= 1 && v <= 168,
   botLanguage:              v => ['fr', 'en', 'es', 'de', 'it', 'pt', 'auto'].includes(v),
+  staffLanguage:            v => ['fr', 'en', 'es', 'de', 'it', 'pt', 'auto'].includes(v),
   require2fa:               v => ['none', 'founders', 'staff'].includes(v),
   memberReopenDays:         v => Number.isInteger(v) && v >= 0 && v <= 90,
   notifyMemberStage:        v => v === 0 || v === 1 || v === true || v === false,
@@ -200,7 +202,7 @@ router.post('/import', async (req, res) => {
     const report = await require('../../utils/configTransfer').importConfig(req.guildDb, req.body?.data, {
       includeDiscordIds: !!req.body?.includeDiscordIds, actor: req.session.user, applyConfig,
     });
-    require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
+    require('../../utils/i18n').clearGuildLanguageCache(req.guildId); require('../../utils/staffI18n').clearStaffLangCache(req.guildId);
     require('../../utils/idleTimeout').clearIdleCache(req.guildId);
     await logAudit(req.session.user.id, req.session.user.username, 'config_import', 'guild', req.guildId, { report, includeDiscordIds: !!req.body?.includeDiscordIds }, req.guildDb);
     res.json({ ok: true, report });
@@ -286,7 +288,7 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
   const before = await snapshot(req.guildDb);
   params.push(1); // WHERE id = 1
   await req.guildDb(`UPDATE guild_config SET ${setClauses.join(', ')} WHERE id = ?`, params);
-  require('../../utils/i18n').clearGuildLanguageCache(req.guildId);
+  require('../../utils/i18n').clearGuildLanguageCache(req.guildId); require('../../utils/staffI18n').clearStaffLangCache(req.guildId);
   require('../../utils/idleTimeout').clearIdleCache(req.guildId);
   const changes = diffConfig(before, await snapshot(req.guildDb), SECRET_FIELDS);
   const historyId = await recordHistory(req.guildDb, req.session.user, changes, { source, restoredFrom });

@@ -12,17 +12,19 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    const Ls = await require('../utils/staffI18n').forInteraction(interaction, { shared: true });
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'reply_ticket'))) return;
 
     const ticket = await tm.getOpenTicketByChannelId(interaction.channelId);
     if (!ticket) {
-      return interaction.reply({ content: '❌ Pas un salon ticket.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('notTicket'), flags: MessageFlags.Ephemeral });
     }
 
     const result = await tm.setSubject(ticket.id, interaction.options.getString('name', true), interaction.user);
-    if (!result?.subject) return interaction.reply({ content: '❌ Titre invalide.', flags: MessageFlags.Ephemeral });
-    await interaction.reply(`✅ Titre du ticket : **${result.subject}**${result.channelName ? ` (salon : \`${result.channelName}\`)` : ''}.`);
+    if (!result?.subject) return interaction.reply({ content: L('rename.invalid'), flags: MessageFlags.Ephemeral });
+    await interaction.reply(`${Ls('rename.done', { subject: result.subject })}${result.channelName ? Ls('rename.channel', { name: result.channelName }) : ''}.`);
   }
 };

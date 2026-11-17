@@ -2,7 +2,9 @@
 
 Les commandes sont réservées au staff, sur un serveur actif. Elles appliquent les mêmes règles que le dashboard : le compte doit être *support* ou *fondateur*, un *support* doit avoir la permission de grade indiquée, et dans le salon d'un ticket restreint, seuls ceux qui peuvent le voir peuvent agir. Les fondateurs ont tous les droits.
 
-Discord affiche les descriptions, options et choix des commandes **dans la langue de l'application Discord de chacun** : français, anglais, espagnol, allemand, italien ou portugais (anglais pour toute autre langue). Le nom des commandes reste le même partout (`/reply`, `/claim`…) ; les réponses du bot au staff sont en français.
+Discord affiche les descriptions, options et choix des commandes **dans la langue de l'application Discord de chacun** : français, anglais, espagnol, allemand, italien ou portugais (anglais pour toute autre langue). Le nom des commandes reste le même partout (`/reply`, `/claim`…) 
+
+Les **réponses du bot au staff** (commandes, boutons, `/setup`) et ses messages dans les salons de tickets et de journal suivent **Paramètres → Général → Langue du bot pour le staff** : français (par défaut), anglais, espagnol, allemand, italien, portugais, ou **automatique** — la langue Discord de chacun pour ce que lui seul voit, celle du serveur pour ce que tout le monde voit. Elle est indépendante de la langue des messages aux membres. Les messages d'erreur détaillés venant du dashboard (déplacement, fusion…) restent en français.
 
 ## Configurer le serveur : `/setup`
 

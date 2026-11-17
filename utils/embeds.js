@@ -44,10 +44,10 @@ function buildOldTicketsPageEmbed(userId, tickets, page = 0, pageSize = 5) {
   return { embed, totalPages, safePage };
 }
 
-function closeConfirmationEmbed() {
+function closeConfirmationEmbed(L = key => require('./staffI18n').translate('fr', key)) {
   return new EmbedBuilder()
-    .setTitle('Confirmation')
-    .setDescription('Veux-tu vraiment fermer ce ticket et enregistrer le transcript ?')
+    .setTitle(L('close.confirmTitle'))
+    .setDescription(L('close.confirmBody'))
     .setTimestamp();
 }
 

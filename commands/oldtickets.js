@@ -14,6 +14,7 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'view_tickets'))) return;
@@ -22,7 +23,7 @@ module.exports = {
     const tickets = await tm.getOldTicketsByUserId(userId, interaction.user.id);
 
     if (!tickets.length) {
-      return interaction.reply({ content: '❌ Aucun ticket trouvé pour cet utilisateur.', flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: L('oldtickets.none'), flags: MessageFlags.Ephemeral });
     }
 
     const { embed, totalPages, safePage } = buildOldTicketsPageEmbed(userId, tickets, 0, 5);

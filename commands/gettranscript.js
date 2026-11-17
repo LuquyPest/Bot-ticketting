@@ -13,6 +13,7 @@ module.exports = {
     ),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     const tm = createManager(db, client, interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'view_transcripts'))) return;
@@ -24,14 +25,14 @@ module.exports = {
 
     const { discordStaffCanSee } = require('../utils/gradePermissions');
     if (!transcript || !(await discordStaffCanSee(db, interaction.user.id, { id: transcript.ticket_id, visibility_grade_id: transcript.visibility_grade_id }))) {
-      return interaction.editReply({ content: 'Transcript introuvable.' });
+      return interaction.editReply({ content: L('transcript.notFound') });
     }
 
     const token = hostTranscript(transcript.html);
     const url = buildUrl(client.config.webServerBaseUrl, token);
 
     await interaction.editReply({
-      content: `Transcript #${transcript.id} (ticket #${transcript.ticket_id})\nLien valable 10 minutes : ${url}`
+      content: L('transcript.link', { id: transcript.id, ticket: transcript.ticket_id, url })
     });
   }
 };

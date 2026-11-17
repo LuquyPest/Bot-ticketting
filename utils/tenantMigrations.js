@@ -511,6 +511,13 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 37,
+    name: 'Langue du bot pour le staff (réponses aux commandes, messages des salons)',
+    statements: [
+      "ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS staff_language ENUM('fr','en','es','de','it','pt','auto') NOT NULL DEFAULT 'fr'",
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

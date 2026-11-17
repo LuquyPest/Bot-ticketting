@@ -584,7 +584,8 @@ router.post('/:id/notes', async (req, res) => {
     if (client && ticket.channel_id && ticket.status === 'open') {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
       if (channel) {
-        await channel.send(`📌 **Note dashboard** · ${req.session.user.username}\n${trimmed}`).catch(() => null);
+        const L = await require('../../utils/staffI18n').staffT(req.guildId, { client });
+        await channel.send(`${L('note.dashboard', { by: req.session.user.username })}\n${trimmed}`).catch(() => null);
       }
     }
 
@@ -1492,7 +1493,7 @@ router.post('/bulk', async (req, res) => {
       for (const ticket of tickets) {
         const channel = await tm.channelOf(ticket);
         if (channel) {
-          await channel.send(`🔒 Ticket fermé en masse par ${staffUser.tag}.`).catch(() => null);
+          await channel.send((await require('../../utils/staffI18n').staffT(req.guildId, { client }))('bulk.closed', { by: staffUser.tag })).catch(() => null);
           await tm.closeTicketWithTranscript(channel, staffUser).catch(() => null);
         } else {
           await req.guildDb("UPDATE tickets SET status='closed', closed_at=NOW(), closed_by_tag=?, closed_by_id=? WHERE id=?", [staffUser.tag, staffUser.id, ticket.id]);

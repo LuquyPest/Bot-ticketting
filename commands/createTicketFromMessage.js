@@ -16,15 +16,16 @@ module.exports = {
   data: new ContextMenuCommandBuilder().setName('Créer un ticket').setType(ApplicationCommandType.Message),
 
   async execute(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'create_ticket'))) return;
     const msg = interaction.targetMessage;
-    if (msg.author.bot) return interaction.reply({ content: 'Impossible d\'ouvrir un ticket pour un bot.', flags: MessageFlags.Ephemeral });
-    if (msg.author.id === interaction.user.id) return interaction.reply({ content: 'Impossible d\'ouvrir un ticket pour toi-même.', flags: MessageFlags.Ephemeral });
-    const modal = new ModalBuilder().setCustomId(`${MODAL_PREFIX}${msg.channelId}_${msg.id}`).setTitle('Créer un ticket');
+    if (msg.author.bot) return interaction.reply({ content: L('msgticket.bot'), flags: MessageFlags.Ephemeral });
+    if (msg.author.id === interaction.user.id) return interaction.reply({ content: L('msgticket.self'), flags: MessageFlags.Ephemeral });
+    const modal = new ModalBuilder().setCustomId(`${MODAL_PREFIX}${msg.channelId}_${msg.id}`).setTitle(L('msgticket.modal'));
     modal.addComponents(
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('subject').setLabel('Titre du ticket')
-        .setPlaceholder(`Ticket avec ${msg.author.username}`.slice(0, 100)).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(100)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('subject').setLabel(L('msgticket.subject'))
+        .setPlaceholder(L('msgticket.placeholder', { user: msg.author.username }).slice(0, 100)).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(100)),
     );
     return interaction.showModal(modal);
   },
@@ -32,19 +33,20 @@ module.exports = {
   isModal: customId => customId.startsWith(MODAL_PREFIX),
 
   async handleModal(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
     const db = getTenantDb(interaction.guildId);
     if (!(await ensureSupport(interaction, client, db, 'create_ticket'))) return;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const [channelId, messageId] = interaction.customId.slice(MODAL_PREFIX.length).split('_');
     const channel = await client.channels.fetch(channelId).catch(() => null);
     const msg = channel?.guildId === interaction.guildId ? await channel.messages.fetch(messageId).catch(() => null) : null;
-    if (!msg) return interaction.editReply({ content: '❌ Message introuvable (supprimé entre-temps ?).' });
+    if (!msg) return interaction.editReply({ content: L('msgticket.gone') });
     const tm = createManager(db, client, interaction.guildId);
     const r = await openFromDiscord({
       client, db, tm, guildId: interaction.guildId, member: msg.author, staff: interaction.user,
       subject: interaction.fields.getTextInputValue('subject').replace(/\s+/g, ' ').trim() || null,
       quote: { content: msg.content, url: msg.url, channelId: msg.channelId, attachments: [...msg.attachments.values()].map(a => a.url) },
     });
-    await interaction.editReply({ content: r.error ? `❌ ${r.error}` : `✅ Ticket #${r.ticket.id} ouvert : <#${r.channel.id}>` });
+    await interaction.editReply({ content: r.error ? `❌ ${r.error}` : L('contact.opened', { id: r.ticket.id, channel: r.channel.virtual ? L('inDashboard') : `<#${r.channel.id}>` }) });
   },
 };

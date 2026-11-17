@@ -20,10 +20,13 @@ export const VERSIONS = [
   {
     version: 'v3.3.0',
     date: '17 novembre 2026',
-    title: 'Pièces jointes des e-mails',
-    titleEn: 'Attachments of the e-mails',
+    title: 'Pièces jointes des e-mails, bot dans la langue du staff',
+    titleEn: 'Attachments of the e-mails, bot in the staff\'s language',
     changes: [
       { type: 'new',  text: 'Pièces jointes des tickets par e-mail gardées sur le serveur, téléchargeables sous leur message dans la fiche ticket (aperçu des images) et publiées dans le salon Discord du ticket ; taille par fichier, espace total, types refusés et durée de conservation après fermeture réglables (Paramètres → Intégrations), avec l\'espace utilisé et une purge manuelle', en: 'Attachments of tickets by e-mail kept on the server, downloadable under their message in the ticket view (image preview) and posted in the ticket\'s Discord channel; size per file, total space, refused types and retention after closing are configurable (Settings → Integrations), with the space used and a manual purge' },
+      { type: 'new',  text: 'Langue du bot pour le staff (Paramètres → Général) : réponses aux commandes et aux boutons, assistant /setup, messages dans les salons de tickets et de journal en français, anglais, espagnol, allemand, italien ou portugais, ou automatique (langue Discord de chacun pour ce que lui seul voit, celle du serveur pour le reste)', en: 'Bot language for the staff (Settings → General): replies to commands and buttons, /setup wizard, messages in ticket and log channels in French, English, Spanish, German, Italian or Portuguese, or automatic (each person\'s Discord language for what only they see, the server\'s for the rest)' },
+      { type: 'fix',  text: 'Les notes internes ajoutées depuis le dashboard, recopiées dans le salon Discord du ticket, apparaissaient dans son transcript : elles en sont maintenant exclues, dans toutes les langues', en: 'Internal notes added from the dashboard, copied into the ticket\'s Discord channel, showed up in its transcript: they are now left out, in every language' },
+      { type: 'tech', text: 'Tests : 1016 vérifications automatiques', en: 'Tests: 1016 automated checks' },
     ]
   },
   {
