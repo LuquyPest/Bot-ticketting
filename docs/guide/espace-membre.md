@@ -6,6 +6,7 @@ L'espace existe en **six langues** — français, anglais, espagnol, allemand, i
 
 - **Suivre** : statut formulé pour eux (« en attente de ta réponse », « pris en charge »…), conversation avec le staff, note donnée, téléchargement de l'échange.
 - **Répondre** depuis le web, exactement comme en MP (mêmes limites, même salon côté staff).
+- **Fichiers** : en ouvrant un ticket ou en répondant, le membre joint jusqu'à 5 fichiers, avec les mêmes règles que les [pièces jointes des e-mails](./integrations#tickets-par-e-mail) (taille, espace total, types refusés, conservation, copie dans le salon Discord). Les fichiers du ticket se retéléchargent depuis sa page.
 - **Ouvrir un ticket** : serveur, sujet, champs et formulaire du sujet, avec les entrées de FAQ qui ressemblent à la demande proposées pendant la saisie.
 - **Aide** : la FAQ de chaque serveur, cherchable, avec un lien vers sa [base de connaissances publique](#base-de-connaissances-publique) si elle est en ligne.
 - **Lien direct** : bouton « Voir sur le web » sous chaque MP lié à un ticket.
