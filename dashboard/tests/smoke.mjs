@@ -31,6 +31,7 @@ const PAGES = [
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
   ['settings-integrations', '/settings?tab=integrations', 'Tickets par e-mail'],
   ['settings-widget', '/settings?tab=integrations', 'Voir le formulaire'],
+  ['settings-adresses', '/settings?tab=integrations', 'Autres adresses'],
   ['analytics', '/analytics', 'Analytiques'],
   ['audit', '/audit', "Journal d'activité"],
   ['equipe', '/equipe', 'Équipe'],

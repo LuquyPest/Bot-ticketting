@@ -42,4 +42,72 @@ router.post('/attachments/purge', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Additional addresses (v4.1): GET /addresses, POST /addresses, PUT /addresses/:id, DELETE /addresses/:id ──
+const MAX_ADDRESSES = 20;
+const { parseJsonField } = require('../../utils/jsonField');
+async function addressesView(db) {
+  const [cfg] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+  const subjects = parseJsonField(cfg?.ticket_subjects, []).map(x => (typeof x === 'string' ? x : x?.label || x?.name)).filter(Boolean);
+  const tags = await db('SELECT id, name FROM ticket_tags ORDER BY name');
+  return { addresses: await email.listAddresses(db), subjects, tags };
+}
+// { address, displayName, subject, tagId, replyFrom } → { value } or { error }
+async function cleanAddress(db, body, exceptId = 0) {
+  const address = String(body?.address || '').trim().toLowerCase();
+  if (!email.EMAIL_RE.test(address) || address.length > 254) return { error: 'Adresse e-mail invalide' };
+  const main = await email.emailSettings(db);
+  if (String(main.address || '').toLowerCase() === address) return { error: 'C\'est déjà l\'adresse principale de la boîte' };
+  const [dup] = await db('SELECT id FROM email_addresses WHERE address = ? AND id <> ?', [address, exceptId]);
+  if (dup) return { error: 'Adresse déjà ajoutée' };
+  const { subjects, tags } = await addressesView(db);
+  const subject = typeof body?.subject === 'string' && body.subject.trim() ? body.subject.trim().slice(0, 100) : null;
+  if (subject && !subjects.includes(subject)) return { error: 'Sujet inconnu (Paramètres → Tickets → Sujets)' };
+  const tagId = body?.tagId ? Number(body.tagId) : null;
+  if (tagId && !tags.some(t => t.id === tagId)) return { error: 'Tag introuvable' };
+  const displayName = typeof body?.displayName === 'string' ? body.displayName.replace(/[\r\n]+/g, ' ').trim().slice(0, 100) || null : null;
+  return { value: { address, displayName, subject, tagId, replyFrom: body?.replyFrom === true } };
+}
+
+router.get('/addresses', async (req, res, next) => {
+  try { res.json(await addressesView(req.guildDb)); } catch (err) { next(err); }
+});
+
+router.post('/addresses', async (req, res, next) => {
+  try {
+    const [n] = await req.guildDb('SELECT COUNT(*) AS n FROM email_addresses');
+    if (Number(n.n) >= MAX_ADDRESSES) return res.status(400).json({ error: `${MAX_ADDRESSES} adresses au plus` });
+    const { value: v, error } = await cleanAddress(req.guildDb, req.body);
+    if (error) return res.status(400).json({ error });
+    await req.guildDb('INSERT INTO email_addresses (address, display_name, subject, tag_id, reply_from) VALUES (?, ?, ?, ?, ?)', [v.address, v.displayName, v.subject, v.tagId, v.replyFrom ? 1 : 0]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_address_add', details: { address: v.address, subject: v.subject, tagId: v.tagId } });
+    res.json(await addressesView(req.guildDb));
+  } catch (err) { next(err); }
+});
+
+router.put('/addresses/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id) || 0;
+    const [row] = await req.guildDb('SELECT id FROM email_addresses WHERE id = ?', [id]);
+    if (!row) return res.status(404).json({ error: 'Adresse introuvable' });
+    const { value: v, error } = await cleanAddress(req.guildDb, req.body, id);
+    if (error) return res.status(400).json({ error });
+    await req.guildDb('UPDATE email_addresses SET address = ?, display_name = ?, subject = ?, tag_id = ?, reply_from = ? WHERE id = ?', [v.address, v.displayName, v.subject, v.tagId, v.replyFrom ? 1 : 0, id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_address_update', details: { address: v.address, subject: v.subject, tagId: v.tagId } });
+    res.json(await addressesView(req.guildDb));
+  } catch (err) { next(err); }
+});
+
+router.delete('/addresses/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id) || 0;
+    const [row] = await req.guildDb('SELECT address FROM email_addresses WHERE id = ?', [id]);
+    if (!row) return res.status(404).json({ error: 'Adresse introuvable' });
+    await req.guildDb('DELETE FROM email_addresses WHERE id = ?', [id]);
+    // Tickets that came in on it reply from the main address again
+    await req.guildDb('UPDATE email_threads SET via_address_id = NULL WHERE via_address_id = ?', [id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_address_remove', details: { address: row.address } });
+    res.json(await addressesView(req.guildDb));
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
