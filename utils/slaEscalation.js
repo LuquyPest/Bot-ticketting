@@ -100,6 +100,7 @@ async function refreshOla(db, ticketId) {
 async function onTeamChange(db, ticketId) {
   await db('UPDATE tickets SET team_since = IF(team_id IS NULL, NULL, NOW()), ola_paused_minutes = 0 WHERE id = ?', [ticketId]);
   await db("DELETE f FROM sla_escalation_fired f JOIN sla_escalations e ON e.id = f.escalation_id WHERE f.ticket_id = ? AND e.objective = 'ola'", [ticketId]);
+  await db('DELETE FROM sla_escalation_fired WHERE ticket_id = ? AND escalation_id = -3', [ticketId]); // its « breached » notice
   await refreshOla(db, ticketId);
 }
 async function refreshTeamTickets(db, teamId) {
@@ -178,16 +179,30 @@ async function fire(ctx, t, l) {
   await recordEvent(db, { actor: ACTOR, action: 'ticket_sla_escalation', ticketId: t.id, details: { objective: l.objective, percent: l.percent, actions: done } });
 }
 
+// « Objective breached » notification (utils/notifications.js): once per ticket and objective.
+// Marked in sla_escalation_fired with the negative ids -1 (tto), -2 (ttr), -3 (ola): not levels.
+const BREACH = [['tto', -1, t => !t.first_response_at && t.tto_due_at, 'prise en charge'], ['ttr', -2, t => !t.sla_paused_at && t.ttr_due_at, 'résolution'], ['ola', -3, t => !t.sla_paused_at && t.ola_due_at, 'objectif interne']];
+async function breachNotice(ctx, t, now) {
+  for (const [, id, dueOf, label] of BREACH) {
+    const due = dueOf(t);
+    if (!due || now < new Date(due).getTime()) continue;
+    const r = await ctx.db('INSERT IGNORE INTO sla_escalation_fired (ticket_id, escalation_id) VALUES (?, ?)', [t.id, id]);
+    if (r.affectedRows) await require('./notifications').notify(ctx.db, ctx.guildId, 'sla_breached', t, { objective: label, client: ctx.client });
+  }
+}
+
 async function runForGuild(ctx, now = Date.now()) {
   const { db } = ctx;
   const levels = (await db('SELECT * FROM sla_escalations').catch(() => [])).map(r => ({ ...shape(r), policyId: r.policy_id, ownerTeamId: r.team_id }));
-  if (!levels.length) return 0;
+  const tellBreach = (await require('./notifications').listRules(db)).some(r => r.active && r.event === 'sla_breached');
+  if (!levels.length && !tellBreach) return 0;
   const tickets = await db(`SELECT * FROM tickets WHERE status = 'open' AND resolved_at IS NULL AND (sla_policy_id IS NOT NULL OR ola_due_at IS NOT NULL) ORDER BY id DESC LIMIT 5000`);
   const fired = new Set((await db('SELECT ticket_id, escalation_id FROM sla_escalation_fired')).map(r => `${r.ticket_id}:${r.escalation_id}`));
   const policies = Object.fromEntries((await db('SELECT id, tto_minutes, ttr_minutes, business_hours FROM sla_policies WHERE active = 1')).map(p => [p.id, p]));
   const teams = Object.fromEntries((await db('SELECT id, ola_minutes FROM teams')).map(x => [x.id, x]));
   let n = 0;
   for (const t of tickets) {
+    if (tellBreach) await breachNotice(ctx, t, now);
     const mine = levels.filter(l => (l.policyId && l.policyId === t.sla_policy_id) || (l.ownerTeamId && l.ownerTeamId === t.team_id));
     const todo = mine.filter(l => !fired.has(`${t.id}:${l.id}`));
     if (!todo.length) continue;

@@ -10,6 +10,7 @@ module.exports = {
     verifyEmail: { subject: 'Confirme ton adresse e-mail sur {app}', text: 'Bonjour,\n\nPour relier cette adresse à ton compte {app}, ouvre ce lien :\n\n{link}\n\nIl est valable {hours} heures et ne sert qu\'une fois. Si tu n\'as rien demandé, ignore cet e-mail.' },
     portalMessage: { subject: '{space} — ticket #{id} : nouveau message', text: 'Bonjour,\n\n{body}\n\nRépondre ou suivre ta demande : {link}\n\nPour répondre, utilise ce lien : les réponses à cet e-mail ne sont pas lues.' },
     approvalRequest: { subject: '{space} — ton accord est demandé (ticket #{id})', text: 'Bonjour,\n\n{by} demande ton accord sur le ticket #{id} ({subject}) :\n\n{reason}\n\nDonner ou refuser ton accord : {link}\n\nCe lien est valable {days} jours et ne sert qu\'une fois.' },
+    staffNotification: { subject: '{space} — {title}', text: 'Bonjour,\n\n{title}\n\n{body}\n\nOuvrir le ticket : {link}\n\nCes e-mails se règlent dans ton profil (Notifications).' },
     footer: 'E-mail envoyé automatiquement par {app} ({url}).',
   },
   en: {
@@ -20,6 +21,7 @@ module.exports = {
     verifyEmail: { subject: 'Confirm your e-mail address on {app}', text: 'Hello,\n\nTo link this address to your {app} account, open this link:\n\n{link}\n\nIt is valid for {hours} hours and works only once. If you did not ask for it, ignore this e-mail.' },
     portalMessage: { subject: '{space} — ticket #{id}: new message', text: 'Hello,\n\n{body}\n\nAnswer or follow your request: {link}\n\nTo answer, use this link: replies to this e-mail are not read.' },
     approvalRequest: { subject: '{space} — your approval is requested (ticket #{id})', text: 'Hello,\n\n{by} asks for your approval on ticket #{id} ({subject}):\n\n{reason}\n\nGive or refuse your approval: {link}\n\nThis link is valid for {days} days and works only once.' },
+    staffNotification: { subject: '{space} — {title}', text: 'Hello,\n\n{title}\n\n{body}\n\nOpen the ticket: {link}\n\nThese e-mails are set in your profile (Notifications).' },
     footer: 'E-mail sent automatically by {app} ({url}).',
   },
 };

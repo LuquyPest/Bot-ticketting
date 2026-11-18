@@ -944,6 +944,41 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 61,
+    name: 'Notifications : événements × destinataires × canaux, préférences, textes du demandeur (v5.2)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS notification_rules (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        event      VARCHAR(24) NOT NULL,
+        recipients JSON NOT NULL,
+        channels   JSON NOT NULL,
+        emails     JSON DEFAULT NULL,
+        imposed    TINYINT(1) NOT NULL DEFAULT 0,
+        active     TINYINT(1) NOT NULL DEFAULT 1
+      )`,
+      // What was sent before (utils/followers.js, utils/assignNotify.js)
+      `INSERT INTO notification_rules (event, recipients, channels) SELECT * FROM (
+        SELECT 'member_reply' AS e, '["followers"]' AS r, '["dashboard"]' AS c UNION ALL SELECT 'staff_reply', '["followers"]', '["dashboard"]'
+        UNION ALL SELECT 'note', '["followers"]', '["dashboard"]' UNION ALL SELECT 'closed', '["followers"]', '["dashboard"]'
+        UNION ALL SELECT 'assigned', '["assignee"]', '["dashboard","discord"]') d
+       WHERE NOT EXISTS (SELECT 1 FROM notification_rules)`,
+      `CREATE TABLE IF NOT EXISTS user_notification_prefs (
+        user_id VARCHAR(32) NOT NULL,
+        event   VARCHAR(24) NOT NULL,
+        channel VARCHAR(12) NOT NULL,
+        enabled TINYINT(1) NOT NULL DEFAULT 1,
+        PRIMARY KEY (user_id, event, channel)
+      )`,
+      "INSERT IGNORE INTO user_notification_prefs (user_id, event, channel, enabled) SELECT user_id, 'assigned', 'discord', 0 FROM dashboard_users WHERE notify_assign_dm = 0",
+      `CREATE TABLE IF NOT EXISTS notification_templates (
+        tkey VARCHAR(40) NOT NULL,
+        lang VARCHAR(2) NOT NULL,
+        text TEXT NOT NULL,
+        PRIMARY KEY (tkey, lang)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -223,6 +223,8 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
   try {
     params.push(req.session.user.id);
     await req.guildDb(`UPDATE dashboard_users SET ${sets.join(', ')} WHERE user_id = ?`, params);
+    // The switch is a preference of the notifications (utils/notifications.js)
+    if (notifyAssignDm !== undefined) await require('../../utils/notifications').savePrefs(req.guildDb, req.session.user.id, { assigned: { discord: !!notifyAssignDm } });
     res.json({ ok: true });
   } catch (err) {
     console.error('PATCH /profile error:', err);

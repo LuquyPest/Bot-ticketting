@@ -5410,6 +5410,74 @@ async function main() {
     await db('DELETE FROM tickets WHERE id IN (?)', [[tW, tO, tB, tSoon, tLater]]);
   }
 
+  // ── Notifications: events × recipients × channels, preferences, requester texts (utils/notifications.js, v5.2) ──
+  {
+    const N = app('./utils/notifications');
+    const I = app('./utils/i18n');
+    const before = await N.listRules(db);
+    check('notifications: migration 61 → le comportement d avant (abonnés, attribution)', before.some(x => x.event === 'member_reply' && x.recipients.includes('followers'))
+      && before.some(x => x.event === 'assigned' && x.recipients.includes('assignee') && x.channels.includes('discord')), JSON.stringify(before));
+    r = await req('GET', '/api/notifications', { sid: sessions.S1 });
+    check('notifications: réglage réservé aux fondateurs', r.status === 403, r.status);
+    const base = before.map(({ id, ...x }) => x);
+    r = await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...base, { event: 'stage', recipients: ['assignee'], channels: ['dashboard'] }] } });
+    check('notifications: « la personne attribuée » seulement pour une attribution', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...base, { event: 'closed', recipients: ['emails'], emails: ['pas-une-adresse'], channels: ['email'] }] } });
+    check('notifications: adresse fixe vérifiée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...base, { event: 'ticket_created', recipients: ['founders'], channels: ['dashboard'] }, { event: 'stage', recipients: ['assignees'], channels: ['dashboard'], imposed: true }] } });
+    check('notifications: règles enregistrées, au journal', r.status === 200 && r.body.rules.length === base.length + 2
+      && (await db("SELECT 1 FROM audit_log WHERE action = 'notifications_update'")).length > 0, JSON.stringify(r.body).slice(0, 200));
+    const tN = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000065', 'notif', 'db-notif', 'open', 'Notifications')")).insertId;
+    const tRow = async () => (await db('SELECT * FROM tickets WHERE id = ?', [tN]))[0];
+    let told = await N.notify(db, G, 'ticket_created', await tRow(), {});
+    check('notifications: nouvel événement → fondateurs prévenus', told.includes(U.F) && !told.includes(U.S1), JSON.stringify(told));
+    r = await req('PUT', '/api/notifications/prefs', { sid: sessions.F, body: { prefs: { ticket_created: { dashboard: false } } } });
+    told = await N.notify(db, G, 'ticket_created', await tRow(), {});
+    check('notifications: préférence personnelle respectée', r.status === 200 && r.body.prefs.ticket_created.dashboard === false && !told.includes(U.F), JSON.stringify(told));
+    await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [tN, U.S1]);
+    await req('PUT', '/api/notifications/prefs', { sid: sessions.S1, body: { prefs: { stage: { dashboard: false } } } });
+    told = await N.notify(db, G, 'stage', await tRow(), { stage: 'En cours' });
+    check('notifications: imposée par l espace → la préférence ne la coupe pas', told.includes(U.S1), JSON.stringify(told));
+    told = await N.notify(db, G, 'stage', await tRow(), { stage: 'En cours', byId: U.S1 });
+    check('notifications: jamais pour sa propre action', !told.includes(U.S1), JSON.stringify(told));
+    await db('UPDATE tickets SET visibility_grade_id = -1 WHERE id = ?', [tN]);
+    told = await N.notify(db, G, 'stage', await tRow(), { stage: 'En cours' });
+    check('notifications: personne ne reçoit un ticket qu il ne voit pas', !told.includes(U.S1), JSON.stringify(told));
+    r = await req('GET', '/api/notifications/prefs', { sid: sessions.S1 });
+    check('notifications: chacun voit ce qui peut l atteindre', r.status === 200 && r.body.rules.some(x => x.event === 'stage' && x.imposed) && r.body.prefs.stage?.dashboard === false, JSON.stringify(r.body).slice(0, 300));
+    // The older profile switch is the same preference
+    r = await req('PATCH', '/api/profile', { sid: sessions.S2, body: { notifyAssignDm: false } });
+    check('notifications: l interrupteur « MP d attribution » du profil = préférence', (await N.prefsOf(db, U.S2)).assigned?.discord === false, JSON.stringify(await N.prefsOf(db, U.S2)));
+    await req('PATCH', '/api/profile', { sid: sessions.S2, body: { notifyAssignDm: true } });
+
+    // Objective breached: once per ticket and objective
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...base, { event: 'sla_breached', recipients: ['founders'], channels: ['dashboard'] }] } });
+    await db('UPDATE tickets SET visibility_grade_id = NULL, sla_policy_id = 999999, tto_due_at = NOW() - INTERVAL 1 HOUR WHERE id = ?', [tN]);
+    const E = app('./utils/slaEscalation');
+    await E.runForGuild({ db, guildId: G, client: fakeClient });
+    await E.runForGuild({ db, guildId: G, client: fakeClient });
+    check('notifications: objectif dépassé → prévenu une seule fois', (await db('SELECT COUNT(*) AS n FROM sla_escalation_fired WHERE ticket_id = ? AND escalation_id = -1', [tN]))[0].n == 1, '');
+
+    // Requester texts, per language
+    r = await req('PUT', '/api/notifications/templates', { sid: sessions.F, body: { texts: [{ key: 'closed.body', lang: 'fr', text: 'Merci {foo}' }] } });
+    check('notifications: variable inconnue refusée dans un texte', r.status === 400 && /foo/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('PUT', '/api/notifications/templates', { sid: sessions.F, body: { texts: I.LANGS.map(l => ({ key: 'closed.title', lang: l, text: `[${l}] Ticket #{id} terminé` })) } });
+    check('notifications: textes enregistrés par langue', r.status === 200 && r.body.templates.find(x => x.key === 'closed.title')?.texts.en.custom === '[en] Ticket #{id} terminé', JSON.stringify(r.body).slice(0, 200));
+    const said = await I.inMemberLang('200000000000000065', G, null, async () => `${I.lang()}|${I.t('closed.title', { id: 7 })}`);
+    const [sl, st] = said.split('|');
+    check('notifications: le demandeur reçoit le texte de l espace, dans sa langue', st === `[${sl}] Ticket #7 terminé`, said);
+    check('notifications: un autre espace garde le texte standard', !I.t('closed.title', { id: 7 }).includes('terminé'), I.t('closed.title', { id: 7 }));
+    r = await req('POST', '/api/notifications/templates/preview', { sid: sessions.F, body: { text: 'Ticket #{id}, fermé dans {days} jours' } });
+    check('notifications: aperçu avec des valeurs d exemple', r.body.text === 'Ticket #42, fermé dans 7 jours', JSON.stringify(r.body));
+    await req('PUT', '/api/notifications/templates', { sid: sessions.F, body: { texts: I.LANGS.map(l => ({ key: 'closed.title', lang: l, text: '' })) } });
+    const back = await I.inMemberLang('200000000000000065', G, null, async () => I.t('closed.title', { id: 7 }));
+    check('notifications: texte vidé → retour au texte standard', !back.includes('terminé'), back);
+
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: base } });
+    await db('DELETE FROM user_notification_prefs');
+    await db('DELETE FROM tickets WHERE id = ?', [tN]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

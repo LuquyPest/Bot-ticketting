@@ -48,6 +48,24 @@ Guards: a change made by a rule does not start the rules again (no loop); 50 act
 
 The former **rules by subject and by keywords** (**Settings → Tickets**) are now rules of this engine, with the same effect; their simple form stays, and they run before these at the opening. Rules are part of the [configuration export](./integrations#backing-up-the-configuration) (tags, teams, grades and statuses by name; the people chosen are not exported).
 
+## Notifications
+
+**Settings → Notifications** (founders): who is told of what, and how. Each notification ties an **event**, **recipients** and **channels**:
+
+| | |
+|---|---|
+| **Events** | New ticket · requester's message · staff reply · internal note · assignment · status change · closing · SLA objective breached |
+| **Recipients** | The assigned person (for an assignment) · the assigned people · the watchers · the ticket's team · the founders · fixed e-mail addresses (an on-call address, a list) |
+| **Channels** | Dashboard and browser (live notification and push) · Discord DM · e-mail (the account's verified address, through the instance e-mail) |
+
+By default it is what was sent before: watchers are told of messages, notes and closings in the dashboard; the assigned person in the dashboard and by Discord DM. Nobody is told of a ticket they cannot see, nor of their own action; a confidential ticket gives only its number outside the space. « SLA objective breached » goes out once per ticket and objective.
+
+Everyone sets in **Profile → What notifies me** what reaches them, channel by channel, except the notifications **imposed** by the space.
+
+### Messages sent to the requester
+
+Further down, **Messages sent to the requester**: the automatic messages (ticket created, waiting, in progress, solution proposed, outside the hours, ticket closed…) can be rewritten **in each of the 6 languages**; the requester gets the one in their language, on Discord, by e-mail or on the portal. The variables of the standard text (`{id}`, `{days}`, `{when}`…) stay available, an unknown variable is refused; **Preview** shows the text with sample values. An emptied text goes back to the standard one.
+
 ## Public statistics
 
 **Settings → Channels → Public statistics**: pick a channel, and the bot posts there a message updated every hour, with the figures of the last 30 days:
