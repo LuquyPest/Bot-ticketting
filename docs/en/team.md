@@ -71,6 +71,19 @@ Each member finds the tickets of their teams in **My queue → My teams**. The t
 
 - **Availability** (available, busy, away) under one's name in the menu, **holiday mode** and **planned absences** (Profile for oneself, Team for others).
 - **My activity**: one's figures over 7, 30 or 90 days compared with the team.
-- **Analytics**: volume, response times, satisfaction, period comparison, reopenings, time spent, CSV exports and a monthly PDF report.
+- **Analytics**: volume, response times, satisfaction, period comparison, reopenings, time spent, [reports](#reports), CSV exports and a monthly PDF report.
+
+## Reports
+
+**Analytics → Reports** groups the tickets opened over the period (7, 30, 90 or 365 days):
+
+| Group | |
+|---|---|
+| **By team** | The [teams](#teams-and-their-queues), plus « No team » |
+| **By category** | The subject's category: a sub-category (« Billing › Refund ») counts in its category |
+| **By subject** | The full subject, sub-category included |
+| **By channel** | Discord, e-mail, or web (member space and widget) |
+
+For each group: tickets opened, closed, still open, median first response time, median time to close, average rating (and number of ratings), time spent. **Export (CSV)** downloads the same table, ready for a spreadsheet. The figures only count the tickets the person may see: a confidential ticket or one restricted to a grade stays out for the others; tickets merged into another are counted once.
 - **Public statistics**: a message refreshed every hour in a channel of your choice — see [Automations](./automations#public-statistics).
 - **Log**: every action, with its author and its source (dashboard, Discord, automation, API), filterable and exportable.

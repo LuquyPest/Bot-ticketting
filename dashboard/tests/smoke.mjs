@@ -40,6 +40,7 @@ const PAGES = [
   ['settings-widget', '/settings?tab=integrations', 'Voir le formulaire'],
   ['settings-adresses', '/settings?tab=integrations', 'Autres adresses'],
   ['analytics', '/analytics', 'Analytiques'],
+  ['analytics-rapports', '/analytics?tab=reports', 'Sans équipe'],
   ['audit', '/audit', "Journal d'activité"],
   ['equipe', '/equipe', 'Équipe'],
   ['activite', '/activite', 'Très rapide, merci'],

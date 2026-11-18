@@ -71,5 +71,18 @@ Chaque membre retrouve les tickets de ses équipes dans **Ma file → Mes équip
 
 - **Disponibilité** (disponible, occupé, absent) sous son nom dans le menu, **mode vacances** et **absences planifiées** (Profil pour soi, Équipe pour les autres).
 - **Mon activité** : ses chiffres sur 7, 30 ou 90 jours comparés à l'équipe.
-- **Analytiques** : volume, délais, satisfaction, comparaison de périodes, réouvertures, temps passé, exports CSV et rapport mensuel PDF.
+- **Analytiques** : volume, délais, satisfaction, comparaison de périodes, réouvertures, temps passé, [rapports](#les-rapports), exports CSV et rapport mensuel PDF.
+
+## Les rapports
+
+**Analytiques → Rapports** regroupe les tickets ouverts sur la période (7, 30, 90 ou 365 jours) :
+
+| Regrouper | |
+|---|---|
+| **Par équipe** | Les [équipes](#les-equipes-et-leurs-files), plus « Sans équipe » |
+| **Par catégorie** | La catégorie du sujet : une sous-catégorie (« Facturation › Remboursement ») compte dans sa catégorie |
+| **Par sujet** | Le sujet complet, sous-catégorie comprise |
+| **Par canal** | Discord, e-mail, ou web (espace membre et widget) |
+
+Pour chaque groupe : tickets ouverts, fermés, encore ouverts, délai médian de première réponse, durée médiane jusqu'à la fermeture, note moyenne (et nombre de notes), temps passé. **Exporter (CSV)** télécharge le même tableau, prêt pour un tableur. Les chiffres ne comptent que les tickets que la personne a le droit de voir : un ticket confidentiel ou restreint à un grade n'y entre pas pour les autres ; les tickets fusionnés dans un autre ne sont comptés qu'une fois.
 - **Journal** : chaque action, avec son auteur et sa source (dashboard, Discord, automatisme, API), filtrable et exportable.

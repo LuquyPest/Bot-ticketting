@@ -54,6 +54,9 @@ export const MOCK = {
   '/api/dashboard/stats': { unclaimedTickets: 3, openTickets: 8, closedToday: 4, avgRating: 4.6, totalTickets: 120, priorityBreakdown: { low: 2, normal: 5, urgent: 1 } },
   '/api/dashboard/activity': { opened: days(14), closed: days(14), unclaimed: days(14) },
   '/api/dashboard/heatmap': Array.from({ length: 24 }, (_, hour) => ({ hour, count: (hour * 3) % 7 })),
+  '/api/analytics/breakdown': { by: 'team', days: 30, total: 31, truncated: false, rows: [
+    { key: '1', label: 'Facturation', opened: 18, closed: 15, stillOpen: 3, firstResponseMedianMin: 42, resolutionMedianHours: 6.5, avgRating: 4.6, ratings: 9, timeHours: 7.5 },
+    { key: '', label: 'Sans équipe', opened: 13, closed: 9, stillOpen: 4, firstResponseMedianMin: null, resolutionMedianHours: null, avgRating: null, ratings: 0, timeHours: 0 }] },
   '/api/analytics/volume': { opened: days(30), closed: days(30) },
   '/api/analytics/hourly': Array.from({ length: 24 }, (_, hour) => ({ hour, count: (hour * 5) % 9 })),
   '/api/analytics/subjects': [{ subject: 'Paiement', count: 12 }, { subject: 'Connexion', count: 7 }, { subject: 'Autre', count: 3 }],
