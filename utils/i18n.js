@@ -202,6 +202,7 @@ const D = {
     'widget.tooMany': 'Trop de messages envoyés : réessaie plus tard',
     'widget.privacy': 'Ton adresse sert uniquement à te répondre.',
     'widget.maybe': 'Ces articles répondent peut-être à ta question :',
+    'email.replyFooter': 'Répondez à cet e-mail pour ajouter un message à votre demande.',
     'faq.read': 'Lire l\'article',
     'portal.noAccount': 'Compte Discord introuvable',
     'portal.openFailed': 'Le ticket n\'a pas pu être ouvert, réessaie ou écris au bot en MP',
@@ -404,6 +405,7 @@ const D = {
     'widget.tooMany': 'Too many messages sent: try again later',
     'widget.privacy': 'Your address is only used to answer you.',
     'widget.maybe': 'These articles may answer your question:',
+    'email.replyFooter': 'Reply to this e-mail to add a message to your request.',
     'faq.read': 'Read the article',
     'portal.noAccount': 'Discord account not found',
     'portal.openFailed': 'The ticket could not be opened, try again or message the bot privately',
@@ -468,6 +470,7 @@ async function inMemberLang(userId, guildId, client, fn) {
 }
 
 // Sends a DM built in the member's language: build() runs inside that language.
+// opts.sender: { id, anonymous } — a staff reply: their e-mail signature follows it (utils/emailFormat.js)
 // opts.ticketId: the ticket the message is about. An e-mail or web requester can have several
 // tickets open: without it, the e-mail would be threaded on another one (and their answer land there)
 async function sendToMember(client, userOrId, guildId, build, opts = {}) {
@@ -477,10 +480,10 @@ async function sendToMember(client, userOrId, guildId, build, opts = {}) {
   // Someone who opened their ticket by e-mail: the message goes out as an e-mail (utils/emailTickets.js)
   const targetId = typeof userOrId === 'string' ? userOrId : userOrId?.id;
   const email = require('./emailTickets');
-  if (email.isEmailOwner(targetId)) return inMemberLang(targetId, guildId, client, () => email.sendToEmailOwner(guildId, targetId, build, opts.ticketId));
+  if (email.isEmailOwner(targetId)) return inMemberLang(targetId, guildId, client, () => email.sendToEmailOwner(guildId, targetId, build, opts.ticketId, opts));
   // Someone from the web portal: an instance e-mail with a link to the conversation (utils/webRequesters.js)
   const web = require('./webRequesters');
-  if (web.isWebOwner(targetId)) return inMemberLang(targetId, guildId, client, () => web.sendToWebOwner(guildId, targetId, build, opts.ticketId));
+  if (web.isWebOwner(targetId)) return inMemberLang(targetId, guildId, client, () => web.sendToWebOwner(guildId, targetId, build, opts.ticketId, opts));
   const user = typeof userOrId === 'string' ? await client?.users.fetch(userOrId).catch(() => null) : userOrId;
   if (!user) return null;
   return inMemberLang(user.id, guildId, client, async () => user.send(await build(user)).catch(() => null));

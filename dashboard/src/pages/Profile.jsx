@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import usePushNotifications from '../hooks/usePushNotifications';
 import RecoveryCodes from '../components/RecoveryCodes';
 import LoginMethods from '../components/LoginMethods';
+import EmailSignature from '../components/EmailSignature';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -557,6 +558,11 @@ export default function Profile() {
               {saving ? 'Sauvegarde…' : 'Sauvegarder'}
             </button>
           </div>
+        </Section>
+
+        {/* E-mail signature in this space (v5.0) */}
+        <Section title="Signature des e-mails">
+          <EmailSignature />
         </Section>
 
         {/* Ways to sign in to this account (v4) */}

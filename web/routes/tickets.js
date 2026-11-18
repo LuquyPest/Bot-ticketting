@@ -652,7 +652,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
         embeds: [dmEmbed], components: await ticketDmComponents(ticket, req.guildId, userId),
         ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
       };
-    }, { ticketId: ticket.id });
+    }, { ticketId: ticket.id, sender: { id: req.session.user.id, anonymous: !!anonymous } });
     refs.dm(userId, dm);
     // Without a Discord channel (ticket format « database »), the history keeps the file of the DM
     if (upload && !file_url) file_url = dm?.attachments?.first?.()?.url || null;

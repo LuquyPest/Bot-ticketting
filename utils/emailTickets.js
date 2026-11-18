@@ -73,6 +73,8 @@ function cleanSettings(input = {}, { webhook = false } = {}) {
     display_name: str(input.displayName, 100) || null,
     imap_host: host(input.imapHost), imap_port: Number(input.imapPort) || 993, imap_user: str(input.imapUser, 254) || null,
     smtp_host: host(input.smtpHost), smtp_port: Number(input.smtpPort) || 587, smtp_user: str(input.smtpUser, 254) || null,
+    ...(input.signature !== undefined ? { signature: require('./emailFormat').cleanSignature(input.signature) || null } : {}),
+    ...(input.branded !== undefined ? { branded: input.branded === false ? 0 : 1 } : {}),
   };
   if (out.address && !EMAIL_RE.test(out.address)) return { error: 'Adresse e-mail invalide' };
   if (!IMAP_PORTS.includes(out.imap_port)) return { error: `Port IMAP accepté : ${IMAP_PORTS.join(' ou ')}` };
@@ -224,22 +226,29 @@ const userFor = (ownerId, address, name, guildId = null) => ({
 // ── Outgoing: a Discord message built for a member, sent as an e-mail ──
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const stripMarkdown = s => String(s || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/<t:(\d+)(?::\w)?>/g, (m, t) => new Date(Number(t) * 1000).toLocaleString('fr-FR'));
-function renderPayload(payload) {
+// What the bot would send by DM, as an e-mail: plain text and HTML (utils/emailFormat.js).
+// opts.signatures: markdown blocks added after the message (person, then space); opts.brand: the
+// template's name, logo, colour and footer (without it, a bare HTML body as before)
+function renderPayload(payload, opts = {}) {
+  const fmt = require('./emailFormat');
   const p = typeof payload === 'string' ? { content: payload } : payload || {};
-  const blocks = [];
-  if (p.content) blocks.push(stripMarkdown(p.content));
+  const blocks = []; // [text, html]
+  if (p.content) blocks.push([fmt.markdownToText(p.content), fmt.markdownToHtml(p.content)]);
   for (const e of p.embeds || []) {
     const d = typeof e?.toJSON === 'function' ? e.toJSON() : e?.data || e || {};
-    const lines = [];
-    if (d.title) lines.push(stripMarkdown(d.title));
-    if (d.description) lines.push(stripMarkdown(d.description));
-    for (const f of d.fields || []) lines.push(`${stripMarkdown(f.name)} : ${stripMarkdown(f.value)}`);
-    if (d.footer?.text) lines.push(`— ${stripMarkdown(d.footer.text)}`);
-    if (lines.length) blocks.push(lines.join('\n\n'));
+    const t = [], h = [];
+    if (d.title) { t.push(fmt.markdownToText(d.title)); h.push(`<p style="margin:0 0 10px;font-weight:600">${fmt.markdownToHtml(d.title).replace(/^<p[^>]*>|<\/p>$/g, '')}</p>`); }
+    if (d.description) { t.push(fmt.markdownToText(d.description)); h.push(fmt.markdownToHtml(d.description)); }
+    for (const f of d.fields || []) { t.push(`${fmt.markdownToText(f.name)} : ${fmt.markdownToText(f.value)}`); h.push(`<p style="margin:0 0 10px"><strong>${fmt.escapeHtml(stripMarkdown(f.name))}</strong><br>${fmt.markdownToHtml(f.value).replace(/^<p[^>]*>|<\/p>$/g, '')}</p>`); }
+    if (d.footer?.text) { t.push(`— ${fmt.markdownToText(d.footer.text)}`); h.push(`<p style="margin:0;color:#7a8194;font-size:12px">${fmt.escapeHtml(stripMarkdown(d.footer.text))}</p>`); }
+    if (t.length) blocks.push([t.join('\n\n'), h.join('')]);
   }
-  const text = blocks.join('\n\n────────\n\n').trim();
-  const html = `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#1f2330">${
-    blocks.map(b => `<p>${escapeHtml(b).replace(/\n/g, '<br>')}</p>`).join('<hr style="border:0;border-top:1px solid #ddd">')}</div>`;
+  const sigs = (opts.signatures || []).map(fmt.cleanSignature).filter(Boolean);
+  const textBody = blocks.map(b => b[0]).join('\n\n────────\n\n').trim();
+  const text = sigs.length && textBody ? `${textBody}\n\n-- \n${sigs.map(fmt.markdownToText).join('\n\n')}` : textBody;
+  const sep = '<hr style="border:0;border-top:1px solid #eceef3;margin:16px 0">';
+  const inner = blocks.map(b => b[1]).join(sep) + (sigs.length && textBody ? `<div style="margin-top:18px;padding-top:12px;border-top:1px solid #eceef3;color:#5d6478;font-size:13px">${sigs.map(fmt.markdownToHtml).join('')}</div>` : '');
+  const html = opts.brand ? fmt.wrapHtml(inner, opts.brand) : `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#1f2330">${inner}</div>`;
   const attachments = (p.files || []).filter(f => f?.attachment && Buffer.isBuffer(f.attachment)).map(f => ({ filename: f.name || 'fichier', content: f.attachment }));
   return { text, html, attachments };
 }
@@ -256,7 +265,23 @@ async function requesterTicket(db, ownerId, ticketId) {
 }
 
 // Sends what the bot would have sent by DM; returns a message-like object (or null)
-async function sendToEmailOwner(guildId, ownerId, build, ticketId = null) {
+// The look of an e-mail of this space: signatures (the person's unless anonymous, then the
+// space's) and the template with its name, logo and colour
+async function emailLook(db, guildId, s, sender) {
+  const signatures = [];
+  if (sender?.id && !sender.anonymous) {
+    const [u] = await db('SELECT email_signature FROM dashboard_users WHERE user_id = ?', [String(sender.id)]).catch(() => []);
+    if (u?.email_signature) signatures.push(u.email_signature);
+  }
+  if (sender && s.signature) signatures.push(s.signature);
+  if (s.branded === 0 || s.branded === false) return { signatures };
+  const [cfg] = await db('SELECT portal_color, portal_logo FROM guild_config WHERE id = 1').catch(() => []);
+  const { globalQuery } = require('./globalDb');
+  const [g] = await globalQuery('SELECT guild_name FROM guilds WHERE guild_id = ?', [guildId]).catch(() => []);
+  return { signatures, brand: { name: s.display_name || g?.guild_name || 'Support', logo: cfg?.portal_logo, color: cfg?.portal_color, footer: require('./i18n').t('email.replyFooter') } };
+}
+
+async function sendToEmailOwner(guildId, ownerId, build, ticketId = null, opts = {}) {
   const db = getTenantDb(guildId);
   const s = await emailSettings(db, { withSecrets: true });
   if (!s.enabled) return null;
@@ -264,7 +289,7 @@ async function sendToEmailOwner(guildId, ownerId, build, ticketId = null) {
   if (!contact) return null;
   const payload = await build(userFor(ownerId, contact.address, contact.name));
   const ticket = await requesterTicket(db, ownerId, ticketId);
-  const { text, html, attachments } = renderPayload(payload);
+  const { text, html, attachments } = renderPayload(payload, await emailLook(db, guildId, s, opts.sender));
   if (!text && !attachments.length) return null;
   const [thread] = ticket ? await db('SELECT last_message_id, via_address_id FROM email_threads WHERE ticket_id = ?', [ticket.id]) : [];
   // Came in on another address that may send: the replies leave from it
@@ -462,7 +487,7 @@ async function runEmailFetch(client) {
 
 module.exports = {
   listAddresses, recipientsOf, routeOf,
-  isEmailOwner, isExternalOwner, ownerIdFor, userFor, requesterTicket, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
+  isEmailOwner, isExternalOwner, ownerIdFor, userFor, requesterTicket, emailLook, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
   fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
   smtpTransport, imapClient, EMAIL_RE, SMTP_PORTS,
 };

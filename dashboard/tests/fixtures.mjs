@@ -56,6 +56,7 @@ export const MOCK = {
   '/api/dashboard/stats': { unclaimedTickets: 3, openTickets: 8, closedToday: 4, avgRating: 4.6, totalTickets: 120, priorityBreakdown: { low: 2, normal: 5, urgent: 1 } },
   '/api/dashboard/activity': { opened: days(14), closed: days(14), unclaimed: days(14) },
   '/api/dashboard/heatmap': Array.from({ length: 24 }, (_, hour) => ({ hour, count: (hour * 3) % 7 })),
+  '/api/staff/me/signature': { signature: 'Daryu — support Sunset' },
   '/api/instance/mail-oauth': { google: { clientId: 'gid.apps', secretSet: true, configured: true, callbackUrl: 'https://ticket.example/api/email/oauth/google/callback' },
     microsoft: { clientId: '', tenant: 'common', secretSet: false, configured: false, callbackUrl: 'https://ticket.example/api/email/oauth/microsoft/callback' } },
   '/api/analytics/breakdown': { by: 'team', days: 30, total: 31, truncated: false, rows: [
