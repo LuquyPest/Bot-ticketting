@@ -901,5 +901,12 @@ export const TEMPLATES = [
   ['Connecté en tant que {} : ce compte rejoindra l\'équipe.', 'Signed in as {1}: this account will join the team.'],
   ['Fusionner {} dans cette fiche ? Ses identités, sa discussion et ses étiquettes rejoignent celle-ci ; les tickets ne bougent pas.', 'Merge {1} into this card? Their identities, discussion and labels join this one; the tickets do not move.'],
   ['Détacher {} ? Cette identité retrouve une fiche à elle.', 'Detach {1}? This identity gets a card of its own again.'],
-  ['Détacher {}', 'Detach {1}']
+  ['Détacher {}', 'Detach {1}'],
+  ['Objectifs SLA', 'SLA objectives'], ['Nouvel objectif SLA', 'New SLA objective'], ['Créer l\'objectif', 'Create the objective'], ['Objectif enregistré', 'Objective saved'], ['Objectif créé', 'Objective created'], ['Objectif supprimé', 'Objective deleted'],
+  ['Ordre enregistré', 'Order saved'], ['Nom de l\'objectif', 'Objective name'], ['Clients urgents', 'Urgent customers'], ['Actif', 'Active'], ['Monter', 'Move up'], ['Descendre', 'Move down'],
+  ['Prise en charge', 'First response'], ['Priorités', 'Priorities'], ['Canaux', 'Channels'], ['tous', 'all'],
+  ['En heures ouvrées (calendrier de l\'équipe du ticket, sinon de l\'espace)', 'In business hours (calendar of the ticket\'s team, else of the space)'],
+  ['Les objectifs SLA : délai de prise en charge (première réponse) et de résolution. La résolution est en pause quand le ticket attend le demandeur. Un objectif prend les tickets qui remplissent tous ses critères (vide = tous) ; le plus précis l\'emporte, puis le premier de la liste. Les délais par étape (Paramètres → Tickets) restent à part.', 'SLA objectives: time to first response and to resolution. Resolution is paused while the ticket waits for the requester. An objective takes the tickets that meet all its criteria (empty = all); the most precise wins, then the first in the list. The per-stage delays (Settings → Tickets) stay separate.'],
+  ['Dans les temps', 'On time'], ['Bientôt dépassé', 'Due soon'], ['Dépassé', 'Breached'], ['Tenu', 'Met'], ['Manqué', 'Missed'], ['En pause (en attente du demandeur)', 'Paused (waiting for the requester)'],
+  ['Échéance : {}', 'Due: {1}'], ['Prise en charge dépassée', 'First response overdue'], ['Résolution dépassée', 'Resolution overdue'], ['Supprimer l\'objectif « {} » ?', 'Delete the objective « {1} »?']
 ];

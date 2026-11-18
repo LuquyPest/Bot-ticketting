@@ -9,6 +9,8 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/sla-policies': { policies: [{ id: 1, name: 'Incidents urgents', position: 0, ttoMinutes: 60, ttrMinutes: 480, businessHours: true, active: true, conditions: { priorities: ['urgent'], types: ['incident'], subjects: [], channels: [] } },
+    { id: 2, name: 'Par défaut', position: 1, ttoMinutes: 480, ttrMinutes: 2880, businessHours: true, active: true, conditions: { priorities: [], types: [], subjects: [], channels: [] } }] },
   '/api/calendars': { spaceCalendarId: 1, countries: ['FR', 'BE'], calendars: [{ id: 1, name: 'Support Paris', timezone: 'Europe/Paris', openNow: false, nextOpening: new Date(Date.now() + 3600000).toISOString(),
     hours: { mon: [['09:00', '12:00'], ['14:00', '18:00']], tue: [['09:00', '18:00']], wed: [['09:00', '18:00']], thu: [['09:00', '18:00']], fri: [['09:00', '17:00']], sat: [], sun: [] },
     closed: [{ from: '2026-12-25', to: '2026-12-25', label: 'Noël' }], outsideReply: true, outsideText: '' }] },
@@ -46,10 +48,10 @@ export const MOCK = {
     { user_id: '2', username: 'Lina', avatar: null, role: 'support', grades: [] },
     { user_id: '3', username: 'Malo', avatar: null, role: 'support', grades: [] },
   ],
-  '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i, i === 2 ? { ticket_type: 'incident' } : {})), total: 6, page: 1, pages: 1, priorityMatrix: true, types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } } },
+  '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i, i === 2 ? { ticket_type: 'incident' } : i === 3 ? { objectives: { tto: { state: 'breached', dueAt: new Date(Date.now() - 1800000).toISOString(), minutesLate: 30 }, ttr: null } } : {})), total: 6, page: 1, pages: 1, priorityMatrix: true, types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } } },
   '/api/tickets/8': { ...ticket(8), resolutionSettings: { enabled: true, autoCloseDays: 7 }, resolved_at: new Date(Date.now() - 3600000).toISOString(), resolution: 'Accès rétabli sur le partage Compta.', resolved_by_tag: 'Daryu', owner_id: 'mail:0123456789abcdef01234567', owner_tag: 'claire@ext.test', subject: 'Accès au partage', participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null },
   '/api/tickets/8/cc': { available: true, cc: [{ id: 1, address: 'adjoint@ext.test', name: 'Adjoint', added_by: 'email' }, { id: 2, address: 'rh@ext.test', name: null, added_by: 'Daryu' }] },
-  '/api/tickets/1': { ...ticket(1), priorityMatrix: { enabled: true, matrix: [[1, 1, 1, 1, 2], [1, 1, 2, 2, 3], [2, 2, 3, 4, 4], [2, 3, 4, 5, 5], [3, 4, 5, 5, 5]] }, urgency: 4, impact: 3, priority_level: 4, resolutionSettings: { enabled: true, autoCloseDays: 7 }, ticket_type: 'incident', types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } }, participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
+  '/api/tickets/1': { ...ticket(1), objectives: { tto: { state: 'met', dueAt: new Date(Date.now() + 3600000).toISOString() }, ttr: { state: 'warning', dueAt: new Date(Date.now() + 5400000).toISOString(), minutesLeft: 90 } }, priorityMatrix: { enabled: true, matrix: [[1, 1, 1, 1, 2], [1, 1, 2, 2, 3], [2, 2, 3, 4, 4], [2, 3, 4, 5, 5], [3, 4, 5, 5, 5]] }, urgency: 4, impact: 3, priority_level: 4, resolutionSettings: { enabled: true, autoCloseDays: 7 }, ticket_type: 'incident', types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } }, participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
     rating: { rating: 4, comment: 'Très rapide, merci !', rated_at: iso(5) } },
   '/api/tickets/1/notes': [
     { id: 1, ticket_id: 1, author_id: '20', author_tag: 'membre1', content: 'Bonjour, je n\'arrive pas à payer.', source: 'user', created_at: iso(50) },

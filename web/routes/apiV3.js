@@ -289,6 +289,7 @@ async function applyChanges(req, t, c) {
     const [row] = await db('SELECT id FROM ticket_cc WHERE ticket_id = ? AND address = ?', [t.id, String(address).trim().toLowerCase()]);
     if (row) { await cc.removeCc(db, t.id, row.id); await recordEvent(db, { actor: a, action: 'ticket_cc_remove', ticketId: t.id, details: { address } }); }
   }
+  await require('../../utils/slaPolicies').refreshQuietly(db, t.id); // type, subject, team… may have changed
   broadcast('ticket', { id: t.id }, req.guildId);
 }
 

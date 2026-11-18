@@ -307,6 +307,8 @@ function createManager(db, client, guildId) {
     // Opened outside the opening hours: « we are closed, back on … » (utils/calendars.js)
     const [placed] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
     await require('./calendars').outsideHoursReply({ db, client, guildId: gid, ticket: placed || ticket }).catch(() => null);
+    // Deadlines of the SLA objectives (utils/slaPolicies.js): subject, type, priority and team are known now
+    await require('./slaPolicies').refreshQuietly(db, ticket.id);
     return { channel, ticket, created: true };
   }
 
@@ -747,6 +749,8 @@ function createManager(db, client, guildId) {
     // stage_changed_at must be computed before stage is overwritten)
     await db('UPDATE tickets SET stage_changed_at = IF(stage = ?, stage_changed_at, NOW()), stage = ? WHERE id = ?', [stage, stage, ticketId]);
     await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
+    // A status of kind « waiting » pauses the resolution objective (utils/slaPolicies.js)
+    await require('./slaPolicies').onStageChange(db, ticketId, stageInfo.kind || stage).catch(() => null);
     const Lst = await staffL();
     // A custom status is named as the space named it; the built-in ones in the staff's language
     const stageName = stageInfo.builtin ? Lst(`stage.${stage}`) : stageInfo.label;
@@ -989,6 +993,7 @@ function createManager(db, client, guildId) {
     const [before] = await db('SELECT priority FROM tickets WHERE id = ?', [ticketId]);
     // The level of the priority matrix follows (utils/priorityMatrix.js)
     await db(`UPDATE tickets SET priority = ?, ${require('./priorityMatrix').LEVEL_FROM_PRIORITY_SQL} WHERE id = ?`, [priority, priority, priority, ticketId]);
+    await require('./slaPolicies').refreshQuietly(db, ticketId);
     if (before?.priority !== priority) {
       await recordEvent(db, { actor: byUser, action: 'ticket_priority', ticketId, details: { from: before?.priority, to: priority } });
     }

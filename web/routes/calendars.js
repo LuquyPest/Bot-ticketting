@@ -41,6 +41,7 @@ router.put('/:id', founders, async (req, res, next) => {
     const r = await cal.saveCalendar(req.guildDb, id, req.body || {});
     if (r.error) return res.status(r.status || 400).json({ error: r.error });
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'calendar_save', targetType: 'calendar', targetId: id, details: { name: req.body?.name } });
+    await require('../../utils/slaPolicies').refreshOpenTickets(req.guildDb); // business hours changed: deadlines too
     res.json(withState(await cal.calendarOf(req.guildDb, id)));
   } catch (err) { next(err); }
 });
@@ -51,6 +52,7 @@ router.delete('/:id', founders, async (req, res, next) => {
     const r = await cal.deleteCalendar(req.guildDb, id);
     if (r.error) return res.status(r.status || 400).json({ error: r.error });
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'calendar_delete', targetType: 'calendar', targetId: id });
+    await require('../../utils/slaPolicies').refreshOpenTickets(req.guildDb);
     res.json({ ok: true });
   } catch (err) { next(err); }
 });

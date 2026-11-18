@@ -154,6 +154,7 @@ async function routeTicket({ db, tm, ticket, teamId, actor = TEAM_ACTOR }) {
   if (ticket.team_id !== team.id) {
     await db('UPDATE tickets SET team_id = ? WHERE id = ?', [team.id, ticket.id]);
     await recordEvent(db, { actor, action: 'ticket_team', ticketId: ticket.id, details: { team: team.name } });
+    await require('./slaPolicies').refreshQuietly(db, ticket.id); // the team's calendar may differ
   }
   const [{ n }] = await db('SELECT COUNT(*) AS n FROM ticket_assignees WHERE ticket_id = ?', [ticket.id]);
   if (Number(n) > 0) return { teamId: team.id, assignee: null };

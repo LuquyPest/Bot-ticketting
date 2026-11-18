@@ -157,7 +157,8 @@ router.get('/', async (req, res) => {
     if (team === 'none') where.push('team_id IS NULL');
     else if (team) { where.push('team_id = ?'); params.push(team); }
     const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
-    if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(b.sql); params.push(...b.params); }
+    // Overdue: a stage deadline passed, or a missed SLA objective (time to first response or to resolution)
+    if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(`(${b.sql} OR ${require('../../utils/slaPolicies').OBJECTIVE_BREACHED_SQL})`); params.push(...b.params); }
     if (fieldId && fieldValue) {
       where.push('EXISTS (SELECT 1 FROM ticket_field_values fv WHERE fv.ticket_id = tickets.id AND fv.field_id = ? AND fv.value LIKE ?)');
       params.push(fieldId, `%${fieldValue.replace(/[%_\\]/g, '\\$&')}%`);
@@ -167,13 +168,14 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, first_response_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
     ]);
 
-    const withSla = tickets.map(t => ({ ...t, sla: slaStatus(t, slaCfg) }));
+    const objectivesOf = require('../../utils/slaPolicies').objectives;
+    const withSla = tickets.map(t => ({ ...t, sla: slaStatus(t, slaCfg), objectives: objectivesOf(t) }));
     const tt = await require('../../utils/ticketTypes').typeSettings(req.guildDb);
     res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit), types: { enabled: tt.enabled, labels: tt.labels }, priorityMatrix: (await require('../../utils/priorityMatrix').matrixSettings(req.guildDb)).enabled });
   } catch (err) {
@@ -236,6 +238,7 @@ router.get('/queue', async (req, res) => {
       : 'NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)';
     const rows = await req.guildDb(
       `SELECT id, owner_id, owner_tag, channel_id, status, stage, stage_changed_at, subject, priority, created_at, last_message_at,
+              first_response_at, resolved_at, closed_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at,
               (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source = 'user') AS last_member_at,
               (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source IN ('reply', 'scheduled')) AS last_staff_at
        FROM tickets WHERE status = 'open' AND ${where} AND ${vis.sql} LIMIT 300`,
@@ -243,8 +246,15 @@ router.get('/queue', async (req, res) => {
     );
     const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
     const now = Date.now();
+    const objectivesOf = require('../../utils/slaPolicies').objectives;
     const queue = rows.map(t => {
-      const sla = slaStatus(t, slaCfg, now);
+      // The stage deadline, or else the most pressing SLA objective (first response, then resolution)
+      let sla = slaStatus(t, slaCfg, now);
+      const ob = objectivesOf(t, now);
+      const worst = [ob?.tto, ob?.ttr].filter(Boolean).find(o => o.state === 'breached') || [ob?.tto, ob?.ttr].filter(Boolean).find(o => o.state === 'warning');
+      if (worst && sla?.state !== 'breached' && !(sla?.state === 'warning' && worst.state === 'warning')) {
+        sla = worst.state === 'breached' ? { state: 'breached', hours: 0, elapsedMinutes: worst.minutesLate } : { state: 'warning', hours: worst.minutesLeft / 60, elapsedMinutes: 0 };
+      }
       const waitingSince = t.last_member_at && (!t.last_staff_at || new Date(t.last_member_at) > new Date(t.last_staff_at)) ? new Date(t.last_member_at) : null;
       const reasons = [];
       if (sla?.state === 'breached') reasons.push({ type: 'breached', minutes: sla.elapsedMinutes - sla.hours * 60 });
@@ -394,6 +404,8 @@ router.get('/:id', async (req, res) => {
       voiceUrl: ticket.voice_channel_id ? `https://discord.com/channels/${req.guildId}/${ticket.voice_channel_id}` : null,
       following: await require('../../utils/followers').isFollowing(req.guildDb, ticket.id, req.session.user.id),
       sla: slaStatus(ticket, cfg),
+      // SLA objectives: time to first response and to resolution (utils/slaPolicies.js)
+      objectives: require('../../utils/slaPolicies').objectives(ticket),
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
       fields: await fieldsForTicket(req.guildDb, ticket.id),
@@ -1121,6 +1133,7 @@ router.patch('/:id/team', async (req, res) => {
       if (ticket.team_id) {
         await req.guildDb('UPDATE tickets SET team_id = NULL WHERE id = ?', [ticket.id]);
         await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_team', ticketId: ticket.id, details: { team: null } });
+        await require('../../utils/slaPolicies').refreshQuietly(req.guildDb, ticket.id);
       }
       broadcast('ticket', { id: ticket.id, team_id: null }, req.guildId);
       return res.json({ ok: true, teamId: null, assignee: null });
@@ -1183,6 +1196,7 @@ router.patch('/:id/type', async (req, res) => {
     if (type !== ticket.ticket_type) {
       await req.guildDb('UPDATE tickets SET ticket_type = ? WHERE id = ?', [type, ticket.id]);
       await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_type', ticketId: ticket.id, details: { from: ticket.ticket_type, to: type } });
+      await require('../../utils/slaPolicies').refreshQuietly(req.guildDb, ticket.id);
       broadcast('ticket', { id: ticket.id, ticket_type: type }, req.guildId);
     }
     res.json({ ok: true, type });
@@ -1310,6 +1324,7 @@ router.patch('/:id/subject', async (req, res) => {
       return res.status(400).json({ error: 'Titre invalide' });
     }
     const result = await getManager(req).setSubject(ticket.id, subject, dashboardActor(req));
+    await require('../../utils/slaPolicies').refreshQuietly(req.guildDb, ticket.id);
     res.json({ ok: true, subject: result.subject, channelName: result.channelName });
   } catch (err) {
     console.error(err);

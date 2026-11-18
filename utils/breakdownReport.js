@@ -24,7 +24,7 @@ function keyOf(by, t) {
 async function breakdown(db, vis, { by, days }) {
   if (!DIMENSIONS.includes(by)) throw Object.assign(new Error('Dimension inconnue'), { status: 400 });
   const tickets = await db(
-    `SELECT t.id, t.subject, t.team_id, t.ticket_type, t.status, t.created_at, t.first_response_at, t.closed_at, ${CHANNEL_SQL} AS channel,
+    `SELECT t.id, t.subject, t.team_id, t.ticket_type, t.status, t.tto_due_at, t.ttr_due_at, t.resolved_at, t.created_at, t.first_response_at, t.closed_at, ${CHANNEL_SQL} AS channel,
             (SELECT AVG(r.rating) FROM ticket_ratings r WHERE r.ticket_id = t.id) AS rating,
             (SELECT COALESCE(SUM(COALESCE(tt.seconds, 0)), 0) FROM ticket_time tt WHERE tt.ticket_id = t.id) AS seconds
      FROM tickets t
@@ -52,6 +52,9 @@ async function breakdown(db, vis, { by, days }) {
     const resolved = list.filter(t => t.status === 'closed' && t.closed_at).map(t => minutes(t.created_at, t.closed_at)); // minutes: stageStats.median rounds
     const ratings = list.filter(t => t.rating != null).map(t => Number(t.rating));
     const med = median(responded), res = median(resolved), rate = mean(ratings);
+    // SLA objectives met (utils/slaPolicies.js), among the tickets that had one and reached it
+    const pct = (list2, due, done) => { const l = list2.filter(t => t[due] && done(t)); return l.length ? Math.round(100 * l.filter(t => new Date(done(t)) <= new Date(t[due])).length / l.length) : null; };
+    const ttoMetPct = pct(list, 'tto_due_at', t => t.first_response_at), ttrMetPct = pct(list, 'ttr_due_at', t => t.resolved_at || t.closed_at);
     return {
       key, label: label(key),
       opened: list.length,
@@ -62,12 +65,13 @@ async function breakdown(db, vis, { by, days }) {
       avgRating: rate == null ? null : Math.round(rate * 100) / 100,
       ratings: ratings.length,
       timeHours: Math.round(list.reduce((n, t) => n + Number(t.seconds || 0), 0) / 360) / 10,
+      ttoMetPct, ttrMetPct,
     };
   }).sort((a, b) => b.opened - a.opened || a.label.localeCompare(b.label));
   return { by, days, total: tickets.length, truncated: tickets.length >= MAX_TICKETS, rows };
 }
 
-const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)'];
-const csvRows = report => report.rows.map(r => [r.label, r.opened, r.closed, r.stillOpen, r.firstResponseMedianMin ?? '', r.resolutionMedianHours ?? '', r.avgRating ?? '', r.ratings, r.timeHours]);
+const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Prise en charge dans le délai (%)', 'Résolution dans le délai (%)'];
+const csvRows = report => report.rows.map(r => [r.label, r.opened, r.closed, r.stillOpen, r.firstResponseMedianMin ?? '', r.resolutionMedianHours ?? '', r.avgRating ?? '', r.ratings, r.timeHours, r.ttoMetPct ?? '', r.ttrMetPct ?? '']);
 
 module.exports = { breakdown, DIMENSIONS, CSV_HEADER, csvRows, CHANNEL_SQL };

@@ -82,6 +82,19 @@ The **3 priorities** of before (low, normal, urgent) stay and follow the level: 
 
 The space picks its calendar; a **team** can have its own (**Team → Teams → Hours of the team**), which applies to its tickets. The page shows live whether the support is open and when it reopens. Deadlines in business hours rely on these calendars.
 
+## SLA objectives
+
+**Settings → Hours → SLA objectives**: two deadlines per ticket, counted in business hours of its team's calendar (else the space's) or in full hours.
+
+| Objective | |
+|---|---|
+| **First response** | Until the staff's first reply |
+| **Resolution** | Until closing (or the proposed solution); **paused** while the ticket waits for the requester (« Waiting » stage) |
+
+An objective applies to the tickets that meet **all** its criteria: priorities, types, subjects (a category covers its sub-categories), channels (Discord, e-mail, web); an empty criterion takes them all. When several fit, the **most precise** wins, then the first in the list (arrows for the order). Changing the priority, subject, type, team or a calendar recomputes the deadlines of open tickets.
+
+The ticket view shows both deadlines (on time, due soon, breached, met, missed, paused); the list flags a breached objective and the **SLA breached** filter finds it; reports by subject, team or type give the **rate of met objectives** (and the CSV export). The per-stage delays (**Settings → Tickets**) stay separate.
+
 ## Statuses
 
 An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:

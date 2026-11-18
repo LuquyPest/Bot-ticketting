@@ -371,6 +371,8 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
       .map(k => [k, SECRET_FIELDS.has(k) && updates[k] ? '[modifié]' : updates[k]])),
     req.guildDb
   );
+  // Another calendar for the space: the deadlines in business hours move (utils/slaPolicies.js)
+  if ('calendarId' in updates) await require('../../utils/slaPolicies').refreshOpenTickets(req.guildDb).catch(() => null);
   return { ok: true, historyId };
 }
 
