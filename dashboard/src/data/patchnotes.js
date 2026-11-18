@@ -20,8 +20,8 @@ export const VERSIONS = [
   {
     version: 'v4.1.0',
     date: '18 novembre 2026',
-    title: 'Sauvegarde de la configuration complète, sécurité',
-    titleEn: 'Full configuration backup, security',
+    title: 'Corrections e-mail et sécurité, sauvegarde complète',
+    titleEn: 'E-mail and security fixes, full backup',
     changes: [
       { type: 'fix',  text: 'Espace sans Discord : la page Paramètres n\'inscrit plus trois fausses erreurs (salons, catégories, rôles Discord) dans Instance → Erreurs à chaque visite', en: 'Space without Discord: the Settings page no longer logs three false errors (Discord channels, categories, roles) in Instance → Errors on every visit' },
       { type: 'fix',  text: 'Tableau de bord et Analytiques → Comparatif staff : la période « 7 jours » s\'affiche (la requête échouait toujours) ; seuls les membres du staff sont comptés, jamais les notes automatiques', en: 'Dashboard and Analytics → Staff comparison: the « 7 days » period shows (its query always failed); only staff members are counted, never automatic notes' },
