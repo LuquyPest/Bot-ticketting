@@ -47,7 +47,7 @@ export default function Approval() {
                 className="mt-1 w-full bg-surface border border-overlay/8 text-ink-1 rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary/50" />
             </label>
             <div className="flex gap-2">
-              <button onClick={() => answer('approved')} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2">
+              <button onClick={() => answer('approved')} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2">
                 {busy && <Loader2 size={14} className="animate-spin" />}Donner mon accord
               </button>
               <button onClick={() => answer('rejected')} disabled={busy} className="flex-1 py-2.5 rounded-xl border border-overlay/10 text-ink-1 text-sm font-semibold hover:bg-overlay/5 disabled:opacity-50">Refuser</button>

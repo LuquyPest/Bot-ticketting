@@ -16,7 +16,7 @@ mkdirSync(OUT, { recursive: true });
 
 import { now, MOCK, PNG } from './fixtures.mjs';
 
-// [name, path, text that must be visible, anonymous visitor]
+// [name, path, text that must be visible, anonymous visitor, desktop only]
 const PAGES = [
   ['login', '/login', 'Discord', true],
   ['reset-password', '/reset-password', 'Mot de passe oublié', true],
@@ -25,7 +25,8 @@ const PAGES = [
   ['dashboard', '/', 'Nouveautés depuis ta dernière visite'],
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Voici la capture'],
-  ['ticket-validation', '/tickets/1', 'Rembourser 120 € hors délai'],
+  // side panel of the ticket view: on a phone it is a drawer behind the « Infos du ticket » button
+  ['ticket-validation', '/tickets/1', 'Rembourser 120 € hors délai', false, true],
   ['settings', '/settings', 'Paramètres'],
   ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],
   ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],
@@ -131,7 +132,8 @@ for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RU
     continue;
   }
 
-  for (const [name, p, text, anon = false] of PAGES) {
+  for (const [name, p, text, anon = false, desktopOnly = false] of PAGES) {
+    if (desktopOnly && mobile) continue;
     anonymous = anon;
     await page.goto(base + p, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1600); // chart entry animations (1.5 s)

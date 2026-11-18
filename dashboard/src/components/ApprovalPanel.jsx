@@ -52,7 +52,7 @@ export default function ApprovalPanel({ ticketId, open, me, canAsk, isFounder, s
               <textarea value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} rows={2} placeholder="Commentaire (facultatif)" aria-label="Commentaire de la décision" className={INPUT} />
               <div className="flex gap-1.5">
                 <button onClick={() => run(() => api.post(`/tickets/${ticketId}/approvals/${pending.id}/decide`, { decision: 'approved', comment }), 'Validation accordée')} disabled={busy}
-                  className="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-50">Accorder</button>
+                  className="flex-1 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold disabled:opacity-50">Accorder</button>
                 <button onClick={() => run(() => api.post(`/tickets/${ticketId}/approvals/${pending.id}/decide`, { decision: 'rejected', comment }), 'Validation refusée')} disabled={busy}
                   className="flex-1 py-1.5 rounded-lg border border-overlay/10 text-ink-1 font-semibold hover:bg-overlay/5 disabled:opacity-50">Refuser</button>
               </div>
