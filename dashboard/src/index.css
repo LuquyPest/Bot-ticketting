@@ -437,7 +437,9 @@
     --color-yellow-400: #a16207;
     --color-sky-300: #0369a1; --color-sky-400: #0369a1;
     --color-blue-400: #1d4ed8;
-    --color-teal-400: #0f766e;
+    --color-teal-300: #0f766e; --color-teal-400: #0f766e;
+    --color-rose-300: #be123c; --color-rose-400: #be123c;
+    --color-slate-300: #475569; --color-slate-400: #475569;
     --color-indigo-300: #4338ca;
     --color-violet-200: #6d28d9; --color-violet-300: #6d28d9; --color-violet-400: #6d28d9;
 

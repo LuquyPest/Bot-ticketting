@@ -4129,7 +4129,9 @@ async function main() {
     check('e-mail instance: port non standard et activation incomplète refusés', r.status === 400 && r2.status === 400, JSON.stringify([r.body, r2.body]));
     r = await req('PUT', '/api/instance/email', { sid: sessions.OWN, body: { enabled: true, host: 'smtp.example.com', port: 587, user: 'datick', password: 'SECRET-SMTP-I', from: 'Datick@Example.com', fromName: 'Datick' } });
     const [rowI] = await globalQuery("SELECT v FROM instance_settings WHERE k = 'instance_email'");
-    const [auditI] = await globalQuery("SELECT details FROM instance_audit_log WHERE action = 'instance_email_update' ORDER BY id DESC LIMIT 1");
+    // The instance journal is written once the response has left: wait for it
+    let auditI;
+    for (let i = 0; i < 20 && !auditI; i++) { [auditI] = await globalQuery("SELECT details FROM instance_audit_log WHERE action = 'instance_email_update' ORDER BY id DESC LIMIT 1"); if (!auditI) await new Promise(res => setTimeout(res, 50)); }
     check('e-mail instance: enregistré, mot de passe chiffré, jamais renvoyé ni journalisé', r.status === 200 && r.body.passwordSet && r.body.from === 'datick@example.com' && !JSON.stringify(r.body).includes('SECRET') && !JSON.stringify(rowI.v).includes('SECRET') && !JSON.stringify(auditI.details).includes('SECRET'), JSON.stringify([r.body, auditI]));
     r = await req('POST', '/api/instance/email/test', { sid: sessions.OWN, body: { to: 'owner@example.com' } });
     check('e-mail instance: serveur résolu en adresse privée refusé', r.status === 502 && /privée|introuvable/.test(r.body.error), JSON.stringify(r.body));

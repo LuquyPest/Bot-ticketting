@@ -89,7 +89,7 @@ export default function Kanban() {
             <h1>Kanban</h1>
           </div>
         </div>
-        <button onClick={load}
+        <button onClick={load} aria-label="Actualiser" title="Actualiser"
           className="p-2 rounded-xl text-ink-3 hover:text-ink-1 hover:bg-overlay/6
                      border border-overlay/6 transition-all">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
@@ -108,7 +108,7 @@ export default function Kanban() {
                   <span className={`w-2 h-2 rounded-full ${s.dot}`} />
                   <h3 className="text-sm font-semibold text-ink-1">{col.label}</h3>
                 </div>
-                <span className="text-xs font-bold text-ink-4 bg-overlay/5 px-2 py-0.5 rounded-full tabular-nums">
+                <span className="text-xs font-bold text-ink-3 bg-overlay/5 px-2 py-0.5 rounded-full tabular-nums">
                   {items.length}
                 </span>
               </div>
