@@ -73,6 +73,7 @@ const PAGES = [
   ['espace-login', '/espace', 'Recevoir un lien de connexion', true],
   ['espace', '/espace', 'Ancienne commande'],
   ['espace-ticket', '/espace/123456789012345678/1', 'Colis renvoyé'],
+  ['espace-fichiers', '/espace/123456789012345678/1', 'facture-1287.pdf'],
   ['espace-aide', '/espace/aide', 'Comment changer mon mot de passe'],
   ['espace-nouveau', '/espace/nouveau', 'Ouvrir le ticket'],
   ['aide-publique', '/aide/123456789012345678', 'Comment suivre ma livraison', true],

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail, BookOpen } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail, BookOpen, Paperclip, X, FileText } from 'lucide-react';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
 import { readableText } from '../utils/color';
@@ -222,6 +222,33 @@ function TicketList({ me }) {
   );
 }
 
+// Files picked before sending (v5.0): a button, the chosen names, each removable
+function FilePicker({ files, setFiles, rules }) {
+  if (!rules?.enabled) return null;
+  const max = rules.maxFiles || 5;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1 cursor-pointer">
+        <Paperclip size={12} aria-hidden="true" /> {STR.attach}
+        <input type="file" multiple className="sr-only" onChange={e => { setFiles(f => [...f, ...Array.from(e.target.files || [])].slice(0, max)); e.target.value = ''; }} />
+      </label>
+      {files.map((f, i) => (
+        <span key={`${f.name}${i}`} className="inline-flex items-center gap-1 text-[11px] text-ink-2 bg-overlay/5 rounded-md px-2 py-1">
+          {f.name}
+          <button type="button" aria-label={`${STR.attach} : ${f.name} ✕`} onClick={() => setFiles(x => x.filter((_, j) => j !== i))} className="text-ink-4 hover:text-red-400"><X size={11} /></button>
+        </span>
+      ))}
+      <span className="text-[11px] text-ink-4">{STR.fileHint.replace('{max}', max).replace('{mb}', rules.maxMb)}</span>
+    </div>
+  );
+}
+const sendFiles = (guildId, ticketId, content, files) => {
+  const fd = new FormData();
+  fd.append('content', content);
+  for (const f of files) fd.append('files', f);
+  return api.post(`/member/tickets/${guildId}/${ticketId}/messages`, fd);
+};
+
 function TicketView({ guildId, ticketId, me }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -234,13 +261,15 @@ function TicketView({ guildId, ticketId, me }) {
     return () => clearInterval(timer);
   }, [guildId, ticketId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [reply, setReply] = useState('');
+  const [files, setFiles] = useState([]);
   const [sending, setSending] = useState(false);
   const [replyError, setReplyError] = useState('');
   const send = async () => {
     setSending(true); setReplyError('');
     try {
-      await api.post(`/member/tickets/${guildId}/${ticketId}/messages`, { content: reply.trim() });
-      setReply('');
+      if (files.length) await sendFiles(guildId, ticketId, reply.trim(), files);
+      else await api.post(`/member/tickets/${guildId}/${ticketId}/messages`, { content: reply.trim() });
+      setReply(''); setFiles([]);
       await load();
     } catch (err) { setReplyError(err.response?.data?.error || STR.error2); }
     setSending(false);
@@ -276,6 +305,18 @@ function TicketView({ guildId, ticketId, me }) {
         </div>
       </div>
 
+      {data.files?.length > 0 && (
+        <div className="bg-surface-card border border-overlay/6 rounded-2xl p-3">
+          <p className="text-xs font-semibold text-ink-2 mb-2">{STR.files}</p>
+          <ul className="flex flex-wrap gap-2">
+            {data.files.map(f => (
+              <li key={f.id}><a href={`/api/member/tickets/${guildId}/${ticketId}/files/${f.id}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1">
+                <FileText size={12} aria-hidden="true" /> {f.filename}
+              </a></li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ol className="space-y-3" aria-label="Messages">
         {!messages.length && <li className="text-center text-xs text-ink-4 py-6">{STR.noMessages}</li>}
         {messages.map(m => m.kind === 'event' ? (
@@ -301,12 +342,13 @@ function TicketView({ guildId, ticketId, me }) {
       {t.status === 'open' && !t.merged_into ? (
         <div className="bg-surface-card border border-overlay/6 rounded-2xl p-3 space-y-2">
           <textarea value={reply} onChange={e => setReply(e.target.value)} rows={3} maxLength={2000} aria-label={STR.replyPh} placeholder={STR.replyPh}
-            onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && reply.trim()) send(); }}
+            onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && (reply.trim() || files.length)) send(); }}
             className="w-full bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-hidden focus:border-primary/50 resize-y" />
+          <FilePicker files={files} setFiles={setFiles} rules={data.upload} />
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] text-ink-4">{me?.email ? STR.replyWeb : STR.reply}</p>
             {replyError && <p className="text-xs text-red-400" role="alert">{replyError}</p>}
-            <button onClick={send} disabled={!reply.trim() || sending} style={accent(guild)}
+            <button onClick={send} disabled={(!reply.trim() && !files.length) || sending} style={accent(guild)}
               className="ml-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50">
               {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {STR.send}
             </button>
@@ -405,6 +447,8 @@ function NewTicket({ me }) {
   const [answers, setAnswers] = useState([]);
   const [content, setContent] = useState('');
   const [confidential, setConfidential] = useState(false);
+  const [newFiles, setNewFiles] = useState([]);
+  const [uploadRules, setUploadRules] = useState(null);
   const [faq, setFaq] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -412,7 +456,7 @@ function NewTicket({ me }) {
   useEffect(() => {
     if (!guildId) return;
     setSubjects(null); setSubject('');
-    api.get(`/member/guilds/${guildId}/form`).then(r => setSubjects(r.data.subjects)).catch(() => setSubjects([]));
+    api.get(`/member/guilds/${guildId}/form`).then(r => { setSubjects(r.data.subjects); setUploadRules(r.data.upload || null); }).catch(() => setSubjects([]));
     api.get(`/member/guilds/${guildId}/faq`).then(r => setFaq(r.data)).catch(() => setFaq([]));
   }, [guildId]);
   useEffect(() => {
@@ -428,6 +472,8 @@ function NewTicket({ me }) {
     setBusy(true); setError('');
     try {
       const { data } = await api.post(`/member/guilds/${guildId}/tickets`, { subject, fields, answers, content: content.trim(), confidential });
+      // The files follow the opening, as a second message
+      if (newFiles.length) await sendFiles(data.guildId, data.ticketId, '', newFiles).catch(() => null);
       navigate(`/espace/${data.guildId}/${data.ticketId}`);
     } catch (err) { setError(err.response?.data?.error || STR.error2); }
     setBusy(false);
@@ -480,6 +526,7 @@ function NewTicket({ me }) {
           ))}
         </fieldset>
       )}
+      <FilePicker files={newFiles} setFiles={setNewFiles} rules={uploadRules} />
       <label className="flex items-start gap-2 text-sm text-ink-2 rounded-xl border border-overlay/8 p-3">
         <input type="checkbox" checked={confidential} onChange={e => setConfidential(e.target.checked)} className="mt-1" />
         <span>🔒 {STR.confidential}</span>

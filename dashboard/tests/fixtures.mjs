@@ -134,7 +134,7 @@ export const MOCK = {
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
     { id: 2, subject: 'Ancienne commande', status: 'closed', stage: 'open', created_at: iso(9000), closed_at: iso(8000), assigned: true, participant: false, rating: 5 },
   ] }],
-  '/api/member/tickets/123456789012345678/1': { guild: { id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' },
+  '/api/member/tickets/123456789012345678/1': { files: [{ id: 3, filename: 'facture-1287.pdf', size: 48213, created_at: new Date(Date.now() - 3600000).toISOString() }], upload: { enabled: true, maxMb: 10, maxFiles: 5, blocked: ['exe'] }, guild: { id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' },
     ticket: { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), assigned: true, participant: false },
     messages: [
       { id: 1, kind: 'me', author: null, content: 'Bonjour, je n’arrive pas à payer.', created_at: iso(120) },

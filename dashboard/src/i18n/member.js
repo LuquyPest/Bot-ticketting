@@ -47,6 +47,7 @@ const fr = {
   optional: 'facultatif', form: 'Quelques questions', open: 'Ouvrir le ticket', noGuild: 'Aucun serveur disponible : tu dois être membre d\'un serveur qui utilise ce bot.',
   faqTitle: 'Questions fréquentes', faqSearch: 'Chercher dans l\'aide…', faqNone: 'Aucune réponse ne correspond.', faqEmpty: 'Cet espace n\'a pas encore de page d\'aide.',
   kbTitle: 'Base de connaissances', kbLink: 'Voir la base de connaissances publique', kbBack: 'Tous les articles', kbNotFound: 'Cette page d\'aide n\'existe pas ou n\'est pas publique.', kbArticleNotFound: 'Cet article n\'existe pas ou n\'est plus public.', kbContact: 'Ma question n\'y est pas : contacter le support', kbUpdated: 'Mis à jour le', kbGeneral: 'Général', kbCount: '{n} article(s)',
+  attach: 'Joindre des fichiers', files: 'Fichiers du ticket', fileHint: '{max} fichiers au plus, {mb} Mo chacun', filesSent: 'Fichiers envoyés',
   stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.', privacy: 'Confidentialité', language: 'Langue',
 };
 
@@ -73,6 +74,7 @@ const en = {
   optional: 'optional', form: 'A few questions', open: 'Open the ticket', noGuild: 'No server available: you must be a member of a server that uses this bot.',
   faqTitle: 'Frequently asked questions', faqSearch: 'Search the help…', faqNone: 'No answer matches.', faqEmpty: 'This space has no help page yet.',
   kbTitle: 'Knowledge base', kbLink: 'See the public knowledge base', kbBack: 'All articles', kbNotFound: 'This help page does not exist or is not public.', kbArticleNotFound: 'This article does not exist or is no longer public.', kbContact: 'My question isn\'t here: contact support', kbUpdated: 'Updated on', kbGeneral: 'General', kbCount: '{n} article(s)',
+  attach: 'Attach files', files: 'Files of the ticket', fileHint: '{max} files at most, {mb} MB each', filesSent: 'Files sent',
   stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.', privacy: 'Privacy', language: 'Language',
 };
 
@@ -99,6 +101,7 @@ const es = {
   optional: 'opcional', form: 'Algunas preguntas', open: 'Abrir el ticket', noGuild: 'Ningún servidor disponible: debes ser miembro de un servidor que use este bot.',
   faqTitle: 'Preguntas frecuentes', faqSearch: 'Buscar en la ayuda…', faqNone: 'Ninguna respuesta coincide.', faqEmpty: 'Este espacio aún no tiene página de ayuda.',
   kbTitle: 'Base de conocimientos', kbLink: 'Ver la base de conocimientos pública', kbBack: 'Todos los artículos', kbNotFound: 'Esta página de ayuda no existe o no es pública.', kbArticleNotFound: 'Este artículo no existe o ya no es público.', kbContact: 'Mi pregunta no está: contactar con el soporte', kbUpdated: 'Actualizado el', kbGeneral: 'General', kbCount: '{n} artículo(s)',
+  attach: 'Adjuntar archivos', files: 'Archivos del ticket', fileHint: '{max} archivos como máximo, {mb} MB cada uno', filesSent: 'Archivos enviados',
   stillStuck: '¿Sigues bloqueado?', maybe: 'Estas respuestas pueden ayudarte:', error2: 'Error, inténtalo de nuevo.', privacy: 'Privacidad', language: 'Idioma',
 };
 
@@ -125,6 +128,7 @@ const de = {
   optional: 'optional', form: 'Ein paar Fragen', open: 'Ticket öffnen', noGuild: 'Kein Server verfügbar: Du musst Mitglied eines Servers sein, der diesen Bot nutzt.',
   faqTitle: 'Häufige Fragen', faqSearch: 'Hilfe durchsuchen…', faqNone: 'Keine Antwort passt.', faqEmpty: 'Dieser Bereich hat noch keine Hilfeseite.',
   kbTitle: 'Wissensdatenbank', kbLink: 'Öffentliche Wissensdatenbank ansehen', kbBack: 'Alle Artikel', kbNotFound: 'Diese Hilfeseite existiert nicht oder ist nicht öffentlich.', kbArticleNotFound: 'Dieser Artikel existiert nicht oder ist nicht mehr öffentlich.', kbContact: 'Meine Frage ist nicht dabei: Support kontaktieren', kbUpdated: 'Aktualisiert am', kbGeneral: 'Allgemein', kbCount: '{n} Artikel',
+  attach: 'Dateien anhängen', files: 'Dateien des Tickets', fileHint: 'Höchstens {max} Dateien, je {mb} MB', filesSent: 'Dateien gesendet',
   stillStuck: 'Immer noch nicht gelöst?', maybe: 'Diese Antworten könnten helfen:', error2: 'Fehler, versuche es erneut.', privacy: 'Datenschutz', language: 'Sprache',
 };
 
@@ -151,6 +155,7 @@ const it = {
   optional: 'facoltativo', form: 'Qualche domanda', open: 'Apri il ticket', noGuild: 'Nessun server disponibile: devi essere membro di un server che usa questo bot.',
   faqTitle: 'Domande frequenti', faqSearch: 'Cerca nell\'aiuto…', faqNone: 'Nessuna risposta corrisponde.', faqEmpty: 'Questo spazio non ha ancora una pagina di aiuto.',
   kbTitle: 'Base di conoscenza', kbLink: 'Vedi la base di conoscenza pubblica', kbBack: 'Tutti gli articoli', kbNotFound: 'Questa pagina di aiuto non esiste o non è pubblica.', kbArticleNotFound: 'Questo articolo non esiste o non è più pubblico.', kbContact: 'La mia domanda non c\'è: contatta il supporto', kbUpdated: 'Aggiornato il', kbGeneral: 'Generale', kbCount: '{n} articolo/i',
+  attach: 'Allega file', files: 'File del ticket', fileHint: 'Al massimo {max} file, {mb} MB ciascuno', filesSent: 'File inviati',
   stillStuck: 'Ancora bloccato?', maybe: 'Queste risposte possono aiutarti:', error2: 'Errore, riprova.', privacy: 'Privacy', language: 'Lingua',
 };
 
@@ -177,6 +182,7 @@ const pt = {
   optional: 'opcional', form: 'Algumas perguntas', open: 'Abrir o ticket', noGuild: 'Nenhum servidor disponível: você precisa ser membro de um servidor que usa este bot.',
   faqTitle: 'Perguntas frequentes', faqSearch: 'Pesquisar na ajuda…', faqNone: 'Nenhuma resposta corresponde.', faqEmpty: 'Este espaço ainda não tem página de ajuda.',
   kbTitle: 'Base de conhecimento', kbLink: 'Ver a base de conhecimento pública', kbBack: 'Todos os artigos', kbNotFound: 'Esta página de ajuda não existe ou não é pública.', kbArticleNotFound: 'Este artigo não existe ou não é mais público.', kbContact: 'Minha pergunta não está aqui: contatar o suporte', kbUpdated: 'Atualizado em', kbGeneral: 'Geral', kbCount: '{n} artigo(s)',
+  attach: 'Anexar arquivos', files: 'Arquivos do ticket', fileHint: 'No máximo {max} arquivos, {mb} MB cada', filesSent: 'Arquivos enviados',
   stillStuck: 'Ainda com dúvidas?', maybe: 'Estas respostas podem ajudar:', error2: 'Erro, tente de novo.', privacy: 'Privacidade', language: 'Idioma',
 };
 

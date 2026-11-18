@@ -73,12 +73,14 @@ pages.get('/widget/:token', async (req, res, next) => {
     if (!ready) return res.status(404).type('html').send(page({ lang, nonce, color, title: L('widget.title'), body: `<p>${esc(L('widget.unavailable'))}</p>` }));
     const [space] = await require('../../utils/globalDb').globalQuery('SELECT guild_name FROM guilds WHERE guild_id = ?', [w.guildId]);
     const { subjects } = await require('../../utils/memberPortal').openingForm(w.guildId);
+    const rules = await require('../../utils/requesterFiles').uploadRules(w.db);
     const body = `<h1>${esc(L('widget.title'))}${space?.guild_name ? ` · ${esc(space.guild_name)}` : ''}</h1>
 <form id="f" novalidate>
 <label for="n">${esc(L('widget.name'))}</label><input id="n" name="name" maxlength="100" autocomplete="name">
 <label for="e">${esc(L('widget.email'))}</label><input id="e" name="email" type="email" maxlength="254" required autocomplete="email">
 ${subjects.length ? `<label for="s">${esc(L('widget.subject'))}</label><select id="s" name="subject" required><option value=""></option>${subjects.map(s => `<option>${esc(s)}</option>`).join('')}</select>` : ''}
 <label for="m">${esc(L('widget.message'))}</label><textarea id="m" name="message" maxlength="2000" required></textarea>
+${rules.enabled ? `<label for="fi">${esc(L('widget.files', { max: 3, mb: rules.maxMb }))}</label><input id="fi" name="files" type="file" multiple>` : ''}
 <div id="k" class="kb" hidden><p>${esc(L('widget.maybe'))}</p><ul id="kl"></ul></div>
 <div class="hp" aria-hidden="true"><label for="w">Website</label><input id="w" name="website" tabindex="-1" autocomplete="off"></div>
 <input type="hidden" name="t" value="${esc(widget.stamp(w.guildId))}">
@@ -92,8 +94,8 @@ fetch(${JSON.stringify(`/api/widget/${req.params.token}/suggest?q=`)}+encodeURIC
 kl.textContent='';(Array.isArray(list)?list:[]).forEach(function(a){var li=document.createElement('li'),l=document.createElement('a');l.href=a.url;l.target='_blank';l.rel='noopener';l.textContent=a.question;li.appendChild(l);kl.appendChild(li);});
 k.hidden=!kl.children.length;}).catch(function(){});},600);});})();
 document.getElementById('f').addEventListener('submit',function(ev){ev.preventDefault();var f=ev.target,b=document.getElementById('b'),r=document.getElementById('r');
-var data={};new FormData(f).forEach(function(v,k){data[k]=v;});b.disabled=true;r.className='';r.textContent='';
-fetch(${JSON.stringify(`/api/widget/${req.params.token}/tickets`)},{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest','X-Member-Lang':${JSON.stringify(lang)}},body:JSON.stringify(data)})
+var fd=new FormData(f),fi=document.getElementById('fi');if(fi&&fi.files.length>3){r.className='msg err';r.textContent=${JSON.stringify(L('widget.tooManyFiles', { max: 3 }))};return;}b.disabled=true;r.className='';r.textContent='';
+fetch(${JSON.stringify(`/api/widget/${req.params.token}/tickets`)},{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','X-Member-Lang':${JSON.stringify(lang)}},body:fd})
 .then(function(x){return x.json().then(function(j){return{ok:x.ok,j:j};});}).then(function(x){
 if(x.ok){f.innerHTML='';var p=document.createElement('p');p.className='msg ok';p.textContent=${JSON.stringify(L('widget.sent'))};f.appendChild(p);return;}
 r.className='msg err';r.textContent=(x.j&&x.j.error)||'Erreur';b.disabled=false;})
@@ -121,7 +123,11 @@ api.get('/:token/suggest', async (req, res) => {
   }
 });
 
-api.post('/:token/tickets', async (req, res) => {
+// The form with files is sent as multipart (3 files at most)
+const widgetUpload = (req, res, next) => (req.is('multipart/form-data')
+  ? require('../../utils/requesterFiles').upload(3)(req, res, err => (err ? res.status(413).json({ error: withLang(langOf(req), () => t('portal.fileTooBig')) }) : next()))
+  : next());
+api.post('/:token/tickets', widgetUpload, async (req, res) => {
   const lang = langOf(req);
   const L = (k, v) => withLang(lang, () => t(k, v));
   try {
@@ -165,6 +171,11 @@ api.post('/:token/tickets', async (req, res) => {
       { skipFaq: true, fieldsDone: true, intakeDone: true }));
     const [ticket] = await db('SELECT id FROM tickets WHERE owner_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 1', [ownerId, startedAt]);
     if (!ticket) return res.status(409).json({ error: L('portal.openFailed') });
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (files.length) {
+      const [full] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
+      await withLang(lang, () => require('../../utils/requesterFiles').addFiles({ db, guildId, tm, ticket: full, user, files })).catch(e => console.error('widget files:', e.message));
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('widget ticket error:', err.message);

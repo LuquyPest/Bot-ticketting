@@ -130,7 +130,12 @@ async function loadOwn(req, res) {
 router.get('/tickets/:guildId/:ticketId', requireMember, async (req, res) => {
   try {
     const data = await loadOwn(req, res);
-    if (data) res.json(data);
+    if (!data) return;
+    // The files of the conversation, and what may be sent (v5.0)
+    const db = getTenantDb(data.guild.id);
+    const files = (await require('../../utils/emailAttachments').listForTicket(db, data.ticket.id).catch(() => []))
+      .map(f => ({ id: f.id, filename: f.filename, size: f.size, created_at: f.created_at }));
+    res.json({ ...data, files, upload: await require('../../utils/requesterFiles').uploadRules(db) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: tr(req, 'portal.serverError') });
@@ -174,7 +179,7 @@ router.get('/guilds/:guildId/form', requireMember, async (req, res) => {
   try {
     if (!(await guildOf(req, res))) return;
     const subject = typeof req.query.subject === 'string' ? req.query.subject.slice(0, 100) : undefined;
-    res.json(await openingForm(req.params.guildId, subject));
+    res.json({ ...(await openingForm(req.params.guildId, subject)), upload: await require('../../utils/requesterFiles').uploadRules(getTenantDb(req.params.guildId)) });
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
 });
 
@@ -245,10 +250,27 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
 });
 
 // POST /api/member/tickets/:guildId/:ticketId/messages { content } — reaches the staff like a DM
-router.post('/tickets/:guildId/:ticketId/messages', requireMember, async (req, res) => {
+// GET /api/member/tickets/:guildId/:ticketId/files/:fileId — a file of my ticket, always downloaded
+router.get('/tickets/:guildId/:ticketId/files/:fileId', requireMember, async (req, res) => {
+  try {
+    const data = await loadOwn(req, res);
+    if (!data) return;
+    const found = await require('../../utils/emailAttachments').fileFor(getTenantDb(data.guild.id), data.guild.id, data.ticket.id, parseInt(req.params.fileId) || 0);
+    if (!found) return res.status(404).json({ error: tr(req, 'portal.ticketNotFound') });
+    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(found.row.filename)}`, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store' });
+    res.sendFile(found.file);
+  } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
+// A message, files (multipart « files », 5 at most) or both
+const memberUpload = (req, res, next) => (req.is('multipart/form-data')
+  ? require('../../utils/requesterFiles').upload()(req, res, err => (err ? res.status(413).json({ error: tr(req, 'portal.fileTooBig') }) : next()))
+  : next());
+router.post('/tickets/:guildId/:ticketId/messages', requireMember, memberUpload, async (req, res) => {
   try {
     const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
-    if (!content || content.length > 2000) return res.status(400).json({ error: tr(req, 'portal.messageLength') });
+    const files = Array.isArray(req.files) ? req.files : [];
+    if ((!content && !files.length) || content.length > 2000) return res.status(400).json({ error: tr(req, 'portal.messageLength') });
     const data = await loadOwn(req, res);
     if (!data) return;
     if (data.ticket.status !== 'open') return res.status(400).json({ error: tr(req, 'portal.closed') });
@@ -257,11 +279,19 @@ router.post('/tickets/:guildId/:ticketId/messages', requireMember, async (req, r
     const blocked = await memberBlocked(db, req.member);
     if (blocked) return res.status(403).json({ error: tr(req, blocked) });
     if (!(await allowBurst(`dm:${req.member.id}`, 8, 30 * 1000))) return res.status(429).json({ error: tr(req, 'portal.tooManyMessages') });
+    // Files: 30 per hour and per person, whatever the tickets
+    for (let i = 0; i < files.length; i++) if (!(await allowBurst(`webfiles:${req.member.id}`, 30, 3600 * 1000))) return res.status(429).json({ error: tr(req, 'portal.tooManyMessages') });
     const client = req.app.locals.client;
     const [ticket] = await db('SELECT * FROM tickets WHERE id = ?', [data.ticket.id]);
     const ids = memberIds(req.member);
     const user = await requesterFor(req, guildId, ids.includes(ticket.owner_id) ? ticket.owner_id : req.member.id);
-    const sent = user && await createManager(db, client, guildId).relayToTicket(ticket, user, content, []);
+    const tm = createManager(db, client, guildId);
+    if (files.length) {
+      const r = user ? await require('../../utils/requesterFiles').addFiles({ db, guildId, tm, ticket, user, files, text: content }) : { sent: false };
+      if (!r.sent) return res.status(409).json({ error: tr(req, 'portal.notSent') });
+      return res.json({ ok: true, files: r.files });
+    }
+    const sent = user && await tm.relayToTicket(ticket, user, content, []);
     if (!sent) return res.status(409).json({ error: tr(req, 'portal.notSent') });
     res.json({ ok: true });
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }

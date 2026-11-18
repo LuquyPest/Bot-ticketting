@@ -1578,6 +1578,51 @@ async function main() {
     r = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.MW, body: { content: 'Réponse écrite sur le site' } });
     const webMsgs = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id", [wt]);
     check('espace membre: réponse depuis le web transmise comme un MP', r.status === 200 && webMsgs.some(n => n.content === 'Réponse écrite sur le site') && sent.some(x => x.id === wTicket.channel_id), JSON.stringify(webMsgs));
+    // Files from the member space (utils/requesterFiles.js, v5.0): multipart, as the browser sends it
+    {
+      const os = require('os'), fsx = require('fs');
+      app('./utils/config').config.attachmentsDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-pj-'));
+      const cookie = { Cookie: 'connect.sid=' + encodeURIComponent('s:' + sign(sessions.MW, config.dashboard.sessionSecret)), 'X-Requested-With': 'XMLHttpRequest' };
+      const post = (url, fd, headers = cookie) => fetch(`http://127.0.0.1:${config.webServerPort}${url}`, { method: 'POST', body: fd, headers }).then(async x => ({ status: x.status, body: await x.json().catch(() => ({})) }));
+      r = await req('GET', `/api/member/tickets/${G}/${wt}`, { sid: sessions.MW });
+      check('pièces jointes demandeur: règles d envoi données à l espace membre', r.body.upload?.enabled === true && r.body.upload.maxFiles === 5 && Array.isArray(r.body.files), JSON.stringify(r.body.upload));
+      let fd = new FormData();
+      fd.append('content', 'Voici la facture et une photo');
+      fd.append('files', new Blob([Buffer.from('%PDF-1.4 facture')], { type: 'application/pdf' }), 'facture.pdf');
+      fd.append('files', new Blob([Buffer.from('MZ binaire')], { type: 'application/octet-stream' }), 'outil.exe');
+      let up = await post(`/api/member/tickets/${G}/${wt}/messages`, fd);
+      const [nFile] = await db("SELECT id, content FROM ticket_notes WHERE ticket_id = ? AND content LIKE 'Voici la facture%'", [wt]);
+      const stored = await db('SELECT id, filename, note_id FROM email_attachments WHERE ticket_id = ?', [wt]);
+      check('pièces jointes demandeur: message et fichiers dans le ticket, types refusés écartés', up.status === 200 && nFile?.content.includes('📎 facture.pdf') && /outil\.exe \(non conservée : type refusé\)/.test(nFile.content)
+        && stored.length === 1 && stored[0].filename === 'facture.pdf' && stored[0].note_id === nFile.id, JSON.stringify([up, nFile, stored]));
+      fd = new FormData();
+      fd.append('files', new Blob([Buffer.from('juste un fichier')], { type: 'text/plain' }), 'note.txt');
+      up = await post(`/api/member/tickets/${G}/${wt}/messages`, fd);
+      check('pièces jointes demandeur: un fichier seul, sans texte', up.status === 200 && up.body.files?.[0]?.kept === true, JSON.stringify(up));
+      r = await req('GET', `/api/member/tickets/${G}/${wt}`, { sid: sessions.MW });
+      const f1 = r.body.files?.find(f => f.filename === 'facture.pdf');
+      const dl = await fetch(`http://127.0.0.1:${config.webServerPort}/api/member/tickets/${G}/${wt}/files/${f1?.id}`, { headers: cookie });
+      check('pièces jointes demandeur: retéléchargeables par le demandeur, jamais affichées', r.body.files.length === 2 && dl.status === 200 && dl.headers.get('content-type') === 'application/octet-stream'
+        && /attachment/.test(dl.headers.get('content-disposition')) && (await dl.text()).startsWith('%PDF'), JSON.stringify(r.body.files));
+      await mk('MWX', { member: { id: '200000000000000082', username: 'autre', avatar: null } });
+      const dlOther = await fetch(`http://127.0.0.1:${config.webServerPort}/api/member/tickets/${G}/${wt}/files/${f1?.id}`, { headers: { Cookie: 'connect.sid=' + encodeURIComponent('s:' + sign(sessions.MWX, config.dashboard.sessionSecret)) } });
+      check('pièces jointes demandeur: inaccessibles à un autre membre', dlOther.status === 404, dlOther.status);
+      fd = new FormData();
+      for (let i = 0; i < 6; i++) fd.append('files', new Blob([Buffer.from('x')]), `f${i}.txt`);
+      up = await post(`/api/member/tickets/${G}/${wt}/messages`, fd);
+      check('pièces jointes demandeur: 5 fichiers au plus', up.status === 413, JSON.stringify(up));
+      fd = new FormData();
+      fd.append('files', new Blob([Buffer.from('x')]), 'a.txt');
+      up = await post(`/api/member/tickets/${G}/${wt}/messages`, fd, { Cookie: cookie.Cookie });
+      check('pièces jointes demandeur: en-tête anti-CSRF exigé en multipart aussi', up.status === 403, up.status);
+      await db('INSERT INTO email_settings (id, attach_enabled) VALUES (1, 0) ON DUPLICATE KEY UPDATE attach_enabled = 0');
+      fd = new FormData();
+      fd.append('files', new Blob([Buffer.from('x')]), 'b.txt');
+      up = await post(`/api/member/tickets/${G}/${wt}/messages`, fd);
+      check('pièces jointes demandeur: conservation coupée → nom noté, fichier non gardé', up.status === 200 && up.body.files?.[0]?.kept === false && (await db('SELECT COUNT(*) AS n FROM email_attachments WHERE ticket_id = ?', [wt]))[0].n == 2, JSON.stringify(up));
+      await db('UPDATE email_settings SET attach_enabled = 1 WHERE id = 1');
+      await db('DELETE FROM email_attachments WHERE ticket_id = ?', [wt]); // the e-mail tests count the space used from zero
+    }
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [wt]);
     r = await req('POST', `/api/member/tickets/${G}/${wt}/messages`, { sid: sessions.MW, body: { content: 'trop tard' } });
     check('espace membre: pas de réponse sur un ticket fermé', r.status === 400, r.status);
@@ -4670,6 +4715,22 @@ async function main() {
     const [wc] = await db('SELECT address FROM email_contacts WHERE owner_id = ?', [O1]);
     check('widget: ouverture depuis le widget → ticket du demandeur web, adresse gardée', r.status === 200 && r.body.ok && !!wt && wt.status === 'open' && wc?.address === A1, JSON.stringify([r.body, wt, wc]));
     check('widget: confirmation envoyée par l e-mail de l instance avec le lien de suivi', mails.some(m => m.to === A1 && /\/espace/.test(m.text || '')), JSON.stringify(mails.map(m => [m.to, (m.text || '').slice(0, 120)])));
+
+    // With files (multipart, as the widget page sends them)
+    {
+      const os = require('os'), fsx = require('fs');
+      app('./utils/config').config.attachmentsDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-wpj-'));
+      const fd = new FormData();
+      for (const [k, v] of Object.entries({ name: 'Ana', email: 'widget3@example.com', message: 'Capture de l erreur jointe', t: old() })) fd.append(k, v);
+      fd.append('files', new Blob([Buffer.from('PNGDATA')], { type: 'image/png' }), 'erreur.png');
+      const wr = await fetch(`http://127.0.0.1:${config.webServerPort}/api/widget/${TOK}/tickets`, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-Forwarded-For': '10.22.0.9' } }).then(async x => ({ status: x.status, body: await x.json() }));
+      const [wtf] = await db('SELECT id FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [web.webOwnerIdFor('widget3@example.com')]);
+      const wfiles = wtf ? await db('SELECT filename FROM email_attachments WHERE ticket_id = ?', [wtf.id]) : [];
+      check('widget: fichiers joints au formulaire gardés dans le ticket', wr.status === 200 && wfiles.some(f => f.filename === 'erreur.png'), JSON.stringify([wr, wfiles]));
+      r = await req('GET', `/widget/${TOK}`);
+      check('widget: champ fichiers proposé', String(r.body).includes('type="file"'), '');
+      if (wtf) await db('DELETE FROM email_attachments WHERE ticket_id = ?', [wtf.id]);
+    }
 
     // Limits: 3 per address and per hour, 5 per IP and per hour
     const byAddr = [];
