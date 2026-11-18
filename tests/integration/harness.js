@@ -3868,6 +3868,74 @@ async function main() {
       await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tH]);
     }
 
+    // ── Import rules, spam, loops, quarantine (utils/mailFilter.js, v5.0) ──
+    {
+      const flt = app('./utils/mailFilter');
+      const inb = app('./utils/inboundEmail');
+      const H = obj => ({ headers: new Map(Object.entries(obj)) });
+      check('filtres: verdicts anti-spam lus dans les en-têtes', flt.spamVerdict(H({ 'x-spam-flag': 'YES' })).spam && flt.spamVerdict(H({ 'x-spam-status': 'No, score=7.2 required=5.0' }), 5).spam
+        && !flt.spamVerdict(H({ 'x-spam-status': 'No, score=1.1' }), 5).spam && flt.spamVerdict(H({ 'x-ms-exchange-organization-scl': '6' })).spam && flt.spamVerdict(H({ 'x-mailgun-sflag': 'Yes' })).spam
+        && flt.spamVerdict(H({ 'x-ses-virus-verdict': 'FAIL' })).reason.includes('Virus') && flt.spamVerdict(H({ 'authentication-results': 'mx.test; spf=pass; dmarc=fail (p=reject)' })).spam
+        && !flt.spamVerdict(H({ 'authentication-results': 'mx.test; dkim=pass; dmarc=pass' })).spam && !flt.spamVerdict(H({})).spam, '');
+      await db("UPDATE email_settings SET enabled = 1, inbound_mode = 'imap' WHERE id = 1");
+      let st = (await req('GET', '/api/email', { sid: sessions.F })).body;
+      check('filtres: réglages par défaut (spam en quarantaine, seuil 5, 10 Mo)', st.filters?.spamAction === 'quarantine' && st.filters.spamThreshold === 5 && st.filters.maxMb === 10 && st.quarantineCount === 0, JSON.stringify(st.filters));
+      r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...st, filters: { maxMb: 50 } } });
+      check('filtres: taille hors limites refusée', r.status === 400, JSON.stringify(r.body));
+      r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...st, filters: { blocked: 'spam.test, @Pub.example ; chef@ennuyeux.test pas-un-domaine', allowed: '', maxMb: 10, spamAction: 'quarantine', spamThreshold: 5 } } });
+      check('filtres: domaines et adresses refusés enregistrés (liste nettoyée)', r.status === 200 && r.body.filters.blocked === 'spam.test\npub.example\nchef@ennuyeux.test', JSON.stringify(r.body.filters));
+      const sF = async () => email.emailSettings(db, { withSecrets: true });
+      const m = (from, subject, text, headers = {}) => ({ from: { value: [{ address: from, name: 'X' }] }, subject, text, headers: new Map(Object.entries(headers)), messageId: `<f${Math.random()}@ext.test>`, attachments: [] });
+      let rf = await email.processEmail(fakeClient, G, m('vendeur@news.spam.test', 'Promo', 'Achetez'), await sF());
+      const rf2 = await email.processEmail(fakeClient, G, m('chef@ennuyeux.test', 'Encore', 'x'), await sF());
+      check('filtres: domaine (sous-domaines compris) et adresse refusés → ignorés, sans ticket', rf.skipped === 'expéditeur refusé' && rf2.skipped === 'expéditeur refusé' && !(await db("SELECT id FROM tickets WHERE owner_tag IN ('vendeur@news.spam.test', 'chef@ennuyeux.test')")).length, JSON.stringify([rf, rf2]));
+      rf = await email.processEmail(fakeClient, G, m('louche@ext.test', 'Gagnez', 'Cliquez', { 'x-spam-flag': 'YES', 'x-spam-status': 'Yes, score=9.1' }), await sF());
+      const q1 = (await req('GET', '/api/email/quarantine', { sid: sessions.F })).body;
+      check('filtres: spam → quarantaine, sans ticket, avec la raison', rf.quarantined && q1.length === 1 && q1[0].from_address === 'louche@ext.test' && /spam/i.test(q1[0].reason) && Number(q1[0].score) === 9.1
+        && !(await db("SELECT id FROM tickets WHERE owner_tag = 'louche@ext.test'")).length, JSON.stringify([rf, q1]));
+      const rawSpam = 'From: Vrai Client <vrai@ext.test>\r\nTo: support@example.com\r\nSubject: Commande 88\r\nX-Spam-Flag: YES\r\nMessage-ID: <rq1@ext.test>\r\n\r\nMa commande 88 est bloquée.\r\n';
+      rf = await email.processEmail(fakeClient, G, await inb.parseRaw(rawSpam), await sF());
+      const q2 = (await req('GET', '/api/email/quarantine', { sid: sessions.F })).body;
+      const qid = q2.find(x => x.from_address === 'vrai@ext.test')?.id;
+      r = await req('POST', `/api/email/quarantine/${qid}/release`, { sid: sessions.F });
+      const [rel] = r.body.ticketId ? await db('SELECT owner_tag, subject FROM tickets WHERE id = ?', [r.body.ticketId]) : [];
+      check('filtres: un faux positif libéré devient un ticket (message d origine complet), au journal', r.status === 200 && rel?.owner_tag === 'vrai@ext.test' && rel.subject === 'Commande 88'
+        && !r.body.quarantine.some(x => x.id === qid) && (await db("SELECT id FROM audit_log WHERE action = 'email_quarantine_release'")).length === 1, JSON.stringify([r.body, rel]));
+      const lid = q2.find(x => x.from_address === 'louche@ext.test')?.id;
+      r = await req('DELETE', `/api/email/quarantine/${lid}`, { sid: sessions.F });
+      check('filtres: suppression d un message en quarantaine', r.status === 200 && r.body.quarantine.length === 0, JSON.stringify(r.body));
+      r = await req('GET', '/api/email/quarantine', { sid: sessions.S1 });
+      check('filtres: quarantaine réservée aux fondateurs', r.status === 403, r.status);
+      const qx = await flt.quarantine(db, m('cache@ext.test', 'Sans brut', 'Corps gardé'), 'cache@ext.test', 'test');
+      r = await req('POST', `/api/email/quarantine/${qx}/release`, { sid: sessions.F });
+      check('filtres: message sans brut libéré aussi (champs gardés)', !!r.body.ticketId, JSON.stringify(r.body));
+
+      st = (await req('GET', '/api/email', { sid: sessions.F })).body;
+      await req('PUT', '/api/email', { sid: sessions.F, body: { ...st, filters: { ...st.filters, spamAction: 'drop' } } });
+      rf = await email.processEmail(fakeClient, G, m('spam2@ext.test', 'Spam', 'x', { 'x-ms-exchange-organization-scl': '9' }), await sF());
+      check('filtres: spam ignoré si choisi', /Microsoft 365/.test(rf.skipped || '') && (await req('GET', '/api/email/quarantine', { sid: sessions.F })).body.length === 0, JSON.stringify(rf));
+      await req('PUT', '/api/email', { sid: sessions.F, body: { ...st, filters: { ...st.filters, spamAction: 'off' } } });
+      rf = await email.processEmail(fakeClient, G, m('spam3@ext.test', 'Pas filtré', 'x', { 'x-spam-flag': 'YES' }), await sF());
+      check('filtres: anti-spam coupé → ticket comme avant', !!rf.ticketId, JSON.stringify(rf));
+      await req('PUT', '/api/email', { sid: sessions.F, body: { ...st, filters: { ...st.filters, spamAction: 'quarantine', allowed: 'entreprise.test' } } });
+      rf = await email.processEmail(fakeClient, G, m('salarie@paris.entreprise.test', 'Interne', 'ok'), await sF());
+      const rf3 = await email.processEmail(fakeClient, G, m('externe@ext.test', 'Externe', 'non'), await sF());
+      check('filtres: domaines autorisés → les autres en quarantaine', !!rf.ticketId && rf3.quarantined && /autorisés/.test(rf3.reason), JSON.stringify([rf, rf3]));
+      await req('PUT', '/api/email', { sid: sessions.F, body: { ...st, filters: { ...st.filters, spamAction: 'quarantine', allowed: '' } } });
+      const loop = [];
+      for (let i = 0; i < 4; i++) loop.push(await email.processEmail(fakeClient, G, m('robot2@ext.test', 'Accusé de réception', 'Nous avons bien reçu votre message.'), await sF()));
+      check('filtres: le même message reçu en boucle est ignoré après 3 fois', loop.slice(0, 3).every(x => !x.skipped) && /boucle/.test(loop[3].skipped || ''), JSON.stringify(loop.map(x => x.skipped || x.ticketId)));
+      rf = await email.processEmail(fakeClient, G, m('robot3@ext.test', 'Retour', 'x', { 'x-loop': 'support@example.com' }), await sF());
+      check('filtres: notre propre message revenu (X-Loop) ignoré', /boucle/.test(rf.skipped || ''), JSON.stringify(rf));
+      sent.length = 0;
+      const tLoop = loop[0].ticketId;
+      await req('POST', `/api/tickets/${tLoop}/reply`, { sid: sessions.F, body: { content: 'Bien noté.' } });
+      check('filtres: nos e-mails portent la marque X-Loop', sent.some(x => x.headers?.['X-Loop'] === 'support@example.com'), JSON.stringify(sent.map(x => x.headers)));
+      await db("DELETE FROM email_quarantine");
+      await db("UPDATE email_settings SET filter_block = NULL, filter_allow = NULL, spam_action = 'quarantine' WHERE id = 1");
+      await db("UPDATE tickets SET status = 'closed' WHERE owner_id LIKE 'mail:%'");
+    }
+
     // ── Mailbox connected by OAuth2 (utils/mailOAuth.js, v5.0) ──
     {
       const axios = require('axios');

@@ -89,6 +89,19 @@ Un e-mail reçu ainsi suit exactement le même chemin qu'un e-mail relevé : fil
 
 **Mise en forme et signatures** : les réponses partent en **HTML**, avec une version texte à côté : gras, italique, listes, citations, code et liens écrits comme dans un message (`**gras**`, `- élément`, `[texte](https://…)`). Elles sont présentées aux couleurs de l'espace (nom, logo et couleur de l'[espace membre](./espace-membre#aux-couleurs-du-serveur)), sauf si **Mettre en forme aux couleurs de l'espace** est décoché. Sous chaque réponse du staff viennent la **signature de la personne** (Profil → Signature des e-mails, propre à chaque espace, jamais sous une réponse anonyme), puis la **signature de l'espace** (réglée ici). Aucun HTML écrit par quelqu'un n'est repris tel quel : seules ces marques deviennent de la mise en forme, et seuls les liens `https://` et `mailto:` sont cliquables.
 
+**Filtrage** (*Filtrage des e-mails reçus*) — avant qu'un e-mail devienne un ticket :
+
+| Règle | Effet |
+|---|---|
+| **Expéditeurs refusés** | Domaines (sous-domaines compris) ou adresses : ignorés, sans réponse |
+| **Seulement ces domaines** | Vide = tout le monde ; sinon les autres expéditeurs vont en **quarantaine** (pratique pour un support interne) |
+| **Spam signalé par le serveur de messagerie** | Lu dans les en-têtes posés par SpamAssassin, Microsoft 365 (SCL), Mailgun, Amazon SES, ou un échec **DMARC** (expéditeur peut-être usurpé) : **quarantaine** (par défaut), ignoré, ou laissé passer comme avant. Le **score** à partir duquel filtrer se règle (5 par défaut) |
+| **Taille maximale** | Au-delà (10 Mo au plus) : quarantaine |
+
+Les réponses automatiques (absences, robots, retours d'erreur) sont toujours ignorées, tout comme les **boucles** : le même message reçu plus de 3 fois en 24 h du même expéditeur, ou notre propre message qui revient (nos e-mails portent l'en-tête `X-Loop`).
+
+La **quarantaine** liste les messages mis de côté, avec la raison, pendant **30 jours** (500 au plus). **Libérer** traite le message comme s'il venait d'arriver (un ticket, ou la réponse à un ticket) ; **Supprimer** l'efface. Les deux sont au journal ; réservé aux fondateurs.
+
 **Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. La personne peut aussi suivre ses tickets dans l'[espace membre](./espace-membre), connectée par un lien reçu par e-mail.
 
 **Plusieurs adresses** : sous **Autres adresses**, ajoute des adresses qui arrivent dans **la même boîte** (alias ou redirections : `facturation@`, `technique@`…), jusqu'à 20. Pour chacune :

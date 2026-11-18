@@ -750,6 +750,31 @@ const MIGRATIONS = [
       'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS branded TINYINT(1) NOT NULL DEFAULT 1',
     ],
   },
+  {
+    version: 52,
+    name: 'Filtrage des e-mails reçus : règles d\'import, anti-spam, quarantaine (v5.0)',
+    statements: [
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS filter_block TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS filter_allow TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS filter_max_mb INT NOT NULL DEFAULT 10',
+      // Spam seen by the mail servers: kept aside to review (default), dropped, or let through as before
+      `ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS spam_action ENUM('quarantine','drop','off') NOT NULL DEFAULT 'quarantine'`,
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS spam_threshold DECIMAL(4,1) NOT NULL DEFAULT 5.0',
+      `CREATE TABLE IF NOT EXISTS email_quarantine (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        from_address VARCHAR(254) NOT NULL,
+        from_name    VARCHAR(100) DEFAULT NULL,
+        subject      VARCHAR(200) NOT NULL DEFAULT '',
+        excerpt      VARCHAR(300) NOT NULL DEFAULT '',
+        reason       VARCHAR(200) NOT NULL,
+        score        DECIMAL(6,2) DEFAULT NULL,
+        raw_gz       MEDIUMBLOB DEFAULT NULL,
+        fields       MEDIUMTEXT DEFAULT NULL,
+        received_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_eq_received (received_at)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

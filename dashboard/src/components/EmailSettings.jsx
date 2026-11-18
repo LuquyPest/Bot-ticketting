@@ -4,6 +4,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import { uiLocale } from '../i18n';
 import EmailAddresses from './EmailAddresses';
+import EmailQuarantine from './EmailQuarantine';
 
 // Reception by webhook (utils/inboundEmail.js): where to paste the address at each provider
 const INBOUND = {
@@ -215,6 +216,36 @@ export default function EmailSettings() {
         {password('Mot de passe', 'smtpPassword', s.smtpPasswordSet)}
       </fieldset>
       </>}
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-ink-2 mb-1">Filtrage des e-mails reçus</legend>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="block text-xs text-ink-3">Expéditeurs refusés (domaines ou adresses, un par ligne) : ignorés sans réponse
+            <textarea value={s.filters?.blocked || ''} onChange={e => set('filters', { ...s.filters, blocked: e.target.value })} rows={3} placeholder={'publicite.example\nquelquun@exemple.fr'} className={`${INPUT} mt-1`} />
+          </label>
+          <label className="block text-xs text-ink-3">Seulement ces domaines (vide = tout le monde) : les autres vont en quarantaine
+            <textarea value={s.filters?.allowed || ''} onChange={e => set('filters', { ...s.filters, allowed: e.target.value })} rows={3} placeholder="mon-entreprise.fr" className={`${INPUT} mt-1`} />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <label className="block text-xs text-ink-3">Spam signalé par le serveur de messagerie
+            <select value={s.filters?.spamAction || 'quarantine'} onChange={e => set('filters', { ...s.filters, spamAction: e.target.value })} className={`${INPUT} mt-1`}>
+              <option value="quarantine">Mettre en quarantaine</option><option value="drop">Ignorer</option><option value="off">Laisser passer</option>
+            </select>
+          </label>
+          <label className="block text-xs text-ink-3">Score de spam à partir duquel filtrer
+            <input type="number" min={1} max={30} step={0.5} value={s.filters?.spamThreshold ?? 5} onChange={e => set('filters', { ...s.filters, spamThreshold: Number(e.target.value) })} className={`${INPUT} mt-1`} />
+          </label>
+          <label className="block text-xs text-ink-3">Taille maximale d'un e-mail (Mo)
+            <input type="number" min={1} max={10} value={s.filters?.maxMb ?? 10} onChange={e => set('filters', { ...s.filters, maxMb: Number(e.target.value) })} className={`${INPUT} mt-1`} />
+          </label>
+        </div>
+        <p className="text-[11px] text-ink-4">Les réponses automatiques et les messages qui tournent en boucle (le même message reçu plus de 3 fois en 24 h) sont toujours ignorés.</p>
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-ink-2">Quarantaine{s.quarantineCount ? ` (${s.quarantineCount})` : ''}</p>
+          <p className="text-[11px] text-ink-4">Gardés 30 jours. Libérer un message le traite comme s'il venait d'arriver.</p>
+          <EmailQuarantine onCount={n => setS(x => (x && x.quarantineCount !== n ? { ...x, quarantineCount: n } : x))} />
+        </div>
+      </fieldset>
       <fieldset className="space-y-2">
         <legend className="text-xs font-semibold text-ink-2 mb-1">Apparence des e-mails</legend>
         <label className="flex items-center gap-2 text-sm text-ink-1">

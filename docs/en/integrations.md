@@ -89,6 +89,19 @@ An e-mail received this way follows exactly the path of one read from the mailbo
 
 **Formatting and signatures**: replies leave in **HTML**, with a text version next to it: bold, italic, lists, quotes, code and links written as in a message (`**bold**`, `- item`, `[text](https://…)`). They are shown in the space's colours (name, logo and colour of the [member space](./member-space#in-the-server-s-colours)), unless **Format in the space's colours** is unticked. Under each staff reply come the **person's signature** (Profile → E-mail signature, per space, never under an anonymous reply), then the **space's signature** (set here). No HTML written by anyone is kept as is: only these marks become formatting, and only `https://` and `mailto:` links are clickable.
 
+**Filtering** (*Filtering of received e-mails*) — before an e-mail becomes a ticket:
+
+| Rule | Effect |
+|---|---|
+| **Refused senders** | Domains (sub-domains included) or addresses: ignored, without reply |
+| **Only these domains** | Empty = everyone; otherwise the other senders go to the **quarantine** (handy for an internal support) |
+| **Spam reported by the mail server** | Read in the headers set by SpamAssassin, Microsoft 365 (SCL), Mailgun, Amazon SES, or a **DMARC** failure (sender maybe forged): **quarantine** (default), ignored, or let through as before. The **score** from which to filter is adjustable (5 by default) |
+| **Maximum size** | Beyond it (10 MB at most): quarantine |
+
+Automatic replies (out of office, robots, bounces) are always ignored, and so are **loops**: the same message received more than 3 times in 24 h from the same sender, or our own message coming back (our e-mails carry the `X-Loop` header).
+
+The **quarantine** lists the messages set aside, with the reason, for **30 days** (500 at most). **Release** processes the message as if it had just arrived (a ticket, or the answer to one); **Delete** erases it. Both are in the log; founders only.
+
 **Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The person can also follow their tickets in the [member space](./member-space), signed in with a link received by e-mail.
 
 **Several addresses**: under **Other addresses**, add addresses that arrive in **the same mailbox** (aliases or redirections: `billing@`, `tech@`…), up to 20. For each:
