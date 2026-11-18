@@ -18,14 +18,16 @@ async function rememberAddress(db, ownerId, address) {
 }
 
 // Sends what the bot would have sent by DM; returns a message-like object (or null)
-async function sendToWebOwner(guildId, ownerId, build, ticketId = null) {
+async function sendToWebOwner(guildId, ownerId, build, ticketId = null, opts = {}) {
   const db = getTenantDb(guildId);
   const [contact] = await db('SELECT address FROM email_contacts WHERE owner_id = ?', [ownerId]).catch(() => []);
   if (!contact) return null;
   const { renderPayload, EMAIL_RE } = require('./emailTickets');
   if (!EMAIL_RE.test(contact.address)) return null;
   const payload = await build(webUserFor(ownerId, contact.address));
-  const { text } = renderPayload(payload);
+  // Signatures follow a staff reply here too (the instance's e-mail template holds the text)
+  const look = await require('./emailTickets').emailLook(db, guildId, await require('./emailTickets').emailSettings(db), opts.sender);
+  const { text } = renderPayload(payload, { signatures: look.signatures });
   if (!text) return null;
   const ticket = await require('./emailTickets').requesterTicket(db, ownerId, ticketId);
   const { ticketWebUrl, portalUrl } = require('./memberPortal');

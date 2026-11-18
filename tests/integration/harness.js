@@ -3822,6 +3822,52 @@ async function main() {
       await db("UPDATE tickets SET status = 'closed' WHERE owner_id IN (?)", [[email.ownerIdFor('intrus@ext.test')]]);
     }
 
+    // ── E-mails in HTML, signatures, template of the space (utils/emailFormat.js, v5.0) ──
+    {
+      const fmt = app('./utils/emailFormat');
+      const h = fmt.markdownToHtml('**Gras** <script>alert(1)</script> [clic](javascript:alert(1)) [ok](https://exemple.fr/?a=1&b=2)\n- un\n- deux');
+      check('e-mails HTML: markdown converti, aucun HTML ni lien dangereux ne passe', h.includes('<strong>Gras</strong>') && h.includes('&lt;script&gt;') && !h.includes('<script') && !/href="javascript/i.test(h)
+        && h.includes('href="https://exemple.fr/?a=1&amp;b=2"') && h.includes('<ul') && h.includes('<li>deux</li>'), h);
+      check('e-mails HTML: logo et couleur du modèle vérifiés', !fmt.wrapHtml('x', { color: 'red;background:url(x)', logo: 'javascript:alert(1)', name: '<b>N</b>' }).match(/red;|javascript:|<b>N/), '');
+      await db("UPDATE email_settings SET enabled = 1, inbound_mode = 'imap' WHERE id = 1");
+      const [cfgB] = await db('SELECT portal_color, portal_logo FROM guild_config WHERE id = 1');
+      await db("UPDATE guild_config SET portal_color = '#e67e22', portal_logo = 'https://cdn.example.com/logo.png' WHERE id = 1");
+      r = await req('GET', '/api/email', { sid: sessions.F });
+      r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...r.body, signature: "L'équipe **Sunset** — https://sunset.example", branded: true } });
+      check('e-mails HTML: signature de l espace et modèle enregistrés', r.status === 200 && r.body.signature.includes('Sunset') && r.body.branded === true, JSON.stringify([r.status, r.body.signature]));
+      r = await req('PUT', '/api/staff/me/signature', { sid: sessions.F, body: { signature: 'Daryu, responsable support\n' + 'x'.repeat(2000) } });
+      check('e-mails HTML: signature personnelle, bornée à 1000 caractères', r.status === 200 && r.body.signature.length === 1000 && (await req('GET', '/api/staff/me/signature', { sid: sessions.F })).body.signature.startsWith('Daryu'), String(r.body.signature?.length));
+      await req('PUT', '/api/staff/me/signature', { sid: sessions.F, body: { signature: 'Daryu, responsable support' } });
+      const sH = await email.emailSettings(db, { withSecrets: true });
+      let rh = await email.processEmail(fakeClient, G, mail('html@ext.test', 'Hélène', 'Mise en forme', 'Bonjour'), sH);
+      const tH = rh.ticketId;
+      sent.length = 0;
+      r = await req('POST', `/api/tickets/${tH}/reply`, { sid: sessions.F, body: { content: 'Voici les **étapes** :\n1. Ouvrir\n2. Valider\n\nDoc : https://doc.example/a' } });
+      const mh = sent.find(m => m.to?.address === 'html@ext.test');
+      check('e-mails HTML: réponse en HTML (gras, liste, lien) dans le modèle de l espace', mh && mh.html.includes('<strong>étapes</strong>') && mh.html.includes('<ol') && mh.html.includes('href="https://doc.example/a"')
+        && mh.html.includes('#e67e22') && mh.html.includes('https://cdn.example.com/logo.png') && mh.html.includes('Répondez à cet e-mail'), (mh?.html || '').slice(0, 300));
+      check('e-mails HTML: texte brut à côté, sans marques markdown', mh && mh.text.includes('étapes') && !mh.text.includes('**'), mh?.text);
+      check('e-mails HTML: signatures de la personne puis de l espace', mh && mh.text.includes('-- \nDaryu, responsable support') && mh.text.indexOf('Daryu, responsable') < mh.text.indexOf('Sunset') && mh.html.includes('<strong>Sunset</strong>'), mh?.text);
+      sent.length = 0;
+      r = await req('POST', `/api/tickets/${tH}/reply`, { sid: sessions.F, body: { content: 'Réponse anonyme.', anonymous: true } });
+      const ma = sent.find(m => m.to?.address === 'html@ext.test');
+      check('e-mails HTML: réponse anonyme → seulement la signature de l espace', ma && !ma.text.includes('Daryu, responsable') && ma.text.includes('Sunset'), ma?.text);
+      sent.length = 0;
+      await db("UPDATE tickets SET stage = 'open' WHERE id = ?", [tH]);
+      await app('./utils/ticketManager').createManager(db, fakeClient, G).moveToStage(tH, 'waiting', { id: 'system', tag: 'Système' }).catch(() => null);
+      const mn = sent.find(m => m.to?.address === 'html@ext.test');
+      check('e-mails HTML: un avis automatique ne porte pas de signature', !mn || (!mn.text.includes('Daryu, responsable') && !mn.text.includes('-- \n')), mn?.text);
+      await db('UPDATE email_settings SET branded = 0 WHERE id = 1');
+      sent.length = 0;
+      await req('POST', `/api/tickets/${tH}/reply`, { sid: sessions.F, body: { content: 'Sans modèle.' } });
+      const mb = sent.find(m => m.to?.address === 'html@ext.test');
+      check('e-mails HTML: modèle coupé → message simple', mb && !mb.html.includes('<!doctype') && mb.html.includes('Sans modèle'), (mb?.html || '').slice(0, 120));
+      await db("UPDATE email_settings SET branded = 1, signature = NULL WHERE id = 1");
+      await req('PUT', '/api/staff/me/signature', { sid: sessions.F, body: { signature: '' } });
+      await db('UPDATE guild_config SET portal_color = ?, portal_logo = ? WHERE id = 1', [cfgB.portal_color, cfgB.portal_logo]);
+      await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tH]);
+    }
+
     // ── Mailbox connected by OAuth2 (utils/mailOAuth.js, v5.0) ──
     {
       const axios = require('axios');

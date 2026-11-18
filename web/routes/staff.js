@@ -2,6 +2,21 @@ const express = require('express');
 const router = express.Router();
 
 // GET /api/staff/me/activity?days=7|30|90 — the signed-in member's own figures
+// GET / PUT /api/staff/me/signature { signature } — my signature under my e-mail replies in this
+// space (markdown, 1000 characters at most; never under an anonymous reply)
+router.get('/me/signature', async (req, res) => {
+  const [u] = await req.guildDb('SELECT email_signature FROM dashboard_users WHERE user_id = ?', [req.session.user.id]).catch(() => []);
+  res.json({ signature: u?.email_signature || '' });
+});
+router.put('/me/signature', async (req, res) => {
+  if (req.session.user?.demo) return res.status(403).json({ error: 'Indisponible dans la démonstration', demo: true });
+  const { cleanSignature } = require('../../utils/emailFormat');
+  if (typeof req.body?.signature !== 'string') return res.status(400).json({ error: 'signature invalide' });
+  const signature = cleanSignature(req.body.signature);
+  await req.guildDb('UPDATE dashboard_users SET email_signature = ? WHERE user_id = ?', [signature || null, req.session.user.id]);
+  res.json({ signature });
+});
+
 router.get('/me/activity', async (req, res) => {
   try {
     const days = [7, 30, 90].includes(parseInt(req.query.days)) ? parseInt(req.query.days) : 30;

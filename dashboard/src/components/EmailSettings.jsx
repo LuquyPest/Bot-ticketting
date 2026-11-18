@@ -215,6 +215,16 @@ export default function EmailSettings() {
         {password('Mot de passe', 'smtpPassword', s.smtpPasswordSet)}
       </fieldset>
       </>}
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-ink-2 mb-1">Apparence des e-mails</legend>
+        <label className="flex items-center gap-2 text-sm text-ink-1">
+          <input type="checkbox" checked={s.branded !== false} onChange={e => set('branded', e.target.checked)} className="accent-primary" />
+          Mettre en forme aux couleurs de l'espace (nom, logo et couleur de l'espace membre)
+        </label>
+        <label className="block text-xs text-ink-3">Signature de l'espace, sous chaque réponse du staff (après celle de la personne, réglée dans son profil)
+          <textarea value={s.signature || ''} onChange={e => set('signature', e.target.value)} rows={3} maxLength={1000} placeholder={"L'équipe support\nhttps://exemple.fr/aide"} className={`${INPUT} mt-1`} />
+        </label>
+      </fieldset>
       <fieldset className="space-y-3">
         <legend className="text-xs font-semibold text-ink-2 mb-1">Pièces jointes reçues</legend>
         <label className="flex items-center gap-2 text-sm text-ink-1">

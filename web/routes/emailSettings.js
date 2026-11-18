@@ -11,6 +11,7 @@ const attach = require('../../utils/emailAttachments');
 const mailOAuth = require('../../utils/mailOAuth');
 const view = async (s, db) => ({
   inbound: require('../../utils/inboundEmail').view(await email.emailSettings(db, { withSecrets: true })),
+  signature: s.signature || '', branded: s.branded === undefined ? true : !!Number(s.branded),
   authMode: s.auth_mode || 'password', oauthAccount: s.oauth_account || null, oauthConnected: !!s.oauth_refresh_set,
   oauthAvailable: await mailOAuth.available(), oauthCallbacks: Object.fromEntries(mailOAuth.KEYS.map(k => [k, mailOAuth.callbackUrl(k)])),
   attachments: { ...attach.attachSettings(s), usage: await attach.usage(db) },

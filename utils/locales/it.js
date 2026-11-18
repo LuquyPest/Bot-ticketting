@@ -184,6 +184,7 @@ module.exports = {
   'widget.tooMany': 'Troppi messaggi inviati: riprova più tardi',
   'widget.privacy': 'Il tuo indirizzo serve solo a risponderti.',
   'widget.maybe': 'Questi articoli forse rispondono alla tua domanda:',
+  'email.replyFooter': 'Rispondi a questa e-mail per aggiungere un messaggio alla tua richiesta.',
   'faq.read': 'Leggi l\'articolo',
   'portal.noAccount': 'Account Discord non trovato',
   'portal.openFailed': 'Impossibile aprire il ticket, riprova o scrivi al bot in DM',

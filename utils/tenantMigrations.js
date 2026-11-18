@@ -740,6 +740,16 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 51,
+    name: 'E-mails mis en forme : signatures par personne et par espace, modèle aux couleurs de l\'espace (v5.0)',
+    statements: [
+      'ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS email_signature TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS signature TEXT DEFAULT NULL',
+      // The template with the space's name, logo and colour (1); a bare message (0), as before
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS branded TINYINT(1) NOT NULL DEFAULT 1',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
