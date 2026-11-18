@@ -248,10 +248,10 @@ function renderPayload(payload) {
 // in it), else their latest open one, else their latest one
 async function requesterTicket(db, ownerId, ticketId) {
   if (Number.isInteger(Number(ticketId)) && Number(ticketId) > 0) {
-    const [t] = await db('SELECT id, subject FROM tickets WHERE id = ? AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))', [Number(ticketId), ownerId, ownerId]);
+    const [t] = await db('SELECT id, subject, owner_id, visibility_grade_id FROM tickets WHERE id = ? AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))', [Number(ticketId), ownerId, ownerId]);
     if (t) return t;
   }
-  const [t] = await db("SELECT id, subject FROM tickets WHERE owner_id = ? ORDER BY status = 'open' DESC, id DESC LIMIT 1", [ownerId]);
+  const [t] = await db("SELECT id, subject, owner_id, visibility_grade_id FROM tickets WHERE owner_id = ? ORDER BY status = 'open' DESC, id DESC LIMIT 1", [ownerId]);
   return t || null;
 }
 
@@ -278,6 +278,8 @@ async function sendToEmailOwner(guildId, ownerId, build, ticketId = null) {
       from: fromName ? { name: fromName, address: fromAddress } : fromAddress,
       to: contact.name ? { name: contact.name, address: contact.address } : contact.address,
       subject: ticket ? `${subjectTag(guildId, ticket.id)} ${ticket.subject || 'Support'}` : 'Support',
+      // The people in copy of the ticket (utils/ticketCc.js), on what goes to its requester only
+      ...(ticket && ticket.owner_id === ownerId ? { cc: await require('./ticketCc').ccHeader(db, ticket) } : {}),
       text, html, attachments, messageId,
       ...(thread?.last_message_id ? { inReplyTo: thread.last_message_id, references: [thread.last_message_id] } : {}),
       headers: { 'Auto-Submitted': 'auto-replied' },
@@ -359,7 +361,16 @@ async function processEmailInLang(client, guildId, mail, s) {
       await tm.relayToTicket(t, user, body, []);
       await keepFiles(t).catch(err => console.error('email: pièces jointes', guildId, err.message));
       if (mail.messageId) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [t.id, String(mail.messageId).slice(0, 255)]);
+      await require('./ticketCc').addFromMail(db, t, mail, address).catch(() => null); // people the requester put in copy later
       return { ticketId: t.id, created: false };
+    }
+    // Someone in copy of that ticket answering in its thread: their message goes into it
+    const [tc] = await db("SELECT * FROM tickets WHERE id = ? AND status = 'open'", [threadId]);
+    if (tc && await require('./ticketCc').isCc(db, tc.id, address)) {
+      await tm.relayToTicket(tc, user, body, []);
+      await keepFiles(tc).catch(err => console.error('email: pièces jointes', guildId, err.message));
+      if (mail.messageId) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [tc.id, String(mail.messageId).slice(0, 255)]);
+      return { ticketId: tc.id, created: false, cc: true };
     }
   }
   // No reference to one of their open tickets: a new e-mail is a new request, as in any helpdesk.
@@ -389,6 +400,11 @@ async function processEmailInLang(client, guildId, mail, s) {
   }
   await keepFiles(res.ticket).catch(err => console.error('email: pièces jointes', guildId, err.message));
   if (mail.messageId) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [res.ticket.id, String(mail.messageId).slice(0, 255)]);
+  if (res.created) {
+    // Before the acknowledgement, so that the people in copy get it too
+    const [fresh] = await db('SELECT * FROM tickets WHERE id = ?', [res.ticket.id]);
+    if (fresh) await require('./ticketCc').addFromMail(db, fresh, mail, address).catch(err => console.error('email: copies', guildId, err.message));
+  }
   if (res.created) await tm.sendWelcomeDm(user, true, subject, res.ticket.id).catch(() => null);
   return { ticketId: res.ticket.id, created: !!res.created, ...(route ? { via: route.address } : {}) };
 }

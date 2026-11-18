@@ -1127,6 +1127,38 @@ router.patch('/:id/team', async (req, res) => {
   }
 });
 
+// ── Copies of a ticket by e-mail (utils/ticketCc.js, v5.0) ──
+// GET /api/tickets/:id/cc ; POST { address, name } ; DELETE /:ccId — reply permission
+router.get('/:id/cc', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json({ available: String(ticket.owner_id).startsWith('mail:') && ticket.visibility_grade_id !== -1, cc: await require('../../utils/ticketCc').listCc(req.guildDb, ticket.id) });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.post('/:id/cc', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const cc = require('../../utils/ticketCc');
+    const r = await cc.addCc(req.guildDb, ticket, { address: req.body?.address, name: req.body?.name }, req.session.user.username || 'staff');
+    if (r.error) return res.status(400).json({ error: r.error });
+    if (r.added) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_cc_add', ticketId: ticket.id, details: { address: r.address } });
+    res.json({ cc: await cc.listCc(req.guildDb, ticket.id) });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.delete('/:id/cc/:ccId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const cc = require('../../utils/ticketCc');
+    const r = await cc.removeCc(req.guildDb, ticket.id, parseInt(req.params.ccId) || 0);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_cc_remove', ticketId: ticket.id, details: { address: r.address } });
+    res.json({ cc: await cc.listCc(req.guildDb, ticket.id) });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ── Approvals (utils/approvals.js, v4.2) ──
 // GET /api/tickets/:id/approvals ; POST { approverId | approverEmail, approverName, reason, nextStage }
 // POST /:aid/decide { decision, comment } (the approver) ; /:aid/remind ; /:aid/cancel (who asked, founders)

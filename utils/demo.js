@@ -20,7 +20,7 @@ const BLOCKED = [
 // Adding a participant or contacting a member takes any Discord ID: never from the demo (see
 // sendToMember); the voice channel would be created on Discord
 // Approvals: asking by e-mail sends free text to any address (the staff approver is fictitious anyway)
-const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/, /^\/api\/tickets\/\d+\/voice$/, /^\/api\/tickets\/\d+\/approvals(\/|$)/];
+const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/, /^\/api\/tickets\/\d+\/voice$/, /^\/api\/tickets\/\d+\/approvals(\/|$)/, /^\/api\/tickets\/\d+\/cc(\/|$)/];
 const BLOCKED_CONFIG_FIELDS = ['webhookUrl', 'webhookSecret', 'webhooksEnabled', 'webhookEvents', 'ipAllowlist', 'require2fa', 'apiKeysEnabled', 'idleTimeoutMinutes'];
 
 const isDemoSession = session => !!session?.user?.demo;

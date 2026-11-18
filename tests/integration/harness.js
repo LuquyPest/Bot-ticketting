@@ -3761,6 +3761,67 @@ async function main() {
       await db('DELETE FROM ticket_tags WHERE id = ?', [tagA]);
       await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [cfgA.ticket_subjects == null || typeof cfgA.ticket_subjects === 'string' ? cfgA.ticket_subjects : JSON.stringify(cfgA.ticket_subjects)]);
     }
+    // ── Copies of a ticket by e-mail (utils/ticketCc.js, v5.0) ──
+    {
+      await db("UPDATE email_settings SET enabled = 1, inbound_mode = 'imap' WHERE id = 1");
+      const sCc = await email.emailSettings(db, { withSecrets: true });
+      const withCc = (from, subject, text, { to = [], cc = [], inReplyTo } = {}) => ({
+        from: { value: [{ address: from, name: 'Claire' }] }, subject, text, headers: new Map(), messageId: `<cc${Math.random()}@ext.test>`, inReplyTo, attachments: [],
+        to: { value: [{ address: 'support@example.com' }, ...to.map(address => ({ address }))] }, cc: { value: cc.map(([address, name]) => ({ address, name })) },
+      });
+      sent.length = 0;
+      let rc = await email.processEmail(fakeClient, G, withCc('claire@ext.test', 'Accès au partage', 'Mon équipe n a plus accès.', { to: ['chef@ext.test'], cc: [['adjoint@ext.test', 'Adjoint'], ['support@example.com', ''], ['claire@ext.test', '']] }), sCc);
+      const tC = rc.ticketId;
+      const ccRows = await db('SELECT address, name, added_by FROM ticket_cc WHERE ticket_id = ? ORDER BY address', [tC]);
+      check('copies: les CC et autres destinataires deviennent copies du ticket (sans le support ni le demandeur)', rc.created && ccRows.map(c => c.address).join() === 'adjoint@ext.test,chef@ext.test' && ccRows.every(c => c.added_by === 'email'), JSON.stringify(ccRows));
+      const ack = sent.find(m => m.to?.address === 'claire@ext.test');
+      const ccOf = m => (m?.cc || []).map(c => (typeof c === 'string' ? c : c.address)).sort().join();
+      check('copies: l accusé de réception part aussi aux copies', ccOf(ack) === 'adjoint@ext.test,chef@ext.test', JSON.stringify(ack?.cc));
+      sent.length = 0;
+      r = await req('POST', `/api/tickets/${tC}/reply`, { sid: sessions.F, body: { content: 'Accès rétabli.' } });
+      const rep = sent.find(m => m.to?.address === 'claire@ext.test');
+      check('copies: la réponse du staff part en copie, une seule fois', r.status === 200 && ccOf(rep) === 'adjoint@ext.test,chef@ext.test' && sent.filter(m => /Accès rétabli/.test(m.text || '')).length === 1, JSON.stringify(sent.map(m => [m.to, m.cc])));
+      const tagC = email.subjectTag(G, tC);
+      rc = await email.processEmail(fakeClient, G, withCc('adjoint@ext.test', `RE: ${tagC} Accès au partage`, 'Merci, ça marche pour moi aussi.'), sCc);
+      const [noteCc] = await db("SELECT author_tag FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%ça marche pour moi%'", [tC]);
+      check('copies: une copie qui répond dans le fil écrit dans le ticket', rc.ticketId === tC && rc.cc === true && noteCc?.author_tag === 'adjoint@ext.test', JSON.stringify([rc, noteCc]));
+      rc = await email.processEmail(fakeClient, G, withCc('intrus@ext.test', `RE: ${tagC} Accès au partage`, 'Je m invite.'), sCc);
+      check('copies: quelqu un d autre avec le bon objet n écrit pas dans le ticket', rc.ticketId !== tC && Number((await db("SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%m invite%'", [tC]))[0].n) === 0, JSON.stringify(rc));
+      rc = await email.processEmail(fakeClient, G, withCc('claire@ext.test', `RE: ${tagC} Accès au partage`, 'J ajoute la RH.', { cc: [['rh@ext.test', 'RH']] }), sCc);
+      check('copies: une personne mise en copie plus tard par le demandeur est ajoutée', (await db('SELECT address FROM ticket_cc WHERE ticket_id = ?', [tC])).some(c => c.address === 'rh@ext.test'), '');
+
+      r = await req('GET', `/api/tickets/${tC}/cc`, { sid: sessions.F });
+      check('copies: listées sur la fiche', r.status === 200 && r.body.available && r.body.cc.length === 3, JSON.stringify(r.body));
+      r = await req('POST', `/api/tickets/${tC}/cc`, { sid: sessions.F, body: { address: 'pas-une-adresse' } });
+      const bad1 = r.status;
+      r = await req('POST', `/api/tickets/${tC}/cc`, { sid: sessions.F, body: { address: 'support@example.com' } });
+      const bad2 = r.status;
+      r = await req('POST', `/api/tickets/${tC}/cc`, { sid: sessions.F, body: { address: 'claire@ext.test' } });
+      check('copies: adresse invalide, du support ou du demandeur refusée', bad1 === 400 && bad2 === 400 && r.status === 400, [bad1, bad2, r.status].join());
+      r = await req('POST', `/api/tickets/${tC}/cc`, { sid: sessions.F, body: { address: 'Direction@Ext.test', name: 'Direction\r\nBcc: x@evil.test' } });
+      const dir = r.body.cc?.find(c => c.address === 'direction@ext.test');
+      check('copies: ajout par le staff, nom nettoyé (pas d en-tête injecté), au journal', r.status === 200 && dir && !/[\r\n]/.test(dir.name) && (await db("SELECT id FROM audit_log WHERE action = 'ticket_cc_add' AND ticket_id = ?", [tC])).length === 1, JSON.stringify(dir));
+      for (let i = 0; i < 8; i++) await req('POST', `/api/tickets/${tC}/cc`, { sid: sessions.F, body: { address: `c${i}@ext.test` } });
+      check('copies: 10 au plus par ticket', Number((await db('SELECT COUNT(*) AS n FROM ticket_cc WHERE ticket_id = ?', [tC]))[0].n) === 10, '');
+      r = await req('DELETE', `/api/tickets/${tC}/cc/${dir.id}`, { sid: sessions.F });
+      check('copies: retrait par le staff', r.status === 200 && !r.body.cc.some(c => c.address === 'direction@ext.test'), r.status);
+      await db("INSERT INTO dashboard_users (user_id, username, role) VALUES ('300000000000000079', 'SansGrade', 'support') ON DUPLICATE KEY UPDATE role = 'support'");
+      await mk('NOGR', { user: { id: '300000000000000079', username: 'SansGrade', role: null }, currentGuildId: G });
+      r = await req('POST', `/api/tickets/${tC}/cc`, { sid: sessions.NOGR, body: { address: 'x@ext.test' } });
+      check('copies: ajout réservé à qui peut répondre', r.status === 403, r.status);
+      await db("DELETE FROM dashboard_users WHERE user_id = '300000000000000079'");
+      const tDisc = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000066', 'disc', 'db-cc-d', 'open', 'Discord')")).insertId;
+      r = await req('POST', `/api/tickets/${tDisc}/cc`, { sid: sessions.F, body: { address: 'x@ext.test' } });
+      check('copies: seulement pour un ticket ouvert par e-mail', r.status === 400 && /e-mail/.test(r.body.error), JSON.stringify(r.body));
+      await db('UPDATE tickets SET visibility_grade_id = -1 WHERE id = ?', [tC]);
+      sent.length = 0;
+      r = await req('POST', `/api/tickets/${tC}/reply`, { sid: sessions.F, body: { content: 'Réponse confidentielle.' } });
+      const conf = sent.find(m => m.to?.address === 'claire@ext.test');
+      check('copies: un ticket devenu confidentiel ne part plus en copie', conf && ccOf(conf) === '', JSON.stringify(conf?.cc));
+      await db("UPDATE tickets SET status = 'closed', visibility_grade_id = NULL WHERE id IN (?)", [[tC, tDisc]]);
+      await db("UPDATE tickets SET status = 'closed' WHERE owner_id IN (?)", [[email.ownerIdFor('intrus@ext.test')]]);
+    }
+
     // ── Mailbox connected by OAuth2 (utils/mailOAuth.js, v5.0) ──
     {
       const axios = require('axios');

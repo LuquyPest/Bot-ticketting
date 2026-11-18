@@ -315,6 +315,8 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Copies', 'Copies'], ['Personne en copie', 'Nobody in copy'], ['Copie ajoutée', 'Copy added'], ['Copie retirée', 'Copy removed'], ['Ajouter une copie', 'Add a copy'], ['Ajouter en copie', 'Add in copy'],
+  ['Elles reçoivent ce qui part au demandeur et peuvent répondre dans le fil.', 'They receive what goes to the requester and can answer in the thread.'],
   ['Arrivée des e-mails', 'How e-mails arrive'], ['Relever la boîte (IMAP), chaque minute', 'Read the mailbox (IMAP), every minute'], ['Envoyés par un service (webhook), instantané', 'Sent by a service (webhook), instant'],
   ['Service', 'Service'], ['Clé de signature des webhooks', 'Webhook signing key'], ['ARN du sujet SNS', 'SNS topic ARN'], ['Enregistrer l\'arrivée des e-mails', 'Save how e-mails arrive'],
   ['Réception par webhook enregistrée', 'Reception by webhook saved'], ['Relève de la boîte (IMAP) rétablie', 'Mailbox reading (IMAP) back'], ['Nouvelle adresse créée : colle-la chez le fournisseur', 'New address created: paste it at the provider'],
@@ -765,6 +767,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Retirer {} des copies', 'Remove {1} from the copies'],
   ['Adresse de réception, à coller chez {}', 'Reception address, to paste at {1}'], ['Dernier e-mail reçu le {}', 'Last e-mail received on {1}'], ["{} L'adresse contient un secret : ne la partage pas.", '{1} The address holds a secret: do not share it.'],
   ['Connectée avec {} : {}', 'Connected with {1}: {2}'], ['Tu choisis la boîte du support chez {} et tu autorises Datick à la lire et à envoyer depuis elle. Aucun mot de passe n\'est enregistré.', 'You pick the support mailbox at {1} and allow Datick to read it and send from it. No password is stored.'], ['Le propriétaire de l\'instance doit d\'abord déclarer l\'application {} (Instance → Connexion → Boîtes e-mail).', 'The owner of the instance must first declare the {1} application (Instance → Connexion → Mailboxes).'],
   ['{} ticket(s) ouvert(s) sur la période', '{1} ticket(s) opened over the period'],

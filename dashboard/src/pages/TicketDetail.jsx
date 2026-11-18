@@ -9,6 +9,7 @@ import {
 import api from '../api';
 import { useStages, STAGE_CLS } from '../hooks/useStages';
 import ApprovalPanel from '../components/ApprovalPanel';
+import CcPanel from '../components/CcPanel';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
 import toast from 'react-hot-toast';
@@ -1984,6 +1985,9 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
               </div>
             )}
           </div>
+
+          {/* COPIES (v5.0): tickets opened by e-mail */}
+          {String(ticket.owner_id || '').startsWith('mail:') && <CcPanel ticketId={ticket.id} canEdit={can('reply_ticket')} panelCard={panelCard} />}
 
           {/* VALIDATION (v4.2) */}
           <ApprovalPanel ticketId={ticket.id} open={ticket.status === 'open'} me={user?.id} canAsk={can('reply_ticket')} isFounder={user?.role === 'fondateur'}

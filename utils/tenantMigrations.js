@@ -724,6 +724,22 @@ const MIGRATIONS = [
       'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS last_inbound_at DATETIME DEFAULT NULL',
     ],
   },
+  {
+    version: 50,
+    name: 'Copies des tickets par e-mail : les CC restent en copie des réponses (v5.0)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_cc (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id  INT NOT NULL,
+        address    VARCHAR(254) NOT NULL,
+        name       VARCHAR(100) DEFAULT NULL,
+        added_by   VARCHAR(100) NOT NULL DEFAULT 'email',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_cc (ticket_id, address),
+        CONSTRAINT fk_cc_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
