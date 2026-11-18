@@ -9,6 +9,8 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/approvals/link': { space: 'Sunset FA', ticketId: 42, subject: 'Remboursement', requester: 'membre', open: true, reason: 'Geste commercial de 50 € sur la commande 1287', by: 'Daryu', approver: 'La cheffe' },
+  '/api/tickets/1/approvals': [{ id: 1, ticketId: 1, status: 'pending', reason: 'Rembourser 120 € hors délai', nextStage: 'in_progress', approver: { id: '2', email: null, name: 'Lina' }, requestedBy: 'Daryu', requestedById: '1', remindCount: 0, createdAt: new Date().toISOString() }],
   '/api/tickets/queue': { tickets: [] },
   '/api/tickets/staff': [{ user_id: '1', username: 'Daryu', avatar: null, role: 'fondateur', availability: 'available', vacation_mode: 0 }, { user_id: '2', username: 'Lina', avatar: null, role: 'support', availability: 'available', vacation_mode: 0 }],
   '/api/teams': [{ id: 1, name: 'Paiements', color: 'amber', assignMode: 'round_robin', maxOpen: 5, subjects: ['Paiement'], tagIds: [1], members: [{ userId: '1', username: 'Daryu', open: 2 }] }],

@@ -52,6 +52,14 @@ function NotifListener({ add }) {
     followed: (data) => {
       add({ type: 'follow', title: data.title, body: data.body || (data.subject ? `Ticket #${data.ticketId} — ${data.subject}` : ''), href: `/tickets/${data.ticketId}` });
     },
+    // Approvals (v4.2): asked of me, or the answer to one I asked
+    approval: (data) => {
+      const body = data.decision
+        ? `${data.by} a ${data.decision === 'approved' ? 'accordé' : 'refusé'} la validation du ticket #${data.ticketId}`
+        : `${data.by} demande ton accord sur le ticket #${data.ticketId}${data.reminder ? ' (relance)' : ''}`;
+      add({ type: 'approval', title: data.decision ? 'Réponse à une validation' : 'Validation demandée', body, href: `/tickets/${data.ticketId}` });
+      toast(body, { icon: '🛂', duration: 6000 });
+    },
     // Sent only to the staff member someone else assigned
     assigned: (data) => {
       const body = `${data.by} t'a attribué le ticket #${data.ticketId}${data.subject ? ` — ${data.subject}` : ''}`;

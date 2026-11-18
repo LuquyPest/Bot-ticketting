@@ -1127,6 +1127,61 @@ router.patch('/:id/team', async (req, res) => {
   }
 });
 
+// ── Approvals (utils/approvals.js, v4.2) ──
+// GET /api/tickets/:id/approvals ; POST { approverId | approverEmail, approverName, reason, nextStage }
+// POST /:aid/decide { decision, comment } (the approver) ; /:aid/remind ; /:aid/cancel (who asked, founders)
+const approvalErr = (res, e) => (e.status ? res.status(e.status).json({ error: e.message }) : (console.error(e), res.status(500).json({ error: 'Erreur serveur' })));
+async function approvalOf(req, res, ticket) {
+  const [a] = await req.guildDb('SELECT * FROM ticket_approvals WHERE id = ? AND ticket_id = ?', [parseInt(req.params.aid) || 0, ticket.id]);
+  if (!a) res.status(404).json({ error: 'Validation introuvable' });
+  return a || null;
+}
+router.get('/:id/approvals', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json(await require('../../utils/approvals').listForTicket(req.guildDb, ticket.id));
+  } catch (e) { approvalErr(res, e); }
+});
+router.post('/:id/approvals', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const a = await require('../../utils/approvals').requestApproval({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, ticket, input: req.body || {}, actor: dashboardActor(req) });
+    res.json(a);
+  } catch (e) { approvalErr(res, e); }
+});
+router.post('/:id/approvals/:aid/decide', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    const a = await approvalOf(req, res, ticket);
+    if (!a) return;
+    // Only the person whose agreement is asked
+    if (!a.approver_id || a.approver_id !== req.session.user.id) return res.status(403).json({ error: 'Seule la personne sollicitée peut répondre' });
+    res.json(await require('../../utils/approvals').decide({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, approval: a, decision: req.body?.decision, comment: req.body?.comment, decider: dashboardActor(req), tm: getManager(req) }));
+  } catch (e) { approvalErr(res, e); }
+});
+router.post('/:id/approvals/:aid/remind', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const a = await approvalOf(req, res, ticket);
+    if (!a) return;
+    res.json(await require('../../utils/approvals').remind({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, approval: a, actor: dashboardActor(req) }));
+  } catch (e) { approvalErr(res, e); }
+});
+router.post('/:id/approvals/:aid/cancel', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const a = await approvalOf(req, res, ticket);
+    if (!a) return;
+    if (a.requested_by_id !== req.session.user.id && !req.userIsFondateur) return res.status(403).json({ error: 'Seule la personne qui a demandé, ou un fondateur, peut annuler' });
+    res.json(await require('../../utils/approvals').cancel({ db: req.guildDb, guildId: req.guildId, approval: a, actor: dashboardActor(req) }));
+  } catch (e) { approvalErr(res, e); }
+});
+
 router.patch('/:id/move', async (req, res) => {
   try {
     const ticket = await loadTicket(req, res, 'reply_ticket');

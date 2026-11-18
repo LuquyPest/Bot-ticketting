@@ -2786,6 +2786,95 @@ async function main() {
     await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [cfgT.ticket_subjects == null || typeof cfgT.ticket_subjects === 'string' ? cfgT.ticket_subjects : JSON.stringify(cfgT.ticket_subjects)]);
   }
 
+  // ── Approvals (utils/approvals.js, v4.2) ──
+  {
+    const ap = app('./utils/approvals');
+    const AP = '100000000000000061';
+    await db("INSERT INTO dashboard_users (user_id, username, role) VALUES (?, 'Valideur', 'fondateur') ON DUPLICATE KEY UPDATE role = 'fondateur'", [AP]);
+    await mk('AP', { user: { id: AP, username: 'Valideur', role: null }, currentGuildId: G });
+    const tA = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage) VALUES ('43','u43','db-appr1','open','Remboursement','open')")).insertId;
+    const base = `/api/tickets/${tA}/approvals`;
+    const noReason = await req('POST', base, { sid: sessions.F, body: { approverId: AP, reason: ' ' } });
+    const outsider = await req('POST', base, { sid: sessions.F, body: { approverId: U.OUT, reason: 'x' } });
+    const self = await req('POST', base, { sid: sessions.F, body: { approverId: U.F, reason: 'x' } });
+    const badStage = await req('POST', base, { sid: sessions.F, body: { approverId: AP, reason: 'x', nextStage: 'n_existe_pas' } });
+    const noMail = await req('POST', base, { sid: sessions.F, body: { approverEmail: 'chef@example.com', reason: 'x' } });
+    check('validations: raison, personne hors staff, soi-même, statut inconnu refusés ; e-mail sans e-mail d instance refusé', [noReason, outsider, self, badStage].every(x => x.status === 400) && noMail.status === 409, [noReason, outsider, self, badStage, noMail].map(x => x.status).join());
+
+    r = await req('POST', base, { sid: sessions.F, body: { approverId: AP, reason: 'Rembourser 120 € hors délai', nextStage: 'in_progress' } });
+    const a1 = r.body;
+    const [n1] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'system' ORDER BY id DESC LIMIT 1", [tA]);
+    check('validations: demandée à un membre du staff, note dans le ticket', r.status === 200 && a1.status === 'pending' && a1.approver.id === AP && /Validation demandée à Valideur/.test(n1?.content || ''), JSON.stringify([r.body, n1]));
+    r = await req('POST', base, { sid: sessions.F, body: { approverId: AP, reason: 'encore' } });
+    check('validations: une seule en attente par ticket', r.status === 409, r.status);
+    r = await req('POST', `${base}/${a1.id}/decide`, { sid: sessions.F, body: { decision: 'approved' } });
+    check('validations: seule la personne sollicitée répond', r.status === 403, r.status);
+    r = await req('POST', `${base}/${a1.id}/remind`, { sid: sessions.F });
+    check('validations: relance trop tôt refusée (une par heure)', r.status === 429, JSON.stringify(r.body));
+    await db('UPDATE ticket_approvals SET created_at = NOW() - INTERVAL 2 HOUR WHERE id = ?', [a1.id]);
+    r = await req('POST', `${base}/${a1.id}/remind`, { sid: sessions.F });
+    const [rm] = await db('SELECT remind_count FROM ticket_approvals WHERE id = ?', [a1.id]);
+    check('validations: relance envoyée et comptée', r.status === 200 && Number(rm.remind_count) === 1, JSON.stringify([r.body, rm]));
+    r = await req('POST', `${base}/${a1.id}/decide`, { sid: sessions.AP, body: { decision: 'approved', comment: 'OK pour cette fois' } });
+    const [st] = await db('SELECT stage FROM tickets WHERE id = ?', [tA]);
+    const [n2] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'system' ORDER BY id DESC LIMIT 1", [tA]);
+    check('validations: accord → le ticket avance au statut choisi, note avec le commentaire', r.status === 200 && st.stage === 'in_progress' && /Validation accordée par Valideur : OK pour cette fois/.test(n2?.content || ''), JSON.stringify([r.body, st, n2]));
+    r = await req('POST', `${base}/${a1.id}/decide`, { sid: sessions.AP, body: { decision: 'rejected' } });
+    check('validations: une seule réponse', r.status === 409, r.status);
+
+    r = await req('POST', base, { sid: sessions.F, body: { approverId: AP, reason: 'Accès exceptionnel', nextStage: 'waiting' } });
+    const a2 = r.body;
+    r = await req('POST', `${base}/${a2.id}/decide`, { sid: sessions.AP, body: { decision: 'rejected', comment: 'Non, pas sans justificatif' } });
+    const [st2] = await db('SELECT stage FROM tickets WHERE id = ?', [tA]);
+    check('validations: refus → le ticket reste où il est', r.status === 200 && st2.stage === 'in_progress', JSON.stringify([r.body, st2]));
+    r = await req('POST', base, { sid: sessions.F, body: { approverId: AP, reason: 'Troisième' } });
+    const a3 = r.body;
+    r = await req('POST', `${base}/${a3.id}/cancel`, { sid: sessions.F });
+    const list = await req('GET', base, { sid: sessions.F });
+    check('validations: annulée par la personne qui a demandé ; historique du ticket', r.status === 200 && list.body.map(a => a.status).join() === 'cancelled,rejected,approved', JSON.stringify(list.body.map(a => a.status)));
+    const ev = (await db("SELECT action FROM audit_log WHERE ticket_id = ? AND action LIKE 'approval_%'", [tA])).map(x => x.action);
+    check('validations: chaque étape au journal du ticket', ['approval_request', 'approval_remind', 'approval_approved', 'approval_rejected', 'approval_cancel'].every(a => ev.includes(a)), JSON.stringify(ev));
+
+    // By e-mail: link, one answer, automatic reminder
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const mails = [];
+    nodemailer.createTransport = () => ({ sendMail: async x => { mails.push(x); return {}; }, close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    r = await req('POST', base, { sid: sessions.F, body: { approverEmail: 'Chef@Example.com', approverName: 'La cheffe', reason: 'Geste commercial de 50 €' } });
+    const a4 = r.body;
+    const tokenOf = m => (m?.text?.match(/\/validation#([A-Za-z0-9_-]+)/) || [])[1];
+    const tok = tokenOf(mails.at(-1));
+    const [row4] = await db('SELECT token_hash FROM ticket_approvals WHERE id = ?', [a4.id]);
+    check('validations: par e-mail, lien envoyé, seul son hachage est gardé', r.status === 200 && mails.at(-1)?.to === 'chef@example.com' && !!tok && row4.token_hash === crypto.createHash('sha256').update(tok).digest('hex') && !JSON.stringify(row4).includes(tok), JSON.stringify([r.body, mails.at(-1)?.text]));
+    const H = { 'X-Forwarded-For': '10.30.0.1' };
+    r = await req('POST', '/api/approvals/link', { headers: H, body: { token: tok } });
+    check('validations: le lien montre la demande, pas la conversation', r.status === 200 && r.body.reason === 'Geste commercial de 50 €' && r.body.ticketId === tA && !('messages' in r.body), JSON.stringify(r.body));
+    r = await req('POST', '/api/approvals/link', { headers: H, body: { token: 'x'.repeat(43) } });
+    check('validations: lien inconnu → expiré', r.status === 410, r.status);
+    await db('UPDATE ticket_approvals SET created_at = NOW() - INTERVAL 25 HOUR WHERE id = ?', [a4.id]);
+    mails.length = 0;
+    const auto = await ap.runApprovalReminders(fakeClient);
+    const tok2 = tokenOf(mails.at(-1));
+    const old = await req('POST', '/api/approvals/link', { headers: H, body: { token: tok } });
+    check('validations: relance automatique après 24 h, avec un nouveau lien (l ancien ne marche plus)', auto.sent >= 1 && !!tok2 && tok2 !== tok && old.status === 410, JSON.stringify([auto, old.status]));
+    r = await req('POST', '/api/approvals/decide', { headers: H, body: { token: tok2, decision: 'approved', comment: 'Validé' } });
+    const again = await req('POST', '/api/approvals/decide', { headers: H, body: { token: tok2, decision: 'rejected' } });
+    const [d4] = await db('SELECT status, decided_by_tag, token_hash FROM ticket_approvals WHERE id = ?', [a4.id]);
+    check('validations: accord par le lien, une seule fois', r.status === 200 && d4.status === 'approved' && d4.decided_by_tag === 'La cheffe' && !d4.token_hash && again.status === 410, JSON.stringify([r.body, d4, again.status]));
+
+    const tConfA = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('42','u42','db-appr2','open','Signalement', -1)")).insertId;
+    r = await req('POST', `/api/tickets/${tConfA}/approvals`, { sid: sessions.F, body: { approverEmail: 'chef@example.com', reason: 'x' } });
+    check('validations: un ticket confidentiel ne part jamais à l extérieur', r.status === 400, JSON.stringify(r.body));
+
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tA, tConfA]]);
+    await db('DELETE FROM dashboard_users WHERE user_id = ?', [AP]);
+  }
+
   // ── Categories as a tree (utils/subjectTree.js, v4.2) ──
   {
     const web = app('./utils/webRequesters');
@@ -2952,7 +3041,7 @@ async function main() {
   const [sysClose] = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_close' AND source = 'api'");
   check('journal: fermeture via API avec source API', Number(sysClose.n) >= 1, JSON.stringify(sysClose));
   r = await req('GET', '/api/audit?category=tickets', { sid: sessions.F });
-  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action.startsWith('member_') || x.action.startsWith('guest_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
+  check('journal: filtre catégorie', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.action.startsWith('ticket_') || x.action.startsWith('participant_') || x.action.startsWith('scheduled_') || x.action.startsWith('note_') || x.action.startsWith('member_') || x.action.startsWith('guest_') || x.action.startsWith('approval_') || x.action === 'faq_solved'), JSON.stringify(r.body.rows.map(x => x.action)));
   r = await req('GET', `/api/audit?ticket=%23${st1.id}`, { sid: sessions.F });
   check('journal: filtre ticket', r.status === 200 && r.body.rows.length > 0 && r.body.rows.every(x => x.ticket_id === st1.id), r.body.total);
   r = await req('GET', '/api/audit?source=api', { sid: sessions.F });

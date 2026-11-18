@@ -655,6 +655,36 @@ const MIGRATIONS = [
     // The existing subjects are kept as they are: they become the categories
     statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS subject_sla JSON DEFAULT NULL'],
   },
+  {
+    version: 46,
+    name: 'Validations : accord d\'une personne avant d\'avancer (v4.2)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_approvals (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id        INT NOT NULL,
+        approver_id      VARCHAR(32) DEFAULT NULL,
+        approver_email   VARCHAR(254) DEFAULT NULL,
+        approver_name    VARCHAR(100) NOT NULL,
+        reason           TEXT NOT NULL,
+        next_stage       VARCHAR(40) DEFAULT NULL,
+        status           ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
+        requested_by_id  VARCHAR(32) DEFAULT NULL,
+        requested_by_tag VARCHAR(100) DEFAULT NULL,
+        decision_comment VARCHAR(1000) DEFAULT NULL,
+        decided_by_tag   VARCHAR(100) DEFAULT NULL,
+        decided_at       DATETIME DEFAULT NULL,
+        token_hash       CHAR(64) DEFAULT NULL,
+        expires_at       DATETIME DEFAULT NULL,
+        reminded_at      DATETIME DEFAULT NULL,
+        remind_count     INT NOT NULL DEFAULT 0,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ap_ticket (ticket_id),
+        INDEX idx_ap_status (status),
+        UNIQUE KEY uq_ap_token (token_hash),
+        CONSTRAINT fk_ap_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

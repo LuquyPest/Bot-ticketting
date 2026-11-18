@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import { useStages, STAGE_CLS } from '../hooks/useStages';
+import ApprovalPanel from '../components/ApprovalPanel';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
 import toast from 'react-hot-toast';
@@ -151,7 +152,8 @@ function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
 /* ─── Main component ─────────────────────────────────────────── */
 // embeddedId: shown next to the ticket list (split view, Tickets page); onClose leaves it
 export default function TicketDetail({ embeddedId = null, onClose = null }) {
-  const STAGES = stageOptions(useStages());
+  const stageList = useStages();
+  const STAGES = stageOptions(stageList);
   // Teams of the space (v4.2): the ticket's team, changed here
   const [teamList, setTeamList] = useState([]);
   useEffect(() => { api.get('/teams').then(r => setTeamList(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
@@ -1982,6 +1984,10 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
               </div>
             )}
           </div>
+
+          {/* VALIDATION (v4.2) */}
+          <ApprovalPanel ticketId={ticket.id} open={ticket.status === 'open'} me={user?.id} canAsk={can('reply_ticket')} isFounder={user?.role === 'fondateur'}
+            stages={stageList} panelCard={panelCard} onChange={loadTicket} />
 
           {/* ÉQUIPE (v4.2) */}
           {ticket.status === 'open' && teamList.length > 0 && (

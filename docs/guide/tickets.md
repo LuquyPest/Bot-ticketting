@@ -57,6 +57,19 @@ Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cou
 
 On change de statut depuis la fiche, en masse depuis la liste, par une macro, ou sur Discord avec `/moveticket` (les statuts de l'espace sont proposés). L'ordre se règle avec les flèches. **Supprimer** un statut remet ses tickets dans son statut de base, sans déplacer leur salon. Chaque changement est au journal.
 
+## Les validations
+
+Un ticket peut demander **l'accord d'une personne** avant d'avancer (un remboursement, un accès exceptionnel…) : **fiche ticket → Validation → Demander une validation** (permission de répondre).
+
+| | |
+|---|---|
+| **Qui valide** | Un membre du **staff** (il est prévenu dans le dashboard, par notification push et en MP, et répond depuis la fiche), ou **quelqu'un par e-mail** (un responsable hors de l'équipe : il reçoit un lien, valable 14 jours et à usage unique, qui ne montre que la demande, jamais la conversation) |
+| **Ce qui est demandé** | Un texte libre, et éventuellement le **statut** où passer le ticket une fois l'accord donné |
+| **Réponse** | **Accorder** (le ticket passe au statut choisi) ou **Refuser** (il reste où il est), avec un commentaire facultatif. Une seule réponse ; la personne qui a demandé est prévenue |
+| **Relance** | **Relancer** à la main, une fois par heure au plus ; relance automatique après 24 h sans réponse, trois fois au plus (par e-mail, avec un nouveau lien : l'ancien ne marche plus) |
+
+Une seule validation en attente par ticket ; la personne qui l'a demandée, ou un fondateur, peut l'**annuler**. Chaque étape est une note dans le ticket et une ligne de son journal. Un ticket **confidentiel** n'est validé que par un fondateur, jamais par e-mail. La validation par e-mail utilise l'[e-mail de l'instance](./instance#e-mail-de-l-instance).
+
 ## Les contacts
 
 **Contacts** (menu Support) : une fiche par personne, quel que soit le canal. Chaque fiche regroupe ses **identités** : son compte Discord, son adresse pour les [tickets par e-mail](./integrations#tickets-par-e-mail), plus tard le portail web. Les fiches se créent d'elles-mêmes à partir des tickets, rien à saisir.

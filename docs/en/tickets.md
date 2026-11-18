@@ -57,6 +57,19 @@ An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by d
 
 The status changes from the ticket view, in bulk from the list, through a macro, or on Discord with `/moveticket` (the space's statuses are offered). The order is set with the arrows. **Deleting** a status puts its tickets back in its built-in status, without moving their channel. Every change is in the journal.
 
+## Approvals
+
+A ticket can ask for **a person's approval** before it moves on (a refund, an exceptional access…): **ticket view → Approval → Ask for an approval** (reply permission).
+
+| | |
+|---|---|
+| **Who approves** | A **staff** member (told in the dashboard, by push notification and DM, and answers from the ticket view), or **someone by e-mail** (a manager outside the team: they get a link, valid 14 days and single-use, showing only the request, never the conversation) |
+| **What is asked** | Free text, and optionally the **status** the ticket moves to once approved |
+| **Answer** | **Grant** (the ticket moves to the chosen status) or **Refuse** (it stays where it is), with an optional comment. One answer only; the person who asked is told |
+| **Reminder** | **Remind** by hand, once an hour at most; automatic reminder after 24 h without an answer, three times at most (by e-mail, with a new link: the old one stops working) |
+
+One pending approval per ticket; the person who asked, or a founder, can **cancel** it. Every step is a note in the ticket and a line of its journal. A **confidential** ticket is approved only by a founder, never by e-mail. Approval by e-mail uses the [e-mail of the instance](./instance#e-mail-of-the-instance).
+
 ## Contacts
 
 **Contacts** (Support menu): one card per person, whatever the channel. Each card gathers their **identities**: their Discord account, their address for [tickets by e-mail](./integrations#tickets-by-e-mail), later the web portal. Cards are created on their own from the tickets, nothing to type in.
