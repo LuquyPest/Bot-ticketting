@@ -19,6 +19,7 @@ const fmt = d => (d ? new Date(d).toLocaleString(memberLocale, { dateStyle: 'med
 function statusOf(t) {
   if (t.merged_into) return { label: STR.status.merged, cls: 'bg-overlay/6 text-ink-2 border-overlay/10' };
   if (t.status === 'closed') return { label: STR.status.closed, cls: 'bg-overlay/6 text-ink-2 border-overlay/10' };
+  if (t.resolved_at) return { label: STR.resolvedStatus, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' };
   if (t.stage === 'waiting') return { label: STR.status.waiting, cls: 'bg-amber-500/10 text-amber-400 border-amber-500/25' };
   if (t.stage === 'in_progress') return { label: STR.status.in_progress, cls: 'bg-sky-500/10 text-sky-400 border-sky-500/25' };
   if (t.assigned) return { label: STR.status.assigned, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' };
@@ -249,6 +250,42 @@ const sendFiles = (guildId, ticketId, content, files) => {
   return api.post(`/member/tickets/${guildId}/${ticketId}/messages`, fd);
 };
 
+// The solution proposed by the staff (v5.1): « it is solved » closes, « not yet » says what is wrong
+function ResolutionBanner({ guildId, ticketId, solution, onDone }) {
+  const [refusing, setRefusing] = useState(false);
+  const [comment, setComment] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const send = async accept => {
+    setBusy(true); setError('');
+    try { await api.post(`/member/tickets/${guildId}/${ticketId}/resolution`, accept ? { accept: true } : { accept: false, comment: comment.trim() }); await onDone(); }
+    catch (err) { setError(err.response?.data?.error || STR.error2); }
+    setBusy(false);
+  };
+  return (
+    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3" role="region" aria-label={STR.solTitle}>
+      <p className="text-sm font-semibold text-emerald-300">✅ {STR.solTitle}</p>
+      {solution && <p className="text-sm text-ink-1 whitespace-pre-wrap"><MessageContent text={solution} /></p>}
+      <p className="text-xs text-ink-3">{STR.resolvedHint}</p>
+      {refusing && (
+        <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} maxLength={1000} aria-label={STR.resolvedRefusePh} placeholder={STR.resolvedRefusePh}
+          className="w-full bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1 placeholder-ink-4 focus:outline-hidden focus:border-primary/50" />
+      )}
+      {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        {!refusing ? (
+          <>
+            <button onClick={() => send(true)} disabled={busy} className="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50">{STR.solAccept}</button>
+            <button onClick={() => setRefusing(true)} disabled={busy} className="px-4 py-2 rounded-lg border border-overlay/10 text-sm text-ink-2 hover:text-ink-1">{STR.resolvedRefuse}</button>
+          </>
+        ) : (
+          <button onClick={() => send(false)} disabled={busy} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50">{STR.resolvedSend}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TicketView({ guildId, ticketId, me }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -305,6 +342,7 @@ function TicketView({ guildId, ticketId, me }) {
         </div>
       </div>
 
+      {t.status === 'open' && t.resolved_at && <ResolutionBanner guildId={guildId} ticketId={ticketId} solution={t.resolution} onDone={load} />}
       {data.files?.length > 0 && (
         <div className="bg-surface-card border border-overlay/6 rounded-2xl p-3">
           <p className="text-xs font-semibold text-ink-2 mb-2">{STR.files}</p>

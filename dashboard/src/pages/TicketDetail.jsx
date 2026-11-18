@@ -10,6 +10,7 @@ import api from '../api';
 import { useStages, STAGE_CLS } from '../hooks/useStages';
 import ApprovalPanel from '../components/ApprovalPanel';
 import CcPanel from '../components/CcPanel';
+import ResolutionPanel from '../components/ResolutionPanel';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
 import toast from 'react-hot-toast';
@@ -1706,6 +1707,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                         Partager avec un invité
                       </button>
                     )}
+                    <ResolutionPanel ticket={ticket} settings={ticket.resolutionSettings} onChange={loadTicket} />
                     {can('close_ticket') && (
                       <button onClick={() => changeStatus('closed')} disabled={actionLoading}
                         className="w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all

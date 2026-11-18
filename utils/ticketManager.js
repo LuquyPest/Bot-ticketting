@@ -317,6 +317,11 @@ function createManager(db, client, guildId) {
   async function relayToTicket(ticket, user, content, attachments = []) {
     const channel = await ticketChannel(client, db, ticket);
     if (!channel) return null;
+    // The requester writes on a resolved ticket: not solved after all, it goes on (utils/resolution.js)
+    if (ticket.resolved_at) {
+      await require('./resolution').reopenResolution({ db, guildId: gid, ticket, by: { id: user.id, tag: user.tag || user.username, source: 'member' } }).catch(() => null);
+      ticket = { ...ticket, resolved_at: null };
+    }
 
     await sendUserContent(channel, user, content, attachments);
     await db('UPDATE tickets SET last_message_at = NOW(), user_warned_inactive = 0 WHERE id = ?', [ticket.id]);
@@ -868,14 +873,14 @@ function createManager(db, client, guildId) {
 
   async function getInactiveTickets(warningHours, closeHours) {
     const toWarn = await db(
-      `SELECT * FROM tickets WHERE status='open' AND last_message_at IS NOT NULL
+      `SELECT * FROM tickets WHERE status='open' AND resolved_at IS NULL AND last_message_at IS NOT NULL
        AND last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
        AND last_message_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
        AND warned_inactive=0`,
       [warningHours, closeHours]
     );
     const toClose = await db(
-      `SELECT * FROM tickets WHERE status='open' AND last_message_at IS NOT NULL
+      `SELECT * FROM tickets WHERE status='open' AND resolved_at IS NULL AND last_message_at IS NOT NULL
        AND last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)`,
       [closeHours]
     );
@@ -1002,7 +1007,7 @@ function createManager(db, client, guildId) {
         GROUP BY ticket_id
       ) latest ON latest.ticket_id = t.id
       INNER JOIN ticket_notes ln ON ln.id = latest.last_id AND ln.source = 'user'
-      WHERE t.status = 'open'
+      WHERE t.status = 'open' AND t.resolved_at IS NULL
         AND t.claimed_by IS NOT NULL
         AND t.last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
         AND (t.staff_reminder_sent_at IS NULL OR t.staff_reminder_sent_at < DATE_SUB(NOW(), INTERVAL 24 HOUR))
@@ -1023,7 +1028,7 @@ function createManager(db, client, guildId) {
         GROUP BY ticket_id
       ) latest ON latest.ticket_id = t.id
       INNER JOIN ticket_notes ln ON ln.id = latest.last_id AND ln.source NOT IN ('user', 'scheduled')
-      WHERE t.status = 'open'
+      WHERE t.status = 'open' AND t.resolved_at IS NULL
         AND t.user_warned_inactive = 0
         AND t.last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
         AND t.last_message_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
@@ -1037,7 +1042,7 @@ function createManager(db, client, guildId) {
         GROUP BY ticket_id
       ) latest ON latest.ticket_id = t.id
       INNER JOIN ticket_notes ln ON ln.id = latest.last_id AND ln.source NOT IN ('user', 'scheduled')
-      WHERE t.status = 'open'
+      WHERE t.status = 'open' AND t.resolved_at IS NULL
         AND t.user_warned_inactive = 1
         AND t.last_message_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
     `, [closeHours]);

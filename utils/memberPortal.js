@@ -49,7 +49,7 @@ async function listMemberTickets(member, client) {
       const db = getTenantDb(guild_id);
       if (!(await portalEnabled(db))) continue;
       const tickets = await db(
-        `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
+        `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id, t.resolved_at,
                 EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
                 (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating
          FROM tickets t WHERE ${ownTicketsSql}
@@ -87,7 +87,7 @@ async function memberTicket(member, guildId, ticketId, client) {
   if (!(await portalEnabled(db))) return null;
   const [ticket] = await db(
     `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
-            t.visibility_grade_id = -1 AS confidential,
+            t.visibility_grade_id = -1 AS confidential, t.resolved_at, t.resolution,
             EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
             (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating
      FROM tickets t WHERE t.id = ? AND ${ownTicketsSql}`,

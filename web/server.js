@@ -149,6 +149,7 @@ const { authLimiter, apiLimiter } = require('./rateLimiters'); // blocked IPs ar
 app.use(['/api/auth/discord', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/verify-email', '/api/auth/oidc', '/api/auth/invitation', '/api/installation/owner'], authLimiter);
 app.use('/api/member/auth', authLimiter);
 app.use('/api/approvals', authLimiter); // approval links: token guessing is rate-limited
+app.use('/api/resolution', authLimiter); // « C'est résolu » links: same
 app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
 app.use('/api/demo', authLimiter);
 app.use('/api', apiLimiter);
@@ -183,6 +184,7 @@ app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 app.use('/api/approvals', require('./routes/approvalLink')); // approval by e-mail link (v4.2)
+app.use('/api/resolution', require('./routes/resolutionLink')); // « C'est résolu » by e-mail link (v5.1)
 
 // ── Updater service (docker-compose.updater.yml, utils/updates.js) ──
 // Reachable only from inside the Docker network (refused through the proxy) with UPDATER_TOKEN

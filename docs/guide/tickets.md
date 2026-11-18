@@ -52,6 +52,17 @@ Dans **Paramètres → Général → Types de tickets**, un espace peut distingu
 - Le staff le **change depuis la fiche** (permission de répondre), au journal. La liste se **filtre par type**, et [Analytiques → Rapports](./equipe#les-rapports) regroupe **par type**.
 - Coupé, il n'existe que des demandes et aucun écran ne montre le type. Un espace existant le garde coupé jusqu'à ce qu'on l'active ; un nouvel espace l'a activé.
 
+## La résolution et la clôture
+
+Dans **Paramètres → Général → Résolution et clôture**, un espace **résout avant de fermer** :
+
+1. Le staff clique **Résoudre** (fiche → Actions, permission de fermer) et écrit la **solution**. Elle part au demandeur par son canal ; le ticket reste ouvert, marqué **Résolu, en attente du demandeur**, et son délai (SLA) s'arrête, comme les relances d'inactivité.
+2. Le demandeur **confirme** : bouton **C'est résolu** en MP, bandeau de l'[espace membre](./espace-membre), ou **lien à usage unique** reçu par e-mail (il ne montre que la solution). Le ticket se ferme comme d'habitude : transcript, demande de note.
+3. S'il **écrit quoi que ce soit** (MP, réponse à l'e-mail, message sur le web, bouton **Pas encore**), le ticket **reprend**, avec son message.
+4. **Sans réponse**, le ticket se ferme tout seul au bout du délai réglé (7 jours par défaut, 0 = jamais).
+
+Le staff peut **annuler la résolution**. Chaque étape est au journal. Un espace existant ferme comme avant tant qu'il ne l'active pas ; un nouvel espace l'a activée. L'[API v3](./integrations#api-publique) propose aussi une solution (`POST /tickets/:id/resolve`).
+
 ## Les statuts
 
 Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :

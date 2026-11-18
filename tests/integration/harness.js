@@ -1726,7 +1726,7 @@ async function main() {
       && ['get /tickets', 'get /contacts', 'post /tickets', 'post /tickets/{id}/reply', 'post /tickets/{id}/notes', 'patch /tickets/{id}', 'post /tickets/{id}/close'].every(x => doc3.includes(x))
       && !!r.body.paths['/tickets'].post.requestBody && r.body.paths['/tickets'].post['x-permission'] === 'create_tickets', doc3.join(', '));
     const routes3 = app('./web/routes/apiV3').ENDPOINTS.map(e => `${e.method} ${e.path}`);
-    check('API v3: chaque écriture documentée', routes3.length === 4 && routes3.every(x => doc3.includes(x)), routes3.join());
+    check('API v3: chaque écriture documentée', routes3.length === 5 && routes3.every(x => doc3.includes(x)), routes3.join());
     check('API v3: la v1 n a toujours pas de corps documenté', !JSON.stringify((await req('GET', '/api/v1/openapi.json')).body).includes('requestBody'), '');
 
     const tag = (await db("INSERT INTO ticket_tags (name, color) VALUES ('API-VIP', '#aa0000')")).insertId;
@@ -4907,6 +4907,109 @@ async function main() {
       [cfgT.ticket_subjects == null || typeof cfgT.ticket_subjects === 'string' ? cfgT.ticket_subjects : JSON.stringify(cfgT.ticket_subjects), cfgT.ticket_types_enabled,
         cfgT.ticket_type_labels == null || typeof cfgT.ticket_type_labels === 'string' ? cfgT.ticket_type_labels : JSON.stringify(cfgT.ticket_type_labels),
         cfgT.subject_types == null || typeof cfgT.subject_types === 'string' ? cfgT.subject_types : JSON.stringify(cfgT.subject_types)]);
+  }
+
+  // ── Resolution and closing (utils/resolution.js, v5.1) ──
+  {
+    const rs = app('./utils/resolution');
+    const em = app('./utils/emailTickets');
+    const interM = app('./events/interactionCreate');
+    const [cfgR] = await db('SELECT resolution_enabled, resolution_autoclose_days FROM guild_config WHERE id = 1');
+    check('résolution: un nouvel espace l a activée, la migration la coupe sur les existants', Number(cfgR.resolution_enabled) === 1
+      && app('./utils/tenantMigrations').MIGRATIONS.find(m => m.version === 54).statements.includes('UPDATE guild_config SET resolution_enabled = 0'), JSON.stringify(cfgR));
+    const MR = '200000000000000071';
+    memberRoles.set(MR, new Map());
+    const mkT = async (owner, tag) => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, ?, ?, 'open', 'Résolution')", [owner, tag, `db-res-${Math.random().toString(36).slice(2, 10)}`])).insertId;
+    const click = async (customId, userId) => {
+      const out = {};
+      await interM.execute(fakeClient, { customId, guildId: null, guild: null, channelId: 'dm', values: [], message: { embeds: [] },
+        user: { id: userId, username: 'membre71', tag: 'membre71', send: async p => memberDms.push({ id: userId, p }) },
+        isButton: () => true, isStringSelectMenu: () => false, isModalSubmit: () => false, isChatInputCommand: () => false, isRepliable: () => true,
+        reply: async p => { out.reply = p; }, update: async p => { out.update = p; } });
+      return out;
+    };
+    const t1 = await mkT(MR, 'membre71');
+    r = await req('POST', `/api/tickets/${t1}/resolve`, { sid: sessions.F, body: { solution: '' } });
+    check('résolution: solution obligatoire', r.status === 400, r.status);
+    memberDms.length = 0;
+    r = await req('POST', `/api/tickets/${t1}/resolve`, { sid: sessions.F, body: { solution: 'Votre compte est réactivé.' } });
+    const [rt1] = await db('SELECT status, resolved_at, resolution, resolved_by_tag, resolution_token FROM tickets WHERE id = ?', [t1]);
+    const dm = memberDms.find(m => m.id === MR)?.p;
+    const btns = dm?.components?.[0]?.components?.map(c => c.data.custom_id) || [];
+    check('résolution: solution enregistrée, ticket toujours ouvert, demandeur prévenu avec les boutons', r.status === 200 && rt1.status === 'open' && !!rt1.resolved_at && rt1.resolution === 'Votre compte est réactivé.'
+      && /^[0-9a-f]{64}$/.test(rt1.resolution_token) && btns.includes(`resok_${t1}_${G}`) && btns.includes(`resno_${t1}_${G}`) && /réactivé/.test(JSON.stringify(dm.embeds)), JSON.stringify([r.body, btns]));
+    r = await req('GET', `/api/tickets/${t1}`, { sid: sessions.F });
+    check('résolution: délai arrêté, fiche porte la résolution', r.body.sla === null && !!r.body.resolved_at && r.body.resolutionSettings?.enabled === true && r.body.resolutionSettings.autoCloseDays === 7, JSON.stringify([r.body.sla, r.body.resolutionSettings]));
+    r = await req('POST', `/api/tickets/${t1}/resolve`, { sid: sessions.F, body: { solution: 'encore' } });
+    check('résolution: déjà résolu → refus', r.status === 409, r.status);
+    let out = await click(`resok_${t1}_${G}`, '200000000000000072');
+    check('résolution: bouton d un autre membre sans effet', /n'attend plus/.test(JSON.stringify(out.update)) && (await db('SELECT status FROM tickets WHERE id = ?', [t1]))[0].status === 'open', JSON.stringify(out));
+    out = await click(`resok_${t1}_${G}`, MR);
+    const [after1] = await db('SELECT status FROM tickets WHERE id = ?', [t1]);
+    check('résolution: « C est résolu » ferme le ticket (au journal)', after1.status === 'closed' && (await db("SELECT id FROM audit_log WHERE action = 'ticket_resolution_accept' AND ticket_id = ?", [t1])).length === 1, JSON.stringify([after1, out.update]));
+
+    const t2 = await mkT(MR, 'membre71');
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t2]))[0], solution: 'Essaie de vider le cache.', actor: { id: U.F, username: 'F' } });
+    out = await click(`resno_${t2}_${G}`, MR);
+    const [after2] = await db('SELECT status, resolved_at FROM tickets WHERE id = ?', [t2]);
+    check('résolution: « Pas encore » → le ticket reprend', after2.status === 'open' && after2.resolved_at === null && /reprend/.test(JSON.stringify(out.update)), JSON.stringify([after2, out.update]));
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t2]))[0], solution: 'Et maintenant ?', actor: { id: U.F, username: 'F' } });
+    const tm = app('./utils/ticketManager').createManager(db, fakeClient, G);
+    await tm.relayToTicket((await db('SELECT * FROM tickets WHERE id = ?', [t2]))[0], { id: MR, tag: 'membre71', username: 'membre71' }, 'Toujours pas', []);
+    const [after3] = await db('SELECT resolved_at FROM tickets WHERE id = ?', [t2]);
+    const [n3] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND content LIKE '↩️%' ORDER BY id DESC LIMIT 1", [t2]);
+    check('résolution: le demandeur qui écrit fait reprendre le ticket', after3.resolved_at === null && /reprend/.test(n3?.content || ''), JSON.stringify([after3, n3]));
+    r = await req('POST', `/api/tickets/${t2}/unresolve`, { sid: sessions.F });
+    check('résolution: annuler sur un ticket non résolu → refus', r.status === 400, r.status);
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t2]))[0], solution: 'Dernier essai', actor: { id: U.F, username: 'F' } });
+    r = await req('POST', `/api/tickets/${t2}/unresolve`, { sid: sessions.F });
+    check('résolution: le staff annule la résolution', r.status === 200 && (await db('SELECT resolved_at FROM tickets WHERE id = ?', [t2]))[0].resolved_at === null, r.status);
+
+    // E-mail requester: a single-use link
+    const addr = 'resolu@ext.test', ownerE = em.ownerIdFor(addr);
+    await em.upsertContact(db, addr, null);
+    const t3 = await mkT(ownerE, addr);
+    const res3 = await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t3]))[0], solution: 'Remboursement effectué.', actor: { id: U.F, username: 'F' } });
+    const token = res3.url.split('#')[1];
+    r = await req('POST', '/api/resolution/link', { headers: { 'X-Forwarded-For': '10.60.0.1' }, body: { token: token.replace(/.$/, c => (c === 'a' ? 'b' : 'a')) } });
+    const bad = r.status;
+    r = await req('POST', '/api/resolution/link', { headers: { 'X-Forwarded-For': '10.60.0.2' }, body: { token } });
+    check('résolution: le lien montre la solution seulement (faux lien refusé)', bad === 410 && r.status === 200 && r.body.solution === 'Remboursement effectué.' && r.body.ticketId === t3 && !('messages' in r.body), JSON.stringify(r.body));
+    r = await req('POST', '/api/resolution/accept', { headers: { 'X-Forwarded-For': '10.60.0.3' }, body: { token } });
+    const again = await req('POST', '/api/resolution/accept', { headers: { 'X-Forwarded-For': '10.60.0.4' }, body: { token } });
+    check('résolution: confirmé par le lien, une seule fois', r.status === 200 && (await db('SELECT status FROM tickets WHERE id = ?', [t3]))[0].status === 'closed' && again.status === 410, JSON.stringify([r.body, again.status]));
+
+    // Member space: accept or « not yet » with what is still wrong
+    const MW2 = '200000000000000081';
+    const t4 = await mkT(MW2, 'member81');
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t4]))[0], solution: 'Mot de passe réinitialisé.', actor: { id: U.F, username: 'F' } });
+    r = await req('GET', `/api/member/tickets/${G}/${t4}`, { sid: sessions.MW });
+    check('résolution: l espace membre montre la solution', r.status === 200 && !!r.body.ticket?.resolved_at && r.body.ticket.resolution === 'Mot de passe réinitialisé.', JSON.stringify(r.body.ticket));
+    r = await req('POST', `/api/member/tickets/${G}/${t4}/resolution`, { sid: sessions.MW, body: { accept: false, comment: 'Le lien ne marche pas' } });
+    const [after4] = await db('SELECT resolved_at FROM tickets WHERE id = ?', [t4]);
+    const [n4] = await db("SELECT id FROM ticket_notes WHERE ticket_id = ? AND source = 'user' AND content = 'Le lien ne marche pas'", [t4]);
+    check('résolution: « pas encore » depuis l espace membre, avec le message', r.status === 200 && after4.resolved_at === null && !!n4, JSON.stringify([r.body, after4]));
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t4]))[0], solution: 'Nouveau lien envoyé.', actor: { id: U.F, username: 'F' } });
+    r = await req('POST', `/api/member/tickets/${G}/${t4}/resolution`, { sid: sessions.MW, body: { accept: true } });
+    check('résolution: confirmé depuis l espace membre', r.status === 200 && r.body.closed && (await db('SELECT status FROM tickets WHERE id = ?', [t4]))[0].status === 'closed', JSON.stringify(r.body));
+
+    // Without an answer: closed after the delay of the space
+    const t5 = await mkT(MR, 'membre71');
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t5]))[0], solution: 'Fait.', actor: { id: U.F, username: 'F' } });
+    await db('UPDATE tickets SET resolved_at = NOW() - INTERVAL 8 DAY WHERE id = ?', [t5]);
+    const t6 = await mkT(MR, 'membre71');
+    await rs.resolveTicket({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [t6]))[0], solution: 'Fait aussi.', actor: { id: U.F, username: 'F' } });
+    await rs.runResolutionAutoClose(fakeClient);
+    const [c5] = await db('SELECT status FROM tickets WHERE id = ?', [t5]);
+    const [c6] = await db('SELECT status FROM tickets WHERE id = ?', [t6]);
+    check('résolution: fermeture automatique après le délai, pas avant', c5.status === 'closed' && c6.status === 'open', JSON.stringify([c5, c6]));
+    check('résolution: tâche planifiée', !!app('./utils/jobQueue').JOBS['resolution-autoclose'], '');
+    await db('UPDATE guild_config SET resolution_enabled = 0 WHERE id = 1');
+    const t7 = await mkT(MR, 'membre71');
+    r = await req('POST', `/api/tickets/${t7}/resolve`, { sid: sessions.F, body: { solution: 'x' } });
+    check('résolution: coupée → on ferme comme avant', r.status === 400 && /Paramètres/.test(r.body.error), JSON.stringify(r.body));
+    await db('UPDATE guild_config SET resolution_enabled = ?, resolution_autoclose_days = ? WHERE id = 1', [cfgR.resolution_enabled, cfgR.resolution_autoclose_days]);
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[t2, t6, t7]]);
   }
 
   // ── Dashboard leaderboard: week and month, staff only ──

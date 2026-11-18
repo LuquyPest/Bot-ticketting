@@ -21,7 +21,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
   const toAlert = await db(
     `SELECT t.id, t.channel_id, t.owner_tag, t.subject, t.claimed_by, t.visibility_grade_id
      FROM tickets t
-     WHERE t.status = 'open'
+     WHERE t.status = 'open' AND t.resolved_at IS NULL
        AND t.priority = 'urgent'
        AND t.claimed_by IS NOT NULL
        AND t.escalation_alerted = 0
@@ -69,7 +69,7 @@ async function runEscalationCheckForGuild(client, guild_id) {
   // 2. Tickets déjà alertés dépassant closeHours → fermeture auto
   const toClose = await db(
     `SELECT id, channel_id FROM tickets
-     WHERE status = 'open'
+     WHERE status = 'open' AND resolved_at IS NULL
        AND priority = 'urgent'
        AND claimed_by IS NOT NULL
        AND escalation_alerted = 1

@@ -167,7 +167,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, team_id, ticket_type, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, team_id, ticket_type, resolved_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -401,6 +401,7 @@ router.get('/:id', async (req, res) => {
       rating: rating[0] || null,
       // Incident or request (utils/ticketTypes.js): shown only when the space uses types
       types: await (async () => { const t = await require('../../utils/ticketTypes').typeSettings(req.guildDb); return { enabled: t.enabled, labels: t.labels }; })(),
+      resolutionSettings: await require('../../utils/resolution').resolutionSettings(req.guildDb),
     });
   } catch (err) {
     console.error(err);
@@ -1131,6 +1132,26 @@ router.patch('/:id/team', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// ── Resolution (utils/resolution.js, v5.1) ──
+// POST /api/tickets/:id/resolve { solution } — close permission ; POST /:id/unresolve — reply permission
+router.post('/:id/resolve', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'close_ticket');
+    if (!ticket) return;
+    await require('../../utils/resolution').resolveTicket({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, ticket, solution: req.body?.solution, actor: dashboardActor(req) });
+    res.json({ ok: true, resolved: true });
+  } catch (err) { if (err.status) return res.status(err.status).json({ error: err.message }); console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.post('/:id/unresolve', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const ok = await require('../../utils/resolution').reopenResolution({ db: req.guildDb, guildId: req.guildId, ticket, by: dashboardActor(req), fromRequester: false });
+    if (!ok) return res.status(400).json({ error: 'Ce ticket n\'est pas résolu' });
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // PATCH /api/tickets/:id/type { type: 'incident' | 'request' } (v5.1)

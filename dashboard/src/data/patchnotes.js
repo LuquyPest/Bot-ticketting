@@ -23,6 +23,7 @@ export const VERSIONS = [
     title: 'Centre de services : cycle de vie et délais',
     titleEn: 'Service desk: life cycle and deadlines',
     changes: [
+      { type: 'new',  text: 'Résolution et clôture : le staff propose une solution, le demandeur la confirme (bouton en MP, espace membre, lien à usage unique par e-mail) et le ticket se ferme, ou il répond et le ticket reprend ; délai arrêté pendant l\'attente, fermeture automatique sans réponse (7 jours par défaut), API v3 resolve. Coupé sur les espaces existants jusqu\'à ce qu\'on l\'active', en: 'Resolution and closing: the staff proposes a solution, the requester confirms it (DM button, member space, single-use link by e-mail) and the ticket closes, or replies and it goes on; deadline stopped while waiting, automatic closing without answer (7 days by default), API v3 resolve. Off on existing spaces until turned on' },
       { type: 'new',  text: 'Types de tickets (Paramètres → Général) : incident ou demande, renommables, type par sujet à l\'ouverture (la sous-catégorie hérite), changé depuis la fiche, filtre de la liste, rapports par type, champ type de l\'API v3. Coupé sur les espaces existants jusqu\'à ce qu\'on l\'active', en: 'Types of tickets (Settings → General): incident or request, renamable, type per subject at the opening (the sub-category inherits), changed from the ticket view, list filter, reports by type, type field of the API v3. Off on existing spaces until turned on' },
     ],
   },

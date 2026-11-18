@@ -790,6 +790,23 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS subject_types JSON DEFAULT NULL',
     ],
   },
+  {
+    version: 54,
+    name: 'Résolution et clôture : solution, accord du demandeur, clôture automatique (v5.1)',
+    statements: [
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolved_at DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolution TEXT DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolved_by_tag VARCHAR(100) DEFAULT NULL',
+      // SHA-256 of the link « C'est résolu » sent by e-mail (never the link itself)
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolution_token CHAR(64) DEFAULT NULL',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_resolved ON tickets (resolved_at)',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_restoken ON tickets (resolution_token)',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS resolution_enabled TINYINT(1) NOT NULL DEFAULT 1',
+      // Existing spaces close as before until turned on; a new space has it on (row inserted after the migrations)
+      'UPDATE guild_config SET resolution_enabled = 0',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS resolution_autoclose_days INT NOT NULL DEFAULT 7',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

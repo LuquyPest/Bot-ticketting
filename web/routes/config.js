@@ -83,6 +83,9 @@ const FIELD_MAP = {
   ticketTypesEnabled:       'ticket_types_enabled',
   ticketTypeLabels:         'ticket_type_labels',
   subjectTypes:             'subject_types',
+  // v5.1 — resolution and closing (utils/resolution.js)
+  resolutionEnabled:        'resolution_enabled',
+  resolutionAutocloseDays:  'resolution_autoclose_days',
 };
 
 const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
@@ -97,6 +100,8 @@ const VALIDATORS = {
   subjectSla:               v => v === null || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 60 && Object.values(v).every(h => Number.isInteger(h) && h >= 0 && h <= 720)),
   maxTicketsPerDay:         v => Number.isInteger(v) && v >= 1 && v <= 100,
   ticketTypesEnabled:       v => v === 0 || v === 1 || v === true || v === false,
+  resolutionEnabled:        v => v === 0 || v === 1 || v === true || v === false,
+  resolutionAutocloseDays:  v => Number.isInteger(v) && v >= 0 && v <= 90,
   ticketTypeLabels:         v => !require('../../utils/ticketTypes').labelsProblem(v),
   subjectTypes:             v => !require('../../utils/ticketTypes').subjectTypesProblem(v),
   inactiveWarningHours:     v => Number.isInteger(v) && v >= 1 && v <= 720,

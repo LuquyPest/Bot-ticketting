@@ -766,6 +766,7 @@ export default function Tickets() {
                   {PRIORITY_LABELS[t.priority] || t.priority}
                 </span>
                 {data?.types?.enabled && <span className={t.ticket_type === 'incident' ? 'text-red-300 font-medium' : ''}>{data.types.labels[t.ticket_type] || data.types.labels.request}</span>}
+                {t.status === 'open' && t.resolved_at && <span className="text-emerald-300 font-medium">Résolu, en attente du demandeur</span>}
                 {t.status === 'open' && t.stage && t.stage !== 'open' && (
                   <span className={`font-medium ${STAGE_CLS[t.stage]}`}>{STAGE_LABELS[t.stage]}</span>
                 )}

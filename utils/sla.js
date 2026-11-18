@@ -15,7 +15,8 @@ function slaHours(cfg, stage, subject = null) {
 
 // { hours, since, dueAt, elapsedMinutes, state: 'ok' | 'warning' | 'breached' } or null (no SLA / closed)
 function slaStatus(ticket, cfg, now = Date.now()) {
-  if (!ticket || ticket.status !== 'open') return null;
+  // A resolved ticket waits for its requester (utils/resolution.js): its deadline is stopped
+  if (!ticket || ticket.status !== 'open' || ticket.resolved_at) return null;
   const hours = slaHours(cfg, ticket.stage, ticket.subject);
   if (!hours) return null;
   const since = new Date(ticket.stage_changed_at || ticket.created_at).getTime();
@@ -45,7 +46,7 @@ function breachedSql(cfg) {
     params.push(stage, ...(own.length ? [own] : []), h * 60);
   }
   return parts.length
-    ? { sql: `(status = 'open' AND (${parts.join(' OR ')}))`, params }
+    ? { sql: `(status = 'open' AND resolved_at IS NULL AND (${parts.join(' OR ')}))`, params }
     : { sql: '0 = 1', params: [] };
 }
 
