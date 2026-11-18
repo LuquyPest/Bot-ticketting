@@ -8,7 +8,7 @@ import { fmtDate } from '../utils/format';
 
 const FIELD_LABELS = {
   ticketPrefix: 'Préfixe des tickets', welcomeMessage: 'Message de bienvenue', closeMessage: 'Message de fermeture',
-  ticketSubjects: 'Sujets de ticket', maxTicketsPerDay: 'Tickets max par jour', inactiveWarningHours: 'Avertissement d\'inactivité (h)',
+  ticketSubjects: 'Sujets de ticket', subjectSla: 'Délais par catégorie', maxTicketsPerDay: 'Tickets max par jour', inactiveWarningHours: 'Avertissement d\'inactivité (h)',
   inactiveHours: 'Fermeture pour inactivité (h)', replyRateLimitSeconds: 'Délai entre deux messages (s)',
   ticketCategoryId: 'Catégorie des tickets', waitingCategoryId: 'Catégorie « en attente »', inProgressCategoryId: 'Catégorie « en cours »',
   slaOpenHours: 'Délai — ouvert (h)', slaWaitingHours: 'Délai — en attente (h)', slaInProgressHours: 'Délai — en cours (h)',

@@ -77,6 +77,7 @@ const FIELD_MAP = {
   apiKeysEnabled:           'api_keys_enabled',
   // Phase 3
   subjectWelcomeMessages:   'subject_welcome_messages',
+  subjectSla:               'subject_sla',
   ipAllowlist:              'ip_allowlist',
 };
 
@@ -87,7 +88,9 @@ const VALIDATORS = {
   ticketPrefix:             v => typeof v === 'string' && v.length >= 1 && v.length <= 50,
   welcomeMessage:           v => v === null || (typeof v === 'string' && v.length <= 2000),
   closeMessage:             v => v === null || (typeof v === 'string' && v.length <= 2000),
-  ticketSubjects:           v => Array.isArray(v) && v.length <= 25 && v.every(s => typeof s === 'string' && s.length <= 100),
+  // Categories and sub-categories « Parent › Enfant » (utils/subjectTree.js); checked in full below
+  ticketSubjects:           v => Array.isArray(v) && v.length <= 60 && v.every(s => typeof s === 'string' && s.length <= 100),
+  subjectSla:               v => v === null || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 60 && Object.values(v).every(h => Number.isInteger(h) && h >= 0 && h <= 720)),
   maxTicketsPerDay:         v => Number.isInteger(v) && v >= 1 && v <= 100,
   inactiveWarningHours:     v => Number.isInteger(v) && v >= 1 && v <= 720,
   inactiveHours:            v => Number.isInteger(v) && v >= 1 && v <= 720,
@@ -159,14 +162,14 @@ const VALIDATORS = {
 };
 
 // Fields stored as JSON in the DB
-const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist']);
+const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist', 'subject_sla']);
 
 function dbRow2Api(row) {
   const out = {};
   for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
     if (dbCol in row) {
       let val = row[dbCol];
-      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, dbCol === 'subject_welcome_messages' ? {} : []);
+      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, ['subject_welcome_messages', 'subject_sla'].includes(dbCol) ? {} : []);
       out[apiKey] = val;
     }
   }
@@ -240,6 +243,32 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
   if (updates.require2fa && updates.require2fa !== 'none'
       && !(await require('../../utils/twoFactorPolicy').hasTotp(req.session.user.id))) {
     return { status: 400, error: 'Active d\'abord la double authentification sur ton compte (Profil)' };
+  }
+
+  // The tree of subjects, and deadlines only for subjects of that tree. A configuration export
+  // carries an empty deadline map as a string or an empty list
+  if ('subjectSla' in updates) {
+    if (typeof updates.subjectSla === 'string') updates.subjectSla = parseJsonField(updates.subjectSla, null);
+    if (Array.isArray(updates.subjectSla) || (updates.subjectSla && typeof updates.subjectSla === 'object' && !Object.keys(updates.subjectSla).length)) updates.subjectSla = null;
+  }
+  if ('ticketSubjects' in updates || 'subjectSla' in updates) {
+    const tree = require('../../utils/subjectTree');
+    let list = updates.ticketSubjects;
+    if (list === undefined) list = parseJsonField((await req.guildDb('SELECT ticket_subjects FROM guild_config WHERE id = 1'))[0]?.ticket_subjects, []);
+    if (Array.isArray(list)) {
+      const p = tree.problem(list);
+      if (p) return { status: 400, error: p };
+      // Deadlines of removed subjects are dropped with them
+      if ('ticketSubjects' in updates && !('subjectSla' in updates)) {
+        const cur = parseJsonField((await req.guildDb('SELECT subject_sla FROM guild_config WHERE id = 1'))[0]?.subject_sla, {});
+        const kept = Object.fromEntries(Object.entries(cur || {}).filter(([k]) => list.includes(k)));
+        if (Object.keys(kept).length !== Object.keys(cur || {}).length) updates.subjectSla = kept;
+      }
+      if (updates.subjectSla && typeof updates.subjectSla === 'object') {
+        const sp = tree.slaMapProblem(updates.subjectSla, list);
+        if (sp) return { status: 400, error: sp };
+      }
+    }
   }
 
   for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {

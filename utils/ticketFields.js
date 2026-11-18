@@ -23,11 +23,13 @@ function resolveFieldVars(text, fields = []) {
   return String(text).replace(/\{\{([a-z][a-z0-9_]*)\}\}/gi, (m, v) => (byVar.has(v.toLowerCase()) ? byVar.get(v.toLowerCase()) : m));
 }
 
+// The general fields, those of the subject and those of its category (sub-categories inherit)
 async function applicableFields(db, subject) {
+  const line = require('./subjectTree').lineage(subject).map(s => s.toLowerCase());
   return db(
     `SELECT id, label, type, required FROM ticket_fields
-     WHERE active = 1 AND (subject IS NULL OR LOWER(subject) = LOWER(?)) ORDER BY position ASC, id ASC`,
-    [subject || '']
+     WHERE active = 1 AND (subject IS NULL OR LOWER(subject) IN (?)) ORDER BY position ASC, id ASC`,
+    [line.length ? line : ['']]
   ).catch(() => []);
 }
 

@@ -97,8 +97,11 @@ async function deleteTeam(db, id) {
 async function matchTeam(db, ticket) {
   const teams = await listTeams(db);
   if (!teams.length) return null;
-  const bySubject = ticket.subject ? teams.find(t => t.subjects.includes(ticket.subject)) : null;
-  if (bySubject) return bySubject;
+  // The team of the sub-category, else of its category (utils/subjectTree.js)
+  for (const s of require('./subjectTree').lineage(ticket.subject)) {
+    const bySubject = teams.find(t => t.subjects.includes(s));
+    if (bySubject) return bySubject;
+  }
   const tags = (await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [ticket.id])).map(r => Number(r.tag_id));
   return teams.find(t => t.tagIds.some(id => tags.includes(id))) || null;
 }

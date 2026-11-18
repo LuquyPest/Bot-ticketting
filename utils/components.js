@@ -51,11 +51,13 @@ function oldTicketsPaginationButtons(userId, page, totalPages) {
 
 // Configured subjects as buttons + « Autre sujet » (free-text subject) + « Demande confidentielle ».
 // Discord allows 25 buttons (5 rows of 5): 23 subjects at most.
-function subjectButtons(subjects) {
+// labelOf: the text of a button (categories with sub-categories end with « › », sub-categories
+// show their own name, utils/subjectTree.js)
+function subjectButtons(subjects, labelOf = s => s) {
   // customId carries the index, not the text: labels are truncated to 80 chars
   // and two long subjects could otherwise collide (Discord rejects duplicate IDs).
   const buttons = subjects.slice(0, 23).map((subject, i) =>
-    new ButtonBuilder().setCustomId(`subject_${i}`).setLabel(subject.slice(0, 80)).setStyle(ButtonStyle.Primary));
+    new ButtonBuilder().setCustomId(`subject_${i}`).setLabel(String(labelOf(subject, i)).slice(0, 80)).setStyle(ButtonStyle.Primary));
   buttons.push(
     new ButtonBuilder().setCustomId('subject_other').setLabel(t('subject.other')).setStyle(ButtonStyle.Secondary),
     confidentialButton(),

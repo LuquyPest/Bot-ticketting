@@ -29,6 +29,7 @@ const PAGES = [
   ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],
   ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],
   ['settings-statuts', '/settings?tab=tickets', 'Attente fournisseur'],
+  ['settings-categories', '/settings', 'Remboursement'],
   ['kanban-statuts', '/kanban', 'Attente fournisseur'],
   ['equipes', '/equipe?tab=equipes', 'Reçoit les tickets des sujets'],
   ['file-equipe', '/queue', 'Équipe Paiements'],

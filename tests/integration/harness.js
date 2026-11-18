@@ -2786,6 +2786,83 @@ async function main() {
     await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [cfgT.ticket_subjects == null || typeof cfgT.ticket_subjects === 'string' ? cfgT.ticket_subjects : JSON.stringify(cfgT.ticket_subjects)]);
   }
 
+  // ── Categories as a tree (utils/subjectTree.js, v4.2) ──
+  {
+    const web = app('./utils/webRequesters');
+    const SUBJ = ['Facturation', 'Facturation › Remboursement', 'Technique'];
+    const [cfgC] = await db('SELECT ticket_subjects, sla_open_hours, subject_sla FROM guild_config WHERE id = 1');
+    const orphan = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketSubjects: ['Technique', 'Facturation › Remboursement'] } });
+    const deep = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketSubjects: ['A', 'A › B', 'A › B › C'] } });
+    const dup = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketSubjects: ['A', 'a'] } });
+    check('catégories: sous-catégorie sans sa catégorie, trois niveaux ou doublon refusés', [orphan, deep, dup].every(x => x.status === 400) && /Catégorie absente/.test(orphan.body.error), JSON.stringify([orphan.body, deep.body, dup.body]));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketSubjects: SUBJ, slaOpenHours: 48 } });
+    check('catégories: arbre enregistré (les sujets existants restent des catégories)', r.status === 200, JSON.stringify(r.body));
+    const badSla = await req('PATCH', '/api/config', { sid: sessions.F, body: { subjectSla: { Inventé: 2 } } });
+    check('catégories: délai pour un sujet inconnu refusé', badSla.status === 400, JSON.stringify(badSla.body));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { subjectSla: { Facturation: 1 } } });
+    check('catégories: délai par catégorie enregistré', r.status === 200, JSON.stringify(r.body));
+
+    const tChild = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage, stage_changed_at) VALUES ('45','u45','ccat1','open','Facturation › Remboursement','open', NOW() - INTERVAL 2 HOUR)")).insertId;
+    const tOther = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, stage, stage_changed_at) VALUES ('44','u44','ccat2','open','Technique','open', NOW() - INTERVAL 2 HOUR)")).insertId;
+    r = await req('GET', `/api/tickets/${tChild}`, { sid: sessions.F });
+    const rO = await req('GET', `/api/tickets/${tOther}`, { sid: sessions.F });
+    check('catégories: la sous-catégorie hérite du délai de sa catégorie', r.body.sla?.hours === 1 && r.body.sla.state === 'breached' && rO.body.sla?.hours === 48 && rO.body.sla.state === 'ok', JSON.stringify([r.body.sla, rO.body.sla]));
+    let late = await req('GET', '/api/tickets', { sid: sessions.F, query: { status: 'open', sla: 'breached' } });
+    check('catégories: filtre « hors délai » avec le délai de la catégorie', late.body.tickets.some(t => t.id === tChild) && !late.body.tickets.some(t => t.id === tOther), JSON.stringify(late.body.tickets.map(t => t.id)));
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { subjectSla: { Facturation: 1, 'Facturation › Remboursement': 5 } } });
+    r = await req('GET', `/api/tickets/${tChild}`, { sid: sessions.F });
+    late = await req('GET', '/api/tickets', { sid: sessions.F, query: { status: 'open', sla: 'breached' } });
+    check('catégories: le délai propre de la sous-catégorie l emporte', r.body.sla?.hours === 5 && r.body.sla.state === 'ok' && !late.body.tickets.some(t => t.id === tChild), JSON.stringify([r.body.sla, late.body.tickets.map(t => t.id)]));
+
+    // Rules, fields, team: what is set on the category reaches the sub-category, not the reverse
+    const tagC = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Compta cat', '#22c55e')")).insertId;
+    const tagS = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Remb cat', '#22c55e')")).insertId;
+    const rule1 = await req('POST', '/api/subject-rules', { sid: sessions.F, body: { matchType: 'subject', subject: 'Facturation', tagId: tagC } });
+    const rule2 = await req('POST', '/api/subject-rules', { sid: sessions.F, body: { matchType: 'subject', subject: 'Facturation › Remboursement', tagId: tagS } });
+    const fC = (await db("INSERT INTO ticket_fields (label, type, subject) VALUES ('N° de facture', 'text', 'Facturation')")).insertId;
+    const tm = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Compta', subjects: ['Facturation'], members: [U.F] } });
+    const teamC = tm.body.find(t => t.name === 'Compta');
+    let k = 0;
+    const openWith = async subject => {
+      const addr = `categorie${k++}@example.com`;
+      const owner = web.webOwnerIdFor(addr);
+      await web.rememberAddress(db, owner, addr);
+      await app('./events/messageCreate').openTicketInGuild(web.webUserFor(owner, addr, G), 'Question de facture', [], G, fakeClient, subject, { skipFaq: true, fieldsDone: true, intakeDone: true });
+      const [t] = await db('SELECT id, team_id FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [owner]);
+      const tags = t ? (await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [t.id])).map(x => Number(x.tag_id)) : [];
+      return { ...t, tags };
+    };
+    const child = await openWith('Facturation › Remboursement');
+    const parent = await openWith('Facturation');
+    check('catégories: règles de la catégorie héritées par la sous-catégorie', rule1.status === 200 && rule2.status === 200 && child.tags.includes(tagC) && child.tags.includes(tagS), JSON.stringify(child));
+    check('catégories: une règle de sous-catégorie ne touche pas la catégorie', parent.tags.includes(tagC) && !parent.tags.includes(tagS), JSON.stringify(parent));
+    check('catégories: l équipe de la catégorie reçoit la sous-catégorie', child.team_id === teamC.id && parent.team_id === teamC.id, JSON.stringify([child.team_id, parent.team_id, teamC.id]));
+    const fieldsChild = await app('./utils/ticketFields').applicableFields(db, 'Facturation › Remboursement');
+    const fieldsOther = await app('./utils/ticketFields').applicableFields(db, 'Technique');
+    check('catégories: champs de la catégorie demandés pour la sous-catégorie', fieldsChild.some(f => f.id === fC) && !fieldsOther.some(f => f.id === fC), JSON.stringify(fieldsChild.map(f => f.label)));
+
+    // Discord: the categories first, a category with sub-categories marked « › »
+    const dms = [];
+    const dmUser = { id: '200000000000000071', username: 'cat', tag: 'cat', bot: false, send: async p => { dms.push(p); return { id: 'm' }; } };
+    await app('./events/messageCreate').openTicketInGuild(dmUser, 'Bonjour', [], G, fakeClient, null, { skipFaq: true });
+    const labels = (dms.at(-1)?.components || []).flatMap(row => (row.components || []).map(c => c.data?.label));
+    const pend = await app('./utils/pendingStore').takePending('subject', dmUser.id);
+    check('catégories: sur Discord, les catégories d abord (sous-catégories annoncées par « › »)', labels.includes('Facturation ›') && labels.includes('Technique') && !labels.some(l => /Remboursement/.test(l || '')) && pend?.all?.length === 3, JSON.stringify([labels, pend]));
+
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketSubjects: ['Technique'] } });
+    const [slaAfter] = await db('SELECT subject_sla FROM guild_config WHERE id = 1');
+    const slaObj = typeof slaAfter.subject_sla === 'string' ? JSON.parse(slaAfter.subject_sla) : slaAfter.subject_sla;
+    check('catégories: retirer une catégorie retire ses délais', r.status === 200 && Object.keys(slaObj || {}).length === 0, JSON.stringify(slaObj));
+
+    await db('DELETE FROM subject_rules WHERE id IN (?)', [[rule1.body.id, rule2.body.id]]);
+    await db('DELETE FROM ticket_fields WHERE id = ?', [fC]);
+    await db('DELETE FROM teams');
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tChild, tOther, child.id, parent.id].filter(Boolean)]);
+    await db('DELETE FROM ticket_tag_assignments WHERE tag_id IN (?)', [[tagC, tagS]]);
+    await db('DELETE FROM ticket_tags WHERE id IN (?)', [[tagC, tagS]]);
+    await db('UPDATE guild_config SET ticket_subjects = ?, sla_open_hours = ?, subject_sla = NULL WHERE id = 1', [cfgC.ticket_subjects == null || typeof cfgC.ticket_subjects === 'string' ? cfgC.ticket_subjects : JSON.stringify(cfgC.ticket_subjects), cfgC.sla_open_hours]);
+  }
+
   // ── Multi-assign ──
   r = await req('POST', `/api/tickets/${st1.id}/assignees`, { sid: sessions.F, body: { user_id: U.S3 } });
   r = await req('POST', `/api/tickets/${st1.id}/assignees`, { sid: sessions.F, body: { user_id: U.F } });

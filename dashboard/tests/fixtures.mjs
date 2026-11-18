@@ -65,7 +65,7 @@ export const MOCK = {
     weekly: Array.from({ length: 12 }, (_, i) => ({ week: new Date(now - (11 - i) * 7 * 864e5).toISOString().slice(0, 10), replies: (i * 7) % 11, closed: i % 4, rating: i % 3 ? 4 + (i % 2) * 0.5 : null })) },
   '/api/incidents': [{ id: 1, title: 'Paiements par carte indisponibles', message: 'Notre prestataire est en panne, ne réessaie pas pour l’instant.', subjects: ['Paiement'], notify_on_resolve: true, created_by_tag: 'Daryu', created_at: iso(90), resolved_at: null, members: 7, tickets: 8 },
     { id: 2, title: 'Connexion lente', message: 'Résolu', subjects: null, notify_on_resolve: false, created_by_tag: 'Daryu', created_at: iso(5000), resolved_at: iso(4000), resolved_by_tag: 'Daryu', members: 3, tickets: 3 }],
-  '/api/config': { ticketSubjects: ['Paiement', 'Compte', 'Autre'] },
+  '/api/config': { ticketSubjects: ['Paiement', 'Paiement › Remboursement', 'Compte', 'Autre'], subjectSla: { Paiement: 4 } },
   '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' }],
   '/api/member/guilds/123456789012345678/faq': [
     { id: 1, question: 'Comment changer mon mot de passe ?', answer: 'Va dans Réglages > Sécurité.' },
