@@ -45,7 +45,7 @@ router.post('/:provider/:token', async (req, res, next) => {
     }
     const result = await require('../../utils/emailTickets').processEmail(req.app.locals.client, space.guildId, mail, space.s);
     await space.db('UPDATE email_settings SET last_inbound_at = NOW(), last_error = NULL WHERE id = 1').catch(() => null);
-    res.json({ ok: true, ...(result?.ticketId ? { ticket: result.ticketId } : {}), ...(result?.skipped ? { skipped: result.skipped } : {}) });
+    res.json({ ok: true, ...(result?.ticketId ? { ticket: result.ticketId } : {}), ...(result?.skipped ? { skipped: result.skipped } : {}), ...(result?.quarantined ? { quarantined: true } : {}) });
   } catch (err) {
     const status = err.status || 500;
     if (space) await space.db('UPDATE email_settings SET last_error = ? WHERE id = 1', [`Réception (${inbound.LABELS[provider]}) : ${err.message}`.slice(0, 300)]).catch(() => null);

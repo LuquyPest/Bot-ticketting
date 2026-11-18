@@ -315,6 +315,12 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Filtrage des e-mails reçus', 'Filtering of received e-mails'], ['Expéditeurs refusés (domaines ou adresses, un par ligne) : ignorés sans réponse', 'Refused senders (domains or addresses, one per line): ignored without reply'],
+  ['Seulement ces domaines (vide = tout le monde) : les autres vont en quarantaine', 'Only these domains (empty = everyone): the others go to the quarantine'], ['Spam signalé par le serveur de messagerie', 'Spam reported by the mail server'],
+  ['Mettre en quarantaine', 'Put in quarantine'], ['Ignorer', 'Ignore'], ['Laisser passer', 'Let through'], ['Score de spam à partir duquel filtrer', 'Spam score from which to filter'], ['Taille maximale d\'un e-mail (Mo)', 'Maximum size of an e-mail (MB)'],
+  ['Les réponses automatiques et les messages qui tournent en boucle (le même message reçu plus de 3 fois en 24 h) sont toujours ignorés.', 'Automatic replies and looping messages (the same message received more than 3 times in 24 h) are always ignored.'],
+  ['Quarantaine', 'Quarantine'], ['Gardés 30 jours. Libérer un message le traite comme s\'il venait d\'arriver.', 'Kept 30 days. Releasing a message processes it as if it had just arrived.'],
+  ['Aucun message en quarantaine.', 'No message in quarantine.'], ['Libérer', 'Release'], ['Libéré', 'Released'], ['Supprimé', 'Deleted'], ['(sans objet)', '(no subject)'],
   ['Signature des e-mails', 'E-mail signature'], ['Signature enregistrée', 'Signature saved'], ['Enregistrer la signature', 'Save the signature'],
   ['Sous tes réponses envoyées par e-mail dans cet espace (gras, liens et listes comme dans un message)', 'Under your replies sent by e-mail in this space (bold, links and lists as in a message)'],
   ['Jamais sous une réponse anonyme. La signature de l\'espace suit la tienne.', 'Never under an anonymous reply. The space\'s signature follows yours.'],
@@ -772,6 +778,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Quarantaine ({})', 'Quarantine ({1})'], ['Libéré : ticket #{}', 'Released: ticket #{1}'],
   ['Retirer {} des copies', 'Remove {1} from the copies'],
   ['Adresse de réception, à coller chez {}', 'Reception address, to paste at {1}'], ['Dernier e-mail reçu le {}', 'Last e-mail received on {1}'], ["{} L'adresse contient un secret : ne la partage pas.", '{1} The address holds a secret: do not share it.'],
   ['Connectée avec {} : {}', 'Connected with {1}: {2}'], ['Tu choisis la boîte du support chez {} et tu autorises Datick à la lire et à envoyer depuis elle. Aucun mot de passe n\'est enregistré.', 'You pick the support mailbox at {1} and allow Datick to read it and send from it. No password is stored.'], ['Le propriétaire de l\'instance doit d\'abord déclarer l\'application {} (Instance → Connexion → Boîtes e-mail).', 'The owner of the instance must first declare the {1} application (Instance → Connexion → Mailboxes).'],

@@ -11,6 +11,8 @@ const attach = require('../../utils/emailAttachments');
 const mailOAuth = require('../../utils/mailOAuth');
 const view = async (s, db) => ({
   inbound: require('../../utils/inboundEmail').view(await email.emailSettings(db, { withSecrets: true })),
+  filters: require('../../utils/mailFilter').view(s),
+  quarantineCount: Number((await db('SELECT COUNT(*) AS n FROM email_quarantine').catch(() => [{ n: 0 }]))[0].n),
   signature: s.signature || '', branded: s.branded === undefined ? true : !!Number(s.branded),
   authMode: s.auth_mode || 'password', oauthAccount: s.oauth_account || null, oauthConnected: !!s.oauth_refresh_set,
   oauthAvailable: await mailOAuth.available(), oauthCallbacks: Object.fromEntries(mailOAuth.KEYS.map(k => [k, mailOAuth.callbackUrl(k)])),
@@ -89,6 +91,33 @@ router.post('/inbound/token', async (req, res, next) => {
     await require('../../utils/inboundEmail').regenerateToken(req.guildDb, req.guildId);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { inboundToken: 'new' } });
     res.json(await view(await email.emailSettings(req.guildDb), req.guildDb));
+  } catch (err) { next(err); }
+});
+
+// ── Quarantine (utils/mailFilter.js): GET /quarantine ; POST /quarantine/:id/release ; DELETE /quarantine/:id ──
+const filter = require('../../utils/mailFilter');
+router.get('/quarantine', async (req, res, next) => {
+  try { res.json(await filter.listQuarantine(req.guildDb)); } catch (err) { next(err); }
+});
+// Released: processed as if it had just arrived, without the filters (a ticket, or the answer to one)
+router.post('/quarantine/:id/release', async (req, res, next) => {
+  try {
+    const found = await filter.messageOf(req.guildDb, parseInt(req.params.id) || 0);
+    if (!found) return res.status(404).json({ error: 'Message introuvable' });
+    const s = await email.emailSettings(req.guildDb, { withSecrets: true });
+    const result = await email.processEmail(req.app.locals.client, req.guildId, found.mail, s, { release: true });
+    await req.guildDb('DELETE FROM email_quarantine WHERE id = ?', [found.row.id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_quarantine_release', ticketId: result?.ticketId || null, details: { from: found.row.from_address, subject: found.row.subject } });
+    res.json({ ok: true, ticketId: result?.ticketId || null, skipped: result?.skipped || null, quarantine: await filter.listQuarantine(req.guildDb) });
+  } catch (err) { next(err); }
+});
+router.delete('/quarantine/:id', async (req, res, next) => {
+  try {
+    const [row] = await req.guildDb('SELECT id, from_address, subject FROM email_quarantine WHERE id = ?', [parseInt(req.params.id) || 0]);
+    if (!row) return res.status(404).json({ error: 'Message introuvable' });
+    await req.guildDb('DELETE FROM email_quarantine WHERE id = ?', [row.id]);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_quarantine_delete', details: { from: row.from_address, subject: row.subject } });
+    res.json({ ok: true, quarantine: await filter.listQuarantine(req.guildDb) });
   } catch (err) { next(err); }
 });
 

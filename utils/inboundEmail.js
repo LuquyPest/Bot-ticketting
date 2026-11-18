@@ -79,7 +79,9 @@ async function parseRaw(raw) {
   const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), 'utf8');
   if (!buf.length) throw err('Message vide');
   if (buf.length > MAX_BYTES) throw err('Message trop volumineux', 413);
-  return require('mailparser').simpleParser(buf);
+  const mail = await require('mailparser').simpleParser(buf);
+  mail._raw = buf; // kept if the message goes to the quarantine
+  return mail;
 }
 
 // Fields → a MIME message (nodemailer's composer), then mailparser: the same object as over IMAP

@@ -65,6 +65,7 @@ const PAGES = [
   ['email-oauth', '/settings?tab=integrations', 'Identifiant et mot de passe'],
   ['email-webhook', '/settings?tab=integrations', 'Adresse de réception, à coller chez'],
   ['email-apparence', '/settings?tab=integrations', 'Apparence des e-mails'],
+  ['email-quarantaine', '/settings?tab=integrations', 'Gagnez un voyage'],
   ['profil-signature', '/profile', 'Enregistrer la signature'],
   ['login-fournisseurs', '/login', 'Continuer avec', true],
   ['confidentialite', '/confidentialite', 'Données enregistrées', true],

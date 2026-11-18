@@ -106,6 +106,9 @@ async function saveEmailSettings(db, input) {
   const att = require('./emailAttachments').cleanAttachInput(input.attachments);
   if (att.error) return { error: att.error };
   Object.assign(value, att.value || {});
+  const filters = require('./mailFilter').cleanFilterInput(input);
+  if (filters.error) return { error: filters.error };
+  Object.assign(value, filters.value);
   const cols = Object.keys(value);
   await db(`INSERT INTO email_settings (id, ${cols.join(', ')}) VALUES (1, ${cols.map(() => '?').join(', ')})
             ON DUPLICATE KEY UPDATE ${cols.map(c => `${c} = VALUES(${c})`).join(', ')}`, cols.map(c => value[c]));
@@ -307,7 +310,8 @@ async function sendToEmailOwner(guildId, ownerId, build, ticketId = null, opts =
       ...(ticket && ticket.owner_id === ownerId ? { cc: await require('./ticketCc').ccHeader(db, ticket) } : {}),
       text, html, attachments, messageId,
       ...(thread?.last_message_id ? { inReplyTo: thread.last_message_id, references: [thread.last_message_id] } : {}),
-      headers: { 'Auto-Submitted': 'auto-replied' },
+      // X-Loop: our mark, to recognise our own message if a robot sends it back (utils/mailFilter.js)
+      headers: { 'Auto-Submitted': 'auto-replied', 'X-Loop': fromAddress },
     });
     transport.close?.();
     if (ticket) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [ticket.id, messageId]);
@@ -345,12 +349,13 @@ function newText(mail) {
 
 // One parsed message (mailparser) for a server, in the language the bot uses with that person.
 // Returns what happened, for the tests and logs.
-async function processEmail(client, guildId, mail, s) {
+// opts.release: a message let out of the quarantine by a founder (the filters are not run again)
+async function processEmail(client, guildId, mail, s, opts = {}) {
   const address = String(mail.from?.value?.[0]?.address || '').trim().toLowerCase();
-  return require('./i18n').inMemberLang(ownerIdFor(address), guildId, client, () => processEmailInLang(client, guildId, mail, s));
+  return require('./i18n').inMemberLang(ownerIdFor(address), guildId, client, () => processEmailInLang(client, guildId, mail, s, opts));
 }
 
-async function processEmailInLang(client, guildId, mail, s) {
+async function processEmailInLang(client, guildId, mail, s, opts = {}) {
   const db = getTenantDb(guildId);
   const fromVal = mail.from?.value?.[0];
   const address = String(fromVal?.address || '').trim().toLowerCase();
@@ -358,6 +363,13 @@ async function processEmailInLang(client, guildId, mail, s) {
   if (AUTO(mail)) return { skipped: 'automatique' };
   const addresses = await listAddresses(db);
   if (addresses.some(a => a.address === address)) return { skipped: 'expéditeur' }; // one of our own addresses
+  // Import rules, spam seen by the mail servers, loops (utils/mailFilter.js)
+  if (!opts.release) {
+    const filter = require('./mailFilter');
+    const d = await filter.decide(db, guildId, mail, s, address);
+    if (d.action === 'drop') return { skipped: d.reason };
+    if (d.action === 'quarantine') return { quarantined: await filter.quarantine(db, mail, address, d.reason, d.score ?? null), reason: d.reason };
+  }
   const ownerId = ownerIdFor(address);
   const { createManager } = require('./ticketManager');
   const tm = createManager(db, client, guildId);
@@ -456,6 +468,7 @@ async function fetchMailbox(client, guildId) {
         await imap.messageFlagsAdd(String(uid), ['\\Seen'], { uid: true });
         if (!msg?.source || msg.size > MAX_BYTES) continue;
         const mail = await simpleParser(msg.source);
+        mail._raw = msg.source; // kept if the message goes to the quarantine
         await processEmail(client, guildId, mail, s).catch(err => console.error('email: message', guildId, err.message));
         handled++;
       }
@@ -476,6 +489,8 @@ async function runEmailFetch(client) {
   const guilds = await globalQuery("SELECT guild_id FROM guilds WHERE status = 'active'");
   let handled = 0;
   for (const { guild_id: guildId } of guilds) {
+    // The quarantine keeps 30 days (checked once an hour per space)
+    if (await require('./redis').getRedis().set(`lock:eqpurge:${guildId}`, '1', 'EX', 3600, 'NX').catch(() => null)) await require('./mailFilter').purgeQuarantine(getTenantDb(guildId));
     // A box whose e-mails arrive by webhook is not read over IMAP
     const [on] = await getTenantDb(guildId)("SELECT enabled FROM email_settings WHERE id = 1 AND enabled = 1 AND inbound_mode = 'imap'").catch(() => []);
     if (!on) continue;
