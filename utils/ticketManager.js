@@ -311,6 +311,8 @@ function createManager(db, client, guildId) {
     await require('./calendars').outsideHoursReply({ db, client, guildId: gid, ticket: placed || ticket }).catch(() => null);
     // Deadlines of the SLA objectives (utils/slaPolicies.js): subject, type, priority and team are known now
     await require('./slaPolicies').refreshQuietly(db, ticket.id);
+    const [opened] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
+    require('./notifications').emit(db, gid, 'ticket_created', opened || ticket, { by: user.tag || user.username, excerpt: firstMessage, client });
     return { channel, ticket, created: true };
   }
 
@@ -771,7 +773,11 @@ function createManager(db, client, guildId) {
         color: kind === 'waiting' ? 'warning' : 'primary',
       })] }), { ticketId: t2.id });
     }
-    if (before?.stage !== stage) require('./ruleEngine').emit({ db, client, guildId: gid, ticketId, trigger: 'stage', actor: byUser });
+    if (before?.stage !== stage) {
+      require('./ruleEngine').emit({ db, client, guildId: gid, ticketId, trigger: 'stage', actor: byUser });
+      const [moved] = await db('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+      if (moved) require('./notifications').emit(db, gid, 'stage', moved, { by: byUser?.username || byUser?.tag, byId: byUser?.id, stage: stageInfo.label, client });
+    }
     return { ok: true, label: stageInfo.label };
   }
 

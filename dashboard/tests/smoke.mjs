@@ -35,6 +35,7 @@ const PAGES = [
   ['settings-escalade', '/settings?tab=horaires', 'Monter la priorité'],
   ['settings-regles', '/settings?tab=regles', 'Arrêter après cette règle'],
   ['settings-regles-temps', '/settings?tab=regles', 'en heures ouvrées'],
+  ['settings-notifications', '/settings?tab=notifications', 'Messages envoyés au demandeur'],
   ['equipes-ola', '/equipe?tab=equipes', 'Objectif interne (OLA)'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],
   ['settings', '/settings', 'Paramètres'],

@@ -9,6 +9,16 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/notifications': { events: [], recipients: [], channels: [], rules: [
+    { id: 1, event: 'member_reply', recipients: ['followers'], channels: ['dashboard'], emails: [], imposed: false, active: true },
+    { id: 2, event: 'assigned', recipients: ['assignee'], channels: ['dashboard', 'discord'], emails: [], imposed: false, active: true },
+    { id: 3, event: 'sla_breached', recipients: ['team', 'emails'], channels: ['dashboard', 'email'], emails: ['astreinte@example.com'], imposed: true, active: true }] },
+  '/api/notifications/templates': { templates: [
+    { key: 'closed.body', variables: [], texts: { fr: { default: 'Merci de nous avoir contactés. Ton ticket a été traité et fermé.', custom: 'Merci ! Ton ticket est fermé ; tu peux répondre pour le rouvrir.' }, en: { default: 'Thank you for contacting us.', custom: null }, es: { default: 'Gracias.', custom: null }, de: { default: 'Danke.', custom: null }, it: { default: 'Grazie.', custom: null }, pt: { default: 'Obrigado.', custom: null } } },
+    { key: 'closed.title', variables: ['id'], texts: { fr: { default: 'Ticket #{id} fermé', custom: null }, en: { default: 'Ticket #{id} closed', custom: null }, es: { default: 'x', custom: null }, de: { default: 'x', custom: null }, it: { default: 'x', custom: null }, pt: { default: 'x', custom: null } } }] },
+  '/api/notifications/prefs': { prefs: { member_reply: { dashboard: false } }, events: [], channels: [], rules: [
+    { id: 1, event: 'member_reply', recipients: ['followers'], channels: ['dashboard'], emails: [], imposed: false, active: true },
+    { id: 3, event: 'sla_breached', recipients: ['team'], channels: ['dashboard', 'email'], emails: [], imposed: true, active: true }] },
   '/api/rules': { simple: 1, rules: [{ id: 1, name: 'Clients VIP', position: 1, active: true, origin: null, triggers: ['created', 'member_reply'], match: 'all', stop: true,
     conditions: [{ field: 'channel', not: false, values: ['email'] }, { field: 'requester', not: false, values: ['@vip.test'] }, { field: 'text', not: false, values: ['urgent, en panne'] }],
     actions: [{ type: 'priority', value: 'urgent' }, { type: 'tagAdd', value: 1 }, { type: 'note', value: 'Client VIP : traiter avant midi' }, { type: 'notify', value: ['1'] }] },

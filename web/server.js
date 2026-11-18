@@ -282,6 +282,7 @@ app.use('/api/members',     withGuild(['fondateur']),            require('./rout
 app.use('/api/fields',      withGuild(['support', 'fondateur']), require('./routes/fields'));
 app.use('/api/subject-rules', withGuild(['support', 'fondateur']), require('./routes/subjectRules'));
 app.use('/api/rules',         withGuild(['support', 'fondateur']), require('./routes/rules')); // business rules (v5.2)
+app.use('/api/notifications', withGuild(['support', 'fondateur']), require('./routes/notifications')); // notifications (v5.2)
 app.use('/api/reports',     withGuild(['support', 'fondateur']), require('./routes/reports'));
 app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./routes/incidents'));
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));
@@ -342,6 +343,7 @@ if (fs.existsSync(distPath)) {
 function startWebServer(client) {
   require('../utils/sse').startBus(); // real-time events shared between instances
   app.locals.client = client;
+  require('../utils/notifications').setClient(client);
   app.set('botClient', client);
   const port = config.webServerPort || 3000;
   const server = app.listen(port, () =>

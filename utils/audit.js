@@ -104,6 +104,8 @@ const ACTIONS = {
   email_settings:           ['Tickets par e-mail modifiés', 'config'],
   calendar_save:            ['Calendrier enregistré', 'config'],
   sla_policy_save:          ['Objectif SLA enregistré', 'config'],
+  notifications_update:     ['Notifications modifiées', 'config'],
+  notification_templates_update: ['Textes envoyés au demandeur modifiés', 'config'],
   ticket_rule:              ['Règle automatique appliquée', 'tickets'],
   rule_save:                ['Règle automatique enregistrée', 'config'],
   rule_delete:              ['Règle automatique supprimée', 'config'],

@@ -12,6 +12,22 @@ const als = new AsyncLocalStorage();
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
 
 const lang = () => als.getStore() || 'fr';
+// The space whose message is being written (inMemberLang): its own texts replace the standard ones
+// (Paramètres → Notifications, utils/notifications.js). Loaded before, read synchronously by t().
+const guildAls = new AsyncLocalStorage();
+const templateCache = new Map(); // guildId -> { at, map: { lang: { key: text } } }
+const TEMPLATE_TTL_MS = 60 * 1000;
+async function loadTemplates(guildId) {
+  const c = templateCache.get(guildId);
+  if (c && Date.now() - c.at < TEMPLATE_TTL_MS) return;
+  const map = {};
+  try {
+    const rows = await require('./tenantDb').getTenantDb(guildId)('SELECT tkey, lang, text FROM notification_templates');
+    for (const r of rows) (map[r.lang] = map[r.lang] || {})[r.tkey] = r.text;
+  } catch {}
+  templateCache.set(guildId, { at: Date.now(), map });
+}
+const clearTemplateCache = guildId => templateCache.delete(guildId);
 const withLang = (l, fn) => als.run(LANGS.includes(l) ? l : 'fr', fn);
 // Discord locale (fr, en-US, es-ES, es-419, de, it, pt-BR…) → supported language, English otherwise
 const fromLocale = locale => { const p = String(locale || '').toLowerCase().slice(0, 2); return LANGS.includes(p) ? p : 'en'; };
@@ -458,7 +474,9 @@ const D = {
 for (const l of ['es', 'de', 'it', 'pt']) D[l] = require(`./locales/${l}`);
 
 function t(key, vars = {}) {
-  const s = D[lang()]?.[key] ?? D.en[key] ?? D.fr[key] ?? key;
+  const g = guildAls.getStore();
+  const custom = g ? templateCache.get(g)?.map?.[lang()]?.[key] : null;
+  const s = custom ?? D[lang()]?.[key] ?? D.en[key] ?? D.fr[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
 }
 
@@ -496,7 +514,10 @@ async function memberLang(userId, guildId = null, client = null) {
 
 // Runs fn in the member's language.
 async function inMemberLang(userId, guildId, client, fn) {
-  return withLang(await memberLang(userId, guildId, client), fn);
+  const l = await memberLang(userId, guildId, client);
+  if (!guildId) return withLang(l, fn);
+  await loadTemplates(guildId);
+  return guildAls.run(guildId, () => withLang(l, fn));
 }
 
 // Sends a DM built in the member's language: build() runs inside that language.
@@ -521,4 +542,4 @@ async function sendToMember(client, userOrId, guildId, build, opts = {}) {
 
 const clearGuildLanguageCache = guildId => guildCache.delete(guildId);
 
-module.exports = { t, lang, withLang, memberLang, inMemberLang, sendToMember, rememberLocale, clearGuildLanguageCache, LANGS, DICTIONARIES: D, fromLocale };
+module.exports = { t, lang, withLang, memberLang, inMemberLang, sendToMember, rememberLocale, clearGuildLanguageCache, clearTemplateCache, LANGS, DICTIONARIES: D, fromLocale };

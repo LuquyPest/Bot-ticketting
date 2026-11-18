@@ -1,6 +1,6 @@
 import React, { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock, Workflow } from 'lucide-react';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock, Workflow, BellRing } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
@@ -17,6 +17,7 @@ import SubjectTreeEditor from '../components/SubjectTreeEditor';
 import CalendarsEditor from '../components/CalendarsEditor';
 import SlaPoliciesEditor from '../components/SlaPoliciesEditor';
 import RulesEditor from '../components/RulesEditor';
+import NotificationsEditor from '../components/NotificationsEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -162,6 +163,7 @@ const TABS = [
   { id: 'tickets',       label: 'Tickets',            icon: Ticket },
   { id: 'horaires',      label: 'Horaires',           icon: CalendarClock },
   { id: 'regles',        label: 'Règles',             icon: Workflow },
+  { id: 'notifications', label: 'Notifications',      icon: BellRing },
   { id: 'salons',        label: 'Salons',             icon: Hash, discord: true },
   { id: 'fonctions',     label: 'Fonctionnalités',    icon: Sparkles },
   { id: 'integrations',  label: 'Intégrations',       icon: Plug },
@@ -925,6 +927,12 @@ export default function Settings() {
       {tab === 'regles' && (
         <div role="tabpanel" id="panel-regles" aria-labelledby="tab-regles" className="space-y-5">
           <RulesEditor />
+        </div>
+      )}
+
+      {tab === 'notifications' && (
+        <div role="tabpanel" id="panel-notifications" aria-labelledby="tab-notifications" className="space-y-5">
+          <NotificationsEditor />
         </div>
       )}
 

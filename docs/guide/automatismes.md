@@ -48,6 +48,24 @@ Garde-fous : une modification faite par une règle ne relance pas les règles (p
 
 Les **règles par sujet et par mots-clés** d'avant (**Paramètres → Tickets**) sont devenues des règles de ce moteur, avec le même effet ; leur formulaire simple reste, et elles passent avant celles-ci à l'ouverture. Les règles font partie de l'[export de configuration](./integrations#sauvegarde-de-la-configuration) (tags, équipes, grades et statuts par leur nom ; les personnes choisies ne sont pas exportées).
 
+## Les notifications
+
+**Paramètres → Notifications** (fondateurs) : qui est prévenu de quoi, et comment. Chaque notification associe un **événement**, des **destinataires** et des **canaux** :
+
+| | |
+|---|---|
+| **Événements** | Nouveau ticket · message du demandeur · réponse du staff · note interne · attribution · changement de statut · fermeture · objectif SLA dépassé |
+| **Destinataires** | La personne attribuée (pour une attribution) · les personnes attribuées · les observateurs · l'équipe du ticket · les fondateurs · des adresses e-mail fixes (une astreinte, une liste) |
+| **Canaux** | Dashboard et navigateur (notification en direct et push) · MP Discord · e-mail (l'adresse vérifiée du compte, par l'e-mail de l'instance) |
+
+Par défaut, c'est ce qui partait avant : les observateurs sont prévenus des messages, notes et fermetures dans le dashboard ; la personne attribuée dans le dashboard et par MP Discord. Personne n'est prévenu d'un ticket qu'il ne voit pas, ni de sa propre action ; un ticket confidentiel ne donne que son numéro hors de l'espace. « Objectif SLA dépassé » ne part qu'une fois par ticket et par objectif.
+
+Chacun règle dans **Profil → Ce qui me prévient** ce qui l'atteint, canal par canal, sauf les notifications **imposées** par l'espace.
+
+### Les messages envoyés au demandeur
+
+Plus bas, **Messages envoyés au demandeur** : les messages automatiques (ticket créé, en attente, en cours, solution proposée, hors horaires, ticket fermé…) se réécrivent **dans chacune des 6 langues** ; le demandeur reçoit celle de sa langue, sur Discord, par e-mail ou sur le portail. Les variables du texte standard (`{id}`, `{days}`, `{when}`…) restent disponibles, une variable inconnue est refusée ; **Aperçu** montre le texte avec des valeurs d'exemple. Un texte vidé revient au texte standard.
+
 ## Statistiques publiques
 
 **Paramètres → Salons → Statistiques publiques** : choisis un salon, et le bot y publie un message mis à jour toutes les heures, avec les chiffres des 30 derniers jours :
