@@ -3789,6 +3789,10 @@ async function main() {
     const errG = await realC.guilds.fetch(SP).then(() => null, e => e);
     check('espaces: jamais demandé à Discord', errG?.code === 10004, String(errG));
     await realC.destroy();
+    await mk('SPD', { user: { id: U.F, username: 'F', role: null }, currentGuildId: SP });
+    const dl = [];
+    for (const k of ['channels', 'categories', 'roles']) { const x = await req('GET', `/api/discord/${k}`, { sid: sessions.SPD }); dl.push(`${x.status}:${JSON.stringify(x.body)}`); }
+    check('espaces: salons, catégories et rôles Discord = listes vides, pas une erreur', dl.every(x => x === '200:[]'), dl.join(' '));
     // Listed for the owner, whatever the way they signed in
     await mk('OWNP', { user: { id: U.F, username: 'F', role: null }, authMethod: 'password' });
     r = await req('GET', '/api/auth/guilds', { sid: sessions.OWNP });
