@@ -1778,6 +1778,12 @@ async function main() {
     const [up] = await db('SELECT priority, stage, team_id FROM tickets WHERE id = ?', [tid]);
     check('API v3: modifier priorité, statut, équipe, attribution, tags, champs, copies', r.status === 200 && up.priority === 'normal' && up.stage === 'waiting' && up.team_id === team && r.body.assignees.includes('300000000000000033')
       && !r.body.tags.includes('API-VIP') && r.body.fields[fld] === undefined && r.body.cc.includes('direction@example.com'), JSON.stringify([r.body, up]));
+    await db('UPDATE guild_config SET ticket_types_enabled = 0 WHERE id = 1');
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { type: 'incident' } });
+    const v3off = r.status;
+    await db('UPDATE guild_config SET ticket_types_enabled = 1 WHERE id = 1');
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { type: 'incident' } });
+    check('API v3: type du ticket (refusé si l espace n utilise pas les types)', v3off === 400 && r.status === 200 && r.body.type === 'incident', JSON.stringify([v3off, r.body.type]));
     check('API v3: chaque changement au journal au nom de la clé', (await db("SELECT DISTINCT action FROM audit_log WHERE ticket_id = ? AND actor_tag = 'API · crm'", [tid])).length >= 5, '');
     r = await req('GET', `/api/v3/tickets/${tid}`, { headers: k3 });
     check('API v3: les lectures de la v2 répondent aussi en v3', r.status === 200 && r.body.id === tid && Array.isArray(r.body.messages), r.status);
@@ -4850,6 +4856,57 @@ async function main() {
       await db('DELETE FROM email_contacts WHERE owner_id IN (?)', [owners]);
       await db('DELETE FROM contacts WHERE id IN (SELECT contact_id FROM contact_identities WHERE value IN (?))', [owners]);
     }
+  }
+
+  // ── Types of tickets: Incident or Request (utils/ticketTypes.js, v5.1) ──
+  {
+    const tt = app('./utils/ticketTypes');
+    const em = app('./utils/emailTickets');
+    const [cfgT] = await db('SELECT ticket_subjects, ticket_types_enabled, ticket_type_labels, subject_types FROM guild_config WHERE id = 1');
+    check('types: migration 53 — les tickets existants sont des demandes', (await db("SELECT COUNT(*) AS n FROM tickets WHERE ticket_type <> 'request'"))[0].n == 0
+      && app('./utils/tenantMigrations').MIGRATIONS.find(m => m.version === 53).statements.includes('UPDATE guild_config SET ticket_types_enabled = 0'), '');
+    await db('UPDATE guild_config SET ticket_types_enabled = 0, ticket_subjects = ? WHERE id = 1', [JSON.stringify(['Technique', 'Technique › Réseau', 'Facturation'])]);
+    const open = async (subject, who) => {
+      const owner = em.ownerIdFor(who);
+      await em.upsertContact(db, who, null);
+      const r0 = await app('./utils/ticketManager').createManager(db, fakeClient, G).createTicket(em.userFor(owner, who, null, G), 'Bonjour', [], subject, { forceNew: true });
+      return (await db('SELECT id, ticket_type FROM tickets WHERE id = ?', [r0.ticket.id]))[0];
+    };
+    let t0 = await open('Technique', 'type0@ext.test');
+    check('types: coupés → tout reste « demande »', t0.ticket_type === 'request', JSON.stringify(t0));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketTypesEnabled: true, ticketTypeLabels: { incident: 'Panne', request: 'Demande' }, subjectTypes: { Inconnu: 'incident' } } });
+    check('types: type pour un sujet inconnu refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketTypesEnabled: true, ticketTypeLabels: { incident: 'x'.repeat(31) } } });
+    check('types: nom d un type limité à 30 caractères', r.status === 400, JSON.stringify(r.body));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketTypesEnabled: true, ticketTypeLabels: { incident: 'Panne', request: 'Demande' }, subjectTypes: { Technique: 'incident' } } });
+    check('types: activés, renommés, type par sujet', r.status === 200, JSON.stringify(r.body));
+    const tI = await open('Technique', 'type1@ext.test');
+    const tSub = await open('Technique › Réseau', 'type2@ext.test');
+    const tR = await open('Facturation', 'type3@ext.test');
+    check('types: le sujet donne le type (la sous-catégorie hérite), les autres sont des demandes', tI.ticket_type === 'incident' && tSub.ticket_type === 'incident' && tR.ticket_type === 'request', JSON.stringify([tI, tSub, tR]));
+    r = await req('GET', `/api/tickets/${tI.id}`, { sid: sessions.F });
+    check('types: la fiche porte le type et les noms de l espace', r.body.ticket_type === 'incident' && r.body.types?.enabled && r.body.types.labels.incident === 'Panne', JSON.stringify([r.body.ticket_type, r.body.types]));
+    r = await req('PATCH', `/api/tickets/${tR.id}/type`, { sid: sessions.F, body: { type: 'panne' } });
+    check('types: type inconnu refusé', r.status === 400, r.status);
+    r = await req('PATCH', `/api/tickets/${tR.id}/type`, { sid: sessions.F, body: { type: 'incident' } });
+    const [ev] = await db("SELECT details FROM audit_log WHERE action = 'ticket_type' AND ticket_id = ?", [tR.id]);
+    check('types: changé depuis la fiche, au journal', r.status === 200 && (await db('SELECT ticket_type FROM tickets WHERE id = ?', [tR.id]))[0].ticket_type === 'incident' && JSON.stringify(ev?.details).includes('request'), JSON.stringify(ev));
+    r = await req('GET', '/api/tickets', { sid: sessions.F, query: { type: 'incident', status: 'open' } });
+    const ids = (r.body.tickets || []).map(x => x.id);
+    check('types: filtre de la liste', ids.includes(tI.id) && ids.includes(tR.id) && !ids.includes(t0.id) && r.body.types?.labels?.incident === 'Panne', JSON.stringify(ids));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'type', days: 1 } });
+    check('types: rapports par type, avec les noms de l espace', r.status === 200 && r.body.rows.some(x => x.label === 'Panne' && x.opened >= 3), JSON.stringify(r.body.rows));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { ticketSubjects: ['Facturation'] } });
+    const [pruned] = await db('SELECT subject_types FROM guild_config WHERE id = 1');
+    check('types: le type d un sujet retiré part avec lui', r.status === 200 && (pruned.subject_types === null || pruned.subject_types === 'null' || !JSON.stringify(pruned.subject_types).includes('Technique')), JSON.stringify(pruned));
+    await db('UPDATE guild_config SET ticket_types_enabled = 0 WHERE id = 1');
+    r = await req('PATCH', `/api/tickets/${tI.id}/type`, { sid: sessions.F, body: { type: 'request' } });
+    check('types: coupés → plus de changement de type', r.status === 400, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[t0.id, tI.id, tSub.id, tR.id]]);
+    await db('UPDATE guild_config SET ticket_subjects = ?, ticket_types_enabled = ?, ticket_type_labels = ?, subject_types = ? WHERE id = 1',
+      [cfgT.ticket_subjects == null || typeof cfgT.ticket_subjects === 'string' ? cfgT.ticket_subjects : JSON.stringify(cfgT.ticket_subjects), cfgT.ticket_types_enabled,
+        cfgT.ticket_type_labels == null || typeof cfgT.ticket_type_labels === 'string' ? cfgT.ticket_type_labels : JSON.stringify(cfgT.ticket_type_labels),
+        cfgT.subject_types == null || typeof cfgT.subject_types === 'string' ? cfgT.subject_types : JSON.stringify(cfgT.subject_types)]);
   }
 
   // ── Dashboard leaderboard: week and month, staff only ──

@@ -336,7 +336,7 @@ router.get('/export/stats.csv', async (req, res) => {
 // GET /api/analytics/breakdown?by=team|category|subject|channel&days= — one row per group
 // GET /api/analytics/export/breakdown.csv?by=…&days= — the same, as CSV
 const report = require('../../utils/breakdownReport');
-const BY_LABEL = { team: 'equipe', category: 'categorie', subject: 'sujet', channel: 'canal' };
+const BY_LABEL = { team: 'equipe', category: 'categorie', subject: 'sujet', channel: 'canal', type: 'type' };
 async function breakdownOf(req) {
   const by = report.DIMENSIONS.includes(req.query.by) ? req.query.by : 'team';
   const vis = await visibilityFilter(req, 't.visibility_grade_id');

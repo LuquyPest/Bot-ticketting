@@ -4,7 +4,7 @@
 const { median } = require('./stageStats');
 const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null); // stageStats.avg rounds to whole minutes
 
-const DIMENSIONS = ['team', 'category', 'subject', 'channel'];
+const DIMENSIONS = ['team', 'category', 'subject', 'channel', 'type'];
 const MAX_TICKETS = 50000;
 const SEP = ' › ';
 
@@ -15,6 +15,7 @@ const CHANNEL_LABEL = { discord: 'Discord', email: 'E-mail', web: 'Web (espace m
 function keyOf(by, t) {
   if (by === 'team') return t.team_id ? String(t.team_id) : '';
   if (by === 'channel') return t.channel;
+  if (by === 'type') return t.ticket_type || 'request';
   const s = String(t.subject || '').trim();
   return by === 'category' ? s.split(SEP)[0] : s;
 }
@@ -23,17 +24,19 @@ function keyOf(by, t) {
 async function breakdown(db, vis, { by, days }) {
   if (!DIMENSIONS.includes(by)) throw Object.assign(new Error('Dimension inconnue'), { status: 400 });
   const tickets = await db(
-    `SELECT t.id, t.subject, t.team_id, t.status, t.created_at, t.first_response_at, t.closed_at, ${CHANNEL_SQL} AS channel,
+    `SELECT t.id, t.subject, t.team_id, t.ticket_type, t.status, t.created_at, t.first_response_at, t.closed_at, ${CHANNEL_SQL} AS channel,
             (SELECT AVG(r.rating) FROM ticket_ratings r WHERE r.ticket_id = t.id) AS rating,
             (SELECT COALESCE(SUM(COALESCE(tt.seconds, 0)), 0) FROM ticket_time tt WHERE tt.ticket_id = t.id) AS seconds
      FROM tickets t
      WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND t.merged_into IS NULL AND ${vis.sql}
      ORDER BY t.id LIMIT ${MAX_TICKETS}`, [days, ...vis.params]);
 
+  const typeLabels = by === 'type' ? (await require('./ticketTypes').typeSettings(db)).labels : null;
   const teams = by === 'team' ? new Map((await db('SELECT id, name FROM teams')).map(x => [String(x.id), x.name])) : null;
   const label = key => {
     if (by === 'team') return key ? (teams.get(key) || `Équipe supprimée (#${key})`) : 'Sans équipe';
     if (by === 'channel') return CHANNEL_LABEL[key] || key;
+    if (by === 'type') return typeLabels[key] || key;
     return key || 'Sans sujet';
   };
 

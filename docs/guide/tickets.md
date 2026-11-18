@@ -44,6 +44,14 @@ Une sous-catégorie **hérite** de ce qui est réglé sur sa catégorie : règle
 | **Aide** | Tickets similaires déjà résolus avec leur réponse, procédures à cocher par sujet, [fiche contact](#les-contacts) du demandeur (étiquettes, historique, fil du staff) |
 | **Temps** | Chronomètre par ticket et temps ajouté à la main, délai par étape (SLA) avec temps restant et alerte « Hors délai » |
 
+## Les types : incident ou demande
+
+Dans **Paramètres → Général → Types de tickets**, un espace peut distinguer les **incidents** (quelque chose ne marche plus) des **demandes** (on demande quelque chose : un accès, un matériel, une information), et les renommer (« Panne », « Commande »…).
+
+- **À l'ouverture**, le type vient du **sujet** (réglage par sujet ; une sous-catégorie prend celui de sa catégorie si elle n'a pas le sien), sinon c'est une demande. L'[API v3](./integrations#api-publique) peut le donner.
+- Le staff le **change depuis la fiche** (permission de répondre), au journal. La liste se **filtre par type**, et [Analytiques → Rapports](./equipe#les-rapports) regroupe **par type**.
+- Coupé, il n'existe que des demandes et aucun écran ne montre le type. Un espace existant le garde coupé jusqu'à ce qu'on l'active ; un nouvel espace l'a activé.
+
 ## Les statuts
 
 Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :

@@ -676,7 +676,7 @@ function StatsCsvDownload() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 // Reports by team, category, subject or channel (utils/breakdownReport.js), exportable as CSV
-const BREAKDOWN_BY = [['team', 'Par équipe'], ['category', 'Par catégorie'], ['subject', 'Par sujet'], ['channel', 'Par canal']];
+const BREAKDOWN_BY = [['team', 'Par équipe'], ['category', 'Par catégorie'], ['subject', 'Par sujet'], ['channel', 'Par canal'], ['type', 'Par type']];
 function TabReports() {
   const [by, setBy] = useState('team');
   const [days, setDays] = useState(30);

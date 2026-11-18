@@ -310,6 +310,10 @@ export default function Settings() {
         lowRatingThreshold:       cfg.lowRatingThreshold ?? 2,
         ticketSubjects:           cfg.ticketSubjects || [],
         subjectSla:               cfg.subjectSla && typeof cfg.subjectSla === 'object' ? cfg.subjectSla : {},
+        ticketTypesEnabled:       cfg.ticketTypesEnabled ? 1 : 0,
+        ticketTypeLabels:         { incident: cfg.ticketTypeLabels?.incident?.trim() || 'Incident', request: cfg.ticketTypeLabels?.request?.trim() || 'Demande' },
+        // Only the subjects that still exist; « request » kept only on a sub-category (it overrides its category)
+        subjectTypes:             Object.fromEntries(Object.entries(cfg.subjectTypes || {}).filter(([k, v]) => (cfg.ticketSubjects || []).includes(k) && (v === 'incident' || (v === 'request' && k.includes(' › '))))),
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
         inactiveWarningHours:     cfg.inactiveWarningHours,
         inactiveHours:            cfg.inactiveHours,
@@ -529,6 +533,42 @@ export default function Settings() {
             onChange={(list, slaMap) => setCfg(c => ({ ...c, ticketSubjects: list, subjectSla: slaMap }))} />
         </Field>
         <SubjectRules subjects={cfg.ticketSubjects || []} />
+      </Section>
+
+      {/* Types of tickets (v5.1) */}
+      <Section title="Types de tickets">
+        <label className="flex items-center gap-2 text-sm text-ink-1">
+          <input type="checkbox" checked={!!cfg.ticketTypesEnabled} onChange={e => set('ticketTypesEnabled', e.target.checked)} className="accent-primary" />
+          Distinguer les incidents (quelque chose ne marche plus) des demandes (on demande quelque chose)
+        </label>
+        {cfg.ticketTypesEnabled && (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Nom des incidents">
+                <input value={cfg.ticketTypeLabels?.incident ?? 'Incident'} maxLength={30} onChange={e => set('ticketTypeLabels', { ...cfg.ticketTypeLabels, incident: e.target.value })} className={BASE} />
+              </Field>
+              <Field label="Nom des demandes">
+                <input value={cfg.ticketTypeLabels?.request ?? 'Demande'} maxLength={30} onChange={e => set('ticketTypeLabels', { ...cfg.ticketTypeLabels, request: e.target.value })} className={BASE} />
+              </Field>
+            </div>
+            {(cfg.ticketSubjects || []).length > 0 && (
+              <Field label="Type des nouveaux tickets, par sujet" hint="Une sous-catégorie prend le type de sa catégorie si elle n'a pas le sien. Sans réglage : demande. Le staff change le type depuis la fiche.">
+                <ul className="space-y-1.5">
+                  {(cfg.ticketSubjects || []).map(sub => (
+                    <li key={sub} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 min-w-0 truncate text-ink-2">{sub}</span>
+                      <select value={cfg.subjectTypes?.[sub] || ''} aria-label={`Type des tickets « ${sub} »`} onChange={e => set('subjectTypes', { ...cfg.subjectTypes, [sub]: e.target.value || undefined })} className={BASE + ' w-40'}>
+                        <option value="">{sub.includes(' › ') ? 'Comme la catégorie' : (cfg.ticketTypeLabels?.request || 'Demande')}</option>
+                        <option value="incident">{cfg.ticketTypeLabels?.incident || 'Incident'}</option>
+                        {sub.includes(' › ') && <option value="request">{cfg.ticketTypeLabels?.request || 'Demande'}</option>}
+                      </select>
+                    </li>
+                  ))}
+                </ul>
+              </Field>
+            )}
+          </>
+        )}
       </Section>
 
         </div>

@@ -315,6 +315,11 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Types de tickets', 'Types of tickets'], ['Distinguer les incidents (quelque chose ne marche plus) des demandes (on demande quelque chose)', 'Tell incidents (something no longer works) from requests (someone asks for something)'],
+  ['Nom des incidents', 'Name of incidents'], ['Nom des demandes', 'Name of requests'], ['Type des nouveaux tickets, par sujet', 'Type of new tickets, per subject'],
+  ['Une sous-catégorie prend le type de sa catégorie si elle n\'a pas le sien. Sans réglage : demande. Le staff change le type depuis la fiche.', 'A sub-category takes its category\'s type if it has none. Without setting: request. The staff changes the type from the ticket view.'],
+  ['Comme la catégorie', 'Like the category'], ['Tous types', 'All types'], ['Type du ticket', 'Ticket type'], ['Type changé', 'Type changed'], ['Par type', 'By type'],
+  ['Demande', 'Request'],
   ['Corps de la requête', 'Request body'], ['Créer des tickets (API v3)', 'Create tickets (API v3)'], ['Répondre et noter (API v3)', 'Reply and note (API v3)'], ['Modifier les tickets (API v3)', 'Edit tickets (API v3)'],
   ['Filtrage des e-mails reçus', 'Filtering of received e-mails'], ['Expéditeurs refusés (domaines ou adresses, un par ligne) : ignorés sans réponse', 'Refused senders (domains or addresses, one per line): ignored without reply'],
   ['Seulement ces domaines (vide = tout le monde) : les autres vont en quarantaine', 'Only these domains (empty = everyone): the others go to the quarantine'], ['Spam signalé par le serveur de messagerie', 'Spam reported by the mail server'],
@@ -779,6 +784,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Type des tickets « {} »', 'Type of the « {1} » tickets'],
   ['Quarantaine ({})', 'Quarantine ({1})'], ['Libéré : ticket #{}', 'Released: ticket #{1}'],
   ['Retirer {} des copies', 'Remove {1} from the copies'],
   ['Adresse de réception, à coller chez {}', 'Reception address, to paste at {1}'], ['Dernier e-mail reçu le {}', 'Last e-mail received on {1}'], ["{} L'adresse contient un secret : ne la partage pas.", '{1} The address holds a secret: do not share it.'],
