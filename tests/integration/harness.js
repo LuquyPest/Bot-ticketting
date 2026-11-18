@@ -1273,6 +1273,56 @@ async function main() {
     await db("UPDATE guild_config SET webhook_secret = NULL WHERE id = 1");
   }
 
+  // ── Configuration transfer: custom statuses, teams, macros pointing to a status (v4.2) ──
+  {
+    const ct = app('./utils/configTransfer');
+    const { parseJsonField } = app('./utils/jsonField');
+    const GX = '777000000000000047';
+    await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'GX', ?, 'f', 'active', ?)`, [GX, U.F, 'ticketbot_guild_' + GX]);
+    await app('./utils/tenantSchema').ensureTenantSchema(GX);
+    const dbx = getTenantDb(GX);
+    const stx = (await db("INSERT INTO ticket_stages (label, color, kind, category_id, sla_hours, position) VALUES ('Attente fournisseur export', 'teal', 'waiting', '800000000000000777', 12, 90)")).insertId;
+    const tgx = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Tag équipe export', '#112233')")).insertId;
+    await db("INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids) VALUES ('Équipe export', 'rose', 'load', 4, ?, ?)", [JSON.stringify(['Sujet export', 'Sujet absent']), JSON.stringify([tgx])]);
+    await db("INSERT INTO reply_templates (name, content, scope, actions, created_by_id, created_by_tag) VALUES ('Macro statut export', 'x', 'shared', ?, '1', 'F')", [JSON.stringify({ stage: `s_${stx}` })]);
+    const ex = await ct.exportConfig(db);
+    const se = ex.stages.find(x => x.label === 'Attente fournisseur export');
+    const te = ex.teams.find(x => x.name === 'Équipe export');
+    const me = ex.templates.find(x => x.name === 'Macro statut export');
+    check('config: statuts et équipes exportés, macro par nom de statut', se?.kind === 'waiting' && se.slaHours === 12 && te?.assignMode === 'load' && te.tags.includes('Tag équipe export')
+      && !('members' in te) && me?.actions?.stageLabel === 'Attente fournisseur export' && !me.actions.stage, JSON.stringify([se, te, me]));
+
+    await dbx('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [JSON.stringify(['Sujet export'])]);
+    await dbx("INSERT INTO ticket_stages (label, kind, position) VALUES ('Déjà là', 'open', 1)"); // shifts the ids: s_<id> must not be copied
+    const rep1 = await ct.importConfig(dbx, ex, { applyConfig: async () => ({ count: 0 }) });
+    const [sx] = await dbx("SELECT id, kind, sla_hours, category_id, color FROM ticket_stages WHERE label = 'Attente fournisseur export'");
+    const [tx] = await dbx("SELECT id, assign_mode, max_open, subjects, tag_ids FROM teams WHERE name = 'Équipe export'");
+    const [tagx] = await dbx("SELECT id FROM ticket_tags WHERE name = 'Tag équipe export'");
+    const [mx] = await dbx("SELECT actions FROM reply_templates WHERE name = 'Macro statut export'");
+    check('config: statut importé, sans la catégorie Discord d un autre serveur', sx?.kind === 'waiting' && sx.sla_hours === 12 && sx.color === 'teal' && sx.category_id === null && rep1.stages?.created >= 1, JSON.stringify([sx, rep1.stages]));
+    check('config: équipe importée (sujets connus, tags locaux, sans membres)', tx?.assign_mode === 'load' && tx.max_open === 4
+      && JSON.stringify(parseJsonField(tx.subjects, [])) === '["Sujet export"]' && parseJsonField(tx.tag_ids, []).map(Number).includes(tagx.id)
+      && Number((await dbx('SELECT COUNT(*) AS n FROM team_members WHERE team_id = ?', [tx.id]))[0].n) === 0, JSON.stringify(tx));
+    check('config: macro reliée au statut local', parseJsonField(mx?.actions, {}).stage === `s_${sx.id}`, JSON.stringify(mx));
+    // Re-import: no duplicate, members of an existing team kept
+    await dbx("INSERT INTO dashboard_users (user_id, username, role) VALUES ('300000000000000047', 'Ag', 'support')");
+    await dbx('INSERT INTO team_members (team_id, user_id) VALUES (?, ?)', [tx.id, '300000000000000047']);
+    const rep2 = await ct.importConfig(dbx, ex, { applyConfig: async () => ({ count: 0 }) });
+    check('config: réimport sans doublon, membres de l équipe gardés', Number((await dbx("SELECT COUNT(*) AS n FROM ticket_stages WHERE label = 'Attente fournisseur export'"))[0].n) === 1
+      && Number((await dbx("SELECT COUNT(*) AS n FROM teams WHERE name = 'Équipe export'"))[0].n) === 1 && rep2.teams?.updated === 1
+      && Number((await dbx('SELECT COUNT(*) AS n FROM team_members WHERE team_id = ?', [tx.id]))[0].n) === 1, JSON.stringify([rep2.stages, rep2.teams]));
+    const bad = { ...ex, stages: [{ label: 'Ouvert', kind: 'open' }, { label: 'x'.repeat(5), kind: 'nope', slaHours: 99999 }] };
+    await ct.importConfig(dbx, bad, { applyConfig: async () => ({ count: 0 }) });
+    check('config: statuts invalides ignorés à l import', Number((await dbx("SELECT COUNT(*) AS n FROM ticket_stages WHERE label IN ('Ouvert', 'xxxxx')"))[0].n) === 0, '');
+
+    await db('DELETE FROM reply_templates WHERE name = ?', ['Macro statut export']);
+    await db("DELETE FROM teams WHERE name = 'Équipe export'");
+    await db('DELETE FROM ticket_tags WHERE id = ?', [tgx]);
+    await db('DELETE FROM ticket_stages WHERE id = ?', [stx]);
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [GX]);
+    await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + GX);
+  }
+
   // ── Settings history and restore ──
   {
     const [orig] = await db('SELECT max_tickets_per_day, sla_open_hours, welcome_message FROM guild_config WHERE id = 1');

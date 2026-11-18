@@ -112,7 +112,9 @@ La personne donne son nom (facultatif), son **adresse e-mail**, le sujet si l'es
 
 ## Sauvegarde de la configuration
 
-**Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles, règles, procédures) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.
+**Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.
+
+L'import fusionne par nom et ne supprime rien. Une macro qui change le statut retrouve le statut du même nom dans l'espace d'arrivée. La catégorie Discord d'un statut n'est reprise que si tu coches la reprise des salons. Les équipes arrivent avec leurs réglages, leurs sujets et leurs tags, mais sans membres : ce sont des comptes propres à chaque espace, et une équipe déjà présente garde les siens.
 
 ## Venir d'un autre bot de tickets
 
