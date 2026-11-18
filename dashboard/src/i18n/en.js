@@ -315,6 +315,10 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Résolution et clôture', 'Resolution and closing'], ['Résoudre avant de fermer : le demandeur confirme la solution (le ticket se ferme) ou répond (il reprend)', 'Resolve before closing: the requester confirms the solution (the ticket closes) or replies (it goes on)'],
+  ['Fermer tout seul un ticket résolu sans réponse au bout de (jours, 0 = jamais)', 'Close on its own a resolved ticket without answer after (days, 0 = never)'], ['Résoudre', 'Resolve'], ['Envoyer la solution', 'Send the solution'],
+  ['Résolu, en attente du demandeur', 'Solved, waiting for the requester'], ['Annuler la résolution', 'Cancel the resolution'], ['Résolution annulée', 'Resolution cancelled'], ['Solution envoyée', 'Solution sent'],
+  ['La solution, envoyée au demandeur', 'The solution, sent to the requester'], ['Solution envoyée au demandeur', 'Solution sent to the requester'],
   ['Types de tickets', 'Types of tickets'], ['Distinguer les incidents (quelque chose ne marche plus) des demandes (on demande quelque chose)', 'Tell incidents (something no longer works) from requests (someone asks for something)'],
   ['Nom des incidents', 'Name of incidents'], ['Nom des demandes', 'Name of requests'], ['Type des nouveaux tickets, par sujet', 'Type of new tickets, per subject'],
   ['Une sous-catégorie prend le type de sa catégorie si elle n\'a pas le sien. Sans réglage : demande. Le staff change le type depuis la fiche.', 'A sub-category takes its category\'s type if it has none. Without setting: request. The staff changes the type from the ticket view.'],
@@ -784,6 +788,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Par {} le {}', 'By {1} on {2}'], ['Par {} le {} · fermeture automatique le {}', 'By {1} on {2} · automatic closing on {3}'], ['Le demandeur confirme (le ticket se ferme) ou répond (il reprend).', 'The requester confirms (the ticket closes) or replies (it goes on).'], ['Le demandeur confirme (le ticket se ferme) ou répond (il reprend) ; sans réponse, fermeture dans {} jour(s).', 'The requester confirms (the ticket closes) or replies (it goes on); without answer, closing in {1} day(s).'],
   ['Type des tickets « {} »', 'Type of the « {1} » tickets'],
   ['Quarantaine ({})', 'Quarantine ({1})'], ['Libéré : ticket #{}', 'Released: ticket #{1}'],
   ['Retirer {} des copies', 'Remove {1} from the copies'],

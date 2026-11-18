@@ -52,6 +52,17 @@ In **Settings → General → Types of tickets**, a space can tell **incidents**
 - The staff **changes it from the ticket view** (reply permission), in the log. The list **filters by type**, and [Analytics → Reports](./team#reports) groups **by type**.
 - Turned off, only requests exist and no screen shows the type. An existing space keeps it off until it is turned on; a new space has it on.
 
+## Resolution and closing
+
+In **Settings → General → Resolution and closing**, a space **resolves before closing**:
+
+1. The staff clicks **Resolve** (ticket view → Actions, close permission) and writes the **solution**. It goes to the requester on their channel; the ticket stays open, marked **Solved, waiting for the requester**, and its deadline (SLA) stops, as do the inactivity reminders.
+2. The requester **confirms**: **It's solved** button in DM, banner of the [member space](./member-space), or a **single-use link** received by e-mail (it shows only the solution). The ticket closes as usual: transcript, rating request.
+3. If they **write anything** (DM, reply to the e-mail, message on the web, **Not yet** button), the ticket **goes on**, with their message.
+4. **Without an answer**, the ticket closes on its own after the set delay (7 days by default, 0 = never).
+
+The staff can **cancel the resolution**. Every step is in the log. An existing space closes as before until it turns it on; a new space has it on. The [API v3](./integrations#public-api) can also propose a solution (`POST /tickets/:id/resolve`).
+
 ## Statuses
 
 An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:

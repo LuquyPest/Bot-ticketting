@@ -9,6 +9,7 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/resolution/link': { space: 'Sunset FA', ticketId: 42, subject: 'Remboursement', solution: 'Le remboursement de 50 € est parti ce matin.', by: 'Daryu', resolvedAt: new Date().toISOString() },
   '/api/approvals/link': { space: 'Sunset FA', ticketId: 42, subject: 'Remboursement', requester: 'membre', open: true, reason: 'Geste commercial de 50 € sur la commande 1287', by: 'Daryu', approver: 'La cheffe' },
   '/api/tickets/1/approvals': [{ id: 1, ticketId: 1, status: 'pending', reason: 'Rembourser 120 € hors délai', nextStage: 'in_progress', approver: { id: '2', email: null, name: 'Lina' }, requestedBy: 'Daryu', requestedById: '1', remindCount: 0, createdAt: new Date().toISOString() }],
   '/api/tickets/queue': { tickets: [] },
@@ -43,9 +44,9 @@ export const MOCK = {
     { user_id: '3', username: 'Malo', avatar: null, role: 'support', grades: [] },
   ],
   '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i, i === 2 ? { ticket_type: 'incident' } : {})), total: 6, page: 1, pages: 1, types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } } },
-  '/api/tickets/8': { ...ticket(8), owner_id: 'mail:0123456789abcdef01234567', owner_tag: 'claire@ext.test', subject: 'Accès au partage', participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null },
+  '/api/tickets/8': { ...ticket(8), resolutionSettings: { enabled: true, autoCloseDays: 7 }, resolved_at: new Date(Date.now() - 3600000).toISOString(), resolution: 'Accès rétabli sur le partage Compta.', resolved_by_tag: 'Daryu', owner_id: 'mail:0123456789abcdef01234567', owner_tag: 'claire@ext.test', subject: 'Accès au partage', participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null },
   '/api/tickets/8/cc': { available: true, cc: [{ id: 1, address: 'adjoint@ext.test', name: 'Adjoint', added_by: 'email' }, { id: 2, address: 'rh@ext.test', name: null, added_by: 'Daryu' }] },
-  '/api/tickets/1': { ...ticket(1), ticket_type: 'incident', types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } }, participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
+  '/api/tickets/1': { ...ticket(1), resolutionSettings: { enabled: true, autoCloseDays: 7 }, ticket_type: 'incident', types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } }, participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
     rating: { rating: 4, comment: 'Très rapide, merci !', rated_at: iso(5) } },
   '/api/tickets/1/notes': [
     { id: 1, ticket_id: 1, author_id: '20', author_tag: 'membre1', content: 'Bonjour, je n\'arrive pas à payer.', source: 'user', created_at: iso(50) },
@@ -142,7 +143,7 @@ export const MOCK = {
     { id: 2, subject: 'Ancienne commande', status: 'closed', stage: 'open', created_at: iso(9000), closed_at: iso(8000), assigned: true, participant: false, rating: 5 },
   ] }],
   '/api/member/tickets/123456789012345678/1': { files: [{ id: 3, filename: 'facture-1287.pdf', size: 48213, created_at: new Date(Date.now() - 3600000).toISOString() }], upload: { enabled: true, maxMb: 10, maxFiles: 5, blocked: ['exe'] }, guild: { id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' },
-    ticket: { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), assigned: true, participant: false },
+    ticket: { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), assigned: true, participant: false, resolved_at: iso(30), resolution: 'Paiement validé de notre côté, réessaie maintenant.' },
     messages: [
       { id: 1, kind: 'me', author: null, content: 'Bonjour, je n’arrive pas à payer.', created_at: iso(120) },
       { id: 2, kind: 'staff', author: 'Support', content: 'Colis renvoyé, voici le suivi : https://example.com/suivi', created_at: iso(60) },

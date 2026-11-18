@@ -250,6 +250,31 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
 });
 
 // POST /api/member/tickets/:guildId/:ticketId/messages { content } — reaches the staff like a DM
+// POST /api/member/tickets/:guildId/:ticketId/resolution { accept, comment } — the proposed solution:
+// « it is solved » closes the ticket, « not yet » makes it go on (with what is still wrong)
+router.post('/tickets/:guildId/:ticketId/resolution', requireMember, async (req, res) => {
+  try {
+    const data = await loadOwn(req, res);
+    if (!data) return;
+    const db = getTenantDb(data.guild.id);
+    const [ticket] = await db("SELECT * FROM tickets WHERE id = ? AND status = 'open' AND resolved_at IS NOT NULL", [data.ticket.id]);
+    if (!ticket) return res.status(410).json({ error: tr(req, 'resolution.expired') });
+    const by = { id: req.member.id, tag: req.member.username || req.member.email || 'membre', username: req.member.username || req.member.email, source: 'member' };
+    const r = require('../../utils/resolution');
+    if (req.body?.accept === true) {
+      await r.acceptResolution({ db, client: req.app.locals.client, guildId: data.guild.id, ticket, by });
+      return res.json({ ok: true, closed: true });
+    }
+    const comment = typeof req.body?.comment === 'string' ? req.body.comment.trim().slice(0, 1000) : '';
+    await r.reopenResolution({ db, guildId: data.guild.id, ticket, by, comment });
+    if (comment) {
+      const user = await requesterFor(req, data.guild.id, memberIds(req.member).includes(ticket.owner_id) ? ticket.owner_id : req.member.id);
+      if (user) await createManager(db, req.app.locals.client, data.guild.id).relayToTicket({ ...ticket, resolved_at: null }, user, comment, []).catch(() => null);
+    }
+    res.json({ ok: true, closed: false });
+  } catch (err) { if (err.status) return res.status(err.status).json({ error: err.message }); console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
 // GET /api/member/tickets/:guildId/:ticketId/files/:fileId — a file of my ticket, always downloaded
 router.get('/tickets/:guildId/:ticketId/files/:fileId', requireMember, async (req, res) => {
   try {

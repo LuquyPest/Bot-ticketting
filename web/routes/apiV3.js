@@ -42,7 +42,8 @@ async function ticketView(req, id) {
   const cc = (await require('../../utils/ticketCc').listCc(req.guildDb, id)).map(c => c.address);
   const fields = Object.fromEntries((await req.guildDb('SELECT field_id, value FROM ticket_field_values WHERE ticket_id = ?', [id]).catch(() => [])).map(f => [f.field_id, f.value]));
   const { ticket_type, ...rest } = shaped;
-  return { ...rest, type: ticket_type || 'request', team_id: t.team_id || null, assignees, cc, fields };
+  const [r] = await req.guildDb('SELECT resolved_at FROM tickets WHERE id = ?', [id]);
+  return { ...rest, type: ticket_type || 'request', resolved_at: r?.resolved_at || null, team_id: t.team_id || null, assignees, cc, fields };
 }
 const TICKET_OUT = {
   id: 87, status: 'open', stage: 'open', subject: 'Commande 1287 non reçue', priority: 'normal', claimed_by: null, created_at: '2026-11-18T09:12:00.000Z', closed_at: null,
@@ -137,6 +138,20 @@ endpoint({
   await recordEvent(req.guildDb, { actor: a, action: 'ticket_note', ticketId: t.id, details: { excerpt: message.slice(0, 120) } });
   broadcast('note', { ticketId: t.id, note: { id: insertId, ticket_id: t.id, author_id: a.id, author_tag: a.tag, content: message, source: 'web', created_at: new Date() } }, req.guildId);
   res.json({ ok: true, note_id: insertId });
+});
+
+endpoint({
+  method: 'post', path: '/tickets/{id}/resolve', perm: 'update_tickets', summary: 'Proposer une solution',
+  description: 'Quand l\'espace utilise la résolution : la solution part au demandeur, qui confirme (le ticket se ferme) ou répond (le ticket reprend) ; sans réponse, le ticket se ferme après le délai de l\'espace.',
+  params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
+  body: { solution: 'Le colis a été relivré ce matin, il est dans votre boîte aux lettres.' },
+  example: { ok: true }, errors: [400, 404, 409],
+}, async (req, res) => {
+  const t = await openTicketOf(req, res);
+  if (!t) return;
+  try { await require('../../utils/resolution').resolveTicket({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, ticket: t, solution: req.body?.solution, actor: actorOf(req) }); }
+  catch (err) { if (err.status) return res.status(err.status).json({ error: err.message }); throw err; }
+  res.json({ ok: true });
 });
 
 // ── Changes ──

@@ -188,6 +188,29 @@ async function handleInteraction(client, interaction) {
           return interaction.showModal(modal);
         }
 
+        // ── Solution proposée (DM, demandeur) : « C'est résolu » ferme, « Pas encore » reprend (utils/resolution.js) ──
+        if (interaction.customId.startsWith('resok_') || interaction.customId.startsWith('resno_')) {
+          const accept = interaction.customId.startsWith('resok_');
+          const [, ticketId, guildId] = interaction.customId.split('_');
+          const done = text => interaction.update({ embeds: [choiceEmbed(text)], components: [] });
+          if (!(await isGuildOperational(guildId))) return done(t('resolution.expired'));
+          const db = getTenantDb(guildId);
+          // The owner or a participant of the ticket, which still waits for a confirmation
+          const [ticket] = await db(`SELECT * FROM tickets WHERE id = ? AND status = 'open' AND resolved_at IS NOT NULL
+            AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))`, [parseInt(ticketId), interaction.user.id, interaction.user.id]);
+          if (!ticket) return done(t('resolution.expired'));
+          const by = { id: interaction.user.id, tag: interaction.user.username, username: interaction.user.username, source: 'discord' };
+          const res = require('../utils/resolution');
+          if (accept) {
+            await done(t('resolution.accepted', { id: ticket.id }));
+            await res.acceptResolution({ db, client, guildId, ticket, by }).catch(e => console.error('résolution: acceptation', e.message));
+          } else {
+            await res.reopenResolution({ db, guildId, ticket, by });
+            await done(t('resolution.refused', { id: ticket.id }));
+          }
+          return;
+        }
+
         // ── Rouvrir mon ticket (DM, propriétaire, quelques jours après la fermeture) ──
         if (interaction.customId.startsWith('memberreopen_')) {
           const [, ticketId, guildId] = interaction.customId.split('_');

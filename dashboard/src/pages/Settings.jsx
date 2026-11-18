@@ -311,6 +311,8 @@ export default function Settings() {
         ticketSubjects:           cfg.ticketSubjects || [],
         subjectSla:               cfg.subjectSla && typeof cfg.subjectSla === 'object' ? cfg.subjectSla : {},
         ticketTypesEnabled:       cfg.ticketTypesEnabled ? 1 : 0,
+        resolutionEnabled:        cfg.resolutionEnabled ? 1 : 0,
+        resolutionAutocloseDays:  Number.isInteger(cfg.resolutionAutocloseDays) ? cfg.resolutionAutocloseDays : 7,
         ticketTypeLabels:         { incident: cfg.ticketTypeLabels?.incident?.trim() || 'Incident', request: cfg.ticketTypeLabels?.request?.trim() || 'Demande' },
         // Only the subjects that still exist; « request » kept only on a sub-category (it overrides its category)
         subjectTypes:             Object.fromEntries(Object.entries(cfg.subjectTypes || {}).filter(([k, v]) => (cfg.ticketSubjects || []).includes(k) && (v === 'incident' || (v === 'request' && k.includes(' › '))))),
@@ -533,6 +535,19 @@ export default function Settings() {
             onChange={(list, slaMap) => setCfg(c => ({ ...c, ticketSubjects: list, subjectSla: slaMap }))} />
         </Field>
         <SubjectRules subjects={cfg.ticketSubjects || []} />
+      </Section>
+
+      {/* Resolution and closing (v5.1) */}
+      <Section title="Résolution et clôture">
+        <label className="flex items-center gap-2 text-sm text-ink-1">
+          <input type="checkbox" checked={!!cfg.resolutionEnabled} onChange={e => set('resolutionEnabled', e.target.checked)} className="accent-primary" />
+          Résoudre avant de fermer : le demandeur confirme la solution (le ticket se ferme) ou répond (il reprend)
+        </label>
+        {cfg.resolutionEnabled && (
+          <Field label="Fermer tout seul un ticket résolu sans réponse au bout de (jours, 0 = jamais)">
+            <input type="number" min={0} max={90} value={cfg.resolutionAutocloseDays ?? 7} onChange={e => set('resolutionAutocloseDays', Math.max(0, Math.min(90, parseInt(e.target.value) || 0)))} className={BASE + ' w-28'} />
+          </Field>
+        )}
       </Section>
 
       {/* Types of tickets (v5.1) */}

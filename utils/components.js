@@ -110,6 +110,14 @@ function memberReopenButton(ticketId, guildId) {
   );
 }
 
+// A solution proposed by the staff (utils/resolution.js): « it is solved » closes, « not yet » goes on
+function resolutionButtons(ticketId, guildId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`resok_${ticketId}_${guildId}`).setLabel(t('resolution.accept')).setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`resno_${ticketId}_${guildId}`).setLabel(t('resolution.refuse')).setStyle(ButtonStyle.Secondary)
+  );
+}
+
 function memberCloseConfirmButtons(ticketId, guildId) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`memberclose_confirm_${ticketId}_${guildId}`).setLabel(t('close.yes')).setStyle(ButtonStyle.Danger),
@@ -139,4 +147,4 @@ function faqButtons(matches) {
   return [row];
 }
 
-module.exports = { memberReopenButton, faqButtons, ratingCommentButton, memberCloseConfirmButtons, ticketDmComponents, ticketButtons, closeConfirmationButtons, oldTicketsPaginationButtons, subjectButtons, confidentialRow, ratingButtons };
+module.exports = { resolutionButtons, memberReopenButton, faqButtons, ratingCommentButton, memberCloseConfirmButtons, ticketDmComponents, ticketButtons, closeConfirmationButtons, oldTicketsPaginationButtons, subjectButtons, confidentialRow, ratingButtons };
