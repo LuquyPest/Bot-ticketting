@@ -823,6 +823,25 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS priority_matrix JSON DEFAULT NULL',
     ],
   },
+  {
+    version: 56,
+    name: 'Calendriers : horaires d\'ouverture, fuseau, jours fériés, réponse hors horaires (v5.1)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS calendars (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        name          VARCHAR(60) NOT NULL,
+        timezone      VARCHAR(64) NOT NULL DEFAULT 'Europe/Paris',
+        hours         JSON DEFAULT NULL,
+        closed_days   JSON DEFAULT NULL,
+        outside_reply TINYINT(1) NOT NULL DEFAULT 0,
+        outside_text  VARCHAR(1000) DEFAULT NULL,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // No calendar = always open, as before
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS calendar_id INT DEFAULT NULL',
+      'ALTER TABLE teams ADD COLUMN IF NOT EXISTS calendar_id INT DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

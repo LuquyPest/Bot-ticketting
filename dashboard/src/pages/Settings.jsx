@@ -1,6 +1,6 @@
 import React, { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive } from 'lucide-react';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
@@ -14,6 +14,7 @@ import EmailSettings from '../components/EmailSettings';
 import WidgetSettings from '../components/WidgetSettings';
 import StagesEditor from '../components/StagesEditor';
 import SubjectTreeEditor from '../components/SubjectTreeEditor';
+import CalendarsEditor from '../components/CalendarsEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -157,6 +158,7 @@ const TABS = [
   { id: 'general',       label: 'Général',            icon: Settings2 },
   { id: 'acces',         label: 'Accès et sécurité',  icon: ShieldCheck },
   { id: 'tickets',       label: 'Tickets',            icon: Ticket },
+  { id: 'horaires',      label: 'Horaires',           icon: CalendarClock },
   { id: 'salons',        label: 'Salons',             icon: Hash, discord: true },
   { id: 'fonctions',     label: 'Fonctionnalités',    icon: Sparkles },
   { id: 'integrations',  label: 'Intégrations',       icon: Plug },
@@ -909,6 +911,8 @@ export default function Settings() {
       </Section>
         </div>
       )}
+      {tab === 'horaires' && <CalendarsEditor />}
+
       {tab === 'integrations' && (
         <div role="tabpanel" id="panel-integrations" aria-labelledby="tab-integrations" className="space-y-5">
       {/* Integrations */}

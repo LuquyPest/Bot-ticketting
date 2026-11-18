@@ -69,6 +69,19 @@ In **Settings → General → Priority: urgency × impact**, the priority is **c
 
 The **3 priorities** of before (low, normal, urgent) stay and follow the level: Very low and Low = low, Medium = normal, High and above = urgent. What uses them does not change (`/priority` on Discord, macros, subject rules, API v1 and v2, queue order); set the old way, they move the level (low → Low, normal → Medium, urgent → High) unless it is already in the right band. The [API v3](./integrations#public-api) accepts `urgency`, `impact` and `priority_level`. Off on an existing space until turned on; on for a new space.
 
+## Opening hours
+
+**Settings → Hours**: the support's **calendars**. Without a calendar, the support is open all the time (as before).
+
+| Setting | |
+|---|---|
+| **Hours** | Per day of the week, up to 4 ranges (« 9:00 – 12:00, 14:00 – 18:00 »); a day without a range is closed |
+| **Time zone** | The hours' time zone (`Europe/Paris`, `America/Montreal`…), daylight saving included |
+| **Closed days** | The **public holidays** of a country (France, Belgium, Switzerland, Luxembourg, Canada, United States, United Kingdom, Germany), computed for this year and the next, Easter and Ascension included; **closing periods** (from … to …); each can be edited or removed |
+| **Outside the hours** | A ticket opened while closed gets « the support is closed, we will answer as soon as we reopen, *Monday 9:00* », in the requester's language (or your own message) |
+
+The space picks its calendar; a **team** can have its own (**Team → Teams → Hours of the team**), which applies to its tickets. The page shows live whether the support is open and when it reopens. Deadlines in business hours rely on these calendars.
+
 ## Statuses
 
 An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:

@@ -89,6 +89,7 @@ const FIELD_MAP = {
   // v5.1 — priority matrix (utils/priorityMatrix.js)
   priorityMatrixEnabled:    'priority_matrix_enabled',
   priorityMatrix:           'priority_matrix',
+  calendarId:               'calendar_id',
 };
 
 const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
@@ -106,6 +107,7 @@ const VALIDATORS = {
   resolutionEnabled:        v => v === 0 || v === 1 || v === true || v === false,
   resolutionAutocloseDays:  v => Number.isInteger(v) && v >= 0 && v <= 90,
   priorityMatrixEnabled:    v => v === 0 || v === 1 || v === true || v === false,
+  calendarId:               v => v === null || (Number.isInteger(v) && v > 0),
   priorityMatrix:           v => v === null || require('../../utils/priorityMatrix').validMatrix(v),
   ticketTypeLabels:         v => !require('../../utils/ticketTypes').labelsProblem(v),
   subjectTypes:             v => !require('../../utils/ticketTypes').subjectTypesProblem(v),
@@ -268,6 +270,8 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
     if (typeof updates.subjectSla === 'string') updates.subjectSla = parseJsonField(updates.subjectSla, null);
     if (Array.isArray(updates.subjectSla) || (updates.subjectSla && typeof updates.subjectSla === 'object' && !Object.keys(updates.subjectSla).length)) updates.subjectSla = null;
   }
+  // The calendar of the space must exist (utils/calendars.js)
+  if (updates.calendarId && !(await require('../../utils/calendars').calendarOf(req.guildDb, updates.calendarId))) return { status: 400, error: 'Calendrier introuvable' };
   // Types per subject: only subjects of the tree; those of removed subjects go with them
   for (const k of ['subjectTypes', 'ticketTypeLabels']) {
     if (typeof updates[k] === 'string') updates[k] = parseJsonField(updates[k], null);

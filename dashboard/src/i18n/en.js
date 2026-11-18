@@ -321,6 +321,15 @@ export const ENTRIES = [
   ['Calculer la priorité à partir de l\'urgence et de l\'impact (6 niveaux, de « Très basse » à « Majeure »)', 'Compute the priority from urgency and impact (6 levels, from « Very low » to « Major »)'],
   ['Matrice', 'Matrix'], ['Matrice de priorité', 'Priority matrix'], ['Urgence \\ Impact', 'Urgency \\ Impact'],
   ['Ligne : urgence. Colonne : impact. « Majeure » se choisit aussi à la main sur la fiche. Les 3 priorités d\'avant suivent : Très basse et Basse = basse, Moyenne = normale, Haute et au-delà = urgente.', 'Row: urgency. Column: impact. « Major » can also be picked by hand on the ticket. The 3 priorities of before follow: Very low and Low = low, Medium = normal, High and above = urgent.'],
+  ['Horaires', 'Hours'], ['Horaires de l\'espace', 'Hours of the space'], ['Toujours ouvert', 'Always open'], ['Nouveau calendrier', 'New calendar'], ['Créer le calendrier', 'Create the calendar'],
+  ['Calendrier enregistré', 'Calendar saved'], ['Calendrier créé', 'Calendar created'], ['Calendrier supprimé', 'Calendar deleted'], ['Horaires de l\'espace enregistrés', 'Hours of the space saved'],
+  ['Nom du calendrier', 'Calendar name'], ['Fuseau horaire', 'Time zone'], ['Ouvert en ce moment', 'Open right now'], ['Lundi', 'Monday'], ['Mardi', 'Tuesday'], ['Mercredi', 'Wednesday'],
+  ['Jeudi', 'Thursday'], ['Vendredi', 'Friday'], ['Samedi', 'Saturday'], ['Dimanche', 'Sunday'], ['Pays des jours fériés', 'Country of the public holidays'],
+  ['Ajouter les jours fériés (cette année et la suivante)', 'Add the public holidays (this year and the next)'], ['Ajouter une fermeture', 'Add a closing'], ['Jours fermés', 'Closed days'],
+  ['Prévenir le demandeur qui ouvre un ticket hors horaires (« le support est fermé, nous revenons le … »)', 'Tell the requester who opens a ticket outside the hours (« the support is closed, we are back on … »)'],
+  ['Message hors horaires', 'Message outside the hours'], ['Message personnalisé (facultatif ; sinon le message standard dans la langue du demandeur, avec la réouverture)', 'Custom message (optional; otherwise the standard message in the requester\'s language, with the reopening)'],
+  ['Horaires du support', 'Support hours'], ['Horaires de l\'équipe', 'Hours of the team'], ['Ceux de l\'espace', 'Those of the space'], ['Belgique', 'Belgium'], ['Suisse', 'Switzerland'], ['États-Unis', 'United States'], ['Royaume-Uni', 'United Kingdom'], ['Allemagne', 'Germany'],
+  ['Les horaires d\'ouverture du support. Sans calendrier, le support est considéré ouvert tout le temps. Une équipe peut avoir les siens (Équipe → Équipes).', 'The opening hours of the support. Without a calendar, the support is considered always open. A team can have its own (Team → Teams).'],
   ['Résolution et clôture', 'Resolution and closing'], ['Résoudre avant de fermer : le demandeur confirme la solution (le ticket se ferme) ou répond (il reprend)', 'Resolve before closing: the requester confirms the solution (the ticket closes) or replies (it goes on)'],
   ['Fermer tout seul un ticket résolu sans réponse au bout de (jours, 0 = jamais)', 'Close on its own a resolved ticket without answer after (days, 0 = never)'], ['Résoudre', 'Resolve'], ['Envoyer la solution', 'Send the solution'],
   ['Résolu, en attente du demandeur', 'Solved, waiting for the requester'], ['Annuler la résolution', 'Cancel the resolution'], ['Résolution annulée', 'Resolution cancelled'], ['Solution envoyée', 'Solution sent'],
@@ -794,6 +803,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Fermé · réouverture {}', 'Closed · reopens {1}'], ['Jours fermés ({})', 'Closed days ({1})'], ['{}, début de la plage {}', '{1}, start of range {2}'], ['{}, fin de la plage {}', '{1}, end of range {2}'], ['Retirer la plage {} du {}', 'Remove range {1} of {2}'], ['Ajouter une plage le {}', 'Add a range on {1}'], ['Supprimer le calendrier « {} » ?', 'Delete the « {1} » calendar?'],
   ['Urgence {}, impact {}', 'Urgency {1}, impact {2}'],
   ['Par {} le {}', 'By {1} on {2}'], ['Par {} le {} · fermeture automatique le {}', 'By {1} on {2} · automatic closing on {3}'], ['Le demandeur confirme (le ticket se ferme) ou répond (il reprend).', 'The requester confirms (the ticket closes) or replies (it goes on).'], ['Le demandeur confirme (le ticket se ferme) ou répond (il reprend) ; sans réponse, fermeture dans {} jour(s).', 'The requester confirms (the ticket closes) or replies (it goes on); without answer, closing in {1} day(s).'],
   ['Type des tickets « {} »', 'Type of the « {1} » tickets'],

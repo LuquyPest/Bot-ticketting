@@ -291,6 +291,7 @@ app.use('/api/email',       withGuild(['fondateur']),            require('./rout
 app.use('/api/widget-settings', withGuild(['fondateur']),        widgetRoutes.settings); // web widget (v4.1)
 app.use('/api/stages',      withGuild(['support', 'fondateur']), require('./routes/stages')); // custom statuses (v4.2)
 app.use('/api/teams',       withGuild(['support', 'fondateur']), require('./routes/teams'));  // teams and queues (v4.2)
+app.use('/api/calendars',   withGuild(['support', 'fondateur']), require('./routes/calendars')); // opening hours (v5.1)
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
 app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));

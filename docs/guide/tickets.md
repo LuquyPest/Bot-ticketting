@@ -69,6 +69,19 @@ Dans **Paramètres → Général → Priorité : urgence × impact**, la priorit
 
 Les **3 priorités** d'avant (basse, normale, urgente) restent et suivent le niveau : Très basse et Basse = basse, Moyenne = normale, Haute et au-delà = urgente. Ce qui les utilise ne change pas (`/priority` sur Discord, macros, règles par sujet, API v1 et v2, ordre de la file) ; réglées à l'ancienne, elles déplacent le niveau (basse → Basse, normale → Moyenne, urgente → Haute) s'il n'est pas déjà dans la bonne tranche. L'[API v3](./integrations#api-publique) accepte `urgency`, `impact` et `priority_level`. Coupée sur un espace existant tant qu'on ne l'active pas ; activée pour un nouvel espace.
 
+## Les horaires d'ouverture
+
+**Paramètres → Horaires** : les **calendriers** du support. Sans calendrier, le support est ouvert tout le temps (comme avant).
+
+| Réglage | |
+|---|---|
+| **Horaires** | Par jour de la semaine, jusqu'à 4 plages (« 9 h – 12 h, 14 h – 18 h ») ; un jour sans plage est fermé |
+| **Fuseau horaire** | Celui des horaires (`Europe/Paris`, `America/Montreal`…), heure d'été comprise |
+| **Jours fermés** | Les **jours fériés** d'un pays (France, Belgique, Suisse, Luxembourg, Canada, États-Unis, Royaume-Uni, Allemagne), calculés pour cette année et la suivante, Pâques et Ascension comprises ; des **périodes de fermeture** (du … au …) ; chacun se modifie ou se retire |
+| **Hors horaires** | Un ticket ouvert pendant la fermeture reçoit « le support est fermé, nous te répondons dès la réouverture, *lundi 9 h* », dans la langue du demandeur (ou ton propre message) |
+
+L'espace choisit son calendrier ; une **équipe** peut avoir le sien (**Équipe → Équipes → Horaires de l'équipe**), qui s'applique à ses tickets. La page montre en direct si le support est ouvert et quand il rouvre. Les délais en heures ouvrées s'appuient sur ces calendriers.
+
 ## Les statuts
 
 Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :

@@ -14,7 +14,7 @@ const TEAM_ACTOR = { id: 'system', tag: 'Attribution automatique', source: 'syst
 
 const shape = (t, members) => ({
   id: t.id, name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0,
-  subjects: parseJsonField(t.subjects, []), tagIds: parseJsonField(t.tag_ids, []).map(Number),
+  subjects: parseJsonField(t.subjects, []), tagIds: parseJsonField(t.tag_ids, []).map(Number), calendarId: t.calendar_id || null,
   members: members.filter(m => m.team_id === t.id).map(m => ({ userId: m.user_id, username: m.username || m.user_id, open: Number(m.open || 0) })),
 });
 
@@ -51,7 +51,9 @@ async function clean(db, input = {}) {
     const staff = await db("SELECT user_id FROM dashboard_users WHERE user_id IN (?) AND role IN ('support', 'fondateur')", [memberIds]);
     if (staff.length !== memberIds.length) return { error: 'Seul le staff de l\'espace peut faire partie d\'une équipe' };
   }
-  return { value: { name, color: COLORS.includes(input.color) ? input.color : 'violet', assignMode, maxOpen, subjects, tagIds, memberIds } };
+  const calendarId = input.calendarId ? Number(input.calendarId) : null;
+  if (calendarId && !(await require('./calendars').calendarOf(db, calendarId))) return { error: 'Calendrier introuvable' };
+  return { value: { name, color: COLORS.includes(input.color) ? input.color : 'violet', assignMode, maxOpen, subjects, tagIds, memberIds, calendarId } };
 }
 
 async function saveMembers(db, teamId, memberIds) {
@@ -65,8 +67,8 @@ async function createTeam(db, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  const { insertId } = await db('INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids) VALUES (?, ?, ?, ?, ?, ?)',
-    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds)]);
+  const { insertId } = await db('INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids, calendar_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId]);
   await saveMembers(db, insertId, v.memberIds);
   return { ok: true, id: insertId };
 }
@@ -77,8 +79,8 @@ async function updateTeam(db, id, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  await db('UPDATE teams SET name = ?, color = ?, assign_mode = ?, max_open = ?, subjects = ?, tag_ids = ? WHERE id = ?',
-    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), id]);
+  await db('UPDATE teams SET name = ?, color = ?, assign_mode = ?, max_open = ?, subjects = ?, tag_ids = ?, calendar_id = ? WHERE id = ?',
+    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, id]);
   await saveMembers(db, id, v.memberIds);
   return { ok: true };
 }

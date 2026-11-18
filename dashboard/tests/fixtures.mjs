@@ -9,6 +9,9 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/calendars': { spaceCalendarId: 1, countries: ['FR', 'BE'], calendars: [{ id: 1, name: 'Support Paris', timezone: 'Europe/Paris', openNow: false, nextOpening: new Date(Date.now() + 3600000).toISOString(),
+    hours: { mon: [['09:00', '12:00'], ['14:00', '18:00']], tue: [['09:00', '18:00']], wed: [['09:00', '18:00']], thu: [['09:00', '18:00']], fri: [['09:00', '17:00']], sat: [], sun: [] },
+    closed: [{ from: '2026-12-25', to: '2026-12-25', label: 'Noël' }], outsideReply: true, outsideText: '' }] },
   '/api/resolution/link': { space: 'Sunset FA', ticketId: 42, subject: 'Remboursement', solution: 'Le remboursement de 50 € est parti ce matin.', by: 'Daryu', resolvedAt: new Date().toISOString() },
   '/api/approvals/link': { space: 'Sunset FA', ticketId: 42, subject: 'Remboursement', requester: 'membre', open: true, reason: 'Geste commercial de 50 € sur la commande 1287', by: 'Daryu', approver: 'La cheffe' },
   '/api/tickets/1/approvals': [{ id: 1, ticketId: 1, status: 'pending', reason: 'Rembourser 120 € hors délai', nextStage: 'in_progress', approver: { id: '2', email: null, name: 'Lina' }, requestedBy: 'Daryu', requestedById: '1', remindCount: 0, createdAt: new Date().toISOString() }],
