@@ -183,6 +183,8 @@ module.exports = {
   'widget.expired': 'Das Formular ist abgelaufen: lade die Seite neu',
   'widget.tooMany': 'Zu viele Nachrichten gesendet: versuche es später erneut',
   'widget.privacy': 'Deine Adresse wird nur verwendet, um dir zu antworten.',
+  'widget.maybe': 'Diese Artikel beantworten vielleicht deine Frage:',
+  'faq.read': 'Artikel lesen',
   'portal.noAccount': 'Discord-Konto nicht gefunden',
   'portal.openFailed': 'Das Ticket konnte nicht geöffnet werden, versuche es erneut oder schreibe dem Bot per DM',
   'portal.badEmail': 'Ungültige E-Mail-Adresse',

@@ -68,7 +68,15 @@ export const MOCK = {
   '/api/incidents': [{ id: 1, title: 'Paiements par carte indisponibles', message: 'Notre prestataire est en panne, ne réessaie pas pour l’instant.', subjects: ['Paiement'], notify_on_resolve: true, created_by_tag: 'Daryu', created_at: iso(90), resolved_at: null, members: 7, tickets: 8 },
     { id: 2, title: 'Connexion lente', message: 'Résolu', subjects: null, notify_on_resolve: false, created_by_tag: 'Daryu', created_at: iso(5000), resolved_at: iso(4000), resolved_by_tag: 'Daryu', members: 3, tickets: 3 }],
   '/api/config': { ticketSubjects: ['Paiement', 'Paiement › Remboursement', 'Compte', 'Autre'], subjectSla: { Paiement: 4 } },
-  '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' }],
+  '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.', kb: true }],
+  '/api/kb/123456789012345678': { space: { id: '123456789012345678', name: 'Sunset FA', logo: null, color: '#e67e22' }, articles: [
+    { id: 3, question: 'Comment suivre ma livraison ?', answer: 'Le lien de suivi arrive par e-mail.', category: 'Commandes', updated_at: iso(600), created_at: iso(9000) },
+    { id: 4, question: 'Mon paiement est refusé', answer: 'Vérifie que ta carte autorise les paiements en ligne.', category: '', updated_at: null, created_at: iso(9000) }] },
+  '/api/kb/123456789012345678/articles/3': { space: { id: '123456789012345678', name: 'Sunset FA', logo: null, color: '#e67e22' },
+    article: { id: 3, question: 'Comment suivre ma livraison ?', answer: 'Le lien de suivi arrive par e-mail, dès l\'envoi du colis.', category: 'Commandes', updated_at: iso(600), created_at: iso(9000) } },
+  '/api/faq': { enabled: true, kbPublic: true, kbUrl: 'https://ticket.example/aide/123456789012345678', entries: [
+    { id: 3, question: 'Comment suivre ma livraison ?', answer: 'Le lien de suivi arrive par e-mail.', keywords: 'livraison, colis', category: 'Commandes', visibility: 'public', active: true, shown_count: 12, solved_count: 5, view_count: 40 },
+    { id: 5, question: 'Code promo des membres', answer: 'Code interne.', keywords: 'promo', category: '', visibility: 'members', active: true, shown_count: 2, solved_count: 1, view_count: 0 }] },
   '/api/member/guilds/123456789012345678/faq': [
     { id: 1, question: 'Comment changer mon mot de passe ?', answer: 'Va dans Réglages > Sécurité.' },
     { id: 2, question: 'Mon paiement est refusé', answer: 'Vérifie que ta carte autorise les paiements en ligne.' }],

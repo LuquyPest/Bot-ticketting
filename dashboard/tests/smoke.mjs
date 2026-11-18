@@ -67,6 +67,9 @@ const PAGES = [
   ['espace-ticket', '/espace/123456789012345678/1', 'Colis renvoyé'],
   ['espace-aide', '/espace/aide', 'Comment changer mon mot de passe'],
   ['espace-nouveau', '/espace/nouveau', 'Ouvrir le ticket'],
+  ['aide-publique', '/aide/123456789012345678', 'Comment suivre ma livraison', true],
+  ['aide-article', '/aide/123456789012345678/3', 'dès l\'envoi du colis', true],
+  ['faq', '/faq', 'Base de connaissances publique'],
 ];
 // EventSource has no mock: its connection errors are expected
 const IGNORED = /EventSource|text\/event-stream|MIME type|\/api\/events|status of 401/;

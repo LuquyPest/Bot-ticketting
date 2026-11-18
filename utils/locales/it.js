@@ -183,6 +183,8 @@ module.exports = {
   'widget.expired': 'Il modulo è scaduto: ricarica la pagina',
   'widget.tooMany': 'Troppi messaggi inviati: riprova più tardi',
   'widget.privacy': 'Il tuo indirizzo serve solo a risponderti.',
+  'widget.maybe': 'Questi articoli forse rispondono alla tua domanda:',
+  'faq.read': 'Leggi l\'articolo',
   'portal.noAccount': 'Account Discord non trovato',
   'portal.openFailed': 'Impossibile aprire il ticket, riprova o scrivi al bot in DM',
   'portal.badEmail': 'Indirizzo e-mail non valido',

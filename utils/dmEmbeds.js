@@ -146,12 +146,17 @@ function memberCloseConfirmEmbed(ticket) {
     .setDescription(t('close.confirm', { id: ticket.id, subject: subjectSuffix(ticket) }));
 }
 
+// m.url: the article on the public knowledge base, when it is there
 function faqSuggestEmbed(guildName, matches) {
   const embed = new EmbedBuilder()
     .setColor(C.primary)
     .setAuthor({ name: t('faq.title', { guild: guildName || 'Support' }) })
     .setDescription(t('faq.body'));
-  matches.forEach((m, i) => embed.addFields({ name: `${i + 1}. ${m.question}`.slice(0, 256), value: m.answer.slice(0, 1024) }));
+  matches.forEach((m, i) => {
+    const link = m.url ? `\n[${t('faq.read')}](${m.url})` : '';
+    const answer = m.answer.length + link.length > 1024 ? `${m.answer.slice(0, 1020 - link.length)}…` : m.answer;
+    embed.addFields({ name: `${i + 1}. ${m.question}`.slice(0, 256), value: answer + link });
+  });
   return embed;
 }
 

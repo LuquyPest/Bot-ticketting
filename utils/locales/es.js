@@ -183,6 +183,8 @@ module.exports = {
   'widget.expired': 'El formulario ha caducado: recarga la página',
   'widget.tooMany': 'Demasiados mensajes enviados: inténtalo más tarde',
   'widget.privacy': 'Tu dirección solo sirve para responderte.',
+  'widget.maybe': 'Estos artículos quizá respondan a tu pregunta:',
+  'faq.read': 'Leer el artículo',
   'portal.noAccount': 'Cuenta de Discord no encontrada',
   'portal.openFailed': 'No se pudo abrir el ticket, inténtalo de nuevo o escribe al bot por MD',
   'portal.badEmail': 'Dirección de correo no válida',

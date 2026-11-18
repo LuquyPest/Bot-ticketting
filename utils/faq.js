@@ -22,9 +22,10 @@ function scoreEntry(entry, message) {
 
 const MIN_SCORE = 3;
 
-async function findFaqMatches(db, message, limit = 3) {
+// opts.publicOnly: only the articles of the public knowledge base (visitors not signed in)
+async function findFaqMatches(db, message, limit = 3, { publicOnly = false } = {}) {
   if (!message || message.length < 3) return [];
-  const entries = await db('SELECT id, question, answer, keywords FROM faq_entries WHERE active = 1').catch(() => []);
+  const entries = await db(`SELECT id, question, answer, keywords, visibility FROM faq_entries WHERE active = 1${publicOnly ? " AND visibility = 'public'" : ''}`).catch(() => []);
   return entries
     .map(e => ({ ...e, score: scoreEntry(e, message) }))
     .filter(e => e.score >= MIN_SCORE)

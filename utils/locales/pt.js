@@ -183,6 +183,8 @@ module.exports = {
   'widget.expired': 'O formulário expirou: recarregue a página',
   'widget.tooMany': 'Mensagens demais enviadas: tente mais tarde',
   'widget.privacy': 'Seu endereço serve apenas para responder a você.',
+  'widget.maybe': 'Estes artigos talvez respondam à sua pergunta:',
+  'faq.read': 'Ler o artigo',
   'portal.noAccount': 'Conta do Discord não encontrada',
   'portal.openFailed': 'Não foi possível abrir o ticket, tente de novo ou escreva ao bot por DM',
   'portal.badEmail': 'Endereço de e-mail inválido',

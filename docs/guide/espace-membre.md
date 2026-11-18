@@ -7,8 +7,21 @@ L'espace existe en **six langues** — français, anglais, espagnol, allemand, i
 - **Suivre** : statut formulé pour eux (« en attente de ta réponse », « pris en charge »…), conversation avec le staff, note donnée, téléchargement de l'échange.
 - **Répondre** depuis le web, exactement comme en MP (mêmes limites, même salon côté staff).
 - **Ouvrir un ticket** : serveur, sujet, champs et formulaire du sujet, avec les entrées de FAQ qui ressemblent à la demande proposées pendant la saisie.
-- **Aide** : la FAQ de chaque serveur, cherchable.
+- **Aide** : la FAQ de chaque serveur, cherchable, avec un lien vers sa [base de connaissances publique](#base-de-connaissances-publique) si elle est en ligne.
 - **Lien direct** : bouton « Voir sur le web » sous chaque MP lié à un ticket.
+
+## Base de connaissances publique
+
+La FAQ du serveur (menu **FAQ**) est faite d'**articles** : une question, une réponse (jusqu'à 5 000 caractères), des mots-clés pour la FAQ automatique en MP, une **catégorie** facultative (« Compte », « Commandes »…) et une **visibilité** :
+
+| Visible par | Où l'article apparaît |
+|---|---|
+| **Les membres connectés** (par défaut) | Onglet **Aide** de l'espace membre, suggestions pendant l'ouverture d'un ticket, FAQ automatique en MP |
+| **Tout le monde** | En plus : la page publique **`/aide/<serveur>`**, lisible **sans connexion**, et les suggestions du [widget web](./integrations#widget-web) |
+
+La page publique est **hors ligne** tant qu'un **fondateur** ne la met pas en ligne (**FAQ → Base de connaissances publique**). En ligne, elle liste les articles « Tout le monde » actifs, rangés par catégorie et cherchables, chacun avec sa propre adresse à partager ; l'onglet **Aide** de l'espace membre y renvoie, et les réponses proposées en MP ajoutent un lien « Lire l'article ». Chaque article compte ses lectures (une par visiteur et par heure).
+
+Les entrées de FAQ d'avant la v4.2 sont reprises telles quelles, réservées aux membres connectés : rien ne devient public sans qu'on le choisisse. Un article désactivé, ou repassé « membres connectés », disparaît aussitôt de la page publique. Celle-ci ne montre ni les mots-clés, ni l'auteur, ni les compteurs ; un serveur inconnu ou dont la page est hors ligne donne la même réponse « introuvable ». Les articles et leur visibilité font partie de l'[export de configuration](./integrations#sauvegarde-de-la-configuration).
 
 ## Sans Discord : connexion par lien e-mail
 

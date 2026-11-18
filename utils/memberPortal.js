@@ -172,7 +172,7 @@ async function memberGuilds(member, client) {
       if (member.email) { if (!(await emailOpen(db))) continue; }
       else if (!g || !(await g.members.fetch(member.id).catch(() => null))) continue;
       if (!(await portalEnabled(db))) continue;
-      out.push({ id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) });
+      out.push({ id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)), kb: await require('./knowledgeBase').kbEnabled(db) });
     } catch { /* tenant DB unavailable */ }
   }
   await redis.set(key, JSON.stringify(out), 'EX', 300).catch(() => null);
@@ -183,9 +183,9 @@ async function isMemberGuild(member, guildId, client) {
   return (await memberGuilds(member, client)).find(g => g.id === guildId) || null;
 }
 
-// Public help: active FAQ entries of a server
+// Help of a server for its members: every active entry, public or kept for members
 async function guildFaq(guildId) {
-  return getTenantDb(guildId)('SELECT id, question, answer FROM faq_entries WHERE active = 1 ORDER BY solved_count DESC, id ASC LIMIT 200');
+  return getTenantDb(guildId)("SELECT id, question, answer, category, visibility FROM faq_entries WHERE active = 1 ORDER BY category = '', category, solved_count DESC, id ASC LIMIT 200");
 }
 
 // What the web form asks before opening a ticket: subjects, then (for a subject) custom fields

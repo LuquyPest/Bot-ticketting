@@ -685,6 +685,19 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 47,
+    name: 'Base de connaissances : articles publics ou réservés aux membres, catégories (v4.2)',
+    statements: [
+      // The existing FAQ entries stay where they were (member space, DM suggestions): 'members'
+      `ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS visibility ENUM('members','public') NOT NULL DEFAULT 'members'`,
+      `ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS category VARCHAR(80) NOT NULL DEFAULT ''`,
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS view_count INT NOT NULL DEFAULT 0',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS updated_at DATETIME DEFAULT NULL',
+      // The public page (/aide/<space>) answers only once a founder turns it on
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS kb_public TINYINT(1) NOT NULL DEFAULT 0',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

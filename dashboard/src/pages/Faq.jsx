@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, HelpCircle, FlaskConical, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, HelpCircle, FlaskConical, Loader2, Globe, Lock, ExternalLink } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirmToast';
@@ -7,8 +7,8 @@ import { useAuth } from '../App';
 
 const input = 'w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary/50';
 
-function EntryModal({ entry, onClose, onSave }) {
-  const [form, setForm] = useState({ question: entry?.question || '', answer: entry?.answer || '', keywords: entry?.keywords || '' });
+function EntryModal({ entry, categories, onClose, onSave }) {
+  const [form, setForm] = useState({ question: entry?.question || '', answer: entry?.answer || '', keywords: entry?.keywords || '', category: entry?.category || '', visibility: entry?.visibility || 'members' });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const submit = async () => {
@@ -22,7 +22,7 @@ function EntryModal({ entry, onClose, onSave }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="bg-surface-card border border-overlay/8 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink-1">{entry ? 'Modifier l\'entrée' : 'Nouvelle entrée de FAQ'}</h2>
+          <h2 className="text-sm font-semibold text-ink-1">{entry ? 'Modifier l\'article' : 'Nouvel article'}</h2>
           <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={16} /></button>
         </div>
         <label className="block space-y-1.5">
@@ -30,9 +30,23 @@ function EntryModal({ entry, onClose, onSave }) {
           <input value={form.question} onChange={e => set('question', e.target.value)} maxLength={200} placeholder="Comment changer mon mot de passe ?" className={input} />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-xs text-ink-3">Réponse envoyée au membre</span>
-          <textarea value={form.answer} onChange={e => set('answer', e.target.value)} maxLength={2000} rows={5} className={`${input} resize-none`} />
+          <span className="text-xs text-ink-3">Réponse (envoyée en MP, affichée dans l'espace membre et la base publique)</span>
+          <textarea value={form.answer} onChange={e => set('answer', e.target.value)} maxLength={5000} rows={7} className={`${input} resize-y`} />
         </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs text-ink-3">Catégorie</span>
+            <input value={form.category} onChange={e => set('category', e.target.value)} maxLength={80} list="faq-categories" placeholder="Compte, Facturation…" className={input} />
+            <datalist id="faq-categories">{categories.map(c => <option key={c} value={c} />)}</datalist>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs text-ink-3">Visible par</span>
+            <select value={form.visibility} onChange={e => set('visibility', e.target.value)} className={input}>
+              <option value="members">Les membres connectés</option>
+              <option value="public">Tout le monde (base publique)</option>
+            </select>
+          </label>
+        </div>
         <label className="block space-y-1.5">
           <span className="text-xs text-ink-3">Mots-clés (séparés par des virgules)</span>
           <input value={form.keywords} onChange={e => set('keywords', e.target.value)} maxLength={500} placeholder="mot de passe, mdp, connexion" className={input} />
@@ -64,7 +78,7 @@ export default function Faq() {
   const save = async (form) => {
     if (editing?.id) await api.patch(`/faq/${editing.id}`, form);
     else await api.post('/faq', form);
-    toast.success('Entrée enregistrée');
+    toast.success('Article enregistré');
     load();
   };
   const toggleEntry = async (e) => {
@@ -74,6 +88,10 @@ export default function Faq() {
   const remove = async (e) => {
     if (!await confirmToast(`Supprimer « ${e.question} » ?`)) return;
     try { await api.delete(`/faq/${e.id}`); load(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const togglePublic = async () => {
+    try { await api.put('/faq/public', { enabled: !data.kbPublic }); load(); toast.success(data.kbPublic ? 'Page publique désactivée' : 'Page publique activée'); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
   const toggleEnabled = async () => {
@@ -89,35 +107,58 @@ export default function Faq() {
   if (!data) return <div className="flex justify-center py-24"><Loader2 size={20} className="animate-spin text-ink-3" /></div>;
   const shown = data.entries.reduce((n, e) => n + e.shown_count, 0);
   const solved = data.entries.reduce((n, e) => n + e.solved_count, 0);
+  const categories = [...new Set(data.entries.map(e => e.category).filter(Boolean))].sort();
+  const publicCount = data.entries.filter(e => e.active && e.visibility === 'public').length;
 
   return (
     <div className="p-6 space-y-5 max-w-5xl">
-      {editing && <EntryModal entry={editing.id ? editing : null} onClose={() => setEditing(null)} onSave={save} />}
+      {editing && <EntryModal entry={editing.id ? editing : null} categories={categories} onClose={() => setEditing(null)} onSave={save} />}
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-ink-1">FAQ automatique</h1>
+          <h1 className="text-xl font-bold text-ink-1">FAQ et base de connaissances</h1>
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
             <button onClick={toggleEnabled} role="switch" aria-checked={data.enabled}
               className={`px-3 py-2 rounded-xl text-xs font-semibold border ${data.enabled ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-overlay/4 text-ink-3 border-overlay/8'}`}>
-              {data.enabled ? 'Activée' : 'Désactivée'}
+              {data.enabled ? 'FAQ en MP activée' : 'FAQ en MP désactivée'}
             </button>
             <button onClick={() => setEditing({})} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary-light">
-              <Plus size={13} /> Nouvelle entrée
+              <Plus size={13} /> Nouvel article
             </button>
           </div>
         )}
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        {[['Entrées actives', data.entries.filter(e => e.active).length], ['Réponses proposées', shown], ['Questions résolues sans ticket', `${solved}${shown ? ` (${Math.round((solved / shown) * 100)} %)` : ''}`]].map(([label, value]) => (
+        {[['Articles actifs', data.entries.filter(e => e.active).length], ['Réponses proposées', shown], ['Questions résolues sans ticket', `${solved}${shown ? ` (${Math.round((solved / shown) * 100)} %)` : ''}`]].map(([label, value]) => (
           <div key={label} className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4">
             <p className="text-[11px] text-ink-4">{label}</p>
             <p className="text-2xl font-bold text-ink-1 tabular-nums mt-1">{value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4 flex items-center gap-3 flex-wrap">
+        <Globe size={16} className="text-primary-light shrink-0" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-ink-1">Base de connaissances publique</p>
+          <p className="text-xs text-ink-3 mt-0.5">
+            {data.kbPublic ? `En ligne, lisible sans connexion : ${publicCount} article(s) public(s).` : 'Hors ligne. Une fois activée, les articles « Tout le monde » sont lisibles sans connexion et suggérés dans le widget.'}
+          </p>
+        </div>
+        {data.kbPublic && (
+          <a href={data.kbUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-ink-2 border border-overlay/8 hover:bg-overlay/5">
+            <ExternalLink size={13} /> Ouvrir la page
+          </a>
+        )}
+        {user?.role === 'fondateur' && (
+          <button onClick={togglePublic} role="switch" aria-checked={data.kbPublic} aria-label="Base de connaissances publique"
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border ${data.kbPublic ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-overlay/4 text-ink-3 border-overlay/8'}`}>
+            {data.kbPublic ? 'En ligne' : 'Hors ligne'}
+          </button>
+        )}
       </div>
 
       <div className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4 space-y-2">
@@ -135,17 +176,23 @@ export default function Faq() {
       <div className="bg-overlay/3 rounded-2xl border border-overlay/6 overflow-hidden">
         {data.entries.length === 0 ? (
           <div className="py-14 text-center text-sm text-ink-4 flex flex-col items-center gap-2">
-            <HelpCircle size={20} /> Aucune entrée pour l'instant
+            <HelpCircle size={20} /> Aucun article pour l'instant
           </div>
         ) : (
           <ul className="divide-y divide-overlay/5">
             {data.entries.map(e => (
               <li key={e.id} className={`px-5 py-4 flex gap-4 ${e.active ? '' : 'opacity-60'}`}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink-1">{e.question}</p>
+                  <p className="text-sm font-semibold text-ink-1 flex items-center gap-2 flex-wrap">
+                    {e.question}
+                    {e.visibility === 'public'
+                      ? <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md text-sky-300 border border-sky-500/30"><Globe size={10} aria-hidden="true" /> Public</span>
+                      : <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-overlay/5 text-ink-3 border border-overlay/8"><Lock size={10} aria-hidden="true" /> Membres</span>}
+                    {e.category && <span className="text-[10px] text-ink-3">{e.category}</span>}
+                  </p>
                   <p className="text-xs text-ink-3 mt-1 line-clamp-2 whitespace-pre-wrap">{e.answer}</p>
                   <p className="text-[10px] text-ink-4 mt-1.5">
-                    {e.keywords ? `Mots-clés : ${e.keywords} · ` : ''}proposée {e.shown_count} fois · a résolu {e.solved_count} question(s)
+                    {e.keywords ? `Mots-clés : ${e.keywords} · ` : ''}proposée {e.shown_count} fois · a résolu {e.solved_count} question(s){e.visibility === 'public' ? ` · lue ${e.view_count} fois` : ''}
                     {!e.active && ' · désactivée'}
                   </p>
                 </div>

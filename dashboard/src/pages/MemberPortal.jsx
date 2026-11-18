@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail, BookOpen } from 'lucide-react';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
 import { readableText } from '../utils/color';
@@ -354,6 +354,7 @@ function FaqList({ entries, query }) {
           <details className="bg-surface-card border border-overlay/6 rounded-xl px-4 py-3 group">
             <summary className="cursor-pointer text-sm font-medium text-ink-1 list-none flex items-center gap-2">
               <HelpCircle size={14} className="text-primary-light shrink-0" />{e.question}
+              {e.category && <span className="ml-auto text-[11px] font-normal text-ink-3">{e.category}</span>}
             </summary>
             <p className="text-sm text-ink-2 mt-2 whitespace-pre-wrap"><MessageContent text={e.answer} /></p>
           </details>
@@ -379,6 +380,9 @@ function HelpPage({ me }) {
       <h1 className="text-xl font-bold text-ink-1">{STR.faqTitle}</h1>
       <GuildPicker guilds={guilds} guildId={guildId} setGuildId={setGuildId} />
       <GuildBanner guild={guilds.find(g => g.id === guildId)} />
+      {guilds.find(g => g.id === guildId)?.kb && (
+        <Link to={`/aide/${guildId}`} className="inline-flex items-center gap-1.5 text-sm text-primary-light underline"><BookOpen size={14} aria-hidden="true" /> {STR.kbLink}</Link>
+      )}
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 pointer-events-none" />
         <input type="search" value={query} onChange={e => setQuery(e.target.value)} aria-label={STR.faqSearch} placeholder={STR.faqSearch} className={`${INPUT} pl-9`} />
