@@ -86,6 +86,9 @@ const FIELD_MAP = {
   // v5.1 — resolution and closing (utils/resolution.js)
   resolutionEnabled:        'resolution_enabled',
   resolutionAutocloseDays:  'resolution_autoclose_days',
+  // v5.1 — priority matrix (utils/priorityMatrix.js)
+  priorityMatrixEnabled:    'priority_matrix_enabled',
+  priorityMatrix:           'priority_matrix',
 };
 
 const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
@@ -102,6 +105,8 @@ const VALIDATORS = {
   ticketTypesEnabled:       v => v === 0 || v === 1 || v === true || v === false,
   resolutionEnabled:        v => v === 0 || v === 1 || v === true || v === false,
   resolutionAutocloseDays:  v => Number.isInteger(v) && v >= 0 && v <= 90,
+  priorityMatrixEnabled:    v => v === 0 || v === 1 || v === true || v === false,
+  priorityMatrix:           v => v === null || require('../../utils/priorityMatrix').validMatrix(v),
   ticketTypeLabels:         v => !require('../../utils/ticketTypes').labelsProblem(v),
   subjectTypes:             v => !require('../../utils/ticketTypes').subjectTypesProblem(v),
   inactiveWarningHours:     v => Number.isInteger(v) && v >= 1 && v <= 720,
@@ -174,14 +179,14 @@ const VALIDATORS = {
 };
 
 // Fields stored as JSON in the DB
-const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist', 'subject_sla', 'ticket_type_labels', 'subject_types']);
+const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist', 'subject_sla', 'ticket_type_labels', 'subject_types', 'priority_matrix']);
 
 function dbRow2Api(row) {
   const out = {};
   for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
     if (dbCol in row) {
       let val = row[dbCol];
-      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, ['subject_welcome_messages', 'subject_sla', 'ticket_type_labels', 'subject_types'].includes(dbCol) ? {} : []);
+      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, ['subject_welcome_messages', 'subject_sla', 'ticket_type_labels', 'subject_types'].includes(dbCol) ? {} : dbCol === 'priority_matrix' ? null : []);
       out[apiKey] = val;
     }
   }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { LEVEL_LABELS } from '../utils/priorityLevels';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
@@ -763,7 +764,7 @@ export default function Tickets() {
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-ink-3">
                 <span className="inline-flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
-                  {PRIORITY_LABELS[t.priority] || t.priority}
+                  {data?.priorityMatrix ? LEVEL_LABELS[t.priority_level] || PRIORITY_LABELS[t.priority] : PRIORITY_LABELS[t.priority] || t.priority}
                 </span>
                 {data?.types?.enabled && <span className={t.ticket_type === 'incident' ? 'text-red-300 font-medium' : ''}>{data.types.labels[t.ticket_type] || data.types.labels.request}</span>}
                 {t.status === 'open' && t.resolved_at && <span className="text-emerald-300 font-medium">Résolu, en attente du demandeur</span>}

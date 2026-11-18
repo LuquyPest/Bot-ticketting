@@ -1784,6 +1784,10 @@ async function main() {
     await db('UPDATE guild_config SET ticket_types_enabled = 1 WHERE id = 1');
     r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { type: 'incident' } });
     check('API v3: type du ticket (refusé si l espace n utilise pas les types)', v3off === 400 && r.status === 200 && r.body.type === 'incident', JSON.stringify([v3off, r.body.type]));
+    await db('UPDATE guild_config SET priority_matrix_enabled = 1 WHERE id = 1');
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { urgency: 4, impact: 4 } });
+    const pBoth = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { priority: 'low', urgency: 1 } });
+    check('API v3: urgence et impact (matrice), pas en même temps que priority', r.status === 200 && r.body.priority_level === 5 && r.body.priority === 'urgent' && pBoth.status === 400, JSON.stringify([r.body.priority_level, pBoth.body]));
     check('API v3: chaque changement au journal au nom de la clé', (await db("SELECT DISTINCT action FROM audit_log WHERE ticket_id = ? AND actor_tag = 'API · crm'", [tid])).length >= 5, '');
     r = await req('GET', `/api/v3/tickets/${tid}`, { headers: k3 });
     check('API v3: les lectures de la v2 répondent aussi en v3', r.status === 200 && r.body.id === tid && Array.isArray(r.body.messages), r.status);
@@ -5010,6 +5014,50 @@ async function main() {
     check('résolution: coupée → on ferme comme avant', r.status === 400 && /Paramètres/.test(r.body.error), JSON.stringify(r.body));
     await db('UPDATE guild_config SET resolution_enabled = ?, resolution_autoclose_days = ? WHERE id = 1', [cfgR.resolution_enabled, cfgR.resolution_autoclose_days]);
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[t2, t6, t7]]);
+  }
+
+  // ── Priority matrix: urgency × impact (utils/priorityMatrix.js, v5.1) ──
+  {
+    const pm = app('./utils/priorityMatrix');
+    const [cfgP] = await db('SELECT priority_matrix_enabled, priority_matrix FROM guild_config WHERE id = 1');
+    const bad = await db("SELECT COUNT(*) AS n FROM tickets WHERE priority_level <> CASE priority WHEN 'low' THEN 2 WHEN 'urgent' THEN 4 ELSE 3 END");
+    check('matrice: migration 55 — niveau repris des 3 priorités, coupée sur les espaces existants', Number(bad[0].n) === 0 && app('./utils/tenantMigrations').MIGRATIONS.find(m => m.version === 55).statements.includes('UPDATE guild_config SET priority_matrix_enabled = 0'), JSON.stringify(bad));
+    const tP = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000061', 'prio', 'db-prio', 'open', 'Matrice')")).insertId;
+    const row = async () => (await db('SELECT priority, priority_level, urgency, impact, priority_forced FROM tickets WHERE id = ?', [tP]))[0];
+    const tm = app('./utils/ticketManager').createManager(db, fakeClient, G);
+    await tm.setPriority(tP, 'urgent', { id: U.F, username: 'F' });
+    let p1 = await row();
+    check('matrice: une priorité réglée à l ancienne déplace le niveau (urgente → Haute)', p1.priority === 'urgent' && p1.priority_level === 4, JSON.stringify(p1));
+    await db('UPDATE guild_config SET priority_matrix_enabled = 1 WHERE id = 1');
+    r = await req('PATCH', `/api/tickets/${tP}/priority-matrix`, { sid: sessions.F, body: { urgency: 5, impact: 5 } });
+    p1 = await row();
+    check('matrice: urgence 5 × impact 5 → Très haute, priorité urgente', r.status === 200 && p1.priority_level === 5 && p1.priority === 'urgent' && p1.urgency === 5 && p1.impact === 5 && p1.priority_forced === 0, JSON.stringify([r.body, p1]));
+    await tm.setPriority(tP, 'urgent', { id: U.F, username: 'F' });
+    check('matrice: même tranche réglée à l ancienne → le niveau fin est gardé', (await row()).priority_level === 5, '');
+    r = await req('PATCH', `/api/tickets/${tP}/priority-matrix`, { sid: sessions.F, body: { urgency: 1, impact: 2 } });
+    p1 = await row();
+    check('matrice: urgence 1 × impact 2 → Très basse, priorité basse', p1.priority_level === 1 && p1.priority === 'low', JSON.stringify(p1));
+    r = await req('PATCH', `/api/tickets/${tP}/priority-matrix`, { sid: sessions.F, body: { level: 6 } });
+    p1 = await row();
+    check('matrice: niveau Majeure forcé à la main', p1.priority_level === 6 && p1.priority === 'urgent' && p1.priority_forced === 1, JSON.stringify(p1));
+    r = await req('PATCH', `/api/tickets/${tP}/priority-matrix`, { sid: sessions.F, body: { urgency: 7 } });
+    check('matrice: urgence hors de 1 à 5 refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { priorityMatrix: [[1, 2]] } });
+    check('matrice: matrice mal formée refusée', r.status === 400, r.status);
+    const custom = pm.DEFAULT_MATRIX.map(rw => rw.slice());
+    custom[2][2] = 6;
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { priorityMatrixEnabled: true, priorityMatrix: custom } });
+    await req('PATCH', `/api/tickets/${tP}/priority-matrix`, { sid: sessions.F, body: { urgency: 3, impact: 3, level: null } });
+    p1 = await row();
+    check('matrice: matrice de l espace appliquée (3 × 3 réglé sur Majeure)', r.status === 200 && p1.priority_level === 6 && p1.priority_forced === 0, JSON.stringify([r.status, p1]));
+    r = await req('GET', `/api/tickets/${tP}`, { sid: sessions.F });
+    check('matrice: la fiche porte urgence, impact, niveau et la matrice', r.body.priority_level === 6 && r.body.urgency === 3 && r.body.priorityMatrix?.enabled && r.body.priorityMatrix.matrix[2][2] === 6, JSON.stringify([r.body.priority_level, r.body.priorityMatrix?.enabled]));
+    check('matrice: changements au journal', (await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ticket_priority' AND ticket_id = ?", [tP]))[0].n >= 4, '');
+    await db('UPDATE guild_config SET priority_matrix_enabled = 0 WHERE id = 1');
+    r = await req('PATCH', `/api/tickets/${tP}/priority-matrix`, { sid: sessions.F, body: { urgency: 2 } });
+    check('matrice: coupée → urgence et impact refusés (les 3 priorités restent)', r.status === 400, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tP]);
+    await db('UPDATE guild_config SET priority_matrix_enabled = ?, priority_matrix = ? WHERE id = 1', [cfgP.priority_matrix_enabled, cfgP.priority_matrix == null || typeof cfgP.priority_matrix === 'string' ? cfgP.priority_matrix : JSON.stringify(cfgP.priority_matrix)]);
   }
 
   // ── Dashboard leaderboard: week and month, staff only ──

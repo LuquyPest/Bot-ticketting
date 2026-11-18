@@ -14,6 +14,7 @@ import EmailSettings from '../components/EmailSettings';
 import WidgetSettings from '../components/WidgetSettings';
 import StagesEditor from '../components/StagesEditor';
 import SubjectTreeEditor from '../components/SubjectTreeEditor';
+import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -312,6 +313,8 @@ export default function Settings() {
         subjectSla:               cfg.subjectSla && typeof cfg.subjectSla === 'object' ? cfg.subjectSla : {},
         ticketTypesEnabled:       cfg.ticketTypesEnabled ? 1 : 0,
         resolutionEnabled:        cfg.resolutionEnabled ? 1 : 0,
+        priorityMatrixEnabled:    cfg.priorityMatrixEnabled ? 1 : 0,
+        priorityMatrix:           Array.isArray(cfg.priorityMatrix) && cfg.priorityMatrix.length === 5 ? cfg.priorityMatrix : null,
         resolutionAutocloseDays:  Number.isInteger(cfg.resolutionAutocloseDays) ? cfg.resolutionAutocloseDays : 7,
         ticketTypeLabels:         { incident: cfg.ticketTypeLabels?.incident?.trim() || 'Incident', request: cfg.ticketTypeLabels?.request?.trim() || 'Demande' },
         // Only the subjects that still exist; « request » kept only on a sub-category (it overrides its category)
@@ -546,6 +549,42 @@ export default function Settings() {
         {cfg.resolutionEnabled && (
           <Field label="Fermer tout seul un ticket résolu sans réponse au bout de (jours, 0 = jamais)">
             <input type="number" min={0} max={90} value={cfg.resolutionAutocloseDays ?? 7} onChange={e => set('resolutionAutocloseDays', Math.max(0, Math.min(90, parseInt(e.target.value) || 0)))} className={BASE + ' w-28'} />
+          </Field>
+        )}
+      </Section>
+
+      {/* Priority matrix (v5.1) */}
+      <Section title="Priorité : urgence × impact">
+        <label className="flex items-center gap-2 text-sm text-ink-1">
+          <input type="checkbox" checked={!!cfg.priorityMatrixEnabled} onChange={e => set('priorityMatrixEnabled', e.target.checked)} className="accent-primary" />
+          Calculer la priorité à partir de l'urgence et de l'impact (6 niveaux, de « Très basse » à « Majeure »)
+        </label>
+        {cfg.priorityMatrixEnabled && (
+          <Field label="Matrice" hint="Ligne : urgence. Colonne : impact. « Majeure » se choisit aussi à la main sur la fiche. Les 3 priorités d'avant suivent : Très basse et Basse = basse, Moyenne = normale, Haute et au-delà = urgente.">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Matrice de priorité">
+              <table className="text-xs">
+                <thead><tr><th scope="col" className="p-1 text-left text-ink-4 font-medium">Urgence \ Impact</th>{[1, 2, 3, 4, 5].map(i => <th key={i} scope="col" className="p-1 text-ink-3 font-medium">{IMPACT_LABELS[i]}</th>)}</tr></thead>
+                <tbody>
+                  {[5, 4, 3, 2, 1].map(u => (
+                    <tr key={u}>
+                      <th scope="row" className="p-1 pr-2 text-left text-ink-3 font-medium whitespace-nowrap">{URGENCY_LABELS[u]}</th>
+                      {[1, 2, 3, 4, 5].map(i => {
+                        const m = Array.isArray(cfg.priorityMatrix) && cfg.priorityMatrix.length === 5 ? cfg.priorityMatrix : [[1, 1, 1, 1, 2], [1, 1, 2, 2, 3], [2, 2, 3, 4, 4], [2, 3, 4, 5, 5], [3, 4, 5, 5, 5]];
+                        return (
+                          <td key={i} className="p-1">
+                            <select value={m[u - 1][i - 1]} aria-label={`Urgence ${URGENCY_LABELS[u]}, impact ${IMPACT_LABELS[i]}`}
+                              onChange={e => set('priorityMatrix', m.map((row, ri) => row.map((v, ci) => (ri === u - 1 && ci === i - 1 ? Number(e.target.value) : v))))}
+                              className="bg-surface border border-overlay/8 rounded-md px-1 py-1 text-[11px] text-ink-1">
+                              {Object.entries(LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                            </select>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Field>
         )}
       </Section>

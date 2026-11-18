@@ -29,6 +29,8 @@ const PAGES = [
   ['ticket-validation', '/tickets/1', 'Rembourser 120 € hors délai', false, true],
   ['ticket-copies', '/tickets/8', 'adjoint@ext.test', false, true],
   ['ticket-resoudre', '/tickets/1', 'Résoudre', false, true],
+  ['ticket-matrice', '/tickets/1', 'Forcer la priorité', false, true],
+  ['settings-matrice', '/settings', 'Calculer la priorité'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],
   ['settings', '/settings', 'Paramètres'],
   ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],

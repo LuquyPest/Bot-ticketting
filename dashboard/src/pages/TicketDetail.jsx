@@ -11,6 +11,7 @@ import { useStages, STAGE_CLS } from '../hooks/useStages';
 import ApprovalPanel from '../components/ApprovalPanel';
 import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
+import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS, LEVEL_CLS } from '../utils/priorityLevels';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
 import toast from 'react-hot-toast';
@@ -1031,7 +1032,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           <div className="h-4 w-px bg-overlay/8 shrink-0" />
           <span className="text-sm font-bold text-ink-1 tabular-nums">Ticket #{ticket.id}</span>
           <Badge label={ticket.status} variant={ticket.status} />
-          <Badge label={PRIORITY_LABELS[ticket.priority] || ticket.priority} variant={ticket.priority} />
+          <Badge label={ticket.priorityMatrix?.enabled ? LEVEL_LABELS[ticket.priority_level] || PRIORITY_LABELS[ticket.priority] : PRIORITY_LABELS[ticket.priority] || ticket.priority} variant={ticket.priority} />
           {/* Incident or request (v5.1), when the space uses types */}
           {ticket.types?.enabled && (
             <select value={ticket.ticket_type || 'request'} aria-label="Type du ticket" disabled={!can('reply_ticket')}
@@ -1931,7 +1932,39 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
             </div>
           )}
 
-          {/* PRIORITÉ */}
+          {/* PRIORITÉ — urgency × impact when the space uses the matrix (v5.1) */}
+          {ticket.priorityMatrix?.enabled ? (
+            <div className={panelCard}>
+              <SectionTitle>Priorité</SectionTitle>
+              <p className={`text-sm font-semibold mb-2 ${LEVEL_CLS[ticket.priority_level] || 'text-ink-1'}`}>{LEVEL_LABELS[ticket.priority_level] || '—'}{ticket.priority_forced ? ' (forcée)' : ''}</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[['urgency', 'Urgence', URGENCY_LABELS], ['impact', 'Impact', IMPACT_LABELS]].map(([key, label, labels]) => (
+                  <label key={key} className="text-[11px] text-ink-3">{label}
+                    <select value={ticket[key] || ''} disabled={saving || ticket.status !== 'open' || !can('reply_ticket')} aria-label={label}
+                      onChange={async e => {
+                        try { const r = await api.patch(`/tickets/${ticket.id}/priority-matrix`, { [key]: e.target.value ? Number(e.target.value) : null, level: null }); setTicket(x => ({ ...x, ...r.data, priority_forced: 0 })); }
+                        catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+                      }}
+                      className="mt-0.5 w-full bg-surface border border-overlay/8 rounded-lg px-2 py-1.5 text-xs text-ink-1">
+                      <option value="">—</option>
+                      {Object.entries(labels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <label className="block text-[11px] text-ink-3 mt-1.5">Forcer la priorité
+                <select value={ticket.priority_forced ? String(ticket.priority_level) : ''} disabled={saving || ticket.status !== 'open' || !can('reply_ticket')} aria-label="Forcer la priorité"
+                  onChange={async e => {
+                    try { const r = await api.patch(`/tickets/${ticket.id}/priority-matrix`, { level: e.target.value ? Number(e.target.value) : null }); setTicket(x => ({ ...x, ...r.data, priority_forced: e.target.value ? 1 : 0 })); }
+                    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+                  }}
+                  className="mt-0.5 w-full bg-surface border border-overlay/8 rounded-lg px-2 py-1.5 text-xs text-ink-1">
+                  <option value="">Non : urgence × impact</option>
+                  {Object.entries(LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+            </div>
+          ) : (
           <div className={panelCard}>
             <SectionTitle>Priorité</SectionTitle>
             <div className="flex gap-1.5">
@@ -1947,6 +1980,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
               ))}
             </div>
           </div>
+          )}
 
           {/* PARTICIPANTS */}
           <div className={panelCard}>

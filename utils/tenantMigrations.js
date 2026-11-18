@@ -807,6 +807,22 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS resolution_autoclose_days INT NOT NULL DEFAULT 7',
     ],
   },
+  {
+    version: 55,
+    name: 'Matrice de priorité : urgence × impact, 6 niveaux (v5.1)',
+    statements: [
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS urgency TINYINT DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS impact TINYINT DEFAULT NULL',
+      // 1 very low … 5 very high, 6 major; the 3 priorities of before stay, kept in step (utils/priorityMatrix.js)
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority_level TINYINT NOT NULL DEFAULT 3',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority_forced TINYINT(1) NOT NULL DEFAULT 0',
+      "UPDATE tickets SET priority_level = CASE priority WHEN 'low' THEN 2 WHEN 'urgent' THEN 4 ELSE 3 END",
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS priority_matrix_enabled TINYINT(1) NOT NULL DEFAULT 1',
+      // Existing spaces keep their 3 priorities on screen until turned on; a new space has the matrix
+      'UPDATE guild_config SET priority_matrix_enabled = 0',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS priority_matrix JSON DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
