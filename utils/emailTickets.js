@@ -340,17 +340,19 @@ async function processEmailInLang(client, guildId, mail, s) {
       return { ticketId: t.id, created: false };
     }
   }
+  // No reference to one of their open tickets: a new e-mail is a new request, as in any helpdesk.
+  // (It used to join the sender's open ticket — or one they only take part in, whose owner then
+  // read it.) Answers stay in their thread through the token or In-Reply-To above.
   const [cfg] = await db('SELECT max_tickets_per_day FROM guild_config WHERE id = 1');
-  const openTicket = await tm.getOpenTicketByOwnerId(ownerId);
-  if (!openTicket && cfg?.max_tickets_per_day && await tm.getDailyTicketCount(ownerId) >= cfg.max_tickets_per_day) return { skipped: 'limite quotidienne' };
+  if (cfg?.max_tickets_per_day && await tm.getDailyTicketCount(ownerId) >= cfg.max_tickets_per_day) return { skipped: 'limite quotidienne' };
   // Senders can be made up at will: new tickets by e-mail are capped per server as well
-  if (!openTicket && !(await require('./rateLimit').allowBurst(`mailnew:${guildId}`, NEW_PER_HOUR, 3600 * 1000))) return { skipped: 'trop de nouveaux tickets par e-mail' };
+  if (!(await require('./rateLimit').allowBurst(`mailnew:${guildId}`, NEW_PER_HOUR, 3600 * 1000))) return { skipped: 'trop de nouveaux tickets par e-mail' };
   const mailSubject = String(mail.subject || '').replace(/^\s*((re|fwd?|tr|aw|wg)\s*:\s*)+/i, '').trim().slice(0, 100) || null;
   // Delivered to one of the additional addresses: its subject replaces the subject line (kept in the message)
   const route = addresses.length ? await routeOf(db, mail) : null;
   const subject = route?.subject || mailSubject;
   const firstBody = route?.subject && mailSubject ? `**Objet :** ${mailSubject}\n\n${body}` : body;
-  const res = await tm.relayDmToTicket(user, openTicket ? body : firstBody, [], subject);
+  const res = await tm.createTicket(user, firstBody, [], subject, { forceNew: true });
   if (!res?.ticket) return { skipped: 'ticket impossible' };
   if (res.created && route) {
     await db('INSERT INTO email_threads (ticket_id, via_address_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE via_address_id = VALUES(via_address_id)', [res.ticket.id, route.id]);

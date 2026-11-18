@@ -62,7 +62,7 @@ For people who are not on Discord: each e-mail received on the support address o
 
 **Test the connection** checks both before turning it on. Passwords are encrypted in the database (`ENCRYPTION_KEY`) and never shown again.
 
-**What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket.
+**What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket. A **new e-mail**, without this token nor answering a message from the support, opens a **new ticket**, even if the person already has one open. When they have several open tickets, each staff reply goes in the thread of the ticket it is about.
 
 **Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The person can also follow their tickets in the [member space](./member-space), signed in with a link received by e-mail.
 
