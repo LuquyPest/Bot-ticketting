@@ -8,7 +8,7 @@ A v3 instance moves to v4 **without doing anything**: update as usual (**Update*
 
 - Migrations run at startup; no data is copied or renamed.
 - Discord sign-in, DMs, channels, commands, panels and `/setup` work as before.
-- The image is still published under the old name (`ghcr.io/luquypest/bot-ticketting`) as well as `ghcr.io/luquypest/datick`: your `.env` does not have to change.
+- The image is still published under the old name (`ghcr.io/luquypest/bot-ticketting`) as well as `ghcr.io/luquypest/datick`: your `.env` does not have to change. The repository's compose files now pull `ghcr.io/luquypest/datick`; it is the same image.
 - API v1 and the webhooks do not change.
 
 ## The words change

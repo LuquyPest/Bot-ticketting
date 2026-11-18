@@ -108,7 +108,7 @@ echo
 # VAPID keys for push notifications: from the published image, or a local Node, otherwise skipped
 VAPID_PUBLIC_KEY=""; VAPID_PRIVATE_KEY=""
 gen_vapid() { node -e "const k=require('web-push').generateVAPIDKeys();console.log(k.publicKey+' '+k.privateKey)" 2>/dev/null; }
-VAPID="$( (docker run --rm --entrypoint node ghcr.io/luquypest/bot-ticketting:latest -e "const k=require('web-push').generateVAPIDKeys();console.log(k.publicKey+' '+k.privateKey)" 2>/dev/null) || (command -v node >/dev/null && [[ -d node_modules/web-push ]] && gen_vapid) || true)"
+VAPID="$( (docker run --rm --entrypoint node ghcr.io/luquypest/datick:latest -e "const k=require('web-push').generateVAPIDKeys();console.log(k.publicKey+' '+k.privateKey)" 2>/dev/null) || (command -v node >/dev/null && [[ -d node_modules/web-push ]] && gen_vapid) || true)"
 if [[ -n "$VAPID" ]]; then VAPID_PUBLIC_KEY="${VAPID% *}"; VAPID_PRIVATE_KEY="${VAPID#* }"
 else t "⚠️  Clés VAPID non générées (pas d'image ni de Node) : notifications push désactivées, voir https://docs.bot.daryu.xyz/guide/configuration" \
        "⚠️  VAPID keys not generated (no image nor Node): push notifications disabled, see https://docs.bot.daryu.xyz/guide/configuration"; echo; fi

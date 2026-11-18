@@ -52,7 +52,7 @@ services:
       start_period: 30s
 
   bot:
-    image: ghcr.io/luquypest/bot-ticketting:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
+    image: ghcr.io/luquypest/datick:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
     restart: unless-stopped
     environment:
       SERVICE_FQDN_BOT_3000: ""

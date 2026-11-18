@@ -8,7 +8,7 @@ import { data as versions } from './versions.data.js';
 
 # Versions
 
-Chaque version a son image Docker (`ghcr.io/luquypest/bot-ticketting:<version>`) et sa page de [release](https://github.com/LuquyPest/datick/releases). Pour mettre à jour : [Mises à jour](./mise-a-jour).
+Chaque version a son image Docker (`ghcr.io/luquypest/datick:<version>`) et sa page de [release](https://github.com/LuquyPest/datick/releases). Pour mettre à jour : [Mises à jour](./mise-a-jour).
 
 <div v-for="v in versions" :key="v.version" class="tb-version">
   <h2 :id="v.version">{{ v.version }} <small>{{ v.date }}</small></h2>

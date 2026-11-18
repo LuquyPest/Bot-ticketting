@@ -1,6 +1,6 @@
 # Mises à jour
 
-Les versions sont publiées sur la page [Releases](https://github.com/LuquyPest/datick/releases) avec leurs notes (les mêmes que la page *Patchnotes* du dashboard). Chaque version a son image Docker : `ghcr.io/luquypest/bot-ticketting:v3.0`, et `latest` pointe sur la dernière.
+Les versions sont publiées sur la page [Releases](https://github.com/LuquyPest/datick/releases) avec leurs notes (les mêmes que la page *Patchnotes* du dashboard). Chaque version a son image Docker : `ghcr.io/luquypest/datick:v3.0`, et `latest` pointe sur la dernière.
 
 ## Être prévenu
 

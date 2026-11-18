@@ -48,7 +48,7 @@ services:
 
   bot:
     # Published image (docker compose pull); `docker compose up -d --build` rebuilds it from the sources
-    image: ghcr.io/luquypest/bot-ticketting:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
+    image: ghcr.io/luquypest/datick:${DATICK_VERSION:-${TICKETBOT_VERSION:-latest}}
     build: .
     restart: unless-stopped
     # Only what the bot needs from .env — DB_ROOT_PASSWORD must stay out of this container
