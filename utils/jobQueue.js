@@ -22,6 +22,7 @@ const JOBS = {
   'discord-watch':       { discord: true, every: 60 * 1000,      run: client => require('./discordWatch').runDiscordWatch(client) },
   'guild-health':        { discord: true, every: 15 * 60 * 1000, run: client => require('./guildHealth').runGuildHealthCheck(client) },
   'staff-absences':      { every: 5 * 60 * 1000,  run: () => require('./absences').runAbsenceCheck() },
+  'approval-reminders':  { every: 60 * 60 * 1000, run: client => require('./approvals').runApprovalReminders(client) },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
   'public-stats':        { discord: true, pattern: '5 * * * *',  run: client => require('./publicStats').refreshAllPublicStats(client) },
   'update-check':        { pattern: '40 6 * * *', run: client => require('./updates').runUpdateCheck(client) },

@@ -17,6 +17,7 @@ const InstanceApp = lazy(() => import('./pages/instance/InstanceApp'));
 const Login       = lazy(() => import('./pages/Login'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Invitation = lazy(() => import('./pages/Invitation'));
+const Approval = lazy(() => import('./pages/Approval'));
 const Installation = lazy(() => import('./pages/Installation'));
 const Pending     = lazy(() => import('./pages/Pending'));
 const GuildSelect = lazy(() => import('./pages/GuildSelect'));
@@ -188,6 +189,7 @@ export default function App() {
             <Route path="/installation" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Installation /></ErrorBoundary></Suspense>} />
             <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><ResetPassword /></ErrorBoundary></Suspense>} />
             <Route path="/invitation" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Invitation /></ErrorBoundary></Suspense>} />
+            <Route path="/validation" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Approval /></ErrorBoundary></Suspense>} />
             <Route path="/totp-verify" element={
               <RequireAuth>
                 <Suspense fallback={<PageLoader />}>

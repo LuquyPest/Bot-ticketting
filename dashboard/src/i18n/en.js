@@ -589,6 +589,24 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // Approvals (v4.2)
+  ['Validation', 'Approval'], ['Validation demandée', 'Approval requested'], ['Réponse à une validation', 'Answer to an approval'], ['Demander une validation', 'Ask for an approval'],
+  ['Le staff', 'The staff'], ['Par e-mail', 'By e-mail'], ['Choisir une personne…', 'Choose a person…'], ['Personne qui valide', 'Person who approves'], ['Qui doit valider', 'Who must approve'],
+  ['Adresse e-mail de la personne qui valide', 'E-mail address of the person who approves'], ['Nom de la personne qui valide', 'Name of the person who approves'],
+  ['Ce qui doit être validé (remboursement de 120 €, accès exceptionnel…)', 'What must be approved (refund of €120, exceptional access…)'], ['Ce qui doit être validé', 'What must be approved'],
+  ['Une fois accordée : statut inchangé', 'Once granted: status unchanged'], ['Statut une fois accordée', 'Status once granted'], ['Demander', 'Ask'],
+  ['Accorder', 'Grant'], ['Refuser', 'Refuse'], ['Relancer', 'Remind'], ['Commentaire de la décision', 'Comment on the decision'], ['Commentaire (facultatif)', 'Comment (optional)'],
+  ['Refusée', 'Refused'], ['Annulée', 'Cancelled'], ['Validation accordée', 'Approval granted'], ['Validation refusée', 'Approval refused'],
+  ['Relance envoyée', 'Reminder sent'], ['Demande annulée', 'Request cancelled'], ['Validation relancée', 'Approval reminded'], ['Validation annulée', 'Approval cancelled'],
+  ['Donner mon accord', 'Give my approval'], ['Une seule réponse est possible. Ce lien ne donne accès à rien d\'autre.', 'Only one answer is possible. This link gives access to nothing else.'],
+  ['Merci, ton accord a été transmis à l\'équipe.', 'Thank you, your approval was passed on to the team.'], ['Merci, ton refus a été transmis à l\'équipe.', 'Thank you, your refusal was passed on to the team.'],
+  ['Lien incomplet', 'Incomplete link'], ['Lien introuvable', 'Link not found'], ['Ce lien a expiré ou a déjà servi', 'This link expired or was already used'],
+  ['Explique ce qui doit être validé', 'Explain what must be approved'], ['Une validation est déjà en attente sur ce ticket', 'An approval is already pending on this ticket'],
+  ['Seul le staff de l\'espace peut valider depuis le dashboard', 'Only the space\'s staff can approve from the dashboard'], ['Un ticket confidentiel ne peut être validé que par un fondateur', 'A confidential ticket can only be approved by a founder'],
+  ['Cette personne ne peut pas voir le ticket', 'This person cannot see the ticket'], ['Demande l\'accord de quelqu\'un d\'autre que toi', 'Ask someone other than yourself'],
+  ['Un ticket confidentiel ne peut pas être envoyé à l\'extérieur', 'A confidential ticket cannot be sent outside'], ['L\'e-mail de l\'instance n\'est pas configuré (Instance → Santé)', 'The instance e-mail is not set up (Instance → Health)'],
+  ['Cette validation a déjà reçu une réponse', 'This approval already has an answer'], ['Une relance par heure au plus', 'One reminder per hour at most'], ['Seule la personne sollicitée peut répondre', 'Only the person asked can answer'],
+  ['Seule la personne qui a demandé, ou un fondateur, peut annuler', 'Only the person who asked, or a founder, can cancel'], ['Validation introuvable', 'Approval not found'], ['Décision invalide', 'Invalid decision'],
   // Categories as a tree (v4.2)
   ['Catégories et sous-catégories', 'Categories and sub-categories'],
   ['Proposées avant la création du ticket (sur Discord : la catégorie, puis la sous-catégorie). Une sous-catégorie hérite des règles, champs, formulaire, procédures, équipe et délai de sa catégorie. Le délai remplace celui de chaque étape qui en a un. Laisse vide pour ne rien proposer.', 'Offered before the ticket is created (on Discord: the category, then the sub-category). A sub-category inherits the rules, fields, form, procedures, team and deadline of its category. The deadline replaces that of each stage that has one. Leave empty to offer nothing.'],
@@ -719,6 +737,8 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  [' · demandée à {} par {}', ' · asked of {1} by {2}'], ['Une fois accordée : passe en « {} »', 'Once granted: moves to « {1} »'], ['Une fois accordée : {}', 'Once granted: {1}'], ['{} relance(s)', '{1} reminder(s)'],
+  ['{} ({}) demande ton accord sur le ticket #{}{}.', '{1} ({2}) asks for your approval on ticket #{3}{4}.'], ['{} demande ton accord sur le ticket #{}{}', '{1} asks for your approval on ticket #{2}{3}'], ['{} a accordé la validation du ticket #{}', '{1} granted the approval of ticket #{2}'], ['{} a refusé la validation du ticket #{}', '{1} refused the approval of ticket #{2}'], ['{} relances au plus', '{1} reminders at most'],
   ['{} h (catégorie)', '{1} h (category)'], ['Délai de « {} » (heures)', 'Deadline of « {1} » (hours)'], ['Nouvelle sous-catégorie de {}', 'New sub-category of {1}'], ['Ajouter la sous-catégorie à {}', 'Add the sub-category to {1}'], ['Retirer « {} » et ses {} sous-catégorie(s) ?', 'Remove « {1} » and its {2} sub-category(ies)?'], ['Retirer le sujet {}', 'Remove the subject {1}'],
   ['Catégorie absente pour « {} » : ajoute d\'abord « {} »', 'Category missing for « {1} »: first add « {2} »'], ['Deux niveaux au plus : {}', 'Two levels at most: {1}'], ['Sujet en double : {}', 'Duplicate subject: {1}'], ['{} sujets au plus', '{1} subjects at most'], ['{} catégories au plus', '{1} categories at most'], ['Délai pour un sujet inconnu : {}', 'Deadline for an unknown subject: {1}'], ['Sous-catégorie incomplète : {}', 'Incomplete sub-category: {1}'],
   ['Équipe {}', 'Team {1}'], ['Équipe {} : attribué automatiquement', 'Team {1}: assigned automatically'], ['Ticket confié à l\'équipe {}', 'Ticket given to the team {1}'], ['Supprimer l\'équipe « {} » ? Ses tickets restent, sans équipe.', 'Delete the team « {1} »? Its tickets stay, without a team.'], ['Supprimer l\'équipe {}', 'Delete the team {1}'], ['{} équipes au plus', '{1} teams at most'],
