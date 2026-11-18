@@ -1,12 +1,12 @@
 ---
 layout: home
 title: Datick
-titleTemplate: Discord support through direct messages
+titleTemplate: A complete, self-hosted ticketing system
 
 hero:
   name: Datick
-  text: Discord support through direct messages.
-  tagline: Members DM the bot, your team answers from Discord or from a real-time web dashboard. You host it yourself, plug in your own Discord bot, and it depends on no one.
+  text: A complete ticketing system.
+  tagline: Discord, e-mail, web form, API — every request becomes a ticket, and your team handles them all from one real-time dashboard. You host it yourself, and it depends on no one. Discord is one channel among others, and it is optional.
   image:
     src: /images/dashboard.png
     alt: Datick dashboard
@@ -25,30 +25,30 @@ hero:
       link: https://github.com/LuquyPest/datick
 
 features:
-  - title: Tickets in direct messages
-    details: Subjects, forms, FAQ suggested before opening, private channel or thread for the staff, transcripts and rating when the ticket closes.
+  - title: All your channels, one tool
+    details: Discord direct messages and panels, support e-mail addresses, web member space, a widget to paste on your site, API and webhooks. One contact card per person, whatever the channel.
+    link: /en/integrations#tickets-by-e-mail
+    linkText: The channels
+  - title: A real support tool
+    details: Categories and sub-categories, custom statuses, SLAs, teams and automatic assignment, approvals, public knowledge base, transcripts and ratings.
     link: /en/tickets
     linkText: The life of a ticket
   - title: Real-time dashboard
-    details: My queue, Kanban, full-text search, split view, internal notes, templates and macros, statistics and PDF reports.
+    details: My queue, Kanban, full-text search, split view, internal notes, templates and macros, reports by team, category and channel, CSV and PDF exports.
     link: /en/tickets#staff-side
     linkText: Staff side
   - title: Team and permissions
-    details: Grades with fine-grained rights, roles tied to tags, confidential tickets, sync with Discord roles.
+    details: Grades with fine-grained rights, teams and queues, roles tied to tags, confidential tickets, invitations by e-mail or sync with Discord roles.
     link: /en/team
     linkText: Organise the team
   - title: Yours, no middleman
-    details: Your instance, your ways to sign in (Discord, Google, Microsoft, OpenID Connect, password), encrypted backups, one-click updates.
+    details: Free software (AGPL-3.0) on your server — your ways to sign in (Discord, Google, Microsoft, OpenID Connect, password), encrypted backups, one-click updates, accessible interface (WCAG 2.1 AA).
     link: /en/instance
     linkText: The Instance section
   - title: Serious security
     details: Enforceable 2FA, encrypted secrets and transcripts, a log of every action, new-device alerts, OWASP audits fixed.
     link: /en/security
     linkText: The measures
-  - title: Free and open
-    details: AGPL-3.0 licence, documented API, webhooks, Discord panels, dashboard in English and French, member messages in six languages, accessible (WCAG 2.1 AA).
-    link: /en/integrations
-    linkText: Integrations
 ---
 
 <div class="tb-section">
@@ -61,7 +61,7 @@ features:
 
 ## Three commands
 
-<p>You need a server with Docker, a domain name and a Discord application.</p>
+<p>You need a server with Docker and a domain name. A Discord application only if you want the Discord channel.</p>
 
 <div class="tb-steps">
   <div><b>1. Get it</b><p><code>git clone</code> the repository on your server.</p></div>

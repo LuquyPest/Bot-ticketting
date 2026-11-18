@@ -2,10 +2,10 @@
 
 # Datick
 
-*Anciennement Ticket Bot.*
+**Un système de tickets complet, à héberger soi-même.**
+Discord, e-mail, formulaire web, API : chaque demande devient un ticket, traité par ton équipe depuis un seul dashboard.
 
-**Le support Discord par messages privés, piloté depuis un dashboard web.**
-Tu installes ton instance, tu branches ton bot Discord : il est à toi.
+*Anciennement Ticket Bot : depuis la v4, Discord n'est plus qu'un canal parmi d'autres, et il est facultatif.*
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -21,7 +21,16 @@ Tu installes ton instance, tu branches ton bot Discord : il est à toi.
 
 ## Comment ça marche
 
-Un membre écrit au bot en **message privé** ; sa demande devient un **ticket**, avec un salon (ou un fil) privé côté staff. Le staff répond depuis Discord ou depuis le **dashboard**, en temps réel ; le membre reçoit tout en MP et peut aussi suivre ses tickets sur un **espace web**. Un même bot sert plusieurs serveurs Discord, chacun avec sa base, ses réglages et son équipe.
+Les demandes arrivent par le canal que la personne préfère, et ton équipe les traite toutes au même endroit :
+
+| Canal | La personne… | Elle reçoit les réponses… |
+|---|---|---|
+| **Discord** | écrit au bot en message privé, ou clique sur un panel | en MP |
+| **E-mail** | écrit à ton adresse de support (plusieurs adresses possibles, chacune vers un sujet ou une équipe) | par e-mail, dans le même fil |
+| **Web** | ouvre un ticket depuis l'espace membre ou le widget collé sur ton site | par e-mail, avec un lien pour suivre et répondre |
+| **API** | — ton propre outil crée et lit les tickets (API REST documentée, webhooks) | selon ton intégration |
+
+Côté équipe, tout se passe dans le **dashboard web temps réel** : files par équipe, attribution automatique, statuts personnalisés, délais (SLA), validations, base de connaissances, rapports. Une même personne qui écrit sur Discord puis par e-mail n'a qu'**une fiche contact**. Une instance sert plusieurs **espaces** (une marque, un client, un serveur Discord…), chacun avec sa base, ses réglages et son équipe — un espace peut exister **sans aucun serveur Discord**.
 
 <table>
   <tr>
@@ -40,17 +49,18 @@ Un membre écrit au bot en **message privé** ; sa demande devient un **ticket**
 
 ## Fonctionnalités
 
+- **Canaux** : Discord (MP, panels, salons ou fils privés, ou aucun salon), e-mail (IMAP/SMTP, plusieurs adresses routées vers un sujet ou une équipe, pièces jointes gardées), espace membre web (connexion Discord ou par lien e-mail), widget à coller sur un site, API publique (v1 et v2) et webhooks ; une fiche contact par personne, quel que soit le canal.
 - **Tickets** : sujets en catégories et sous-catégories, formulaires d'ouverture, FAQ proposée avant d'ouvrir et base de connaissances publique, priorités, étapes et statuts personnalisés, Kanban, tags, notes internes, validations (accord du staff ou d'un responsable par e-mail), modèles de réponse et macros, fusion, transcripts, notation en fin de ticket ; sur Discord en salons, en fils privés, ou sans aucun salon (tout dans le dashboard).
 - **Équipe** : grades et permissions fines, rôles rattachés à des tags (tickets visibles d'eux seuls), tickets confidentiels, équipes avec leur file et attribution automatique (tour à tour, selon la charge), file personnelle, absences, objectifs, statistiques, rapports par équipe, catégorie et canal (export CSV), rapports PDF et statistiques publiques dans un salon.
-- **Membres** : réponses en MP, commandes Discord et espace web dans leur langue — et le staff aussi dans la sienne (français, anglais, espagnol, allemand, italien, portugais) ; espace web pour suivre et ouvrir des tickets. [Aider à traduire](https://docs.bot.daryu.xyz/guide/traduire).
+- **Demandeurs** : réponses en MP, par e-mail ou sur l'espace web, dans leur langue — et le staff aussi dans la sienne (français, anglais, espagnol, allemand, italien, portugais) ; espace web pour suivre et ouvrir des tickets. [Aider à traduire](https://docs.bot.daryu.xyz/guide/traduire).
 - **Automatismes** : rappels, escalade, inactivité, délais par étape (SLA), messages programmés, rapport hebdomadaire et mensuel, incidents annoncés aux membres.
-- **Intégrations** : tickets par e-mail (IMAP/SMTP, plusieurs adresses routées vers un sujet ou une équipe, pièces jointes gardées), widget web à coller sur un site, API publique documentée (v1 et v2), webhooks sortants, panels Discord à boutons, notifications push, reprise des tickets ouverts d'un autre bot (Ticket Tool, Tickets…).
+- **Intégrations** : webhooks sortants, notifications push, export et import de configuration, reprise des tickets ouverts d'un autre bot Discord (Ticket Tool, Tickets…).
 - **Sécurité** : 2FA (imposable par serveur), transcripts et secrets chiffrés, journal de toutes les actions, alerte de nouvel appareil, allowlist IP, déconnexion après inactivité.
-- **Instance** : réservée au propriétaire du bot (le propriétaire de l'application Discord) — serveurs, fondateurs, santé, erreurs et alertes, journal, sauvegardes vérifiées, mise à jour en un clic, métriques Prometheus, moyens de connexion (Discord, Google, Microsoft, OpenID Connect, e-mail et mot de passe).
+- **Instance** : réservée à son propriétaire — espaces (avec ou sans Discord), fondateurs, santé, erreurs et alertes, journal, sauvegardes vérifiées, mise à jour en un clic, métriques Prometheus, moyens de connexion (Discord, Google, Microsoft, OpenID Connect, e-mail et mot de passe).
 
 ## Installer
 
-Il faut un serveur avec Docker, un nom de domaine et une [application Discord](https://discord.com/developers/applications).
+Il faut un serveur avec Docker et un nom de domaine. Une [application Discord](https://discord.com/developers/applications) n'est utile que si tu veux le canal Discord.
 
 ```bash
 git clone https://github.com/LuquyPest/datick.git && cd datick
@@ -58,7 +68,7 @@ scripts/setup.sh                              # quelques questions (FR ou EN) �
 docker compose pull && docker compose up -d
 ```
 
-Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'application et invite le bot : le serveur est prêt dès son arrivée, et `/setup` sur Discord règle l'essentiel en trois clics. Avec Portainer, Coolify, Unraid ou CasaOS : [un seul fichier compose](https://docs.bot.daryu.xyz/guide/outils). Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://docs.bot.daryu.xyz/guide/installation)** (*[English](https://docs.bot.daryu.xyz/en/installation)*).
+Ensuite, ouvre ton domaine : connecte-toi avec le compte Discord propriétaire de l'application, ou, sans Discord, crée le compte propriétaire sur la page d'installation dont `setup.sh` t'a donné l'adresse. Crée un espace (Instance → Serveurs), branche une adresse e-mail ou colle le widget sur ton site ; avec Discord, invite le bot et le serveur est prêt dès son arrivée (`/setup` règle l'essentiel en trois clics). Avec Portainer, Coolify, Unraid ou CasaOS : [un seul fichier compose](https://docs.bot.daryu.xyz/guide/outils). Le guide pas à pas, du portail Discord au premier ticket : **[le guide d'installation](https://docs.bot.daryu.xyz/guide/installation)** (*[English](https://docs.bot.daryu.xyz/en/installation)*).
 
 | | |
 |---|---|
@@ -69,7 +79,7 @@ Ensuite, connecte-toi sur ton domaine avec le compte Discord propriétaire de l'
 
 ## Développer
 
-Node 22, discord.js 14, Express 5, MariaDB 11 (une base par serveur Discord), Redis 7, React 19, Vite, Tailwind 4.
+Node 22, discord.js 14, Express 5, MariaDB 11 (une base par espace), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
 npm run test:integration                                  # 1302 vérifications sur MariaDB + Redis jetables
