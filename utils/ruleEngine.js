@@ -12,7 +12,10 @@ const { matchesSubject, norm } = require('./subjectMatch');
 const { CONFIDENTIAL } = require('./gradePermissions');
 const logger = require('./logger');
 
-const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority'];
+const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority', 'time'];
+// « When time passes » (utils/ruleTimers.js): so long after (or before) a moment of the ticket
+const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'tto_due', 'ttr_due'];
+const DUE_BASES = ['tto_due', 'ttr_due'];
 const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language'];
 const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close'];
 const PRIORITIES = ['low', 'normal', 'urgent'];
@@ -33,6 +36,7 @@ const shape = r => ({
   id: r.id, name: r.name, position: r.position, active: !!Number(r.active), origin: r.origin || null,
   triggers: parseJsonField(r.triggers, []), match: r.match_mode === 'any' ? 'any' : 'all',
   conditions: parseJsonField(r.conditions, []), actions: parseJsonField(r.actions, []), stop: !!Number(r.stop_after),
+  timer: parseJsonField(r.timer, null),
 });
 async function listRules(db) {
   return (await db('SELECT * FROM ticket_rules ORDER BY position, id').catch(() => [])).map(shape);
@@ -109,6 +113,17 @@ async function cleanRule(db, input = {}, { canGrade = false } = {}) {
   if (!name) return { error: 'Nom de la règle requis (80 caractères au plus)' };
   const triggers = [...new Set(Array.isArray(input.triggers) ? input.triggers : [])].filter(t => TRIGGERS.includes(t));
   if (!triggers.length) return { error: 'Choisis quand la règle s\'applique' };
+  let timer = null;
+  if (triggers.includes('time')) {
+    if (triggers.length > 1) return { error: '« Le temps passe » ne se combine pas avec un autre déclencheur' };
+    const t = input.timer || {};
+    const minutes = Number(t.minutes);
+    if (!TIMER_BASES.includes(t.basis)) return { error: 'Point de départ du délai invalide' };
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 365 * 24 * 60) return { error: 'Délai : de 1 minute à un an' };
+    const direction = t.direction === 'before' ? 'before' : 'after';
+    if (direction === 'before' && !DUE_BASES.includes(t.basis)) return { error: '« Avant » ne vaut que pour une échéance SLA' };
+    timer = { basis: t.basis, minutes, direction, businessHours: t.businessHours !== false };
+  }
   const conditions = [];
   for (const c of (Array.isArray(input.conditions) ? input.conditions : []).slice(0, MAX_CONDITIONS + 1)) {
     if (conditions.length >= MAX_CONDITIONS) return { error: `${MAX_CONDITIONS} conditions au plus` };
@@ -124,22 +139,22 @@ async function cleanRule(db, input = {}, { canGrade = false } = {}) {
     actions.push(r.value);
   }
   if (!actions.length) return { error: 'Choisis au moins une action' };
-  return { value: { name, triggers, match: input.match === 'any' ? 'any' : 'all', conditions, actions, stop: !!input.stop, active: input.active !== false } };
+  return { value: { name, triggers, timer, match: input.match === 'any' ? 'any' : 'all', conditions, actions, stop: !!input.stop, active: input.active !== false } };
 }
 
 async function saveRule(db, id, input, opts = {}) {
   const r = await cleanRule(db, input, opts);
   if (r.error) return r;
   const v = r.value;
-  const vals = [v.name, JSON.stringify(v.triggers), v.match, JSON.stringify(v.conditions), JSON.stringify(v.actions), v.stop ? 1 : 0, v.active ? 1 : 0];
+  const vals = [v.name, JSON.stringify(v.triggers), v.match, JSON.stringify(v.conditions), JSON.stringify(v.actions), v.stop ? 1 : 0, v.active ? 1 : 0, v.timer ? JSON.stringify(v.timer) : null];
   if (id) {
-    const res = await db('UPDATE ticket_rules SET name = ?, triggers = ?, match_mode = ?, conditions = ?, actions = ?, stop_after = ?, active = ? WHERE id = ?', [...vals, id]);
+    const res = await db('UPDATE ticket_rules SET name = ?, triggers = ?, match_mode = ?, conditions = ?, actions = ?, stop_after = ?, active = ?, timer = ? WHERE id = ?', [...vals, id]);
     if (!res.affectedRows) return { error: 'Règle introuvable', status: 404 };
     return { ok: true, id, value: v };
   }
   const [n] = await db('SELECT COUNT(*) AS n, COALESCE(MAX(position), 0) AS pos FROM ticket_rules');
   if (Number(n.n) >= MAX_RULES) return { error: `${MAX_RULES} règles au plus` };
-  const ins = await db('INSERT INTO ticket_rules (name, triggers, match_mode, conditions, actions, stop_after, active, position, origin, legacy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  const ins = await db('INSERT INTO ticket_rules (name, triggers, match_mode, conditions, actions, stop_after, active, timer, position, origin, legacy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [...vals, Number(n.pos) + 1, opts.origin || null, opts.legacy ? JSON.stringify(opts.legacy) : null]);
   return { ok: true, id: ins.insertId, value: v };
 }
@@ -318,9 +333,9 @@ async function apply(env, a, rule) {
 
 // ── Running the rules for one event ──
 // trigger: TRIGGERS; actor: who caused the event (a rule → nothing runs); message: the text written
-async function runRules({ db, client, guildId, ticketId, trigger, actor = null, message = '', address = null, tm = null }) {
+async function runRules({ db, client, guildId, ticketId, trigger, actor = null, message = '', address = null, tm = null, only = null }) {
   if (actor?.source === 'rule' || !TRIGGERS.includes(trigger)) return [];
-  const rules = (await listRules(db)).filter(r => r.active && r.triggers.includes(trigger));
+  const rules = only || (await listRules(db)).filter(r => r.active && r.triggers.includes(trigger));
   if (!rules.length) return [];
   const env = { db, client, guildId, ticketId, tm };
   const applied = [];
@@ -367,4 +382,4 @@ async function testRule(db, guildId, input, ticketId, { message = '' } = {}) {
   return { ok: true, matched, conditions: results, actions: matched ? r.value.actions.map(a => DESCRIBE[a.type](a.value)) : [] };
 }
 
-module.exports = { TRIGGERS, FIELDS, ACTIONS, RULE_ACTOR, MAX_RULES, MAX_EVENT_ACTIONS, matchesKeywords, listRules, cleanRule, saveRule, deleteRule, reorderRules, runRules, emit, testRule, evaluate, contextOf };
+module.exports = { TIMER_BASES, DUE_BASES, TRIGGERS, FIELDS, ACTIONS, RULE_ACTOR, MAX_RULES, MAX_EVENT_ACTIONS, matchesKeywords, listRules, cleanRule, saveRule, deleteRule, reorderRules, runRules, emit, testRule, evaluate, contextOf };

@@ -30,11 +30,19 @@ Toutes les tâches planifiées passent par **BullMQ** (Redis) : chacune ne s'ex�
 
 | | |
 |---|---|
-| **Quand** | Un ticket est ouvert · le demandeur écrit · le staff répond · le statut change · la priorité change (un ou plusieurs) |
+| **Quand** | Un ticket est ouvert · le demandeur écrit · le staff répond · le statut change · la priorité change (un ou plusieurs) · **le temps passe** (voir ci-dessous) |
 | **Si** (toutes, ou au moins une) | Canal (Discord, e-mail, web) · adresse de réception · type · sujet (une catégorie couvre ses sous-catégories) · mots dans le message · demandeur (adresse, domaine `@client.fr`, nom) · priorité · statut · tag · horaires (support ouvert ou fermé) · langue du demandeur ; chaque condition peut être inversée (« n'est pas ») |
 | **Alors** | Priorité · urgence et impact · type · sujet · équipe · attribuer à une personne · ajouter ou retirer un tag · statut · restreindre à un grade · observateurs · prévenir des membres du staff · réponse automatique au demandeur · note interne · webhook · fermer |
 
 Les règles passent **dans l'ordre** de la liste (flèches) ; **« arrêter après cette règle »** empêche les suivantes. Chaque règle appliquée est notée au **journal du ticket** (« règle *Clients VIP* appliquée : priorité urgente, tag VIP »). **Tester** montre, sur un ticket existant, quelles conditions sont remplies et ce que la règle ferait, sans rien changer.
+
+### Quand le temps passe
+
+Une règle peut agir **un certain temps après** un moment du ticket : son ouverture, son dernier changement de statut, le dernier message du demandeur, la dernière réponse du staff, la dernière activité ; ou **avant / après une échéance SLA** (prise en charge, résolution). Le délai se compte en **heures ouvrées** du calendrier du ticket (son équipe, sinon l'espace) ou en heures pleines.
+
+Exemples : « 48 h ouvrées après la dernière réponse du staff, si le statut est *En attente* : réponse automatique *As-tu pu essayer ?* » ; « 1 h avant l'échéance de résolution : prévenir le responsable ». La vérification tourne toutes les 5 minutes. Une règle ne joue **qu'une fois** par ticket et par moment : une nouvelle réponse ou un nouveau statut relance le compte. Une échéance SLA en pause (attente du demandeur) ou déjà tenue ne déclenche rien.
+
+L'inactivité et l'escalade des tickets urgents (**Paramètres → Tickets**) gardent leurs réglages propres.
 
 Garde-fous : une modification faite par une règle ne relance pas les règles (pas de boucle) ; 50 actions au plus par événement ; restreindre à un grade demande aussi la permission **Gérer les grades** ; une règle ne lève jamais un ticket confidentiel, ne le change pas d'équipe et ne prévient que du staff qui le voit.
 

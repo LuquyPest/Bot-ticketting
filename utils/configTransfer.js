@@ -72,7 +72,7 @@ async function exportRules(db, { tagName, gradeName, stageLabel }) {
   const teamName = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.id, t.name]));
   const stage = v => stageLabel.get(v) ? { stageLabel: stageLabel.get(v) } : { value: v };
   return (await require('./ruleEngine').listRules(db)).filter(r => r.origin !== 'subject').map(r => ({
-    name: r.name, active: r.active, triggers: r.triggers, match: r.match, stop: r.stop,
+    name: r.name, active: r.active, triggers: r.triggers, timer: r.timer, match: r.match, stop: r.stop,
     conditions: r.conditions.map(c => (c.field === 'tag' ? { ...c, values: c.values.map(id => tagName.get(Number(id))).filter(Boolean) }
       : c.field === 'stage' ? { ...c, values: c.values.map(v => stageLabel.get(v) || v) } : c)),
     actions: r.actions.filter(a => !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagName.get(a.value) || null }

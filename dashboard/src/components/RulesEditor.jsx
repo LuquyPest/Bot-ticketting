@@ -6,7 +6,9 @@ import { useStages } from '../hooks/useStages';
 
 // Paramètres → Règles (v5.2): WHEN · IF · THEN, in order (utils/ruleEngine.js)
 const INPUT = 'bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary';
-const TRIGGERS = [['created', 'Un ticket est ouvert'], ['member_reply', 'Le demandeur écrit'], ['staff_reply', 'Le staff répond'], ['stage', 'Le statut change'], ['priority', 'La priorité change']];
+const TRIGGERS = [['created', 'Un ticket est ouvert'], ['member_reply', 'Le demandeur écrit'], ['staff_reply', 'Le staff répond'], ['stage', 'Le statut change'], ['priority', 'La priorité change'], ['time', 'Le temps passe']];
+const BASES = [['created', 'l\'ouverture'], ['stage', 'le dernier changement de statut'], ['last_member', 'le dernier message du demandeur'], ['last_staff', 'la dernière réponse du staff'],
+  ['last_activity', 'la dernière activité'], ['tto_due', 'l\'échéance de prise en charge'], ['ttr_due', 'l\'échéance de résolution']];
 const FIELDS = [['channel', 'Canal'], ['address', 'Adresse de réception'], ['type', 'Type'], ['subject', 'Sujet'], ['text', 'Mots dans le message'], ['requester', 'Demandeur'],
   ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur']];
 const ACTIONS = [['priority', 'Priorité'], ['urgency', 'Urgence'], ['impact', 'Impact'], ['type', 'Type'], ['subject', 'Sujet'], ['team', 'Équipe'], ['assign', 'Attribuer à'],
@@ -81,10 +83,32 @@ function ActionRow({ a, ctx, onChange, onRemove }) {
   );
 }
 
+const TIMER = { basis: 'last_staff', minutes: 2880, direction: 'after', businessHours: true };
+function TimerFields({ timer, onChange }) {
+  const set = (k, v) => onChange({ ...timer, [k]: v });
+  const due = ['tto_due', 'ttr_due'].includes(timer.basis);
+  const h = Math.floor(timer.minutes / 60), m = timer.minutes % 60;
+  const setDur = (hh, mm) => set('minutes', Math.max(1, (parseInt(hh) || 0) * 60 + (parseInt(mm) || 0)));
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-2 bg-overlay/2.5 rounded-lg px-2 py-1.5">
+      <input type="number" min={0} max={8760} value={h} onChange={e => setDur(e.target.value, m)} aria-label="Délai : heures" className={`${INPUT} w-16`} /> h
+      <input type="number" min={0} max={59} value={m} onChange={e => setDur(h, e.target.value)} aria-label="Délai : minutes" className={`${INPUT} w-14`} /> min
+      <select value={due ? timer.direction : 'after'} onChange={e => set('direction', e.target.value)} disabled={!due} aria-label="Avant ou après" className={INPUT}>
+        <option value="after">après</option><option value="before">avant</option>
+      </select>
+      <select value={timer.basis} onChange={e => onChange({ ...timer, basis: e.target.value, direction: ['tto_due', 'ttr_due'].includes(e.target.value) ? timer.direction : 'after' })} aria-label="Point de départ" className={INPUT}>
+        {BASES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+      <label className="inline-flex items-center gap-1"><input type="checkbox" checked={timer.businessHours} onChange={e => set('businessHours', e.target.checked)} className="accent-primary" />en heures ouvrées</label>
+      <span className="w-full text-[11px] text-ink-4">Vérifié toutes les 5 minutes ; une fois par ticket, puis à nouveau si le point de départ change (nouvelle réponse, nouveau statut).</span>
+    </div>
+  );
+}
+
 // Numbers stay numbers for the server (ids, levels)
 const NUMERIC = ['urgency', 'impact', 'team', 'tagAdd', 'tagRemove', 'grade'];
 const bodyOf = r => ({
-  name: r.name, triggers: r.triggers, match: r.match, stop: r.stop, active: r.active, conditions: r.conditions,
+  name: r.name, triggers: r.triggers, match: r.match, stop: r.stop, active: r.active, conditions: r.conditions, timer: r.triggers.includes('time') ? r.timer : null,
   actions: r.actions.map(a => (NUMERIC.includes(a.type) && a.value !== '' ? { ...a, value: Number(a.value) } : a)),
 });
 
@@ -103,7 +127,12 @@ function RuleForm({ initial, ctx, busy, onSave, onDelete, onMove }) {
         <label className="flex items-center gap-1.5 text-xs text-ink-2"><input type="checkbox" checked={r.active} onChange={e => set('active', e.target.checked)} className="accent-primary" />Active</label>
         {onMove && <><button type="button" onClick={() => onMove(-1)} aria-label="Monter" className="p-1 text-ink-3 hover:text-ink-1"><ArrowUp size={12} /></button><button type="button" onClick={() => onMove(1)} aria-label="Descendre" className="p-1 text-ink-3 hover:text-ink-1"><ArrowDown size={12} /></button></>}
       </div>
-      <div className="space-y-1"><p className="text-[11px] font-semibold text-ink-3">Quand</p><Chips options={TRIGGERS} value={r.triggers} onChange={v => set('triggers', v)} label="Déclencheurs" /></div>
+      <div className="space-y-1"><p className="text-[11px] font-semibold text-ink-3">Quand</p>
+        {/* « Le temps passe » is a trigger of its own */}
+        <Chips options={TRIGGERS} value={r.triggers} label="Déclencheurs"
+          onChange={v => set('triggers', v.includes('time') && !r.triggers.includes('time') ? ['time'] : v.filter(x => x !== 'time' || v.length === 1))} />
+        {r.triggers.includes('time') && <TimerFields timer={r.timer || TIMER} onChange={v => set('timer', v)} />}
+      </div>
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold text-ink-3 flex items-center gap-2">Si
           <select value={r.match} onChange={e => set('match', e.target.value)} aria-label="Toutes ou au moins une condition" className={`${INPUT} font-normal`}>
