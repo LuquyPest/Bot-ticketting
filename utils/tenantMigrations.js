@@ -576,6 +576,16 @@ const MIGRATIONS = [
     // Off for the existing spaces (nothing changes); on for a space created without Discord
     statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS portal_email_open TINYINT(1) NOT NULL DEFAULT 0'],
   },
+  {
+    version: 41,
+    name: 'Widget web : formulaire de ticket à intégrer sur un site (v4.1)',
+    // Off everywhere; the public token is created when a founder turns the widget on
+    statements: [
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_enabled TINYINT(1) NOT NULL DEFAULT 0',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_token VARCHAR(64) DEFAULT NULL',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_origins TEXT DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

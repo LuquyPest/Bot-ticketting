@@ -66,6 +66,23 @@ L'espace utilisé s'affiche, avec **Appliquer la conservation maintenant** et **
 Par sécurité, les serveurs IMAP et SMTP doivent avoir une adresse publique (le bot ne se connecte jamais à une adresse interne choisie depuis le dashboard). Pour un serveur mail chez toi, `EMAIL_ALLOW_PRIVATE_HOSTS=true` dans `.env`.
 :::
 
+## Widget web
+
+Un formulaire de ticket à coller sur **ton site**, pour les personnes sans compte Discord. **Paramètres → Intégrations → Widget web** :
+
+1. Coche **Activer le widget**. Indique éventuellement les **sites autorisés** à l'afficher (un par ligne, `https://exemple.com`) ; vide, n'importe quel site peut l'afficher.
+2. **Enregistrer** donne le code à coller avant la fin de la balise `<body>` :
+
+   ```html
+   <script src="https://ton-domaine/widget.js" data-datick-widget="…" async></script>
+   ```
+
+   Un bouton **Support** apparaît en bas à droite et ouvre le formulaire. Options : `data-label` (texte du bouton), `data-color` (`#5865f2`), `data-lang` (`fr`, `en`, `es`, `de`, `it`, `pt` ; sinon la langue du navigateur), `data-mode="inline"` (le formulaire s'affiche à l'endroit du code, hauteur réglable avec `data-height`).
+
+La personne donne son nom (facultatif), son **adresse e-mail**, le sujet si l'espace en propose, et son message. Le ticket est le sien comme pour l'[espace membre](./espace-membre) sans Discord : la confirmation et les réponses du staff lui arrivent par l'[e-mail de l'instance](./instance#e-mail-de-l-instance), avec le lien pour suivre et répondre dans l'espace membre. **Sans e-mail de l'instance, le formulaire reste indisponible.** Les champs personnalisés et le formulaire d'intake ne sont pas demandés par le widget.
+
+**Anti-spam**, sans service tiers : un champ caché que seuls les robots remplissent, au moins 3 secondes entre l'ouverture du formulaire et l'envoi (heure signée, valable 2 heures), **5 envois par heure et par adresse IP**, **3 par adresse e-mail**, 60 nouveaux tickets web par heure pour l'espace, la limite de tickets par jour de l'espace et la blacklist. **Nouveau code** invalide le code déjà collé (en cas d'abus) ; chaque modification est au journal.
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ, modèles, règles, procédures) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

@@ -3675,6 +3675,104 @@ async function main() {
     await db('DELETE FROM contacts WHERE id IN (SELECT contact_id FROM contact_identities WHERE value IN (?))', [[WID, MAILW]]);
   }
 
+  // ── Web widget (utils/webWidget.js, routes/widget.js, v4.1) ──
+  {
+    let ip = 0;
+    const H = () => ({ 'X-Forwarded-For': `10.20.${Math.floor(ip / 200)}.${ip++ % 200}` });
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const mails = [];
+    nodemailer.createTransport = () => ({ sendMail: async x => { mails.push(x); return {}; }, close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const ww = app('./utils/webWidget');
+    const web = app('./utils/webRequesters');
+    const [cfgX] = await db('SELECT ticket_subjects, max_tickets_per_day FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_subjects = '[]', max_tickets_per_day = 10 WHERE id = 1");
+    const A1 = 'widget1@example.com', A2 = 'widget2@example.com';
+    const O1 = web.webOwnerIdFor(A1), O2 = web.webOwnerIdFor(A2);
+    const old = () => ww.stamp(G, Date.now() - 5000);
+    const send = (token, body, headers = H()) => req('POST', `/api/widget/${token}/tickets`, { headers, body: { name: 'Camille', email: A1, message: 'Ma commande n est pas arrivée', t: old(), ...body } });
+
+    r = await req('GET', '/api/widget-settings', { sid: sessions.F });
+    check('widget: coupé par défaut, sans code', r.status === 200 && r.body.enabled === false && r.body.token === null, JSON.stringify(r.body));
+    r = await req('GET', '/api/widget-settings', { sid: sessions.S1 });
+    check('widget: réglages réservés aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: true, origins: 'javascript:alert(1)' } });
+    check('widget: adresse de site invalide refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: true, origins: 'https://site.example.test/\nhttps://autre.example.test' } });
+    const TOK = r.body.token;
+    check('widget: activé → code public rattaché à l espace et code à coller', r.status === 200 && r.body.enabled && ww.TOKEN_RE.test(TOK || '') && TOK.startsWith(`${G}.`) && r.body.snippet.includes('/widget.js') && r.body.snippet.includes(TOK) && r.body.origins.length === 2, JSON.stringify(r.body));
+    check('widget: réglage au journal de l espace', (await db("SELECT id FROM audit_log WHERE action = 'widget_settings'")).length >= 1, '');
+
+    r = await req('GET', '/widget.js');
+    check('widget: script public, chargeable depuis un autre site', r.status === 200 && /javascript/.test(r.headers['content-type']) && r.headers['cross-origin-resource-policy'] === 'cross-origin' && String(r.body).includes('data-datick-widget'), JSON.stringify(r.headers));
+    r = await req('GET', `/widget/${TOK}`);
+    check('widget: sans e-mail de l instance → formulaire indisponible', r.status === 404 && /pas disponible/.test(String(r.body)), r.status);
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    r = await req('GET', `/widget/${TOK}`, { headers: { 'Accept-Language': 'en' } });
+    const csp = r.headers['content-security-policy'] || '';
+    const fresh = (String(r.body).match(/name="t" value="([^"]+)"/) || [])[1];
+    check('widget: formulaire intégrable seulement par les sites autorisés', r.status === 200 && csp.includes('frame-ancestors https://site.example.test https://autre.example.test') && !r.headers['x-frame-options'] && /script-src 'nonce-/.test(csp), JSON.stringify([r.status, csp, r.headers['x-frame-options']]));
+    check('widget: formulaire dans la langue du visiteur, avec champ piège et heure signée', String(r.body).includes('Contact us') && String(r.body).includes('name="website"') && !!fresh, String(r.body).slice(0, 200));
+    r = await req('GET', `/widget/${G}.mauvaiscodemauvaiscodemauvais`);
+    check('widget: code inconnu → indisponible', r.status === 404, r.status);
+
+    r = await send(TOK, { t: fresh });
+    check('widget: envoi trop rapide après l ouverture → refusé', r.status === 400 && /rapide/.test(r.body.error), JSON.stringify(r.body));
+    r = await send(TOK, { t: `${Date.now() - 5000}.falsifie` });
+    check('widget: heure falsifiée → refusée', r.status === 400, JSON.stringify(r.body));
+    r = await send(TOK, { t: ww.stamp(G, Date.now() - 3 * 3600 * 1000) });
+    check('widget: formulaire trop ancien → refusé', r.status === 400 && /expiré/.test(r.body.error), JSON.stringify(r.body));
+    r = await send(TOK, { website: 'http://spam.example.test' });
+    const [botT] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [O1]);
+    check('widget: champ piège rempli → réponse normale, aucun ticket', r.status === 200 && Number(botT.n) === 0, JSON.stringify([r.body, botT]));
+    r = await send(TOK, { email: 'pas-une-adresse' });
+    check('widget: adresse invalide refusée', r.status === 400, JSON.stringify(r.body));
+    r = await send(TOK, { message: '' });
+    check('widget: message vide refusé', r.status === 400, JSON.stringify(r.body));
+
+    mails.length = 0;
+    r = await send(TOK, {});
+    const [wt] = await db('SELECT id, owner_id, status FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [O1]);
+    const [wc] = await db('SELECT address FROM email_contacts WHERE owner_id = ?', [O1]);
+    check('widget: ouverture depuis le widget → ticket du demandeur web, adresse gardée', r.status === 200 && r.body.ok && !!wt && wt.status === 'open' && wc?.address === A1, JSON.stringify([r.body, wt, wc]));
+    check('widget: confirmation envoyée par l e-mail de l instance avec le lien de suivi', mails.some(m => m.to === A1 && /\/espace/.test(m.text || '')), JSON.stringify(mails.map(m => [m.to, (m.text || '').slice(0, 120)])));
+
+    // Limits: 3 per address and per hour, 5 per IP and per hour
+    const byAddr = [];
+    for (let i = 0; i < 3; i++) byAddr.push((await send(TOK, { message: `relance ${i}` })).status);
+    check('widget: limité par adresse e-mail', byAddr.at(-1) === 429, byAddr.join());
+    const sameIp = { 'X-Forwarded-For': '10.21.0.1' };
+    const byIp = [];
+    for (let i = 0; i < 6; i++) byIp.push((await send(TOK, { email: `ip${i}@example.com` }, sameIp)).status);
+    check('widget: limité par adresse IP', byIp.slice(0, 5).every(s => s !== 429) && byIp[5] === 429, byIp.join());
+    await db("INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag) VALUES (?, 'widget2', 'test', '1', 'F')", [O2]);
+    r = await send(TOK, { email: A2 });
+    check('widget: adresse en blacklist → refusée', r.status === 403, JSON.stringify(r.body));
+    await db('DELETE FROM blacklist WHERE user_id = ?', [O2]);
+
+    r = await req('POST', '/api/widget-settings/token', { sid: sessions.F });
+    const oldPage = await req('GET', `/widget/${TOK}`);
+    const oldPost = await send(TOK, { email: A2 });
+    check('widget: nouveau code → l ancien ne marche plus', r.status === 200 && r.body.token !== TOK && oldPage.status === 404 && oldPost.status === 404, JSON.stringify([r.body.token, oldPage.status, oldPost.status]));
+    await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: false, origins: '' } });
+    r = await send(r.body.token, { email: A2 });
+    check('widget: coupé → envoi refusé', r.status === 404, JSON.stringify(r.body));
+
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await db('UPDATE guild_config SET ticket_subjects = ?, max_tickets_per_day = ?, widget_enabled = 0, widget_token = NULL, widget_origins = NULL WHERE id = 1', [cfgX.ticket_subjects == null || typeof cfgX.ticket_subjects === 'string' ? cfgX.ticket_subjects : JSON.stringify(cfgX.ticket_subjects), cfgX.max_tickets_per_day]);
+    const owners = (await db("SELECT DISTINCT owner_id FROM email_contacts WHERE address LIKE 'widget%@example.com' OR address LIKE 'ip_@example.com'")).map(x => x.owner_id);
+    if (owners.length) {
+      const ids = (await db('SELECT id FROM tickets WHERE owner_id IN (?)', [owners])).map(x => x.id);
+      if (ids.length) await db('DELETE FROM ticket_notes WHERE ticket_id IN (?)', [ids]);
+      await db('DELETE FROM tickets WHERE owner_id IN (?)', [owners]);
+      await db('DELETE FROM email_contacts WHERE owner_id IN (?)', [owners]);
+      await db('DELETE FROM contacts WHERE id IN (SELECT contact_id FROM contact_identities WHERE value IN (?))', [owners]);
+    }
+  }
+
   // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
   {
     const axios = require('axios');

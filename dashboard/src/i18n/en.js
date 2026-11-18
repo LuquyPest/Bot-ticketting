@@ -589,6 +589,16 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // Web widget (v4.1)
+  ['Widget web', 'Web widget'], ['Widget web modifié', 'Web widget changed'], ['Nouveau code du widget web', 'New code of the web widget'],
+  ['Un formulaire de ticket à intégrer sur ton site, sans compte Discord. Enregistré à part.', 'A ticket form to embed on your site, without a Discord account. Saved separately.'],
+  ['L\'e-mail de l\'instance n\'est pas configuré (Instance → Santé) : le formulaire reste indisponible, puisque la confirmation et les réponses partent par e-mail.', 'The e-mail of the instance is not set up (Instance → Health): the form stays unavailable, since the confirmation and the answers go out by e-mail.'],
+  ['Activer le widget', 'Turn the widget on'], ['Sites autorisés à afficher le formulaire (un par ligne ; vide = tous)', 'Sites allowed to show the form (one per line; empty = all)'],
+  ['Nouveau code', 'New code'], ['Widget activé', 'Widget turned on'], ['Widget désactivé', 'Widget turned off'], ['Nouveau code créé', 'New code created'],
+  ['Créer un nouveau code ? Le code déjà collé sur tes sites cessera de fonctionner.', 'Create a new code? The code already pasted on your sites will stop working.'],
+  ['Colle ce code avant la fin de la balise', 'Paste this code before the end of the tag'], ['de ton site : un bouton « Support » ouvre le formulaire. Options :', 'of your site: a « Support » button opens the form. Options:'],
+  ['(texte du bouton),', '(button text),'], ['(formulaire dans la page).', '(form inside the page).'], ['Voir le formulaire', 'See the form'],
+  ['Le demandeur indique son adresse e-mail ; il reçoit une confirmation et les réponses par e-mail, et suit son ticket dans l\'espace membre. Anti-spam : champ piège, délai minimal de saisie, 5 envois par heure et par adresse IP, 3 par adresse e-mail, et la limite de tickets par jour de l\'espace.', 'The requester gives their e-mail address; they get a confirmation and the answers by e-mail, and follow their ticket in the member space. Anti-spam: trap field, minimum typing time, 5 sends per hour per IP address, 3 per e-mail address, and the space\'s daily ticket limit.'],
   // Sign-in providers (v4 PR 12): sign-in page, Profile → Sign-in, Instance → Sign-in
   ['Continuer avec', 'Continue with'], ['Relier', 'Link'], ['Délier', 'Unlink'], ['Fournisseur délié', 'Provider unlinked'],
   ['La connexion a expiré ou a été lancée depuis un autre onglet. Réessaie.', 'The sign-in expired or was started from another tab. Try again.'],
@@ -671,6 +681,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Adresse de site invalide : {} (attendu : https://exemple.com)', 'Invalid site address: {1} (expected: https://example.com)'],
   ['{} consultation(s)', '{1} view(s)'], ['Membres ({})', 'Members ({1})'], ['Tags ({})', 'Tags ({1})'],
   ['Modifier {}', 'Edit {1}'], ['Supprimer {}', 'Delete {1}'], ['Retirer {}', 'Remove {1}'], ['Ajouter un membre à {}', 'Add a member to {1}'], ['Rattacher un tag à {}', 'Attach a tag to {1}'],
   ['Supprimer le rôle « {} » ?', 'Delete the role « {1} »?'], ['{} tag(s)', '{1} tag(s)'],

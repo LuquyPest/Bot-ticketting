@@ -9,6 +9,9 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/widget-settings': { enabled: true, token: '123456789012345678.exempleexempleexemple12', origins: ['https://example.com'], mailReady: true,
+    snippet: '<script src="https://ticket.example.com/widget.js" data-datick-widget="123456789012345678.exempleexempleexemple12" async></script>',
+    url: 'https://ticket.example.com/widget/123456789012345678.exempleexempleexemple12' },
   '/api/instance/login-providers': {
     callbackBase: 'https://ticket.example.com/api/auth/oidc', discordApp: true,
     discord: { enabled: true, configured: true },
