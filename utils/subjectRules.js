@@ -1,53 +1,29 @@
-// Automatic rules by subject, applied when a ticket is created: add a tag, set a priority,
-// restrict the ticket to a grade (the Discord channel follows). The subject of the rule is
-// matched like reply templates (accents and case ignored, one contained in the other).
-const { matchesSubject, norm } = require('./subjectMatch');
-const { recordEvent } = require('./audit');
-const logger = require('./logger');
+// The simple rules by subject or by keywords (Paramètres → Tickets, before v5.2) are now rules of
+// the engine (utils/ruleEngine.js) with origin « subject »: at the opening, IF the subject (or the
+// keywords of the first message) THEN priority, tag, grade. Their simple form is kept in `legacy`
+// for web/routes/subjectRules.js and the configuration export.
+const engine = require('./ruleEngine');
 
-const RULE_ACTOR = { id: 'system', tag: 'Règle automatique', source: 'system' };
-
-const ruleLabel = r => (r.match_type === 'keyword' ? `mots-clés : ${r.keywords}` : r.subject);
-
-// Keyword rules: any of the comma-separated words or phrases found in the first message (accents
-// and case ignored, from the start of a word: « rembours » matches « remboursement », not « nonrembours »)
-const keywordList = s => String(s || '').split(',').map(k => norm(k)).filter(Boolean);
-function matchesKeywords(keywords, text) {
-  const t = ` ${norm(text).replace(/[^\p{L}\p{N}]+/gu, ' ')} `;
-  return keywordList(keywords).some(k => t.includes(` ${k.replace(/[^\p{L}\p{N}]+/gu, ' ').trim()}`));
+function legacyToRule(v) {
+  return {
+    name: (v.match_type === 'keyword' ? `Mots-clés : ${v.keywords}` : `Sujet : ${v.subject}`).slice(0, 80),
+    triggers: ['created'], match: 'all',
+    conditions: [v.match_type === 'keyword' ? { field: 'text', values: [v.keywords] } : { field: 'subject', values: [v.subject] }],
+    actions: [
+      ...(v.priority ? [{ type: 'priority', value: v.priority }] : []),
+      ...(v.tag_id ? [{ type: 'tagAdd', value: v.tag_id }] : []),
+      ...(v.visibility_grade_id ? [{ type: 'grade', value: v.visibility_grade_id }] : []),
+    ],
+    active: v.active !== false && v.active !== 0,
+  };
+}
+// v: { match_type, subject, keywords, tag_id, priority, visibility_grade_id } (already checked)
+async function createLegacy(db, v) {
+  return engine.saveRule(db, null, legacyToRule(v), { canGrade: true, origin: 'subject', legacy: v });
+}
+async function listLegacy(db) {
+  const rows = await db("SELECT id, active, legacy FROM ticket_rules WHERE origin = 'subject' ORDER BY position, id").catch(() => []);
+  return rows.map(r => ({ id: r.id, active: Number(r.active), ...(require('./jsonField').parseJsonField(r.legacy, {}) || {}) }));
 }
 
-async function applySubjectRules({ db, client, guildId, ticket, firstMessage = '' }) {
-  const rules = (await db('SELECT * FROM subject_rules WHERE active = 1 ORDER BY id').catch(() => []))
-    .filter(r => (r.match_type === 'keyword'
-      ? !!firstMessage && matchesKeywords(r.keywords, firstMessage)
-      : !!ticket?.subject && matchesSubject(r.subject, ticket.subject)));
-  if (!rules.length) return [];
-  const applied = [];
-  for (const r of rules) {
-    try {
-      if (r.priority) {
-        await db(`UPDATE tickets SET priority = ?, ${require('./priorityMatrix').LEVEL_FROM_PRIORITY_SQL} WHERE id = ?`, [r.priority, r.priority, r.priority, ticket.id]);
-        await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_priority', ticketId: ticket.id, details: { to: r.priority, rule: ruleLabel(r) } });
-        applied.push(`priority:${r.priority}`);
-      }
-      if (r.tag_id && (await db('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) SELECT ?, id FROM ticket_tags WHERE id = ?', [ticket.id, r.tag_id])).affectedRows) {
-        await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_tag_add', ticketId: ticket.id, targetType: 'tag', targetId: r.tag_id, details: { rule: ruleLabel(r) } });
-        await require('./channelVisibility').syncAfterTagChange(db, client, guildId, ticket.id, r.tag_id).catch(() => null);
-        applied.push(`tag:${r.tag_id}`);
-      }
-      // A confidential ticket stays confidential (no rule widens or narrows it)
-      if (r.visibility_grade_id && ticket.visibility_grade_id !== require('./gradePermissions').CONFIDENTIAL) {
-        await db('UPDATE tickets SET visibility_grade_id = ? WHERE id = ?', [r.visibility_grade_id, ticket.id]);
-        await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_visibility_change', ticketId: ticket.id, details: { visibility_grade_id: r.visibility_grade_id, rule: ruleLabel(r) } });
-        await require('./channelVisibility').syncTicketChannel(db, client, guildId, { ...ticket, visibility_grade_id: r.visibility_grade_id });
-        applied.push(`grade:${r.visibility_grade_id}`);
-      }
-    } catch (err) {
-      logger.error('Règle par sujet', { guildId, ticketId: ticket.id, rule: r.id, err: err.message });
-    }
-  }
-  return applied;
-}
-
-module.exports = { applySubjectRules };
+module.exports = { legacyToRule, createLegacy, listLegacy };

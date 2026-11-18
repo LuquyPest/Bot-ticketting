@@ -24,6 +24,22 @@ Toutes les tâches planifiées passent par **BullMQ** (Redis) : chacune ne s'ex�
 | **Surveillance des sauvegardes** | Toutes les heures : sauvegarde, vérification ou copie hors du serveur en échec ou en retard → MP au propriétaire |
 | **Nouvelles versions** | Chaque jour : MP au propriétaire quand une nouvelle version est publiée ([détails](./mise-a-jour)) |
 
+## Les règles automatiques
+
+**Paramètres → Règles** (fondateurs, ou la permission **Gérer les règles automatiques** d'un grade) : *quand* il arrive quelque chose à un ticket, *si* ses conditions sont remplies, *alors* la règle agit.
+
+| | |
+|---|---|
+| **Quand** | Un ticket est ouvert · le demandeur écrit · le staff répond · le statut change · la priorité change (un ou plusieurs) |
+| **Si** (toutes, ou au moins une) | Canal (Discord, e-mail, web) · adresse de réception · type · sujet (une catégorie couvre ses sous-catégories) · mots dans le message · demandeur (adresse, domaine `@client.fr`, nom) · priorité · statut · tag · horaires (support ouvert ou fermé) · langue du demandeur ; chaque condition peut être inversée (« n'est pas ») |
+| **Alors** | Priorité · urgence et impact · type · sujet · équipe · attribuer à une personne · ajouter ou retirer un tag · statut · restreindre à un grade · observateurs · prévenir des membres du staff · réponse automatique au demandeur · note interne · webhook · fermer |
+
+Les règles passent **dans l'ordre** de la liste (flèches) ; **« arrêter après cette règle »** empêche les suivantes. Chaque règle appliquée est notée au **journal du ticket** (« règle *Clients VIP* appliquée : priorité urgente, tag VIP »). **Tester** montre, sur un ticket existant, quelles conditions sont remplies et ce que la règle ferait, sans rien changer.
+
+Garde-fous : une modification faite par une règle ne relance pas les règles (pas de boucle) ; 50 actions au plus par événement ; restreindre à un grade demande aussi la permission **Gérer les grades** ; une règle ne lève jamais un ticket confidentiel, ne le change pas d'équipe et ne prévient que du staff qui le voit.
+
+Les **règles par sujet et par mots-clés** d'avant (**Paramètres → Tickets**) sont devenues des règles de ce moteur, avec le même effet ; leur formulaire simple reste, et elles passent avant celles-ci à l'ouverture. Les règles font partie de l'[export de configuration](./integrations#sauvegarde-de-la-configuration) (tags, équipes, grades et statuts par leur nom ; les personnes choisies ne sont pas exportées).
+
 ## Statistiques publiques
 
 **Paramètres → Salons → Statistiques publiques** : choisis un salon, et le bot y publie un message mis à jour toutes les heures, avec les chiffres des 30 derniers jours :

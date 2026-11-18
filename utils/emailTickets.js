@@ -422,7 +422,7 @@ async function processEmailInLang(client, guildId, mail, s, opts = {}) {
   const route = addresses.length ? await routeOf(db, mail) : null;
   const subject = route?.subject || mailSubject;
   const firstBody = route?.subject && mailSubject ? `**Objet :** ${mailSubject}\n\n${body}` : body;
-  const res = await tm.createTicket(user, firstBody, [], subject, { forceNew: true });
+  const res = await tm.createTicket(user, firstBody, [], subject, { forceNew: true, address: route?.address || s.oauth_account || s.address || null });
   if (!res?.ticket) return { skipped: 'ticket impossible' };
   if (res.created && route) {
     await db('INSERT INTO email_threads (ticket_id, via_address_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE via_address_id = VALUES(via_address_id)', [res.ticket.id, route.id]);

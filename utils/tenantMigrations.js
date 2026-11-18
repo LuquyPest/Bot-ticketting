@@ -895,6 +895,40 @@ const MIGRATIONS = [
       'UPDATE tickets SET team_since = created_at WHERE team_id IS NOT NULL AND team_since IS NULL',
     ],
   },
+  {
+    version: 59,
+    name: 'Moteur de règles : quand, si, alors ; reprise des règles par sujet et par mots-clés (v5.2)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_rules (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(80) NOT NULL,
+        position    INT NOT NULL DEFAULT 0,
+        active      TINYINT(1) NOT NULL DEFAULT 1,
+        triggers    JSON NOT NULL,
+        match_mode  VARCHAR(3) NOT NULL DEFAULT 'all',
+        conditions  JSON DEFAULT NULL,
+        actions     JSON NOT NULL,
+        stop_after  TINYINT(1) NOT NULL DEFAULT 0,
+        origin      VARCHAR(16) DEFAULT NULL,
+        legacy      JSON DEFAULT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // Same effect: at the opening, the subject (one contained in the other, a category covers
+      // its sub-categories) or the keywords of the first message; priority, tag, grade
+      `INSERT INTO ticket_rules (name, position, active, triggers, match_mode, conditions, actions, origin, legacy)
+       SELECT LEFT(IF(match_type = 'keyword', CONCAT('Mots-clés : ', keywords), CONCAT('Sujet : ', subject)), 80), id, active, '["created"]', 'all',
+              IF(match_type = 'keyword', JSON_ARRAY(JSON_OBJECT('field', 'text', 'not', false, 'values', JSON_ARRAY(keywords))),
+                                         JSON_ARRAY(JSON_OBJECT('field', 'subject', 'not', false, 'values', JSON_ARRAY(subject)))),
+              CONCAT('[', CONCAT_WS(',',
+                IF(priority IS NULL, NULL, JSON_OBJECT('type', 'priority', 'value', priority)),
+                IF(tag_id IS NULL, NULL, JSON_OBJECT('type', 'tagAdd', 'value', tag_id)),
+                IF(visibility_grade_id IS NULL, NULL, JSON_OBJECT('type', 'grade', 'value', visibility_grade_id))), ']'),
+              'subject',
+              JSON_OBJECT('match_type', COALESCE(match_type, 'subject'), 'subject', subject, 'keywords', keywords, 'tag_id', tag_id, 'priority', priority, 'visibility_grade_id', visibility_grade_id)
+       FROM subject_rules WHERE priority IS NOT NULL OR tag_id IS NOT NULL OR visibility_grade_id IS NOT NULL ORDER BY id`,
+      'DELETE FROM subject_rules',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

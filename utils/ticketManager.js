@@ -218,7 +218,7 @@ function createManager(db, client, guildId) {
   }
 
   // forceNew: open a new ticket even if the user already has one (several tickets per member are allowed)
-  async function createTicket(user, firstMessage, attachments = [], subject = null, { forceNew = false, confidential = false } = {}) {
+  async function createTicket(user, firstMessage, attachments = [], subject = null, { forceNew = false, confidential = false, address = null } = {}) {
     const lockKey = `${gid}:${user.id}`;
     // A creation is already running for this user: wait for it and reuse its ticket
     while (creating.has(lockKey)) {
@@ -239,7 +239,7 @@ function createManager(db, client, guildId) {
         return { ticket, created: false };
       }
     }
-    const promise = createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential);
+    const promise = createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential, { address });
     creating.set(lockKey, promise);
     try {
       const result = await promise;
@@ -251,7 +251,7 @@ function createManager(db, client, guildId) {
     }
   }
 
-  async function createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential = false) {
+  async function createTicketUnlocked(user, firstMessage, attachments, subject, forceNew, confidential = false, extra = {}) {
     const existing = forceNew ? null : await getOpenTicketByOwnerId(user.id);
     if (existing) {
       const ch = await ticketChannel(client, db, existing);
@@ -299,7 +299,9 @@ function createManager(db, client, guildId) {
     }
     // Incident or request, from the subject (utils/ticketTypes.js): before the rules, which may change it
     await require('./ticketTypes').applyDefaultType(db, ticket).catch(() => null);
-    await require('./subjectRules').applySubjectRules({ db, client, guildId: gid, ticket, firstMessage }).catch(() => null);
+    // Business rules « at the opening » (utils/ruleEngine.js), which took over the rules by subject
+    await require('./ruleEngine').runRules({ db, client, guildId: gid, ticketId: ticket.id, trigger: 'created', actor: user, message: firstMessage, address: extra.address || null })
+      .catch(err => console.error('règles: ouverture', gid, ticket.id, err.message));
     // Team of the ticket (subject, tags set by the rules above) and automatic assignment
     const [routed] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
     await require('./teams').routeTicket({ db, tm: { addAssignee }, ticket: routed })
@@ -339,6 +341,7 @@ function createManager(db, client, guildId) {
     broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: user.id, author_tag: user.tag, content: noteContent, source: 'user', created_at: new Date() } }, gid);
     await require('./dmEdits').linkDmNote(db, gid, user.id, nr.insertId, noteContent).catch(() => null);
     require('./followers').notifyFollowers(db, gid, ticket, { kind: 'member', by: user.tag || user.username, byId: user.id, excerpt: noteContent }).catch(() => null);
+    require('./ruleEngine').emit({ db, client, guildId: gid, ticketId: ticket.id, trigger: 'member_reply', actor: { ...user, source: 'member' }, message: content });
     return { channel, ticket, created: false };
   }
 
@@ -768,6 +771,7 @@ function createManager(db, client, guildId) {
         color: kind === 'waiting' ? 'warning' : 'primary',
       })] }), { ticketId: t2.id });
     }
+    if (before?.stage !== stage) require('./ruleEngine').emit({ db, client, guildId: gid, ticketId, trigger: 'stage', actor: byUser });
     return { ok: true, label: stageInfo.label };
   }
 
@@ -835,6 +839,8 @@ function createManager(db, client, guildId) {
   }
 
   async function recordStaffResponse(ticketId, staffUser) {
+    // Every staff reply passes here: rules « when the staff replies » (utils/ruleEngine.js)
+    require('./ruleEngine').emit({ db, client, guildId: gid, ticketId, trigger: 'staff_reply', actor: staffUser });
     const [row] = await db('SELECT created_at, first_response_at FROM tickets WHERE id=? LIMIT 1', [ticketId]);
     if (!row || row.first_response_at) return;
     const responseSeconds = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 1000);
@@ -996,6 +1002,7 @@ function createManager(db, client, guildId) {
     await require('./slaPolicies').refreshQuietly(db, ticketId);
     if (before?.priority !== priority) {
       await recordEvent(db, { actor: byUser, action: 'ticket_priority', ticketId, details: { from: before?.priority, to: priority } });
+      require('./ruleEngine').emit({ db, client, guildId: gid, ticketId, trigger: 'priority', actor: byUser });
     }
   }
 

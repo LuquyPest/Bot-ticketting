@@ -49,7 +49,7 @@ async function seedDemo() {
     for (const t of ['ticket_notes', 'ticket_assignees', 'ticket_participants', 'ticket_ratings', 'ticket_tag_assignments', 'ticket_tags', 'tickets',
       'dashboard_users', 'grades', 'grade_permissions', 'user_grades', 'reply_templates', 'faq_entries', 'ticket_fields', 'ticket_field_values',
       'procedures', 'ticket_procedure_checks', 'ticket_time', 'member_notes', 'member_profiles', 'contact_identities', 'contacts', 'incidents', 'incident_tickets', 'audit_log',
-      'subject_rules', 'ticket_links', 'ticket_reminders', 'scheduled_messages', 'config_history', 'admin_stats', 'blacklist', 'transcript_snapshots']) {
+      'subject_rules', 'ticket_rules', 'ticket_links', 'ticket_reminders', 'scheduled_messages', 'config_history', 'admin_stats', 'blacklist', 'transcript_snapshots']) {
       await db(`DELETE FROM ${t}`).catch(() => null); // some tables may not exist on an older schema
     }
   } finally {

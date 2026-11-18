@@ -1,6 +1,6 @@
 import React, { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock } from 'lucide-react';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock, Workflow } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
@@ -16,6 +16,7 @@ import StagesEditor from '../components/StagesEditor';
 import SubjectTreeEditor from '../components/SubjectTreeEditor';
 import CalendarsEditor from '../components/CalendarsEditor';
 import SlaPoliciesEditor from '../components/SlaPoliciesEditor';
+import RulesEditor from '../components/RulesEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -160,6 +161,7 @@ const TABS = [
   { id: 'acces',         label: 'Accès et sécurité',  icon: ShieldCheck },
   { id: 'tickets',       label: 'Tickets',            icon: Ticket },
   { id: 'horaires',      label: 'Horaires',           icon: CalendarClock },
+  { id: 'regles',        label: 'Règles',             icon: Workflow },
   { id: 'salons',        label: 'Salons',             icon: Hash, discord: true },
   { id: 'fonctions',     label: 'Fonctionnalités',    icon: Sparkles },
   { id: 'integrations',  label: 'Intégrations',       icon: Plug },
@@ -917,6 +919,12 @@ export default function Settings() {
           <CalendarsEditor />
           <h2 className="text-sm font-semibold text-ink-1 pt-2">Objectifs SLA</h2>
           <SlaPoliciesEditor />
+        </div>
+      )}
+
+      {tab === 'regles' && (
+        <div role="tabpanel" id="panel-regles" aria-labelledby="tab-regles" className="space-y-5">
+          <RulesEditor />
         </div>
       )}
 

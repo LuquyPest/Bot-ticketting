@@ -24,6 +24,22 @@ Every scheduled job goes through **BullMQ** (Redis): each one runs only once, an
 | **Backup monitoring** | Every hour: a backup, check or off-site copy that failed or is late → DM to the owner |
 | **New versions** | Every day: DM to the owner when a new version is published ([details](./updates)) |
 
+## Automatic rules
+
+**Settings → Rules** (founders, or a grade's **Manage automatic rules** permission): *when* something happens to a ticket, *if* its conditions are met, *then* the rule acts.
+
+| | |
+|---|---|
+| **When** | A ticket is opened · the requester writes · the staff replies · the status changes · the priority changes (one or more) |
+| **If** (all, or at least one) | Channel (Discord, e-mail, web) · receiving address · type · subject (a category covers its sub-categories) · words in the message · requester (address, domain `@client.com`, name) · priority · status · tag · hours (support open or closed) · requester's language; each condition can be reversed (« is not ») |
+| **Then** | Priority · urgency and impact · type · subject · team · assign to someone · add or remove a tag · status · restrict to a grade · watchers · notify staff members · automatic reply to the requester · internal note · webhook · close |
+
+Rules run **in the order** of the list (arrows); **« stop after this rule »** prevents the next ones. Each rule applied is noted in the **ticket's journal** (« rule *VIP customers* applied: priority urgent, tag VIP »). **Test** shows, on an existing ticket, which conditions are met and what the rule would do, without changing anything.
+
+Guards: a change made by a rule does not start the rules again (no loop); 50 actions at most per event; restricting to a grade also needs the **Manage grades** permission; a rule never lifts a confidential ticket, never changes its team and only notifies staff who can see it.
+
+The former **rules by subject and by keywords** (**Settings → Tickets**) are now rules of this engine, with the same effect; their simple form stays, and they run before these at the opening. Rules are part of the [configuration export](./integrations#backing-up-the-configuration) (tags, teams, grades and statuses by name; the people chosen are not exported).
+
 ## Public statistics
 
 **Settings → Channels → Public statistics**: pick a channel, and the bot posts there a message updated every hour, with the figures of the last 30 days:

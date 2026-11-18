@@ -13,7 +13,8 @@ const PERMISSIONS = [
   'manage_users',
   'manage_grades',
   'manage_settings',
-  'view_audit'
+  'view_audit',
+  'manage_rules'
 ];
 
 async function getUserGradeIds(userId, db) {

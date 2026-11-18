@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.2.0',
+    date: 'à venir',
+    title: 'Centre de services : règles et notifications',
+    titleEn: 'Service desk: rules and notifications',
+    changes: [
+      { type: 'new',  text: 'Règles automatiques (Paramètres → Règles) : quand (ouverture, réponse du demandeur ou du staff, statut, priorité), si (canal, adresse, type, sujet, mots du message, demandeur, priorité, statut, tag, horaires, langue ; toutes ou au moins une, négation), alors (priorité, urgence, impact, type, sujet, équipe, attribution, tags, statut, grade, observateurs, prévenir, réponse automatique, note, webhook, fermeture) ; ordre, « arrêter après », bouton Tester, journal du ticket, pas de boucle, 50 actions par événement, permission « Gérer les règles automatiques ». Les règles par sujet et par mots-clés sont reprises à l\'identique', en: 'Automatic rules (Settings → Rules): when (opening, requester or staff reply, status, priority), if (channel, address, type, subject, words of the message, requester, priority, status, tag, hours, language; all or at least one, negation), then (priority, urgency, impact, type, subject, team, assignment, tags, status, grade, watchers, notify, automatic reply, note, webhook, closing); order, « stop after », Test button, ticket journal, no loop, 50 actions per event, « Manage automatic rules » permission. The rules by subject and by keywords are carried over as they were' },
+    ],
+  },
+  {
     version: 'v5.1.0',
     date: 'à venir',
     title: 'Centre de services : cycle de vie et délais',
