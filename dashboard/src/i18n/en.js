@@ -315,6 +315,14 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Connexion à la boîte', 'Mailbox connection'], ['Identifiant et mot de passe', 'Login and password'], ['Google (Gmail, Workspace)', 'Google (Gmail, Workspace)'],
+  ['Microsoft 365 (Outlook)', 'Microsoft 365 (Outlook)'], ['Reconnecter', 'Reconnect'], ['Déconnecter', 'Disconnect'], ['Boîte connectée', 'Mailbox connected'], ['Boîte déconnectée', 'Mailbox disconnected'],
+  ['Se connecter avec Google', 'Sign in with Google'], ['Se connecter avec Microsoft', 'Sign in with Microsoft'], ['Boîtes e-mail', 'Mailboxes'],
+  ['Enregistrer les applications e-mail', 'Save the e-mail applications'], ['Applications e-mail enregistrées', 'E-mail applications saved'], [' · prête', ' · ready'], [' · non déclarée', ' · not declared'],
+  ['La connexion a expiré, recommence', 'The connection expired, start again'], ['Connexion refusée par le fournisseur', 'Connection refused by the provider'],
+  ['Le fournisseur n\'a pas donné l\'adresse de la boîte', 'The provider did not give the mailbox address'], ['Application non déclarée sur l\'instance', 'Application not declared on the instance'],
+  ['Le fournisseur n\'a pas donné d\'accès durable : retire l\'accès de Datick dans ton compte, puis reconnecte la boîte', 'The provider did not give lasting access: remove Datick\'s access in your account, then reconnect the mailbox'],
+  ['Pour que les espaces connectent leur boîte de support Gmail ou Microsoft 365 sans mot de passe d\'application (Paramètres → Intégrations → Tickets par e-mail). L\'application se déclare une fois ici ; chaque espace connecte ensuite sa boîte.', 'So that spaces connect their Gmail or Microsoft 365 support mailbox without an app password (Settings → Integrations → Tickets by e-mail). The application is declared once here; each space then connects its mailbox.'],
   ['FAQ et base de connaissances', 'FAQ and knowledge base'], ['Nouvel article', 'New article'], ['Modifier l\'article', 'Edit the article'],
   ['Article enregistré', 'Article saved'], ['Aucun article pour l\'instant', 'No article yet'], ['Articles actifs', 'Active articles'],
   ['FAQ en MP activée', 'FAQ in DMs on'], ['FAQ en MP désactivée', 'FAQ in DMs off'], ['Visible par', 'Visible to'],
@@ -749,6 +757,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Connectée avec {} : {}', 'Connected with {1}: {2}'], ['Tu choisis la boîte du support chez {} et tu autorises Datick à la lire et à envoyer depuis elle. Aucun mot de passe n\'est enregistré.', 'You pick the support mailbox at {1} and allow Datick to read it and send from it. No password is stored.'], ['Le propriétaire de l\'instance doit d\'abord déclarer l\'application {} (Instance → Connexion → Boîtes e-mail).', 'The owner of the instance must first declare the {1} application (Instance → Connexion → Mailboxes).'],
   ['{} ticket(s) ouvert(s) sur la période', '{1} ticket(s) opened over the period'],
   ['En ligne, lisible sans connexion : {} article(s) public(s).', 'Online, readable without signing in: {1} public article(s).'], [' · lue {} fois', ' · read {1} time(s)'],
   [' · demandée à {} par {}', ' · asked of {1} by {2}'], ['Une fois accordée : passe en « {} »', 'Once granted: moves to « {1} »'], ['Une fois accordée : {}', 'Once granted: {1}'], ['{} relance(s)', '{1} reminder(s)'],

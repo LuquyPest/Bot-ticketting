@@ -58,6 +58,19 @@ router.put('/login-providers', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET / PUT /api/instance/mail-oauth — the OAuth2 applications used by the spaces to connect their
+// support mailbox (Gmail, Microsoft 365); secrets never sent back
+router.get('/mail-oauth', async (req, res, next) => {
+  try { res.json(await require('../../utils/mailOAuth').publicSettings()); } catch (err) { next(err); }
+});
+router.put('/mail-oauth', async (req, res, next) => {
+  try {
+    const r = await require('../../utils/mailOAuth').saveSettings(req.body);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json(r.settings);
+  } catch (err) { next(err); }
+});
+
 // ─── GUILDS ──────────────────────────────────────────────────────────────────
 
 // POST /api/instance/guilds { name } — a space without a Discord server (v4)

@@ -53,6 +53,17 @@ Chaque fournisseur affiche son **adresse de retour**, à déclarer telle quelle 
 
 **Discord** : couper la connexion Discord ne coupe pas l'intégration (bot, MP, salons, panels) ; l'espace membre garde aussi sa connexion Discord pour les demandeurs. Tu ne peux pas couper le dernier moyen de connexion de ton propre compte : définis d'abord un mot de passe ou relie un autre fournisseur dans **Profil → Connexion**.
 
+### Boîtes e-mail (Gmail, Microsoft 365)
+
+Sous les moyens de connexion, **Boîtes e-mail** déclare les applications avec lesquelles les espaces connectent leur boîte de support [sans mot de passe](./integrations#gmail-et-microsoft-365-sans-mot-de-passe). Chacune affiche son adresse de retour (`https://ton-domaine/api/email/oauth/google/callback`, etc.) ; le secret est chiffré et jamais réaffiché.
+
+| Fournisseur | À régler |
+|---|---|
+| **Google** | Console Google Cloud : active l'**API Gmail**, puis *ID client OAuth* (application Web). Pour Google Workspace, audience **Interne** : en mode *Test*, Google coupe l'accès au bout de 7 jours |
+| **Microsoft** | Portail Azure → Microsoft Entra ID → *Inscriptions d'applications* (plateforme Web), autorisations déléguées d'*Office 365 Exchange Online* : `IMAP.AccessAsUser.All`, `SMTP.Send`, plus `offline_access`. L'envoi SMTP authentifié doit être permis sur la boîte. Annuaire : `common`, `organizations` ou l'identifiant de ton annuaire |
+
+Ce peut être la même application que pour la connexion au dashboard, avec les deux adresses de retour déclarées.
+
 ## Démonstration
 
 Un serveur fictif rempli de données réalistes, ouvert à tous depuis la page de connexion (« Découvrir le dashboard ») ou directement à l'adresse `/demo` de ton domaine. **Désactivé par défaut**, il s'active dans **Instance → Santé**. Isolé de tout le reste : aucun MP n'en part, les actions vers Discord et vers l'extérieur sont refusées, et il est remis à zéro chaque nuit.

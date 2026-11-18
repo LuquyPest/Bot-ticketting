@@ -698,6 +698,19 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS kb_public TINYINT(1) NOT NULL DEFAULT 0',
     ],
   },
+  {
+    version: 48,
+    name: 'E-mail par OAuth2 : Gmail / Google Workspace et Microsoft 365 (v5.0)',
+    statements: [
+      // password = IMAP/SMTP account and password as before (the existing boxes keep it)
+      `ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS auth_mode ENUM('password','google','microsoft') NOT NULL DEFAULT 'password'`,
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS oauth_account VARCHAR(254) DEFAULT NULL',
+      // Tokens sealed by utils/secretBox.js (rewritten by scripts/rotate-encryption-key.js)
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS oauth_refresh TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS oauth_access TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS oauth_expires_at DATETIME DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

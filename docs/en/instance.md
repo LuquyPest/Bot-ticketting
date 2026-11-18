@@ -53,6 +53,17 @@ Each provider shows its **redirect address**, to declare as is on its side (`htt
 
 **Discord**: turning off the Discord sign-in does not turn off the integration (bot, DMs, channels, panels); the member space also keeps its Discord sign-in for requesters. You cannot turn off the last way to sign in of your own account: first set a password or link another provider in **Profile → Sign-in**.
 
+### Mailboxes (Gmail, Microsoft 365)
+
+Below the ways to sign in, **Mailboxes** declares the applications the spaces use to connect their support mailbox [without a password](./integrations#gmail-and-microsoft-365-without-a-password). Each shows its redirect address (`https://your-domain/api/email/oauth/google/callback`, etc.); the secret is encrypted and never shown again.
+
+| Provider | To set |
+|---|---|
+| **Google** | Google Cloud console: turn on the **Gmail API**, then *OAuth client ID* (Web application). For Google Workspace, audience **Internal**: in *Testing* mode, Google cuts the access after 7 days |
+| **Microsoft** | Azure portal → Microsoft Entra ID → *App registrations* (Web platform), delegated permissions of *Office 365 Exchange Online*: `IMAP.AccessAsUser.All`, `SMTP.Send`, plus `offline_access`. Authenticated SMTP must be allowed on the mailbox. Directory: `common`, `organizations` or your directory's ID |
+
+It can be the same application as for signing in to the dashboard, with both redirect addresses declared.
+
 ## Demonstration
 
 A fictitious server filled with realistic data, open to everyone from the sign-in page (« Discover the dashboard ») or directly at the `/demo` address of your domain. **Off by default**, it is turned on in **Instance → Health**. Isolated from everything else: no DM leaves it, actions towards Discord and the outside are refused, and it is reset every night.

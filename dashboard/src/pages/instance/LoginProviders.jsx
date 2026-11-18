@@ -25,6 +25,62 @@ function CopyField({ label, value }) {
   );
 }
 
+// Instance → Connexion → Boîtes e-mail: the OAuth2 applications the spaces use to connect their
+// support mailbox with Google or Microsoft (utils/mailOAuth.js, v5.0)
+const MAIL_HELP = {
+  google: 'Console Google Cloud : active l\'API Gmail, crée un ID client OAuth (application Web). Pour Google Workspace, choisis l\'audience « Interne » : en mode « Test », Google coupe l\'accès au bout de 7 jours.',
+  microsoft: 'Portail Azure → Microsoft Entra ID → Inscriptions d\'applications (plateforme Web), avec les autorisations déléguées IMAP.AccessAsUser.All, SMTP.Send et offline_access d\'Office 365 Exchange Online. SMTP authentifié doit être permis sur la boîte.',
+};
+function MailboxApps() {
+  const [m, setM] = useState(null);
+  const [secrets, setSecrets] = useState({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.get('/instance/mail-oauth').then(r => setM(r.data)).catch(() => setM(false)); }, []);
+  if (!m) return null;
+  const set = (k, f, v) => setM(x => ({ ...x, [k]: { ...x[k], [f]: v } }));
+  const save = async () => {
+    setBusy(true);
+    try {
+      const body = Object.fromEntries(['google', 'microsoft'].map(k => [k, { clientId: m[k].clientId, tenant: m[k].tenant, clientSecret: secrets[k] || '' }]));
+      setM((await api.put('/instance/mail-oauth', body)).data); setSecrets({});
+      toast.success('Applications e-mail enregistrées');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  return (
+    <section className="space-y-3" aria-labelledby="mail-apps">
+      <div>
+        <h2 id="mail-apps" className="text-base font-bold text-ink-1">Boîtes e-mail</h2>
+        <p className="text-sm text-ink-3 mt-1">Pour que les espaces connectent leur boîte de support Gmail ou Microsoft 365 sans mot de passe d'application (Paramètres → Intégrations → Tickets par e-mail). L'application se déclare une fois ici ; chaque espace connecte ensuite sa boîte.</p>
+      </div>
+      {[['google', 'Google (Gmail, Workspace)'], ['microsoft', 'Microsoft 365 (Outlook)']].map(([k, label]) => (
+        <div key={k} className="glass-dark rounded-2xl border border-overlay/8 px-5 py-4 space-y-3">
+          <p className="text-sm font-semibold text-ink-1">{label}{m[k].configured ? <span className="text-emerald-400 text-xs font-normal"> · prête</span> : <span className="text-ink-4 text-xs font-normal"> · non déclarée</span>}</p>
+          <p className="text-xs text-ink-3">{MAIL_HELP[k]}</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="block text-xs text-ink-3">Identifiant de l'application (client ID)
+              <input value={m[k].clientId || ''} onChange={e => set(k, 'clientId', e.target.value)} className={`${INPUT} mt-1`} autoComplete="off" />
+            </label>
+            <label className="block text-xs text-ink-3">Secret de l'application
+              <input type="password" autoComplete="new-password" value={secrets[k] || ''} onChange={e => setSecrets(x => ({ ...x, [k]: e.target.value }))}
+                placeholder={m[k].secretSet ? '•••••••• (inchangé)' : ''} className={`${INPUT} mt-1`} />
+            </label>
+            {k === 'microsoft' && (
+              <label className="block text-xs text-ink-3">Annuaire (tenant)
+                <input value={m[k].tenant || ''} onChange={e => set(k, 'tenant', e.target.value)} placeholder="common" className={`${INPUT} mt-1`} autoComplete="off" />
+              </label>
+            )}
+          </div>
+          <CopyField label="Adresse de retour à déclarer chez le fournisseur" value={m[k].callbackUrl} />
+        </div>
+      ))}
+      <button onClick={save} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-2">
+        {busy && <Loader2 size={14} className="animate-spin" />} Enregistrer les applications e-mail
+      </button>
+    </section>
+  );
+}
+
 // Instance → Connexion: the sign-in providers of the instance (v4). E-mail and password is always
 // available; the server refuses a change that would leave the owner without a way to sign in.
 export default function LoginProviders() {
@@ -107,6 +163,8 @@ export default function LoginProviders() {
       <button onClick={save} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-2">
         {busy && <Loader2 size={14} className="animate-spin" />} Enregistrer
       </button>
+
+      <MailboxApps />
     </div>
   );
 }

@@ -44,7 +44,7 @@ if (!UserManager.prototype.fetch.__emailAware) {
 }
 
 // ── Settings ──
-const SECRET_COLUMNS = ['imap_password', 'smtp_password'];
+const SECRET_COLUMNS = ['imap_password', 'smtp_password', 'oauth_refresh', 'oauth_access'];
 async function emailSettings(db, { withSecrets = false } = {}) {
   const [row] = await db('SELECT * FROM email_settings WHERE id = 1').catch(() => []);
   if (!row) return { enabled: false, imap_port: 993, smtp_port: 587 };
@@ -53,6 +53,8 @@ async function emailSettings(db, { withSecrets = false } = {}) {
     out[`${c}_set`] = !!row[c];
     if (withSecrets) { try { out[c] = row[c] ? open(row[c]) : null; } catch { out[c] = null; } } else delete out[c];
   }
+  // OAuth2 (utils/mailOAuth.js): the access token is renewed and saved through the space's database
+  if (withSecrets) Object.defineProperty(out, '_db', { value: db, enumerable: false });
   return out;
 }
 
@@ -83,6 +85,15 @@ function cleanSettings(input = {}) {
 }
 
 async function saveEmailSettings(db, input) {
+  // A mailbox connected by OAuth2: its servers and account are the provider's (set at connection),
+  // the form only changes the rest (on/off, address shown, name, attachments)
+  const [cur] = await db('SELECT auth_mode, oauth_account, oauth_refresh FROM email_settings WHERE id = 1').catch(() => []);
+  const mailOAuth = require('./mailOAuth');
+  const oauth = mailOAuth.isOAuth(cur?.auth_mode) ? mailOAuth.PROVIDERS[cur.auth_mode] : null;
+  if (oauth) {
+    input = { ...input, imapHost: oauth.imap.host, imapPort: oauth.imap.port, imapUser: cur.oauth_account, smtpHost: oauth.smtp.host, smtpPort: oauth.smtp.port, smtpUser: cur.oauth_account };
+    delete input.imapPassword; delete input.smtpPassword;
+  }
   const { value, error } = cleanSettings(input);
   if (error) return { error };
   const att = require('./emailAttachments').cleanAttachInput(input.attachments);
@@ -92,7 +103,11 @@ async function saveEmailSettings(db, input) {
   await db(`INSERT INTO email_settings (id, ${cols.join(', ')}) VALUES (1, ${cols.map(() => '?').join(', ')})
             ON DUPLICATE KEY UPDATE ${cols.map(c => `${c} = VALUES(${c})`).join(', ')}`, cols.map(c => value[c]));
   const saved = await emailSettings(db);
-  if (saved.enabled && (!saved.imap_password_set || !saved.smtp_password_set)) {
+  if (oauth && saved.enabled && !saved.oauth_refresh_set) {
+    await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
+    return { error: `Connecte d'abord la boîte avec ${oauth.label}` };
+  }
+  if (!oauth && saved.enabled && (!saved.imap_password_set || !saved.smtp_password_set)) {
     await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
     return { error: 'Renseigne les mots de passe IMAP et SMTP avant d\'activer' };
   }
@@ -112,8 +127,10 @@ async function smtpTransport(s) {
   return nodemailer.createTransport({
     host: await pinnedHost(s.smtp_host), port: s.smtp_port, secure: s.smtp_port === 465,
     requireTLS: s.smtp_port === 587, tls: { servername: s.smtp_host },
-    // No account: a relay that accepts the server without signing in (local network, port 25)
-    auth: s.smtp_user ? { user: s.smtp_user, pass: s.smtp_password } : undefined,
+    // OAuth2 (Gmail, Microsoft 365): XOAUTH2 with a fresh access token. No account: a relay that
+    // accepts the server without signing in (local network, port 25)
+    auth: require('./mailOAuth').isOAuth(s.auth_mode) ? { type: 'OAuth2', user: s.oauth_account, accessToken: await require('./mailOAuth').accessToken(s) }
+      : s.smtp_user ? { user: s.smtp_user, pass: s.smtp_password } : undefined,
     connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000,
   });
 }
@@ -123,7 +140,7 @@ async function imapClient(s) {
   return new ImapFlow({
     host: await pinnedHost(s.imap_host), port: s.imap_port, secure: s.imap_port === 993,
     servername: s.imap_host, tls: { servername: s.imap_host },
-    auth: { user: s.imap_user, pass: s.imap_password },
+    auth: require('./mailOAuth').isOAuth(s.auth_mode) ? { user: s.oauth_account, accessToken: await require('./mailOAuth').accessToken(s) } : { user: s.imap_user, pass: s.imap_password },
     logger: false, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 60000,
   });
 }
@@ -424,5 +441,5 @@ module.exports = {
   listAddresses, recipientsOf, routeOf,
   isEmailOwner, isExternalOwner, ownerIdFor, userFor, requesterTicket, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
   fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
-  smtpTransport, EMAIL_RE, SMTP_PORTS,
+  smtpTransport, imapClient, EMAIL_RE, SMTP_PORTS,
 };

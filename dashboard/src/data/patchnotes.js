@@ -18,6 +18,16 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.0.0',
+    date: 'à venir',
+    title: 'Centre de services : l\'e-mail d\'entreprise',
+    titleEn: 'Service desk: business e-mail',
+    changes: [
+      { type: 'new',  text: 'Tickets par e-mail : connexion de la boîte avec Google (Gmail, Workspace) ou Microsoft 365 (Outlook) par OAuth, sans mot de passe d\'application ; jeton renouvelé tout seul et chiffré, reconnexion et déconnexion en un clic. Le propriétaire déclare l\'application une fois dans Instance → Connexion → Boîtes e-mail', en: 'Tickets by e-mail: connect the mailbox with Google (Gmail, Workspace) or Microsoft 365 (Outlook) through OAuth, without an app password; token renewed on its own and encrypted, reconnect and disconnect in one click. The owner declares the application once in Instance → Connexion → Mailboxes' },
+      { type: 'fix',  text: 'Rotation de la clé de chiffrement : les secrets des fournisseurs de connexion (Google, Microsoft, OpenID Connect) sont aussi rechiffrés ; avant, ces connexions cessaient de marcher une fois l\'ancienne clé retirée', en: 'Encryption key rotation: the secrets of the sign-in providers (Google, Microsoft, OpenID Connect) are re-encrypted too; before, those sign-ins stopped working once the old key was removed' },
+    ],
+  },
+  {
     version: 'v4.1.0',
     date: '18 novembre 2026',
     title: 'Corrections e-mail et sécurité, sauvegarde complète',

@@ -2,12 +2,16 @@
 // attachments (POST /attachments/purge). Passwords are
 // never sent back (only whether they are set); changes go to the server's journal.
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const email = require('../../utils/emailTickets');
 const { recordEvent, dashboardActor } = require('../../utils/audit');
 
 const attach = require('../../utils/emailAttachments');
+const mailOAuth = require('../../utils/mailOAuth');
 const view = async (s, db) => ({
+  authMode: s.auth_mode || 'password', oauthAccount: s.oauth_account || null, oauthConnected: !!s.oauth_refresh_set,
+  oauthAvailable: await mailOAuth.available(), oauthCallbacks: Object.fromEntries(mailOAuth.KEYS.map(k => [k, mailOAuth.callbackUrl(k)])),
   attachments: { ...attach.attachSettings(s), usage: await attach.usage(db) },
   enabled: !!s.enabled, address: s.address || '', displayName: s.display_name || '',
   imapHost: s.imap_host || '', imapPort: s.imap_port || 993, imapUser: s.imap_user || '', imapPasswordSet: !!s.imap_password_set,
@@ -25,6 +29,46 @@ router.put('/', async (req, res, next) => {
     if (error) return res.status(400).json({ error });
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { enabled: value.enabled, address: value.address || null } });
     res.json(await view(value, req.guildDb));
+  } catch (err) { next(err); }
+});
+
+// ── Mailbox connected by OAuth2 (utils/mailOAuth.js) ──
+// POST /oauth/:provider/start → { url } (the browser goes there) ; GET /oauth/:provider/callback
+// (back from the provider, same session and space) ; POST /oauth/disconnect
+router.post('/oauth/:provider/start', async (req, res, next) => {
+  try {
+    if (!mailOAuth.isOAuth(req.params.provider)) return res.status(404).json({ error: 'Fournisseur inconnu' });
+    const start = await mailOAuth.authorizeUrl(req.params.provider);
+    if (!start) return res.status(409).json({ error: 'Le propriétaire de l\'instance doit d\'abord déclarer l\'application (Instance → Connexion → Boîtes e-mail)' });
+    req.session.mailOAuth = { ...start.pending, guildId: req.guildId, userId: req.session.user.id };
+    req.session.save(() => res.json({ url: start.url }));
+  } catch (err) { next(err); }
+});
+
+router.get('/oauth/:provider/callback', async (req, res) => {
+  const pending = req.session.mailOAuth;
+  delete req.session.mailOAuth;
+  const back = reason => res.redirect(`/settings?tab=integrations&email=${reason}`);
+  const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  // Started from this space, by this person, in this browser
+  if (!pending || pending.guildId !== req.guildId || pending.userId !== req.session.user.id || !same(String(req.query.state || ''), pending.state || '')) return back('invalid_state');
+  if (req.query.error || !req.query.code) return back('oauth_failed');
+  try {
+    const conn = await mailOAuth.finish(req.params.provider, pending, String(req.query.code).slice(0, 4000));
+    await mailOAuth.saveConnection(req.guildDb, req.params.provider, conn);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { oauth: req.params.provider, account: conn.account } });
+    back('connected');
+  } catch (err) {
+    console.error('email oauth:', err.reason || err.message);
+    back(['no_refresh', 'no_address', 'invalid_state', 'provider_off'].includes(err.reason) ? err.reason : 'oauth_failed');
+  }
+});
+
+router.post('/oauth/disconnect', async (req, res, next) => {
+  try {
+    await mailOAuth.disconnect(req.guildDb);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { oauth: null, enabled: false } });
+    res.json(await view(await email.emailSettings(req.guildDb), req.guildDb));
   } catch (err) { next(err); }
 });
 

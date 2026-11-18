@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Re-encrypts every stored secret (2FA of the dashboard accounts, passwords of the support
-// mailboxes) and every
+// Re-encrypts every stored secret (2FA of the dashboard accounts, passwords and OAuth2 tokens of
+// the support mailboxes, secrets of the sign-in providers and of the mailbox OAuth2 applications) and every
 // transcript of every server with the current key (ENCRYPTION_KEY / dashboard.encryptionKey); transcripts
 // still in clear (written before encryption) are encrypted too. Run after setting the new key and
 // moving the old one to dashboard.previousEncryptionKeys (or once to encrypt old transcripts):
@@ -40,7 +40,27 @@ async function rotate() {
   report.transcripts = await rotateTranscripts(box);
   report.emailPasswords = await rotateEmailPasswords(box);
   report.instanceEmail = await rotateInstanceEmail(box);
+  report.loginProviders = await rotateProviderSecrets(box, 'login_providers');
+  report.mailOAuth = await rotateProviderSecrets(box, 'mail_oauth');
   return report;
+}
+
+// clientSecret of each provider in an instance setting: Instance → Connexion (sign-in providers,
+// mailbox OAuth2 applications)
+async function rotateProviderSecrets(box, key) {
+  const { getSetting, setSetting } = require('../utils/instanceSettings');
+  const s = await getSetting(key, {});
+  const out = { total: 0, rewritten: 0, failed: 0 };
+  const next = { ...s };
+  for (const [k, p] of Object.entries(s || {})) {
+    if (!p || typeof p !== 'object' || !p.clientSecret) continue;
+    out.total++;
+    if (box.isCurrent(p.clientSecret)) continue;
+    try { next[k] = { ...p, clientSecret: box.seal(box.open(p.clientSecret)) }; out.rewritten++; }
+    catch (err) { out.failed++; console.error(`${key}/${k} : ${err.message}`); }
+  }
+  if (out.rewritten) await setSetting(key, next);
+  return out;
 }
 
 // Password of the SMTP server of the instance (Instance → Santé → E-mail de l'instance)
@@ -60,9 +80,9 @@ async function rotateEmailPasswords(box) {
   const out = { total: 0, rewritten: 0, failed: 0 };
   for (const { guild_id } of await globalQuery("SELECT guild_id FROM guilds WHERE status IN ('active', 'suspended')")) {
     const db = getTenantDb(guild_id);
-    const [row] = await db('SELECT imap_password, smtp_password FROM email_settings WHERE id = 1').catch(() => []);
+    const [row] = await db('SELECT * FROM email_settings WHERE id = 1').catch(() => []);
     if (!row) continue;
-    for (const col of ['imap_password', 'smtp_password']) {
+    for (const col of ['imap_password', 'smtp_password', 'oauth_refresh', 'oauth_access']) {
       if (!row[col]) continue;
       out.total++;
       if (box.isCurrent(row[col])) continue;
