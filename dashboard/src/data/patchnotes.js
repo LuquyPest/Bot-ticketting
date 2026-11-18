@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v4.1.0',
+    date: 'à venir',
+    title: 'Sauvegarde de la configuration complète',
+    titleEn: 'Full configuration backup',
+    changes: [
+      { type: 'new',  text: 'Paramètres → Sauvegarde : l\'export et l\'import de la configuration comprennent aussi les statuts personnalisés et les équipes (réglages, sujets, tags, sans les membres) ; une macro qui change le statut retrouve le statut du même nom dans l\'espace d\'arrivée', en: 'Settings → Backup: the configuration export and import now include custom statuses and teams (settings, subjects, tags, without members); a macro that changes the status finds the status with the same name in the target space' },
+    ],
+  },
+  {
     version: 'v4.0.0',
     date: '18 novembre 2026',
     title: 'Datick : un système de tickets complet',

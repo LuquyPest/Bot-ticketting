@@ -1,5 +1,5 @@
 // Export / import of a server's configuration (settings, grades, tags, forms, panels, custom
-// fields, FAQ, shared reply templates, subject rules) as JSON — to duplicate a server or restore
+// fields, FAQ, shared reply templates, subject rules, custom statuses, teams) as JSON — to duplicate a server or restore
 // a saved setup. Import merges by name and never deletes anything. Secrets are never exported;
 // Discord channel / role IDs are only imported on request (they differ between servers).
 const { parseJsonField } = require('./jsonField');
@@ -30,6 +30,9 @@ async function exportConfig(db) {
   const formFields = await db('SELECT form_id, label, field_type, choices, required, position, placeholder, style, min_length, max_length FROM intake_form_fields ORDER BY position');
   const panels = await db('SELECT id, name, title, description, color, footer_text, image_url FROM ticket_panels ORDER BY id');
   const buttons = await db('SELECT panel_id, label, emoji, style, subject, form_id, position FROM panel_buttons ORDER BY position');
+  const stages = await db('SELECT id, label, color, kind, category_id, sla_hours FROM ticket_stages ORDER BY position, id').catch(() => []);
+  const stageLabel = new Map(stages.map(x => [`s_${x.id}`, x.label]));
+  const teams = await db('SELECT name, color, assign_mode, max_open, subjects, tag_ids FROM teams ORDER BY name').catch(() => []);
 
   return {
     format: FORMAT, version: VERSION, exportedAt: new Date().toISOString(),
@@ -45,12 +48,19 @@ async function exportConfig(db) {
       .map(t => {
         const actions = parseJsonField(t.actions, null);
         if (actions?.tagId) { actions.tag = tagName.get(actions.tagId) || null; delete actions.tagId; }
+        // A custom status is known by its name: its « s_<id> » differs from one space to another
+        if (actions?.stage && stageLabel.has(actions.stage)) { actions.stageLabel = stageLabel.get(actions.stage); delete actions.stage; }
         return { ...t, actions };
       }),
     procedures: (await db('SELECT title, subject, steps, active FROM procedures ORDER BY position, id').catch(() => []))
       .map(p => ({ title: p.title, subject: p.subject, active: !!p.active, steps: parseJsonField(p.steps, []).map(s => s.text) })),
     subjectRules: (await db('SELECT match_type, subject, keywords, tag_id, priority, visibility_grade_id, active FROM subject_rules ORDER BY id'))
       .map(r => ({ matchType: r.match_type || 'subject', subject: r.subject, keywords: r.keywords, tag: tagName.get(r.tag_id) || null, priority: r.priority, grade: gradeName.get(r.visibility_grade_id) || null, active: !!r.active })),
+    // Discord category: a Discord ID, imported only on request like the other channels
+    stages: stages.map(x => ({ label: x.label, color: x.color, kind: x.kind, category_id: x.category_id, slaHours: x.sla_hours })),
+    // Members are not carried: they are accounts of this space
+    teams: teams.map(t => ({ name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0, subjects: parseJsonField(t.subjects, []),
+      tags: parseJsonField(t.tag_ids, []).map(id => tagName.get(Number(id))).filter(Boolean) })),
   };
 }
 
@@ -159,10 +169,24 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
     await upsertBy('faq', 'faq_entries', 'question', str(q.question, 200), ['answer', 'keywords', 'category', 'visibility', 'active'],
       [str(q.answer, 5000), str(q.keywords, 500) || '', str(q.category, 80) || '', q.visibility === 'public' ? 'public' : 'members', bool(q.active ?? 1)]);
   }
+  // Custom statuses (by name), through the same checks as Paramètres → Tickets → Statuts
+  const stagesLib = require('./stages');
+  for (const x of Array.isArray(data.stages) ? data.stages.slice(0, stagesLib.MAX_CUSTOM) : []) {
+    const input = { label: x.label, color: x.color, kind: x.kind, slaHours: x.slaHours, categoryId: includeDiscordIds ? x.category_id : null };
+    const label = str(x.label, 40)?.trim(); if (!label) continue;
+    const [row] = await db('SELECT id, category_id FROM ticket_stages WHERE LOWER(label) = LOWER(?)', [label]);
+    if (row && !includeDiscordIds) input.categoryId = row.category_id; // this space's category is kept
+    const r = row ? await stagesLib.updateStage(db, row.id, input) : await stagesLib.createStage(db, input);
+    if (r.ok) count('stages', row ? 'updated' : 'created');
+  }
+  const stageKey = new Map((await db('SELECT id, label FROM ticket_stages').catch(() => [])).map(x => [x.label.toLowerCase(), `s_${x.id}`]));
+
   for (const t of Array.isArray(data.templates) ? data.templates.slice(0, 200) : []) {
     if (!str(t.name, 100) || !str(t.content, 2000)) continue;
     const actions = t.actions && typeof t.actions === 'object' ? { ...t.actions } : null;
     if (actions?.tag) { actions.tagId = tagId.get(actions.tag) || undefined; delete actions.tag; }
+    if (actions?.stageLabel !== undefined) { const k = stageKey.get(String(actions.stageLabel).toLowerCase()); if (k) actions.stage = k; delete actions.stageLabel; }
+    if (actions?.stage && !/^(open|waiting|in_progress|s_\d{1,9})$/.test(actions.stage)) delete actions.stage;
     const [row] = await db("SELECT id FROM reply_templates WHERE name = ? AND scope = 'shared'", [str(t.name, 100)]);
     const vals = [str(t.content, 2000), str(t.subject, 100), actions ? JSON.stringify(actions) : null];
     if (row) { await db('UPDATE reply_templates SET content = ?, subject = ?, actions = ? WHERE id = ?', [...vals, row.id]); count('templates', 'updated'); }
@@ -187,6 +211,21 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
       const subject = str(r.subject, 100); if (!subject) continue;
       await upsertBy('subjectRules', 'subject_rules', 'subject', subject, ['tag_id', 'priority', 'visibility_grade_id', 'active'], [...vals, bool(r.active ?? 1)]);
     }
+  }
+
+  // Teams (by name): settings only, the members of an existing team stay; unknown subjects or tags are left out
+  const teamsLib = require('./teams');
+  const [cfgNow] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+  const known = new Set(parseJsonField(cfgNow?.ticket_subjects, []).map(x => (typeof x === 'string' ? x : x?.label || x?.name)).filter(Boolean));
+  for (const t of Array.isArray(data.teams) ? data.teams.slice(0, teamsLib.MAX_TEAMS) : []) {
+    const name = str(t.name, 60)?.trim(); if (!name) continue;
+    const [row] = await db('SELECT id FROM teams WHERE name = ?', [name]);
+    const members = row ? (await db('SELECT user_id FROM team_members WHERE team_id = ?', [row.id])).map(m => m.user_id) : [];
+    const input = { name, color: t.color, assignMode: t.assignMode, maxOpen: Number.isInteger(t.maxOpen) ? t.maxOpen : 0, members,
+      subjects: (Array.isArray(t.subjects) ? t.subjects : []).map(String).filter(x => known.has(x)),
+      tagIds: (Array.isArray(t.tags) ? t.tags : []).map(n => tagId.get(n)).filter(Boolean) };
+    const r = row ? await teamsLib.updateTeam(db, row.id, input) : await teamsLib.createTeam(db, input);
+    if (r.ok) count('teams', row ? 'updated' : 'created');
   }
 
   // Grades of the support roles, by name (local ids)

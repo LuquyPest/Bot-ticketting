@@ -112,7 +112,9 @@ The person gives their name (optional), their **e-mail address**, the subject if
 
 ## Backing up the configuration
 
-**Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ, templates, rules, checklists) and import on this server or another. Secrets are never exported.
+**Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ and articles, templates and macros, rules, checklists, custom statuses, teams) and import on this server or another. Secrets are never exported.
+
+The import merges by name and deletes nothing. A macro that changes the status finds the status with the same name in the target space. A status's Discord category is only carried over if you tick the channels option. Teams come with their settings, subjects and tags, but without members: those are accounts of each space, and a team already there keeps its own.
 
 ## Coming from another ticket bot
 
