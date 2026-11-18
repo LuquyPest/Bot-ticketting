@@ -63,6 +63,12 @@ In **Settings → General → Resolution and closing**, a space **resolves befor
 
 The staff can **cancel the resolution**. Every step is in the log. An existing space closes as before until it turns it on; a new space has it on. The [API v3](./integrations#public-api) can also propose a solution (`POST /tickets/:id/resolve`).
 
+## Priority: urgency × impact
+
+In **Settings → General → Priority: urgency × impact**, the priority is **computed**: the **urgency** (for the requester) and the **impact** (how many people, how serious), each from *Very low* to *Very high*, give through an adjustable **matrix** one of **6 levels**: Very low, Low, Medium, High, Very high, Major. On the ticket view, set urgency and impact, or **force** a level (*Major* is picked this way).
+
+The **3 priorities** of before (low, normal, urgent) stay and follow the level: Very low and Low = low, Medium = normal, High and above = urgent. What uses them does not change (`/priority` on Discord, macros, subject rules, API v1 and v2, queue order); set the old way, they move the level (low → Low, normal → Medium, urgent → High) unless it is already in the right band. The [API v3](./integrations#public-api) accepts `urgency`, `impact` and `priority_level`. Off on an existing space until turned on; on for a new space.
+
 ## Statuses
 
 An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:

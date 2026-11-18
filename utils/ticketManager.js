@@ -984,7 +984,8 @@ function createManager(db, client, guildId) {
 
   async function setPriority(ticketId, priority, byUser = null) {
     const [before] = await db('SELECT priority FROM tickets WHERE id = ?', [ticketId]);
-    await db('UPDATE tickets SET priority = ? WHERE id = ?', [priority, ticketId]);
+    // The level of the priority matrix follows (utils/priorityMatrix.js)
+    await db(`UPDATE tickets SET priority = ?, ${require('./priorityMatrix').LEVEL_FROM_PRIORITY_SQL} WHERE id = ?`, [priority, priority, priority, ticketId]);
     if (before?.priority !== priority) {
       await recordEvent(db, { actor: byUser, action: 'ticket_priority', ticketId, details: { from: before?.priority, to: priority } });
     }

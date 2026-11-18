@@ -63,6 +63,12 @@ Dans **Paramètres → Général → Résolution et clôture**, un espace **rés
 
 Le staff peut **annuler la résolution**. Chaque étape est au journal. Un espace existant ferme comme avant tant qu'il ne l'active pas ; un nouvel espace l'a activée. L'[API v3](./integrations#api-publique) propose aussi une solution (`POST /tickets/:id/resolve`).
 
+## La priorité : urgence × impact
+
+Dans **Paramètres → Général → Priorité : urgence × impact**, la priorité se **calcule** : l'**urgence** (pour le demandeur) et l'**impact** (combien de personnes, quelle gravité), chacun de *Très basse* à *Très haute*, donnent par une **matrice** réglable l'un des **6 niveaux** : Très basse, Basse, Moyenne, Haute, Très haute, Majeure. Sur la fiche, on règle l'urgence et l'impact, ou on **force** un niveau (*Majeure* se choisit ainsi).
+
+Les **3 priorités** d'avant (basse, normale, urgente) restent et suivent le niveau : Très basse et Basse = basse, Moyenne = normale, Haute et au-delà = urgente. Ce qui les utilise ne change pas (`/priority` sur Discord, macros, règles par sujet, API v1 et v2, ordre de la file) ; réglées à l'ancienne, elles déplacent le niveau (basse → Basse, normale → Moyenne, urgente → Haute) s'il n'est pas déjà dans la bonne tranche. L'[API v3](./integrations#api-publique) accepte `urgency`, `impact` et `priority_level`. Coupée sur un espace existant tant qu'on ne l'active pas ; activée pour un nouvel espace.
+
 ## Les statuts
 
 Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :

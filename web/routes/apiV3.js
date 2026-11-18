@@ -42,8 +42,8 @@ async function ticketView(req, id) {
   const cc = (await require('../../utils/ticketCc').listCc(req.guildDb, id)).map(c => c.address);
   const fields = Object.fromEntries((await req.guildDb('SELECT field_id, value FROM ticket_field_values WHERE ticket_id = ?', [id]).catch(() => [])).map(f => [f.field_id, f.value]));
   const { ticket_type, ...rest } = shaped;
-  const [r] = await req.guildDb('SELECT resolved_at FROM tickets WHERE id = ?', [id]);
-  return { ...rest, type: ticket_type || 'request', resolved_at: r?.resolved_at || null, team_id: t.team_id || null, assignees, cc, fields };
+  const [r] = await req.guildDb('SELECT resolved_at, urgency, impact, priority_level FROM tickets WHERE id = ?', [id]);
+  return { ...rest, type: ticket_type || 'request', urgency: r?.urgency ?? null, impact: r?.impact ?? null, priority_level: r?.priority_level ?? 3, resolved_at: r?.resolved_at || null, team_id: t.team_id || null, assignees, cc, fields };
 }
 const TICKET_OUT = {
   id: 87, status: 'open', stage: 'open', subject: 'Commande 1287 non reçue', priority: 'normal', claimed_by: null, created_at: '2026-11-18T09:12:00.000Z', closed_at: null,
@@ -163,6 +163,14 @@ async function checkChanges(req, b) {
     if (!PRIORITIES.includes(b.priority)) return { error: `priority : ${PRIORITIES.join(', ')}` };
     out.priority = b.priority;
   }
+  if (b.urgency !== undefined || b.impact !== undefined || b.priority_level !== undefined) {
+    if (!(await require('../../utils/priorityMatrix').matrixSettings(db)).enabled) return { error: 'urgency / impact / priority_level : la matrice de priorité n\'est pas activée sur cet espace' };
+    if (b.priority !== undefined) return { error: 'priority ou urgency / impact / priority_level, pas les deux' };
+    for (const [k, max] of [['urgency', 5], ['impact', 5], ['priority_level', 6]]) {
+      if (b[k] !== undefined && b[k] !== null && !(Number.isInteger(b[k]) && b[k] >= 1 && b[k] <= max)) return { error: `${k} : entier de 1 à ${max}` };
+    }
+    out.matrix = { urgency: b.urgency, impact: b.impact, level: b.priority_level };
+  }
   if (b.type !== undefined) {
     const tt = require('../../utils/ticketTypes');
     if (!tt.TYPES.includes(b.type)) return { error: `type : ${tt.TYPES.join(', ')}` };
@@ -232,6 +240,10 @@ async function applyChanges(req, t, c) {
     if (!r.ok) throw Object.assign(new Error(r.error || 'Changement de statut impossible'), { status: 400 });
   }
   if (c.priority && c.priority !== t.priority) await tm.setPriority(t.id, c.priority, a);
+  if (c.matrix) {
+    const [cur] = await db('SELECT * FROM tickets WHERE id = ?', [t.id]);
+    await require('../../utils/priorityMatrix').setMatrixPriority({ db, client: req.app.locals.client, guildId: req.guildId, ticket: cur, urgency: c.matrix.urgency, impact: c.matrix.impact, level: c.matrix.level === undefined ? null : c.matrix.level, actor: a });
+  }
   if (c.type) {
     const [cur] = await db('SELECT ticket_type FROM tickets WHERE id = ?', [t.id]);
     if (cur?.ticket_type !== c.type) {
@@ -282,7 +294,7 @@ async function applyChanges(req, t, c) {
 
 endpoint({
   method: 'patch', path: '/tickets/{id}', perm: 'update_tickets', summary: 'Modifier un ticket',
-  description: 'Change ce qui est donné, le reste ne bouge pas : `type` (incident, request), `priority` (low, normal, urgent), `stage` (open, waiting, in_progress ou le `s_<id>` d\'un statut de l\'espace), `team_id` (`null` : sans équipe ; une équipe qui attribue donne le ticket à l\'un de ses membres), `assignees_add` / `assignees_remove` (identifiants du staff), `tags_add` / `tags_remove` (noms), `fields` (`{ identifiant: valeur }`, `null` efface), `cc_add` / `cc_remove` (adresses, tickets par e-mail). Tout est vérifié avant d\'écrire : une erreur ne change rien. Chaque changement est au journal, au nom de la clé.',
+  description: 'Change ce qui est donné, le reste ne bouge pas : `type` (incident, request), `priority` (low, normal, urgent) ou, si l\'espace utilise la matrice, `urgency` et `impact` (1 à 5) et `priority_level` (1 à 6, forcé ; \`null\` : calculé), `stage` (open, waiting, in_progress ou le `s_<id>` d\'un statut de l\'espace), `team_id` (`null` : sans équipe ; une équipe qui attribue donne le ticket à l\'un de ses membres), `assignees_add` / `assignees_remove` (identifiants du staff), `tags_add` / `tags_remove` (noms), `fields` (`{ identifiant: valeur }`, `null` efface), `cc_add` / `cc_remove` (adresses, tickets par e-mail). Tout est vérifié avant d\'écrire : une erreur ne change rien. Chaque changement est au journal, au nom de la clé.',
   params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
   body: { type: 'incident', priority: 'urgent', stage: 'in_progress', team_id: 2, assignees_add: ['234567890123456789'], tags_add: ['VIP'], fields: { 3: '1287' }, cc_add: ['direction@example.com'] },
   example: TICKET_OUT, errors: [400, 404],

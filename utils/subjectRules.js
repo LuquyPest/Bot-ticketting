@@ -27,7 +27,7 @@ async function applySubjectRules({ db, client, guildId, ticket, firstMessage = '
   for (const r of rules) {
     try {
       if (r.priority) {
-        await db('UPDATE tickets SET priority = ? WHERE id = ?', [r.priority, ticket.id]);
+        await db(`UPDATE tickets SET priority = ?, ${require('./priorityMatrix').LEVEL_FROM_PRIORITY_SQL} WHERE id = ?`, [r.priority, r.priority, r.priority, ticket.id]);
         await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_priority', ticketId: ticket.id, details: { to: r.priority, rule: ruleLabel(r) } });
         applied.push(`priority:${r.priority}`);
       }

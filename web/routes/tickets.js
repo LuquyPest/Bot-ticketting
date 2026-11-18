@@ -167,7 +167,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, team_id, ticket_type, resolved_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -175,7 +175,7 @@ router.get('/', async (req, res) => {
 
     const withSla = tickets.map(t => ({ ...t, sla: slaStatus(t, slaCfg) }));
     const tt = await require('../../utils/ticketTypes').typeSettings(req.guildDb);
-    res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit), types: { enabled: tt.enabled, labels: tt.labels } });
+    res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit), types: { enabled: tt.enabled, labels: tt.labels }, priorityMatrix: (await require('../../utils/priorityMatrix').matrixSettings(req.guildDb)).enabled });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -402,6 +402,7 @@ router.get('/:id', async (req, res) => {
       // Incident or request (utils/ticketTypes.js): shown only when the space uses types
       types: await (async () => { const t = await require('../../utils/ticketTypes').typeSettings(req.guildDb); return { enabled: t.enabled, labels: t.labels }; })(),
       resolutionSettings: await require('../../utils/resolution').resolutionSettings(req.guildDb),
+      priorityMatrix: await require('../../utils/priorityMatrix').matrixSettings(req.guildDb),
     });
   } catch (err) {
     console.error(err);
@@ -1132,6 +1133,22 @@ router.patch('/:id/team', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// PATCH /api/tickets/:id/priority-matrix { urgency, impact, level } (v5.1) — level null = computed
+router.patch('/:id/priority-matrix', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const pm = require('../../utils/priorityMatrix');
+    if (!(await pm.matrixSettings(req.guildDb)).enabled) return res.status(400).json({ error: 'La matrice de priorité n\'est pas activée (Paramètres → Tickets)' });
+    const b = req.body || {};
+    const r = await pm.setMatrixPriority({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, ticket,
+      urgency: b.urgency === undefined ? undefined : (b.urgency === null ? null : Number(b.urgency)),
+      impact: b.impact === undefined ? undefined : (b.impact === null ? null : Number(b.impact)),
+      level: b.level === undefined || b.level === null ? null : Number(b.level), actor: dashboardActor(req) });
+    res.json(r);
+  } catch (err) { if (err.status) return res.status(err.status).json({ error: err.message }); console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ── Resolution (utils/resolution.js, v5.1) ──
