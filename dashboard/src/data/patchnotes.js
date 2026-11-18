@@ -19,10 +19,11 @@ export function localizedVersion(v, lang) {
 export const VERSIONS = [
   {
     version: 'v4.0.0',
-    date: 'à venir',
-    title: 'Datick',
-    titleEn: 'Datick',
+    date: '18 novembre 2026',
+    title: 'Datick : un système de tickets complet',
+    titleEn: 'Datick: a complete ticketing system',
     changes: [
+      { type: 'new',  text: 'Datick n\'est plus un bot de tickets Discord : c\'est un système de tickets complet. Les demandes arrivent par Discord, par e-mail, par l\'espace membre web, par un widget sur ton site ou par l\'API, et l\'équipe les traite toutes depuis le même dashboard. Discord devient un canal parmi d\'autres, et il est facultatif. Les installations existantes se mettent à jour sans rien changer', en: 'Datick is no longer a Discord ticket bot: it is a complete ticketing system. Requests come in through Discord, e-mail, the web member space, a widget on your site or the API, and the team handles them all from the same dashboard. Discord becomes one channel among others, and it is optional. Existing installs update without changing anything' },
       { type: 'new',  text: 'Le projet s\'appelle désormais Datick : interface, e-mails, documentation et README. Le nom affiché reste celui de ton bot Discord quand il y en a un', en: 'The project is now called Datick: interface, e-mails, documentation and README. The name shown is still your Discord bot\'s when there is one' },
       { type: 'new',  text: 'Espaces sans Discord (Instance → Serveurs → Créer un espace) : un espace de support avec ses réglages, son équipe et ses tickets par e-mail, sans serveur Discord ; listé dans Mes serveurs, aucune demande envoyée à Discord à son sujet, tickets sans salon', en: 'Spaces without Discord (Instance → Servers → Create a space): a support space with its settings, team and tickets by e-mail, without a Discord server; listed in My servers, nothing ever asked to Discord about it, tickets without a channel' },
       { type: 'new',  text: 'Contacts (à la place des profils des membres) : une fiche par personne qui regroupe ses identités Discord et e-mail, tous ses tickets et la discussion du staff ; nom, adresse et notes modifiables, fusion de deux contacts et détachement, visibilité des tickets respectée', en: 'Contacts (instead of member profiles): one card per person gathering their Discord and e-mail identities, all their tickets and the staff discussion; name, address and notes editable, merging two contacts and detaching, ticket visibility respected' },

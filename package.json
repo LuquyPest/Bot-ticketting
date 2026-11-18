@@ -1,7 +1,7 @@
 {
   "name": "datick",
   "version": "3.3.0",
-  "description": "Bot Discord de tickets par messages privés, avec dashboard web temps réel (multi-serveurs)",
+  "description": "Système de tickets complet à héberger soi-même : Discord, e-mail, web et API, dashboard temps réel",
   "main": "index.js",
   "scripts": {
     "start": "node bootstrap.js",

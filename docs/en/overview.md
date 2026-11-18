@@ -1,27 +1,29 @@
 # Overview
 
-Datick turns the **direct messages** sent to your Discord bot into **tickets** that your team handles from Discord or from a **real-time web dashboard**. Every install is independent: you install your instance, plug in your own bot, and you are its only administrator.
+Datick is a **complete ticketing system** you host yourself. Requests come in through **Discord**, **e-mail**, a **web form** or the **API**; each one becomes a ticket your team handles from a **real-time web dashboard**. Discord is one channel among others, and it is optional: a space can run on e-mail and the web alone. Every install is independent: you are its only administrator.
 
 ## How it works
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor M as Member
-    participant B as Bot (DM)
-    participant D as Discord (ticket channel)
-    participant W as Dashboard
-    actor S as Staff
-    M->>B: Direct message
-    B->>M: Which server? Which subject? (FAQ, form)
-    B->>D: Creates the ticket, private to the staff
-    B-->>W: New ticket, in real time
-    S->>W: Replies, notes, assigns, changes the stage…
-    W->>B: Reply
-    B->>M: Reply by DM
-    S->>W: Closes the ticket
-    B->>M: Transcript, rating request, reopen button
+flowchart LR
+    D["Discord<br/>DMs, panels"] --> T
+    E["E-mail<br/>support addresses"] --> T
+    W["Web<br/>member space, widget"] --> T
+    A["API<br/>your own tool"] --> T
+    T["Ticket<br/>+ contact card"] --> S["Dashboard<br/>teams, queues, statuses, SLA"]
+    S -->|reply| R["The requester,<br/>on their channel"]
 ```
+
+| Channel | The requester… | They get the replies… |
+|---|---|---|
+| **Discord** | DMs the bot, or clicks a [panel](./integrations#discord-panels) | by DM, with the ticket in a private channel or thread for the staff (or no channel at all) |
+| **E-mail** | writes to a [support address](./integrations#tickets-by-e-mail), each of which can lead to a subject or a team | by e-mail, in the same thread, attachments included |
+| **Web** | opens a ticket from the [member space](./member-space) (Discord sign-in or e-mail link) or your site's [widget](./integrations#web-widget) | by e-mail, with a link to follow and reply |
+| **API** | — your tool creates, reads and closes tickets through the [public API](./integrations#public-api), and receives webhooks | depending on your integration |
+
+The same person writing on Discord then by e-mail has a single **[contact card](./tickets#contacts)**. On the team side, a ticket follows the same path whatever the channel: subject and category, a [team](./team#teams-and-their-queues)'s queue and automatic assignment, status, deadline, internal notes, [approvals](./tickets#approvals), closing with a transcript and a rating request.
+
+### The Discord journey
 
 1. The member writes to the bot in a **direct message**. If they are on several servers using your bot, they pick one.
 2. The bot offers the **FAQ** if their question is in it, then asks for the **subject**, the **fields** and the **form** you configured.
@@ -33,39 +35,41 @@ sequenceDiagram
 
 | | |
 |---|---|
-| **Tickets** | Subjects and automatic rules per subject or keywords, custom fields, intake forms, automatic FAQ, button panels, confidential tickets, priorities, stages and custom statuses, Kanban, per-stage deadlines (SLA), merging, linked tickets, transcripts |
+| **Channels** | Discord (DMs, panels, channels, private threads or no channel), e-mail (several addresses, routed by subject or team), web member space, widget, API v1 and v2, webhooks; one contact card per person |
+| **Tickets** | Subjects in categories and sub-categories, automatic rules per subject or keywords, custom fields, intake forms, automatic FAQ and public knowledge base, confidential tickets, priorities, stages and custom statuses, approvals, Kanban, deadlines per stage and per category (SLA), merging, linked tickets, transcripts |
 | **Dashboard** | My queue, full-text search with operators, saved views, split view, pinned internal notes, reply templates and macros, mentions, following, reminders, time spent, colleagues' presence, drafts, bulk actions |
-| **Team** | Grades with fine-grained permissions, roles tied to tags, sync with Discord roles, planned absences, goals, statistics, period comparison, monthly PDF reports, public statistics in a channel |
-| **Members** | DM replies in their language (English, French, Spanish, German, Italian, Portuguese), a web space to follow and open tickets, browsable help, rating, reopening |
-| **Instance** | Owner = owner of the Discord application, servers active as soon as the bot joins, health, errors and alerts, log, encrypted backups checked and copied off the server, one-click updates |
+| **Team** | Grades with fine-grained permissions, teams with their queue and automatic assignment, roles tied to tags, invitations by e-mail or sync with Discord roles, planned absences, goals, statistics, period comparison, reports by team, category and channel (CSV), monthly PDF reports, public statistics in a channel |
+| **Requesters** | Replies by DM, by e-mail or on the web, in their language (English, French, Spanish, German, Italian, Portuguese), a web space to follow and open tickets, browsable help, rating, reopening |
+| **Instance** | Spaces with or without a Discord server, ways to sign in of your choice (Discord, Google, Microsoft, OpenID Connect, password), Discord servers active as soon as the bot joins, health, errors and alerts, log, encrypted backups checked and copied off the server, one-click updates |
 | **Interface** | English and French, light and dark themes, « Pro » or « Classic » interface, accessible (WCAG 2.1 AA), works on a phone |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Discord
-        MP["Members (DM)"]
-        SRV["Servers (channels, threads, roles)"]
+    subgraph Channels
+        MP["Discord (DMs, channels, threads)"]
+        MAIL["E-mail (IMAP / SMTP)"]
+        WEB["Browser (member space, widget, API)"]
     end
     subgraph App["Bot container — Node.js 22"]
         BOT["discord.js bot"]
         API["Express API + React dashboard"]
         JOBS["BullMQ scheduled jobs"]
     end
-    PROXY["Caddy or Traefik (HTTPS)"] --> API
+    WEB --> PROXY["Caddy or Traefik (HTTPS)"] --> API
     MP <--> BOT
-    SRV <--> BOT
+    MAIL <--> JOBS
     BOT & API & JOBS <--> REDIS[("Redis 7 — sessions, state, real time")]
-    BOT & API & JOBS --> DB[("MariaDB 11 — one database per server")]
+    BOT & API & JOBS --> DB[("MariaDB 11 — one database per space")]
 ```
 
-One bot serves **several Discord servers**, each with its own database, settings, grades and team: nothing leaks from one server to another.
+One instance serves **several spaces** — a Discord server, a brand, a client… —, each with its own database, settings, grades and team: nothing leaks from one space to another. A space can exist without a Discord server.
 
-**Stack**: Node.js 22, discord.js 14, Express 5, MariaDB 11, Redis 7, React 19, Vite, Tailwind CSS 4 — all in Docker containers, with an image published on `ghcr.io/luquypest/bot-ticketting` (amd64 and arm64).
+**Stack**: Node.js 22, discord.js 14, Express 5, MariaDB 11, Redis 7, React 19, Vite, Tailwind CSS 4 — all in Docker containers, with an image published on `ghcr.io/luquypest/datick` (amd64 and arm64).
 
 ## Next
 
 - [Try the demo](https://ticket.sunset-fa.fr/demo) — the dashboard on a fictitious server, no account and no install.
-- [Install your instance](./installation) — twenty minutes, from the Discord portal to the first ticket.
+- [Install your instance](./installation) — twenty minutes, up to the first ticket.
 - [First steps](./first-steps) — what to set right after installing.

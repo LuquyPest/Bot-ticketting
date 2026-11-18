@@ -99,7 +99,7 @@ export default withMermaid(defineConfig({
   base,
   lang: 'fr-FR',
   title: 'Datick',
-  description: 'Le support Discord par messages privés, piloté depuis un dashboard web. Logiciel libre, à héberger soi-même.',
+  description: 'Système de tickets complet à héberger soi-même : Discord, e-mail, web et API dans un seul dashboard. Logiciel libre.',
   cleanUrls: true,
   lastUpdated: true,
   srcExclude: ['**/node_modules/**', 'README.md'],
@@ -108,8 +108,8 @@ export default withMermaid(defineConfig({
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}logo.svg` }],
     ['meta', { name: 'theme-color', content: '#2f6feb' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: 'Datick — le support de ta communauté, sur Discord et par e-mail' }],
-    ['meta', { property: 'og:description', content: 'Tickets Discord en MP, dashboard web temps réel, à héberger soi-même. Libre (AGPL-3.0).' }],
+    ['meta', { property: 'og:title', content: 'Datick — un système de tickets complet : Discord, e-mail, web, API' }],
+    ['meta', { property: 'og:description', content: 'Chaque demande devient un ticket, quel que soit le canal, traité depuis un dashboard temps réel. À héberger soi-même, libre (AGPL-3.0).' }],
     ['meta', { property: 'og:image', content: 'https://docs.bot.daryu.xyz/images/social-preview.png' }],
     ['meta', { property: 'og:image:width', content: '1280' }],
     ['meta', { property: 'og:image:height', content: '640' }],
@@ -162,7 +162,7 @@ export default withMermaid(defineConfig({
       lang: 'en-US',
       link: '/en/',
       title: 'Datick',
-      description: 'Discord support through direct messages, run from a web dashboard. Free software, self-hosted.',
+      description: 'A complete self-hosted ticketing system: Discord, e-mail, web and API in one dashboard. Free software.',
       themeConfig: {
         nav: [
           { text: 'Guide', link: '/en/overview', activeMatch: '^/en/(?!$)' },
