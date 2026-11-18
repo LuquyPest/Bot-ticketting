@@ -68,7 +68,7 @@ Un ticket peut demander **l'accord d'une personne** avant d'avancer (un rembours
 | **Réponse** | **Accorder** (le ticket passe au statut choisi) ou **Refuser** (il reste où il est), avec un commentaire facultatif. Une seule réponse ; la personne qui a demandé est prévenue |
 | **Relance** | **Relancer** à la main, une fois par heure au plus ; relance automatique après 24 h sans réponse, trois fois au plus (par e-mail, avec un nouveau lien : l'ancien ne marche plus) |
 
-Une seule validation en attente par ticket ; la personne qui l'a demandée, ou un fondateur, peut l'**annuler**. Chaque étape est une note dans le ticket et une ligne de son journal. Un ticket **confidentiel** n'est validé que par un fondateur, jamais par e-mail. La validation par e-mail utilise l'[e-mail de l'instance](./instance#e-mail-de-l-instance).
+Une seule validation en attente par ticket ; la personne qui l'a demandée, ou un fondateur, peut l'**annuler**. Chaque étape est une note dans le ticket et une ligne de son journal. Un ticket **confidentiel** n'est validé que par un fondateur, jamais par e-mail. La validation par e-mail utilise l'[e-mail de l'instance](./instance#e-mail-de-l-instance), à raison de 10 envois (demandes et relances) par heure et par personne, 30 par espace.
 
 ## Les contacts
 

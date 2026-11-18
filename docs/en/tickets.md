@@ -68,7 +68,7 @@ A ticket can ask for **a person's approval** before it moves on (a refund, an ex
 | **Answer** | **Grant** (the ticket moves to the chosen status) or **Refuse** (it stays where it is), with an optional comment. One answer only; the person who asked is told |
 | **Reminder** | **Remind** by hand, once an hour at most; automatic reminder after 24 h without an answer, three times at most (by e-mail, with a new link: the old one stops working) |
 
-One pending approval per ticket; the person who asked, or a founder, can **cancel** it. Every step is a note in the ticket and a line of its journal. A **confidential** ticket is approved only by a founder, never by e-mail. Approval by e-mail uses the [e-mail of the instance](./instance#e-mail-of-the-instance).
+One pending approval per ticket; the person who asked, or a founder, can **cancel** it. Every step is a note in the ticket and a line of its journal. A **confidential** ticket is approved only by a founder, never by e-mail. Approval by e-mail uses the [e-mail of the instance](./instance#e-mail-of-the-instance), up to 10 sends (requests and reminders) per hour per person, 30 per space.
 
 ## Contacts
 

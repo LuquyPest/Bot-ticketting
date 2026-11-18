@@ -2436,6 +2436,22 @@ async function main() {
     const before = memberDms.length;
     const sent = await app('./utils/i18n').sendToMember(fakeClient, '200000000000000077', DEMO, () => ({ content: 'spam' }));
     check('démo: aucun MP ne part du serveur de démonstration', sent === null && memberDms.length === before, '');
+    // v4: nothing leaves the sandbox by e-mail, nothing becomes public on the instance's domain
+    const v4Blocked = [];
+    for (const [m, p, body] of [['POST', '/api/invitations', { email: 'cible@example.com', role: 'support' }], ['PUT', '/api/faq/public', { enabled: true }],
+      ['PUT', '/api/widget-settings', { enabled: true, origins: '' }], ['POST', `/api/tickets/${firstId}/approvals`, { approverEmail: 'cible@example.com', reason: 'spam' }],
+      ['POST', `/api/tickets/${firstId}/approvals/1/remind`, {}]]) {
+      const x = await req(m, p, { headers: dCookie, body });
+      if (!(x.status === 403 && x.body.demo === true)) v4Blocked.push(`${m} ${p} → ${x.status}`);
+    }
+    check('démo: invitations, validations, base publique et widget bloqués', v4Blocked.length === 0, v4Blocked.join(', '));
+    await getTenantDb(DEMO)('UPDATE guild_config SET kb_public = 1 WHERE id = 1');
+    await getTenantDb(DEMO)("INSERT INTO faq_entries (question, answer, visibility) VALUES ('Hameçonnage', 'Va sur https://evil.example', 'public')");
+    check('démo: jamais de page publique, même forcée en base', (await req('GET', `/api/kb/${DEMO}`)).status === 404, '');
+    let refused = null;
+    try { await app('./utils/approvals').requestApproval({ db: getTenantDb(DEMO), client: fakeClient, guildId: DEMO, ticket: { id: firstId, status: 'open' }, input: { approverEmail: 'cible@example.com', reason: 'x' }, actor: { id: 'demo' } }); }
+    catch (e) { refused = e.status; }
+    check('démo: validation par e-mail refusée aussi hors du dashboard', refused === 403, String(refused));
     r = await req('PATCH', '/api/config', { headers: dCookie, body: { webhookUrl: 'https://evil.example/hook', welcomeMessage: 'Bienvenue (démo)' } });
     const [dcfg] = await getTenantDb(DEMO)('SELECT webhook_url, welcome_message FROM guild_config WHERE id = 1');
     check('démo: réglages sensibles ignorés, le reste essayable', r.status === 200 && !dcfg.webhook_url && dcfg.welcome_message === 'Bienvenue (démo)', JSON.stringify(dcfg));
@@ -2452,6 +2468,7 @@ async function main() {
     check('démo: une session démo n a jamais accès à la section Instance', (await req('GET', '/api/instance/stats', { headers: dCookie })).status === 403);
     r = await req('POST', '/api/instance/demo/reset', { sid: sessions.OWN });
     const [dcfg2] = await getTenantDb(DEMO)('SELECT welcome_message FROM guild_config WHERE id = 1');
+    check('démo: la remise à zéro coupe la page publique', Number((await getTenantDb(DEMO)('SELECT kb_public FROM guild_config WHERE id = 1'))[0].kb_public) === 0, '');
     check('démo: remise à zéro', r.status === 200 && r.body.tickets === 24 && dcfg2.welcome_message !== 'Bienvenue (démo)', JSON.stringify([r.body, dcfg2]));
     await req('PUT', '/api/instance/demo', { sid: sessions.OWN, body: { enabled: false } });
     check('démo: désactivable', (await req('POST', '/api/demo/start')).status === 403);
@@ -2917,6 +2934,19 @@ async function main() {
     const tConfA = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('42','u42','db-appr2','open','Signalement', -1)")).insertId;
     r = await req('POST', `/api/tickets/${tConfA}/approvals`, { sid: sessions.F, body: { approverEmail: 'chef@example.com', reason: 'x' } });
     check('validations: un ticket confidentiel ne part jamais à l extérieur', r.status === 400, JSON.stringify(r.body));
+    // A staff account cannot turn the instance's address into a relay: 10 e-mails per hour and per person
+    const tRl = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('43','u43','db-appr-rl','open','Relais')")).insertId;
+    const apprLib = app('./utils/approvals');
+    const rl = [];
+    for (let i = 0; i < 11; i++) {
+      try {
+        const a = await apprLib.requestApproval({ db, client: fakeClient, guildId: G, ticket: { id: tRl, status: 'open', visibility_grade_id: null }, input: { approverEmail: `relais${i}@example.com`, reason: 'x' }, actor: { id: 'rl-test', username: 'RL' } });
+        await db("UPDATE ticket_approvals SET status = 'cancelled' WHERE id = ?", [a.id]);
+        rl.push(200);
+      } catch (e) { rl.push(e.status); }
+    }
+    check('validations: e-mails vers l extérieur limités par personne et par heure', rl.slice(0, 10).every(x => x === 200) && rl[10] === 429, rl.join());
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tRl]);
 
     nodemailer.createTransport = realCreate;
     delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;

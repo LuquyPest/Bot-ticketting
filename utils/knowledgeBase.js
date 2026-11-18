@@ -12,6 +12,7 @@ const kbUrl = (guildId, articleId) => `${base()}/aide/${encodeURIComponent(guild
 // The space, if its public page is on — null otherwise (an unknown space looks the same)
 async function publicSpace(guildId) {
   if (!/^[\w-]{1,32}$/.test(String(guildId || ''))) return null;
+  if (String(guildId) === require('./demo').DEMO_GUILD_ID) return null; // what visitors write there is never public
   const [g] = await globalQuery('SELECT guild_id, guild_name FROM guilds WHERE guild_id = ? AND status = "active" AND maintenance_mode = 0', [guildId]).catch(() => []);
   if (!g) return null;
   const db = getTenantDb(g.guild_id);

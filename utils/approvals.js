@@ -60,7 +60,15 @@ async function notifyApprover(db, client, guildId, a, ticket, by, { reminder = f
 }
 
 // input: { approverId | approverEmail, approverName?, reason, nextStage? }
+// E-mails to people outside the team: a staff account (or a stolen one) must not turn the
+// instance's address into a relay — per person and per space, requests and reminders together
+async function allowExternalMail(guildId, actorId) {
+  const { allowBurst } = require('./rateLimit');
+  return (await allowBurst(`apprmail:${guildId}:${actorId}`, 10, 3600 * 1000)) && (await allowBurst(`apprmail:${guildId}`, 30, 3600 * 1000));
+}
+
 async function requestApproval({ db, client, guildId, ticket, input, actor }) {
+  if (guildId === require('./demo').DEMO_GUILD_ID) throw err('Indisponible dans la démonstration', 403);
   if (!ticket || ticket.status !== 'open') throw err('Ticket fermé');
   const reason = typeof input?.reason === 'string' ? input.reason.trim().slice(0, 2000) : '';
   if (!reason) throw err('Explique ce qui doit être validé');
@@ -87,6 +95,7 @@ async function requestApproval({ db, client, guildId, ticket, input, actor }) {
     if (!EMAIL_RE.test(approverEmail) || approverEmail.length > 254) throw err('Adresse e-mail invalide');
     if (confidential) throw err('Un ticket confidentiel ne peut pas être envoyé à l\'extérieur');
     if (!(await require('./instanceMail').mailSettings().catch(() => ({}))).enabled) throw err('L\'e-mail de l\'instance n\'est pas configuré (Instance → Santé)', 409);
+    if (!(await allowExternalMail(guildId, actor.id))) throw err('Trop de validations envoyées par e-mail : réessaie dans une heure', 429);
     name = (typeof input?.approverName === 'string' && input.approverName.replace(/[\r\n]+/g, ' ').trim().slice(0, 100)) || approverEmail;
   }
   const by = String(actor.username || actor.tag || 'Le staff').slice(0, 100);
@@ -140,6 +149,7 @@ async function remind({ db, client, guildId, approval, actor, auto = false }) {
   if (!auto && Date.now() - last < MANUAL_REMIND_MS) throw err('Une relance par heure au plus', 429);
   const [ticket] = await db('SELECT id, subject, status FROM tickets WHERE id = ?', [approval.ticket_id]);
   if (!ticket || ticket.status !== 'open') throw err('Ticket fermé');
+  if (approval.approver_email && !(await allowExternalMail(guildId, auto ? 'auto' : actor?.id))) throw err('Trop de validations envoyées par e-mail : réessaie dans une heure', 429);
   await notifyApprover(db, client, guildId, approval, ticket, auto ? 'Rappel automatique' : String(actor.username || actor.tag || 'Le staff'), { reminder: true });
   await db('UPDATE ticket_approvals SET reminded_at = NOW(), remind_count = remind_count + 1 WHERE id = ?', [approval.id]);
   await recordEvent(db, { actor: actor || { id: 'system', tag: 'Rappel automatique', source: 'system' }, action: 'approval_remind', ticketId: ticket.id, details: { approver: approval.approver_name, auto } });

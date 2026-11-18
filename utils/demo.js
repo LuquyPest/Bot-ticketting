@@ -14,10 +14,13 @@ const BLOCKED = [
   ['*', '/api/api-keys'], ['*', '/api/guest-invites'], ['*', '/api/newsletter'], ['*', '/api/config/bot-identity'],
   ['*', '/api/config/import'], ['*', '/api/members'], ['*', '/api/push'], ['*', '/api/profile'], ['*', '/api/sessions'],
   ['*', '/api/auth/select-guild'], ['*', '/api/tickets/open'], ['*', '/api/config/public-stats/publish'], ['*', '/api/bot-import'], ['*', '/api/email'],
+  // v4: an e-mail to any address (invitations), a public page on this domain (knowledge base), a public form (widget)
+  ['*', '/api/invitations'], ['*', '/api/faq/public'], ['*', '/api/widget-settings'],
 ];
 // Adding a participant or contacting a member takes any Discord ID: never from the demo (see
 // sendToMember); the voice channel would be created on Discord
-const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/, /^\/api\/tickets\/\d+\/voice$/];
+// Approvals: asking by e-mail sends free text to any address (the staff approver is fictitious anyway)
+const BLOCKED_RE = [/^\/api\/tickets\/\d+\/participants(\/|$)/, /^\/api\/tickets\/\d+\/voice$/, /^\/api\/tickets\/\d+\/approvals(\/|$)/];
 const BLOCKED_CONFIG_FIELDS = ['webhookUrl', 'webhookSecret', 'webhooksEnabled', 'webhookEvents', 'ipAllowlist', 'require2fa', 'apiKeysEnabled', 'idleTimeoutMinutes'];
 
 const isDemoSession = session => !!session?.user?.demo;
@@ -56,7 +59,12 @@ async function seedDemo() {
   await db(`INSERT INTO guild_config (id, ticket_subjects, welcome_message, sla_open_hours, sla_waiting_hours, sla_in_progress_hours, internal_notes_enabled, faq_enabled, monthly_goals_enabled)
             VALUES (1, ?, ?, 4, 48, 24, 1, 1, 1)
             ON DUPLICATE KEY UPDATE ticket_subjects = VALUES(ticket_subjects), welcome_message = VALUES(welcome_message), sla_open_hours = 4, sla_waiting_hours = 48, sla_in_progress_hours = 24`,
+    // (the public pages of v4 are turned off again below)
     [JSON.stringify(subjects), 'Bienvenue sur le support ! Un membre de l\'équipe te répond au plus vite.']);
+
+  // Nothing public stays from a visit: knowledge base page, web widget
+  await db('UPDATE guild_config SET kb_public = 0, widget_enabled = 0, widget_token = NULL, widget_origins = NULL WHERE id = 1').catch(() => null);
+  for (const t of ['team_invitations', 'ticket_approvals']) await db(`DELETE FROM ${t}`).catch(() => null);
 
   // Staff: the visitor (founder) and fictitious colleagues
   const staff = [[DEMO_USER_ID, 'Visiteur démo', 'fondateur', 'available'], ['999999999999999901', 'Léa', 'support', 'available'],

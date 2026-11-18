@@ -43,6 +43,7 @@ async function listInvitations(db) {
 // Returns { invitation } or { status, error }. Sends the e-mail; without the instance e-mail, nothing
 // is created (the link is never shown to the one who invites: only the address it is sent to opens it).
 async function createInvitation(db, guild, { email, role = 'support', gradeId = null, lang = 'fr' }, actor) {
+  if (guild?.guild_id === require('./demo').DEMO_GUILD_ID) return { status: 403, error: 'Indisponible dans la démonstration' };
   const mail = accounts.normEmail(email);
   if (!EMAIL_RE.test(mail) || mail.length > 254) return { status: 400, error: 'Adresse e-mail invalide' };
   if (!ROLES.includes(role)) return { status: 400, error: 'Rôle invalide' };
