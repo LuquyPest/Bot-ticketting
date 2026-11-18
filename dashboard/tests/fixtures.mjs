@@ -9,6 +9,9 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/rules': { simple: 1, rules: [{ id: 1, name: 'Clients VIP', position: 1, active: true, origin: null, triggers: ['created', 'member_reply'], match: 'all', stop: true,
+    conditions: [{ field: 'channel', not: false, values: ['email'] }, { field: 'requester', not: false, values: ['@vip.test'] }, { field: 'text', not: false, values: ['urgent, en panne'] }],
+    actions: [{ type: 'priority', value: 'urgent' }, { type: 'tagAdd', value: 1 }, { type: 'note', value: 'Client VIP : traiter avant midi' }, { type: 'notify', value: ['1'] }] }] },
   '/api/sla-policies': { policies: [{ id: 1, name: 'Incidents urgents', position: 0, ttoMinutes: 60, ttrMinutes: 480, businessHours: true, active: true, conditions: { priorities: ['urgent'], types: ['incident'], subjects: [], channels: [] },
       escalations: [{ id: 1, objective: 'tto', percent: 50, notify: true, raisePriority: false, alertChannel: false, teamId: null, followerIds: [] }, { id: 2, objective: 'ttr', percent: 100, notify: true, raisePriority: true, alertChannel: true, teamId: 1, followerIds: ['1'] }] },
     { id: 2, name: 'Par défaut', position: 1, ttoMinutes: 480, ttrMinutes: 2880, businessHours: true, active: true, conditions: { priorities: [], types: [], subjects: [], channels: [] } }] },

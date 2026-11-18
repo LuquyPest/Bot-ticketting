@@ -54,14 +54,31 @@ async function exportConfig(db) {
       }),
     procedures: (await db('SELECT title, subject, steps, active FROM procedures ORDER BY position, id').catch(() => []))
       .map(p => ({ title: p.title, subject: p.subject, active: !!p.active, steps: parseJsonField(p.steps, []).map(s => s.text) })),
-    subjectRules: (await db('SELECT match_type, subject, keywords, tag_id, priority, visibility_grade_id, active FROM subject_rules ORDER BY id'))
+    subjectRules: (await require('./subjectRules').listLegacy(db))
       .map(r => ({ matchType: r.match_type || 'subject', subject: r.subject, keywords: r.keywords, tag: tagName.get(r.tag_id) || null, priority: r.priority, grade: gradeName.get(r.visibility_grade_id) || null, active: !!r.active })),
     // Discord category: a Discord ID, imported only on request like the other channels
     stages: stages.map(x => ({ label: x.label, color: x.color, kind: x.kind, category_id: x.category_id, slaHours: x.sla_hours })),
     // Members are not carried: they are accounts of this space
+    // Business rules (v5.2): tags, teams, grades and statuses by name; the people chosen in a rule
+    // are accounts of this space, left out
+    rules: await exportRules(db, { tagName, gradeName, stageLabel }),
     teams: teams.map(t => ({ name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0, subjects: parseJsonField(t.subjects, []),
       tags: parseJsonField(t.tag_ids, []).map(id => tagName.get(Number(id))).filter(Boolean) })),
   };
+}
+
+const PERSONAL = ['assign', 'follower', 'notify'];
+async function exportRules(db, { tagName, gradeName, stageLabel }) {
+  const teamName = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.id, t.name]));
+  const stage = v => stageLabel.get(v) ? { stageLabel: stageLabel.get(v) } : { value: v };
+  return (await require('./ruleEngine').listRules(db)).filter(r => r.origin !== 'subject').map(r => ({
+    name: r.name, active: r.active, triggers: r.triggers, match: r.match, stop: r.stop,
+    conditions: r.conditions.map(c => (c.field === 'tag' ? { ...c, values: c.values.map(id => tagName.get(Number(id))).filter(Boolean) }
+      : c.field === 'stage' ? { ...c, values: c.values.map(v => stageLabel.get(v) || v) } : c)),
+    actions: r.actions.filter(a => !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagName.get(a.value) || null }
+      : a.type === 'team' ? { type: a.type, value: teamName.get(a.value) || null } : a.type === 'grade' ? { type: a.type, value: gradeName.get(a.value) || null }
+        : a.type === 'stage' ? { type: a.type, ...stage(a.value) } : a)).filter(a => a.value !== null),
+  }));
 }
 
 const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
@@ -201,15 +218,20 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
     if (!str(p.title, 100) || !steps) continue;
     await upsertBy('procedures', 'procedures', 'title', str(p.title, 100), ['subject', 'steps', 'active'], [str(p.subject, 100), JSON.stringify(steps), bool(p.active ?? 1)]);
   }
+  // Rules by subject or keywords (rules of the engine, utils/subjectRules.js): the same subject or
+  // keywords replace the rule
+  const legacyLib = require('./subjectRules');
   for (const r of Array.isArray(data.subjectRules) ? data.subjectRules.slice(0, 100) : []) {
-    const vals = [r.tag ? tagId.get(r.tag) || null : null, ['low', 'normal', 'urgent'].includes(r.priority) ? r.priority : null, r.grade ? gradeId.get(r.grade) || null : null];
-    if (!vals.some(Boolean)) continue;
-    if (r.matchType === 'keyword') {
-      const keywords = str(r.keywords, 300); if (!keywords) continue;
-      await upsertBy('subjectRules', 'subject_rules', 'keywords', keywords, ['match_type', 'tag_id', 'priority', 'visibility_grade_id', 'active'], ['keyword', ...vals, bool(r.active ?? 1)]);
-    } else {
-      const subject = str(r.subject, 100); if (!subject) continue;
-      await upsertBy('subjectRules', 'subject_rules', 'subject', subject, ['tag_id', 'priority', 'visibility_grade_id', 'active'], [...vals, bool(r.active ?? 1)]);
+    const keyword = r.matchType === 'keyword';
+    const v = { match_type: keyword ? 'keyword' : 'subject', subject: keyword ? null : str(r.subject, 100), keywords: keyword ? str(r.keywords, 300) : null,
+      tag_id: r.tag ? tagId.get(r.tag) || null : null, priority: ['low', 'normal', 'urgent'].includes(r.priority) ? r.priority : null, visibility_grade_id: r.grade ? gradeId.get(r.grade) || null : null };
+    if (!(keyword ? v.keywords : v.subject) || !(v.tag_id || v.priority || v.visibility_grade_id)) continue;
+    const same = (await legacyLib.listLegacy(db)).find(x => (keyword ? x.match_type === 'keyword' && x.keywords === v.keywords : x.match_type !== 'keyword' && x.subject === v.subject));
+    if (same) await db('DELETE FROM ticket_rules WHERE id = ?', [same.id]);
+    const res = await legacyLib.createLegacy(db, v);
+    if (res.ok) {
+      if (r.active === false) await db('UPDATE ticket_rules SET active = 0 WHERE id = ?', [res.id]);
+      count('subjectRules', same ? 'updated' : 'created');
     }
   }
 
@@ -226,6 +248,22 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
       tagIds: (Array.isArray(t.tags) ? t.tags : []).map(n => tagId.get(n)).filter(Boolean) };
     const r = row ? await teamsLib.updateTeam(db, row.id, input) : await teamsLib.createTeam(db, input);
     if (r.ok) count('teams', row ? 'updated' : 'created');
+  }
+
+  // Business rules (by name), after the teams they may hand tickets to; what is unknown here is left out
+  const engine = require('./ruleEngine');
+  const teamIdOf = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.name, t.id]));
+  const stageKeyOf = new Map((await db('SELECT id, label FROM ticket_stages').catch(() => [])).map(x => [x.label.toLowerCase(), `s_${x.id}`]));
+  for (const r of Array.isArray(data.rules) ? data.rules.slice(0, engine.MAX_RULES || 100) : []) {
+    if (!r || typeof r !== 'object' || !str(r.name, 80)) continue;
+    const conditions = (Array.isArray(r.conditions) ? r.conditions : []).map(c => (c?.field === 'tag' ? { ...c, values: (c.values || []).map(n => tagId.get(n)).filter(Boolean) }
+      : c?.field === 'stage' ? { ...c, values: (c.values || []).map(v => stageKeyOf.get(String(v).toLowerCase()) || v) } : c)).filter(c => !Array.isArray(c?.values) || c.values.length);
+    const actions = (Array.isArray(r.actions) ? r.actions : []).filter(a => a && !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagId.get(a.value) }
+      : a.type === 'team' ? { type: a.type, value: teamIdOf.get(a.value) } : a.type === 'grade' ? { type: a.type, value: gradeId.get(a.value) }
+        : a.type === 'stage' ? { type: a.type, value: a.stageLabel ? stageKeyOf.get(String(a.stageLabel).toLowerCase()) : a.value } : a)).filter(a => a.value !== undefined && a.value !== null);
+    const [row] = await db("SELECT id FROM ticket_rules WHERE name = ? AND (origin IS NULL OR origin <> 'subject')", [str(r.name, 80)]);
+    const res = await engine.saveRule(db, row?.id || null, { ...r, conditions, actions }, { canGrade: true });
+    if (res.ok) count('rules', row ? 'updated' : 'created');
   }
 
   // Grades of the support roles, by name (local ids)

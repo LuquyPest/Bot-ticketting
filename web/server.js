@@ -281,6 +281,7 @@ app.use('/api/faq',         withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/members',     withGuild(['fondateur']),            require('./routes/members'));
 app.use('/api/fields',      withGuild(['support', 'fondateur']), require('./routes/fields'));
 app.use('/api/subject-rules', withGuild(['support', 'fondateur']), require('./routes/subjectRules'));
+app.use('/api/rules',         withGuild(['support', 'fondateur']), require('./routes/rules')); // business rules (v5.2)
 app.use('/api/reports',     withGuild(['support', 'fondateur']), require('./routes/reports'));
 app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./routes/incidents'));
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));

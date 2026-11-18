@@ -2177,8 +2177,8 @@ async function main() {
     check('mots-clés: début de mot, accents et majuscules ignorés', await prio(a) === 'urgent' && await tagged(a), '');
     check('mots-clés: expression de plusieurs mots', await prio(b) === 'urgent' && await tagged(b), '');
     check('mots-clés: pas de déclenchement sans mot-clé', await prio(c) !== 'urgent' && !(await tagged(c)), '');
-    const [ev] = await db("SELECT details FROM audit_log WHERE action = 'ticket_priority' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [a.ticket.id]);
-    check('mots-clés: tracé dans le journal', JSON.stringify(ev?.details).includes('mots-clés'), JSON.stringify(ev));
+    const [ev] = await db("SELECT details FROM audit_log WHERE action = 'ticket_rule' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [a.ticket.id]);
+    check('mots-clés: tracé dans le journal', JSON.stringify(ev?.details).includes('Mots-clés'), JSON.stringify(ev));
     r = await req('GET', '/api/config/export', { sid: sessions.FV });
     check('mots-clés: exportés avec la configuration', r.body.subjectRules?.some(x => x.matchType === 'keyword' && x.keywords?.includes('rembours')), JSON.stringify(r.body.subjectRules));
     await req('DELETE', `/api/subject-rules/${ruleId}`, { sid: sessions.FV });
@@ -2327,11 +2327,11 @@ async function main() {
     check('confidentiel: notifications et salon limités aux fondateurs', await canSee(db, U.F, -1) && !(await canSee(db, U.S1, -1)), '');
     // A rule on the subject does not lift it
     const gR = (await db("INSERT INTO grades (name) VALUES ('Règle conf')")).insertId;
-    await db("INSERT INTO subject_rules (subject, visibility_grade_id) VALUES ('Demande confidentielle', ?)", [gR]);
-    await app('./utils/subjectRules').applySubjectRules({ db, client: fakeClient, guildId: G, ticket: tc, firstMessage: '' });
+    const confRule = await app('./utils/subjectRules').createLegacy(db, { match_type: 'subject', subject: 'Demande confidentielle', keywords: null, tag_id: null, priority: null, visibility_grade_id: gR });
+    await app('./utils/ruleEngine').runRules({ db, client: fakeClient, guildId: G, ticketId: tc.id, trigger: 'created' });
     const [tc2] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [tc.id]);
     check('confidentiel: une règle par sujet ne le lève pas', tc2.visibility_grade_id === -1, JSON.stringify(tc2));
-    await db("DELETE FROM subject_rules WHERE subject = 'Demande confidentielle'");
+    await db('DELETE FROM ticket_rules WHERE id = ?', [confRule.id]);
     // Nothing of it reaches the staff through the side doors (analytics, profile, dashboard)
     r = await req('GET', '/api/analytics/sla', { sid: sessions.S3T });
     check('confidentiel: absent de la vue SLA du staff', r.status === 200 && !r.body.some(t => t.id === tc.id), JSON.stringify(r.body).slice(0, 200));
@@ -3163,7 +3163,7 @@ async function main() {
     const slaObj = typeof slaAfter.subject_sla === 'string' ? JSON.parse(slaAfter.subject_sla) : slaAfter.subject_sla;
     check('catégories: retirer une catégorie retire ses délais', r.status === 200 && Object.keys(slaObj || {}).length === 0, JSON.stringify(slaObj));
 
-    await db('DELETE FROM subject_rules WHERE id IN (?)', [[rule1.body.id, rule2.body.id]]);
+    await db('DELETE FROM ticket_rules WHERE id IN (?)', [[rule1.body.id, rule2.body.id]]);
     await db('DELETE FROM ticket_fields WHERE id = ?', [fC]);
     await db('DELETE FROM teams');
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tChild, tOther, child.id, parent.id].filter(Boolean)]);
@@ -5247,6 +5247,111 @@ async function main() {
     await req('DELETE', `/api/sla-policies/${pol.id}`, { sid: sessions.F });
     check('escalade: supprimer l objectif et l équipe retire leurs niveaux', Number((await db('SELECT COUNT(*) AS n FROM sla_escalations'))[0].n) === 0, '');
     await db('DELETE FROM tickets WHERE id IN (?)', [[tA, tP, tR, tO]]);
+  }
+
+  // ── Business rules (utils/ruleEngine.js, v5.2) ──
+  {
+    const E = app('./utils/ruleEngine');
+    const tmR = createManager(db, fakeClient, G);
+    const until = async (fn, ms = 4000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await new Promise(r2 => setTimeout(r2, 50)); } return false; };
+    const mkMail = (n, addr) => ({ id: `mail:${String(n).padStart(24, '0')}`, username: addr, tag: addr, send: async () => ({}) });
+    const tk = async id => (await db('SELECT * FROM tickets WHERE id = ?', [id]))[0];
+    const notes = async id => (await db("SELECT content, author_tag FROM ticket_notes WHERE ticket_id = ? AND source = 'system'", [id]));
+    r = await req('GET', '/api/rules', { sid: sessions.S1 });
+    check('règles: réservées aux fondateurs et à manage_rules', r.status === 403, r.status);
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: [], actions: [{ type: 'priority', value: 'low' }] } });
+    check('règles: un déclencheur requis', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['created'], conditions: [{ field: 'salaire', values: ['1'] }], actions: [{ type: 'priority', value: 'low' }] } });
+    check('règles: condition inconnue refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['created'], actions: [{ type: 'subject', value: 'Sujet qui n existe pas' }] } });
+    check('règles: sujet inconnu refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['created'], actions: [{ type: 'assign', value: U.OUT }] } });
+    check('règles: on n attribue qu au staff de l espace', r.status === 400, JSON.stringify(r.body));
+
+    // The old rules by keywords become rules of the engine, with the same effect (migration 59)
+    const tagF = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Impayés', '#aa0000')")).insertId;
+    await db("INSERT INTO subject_rules (match_type, keywords, priority, tag_id) VALUES ('keyword', 'facture impayée, relance', 'urgent', ?)", [tagF]);
+    const m59 = app('./utils/tenantMigrations').MIGRATIONS.find(m => m.version === 59);
+    for (const sql of m59.statements.slice(1)) await db(sql);
+    const conv = (await db("SELECT * FROM ticket_rules WHERE origin = 'subject' AND name LIKE 'Mots-clés : facture%'"))[0];
+    check('règles: conversion des règles par mots-clés', !!conv && !(await db('SELECT 1 FROM subject_rules')).length, JSON.stringify(conv));
+    r = await req('GET', '/api/subject-rules', { sid: sessions.F });
+    check('règles: la forme simple reste lisible', r.body.some(x => x.id === conv.id && x.match_type === 'keyword' && x.tag_name === 'Impayés'), JSON.stringify(r.body).slice(0, 300));
+    const c1 = await tmR.createTicket({ id: '200000000000000091', username: 'u91', tag: 'u91', send: async () => ({}) }, 'Bonjour, une facture impayée de mars', [], 'Autre', { forceNew: true });
+    const g1 = await tk(c1.ticket.id);
+    check('règles: règle convertie, même effet (priorité et tag)', g1.priority === 'urgent' && (await db('SELECT 1 FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [g1.id, tagF])).length === 1, g1.priority);
+    await db('DELETE FROM ticket_rules WHERE id = ?', [conv.id]);
+
+    // At the opening: e-mail AND requester of a domain → priority, internal note, tag; stop after it
+    const tagV = (await db("INSERT INTO ticket_tags (name, color) VALUES ('VIP', '#ffd700')")).insertId;
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'VIP mail', triggers: ['created'], match: 'all', stop: true,
+      conditions: [{ field: 'channel', values: ['email'] }, { field: 'requester', values: ['@vip.test'] }],
+      actions: [{ type: 'priority', value: 'urgent' }, { type: 'note', value: 'Client VIP : traiter en priorité' }, { type: 'tagAdd', value: tagV }] } });
+    check('règles: règle créée par un fondateur', r.status === 200 && r.body.rules.some(x => x.name === 'VIP mail'), JSON.stringify(r.body).slice(0, 300));
+    const rVip = r.body.id;
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Par défaut basse', triggers: ['created'], conditions: [{ field: 'channel', values: ['email'] }], actions: [{ type: 'priority', value: 'low' }] } });
+    const rLow = r.body.id;
+    const v1 = await tmR.createTicket(mkMail(1, 'paul@vip.test'), 'Bonjour', [], 'Autre', { forceNew: true });
+    const gv = await tk(v1.ticket.id);
+    check('règles: conditions toutes vraies → actions appliquées', gv.priority === 'urgent' && (await notes(gv.id)).some(n => n.content.includes('Client VIP'))
+      && (await db('SELECT 1 FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [gv.id, tagV])).length === 1, gv.priority);
+    check('règles: « arrêter après cette règle » respecté', gv.priority !== 'low', gv.priority);
+    check('règles: chaque règle appliquée au journal du ticket', JSON.stringify((await db("SELECT details FROM audit_log WHERE action = 'ticket_rule' AND ticket_id = ?", [gv.id]))[0]?.details || '').includes('VIP mail'), '');
+    const v2 = await tmR.createTicket(mkMail(2, 'ana@autre.test'), 'Bonjour', [], 'Autre', { forceNew: true });
+    check('règles: une condition fausse → règle suivante', (await tk(v2.ticket.id)).priority === 'low', (await tk(v2.ticket.id)).priority);
+    r = await req('PUT', `/api/rules/${rLow}`, { sid: sessions.F, body: { name: 'Par défaut basse', triggers: ['created'], match: 'any', conditions: [{ field: 'channel', values: ['discord'] }, { field: 'requester', not: true, values: ['@vip.test'] }], actions: [{ type: 'priority', value: 'low' }] } });
+    check('règles: modifiée (au moins une condition, négation)', r.status === 200, JSON.stringify(r.body).slice(0, 200));
+
+    // Test button: what the rule would do, without doing it
+    r = await req('POST', '/api/rules/test', { sid: sessions.F, body: { ticketId: gv.id, rule: { name: 't', triggers: ['created'], conditions: [{ field: 'priority', values: ['urgent'] }, { field: 'tag', values: [tagV] }], actions: [{ type: 'stage', value: 'waiting' }] } } });
+    check('règles: tester montre ce qu elle ferait', r.status === 200 && r.body.matched === true && r.body.actions.length === 1 && (await tk(gv.id)).stage !== 'waiting', JSON.stringify(r.body));
+    r = await req('POST', '/api/rules/test', { sid: sessions.F, body: { ticketId: gv.id, rule: { name: 't', triggers: ['created'], conditions: [{ field: 'type', values: ['incident'] }], actions: [{ type: 'close' }] } } });
+    check('règles: tester — conditions non remplies, rien ne serait fait', r.status === 200 && r.body.matched === false && r.body.conditions[0].ok === false && (await tk(gv.id)).status === 'open', JSON.stringify(r.body));
+
+    // When the requester writes: keywords in the message
+    await req('DELETE', `/api/rules/${rVip}`, { sid: sessions.F });
+    await req('DELETE', `/api/rules/${rLow}`, { sid: sessions.F });
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Relance', triggers: ['member_reply'], conditions: [{ field: 'text', values: ['toujours rien, relance'] }], actions: [{ type: 'priority', value: 'urgent' }] } });
+    const rRel = r.body.id;
+    await db("UPDATE tickets SET priority = 'normal' WHERE id = ?", [v2.ticket.id]);
+    await tmR.relayToTicket(await tk(v2.ticket.id), mkMail(2, 'ana@autre.test'), 'Bonjour, toujours rien depuis hier', []);
+    check('règles: « quand le demandeur écrit » + mots du message', await until(async () => (await tk(v2.ticket.id)).priority === 'urgent'), (await tk(v2.ticket.id)).priority);
+    await req('DELETE', `/api/rules/${rRel}`, { sid: sessions.F });
+
+    // No loop: a rule started by a change of priority that changes the priority runs once
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Boucle', triggers: ['priority'], actions: [{ type: 'priority', value: 'low' }, { type: 'note', value: 'boucle ?' }] } });
+    const rLoop = r.body.id;
+    await tmR.setPriority(gv.id, 'normal', { id: U.F, username: 'F' });
+    await until(async () => (await tk(gv.id)).priority === 'low');
+    await new Promise(r2 => setTimeout(r2, 300));
+    check('règles: pas de boucle sur sa propre modification', (await tk(gv.id)).priority === 'low' && (await notes(gv.id)).filter(n => n.content === 'boucle ?').length === 1, JSON.stringify(await notes(gv.id)));
+    await req('DELETE', `/api/rules/${rLoop}`, { sid: sessions.F });
+
+    // At most 50 actions per event
+    const many = [];
+    for (let i = 0; i < 3; i++) {
+      r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: `Bavarde ${i}`, triggers: ['staff_reply'], actions: Array.from({ length: 20 }, (_, j) => ({ type: 'note', value: `n${i}-${j}` })) } });
+      many.push(r.body.id);
+    }
+    await tmR.recordStaffResponse(gv.id, { id: U.F, tag: 'F', username: 'F' });
+    await until(async () => (await notes(gv.id)).filter(n => /^n\d-\d+$/.test(n.content)).length >= 50);
+    await new Promise(r2 => setTimeout(r2, 300));
+    check('règles: 50 actions au plus par événement', (await notes(gv.id)).filter(n => /^n\d-\d+$/.test(n.content)).length === 50, (await notes(gv.id)).length);
+    r = await req('PUT', '/api/rules/order', { sid: sessions.F, body: { ids: [...many].reverse() } });
+    check('règles: ordre modifiable', r.body.rules?.[0]?.id === many[2], JSON.stringify(r.body.rules?.map(x => x.id)));
+
+    // Export and import: tags by name, the people left out
+    await req('PUT', `/api/rules/${many[0]}`, { sid: sessions.F, body: { name: 'Bavarde 0', triggers: ['created'], conditions: [{ field: 'tag', values: [tagV] }], actions: [{ type: 'tagAdd', value: tagV }, { type: 'notify', value: [U.F] }] } });
+    r = await req('GET', '/api/config/export', { sid: sessions.F });
+    const exported = (r.body.rules || []).find(x => x.name === 'Bavarde 0');
+    check('règles: exportées (tags par nom, personnes retirées)', !!exported && exported.conditions[0].values[0] === 'VIP' && exported.actions.length === 1 && exported.actions[0].value === 'VIP', JSON.stringify(exported));
+    for (const id of many) await req('DELETE', `/api/rules/${id}`, { sid: sessions.F });
+    r = await app('./utils/configTransfer').importConfig(db, { format: r.body.format, version: r.body.version, rules: [exported] }, { applyConfig: async () => ({ ok: true }) });
+    const back = (await E.listRules(db)).find(x => x.name === 'Bavarde 0');
+    check('règles: importées avec leurs tags', !!back && back.conditions[0].values[0] === tagV && back.actions[0].value === tagV, JSON.stringify(back));
+    if (back) await db('DELETE FROM ticket_rules WHERE id = ?', [back.id]);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[c1.ticket.id, v1.ticket.id, v2.ticket.id]]);
+    await db('DELETE FROM ticket_tags WHERE id IN (?)', [[tagF, tagV]]);
   }
 
   // ── Dashboard leaderboard: week and month, staff only ──
