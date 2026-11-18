@@ -222,15 +222,26 @@ function renderPayload(payload) {
   return { text, html, attachments };
 }
 
+// The ticket a message to this requester belongs to: the one named (if they own it or take part
+// in it), else their latest open one, else their latest one
+async function requesterTicket(db, ownerId, ticketId) {
+  if (Number.isInteger(Number(ticketId)) && Number(ticketId) > 0) {
+    const [t] = await db('SELECT id, subject FROM tickets WHERE id = ? AND (owner_id = ? OR id IN (SELECT ticket_id FROM ticket_participants WHERE user_id = ?))', [Number(ticketId), ownerId, ownerId]);
+    if (t) return t;
+  }
+  const [t] = await db("SELECT id, subject FROM tickets WHERE owner_id = ? ORDER BY status = 'open' DESC, id DESC LIMIT 1", [ownerId]);
+  return t || null;
+}
+
 // Sends what the bot would have sent by DM; returns a message-like object (or null)
-async function sendToEmailOwner(guildId, ownerId, build) {
+async function sendToEmailOwner(guildId, ownerId, build, ticketId = null) {
   const db = getTenantDb(guildId);
   const s = await emailSettings(db, { withSecrets: true });
   if (!s.enabled) return null;
   const contact = await contactOf(db, ownerId);
   if (!contact) return null;
   const payload = await build(userFor(ownerId, contact.address, contact.name));
-  const [ticket] = await db("SELECT id, subject FROM tickets WHERE owner_id = ? ORDER BY status = 'open' DESC, id DESC LIMIT 1", [ownerId]);
+  const ticket = await requesterTicket(db, ownerId, ticketId);
   const { text, html, attachments } = renderPayload(payload);
   if (!text && !attachments.length) return null;
   const [thread] = ticket ? await db('SELECT last_message_id, via_address_id FROM email_threads WHERE ticket_id = ?', [ticket.id]) : [];
@@ -409,7 +420,7 @@ async function runEmailFetch(client) {
 
 module.exports = {
   listAddresses, recipientsOf, routeOf,
-  isEmailOwner, isExternalOwner, ownerIdFor, userFor, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
+  isEmailOwner, isExternalOwner, ownerIdFor, userFor, requesterTicket, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
   fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
   smtpTransport, EMAIL_RE, SMTP_PORTS,
 };

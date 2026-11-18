@@ -3624,6 +3624,21 @@ async function main() {
     r = await req('POST', `/api/tickets/${tE}/reply`, { sid: sessions.F, body: { content: 'Votre colis arrive demain.' } });
     const replyMail = sent.find(m => m.to?.address === 'alice@mail.test');
     check('e-mail: la réponse du staff part par e-mail, dans le fil du ticket', r.status === 200 && replyMail && replyMail.text.includes('Votre colis arrive demain') && replyMail.subject.startsWith(tag) && !!replyMail.inReplyTo, JSON.stringify(replyMail && { s: replyMail.subject, t: replyMail.text.slice(0, 200), irt: replyMail.inReplyTo }));
+    // Two open tickets for the same address (a new e-mail joins the open one, but the staff can open
+    // another for the contact, or reopen an old one): the answer to the older one stays in its own thread
+    const tE2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'alice@mail.test', 'db-mail-2', 'open', 'Autre question')", [rowT.owner_id])).insertId;
+    res = { created: true };
+    sent.length = 0;
+    r = await req('POST', `/api/tickets/${tE}/reply`, { sid: sessions.F, body: { content: 'Réponse au premier ticket.' } });
+    const firstMail = sent.find(m => m.to?.address === 'alice@mail.test');
+    check('e-mail: deux tickets ouverts → la réponse part dans le fil du bon ticket', res.created && tE2 !== tE && firstMail?.subject.startsWith(email.subjectTag(G, tE)) && !firstMail.subject.startsWith(email.subjectTag(G, tE2)), JSON.stringify([tE, tE2, firstMail?.subject]));
+    const back = await email.processEmail(fakeClient, G, mail('alice@mail.test', 'Alice', `RE: ${firstMail?.subject}`, 'Merci pour le premier.', { inReplyTo: firstMail?.messageId }), settings);
+    check('e-mail: sa réponse revient dans le premier ticket', back.ticketId === tE, JSON.stringify(back));
+    const other = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000099', 'x', 'db-mail-3', 'open', 'Pas à Alice')")).insertId;
+    check('e-mail: un numéro de ticket qui n est pas le sien est ignoré', (await email.requesterTicket(db, rowT.owner_id, other))?.id !== other, '');
+    await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [other, rowT.owner_id]);
+    check('e-mail: un participant reçoit le message dans le fil du ticket concerné', (await email.requesterTicket(db, rowT.owner_id, other))?.id === other, '');
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tE2, other]]);
     // Attachments kept on the server (utils/emailAttachments.js)
     {
       const os = require('os'), fsx = require('fs');

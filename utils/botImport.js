@@ -113,7 +113,7 @@ async function adoptChannels(client, guildId, db, actor, { categoryId, items, hi
       await channel.setParent(cfg.ticket_category_id, { lockPermissions: false }).catch(() => null);
     }
     if (notify) {
-      await sendToMember(client, member.id, guildId, () => ({ embeds: [{ title: t('adopted.title'), description: t('adopted.body', { guild: guild.name, id: ticketId }), color: 0x2f6feb }] }));
+      await sendToMember(client, member.id, guildId, () => ({ embeds: [{ title: t('adopted.title'), description: t('adopted.body', { guild: guild.name, id: ticketId }), color: 0x2f6feb }] }), { ticketId: ticketId });
     }
     broadcast('ticket', { id: ticketId, status: 'open' }, guildId);
     result.adopted.push({ ticketId, channelId: channel.id, name: channel.name, ownerId: member.id, messages: copied });

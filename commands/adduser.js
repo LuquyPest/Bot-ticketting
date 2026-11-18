@@ -53,7 +53,7 @@ module.exports = {
 
     await sendToMember(client, user, interaction.guildId, () => ({ embeds: [ticketNoticeDmEmbed(client, interaction.guildId, ticket, {
       title: t('added.title'), description: t('added.body'), footer: t('reply.footer', { id: ticket.id }),
-    })] }));
+    })] }), { ticketId: ticket.id });
 
     await interaction.reply({ content: L('adduser.done', { user: user.username }), flags: MessageFlags.Ephemeral });
     await interaction.channel.send(Ls('adduser.log', { by: interaction.user.username, user: user.username }));

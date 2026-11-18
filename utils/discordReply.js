@@ -15,7 +15,7 @@ async function sendDiscordReply({ client, db, tm, guildId, ticket, author, chann
     refs.dm(userId, await sendToMember(client, userId, guildId, async () => ({
       embeds: [staffReplyDmEmbed(client, guildId, ticket, { sender, content, fileUrl })],
       components: await ticketDmComponents(ticket, guildId, userId),
-    })));
+    }), { ticketId: ticket.id }));
   }
   await recordEvent(db, { actor: author, action: 'ticket_reply', ticketId: ticket.id, details: { anonymous, excerpt: (content || fileUrl || '').slice(0, 120) } });
   await tm.recordStaffResponse(ticket.id, author);

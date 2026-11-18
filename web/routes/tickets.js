@@ -652,7 +652,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
         embeds: [dmEmbed], components: await ticketDmComponents(ticket, req.guildId, userId),
         ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
       };
-    });
+    }, { ticketId: ticket.id });
     refs.dm(userId, dm);
     // Without a Discord channel (ticket format « database »), the history keeps the file of the DM
     if (upload && !file_url) file_url = dm?.attachments?.first?.()?.url || null;
@@ -807,7 +807,7 @@ router.post('/:id/followup', async (req, res) => {
     const sent = await sendToMember(client, ticket.owner_id, req.guildId, () => ({
       embeds: [staffReplyDmEmbed(client, req.guildId, ticket, { sender: req.session.user.username, content })],
       components: canReopen ? [memberReopenButton(ticket.id, req.guildId)] : [],
-    }));
+    }), { ticketId: ticket.id });
     if (!sent) return res.status(502).json({ error: 'Impossible d\'envoyer le MP au membre (MP fermés ?)' });
     await req.guildDb('UPDATE tickets SET followup_at = NOW(), followup_by_tag = ? WHERE id = ?', [req.session.user.username, ticket.id]);
     const r = await req.guildDb('INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, ?, ?, "reply")',
@@ -1050,7 +1050,7 @@ router.post('/:id/participants', async (req, res) => {
 
     await sendToMember(client, discordUser, req.guildId, () => ({ embeds: [ticketNoticeDmEmbed(client, req.guildId, ticket, {
       title: t('added.title'), description: t('added.body'), footer: t('reply.footer', { id: ticket.id }),
-    })] }));
+    })] }), { ticketId: ticket.id });
 
     if (client && ticket.channel_id) {
       const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
