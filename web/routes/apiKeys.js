@@ -26,7 +26,7 @@ router.post('/', async (req, res) => {
   if (!name || typeof name !== 'string' || name.length > 100)
     return res.status(400).json({ error: 'Nom requis (max 100 chars)' });
 
-  const VALID_PERMS = ['read_tickets', 'close_tickets', 'read_stats', 'read_contacts'];
+  const VALID_PERMS = ['read_tickets', 'close_tickets', 'read_stats', 'read_contacts', 'create_tickets', 'reply_tickets', 'update_tickets'];
   const perms = Array.isArray(permissions) ? permissions.filter(p => VALID_PERMS.includes(p)) : [];
   let expires = null;
   if (expiresAt) {

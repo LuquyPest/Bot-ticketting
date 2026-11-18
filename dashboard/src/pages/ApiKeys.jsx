@@ -10,6 +10,9 @@ const PERM_LABELS = {
   close_tickets: 'Fermer des tickets',
   read_stats: 'Lire les statistiques',
   read_contacts: 'Lire les contacts (API v2)',
+  create_tickets: 'Créer des tickets (API v3)',
+  reply_tickets: 'Répondre et noter (API v3)',
+  update_tickets: 'Modifier les tickets (API v3)',
 };
 
 function CopyButton({ text }) {

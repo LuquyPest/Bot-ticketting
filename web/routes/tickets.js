@@ -622,8 +622,10 @@ router.post('/:id/notes', async (req, res) => {
 // Sends a staff reply to the ticket owner/participants and the Discord channel, records it and notifies.
 // upload: { buffer, name } — a real file sent from the dashboard (attached to the channel
 // message and to the member's DM; the history keeps the channel attachment URL).
-async function sendStaffReply(req, ticket, { content, file_url, anonymous, upload = null }) {
-  const sender = anonymous ? 'Support' : req.session.user.username;
+// actor: who replies — the signed-in staff member, or an API key (API v3: { id: 'api:<key>', username, source: 'api' })
+async function sendStaffReply(req, ticket, { content, file_url, anonymous, upload = null, actor = null }) {
+  const who = actor || dashboardActor(req);
+  const sender = anonymous ? 'Support' : who.username;
   let msg = `--- ${sender} : ${content || ''}`.trim();
   if (file_url) msg += `\nFichier : ${file_url}`;
 
@@ -652,32 +654,31 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
         embeds: [dmEmbed], components: await ticketDmComponents(ticket, req.guildId, userId),
         ...(upload ? { files: [{ attachment: upload.buffer, name: upload.name }] } : {}),
       };
-    }, { ticketId: ticket.id, sender: { id: req.session.user.id, anonymous: !!anonymous } });
+    }, { ticketId: ticket.id, sender: { id: who.id, anonymous: !!anonymous } });
     refs.dm(userId, dm);
     // Without a Discord channel (ticket format « database »), the history keeps the file of the DM
     if (upload && !file_url) file_url = dm?.attachments?.first?.()?.url || null;
   }
 
-  const staffUser = dashboardActor(req);
-  await tm.recordStaffResponse(ticket.id, staffUser);
+  await tm.recordStaffResponse(ticket.id, who);
   await tm.updateLastMessage(ticket.id);
 
   await recordEvent(req.guildDb, {
-    actor: dashboardActor(req), action: 'ticket_reply', ticketId: ticket.id,
+    actor: who, action: 'ticket_reply', ticketId: ticket.id,
     details: { anonymous: !!anonymous, excerpt: (content || upload?.name || file_url || '').slice(0, 120), ...(upload ? { file: upload.name } : {}) },
   });
-  const noteAuthorTag = anonymous ? `${req.session.user.username} (anonyme)` : req.session.user.username;
+  const noteAuthorTag = anonymous ? `${who.username} (anonyme)` : who.username;
   const fileLine = upload ? `📎 ${upload.name}${file_url ? ` : ${file_url}` : ''}` : (file_url || null);
   const noteContent = [content, fileLine].filter(Boolean).join('\n');
   refs.file(fileLine);
   const result = await req.guildDb(
     'INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, reply_refs) VALUES (?, ?, ?, ?, "reply", ?)',
-    [ticket.id, req.session.user.id, noteAuthorTag, noteContent, refs.json()]
+    [ticket.id, who.id, noteAuthorTag, noteContent, refs.json()]
   );
 
   const replyNote = {
     id: result.insertId,
-    author_id: req.session.user.id,
+    author_id: who.id,
     author_tag: noteAuthorTag,
     content: noteContent,
     source: 'reply',
@@ -685,12 +686,12 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
     created_at: new Date()
   };
   broadcast('note', { ticketId: ticket.id, note: replyNote }, req.guildId);
-  require('../../utils/followers').notifyFollowers(req.guildDb, req.guildId, ticket, { kind: 'reply', by: noteAuthorTag, byId: req.session.user.id, excerpt: noteContent }).catch(() => null);
+  require('../../utils/followers').notifyFollowers(req.guildDb, req.guildId, ticket, { kind: 'reply', by: noteAuthorTag, byId: who.id, excerpt: noteContent }).catch(() => null);
   // Push notification to all subscribers of this guild when staff replies
   sendPushToGuild(req.guildId, {
     type: 'reply',
     title: `Réponse #${ticket.id}`,
-    body: `${anonymous ? 'Support' : req.session.user.username} : ${(content || 'Fichier joint').slice(0, 100)}`,
+    body: `${anonymous ? 'Support' : who.username} : ${(content || 'Fichier joint').slice(0, 100)}`,
     ticketId: ticket.id,
   }).catch(() => null);
   return replyNote;
@@ -1749,3 +1750,4 @@ ${notesHtml || '<p style="color:#6b7280;font-size:13px;text-align:center;padding
 });
 
 module.exports = router;
+module.exports.sendStaffReply = sendStaffReply;

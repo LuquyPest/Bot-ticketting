@@ -103,6 +103,13 @@ export const MOCK = {
         parameters: [{ name: 'cursor', in: 'query', required: false, description: 'La valeur next_cursor', schema: { type: 'string' } }],
         responses: { 200: { content: { 'application/json': { example: { data: [], next_cursor: null } } } } } } },
     } },
+  '/api/v3/openapi.json': { openapi: '3.0.3', info: { title: 'API v3', version: '3', description: 'Tout ce que fait la v2, plus l’écriture.' },
+    servers: [{ url: 'https://ticket.example/api/v3' }],
+    paths: {
+      '/tickets': { post: { summary: 'Ouvrir un ticket', description: 'Ouvre un ticket au nom d’une personne.\n\nPermission', 'x-permission': 'create_tickets', parameters: [],
+        requestBody: { content: { 'application/json': { example: { requester: { email: 'client@example.com' }, subject: 'Commande 1287', message: 'Bonjour' } } } },
+        responses: { 200: { content: { 'application/json': { example: { id: 87, status: 'open' } } } } } } },
+    } },
   '/api/profile/whats-new': { seen: 'v2.15' },
   '/api/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', active: true, steps: [{ id: 'a1b2c3d4', text: 'Demander la capture' }, { id: 'b2c3d4e5', text: 'Vérifier sur le tableau Stripe' }] }],
   '/api/tickets/1/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', done: 1, total: 2, steps: [

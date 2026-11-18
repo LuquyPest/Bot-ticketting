@@ -112,6 +112,7 @@ const ACTIONS = {
   team_create:              ['Équipe créée', 'config'],
   approval_request:         ['Validation demandée', 'tickets'],
   ticket_cc_add:            ['Copie ajoutée', 'tickets'],
+  ticket_open_api:          ['Ticket ouvert par l\'API', 'tickets'],
   ticket_cc_remove:         ['Copie retirée', 'tickets'],
   approval_approved:        ['Validation accordée', 'tickets'],
   approval_rejected:        ['Validation refusée', 'tickets'],

@@ -8,7 +8,18 @@
 
 Activable par espace (**Paramètres → Intégrations → API publique**), avec des **clés API** (page **Clés API**) créées par les fondateurs : permissions au choix, date d'expiration facultative. Seule une empreinte de la clé est conservée. Les mêmes clés servent pour les deux versions.
 
-**v2** (recommandée pour un nouvel outil) :
+**v3** (recommandée : la v2 plus l'écriture) — toutes les routes de la v2 sous `/api/v3/…`, et :
+
+| Méthode | Route | Permission |
+|---|---|---|
+| `POST` | `/api/v3/tickets` — ouvrir un ticket au nom d'une adresse e-mail (`requester`, `subject`, `message`, `priority`, `tags`, `cc`, `fields`, `notify`) | `create_tickets` |
+| `POST` | `/api/v3/tickets/:id/reply` — répondre au demandeur par son canal (`message`, `anonymous` ; un fichier en multipart, champ `file`) | `reply_tickets` |
+| `POST` | `/api/v3/tickets/:id/notes` — note interne | `reply_tickets` |
+| `PATCH` | `/api/v3/tickets/:id` — `priority`, `stage`, `team_id`, `assignees_add` / `_remove`, `tags_add` / `_remove`, `fields`, `cc_add` / `_remove` | `update_tickets` |
+
+Une clé agit **à son nom** (« API · nom de la clé ») : chaque action est au journal, source *API*, et ne compte jamais comme un membre du staff dans les statistiques. Une modification est **vérifiée en entier avant d'écrire** : une erreur ne change rien. L'en-tête `Idempotency-Key` sur `POST /tickets` renvoie le même ticket si la requête est rejouée (24 h), pratique pour un outil qui réessaie. Écritures : 120 par minute et par clé. Les tickets confidentiels n'existent pas pour une clé.
+
+**v2** :
 
 | Méthode | Route | Permission |
 |---|---|---|
@@ -32,7 +43,7 @@ Les listes répondent `{ "data": [...], "next_cursor": "…" }` : repasse `next_
 | `POST` | `/api/v1/tickets/:id/close` | `close_tickets` |
 | `GET` | `/api/v1/stats` | `read_stats` |
 
-La clé s'envoie dans l'en-tête `Authorization: Bearer <clé>`. La description **OpenAPI 3** est publique sur `/api/v2/openapi.json` et `/api/v1/openapi.json`, et la page **Documentation API** du dashboard l'affiche avec un exemple `curl` et une réponse type pour chaque route. Les tickets confidentiels ne sont jamais accessibles par l'API.
+La clé s'envoie dans l'en-tête `Authorization: Bearer <clé>`. La description **OpenAPI 3** est publique sur `/api/v3/openapi.json`, `/api/v2/openapi.json` et `/api/v1/openapi.json`, et la page **Documentation API** du dashboard l'affiche avec un exemple `curl` et une réponse type pour chaque route. Les tickets confidentiels ne sont jamais accessibles par l'API.
 
 ## Webhooks sortants
 

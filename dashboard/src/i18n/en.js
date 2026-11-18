@@ -315,6 +315,7 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Corps de la requête', 'Request body'], ['Créer des tickets (API v3)', 'Create tickets (API v3)'], ['Répondre et noter (API v3)', 'Reply and note (API v3)'], ['Modifier les tickets (API v3)', 'Edit tickets (API v3)'],
   ['Filtrage des e-mails reçus', 'Filtering of received e-mails'], ['Expéditeurs refusés (domaines ou adresses, un par ligne) : ignorés sans réponse', 'Refused senders (domains or addresses, one per line): ignored without reply'],
   ['Seulement ces domaines (vide = tout le monde) : les autres vont en quarantaine', 'Only these domains (empty = everyone): the others go to the quarantine'], ['Spam signalé par le serveur de messagerie', 'Spam reported by the mail server'],
   ['Mettre en quarantaine', 'Put in quarantine'], ['Ignorer', 'Ignore'], ['Laisser passer', 'Let through'], ['Score de spam à partir duquel filtrer', 'Spam score from which to filter'], ['Taille maximale d\'un e-mail (Mo)', 'Maximum size of an e-mail (MB)'],
