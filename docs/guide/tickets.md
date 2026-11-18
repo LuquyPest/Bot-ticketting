@@ -95,6 +95,20 @@ Un objectif s'applique aux tickets qui remplissent **tous** ses critères : prio
 
 La fiche montre les deux échéances (dans les temps, bientôt dépassé, dépassé, tenu, manqué, en pause) ; la liste signale un objectif dépassé et le filtre **SLA dépassé** le trouve ; les rapports par sujet, équipe ou type donnent le **taux d'objectifs tenus** (et l'export CSV). Les délais par étape (**Paramètres → Tickets**) restent à part.
 
+### L'escalade
+
+Chaque objectif a jusqu'à 6 **niveaux d'escalade**, à un pourcentage de son délai (50 % = à mi-chemin, 100 % = l'échéance, 150 % = dépassé de moitié). Un niveau atteint fait une ou plusieurs actions :
+
+| Action | |
+|---|---|
+| **Prévenir** | Notification (dashboard et navigateur) aux personnes attribuées, sinon à l'équipe, sinon aux fondateurs ; seulement celles qui voient le ticket |
+| **Monter la priorité** | Basse → normale → urgente |
+| **Passer à une équipe** | Le ticket change d'équipe (jamais un ticket confidentiel) ; une équipe qui attribue le donne à l'un de ses membres |
+| **Observateur** | Ajoute des membres du staff aux abonnés du ticket |
+| **Salon d'escalade** | Une alerte dans le salon d'escalade Discord (sans le sujet d'un ticket confidentiel) |
+
+La vérification tourne toutes les 5 minutes ; chaque niveau ne joue **qu'une fois** par ticket, et c'est noté dans son journal. Une résolution en pause n'escalade pas. Les équipes ont aussi leur **objectif interne** (OLA), avec ses propres niveaux : voir [Équipe](./equipe#les-equipes-et-leurs-files).
+
 ## Les statuts
 
 Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :

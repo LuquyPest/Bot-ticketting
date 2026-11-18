@@ -254,6 +254,7 @@ async function applyChanges(req, t, c) {
   if (c.team_id !== undefined) {
     if (c.team_id === null) {
       await db('UPDATE tickets SET team_id = NULL WHERE id = ?', [t.id]);
+      await require('../../utils/slaEscalation').onTeamChange(db, t.id);
       await recordEvent(db, { actor: a, action: 'ticket_team', ticketId: t.id, details: { team: null } });
     } else {
       await require('../../utils/teams').routeTicket({ db, tm, ticket: t, teamId: c.team_id, actor: a });

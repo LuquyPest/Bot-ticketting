@@ -95,6 +95,20 @@ An objective applies to the tickets that meet **all** its criteria: priorities, 
 
 The ticket view shows both deadlines (on time, due soon, breached, met, missed, paused); the list flags a breached objective and the **SLA breached** filter finds it; reports by subject, team or type give the **rate of met objectives** (and the CSV export). The per-stage delays (**Settings → Tickets**) stay separate.
 
+### Escalation
+
+Each objective has up to 6 **escalation levels**, at a share of its deadline (50 % = halfway, 100 % = the deadline, 150 % = overdue by half). A level reached takes one or more actions:
+
+| Action | |
+|---|---|
+| **Notify** | Notification (dashboard and browser) to the assigned people, else the team, else the founders; only those who can see the ticket |
+| **Raise the priority** | Low → normal → urgent |
+| **Hand to a team** | The ticket changes team (never a confidential ticket); a team that assigns gives it to one of its members |
+| **Watcher** | Adds staff members to the ticket's followers |
+| **Escalation channel** | An alert in the Discord escalation channel (without the subject of a confidential ticket) |
+
+The check runs every 5 minutes; each level plays **only once** per ticket, and it is noted in its journal. A paused resolution does not escalate. Teams also have their **internal objective** (OLA), with its own levels: see [Team](./team#teams-and-their-queues).
+
 ## Statuses
 
 An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:

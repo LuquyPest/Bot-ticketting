@@ -14,7 +14,7 @@ const TEAM_ACTOR = { id: 'system', tag: 'Attribution automatique', source: 'syst
 
 const shape = (t, members) => ({
   id: t.id, name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0,
-  subjects: parseJsonField(t.subjects, []), tagIds: parseJsonField(t.tag_ids, []).map(Number), calendarId: t.calendar_id || null,
+  subjects: parseJsonField(t.subjects, []), tagIds: parseJsonField(t.tag_ids, []).map(Number), calendarId: t.calendar_id || null, olaMinutes: t.ola_minutes || null,
   members: members.filter(m => m.team_id === t.id).map(m => ({ userId: m.user_id, username: m.username || m.user_id, open: Number(m.open || 0) })),
 });
 
@@ -25,7 +25,8 @@ async function listTeams(db) {
     `SELECT m.team_id, m.user_id, u.username,
             (SELECT COUNT(*) FROM ticket_assignees a JOIN tickets t ON t.id = a.ticket_id WHERE a.user_id = m.user_id AND t.status = 'open') AS open
      FROM team_members m LEFT JOIN dashboard_users u ON u.user_id = m.user_id ORDER BY u.username`);
-  return teams.map(t => shape(t, members));
+  const esc = require('./slaEscalation').levelsOf;
+  return Promise.all(teams.map(async t => ({ ...shape(t, members), escalations: await esc(db, { teamId: t.id }) })));
 }
 async function teamOf(db, id) { return (await listTeams(db)).find(t => t.id === Number(id)) || null; }
 const teamIdsOf = async (db, userId) => (await db('SELECT team_id FROM team_members WHERE user_id = ?', [String(userId)])).map(r => r.team_id);
@@ -53,7 +54,12 @@ async function clean(db, input = {}) {
   }
   const calendarId = input.calendarId ? Number(input.calendarId) : null;
   if (calendarId && !(await require('./calendars').calendarOf(db, calendarId))) return { error: 'Calendrier introuvable' };
-  return { value: { name, color: COLORS.includes(input.color) ? input.color : 'violet', assignMode, maxOpen, subjects, tagIds, memberIds, calendarId } };
+  const E = require('./slaEscalation');
+  const ola = E.cleanOla(input.olaMinutes);
+  if (ola.error) return ola;
+  const escalations = await E.cleanLevels(db, input.escalations, ['ola']);
+  if (escalations.error) return escalations;
+  return { value: { name, color: COLORS.includes(input.color) ? input.color : 'violet', assignMode, maxOpen, subjects, tagIds, memberIds, calendarId, olaMinutes: ola.value, escalations: escalations.value } };
 }
 
 async function saveMembers(db, teamId, memberIds) {
@@ -67,9 +73,10 @@ async function createTeam(db, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  const { insertId } = await db('INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids, calendar_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId]);
+  const { insertId } = await db('INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids, calendar_id, ola_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, v.olaMinutes]);
   await saveMembers(db, insertId, v.memberIds);
+  await require('./slaEscalation').saveLevels(db, { teamId: insertId }, v.escalations);
   return { ok: true, id: insertId };
 }
 
@@ -79,9 +86,13 @@ async function updateTeam(db, id, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  await db('UPDATE teams SET name = ?, color = ?, assign_mode = ?, max_open = ?, subjects = ?, tag_ids = ?, calendar_id = ? WHERE id = ?',
-    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, id]);
+  await db('UPDATE teams SET name = ?, color = ?, assign_mode = ?, max_open = ?, subjects = ?, tag_ids = ?, calendar_id = ?, ola_minutes = ? WHERE id = ?',
+    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, v.olaMinutes, id]);
   await saveMembers(db, id, v.memberIds);
+  const E = require('./slaEscalation');
+  await E.saveLevels(db, { teamId: id }, v.escalations);
+  await E.refreshTeamTickets(db, id); // OLA or calendar changed
+  await require('./slaPolicies').refreshOpenTickets(db).catch(() => null);
   return { ok: true };
 }
 
@@ -89,7 +100,8 @@ async function updateTeam(db, id, input) {
 async function deleteTeam(db, id) {
   const [row] = await db('SELECT id FROM teams WHERE id = ?', [id]);
   if (!row) return { error: 'Équipe introuvable', status: 404 };
-  await db('UPDATE tickets SET team_id = NULL WHERE team_id = ?', [id]);
+  await db('UPDATE tickets SET team_id = NULL, team_since = NULL, ola_due_at = NULL WHERE team_id = ?', [id]);
+  await require('./slaEscalation').dropLevels(db, { teamId: id });
   await db('DELETE FROM teams WHERE id = ?', [id]);
   return { ok: true };
 }
@@ -154,6 +166,7 @@ async function routeTicket({ db, tm, ticket, teamId, actor = TEAM_ACTOR }) {
   if (ticket.team_id !== team.id) {
     await db('UPDATE tickets SET team_id = ? WHERE id = ?', [team.id, ticket.id]);
     await recordEvent(db, { actor, action: 'ticket_team', ticketId: ticket.id, details: { team: team.name } });
+    await require('./slaEscalation').onTeamChange(db, ticket.id); // its internal objective (OLA) starts
     await require('./slaPolicies').refreshQuietly(db, ticket.id); // the team's calendar may differ
   }
   const [{ n }] = await db('SELECT COUNT(*) AS n FROM ticket_assignees WHERE ticket_id = ?', [ticket.id]);

@@ -3,10 +3,11 @@ import { Plus, Trash2, Loader2, UsersRound } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { STAGE_CLS, STAGE_COLOR_NAMES } from '../hooks/useStages';
+import EscalationLevels from './EscalationLevels';
 
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden focus:border-primary';
 const MODES = [['none', 'Aucune (file seulement)'], ['round_robin', 'Tour à tour'], ['load', 'Selon la charge']];
-const EMPTY = { name: '', color: 'violet', assignMode: 'none', maxOpen: 0, subjects: [], tagIds: [], members: [], calendarId: null };
+const EMPTY = { name: '', color: 'violet', assignMode: 'none', maxOpen: 0, subjects: [], tagIds: [], members: [], calendarId: null, olaMinutes: null, escalations: [] };
 
 function Chips({ options, value, onChange, label }) {
   return (
@@ -23,7 +24,7 @@ function Chips({ options, value, onChange, label }) {
   );
 }
 
-function TeamForm({ initial, staff, subjects, tags, calendars = [], onSave, onDelete, busy }) {
+function TeamForm({ initial, staff, subjects, tags, calendars = [], teams = [], onSave, onDelete, busy }) {
   const [t, setT] = useState(initial);
   const set = (k, v) => setT(x => ({ ...x, [k]: v }));
   return (
@@ -61,6 +62,15 @@ function TeamForm({ initial, staff, subjects, tags, calendars = [], onSave, onDe
           <Chips label="Tags" options={tags.map(g => [g.id, g.name])} value={t.tagIds} onChange={v => set('tagIds', v)} />
         </div>
       </div>
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-semibold text-ink-3">Objectif interne (OLA)</p>
+        <span className="inline-flex flex-wrap items-center gap-1 text-xs text-ink-3">Résoudre en
+          <input type="number" min={0} max={8760} value={t.olaMinutes ? Math.floor(t.olaMinutes / 60) : ''} onChange={e => set('olaMinutes', ((parseInt(e.target.value) || 0) * 60 + (t.olaMinutes || 0) % 60) || null)} aria-label="Objectif interne : heures" className={`${INPUT} w-16!`} /> h
+          <input type="number" min={0} max={59} value={t.olaMinutes ? t.olaMinutes % 60 : ''} onChange={e => set('olaMinutes', (Math.floor((t.olaMinutes || 0) / 60) * 60 + (parseInt(e.target.value) || 0)) || null)} aria-label="Objectif interne : minutes" className={`${INPUT} w-14!`} /> min
+          après l'arrivée du ticket dans l'équipe, en heures ouvrées de ses horaires (vide = aucun)
+        </span>
+      </div>
+      {t.olaMinutes > 0 && <EscalationLevels value={t.escalations || []} onChange={v => set('escalations', v)} objectives={['ola']} teams={teams} staff={staff} excludeTeamId={initial.id} />}
       <div className="flex gap-2">
         <button onClick={() => onSave(t)} disabled={busy || !t.name.trim()} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-1.5">
           {busy && <Loader2 size={12} className="animate-spin" />}{initial.id ? 'Enregistrer' : 'Créer l\'équipe'}
@@ -95,19 +105,19 @@ export default function TeamsEditor() {
     try { setTeams((await fn()).data); toast.success(ok); setKey(k => k + 1); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
-  const body = t => ({ name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members, calendarId: t.calendarId || null });
+  const body = t => ({ name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members, calendarId: t.calendarId || null, olaMinutes: t.olaMinutes || null, escalations: t.olaMinutes ? (t.escalations || []) : [] });
   return (
     <div className="space-y-4 max-w-4xl">
       <p className="text-sm text-ink-3 inline-flex items-start gap-2"><UsersRound size={16} className="shrink-0 mt-0.5 text-primary-light" aria-hidden="true" />
         Une équipe reçoit les nouveaux tickets de ses sujets ou de ses tags, et les voit dans sa file (Ma file → Mes équipes). Avec l'attribution automatique, chaque nouveau ticket va à un membre disponible, tour à tour ou à celui qui en a le moins ; les absents, les personnes en vacances, celles qui ne peuvent pas voir le ticket ou au plafond sont passés. Les tickets confidentiels ne sont jamais attribués.
       </p>
       {teams.map(t => (
-        <TeamForm key={`${t.id}-${key}`} busy={busy} {...ctx}
-          initial={{ id: t.id, name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members.map(m => m.userId), calendarId: t.calendarId || null }}
+        <TeamForm key={`${t.id}-${key}`} busy={busy} {...ctx} teams={teams}
+          initial={{ id: t.id, name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members.map(m => m.userId), calendarId: t.calendarId || null, olaMinutes: t.olaMinutes || null, escalations: t.escalations || [] }}
           onSave={v => run(() => api.put(`/teams/${t.id}`, body(v)), 'Équipe enregistrée')}
           onDelete={() => window.confirm(`Supprimer l'équipe « ${t.name} » ? Ses tickets restent, sans équipe.`) && run(() => api.delete(`/teams/${t.id}`), 'Équipe supprimée')} />
       ))}
-      <TeamForm key={`new-${key}`} busy={busy} {...ctx} initial={EMPTY} onSave={v => run(() => api.post('/teams', body(v)), 'Équipe créée')} />
+      <TeamForm key={`new-${key}`} busy={busy} {...ctx} teams={teams} initial={EMPTY} onSave={v => run(() => api.post('/teams', body(v)), 'Équipe créée')} />
     </div>
   );
 }

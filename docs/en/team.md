@@ -55,6 +55,7 @@ A grade can have a **parent**: members of the parent also see what the child gra
 | **Subjects and tags** | A new ticket of one of these subjects, or carrying one of these tags (set by [subject rules](./tickets) or by an [e-mail address](./integrations#tickets-by-e-mail)), goes to the team |
 | **Assignment** | *None*: the ticket waits in the team's queue. *In turn*: each member in turn. *By load*: to the member with the fewest open tickets |
 | **Cap** | Open tickets per person at most; beyond it, the next one is chosen (0 = no cap) |
+| **Internal objective (OLA)** | The time the team gives itself for a ticket, counted **from when it came to the team**, in business hours of its hours, paused while waiting for the requester; with its escalation levels (for example « at 100 %, hand to the Level 2 team ») |
 
 Automatic assignment skips members who are **away** or **on holiday**, those who **cannot see** the ticket (grade, roles tied to tags) and those at the cap; if nobody is available, the ticket stays in the team's queue. **Confidential** tickets are never routed. The assignment is noted in the ticket's journal and the person is told as for a manual assignment.
 

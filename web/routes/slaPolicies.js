@@ -9,11 +9,11 @@ const { recordEvent, dashboardActor } = require('../../utils/audit');
 const founders = (req, res, next) => (req.userIsFondateur ? next() : res.status(403).json({ error: 'Réservé aux fondateurs' }));
 const answer = async (req, res) => {
   const refreshed = await sla.refreshOpenTickets(req.guildDb);
-  res.json({ policies: await sla.listPolicies(req.guildDb), refreshed });
+  res.json({ policies: await sla.listPolicies(req.guildDb, { escalations: true }), refreshed });
 };
 
 router.get('/', async (req, res, next) => {
-  try { res.json({ policies: await sla.listPolicies(req.guildDb) }); } catch (err) { next(err); }
+  try { res.json({ policies: await sla.listPolicies(req.guildDb, { escalations: true }) }); } catch (err) { next(err); }
 });
 router.post('/', founders, async (req, res, next) => {
   try {

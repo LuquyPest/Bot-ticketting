@@ -13,6 +13,7 @@ const JOBS = {
   'scheduled-messages':  { every: 60 * 1000,      run: client => require('./scheduledMessages').processPending(client) },
   'email-fetch':         { every: 60 * 1000,      run: client => require('./emailTickets').runEmailFetch(client) },
   'escalation-check':    { every: 30 * 60 * 1000, run: client => require('./escalationChecker').runEscalationCheck(client) },
+  'sla-escalation':      { every: 5 * 60 * 1000,  run: client => require('./slaEscalation').runSlaEscalation(client) },
   'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },
   'user-inactive-check': { every: 60 * 60 * 1000, run: client => require('./userInactiveChecker').runUserInactiveCheck(client) },
   'staff-reminder':      { every: 60 * 60 * 1000, run: client => require('./staffReminderChecker').runStaffReminderCheck(client) },

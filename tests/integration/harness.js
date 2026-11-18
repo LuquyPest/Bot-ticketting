@@ -5182,6 +5182,73 @@ async function main() {
     await db('DELETE FROM tickets WHERE id IN (?)', [[t0, tU, tN, tB, tLate]]);
   }
 
+  // ── Escalation levels and team objectives (OLA) (utils/slaEscalation.js, v5.1) ──
+  {
+    const E = app('./utils/slaEscalation');
+    const SP = app('./utils/slaPolicies');
+    const get = async id => (await db('SELECT * FROM tickets WHERE id = ?', [id]))[0];
+    const mkT = async (created, priority = 'normal') => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, created_at) VALUES ('200000000000000063', 'esc', ?, 'open', 'Escalade test', ?, ?)",
+      [`db-esc-${Math.random().toString(36).slice(2, 10)}`, priority, created])).insertId;
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Esc', ttoMinutes: 60, ttrMinutes: 600, businessHours: false, escalations: [{ objective: 'tto', percent: 50 }] } });
+    check('escalade: un niveau sans action refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Esc', ttoMinutes: 60, ttrMinutes: 600, businessHours: false, escalations: [{ objective: 'tto', percent: 900, notify: true }] } });
+    check('escalade: pourcentage borné (10 à 500 %)', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Esc', ttoMinutes: 60, ttrMinutes: 600, businessHours: false, escalations: [{ objective: 'ola', percent: 100, notify: true }] } });
+    check('escalade: un objectif SLA n a pas de niveau OLA', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Esc', ttoMinutes: 60, ttrMinutes: 600, businessHours: false,
+      escalations: [{ objective: 'tto', percent: 50, notify: true, raisePriority: true }, { objective: 'ttr', percent: 100, followerIds: [U.S1] }] } });
+    const pol = r.body.policies?.find(p => p.name === 'Esc');
+    check('escalade: niveaux enregistrés avec l objectif', r.status === 200 && pol?.escalations?.length === 2 && pol.escalations[0].raisePriority === true, JSON.stringify(pol?.escalations));
+    const tA = await mkT(new Date(Date.now() - 45 * 60e3));            // 75 % of the first response time
+    const tP = await mkT(new Date(Date.now() - 45 * 60e3));            // same, but already answered
+    await db('UPDATE tickets SET first_response_at = NOW() WHERE id = ?', [tP]);
+    await SP.refreshSla(db, tA); await SP.refreshSla(db, tP);
+    const ctx = { db, guildId: G, client: fakeClient };
+    let fired = await E.runForGuild(ctx);
+    const gA = await get(tA);
+    check('escalade: 50 % de la prise en charge atteint → priorité montée, au journal', fired === 1 && gA.priority === 'urgent'
+      && (await db("SELECT 1 FROM audit_log WHERE action = 'ticket_sla_escalation' AND ticket_id = ?", [tA])).length === 1, JSON.stringify([fired, gA.priority]));
+    check('escalade: déjà répondu → pas d escalade de prise en charge', (await get(tP)).priority === 'normal', '');
+    fired = await E.runForGuild(ctx);
+    check('escalade: un niveau ne se déclenche qu une fois par ticket', fired === 0, fired);
+    // Resolution deadline passed (10 h); waiting pauses it, then it fires once resumed
+    const tR = await mkT(new Date(Date.now() - 11 * 3600e3));
+    await db('UPDATE tickets SET first_response_at = created_at, sla_paused_at = NOW() WHERE id = ?', [tR]);
+    await SP.refreshSla(db, tR);
+    await E.runForGuild(ctx);
+    check('escalade: en attente du demandeur, la résolution n escalade pas', !(await db('SELECT 1 FROM ticket_followers WHERE ticket_id = ?', [tR])).length, '');
+    await db('UPDATE tickets SET sla_paused_at = NULL WHERE id = ?', [tR]);
+    await E.runForGuild(ctx);
+    check('escalade: résolution dépassée → observateur ajouté', (await db('SELECT user_id FROM ticket_followers WHERE ticket_id = ?', [tR])).some(x => x.user_id === U.S1), '');
+
+    // OLA: team A has 30 minutes; past it, the ticket goes to team B
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Niveau 2 esc' } });
+    const teamB = r.body.find(x => x.name === 'Niveau 2 esc').id;
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Niveau 1 esc', olaMinutes: 30, escalations: [{ objective: 'tto', percent: 100, notify: true }] } });
+    check('OLA: une équipe n a que des niveaux OLA', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Niveau 1 esc', olaMinutes: 30, escalations: [{ objective: 'ola', percent: 100, teamId: teamB, notify: true }] } });
+    const teamA = r.body.find(x => x.name === 'Niveau 1 esc');
+    check('OLA: objectif interne et niveaux de l équipe enregistrés', r.status === 200 && teamA.olaMinutes === 30 && teamA.escalations?.[0]?.teamId === teamB, JSON.stringify(teamA));
+    const tO = await mkT(new Date());
+    const tm = app('./utils/ticketManager').createManager(db, fakeClient, G);
+    await app('./utils/teams').routeTicket({ db, tm, ticket: await get(tO), teamId: teamA.id });
+    let gO = await get(tO);
+    check('OLA: arrivée dans l équipe → échéance interne', !!gO.team_since && Math.abs(new Date(gO.ola_due_at) - (new Date(gO.team_since).getTime() + 30 * 60e3)) < 2000 && SP.objectives(gO).ola?.state === 'ok', JSON.stringify([gO.team_since, gO.ola_due_at]));
+    await db('UPDATE tickets SET team_since = NOW() - INTERVAL 1 HOUR WHERE id = ?', [tO]);
+    await E.refreshOla(db, tO);
+    r = await req('GET', '/api/tickets', { sid: sessions.F, query: { sla: 'breached', status: 'open' } });
+    check('OLA: dépassé → dans « Hors délai »', (r.body.tickets || []).some(x => x.id === tO && x.objectives?.ola?.state === 'breached'), '');
+    await E.runForGuild(ctx);
+    gO = await get(tO);
+    check('OLA: dépassé → passé à l équipe suivante, son horloge repart', gO.team_id === teamB && !gO.ola_due_at && new Date(gO.team_since) > Date.now() - 60e3, JSON.stringify([gO.team_id, gO.ola_due_at]));
+
+    await req('DELETE', `/api/teams/${teamA.id}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${teamB}`, { sid: sessions.F });
+    await req('DELETE', `/api/sla-policies/${pol.id}`, { sid: sessions.F });
+    check('escalade: supprimer l objectif et l équipe retire leurs niveaux', Number((await db('SELECT COUNT(*) AS n FROM sla_escalations'))[0].n) === 0, '');
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tA, tP, tR, tO]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

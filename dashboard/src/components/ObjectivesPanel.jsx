@@ -20,13 +20,14 @@ function Line({ label, o }) {
   );
 }
 export default function ObjectivesPanel({ objectives, panelCard }) {
-  if (!objectives || (!objectives.tto && !objectives.ttr)) return null;
+  if (!objectives || (!objectives.tto && !objectives.ttr && !objectives.ola)) return null;
   return (
     <div className={panelCard}>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-2 inline-flex items-center gap-1.5"><Timer size={12} aria-hidden="true" />Objectifs SLA</p>
       <div className="space-y-2">
         <Line label="Prise en charge" o={objectives.tto} />
         <Line label="Résolution" o={objectives.ttr} />
+        <Line label="Objectif interne (équipe)" o={objectives.ola} />
       </div>
     </div>
   );
