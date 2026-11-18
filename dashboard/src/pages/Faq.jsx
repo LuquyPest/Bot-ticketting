@@ -186,7 +186,7 @@ export default function Faq() {
                   <p className="text-sm font-semibold text-ink-1 flex items-center gap-2 flex-wrap">
                     {e.question}
                     {e.visibility === 'public'
-                      ? <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20"><Globe size={10} aria-hidden="true" /> Public</span>
+                      ? <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md text-sky-300 border border-sky-500/30"><Globe size={10} aria-hidden="true" /> Public</span>
                       : <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-overlay/5 text-ink-3 border border-overlay/8"><Lock size={10} aria-hidden="true" /> Membres</span>}
                     {e.category && <span className="text-[10px] text-ink-3">{e.category}</span>}
                   </p>
