@@ -19,7 +19,7 @@ export function localizedVersion(v, lang) {
 export const VERSIONS = [
   {
     version: 'v4.1.0',
-    date: 'à venir',
+    date: '18 novembre 2026',
     title: 'Sauvegarde de la configuration complète, sécurité',
     titleEn: 'Full configuration backup, security',
     changes: [
