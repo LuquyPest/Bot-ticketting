@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# A new push on a pull request cancels the run still going on the previous one
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   integration:
     name: Tests d'intégration
@@ -48,8 +53,13 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   dashboard:
-    name: Build et test de fumée du dashboard
+    # One machine per pass of the smoke test, in parallel (≈ 3 min instead of 14)
+    name: Test de fumée du dashboard (${{ matrix.run }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [dark, light, mobile, en, pro, pro-light]
     defaults:
       run:
         working-directory: dashboard
@@ -64,15 +74,18 @@ jobs:
       - run: npm run build
       - name: Navigateur headless pour le test de fumée
         run: npx playwright-core install --with-deps --only-shell chromium
-      - name: Test de fumée (pages principales, thèmes sombre et clair)
+      - name: Test de fumée (${{ matrix.run }})
         run: npm run test:smoke
+        env:
+          SMOKE_RUNS: ${{ matrix.run }}
       - name: Captures d'écran
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: dashboard-screenshots
+          name: dashboard-screenshots-${{ matrix.run }}
           path: dashboard/tests/screenshots/
       - name: Audit des dépendances embarquées
+        if: matrix.run == 'dark'
         run: npm audit --omit=dev --audit-level=high
 
   docs:

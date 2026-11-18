@@ -89,8 +89,12 @@ const RUNS = [
   { run: 'pro', theme: 'dark', viewport: { width: 1440, height: 900 } },
   { run: 'pro-light', theme: 'light', viewport: { width: 1440, height: 900 }, skin: 'pro' },
 ];
+// SMOKE_RUNS=dark,light… runs only these passes (the CI runs each one on its own machine, in parallel)
+const ONLY = (process.env.SMOKE_RUNS || '').split(',').map(x => x.trim()).filter(Boolean);
+const unknown = ONLY.filter(r => !RUNS.some(x => x.run === r));
+if (unknown.length) { console.error(`SMOKE_RUNS inconnus : ${unknown.join(', ')}`); process.exit(1); }
 
-for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RUNS) {
+for (const { run: theme, theme: colorTheme, viewport, mobile, lang, skin } of RUNS.filter(r => !ONLY.length || ONLY.includes(r.run))) {
   const page = await browser.newPage({ viewport, isMobile: !!mobile, hasTouch: !!mobile, locale: 'fr-FR' });
   await page.addInitScript(([t, l, sk]) => { localStorage.setItem('theme', t); if (l) localStorage.setItem('uiLang', l); if (sk) localStorage.setItem('uiSkinV2', sk); }, [colorTheme, lang, skin]);
   let expect403 = false; // a test that asks for a refusal on purpose
