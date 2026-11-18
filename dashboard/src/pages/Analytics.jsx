@@ -675,6 +675,65 @@ function StatsCsvDownload() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+// Reports by team, category, subject or channel (utils/breakdownReport.js), exportable as CSV
+const BREAKDOWN_BY = [['team', 'Par équipe'], ['category', 'Par catégorie'], ['subject', 'Par sujet'], ['channel', 'Par canal']];
+function TabReports() {
+  const [by, setBy] = useState('team');
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  useEffect(() => { setData(null); api.get('/analytics/breakdown', { params: { by, days } }).then(r => setData(r.data)).catch(() => setData(false)); }, [by, days]);
+  const num = v => (v == null ? '—' : v);
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap gap-1 flex-1" role="tablist" aria-label="Regrouper">
+          {BREAKDOWN_BY.map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={by === id} onClick={() => setBy(id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${by === id ? 'bg-primary/15 text-primary-light border-primary/40' : 'bg-surface border-overlay/[0.07] text-ink-3 hover:text-ink-1'}`}>{label}</button>
+          ))}
+        </div>
+        <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Période" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs">
+          {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
+        </select>
+        <a href={`/api/analytics/export/breakdown.csv?by=${by}&days=${days}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-light bg-primary/10 border border-primary/20 hover:bg-primary/20">
+          <Download size={12} /> Exporter (CSV)
+        </a>
+      </div>
+      {data === false && <p className="text-sm text-red-400">Impossible de charger le rapport.</p>}
+      {data === null && <SkeletonCard />}
+      {data && (
+        <ChartCard title={`${data.total} ticket(s) ouvert(s) sur la période`} icon={BarChart2}>
+          {!data.rows.length ? <p className="text-xs text-ink-4">Aucun ticket sur la période</p> : (
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tableau du rapport">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-ink-3 border-b border-overlay/6">
+                    {['Groupe', 'Ouverts', 'Fermés', 'Encore ouverts', '1re réponse (médiane)', 'Résolution (médiane)', 'Note', 'Temps passé'].map(h => <th key={h} scope="col" className="py-2 pr-3 font-medium whitespace-nowrap">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.rows.map(r => (
+                    <tr key={r.key} className="border-b border-overlay/4 text-ink-2">
+                      <th scope="row" className="py-2 pr-3 text-left font-medium text-ink-1">{r.label}</th>
+                      <td className="py-2 pr-3 tabular-nums">{r.opened}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.closed}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.stillOpen}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.firstResponseMedianMin == null ? '—' : fmtMinutes(r.firstResponseMedianMin)}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.resolutionMedianHours == null ? '—' : `${r.resolutionMedianHours} h`}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.avgRating == null ? '—' : `${num(r.avgRating)} / 5 (${r.ratings})`}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.timeHours} h</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </ChartCard>
+      )}
+    </div>
+  );
+}
+
 const TABS = [
   { id: 'volume', label: 'Volume & Tendances', icon: BarChart2 },
   { id: 'sla',    label: 'Vue SLA',            icon: Shield },
@@ -683,10 +742,11 @@ const TABS = [
   { id: 'time',   label: 'Temps passé',        icon: Timer },
   { id: 'compare', label: 'Comparaison',        icon: TrendingUp },
   { id: 'reopens', label: 'Réouvertures',       icon: RefreshCw },
+  { id: 'reports', label: 'Rapports',           icon: Activity },
 ];
 
 export default function Analytics() {
-  const [tab, setTab]       = useState('volume');
+  const [tab, setTab]       = useState(() => { const t = new URLSearchParams(window.location.search).get('tab'); return TABS.some(x => x.id === t) ? t : 'volume'; });
   const [period, setPeriod] = useState('month');
 
   return (
@@ -722,6 +782,7 @@ export default function Analytics() {
       {tab === 'time'   && <TabTime />}
       {tab === 'compare' && <TabCompare />}
       {tab === 'reopens' && <TabReopens />}
+      {tab === 'reports' && <TabReports />}
     </div>
   );
 }

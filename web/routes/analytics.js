@@ -331,4 +331,29 @@ router.get('/export/stats.csv', async (req, res) => {
   }
 });
 
+// GET /api/analytics/breakdown?by=team|category|subject|channel&days= — one row per group
+// GET /api/analytics/export/breakdown.csv?by=…&days= — the same, as CSV
+const report = require('../../utils/breakdownReport');
+const BY_LABEL = { team: 'equipe', category: 'categorie', subject: 'sujet', channel: 'canal' };
+async function breakdownOf(req) {
+  const by = report.DIMENSIONS.includes(req.query.by) ? req.query.by : 'team';
+  const vis = await visibilityFilter(req, 't.visibility_grade_id');
+  return report.breakdown(req.guildDb, vis, { by, days: clampDays(req.query.days) });
+}
+router.get('/breakdown', async (req, res) => {
+  try { res.json(await breakdownOf(req)); } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+router.get('/export/breakdown.csv', async (req, res) => {
+  try {
+    const r = await breakdownOf(req);
+    sendCsv(res, `rapport-par-${BY_LABEL[r.by]}-${r.days}j-${stamp()}.csv`, report.CSV_HEADER, report.csvRows(r));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

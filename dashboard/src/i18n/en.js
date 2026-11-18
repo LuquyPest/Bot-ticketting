@@ -311,6 +311,10 @@ export const ENTRIES = [
   ['Retirer le message Discord ?', 'Remove the Discord message?'], ['Message Discord supprimé', 'Discord message deleted'], ['Publié #', 'Published #'], ['Menu de sujets', 'Subject menu'],
 
   ['FAQ automatique activée', 'Automatic FAQ on'],
+  ['Par équipe', 'By team'], ['Par catégorie', 'By category'], ['Par canal', 'By channel'], ['Rapports', 'Reports'], ['Regrouper', 'Group by'],
+  ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
+  ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
+  ['Web (espace membre, widget)', 'Web (member space, widget)'],
   ['FAQ et base de connaissances', 'FAQ and knowledge base'], ['Nouvel article', 'New article'], ['Modifier l\'article', 'Edit the article'],
   ['Article enregistré', 'Article saved'], ['Aucun article pour l\'instant', 'No article yet'], ['Articles actifs', 'Active articles'],
   ['FAQ en MP activée', 'FAQ in DMs on'], ['FAQ en MP désactivée', 'FAQ in DMs off'], ['Visible par', 'Visible to'],
@@ -745,6 +749,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['{} ticket(s) ouvert(s) sur la période', '{1} ticket(s) opened over the period'],
   ['En ligne, lisible sans connexion : {} article(s) public(s).', 'Online, readable without signing in: {1} public article(s).'], [' · lue {} fois', ' · read {1} time(s)'],
   [' · demandée à {} par {}', ' · asked of {1} by {2}'], ['Une fois accordée : passe en « {} »', 'Once granted: moves to « {1} »'], ['Une fois accordée : {}', 'Once granted: {1}'], ['{} relance(s)', '{1} reminder(s)'],
   ['{} ({}) demande ton accord sur le ticket #{}{}.', '{1} ({2}) asks for your approval on ticket #{3}{4}.'], ['{} demande ton accord sur le ticket #{}{}', '{1} asks for your approval on ticket #{2}{3}'], ['{} a accordé la validation du ticket #{}', '{1} granted the approval of ticket #{2}'], ['{} a refusé la validation du ticket #{}', '{1} refused the approval of ticket #{2}'], ['{} relances au plus', '{1} reminders at most'],

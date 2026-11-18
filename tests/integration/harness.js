@@ -4275,6 +4275,54 @@ async function main() {
     await db('DELETE FROM faq_entries WHERE id IN (?)', [[PUB, PRIV]]);
   }
 
+  // ── Reports by team, category, subject and channel (utils/breakdownReport.js, v4.2) ──
+  {
+    const team = (await db("INSERT INTO teams (name) VALUES ('Rapports-Équipe')")).insertId;
+    const mkT = async (owner, subject, extra = {}) => (await db(
+      `INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, team_id, created_at, first_response_at, closed_at, visibility_grade_id)
+       VALUES (?, 'rep', ?, ?, ?, ?, NOW() - INTERVAL 5 HOUR, ?, ?, ?)`,
+      [owner, `rep-${Math.random().toString(36).slice(2, 12)}`, extra.closed ? 'closed' : 'open', subject, extra.team ?? null,
+        extra.reply ? new Date(Date.now() - 5 * 3600e3 + extra.reply * 60e3) : null, extra.closed ? new Date(Date.now() - 3 * 3600e3) : null, extra.vis ?? null])).insertId;
+    const ZS = 'Rapport-Zz';
+    const t1 = await mkT('200000000000000091', `${ZS} › Remboursement`, { team, reply: 10, closed: true });
+    const t2 = await mkT('mail:' + 'a'.repeat(24), `${ZS} › Facture`, { team, reply: 30 });
+    const t3 = await mkT('web:' + 'b'.repeat(24), ZS, {});
+    const t4 = await mkT('200000000000000092', ZS, { team, vis: -1 }); // confidential
+    await db("INSERT INTO ticket_ratings (ticket_id, owner_id, rating) VALUES (?, '200000000000000091', 4)", [t1]);
+    await db("INSERT INTO ticket_time (ticket_id, user_id, user_tag, started_at, seconds, source) VALUES (?, ?, 'F', NOW() - INTERVAL 4 HOUR, 5400, 'manual')", [t1, U.F]);
+    const rowOf = (body, label) => (body.rows || []).find(x => x.label === label);
+
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'team', days: 7 } });
+    const rt = rowOf(r.body, 'Rapports-Équipe');
+    check('rapports: par équipe — volume, fermés, médianes, note, temps', r.status === 200 && rt?.opened === 3 && rt.closed === 1 && rt.stillOpen === 2
+      && rt.firstResponseMedianMin === 20 && rt.resolutionMedianHours === 2 && rt.avgRating === 4 && rt.ratings === 1 && rt.timeHours === 1.5, JSON.stringify(rt));
+    check('rapports: tickets sans équipe regroupés', !!rowOf(r.body, 'Sans équipe'), JSON.stringify(r.body.rows?.map(x => x.label)));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'category', days: 7 } });
+    check('rapports: par catégorie — les sous-catégories comptent dans leur catégorie', rowOf(r.body, ZS)?.opened === 4, JSON.stringify(rowOf(r.body, ZS)));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'subject', days: 7 } });
+    check('rapports: par sujet — chemin complet', rowOf(r.body, `${ZS} › Remboursement`)?.opened === 1 && rowOf(r.body, ZS)?.opened === 2, JSON.stringify(r.body.rows?.filter(x => x.label.startsWith(ZS))));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'channel', days: 7 } });
+    const ch = Object.fromEntries((r.body.rows || []).map(x => [x.key, x.opened]));
+    check('rapports: par canal — Discord, e-mail, web', ch.discord >= 2 && ch.email >= 1 && ch.web >= 1 && rowOf(r.body, 'E-mail') && rowOf(r.body, 'Web (espace membre, widget)'), JSON.stringify(ch));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.S1, query: { by: 'team', days: 7 } });
+    check('rapports: un ticket confidentiel reste hors des chiffres du staff', rowOf(r.body, 'Rapports-Équipe')?.opened === 2, JSON.stringify(rowOf(r.body, 'Rapports-Équipe')));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'n_importe_quoi; DROP', days: 99999 } });
+    check('rapports: dimension inconnue → par équipe, période bornée à 365 jours', r.status === 200 && r.body.by === 'team' && r.body.days === 365, JSON.stringify([r.status, r.body.by, r.body.days]));
+
+    r = await req('GET', '/api/analytics/export/breakdown.csv', { sid: sessions.F, query: { by: 'category', days: 7 } });
+    const csv = String(r.body);
+    check('rapports: export CSV (en-tête, ligne, nom du fichier, BOM)', r.status === 200 && /text\/csv/.test(r.headers['content-type'])
+      && /rapport-par-categorie-7j-/.test(r.headers['content-disposition'] || '') && csv.charCodeAt(0) === 0xFEFF && csv.includes('Groupe,Tickets ouverts') && csv.includes(`${ZS},4,1,3`), csv.slice(0, 200));
+    await db('UPDATE teams SET name = ? WHERE id = ?', ['=HYPERLINK("http://x")', team]);
+    r = await req('GET', '/api/analytics/export/breakdown.csv', { sid: sessions.F, query: { by: 'team', days: 7 } });
+    check('rapports: export CSV protégé contre les formules', String(r.body).includes("'=HYPERLINK") && !String(r.body).includes('\n=HYPERLINK') && !String(r.body).includes(',=HYPERLINK'), String(r.body).slice(0, 300));
+    r = await req('GET', '/api/analytics/export/breakdown.csv', { query: { by: 'team' } });
+    check('rapports: export réservé au staff connecté', r.status === 401 || r.status === 403, r.status);
+
+    await db('DELETE FROM tickets WHERE id IN (?)', [[t1, t2, t3, t4]]);
+    await db('DELETE FROM teams WHERE id = ?', [team]);
+  }
+
   // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
   {
     const axios = require('axios');
