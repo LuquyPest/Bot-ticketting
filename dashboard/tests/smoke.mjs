@@ -31,7 +31,7 @@ const PAGES = [
   ['ticket-resoudre', '/tickets/1', 'Résoudre', false, true],
   ['ticket-matrice', '/tickets/1', 'Forcer la priorité', false, true],
   ['settings-matrice', '/settings', 'Calculer la priorité'],
-  ['settings-horaires', '/settings?tab=horaires', 'Support Paris'],
+  ['settings-horaires', '/settings?tab=horaires', 'Ajouter les jours fériés'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],
   ['settings', '/settings', 'Paramètres'],
   ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],

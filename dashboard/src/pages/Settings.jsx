@@ -911,7 +911,11 @@ export default function Settings() {
       </Section>
         </div>
       )}
-      {tab === 'horaires' && <CalendarsEditor />}
+      {tab === 'horaires' && (
+        <div role="tabpanel" id="panel-horaires" aria-labelledby="tab-horaires" className="space-y-5">
+          <CalendarsEditor />
+        </div>
+      )}
 
       {tab === 'integrations' && (
         <div role="tabpanel" id="panel-integrations" aria-labelledby="tab-integrations" className="space-y-5">
