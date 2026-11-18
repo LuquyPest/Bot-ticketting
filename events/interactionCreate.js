@@ -110,6 +110,16 @@ async function handleInteraction(client, interaction) {
           if (!pending || !subject) {
             return interaction.reply({ embeds: [sessionExpiredEmbed()], flags: MessageFlags.Ephemeral });
           }
+          // A category with sub-categories: choose one of them (or the category itself)
+          const tree = require('../utils/subjectTree');
+          const children = !pending.parent ? tree.childrenOf(pending.all || [], subject) : [];
+          if (children.length) {
+            const next = [subject, ...children];
+            await require('../utils/pendingStore').setPending('subject', interaction.user.id, { ...pending, subjects: next, parent: subject }, 10 * 60 * 1000, { onExpire: true });
+            const { subjectSelectEmbed } = require('../utils/dmEmbeds');
+            const guildName = client.guilds.cache.get(pending.guildId)?.name;
+            return interaction.update({ embeds: [subjectSelectEmbed(guildName)], components: require('../utils/components').subjectButtons(next, (s, i) => (i === 0 ? t('subject.general', { subject }) : tree.leafOf(s))) });
+          }
           await interaction.update({ embeds: [ticketCreatingEmbed(null)], components: [] });
           // openTicketForGuild handles the intake form before creating
           await openTicketInGuild(interaction.user, pending.content, pending.attachments, pending.guildId, client, subject);

@@ -18,6 +18,12 @@ Au moment du sujet, le membre peut demander un ticket **confidentiel** (signalem
 
 **Langue** : les messages du bot suivent le réglage du serveur (**Paramètres → Général → Langue du bot**) — français, anglais, espagnol, allemand, italien, portugais, ou **automatique** : la langue Discord du membre si elle est l'une de celles-ci, l'anglais sinon. Les textes personnalisés (bienvenue, fermeture, FAQ) et les réponses du staff restent tels qu'écrits.
 
+### Catégories et sous-catégories
+
+Les sujets se rangent en **catégories** et **sous-catégories** (**Paramètres → Général → Sujets de ticket**) : « Facturation », puis « Facturation › Remboursement », « Facturation › Changement d'offre »… Deux niveaux, jusqu'à 60 sujets ; les sujets déjà en place sont des catégories. Sur Discord, le membre choisit la catégorie, puis la sous-catégorie (ou « autre demande » dans la catégorie) ; l'espace membre et le widget les listent avec leur chemin.
+
+Une sous-catégorie **hérite** de ce qui est réglé sur sa catégorie : règles par sujet, champs personnalisés, formulaire d'ouverture, procédures, modèles suggérés, incidents, équipe. Ce qui est réglé sur la sous-catégorie ne s'applique qu'à elle. Chaque sujet peut avoir un **délai** : il remplace celui de chaque étape qui en a un (une étape sans délai reste sans), la sous-catégorie prenant celui de sa catégorie si elle n'a pas le sien.
+
 ## Côté staff
 
 - **Répondre** depuis la fiche du dashboard (avec un fichier jusqu'à 8 Mo, ou une capture collée), par `/reply`, ou anonymement par `/areply` (affiché « Support »). Un message tapé directement dans le salon Discord reste une note interne, jamais envoyée au membre.

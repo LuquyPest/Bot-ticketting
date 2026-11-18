@@ -8,16 +8,17 @@ const FORMAT = 'ticketbot-config';
 const VERSION = 1;
 
 // require_2fa is a security choice of each server: importing it could lock its founders out
-const SKIP_CONFIG = new Set(['id', 'updated_at', 'webhook_secret', 'support_grade_id', 'chief_grade_id', 'require_2fa', 'public_stats_message_id']);
+// widget_token: the public code of this space's web widget, never carried to another space
+const SKIP_CONFIG = new Set(['id', 'updated_at', 'webhook_secret', 'support_grade_id', 'chief_grade_id', 'require_2fa', 'public_stats_message_id', 'widget_token']);
 const isDiscordIdColumn = c => /_channel_id$|_category_id$|_role_ids$/.test(c);
-const JSON_COLUMNS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist']);
+const JSON_COLUMNS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist', 'subject_sla']);
 
 async function exportConfig(db) {
   const [cfgRow] = await db('SELECT * FROM guild_config WHERE id = 1');
   const config = {};
   for (const [k, v] of Object.entries(cfgRow || {})) {
     if (SKIP_CONFIG.has(k)) continue;
-    config[k] = JSON_COLUMNS.has(k) ? parseJsonField(v, k === 'subject_welcome_messages' ? {} : []) : v;
+    config[k] = JSON_COLUMNS.has(k) ? parseJsonField(v, ['subject_welcome_messages', 'subject_sla'].includes(k) ? {} : []) : v;
   }
   const grades = await db('SELECT id, name, color, parent_id, position FROM grades ORDER BY id');
   const gradeName = new Map(grades.map(g => [g.id, g.name]));

@@ -37,8 +37,12 @@ async function slaMap(db, cfg = null) {
   return Object.fromEntries((await listStages(db, cfg)).map(s => [s.key, s.slaHours]));
 }
 // The config of a space with the SLA of every stage attached (slaStatus / breachedSql)
+// …and the deadline of each category (subject_sla, v4.2), with the list of subjects
 async function withStageSla(db, cfg) {
-  return { ...(cfg || {}), stageSla: await slaMap(db, cfg) };
+  const [row] = await db('SELECT subject_sla, ticket_subjects FROM guild_config WHERE id = 1').catch(() => [{}]);
+  const { parseJsonField } = require('./jsonField');
+  const subjectSla = parseJsonField(row?.subject_sla, {}) || {};
+  return { ...(cfg || {}), stageSla: await slaMap(db, cfg), subjectSla, subjects: parseJsonField(row?.ticket_subjects, []) };
 }
 
 // The built-in stage a stage behaves like (unknown or deleted: open)

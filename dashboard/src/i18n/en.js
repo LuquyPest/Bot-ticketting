@@ -589,6 +589,13 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // Categories as a tree (v4.2)
+  ['Catégories et sous-catégories', 'Categories and sub-categories'],
+  ['Proposées avant la création du ticket (sur Discord : la catégorie, puis la sous-catégorie). Une sous-catégorie hérite des règles, champs, formulaire, procédures, équipe et délai de sa catégorie. Le délai remplace celui de chaque étape qui en a un. Laisse vide pour ne rien proposer.', 'Offered before the ticket is created (on Discord: the category, then the sub-category). A sub-category inherits the rules, fields, form, procedures, team and deadline of its category. The deadline replaces that of each stage that has one. Leave empty to offer nothing.'],
+  ['Ajouter une sous-catégorie…', 'Add a sub-category…'], ['Ajouter une catégorie…', 'Add a category…'], ['Nouvelle catégorie', 'New category'], ['Ajouter la catégorie', 'Add the category'],
+  ['Délai de l\'étape', 'Stage deadline'], ['Délai en heures dans chaque étape qui en a un — vide : celui de l\'étape (ou de la catégorie)', 'Deadline in hours in each stage that has one — empty: the stage\'s (or the category\'s)'],
+  ['Délais par catégorie', 'Deadlines per category'], ['Délais par catégorie invalides', 'Invalid deadlines per category'],
+  ['Sujet vide ou trop long (100 caractères au plus)', 'Empty or too long subject (100 characters at most)'], ['Délai par catégorie : un nombre d\'heures entre 0 et 720', 'Deadline per category: a number of hours between 0 and 720'],
   // Teams and queues (v4.2)
   ['Équipes', 'Teams'], ['Mes équipes', 'My teams'], ['Aucune (file seulement)', 'None (queue only)'], ['Tour à tour', 'In turn'], ['Selon la charge', 'By load'],
   ['Reçoit les tickets des sujets', 'Receives the tickets of the subjects'], ['… ou portant les tags', '… or carrying the tags'],
@@ -712,6 +719,8 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['{} h (catégorie)', '{1} h (category)'], ['Délai de « {} » (heures)', 'Deadline of « {1} » (hours)'], ['Nouvelle sous-catégorie de {}', 'New sub-category of {1}'], ['Ajouter la sous-catégorie à {}', 'Add the sub-category to {1}'], ['Retirer « {} » et ses {} sous-catégorie(s) ?', 'Remove « {1} » and its {2} sub-category(ies)?'], ['Retirer le sujet {}', 'Remove the subject {1}'],
+  ['Catégorie absente pour « {} » : ajoute d\'abord « {} »', 'Category missing for « {1} »: first add « {2} »'], ['Deux niveaux au plus : {}', 'Two levels at most: {1}'], ['Sujet en double : {}', 'Duplicate subject: {1}'], ['{} sujets au plus', '{1} subjects at most'], ['{} catégories au plus', '{1} categories at most'], ['Délai pour un sujet inconnu : {}', 'Deadline for an unknown subject: {1}'], ['Sous-catégorie incomplète : {}', 'Incomplete sub-category: {1}'],
   ['Équipe {}', 'Team {1}'], ['Équipe {} : attribué automatiquement', 'Team {1}: assigned automatically'], ['Ticket confié à l\'équipe {}', 'Ticket given to the team {1}'], ['Supprimer l\'équipe « {} » ? Ses tickets restent, sans équipe.', 'Delete the team « {1} »? Its tickets stay, without a team.'], ['Supprimer l\'équipe {}', 'Delete the team {1}'], ['{} équipes au plus', '{1} teams at most'],
   ['Supprimer le statut « {} » ? Ses tickets reviennent en « {} ».', 'Delete the status « {1} »? Its tickets go back to « {2} ».'], ['Monter {}', 'Move {1} up'], ['Descendre {}', 'Move {1} down'], ['Supprimer {}', 'Delete {1}'], ['{} statuts personnalisés au plus', '{1} custom statuses at most'],
   ['Retirer {} ?', 'Remove {1}?'], ['Retirer {}', 'Remove {1}'], ['{} adresses au plus', '{1} addresses at most'],

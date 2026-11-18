@@ -649,6 +649,12 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_tickets_team ON tickets (team_id)',
     ],
   },
+  {
+    version: 45,
+    name: 'Catégories en arbre : délai par catégorie (v4.2)',
+    // The existing subjects are kept as they are: they become the categories
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS subject_sla JSON DEFAULT NULL'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

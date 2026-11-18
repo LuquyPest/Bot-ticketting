@@ -13,6 +13,7 @@ import BotImport from '../components/BotImport';
 import EmailSettings from '../components/EmailSettings';
 import WidgetSettings from '../components/WidgetSettings';
 import StagesEditor from '../components/StagesEditor';
+import SubjectTreeEditor from '../components/SubjectTreeEditor';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -195,7 +196,6 @@ export default function Settings() {
   const [cfg, setCfg]               = useState(null);
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
-  const [newSubject, setNewSubject] = useState('');
   const [channels, setChannels]     = useState([]);
   const [categories, setCategories] = useState([]);
   const [roles, setRoles]           = useState([]);
@@ -309,6 +309,7 @@ export default function Settings() {
         portalWelcome:            cfg.portalWelcome?.trim() || null,
         lowRatingThreshold:       cfg.lowRatingThreshold ?? 2,
         ticketSubjects:           cfg.ticketSubjects || [],
+        subjectSla:               cfg.subjectSla && typeof cfg.subjectSla === 'object' ? cfg.subjectSla : {},
         maxTicketsPerDay:         cfg.maxTicketsPerDay,
         inactiveWarningHours:     cfg.inactiveWarningHours,
         inactiveHours:            cfg.inactiveHours,
@@ -363,12 +364,6 @@ export default function Settings() {
     }
   };
 
-  const addSubject = () => {
-    if (!newSubject.trim()) return;
-    set('ticketSubjects', [...(cfg.ticketSubjects || []), newSubject.trim()]);
-    setNewSubject('');
-  };
-  const removeSubject = (i) => set('ticketSubjects', cfg.ticketSubjects.filter((_, idx) => idx !== i));
 
   const dirty = useMemo(() => !!cfg && savedJson !== null && JSON.stringify(cfg) !== savedJson, [cfg, savedJson]);
   // Leaving the page with unsaved changes asks first
@@ -529,28 +524,9 @@ export default function Settings() {
 
       {/* Subjects */}
       <Section title="Sujets de ticket">
-        <Field label="Menu de sujets" hint="Affiché en DM avant la création du ticket. Laisse vide pour désactiver.">
-          <div className="space-y-2">
-            {(cfg.ticketSubjects || []).map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="flex-1 bg-surface border border-overlay/8 rounded-lg px-3 py-2 text-sm text-ink-2">{s}</span>
-                <button onClick={() => removeSubject(i)} aria-label={`Retirer le sujet ${s}`}
-                  className="p-1.5 text-ink-4 hover:text-red-400 transition-colors">
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <input type="text" value={newSubject} onChange={e => setNewSubject(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addSubject()}
-                placeholder="Ajouter un sujet…" aria-label="Nouveau sujet" className={BASE + " flex-1"} />
-              <button onClick={addSubject} aria-label="Ajouter le sujet"
-                className="px-3 py-2 rounded-lg bg-surface border border-overlay/8 text-ink-2
-                           hover:text-ink-1 transition-colors">
-                <Plus size={15} />
-              </button>
-            </div>
-          </div>
+        <Field label="Catégories et sous-catégories" hint="Proposées avant la création du ticket (sur Discord : la catégorie, puis la sous-catégorie). Une sous-catégorie hérite des règles, champs, formulaire, procédures, équipe et délai de sa catégorie. Le délai remplace celui de chaque étape qui en a un. Laisse vide pour ne rien proposer.">
+          <SubjectTreeEditor subjects={cfg.ticketSubjects || []} sla={cfg.subjectSla || {}}
+            onChange={(list, slaMap) => setCfg(c => ({ ...c, ticketSubjects: list, subjectSla: slaMap }))} />
         </Field>
         <SubjectRules subjects={cfg.ticketSubjects || []} />
       </Section>

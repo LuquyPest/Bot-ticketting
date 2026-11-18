@@ -198,7 +198,8 @@ async function openingForm(guildId, subject) {
   const fields = await require('./ticketFields').applicableFields(db, subject);
   let questions = [];
   if (cfg?.intake_form_enabled) {
-    const [form] = await db('SELECT id FROM intake_forms WHERE active = 1 AND (subject = ? OR subject IS NULL) ORDER BY subject IS NULL ASC LIMIT 1', [subject || null]).catch(() => []);
+    const line = require('./subjectTree').lineage(subject);
+    const [form] = await db('SELECT id FROM intake_forms WHERE active = 1 AND (subject IN (?) OR subject IS NULL) ORDER BY subject IS NULL ASC, subject = ? DESC LIMIT 1', [line.length ? line : [''], subject || '']).catch(() => []);
     if (form) questions = (await db('SELECT label FROM intake_form_fields WHERE form_id = ? ORDER BY position ASC', [form.id])).map(q => q.label);
   }
   return { subjects, fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type, required: !!f.required })), questions };

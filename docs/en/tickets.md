@@ -18,6 +18,12 @@ When picking the subject, the member can ask for a **confidential** ticket (repo
 
 **Language**: the bot's messages follow the server setting (**Settings → General → Bot language**) — English, French, Spanish, German, Italian, Portuguese, or **automatic**: the member's Discord language if it is one of these, English otherwise. Custom texts (welcome, closing, FAQ) and staff replies stay as written.
 
+### Categories and sub-categories
+
+Subjects are arranged in **categories** and **sub-categories** (**Settings → General → Ticket subjects**): « Billing », then « Billing › Refund », « Billing › Plan change »… Two levels, up to 60 subjects; the subjects already there are categories. On Discord, the member picks the category, then the sub-category (or « other request » in the category); the member space and the widget list them with their path.
+
+A sub-category **inherits** what is set on its category: subject rules, custom fields, intake form, procedures, suggested templates, incidents, team. What is set on the sub-category applies to it only. Each subject can have a **deadline**: it replaces that of each stage that has one (a stage without a deadline stays without), the sub-category taking its category's when it has none of its own.
+
 ## Staff side
 
 - **Reply** from the ticket view in the dashboard (with a file up to 8 MB, or a pasted screenshot), with `/reply`, or anonymously with `/areply` (shown as « Support »). A message typed directly in the Discord channel stays an internal note, never sent to the member.

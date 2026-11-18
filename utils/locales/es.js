@@ -20,6 +20,7 @@ module.exports = {
   'subject.timeout': 'Sin respuesta en 10 minutos, el ticket se abrirá sin asunto',
   'subject.textOnly': '📝 Envía el asunto de tu ticket como texto (unas pocas palabras).',
   'subject.other': '✏️ Otro asunto',
+  'subject.general': '{subject}: otra solicitud',
   'route.one': 'Tienes un ticket abierto',
   'route.many': 'Tienes {count} tickets abiertos',
   'route.body': '¿A qué ticket quieres enviar este mensaje? También puedes abrir un **nuevo ticket**.',

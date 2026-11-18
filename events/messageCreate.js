@@ -60,8 +60,9 @@ async function checkIntakeForm(user, content, attachments, guildEntry, client, s
   let forms;
   try {
     forms = await db(
-      'SELECT * FROM intake_forms WHERE active = 1 AND (subject = ? OR subject IS NULL) ORDER BY subject IS NULL ASC LIMIT 1',
-      [subject || null]
+      // The sub-category's form, else its category's, else the general one (utils/subjectTree.js)
+      'SELECT * FROM intake_forms WHERE active = 1 AND (subject IN (?) OR subject IS NULL) ORDER BY subject IS NULL ASC, subject = ? DESC LIMIT 1',
+      [require('../utils/subjectTree').lineage(subject).length ? require('../utils/subjectTree').lineage(subject) : [''], subject || '']
     );
   } catch { return false; }
   if (!forms.length) return false;
@@ -139,8 +140,11 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
     const guildName = client.guilds.cache.get(guildId)?.name;
     const subjects = parseJsonField(config.ticket_subjects);
     if (subjects.length > 0) {
-      await store.setPending('subject', user.id, { guildId, content, attachments, subjects }, PENDING_TTL_MS, { onExpire: true });
-      await user.send({ embeds: [subjectSelectEmbed(guildName)], components: subjectButtons(subjects) }).catch(() => null);
+      // Categories first; a category with sub-categories asks for one of them next
+      const tree = require('../utils/subjectTree');
+      const shown = tree.roots(subjects);
+      await store.setPending('subject', user.id, { guildId, content, attachments, subjects: shown, all: subjects }, PENDING_TTL_MS, { onExpire: true });
+      await user.send({ embeds: [subjectSelectEmbed(guildName)], components: subjectButtons(shown, s => (tree.childrenOf(subjects, s).length ? `${s} ›` : s)) }).catch(() => null);
     } else {
       await store.setPending('subjectText', user.id, { guildId, content, attachments }, PENDING_TTL_MS, { onExpire: true });
       await user.send({ embeds: [subjectAskEmbed(guildName)], components: [require('../utils/components').confidentialRow()] }).catch(() => null);
