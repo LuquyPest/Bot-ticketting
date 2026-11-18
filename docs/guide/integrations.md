@@ -6,7 +6,24 @@
 
 ## API publique
 
-Activable par serveur (**Paramètres → Intégrations → API publique**), avec des **clés API** (page **Clés API**) créées par les fondateurs : permissions au choix, date d'expiration facultative. Seule une empreinte de la clé est conservée.
+Activable par espace (**Paramètres → Intégrations → API publique**), avec des **clés API** (page **Clés API**) créées par les fondateurs : permissions au choix, date d'expiration facultative. Seule une empreinte de la clé est conservée. Les mêmes clés servent pour les deux versions.
+
+**v2** (recommandée pour un nouvel outil) :
+
+| Méthode | Route | Permission |
+|---|---|---|
+| `GET` | `/api/v2/space` (l'espace de la clé et ses permissions) | toute clé |
+| `GET` | `/api/v2/tickets?status=open\|closed&contact_id=&limit=&cursor=` | `read_tickets` |
+| `GET` | `/api/v2/tickets/:id` (ticket, messages, pièces jointes) | `read_tickets` |
+| `GET` | `/api/v2/tickets/:id/attachments/:fileId` (téléchargement) | `read_tickets` |
+| `POST` | `/api/v2/tickets/:id/close` | `close_tickets` |
+| `GET` | `/api/v2/contacts?q=&limit=&cursor=` | `read_contacts` |
+| `GET` | `/api/v2/contacts/:id` | `read_contacts` |
+| `GET` | `/api/v2/stats` | `read_stats` |
+
+Les listes répondent `{ "data": [...], "next_cursor": "…" }` : repasse `next_cursor` en `?cursor=` pour la page suivante, `null` à la fin (100 éléments par page au plus, 50 par défaut). Un ticket donne son demandeur avec son type (`owner.kind` : `discord`, `email` ou `web`), sa fiche contact (`contact_id`), son étape et ses tags. Les contacts exposent leurs identités, jamais les notes internes du staff ; la permission `read_contacts` est à cocher à part.
+
+**v1**, maintenue sans changement :
 
 | Méthode | Route | Permission |
 |---|---|---|
@@ -15,7 +32,7 @@ Activable par serveur (**Paramètres → Intégrations → API publique**), avec
 | `POST` | `/api/v1/tickets/:id/close` | `close_tickets` |
 | `GET` | `/api/v1/stats` | `read_stats` |
 
-La clé s'envoie dans l'en-tête `Authorization: Bearer <clé>`. La description **OpenAPI 3** est publique sur `/api/v1/openapi.json`, et la page **Documentation API** du dashboard l'affiche avec un exemple `curl` et une réponse type pour chaque route. Les tickets confidentiels ne sont jamais accessibles par l'API.
+La clé s'envoie dans l'en-tête `Authorization: Bearer <clé>`. La description **OpenAPI 3** est publique sur `/api/v2/openapi.json` et `/api/v1/openapi.json`, et la page **Documentation API** du dashboard l'affiche avec un exemple `curl` et une réponse type pour chaque route. Les tickets confidentiels ne sont jamais accessibles par l'API.
 
 ## Webhooks sortants
 

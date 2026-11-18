@@ -135,7 +135,10 @@ endpoint({
   params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
   example: { ok: true },
   errors: [400, 404],
-}, async (req, res) => {
+}, closeHandler);
+
+// Shared with /api/v2
+async function closeHandler(req, res) {
   try {
     const [ticket] = await req.guildDb(`SELECT id, channel_id, status FROM tickets WHERE id = ? AND ${NOT_CONFIDENTIAL}`, [parseInt(req.params.id)]);
     if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
@@ -161,13 +164,15 @@ endpoint({
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
-});
+}
 
 endpoint({
   method: 'get', path: '/stats', perm: 'read_stats', summary: 'Statistiques globales',
   description: 'Nombre de tickets (total, ouverts, fermés) et note moyenne donnée par les membres.',
   example: { tickets: { total: 340, open: 12, closed: 328 }, ratings: { count: 120, average: 4.42 } },
-}, async (req, res) => {
+}, statsHandler);
+
+async function statsHandler(req, res) {
   try {
     const [[counts], [rating]] = await Promise.all([
       req.guildDb(
@@ -183,39 +188,49 @@ endpoint({
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
-});
+}
 
 const ERROR_TEXT = { 400: 'Requête invalide', 401: 'Clé manquante, invalide, révoquée ou expirée', 403: 'Permission manquante ou API désactivée', 404: 'Introuvable', 429: 'Trop de requêtes' };
 
-function buildOpenApi(name = 'Datick') {
+// OpenAPI description of a list of endpoints (shared with /api/v2)
+function makeOpenApi({ endpoints, version, title, description }) {
   const { config } = require('../../utils/config');
-  let server = '/api/v1';
-  try { server = new URL('/api/v1', config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { /* relative */ }
+  let server = `/api/v${version}`;
+  try { server = new URL(`/api/v${version}`, config.dashboard?.discordCallbackUrl || config.webServerBaseUrl).toString(); } catch { /* relative */ }
   const paths = {};
-  for (const e of ENDPOINTS) {
+  for (const e of endpoints) {
     const parameters = [
       ...(e.params || []).map(p => ({ name: p.name, in: 'path', required: true, description: p.description, schema: { type: p.type || 'string' } })),
       ...(e.query || []).map(q => ({ name: q.name, in: 'query', required: false, description: q.description, schema: q.enum ? { type: 'string', enum: q.enum } : { type: q.type || 'string' } })),
     ];
     const responses = { 200: { description: 'Succès', content: { 'application/json': { example: e.example } } } };
-    for (const code of [401, 403, ...(e.errors || []), 429]) responses[code] = { description: ERROR_TEXT[code], content: { 'application/json': { example: { error: ERROR_TEXT[code] } } } };
+    for (const code of [401, ...(e.perm ? [403] : []), ...(e.errors || []), 429]) responses[code] = { description: ERROR_TEXT[code], content: { 'application/json': { example: { error: ERROR_TEXT[code] } } } };
     (paths[e.path] ||= {})[e.method] = {
-      summary: e.summary, description: `${e.description}\n\nPermission de la clé : \`${e.perm}\`.`,
+      summary: e.summary, description: e.perm ? `${e.description}\n\nPermission de la clé : \`${e.perm}\`.` : e.description,
       'x-permission': e.perm, parameters, responses, security: [{ bearer: [] }],
     };
   }
   return {
     openapi: '3.0.3',
-    info: {
-      title: `${name} — API publique`, version: '1',
-      description: 'Accès aux tickets d\'un serveur avec une clé API créée dans le dashboard (page « Clés API »). La clé désigne le serveur et porte ses permissions. Envoie-la dans l\'en-tête `Authorization: Bearer <clé>`. Limite : celle de l\'API du dashboard, par adresse IP.',
-    },
+    info: { title, version: String(version), description },
     servers: [{ url: server }],
     components: { securitySchemes: { bearer: { type: 'http', scheme: 'bearer', description: 'Clé au format tb_<id du serveur>_<64 caractères hexadécimaux>' } } },
     paths,
   };
 }
 
+function buildOpenApi(name = 'Datick') {
+  return makeOpenApi({
+    endpoints: ENDPOINTS, version: 1, title: `${name} — API publique`,
+    description: 'Accès aux tickets d\'un serveur avec une clé API créée dans le dashboard (page « Clés API »). La clé désigne le serveur et porte ses permissions. Envoie-la dans l\'en-tête `Authorization: Bearer <clé>`. Limite : celle de l\'API du dashboard, par adresse IP.',
+  });
+}
+
 module.exports = router;
+module.exports.apiKeyAuth = apiKeyAuth;
+module.exports.makeOpenApi = makeOpenApi;
+module.exports.NOT_CONFIDENTIAL = NOT_CONFIDENTIAL;
+module.exports.closeHandler = closeHandler;
+module.exports.statsHandler = statsHandler;
 module.exports.ENDPOINTS = ENDPOINTS;
 module.exports.buildOpenApi = buildOpenApi;

@@ -1552,6 +1552,70 @@ async function main() {
     check('doc API: chaque route est documentée', routes.length > 0 && routes.every(x => documented.includes(x)), JSON.stringify({ routes, documented }));
   }
 
+  // ── Public API v2 (routes/apiV2.js, v4.1): space, contacts, attachments, cursors ──
+  {
+    await db('UPDATE guild_config SET api_keys_enabled = 1 WHERE id = 1');
+    await mk('FK2', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
+    r = await req('POST', '/api/api-keys', { sid: sessions.FK2, body: { name: 'v2', permissions: ['read_tickets', 'close_tickets', 'read_contacts'] } });
+    const k2 = { Authorization: `Bearer ${r.body.key}` };
+    check('API v2: permission read_contacts proposée pour les clés', r.status === 200 && r.body.permissions.includes('read_contacts'), JSON.stringify([r.status, r.body]));
+    r = await req('GET', '/api/v2/openapi.json');
+    const routes2 = app('./web/routes/apiV2').stack.filter(l => l.route).map(l => `${Object.keys(l.route.methods)[0]} ${l.route.path}`).filter(x => !x.endsWith('/openapi.json'));
+    const doc2 = Object.entries(r.body.paths || {}).flatMap(([p, m]) => Object.keys(m).map(k => `${k} ${p.replace(/\{(\w+)\}/g, ':$1')}`));
+    check('API v2: description OpenAPI publique, chaque route documentée', r.status === 200 && r.body.info.version === '2' && /\/api\/v2$/.test(r.body.servers[0].url) && routes2.length >= 8 && routes2.every(x => doc2.includes(x)), JSON.stringify({ routes2, doc2 }));
+    const v1doc = await req('GET', '/api/v1/openapi.json');
+    check('API v2: la v1 reste décrite à l identique (4 routes, version 1)', v1doc.body.info.version === '1' && Object.keys(v1doc.body.paths).join() === '/tickets,/tickets/{id},/tickets/{id}/close,/stats', Object.keys(v1doc.body.paths).join());
+    r = await req('GET', '/api/v2/space');
+    check('API v2: sans clé → 401', r.status === 401, r.status);
+    r = await req('GET', '/api/v2/space', { headers: k2 });
+    check('API v2: l espace de la clé, avec ses permissions', r.status === 200 && r.body.id === G && typeof r.body.discord === 'boolean' && r.body.permissions.includes('read_contacts'), JSON.stringify(r.body));
+
+    const tConf2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('49','u49','capiconf2','open','Signalement', -1)")).insertId;
+    const [{ n: visible }] = await db('SELECT COUNT(*) AS n FROM tickets WHERE visibility_grade_id IS NULL OR visibility_grade_id <> -1');
+    const seen = [];
+    let cursor = null, pages = 0, firstPage = null;
+    do {
+      r = await req('GET', '/api/v2/tickets', { headers: k2, query: { limit: 3, ...(cursor ? { cursor } : {}) } });
+      if (r.status !== 200) break;
+      if (!firstPage) firstPage = r.body;
+      seen.push(...r.body.data.map(t => t.id));
+      cursor = r.body.next_cursor; pages++;
+    } while (cursor && pages < 500);
+    check('API v2: pagination par curseur → chaque ticket une fois, du plus récent au plus ancien', r.status === 200 && seen.length === Number(visible) && new Set(seen).size === seen.length && seen.every((id, i) => i === 0 || id < seen[i - 1]) && !seen.includes(tConf2), JSON.stringify([seen.length, visible, pages]));
+    const t0 = firstPage?.data?.[0];
+    check('API v2: ticket avec demandeur typé, tags et fiche contact', !!t0 && ['discord', 'email', 'web'].includes(t0.owner.kind) && Array.isArray(t0.tags) && 'contact_id' in t0 && 'stage' in t0 && !('owner_id' in t0), JSON.stringify(t0));
+    const badC = await req('GET', '/api/v2/tickets', { headers: k2, query: { cursor: 'pas-un-curseur' } });
+    const badL = await req('GET', '/api/v2/tickets', { headers: k2, query: { limit: 101 } });
+    const badL0 = await req('GET', '/api/v2/tickets', { headers: k2, query: { limit: 0 } });
+    check('API v2: curseur ou limite invalides → 400', [badC, badL, badL0].every(x => x.status === 400), [badC, badL, badL0].map(x => x.status).join());
+    r = await req('GET', `/api/v2/tickets/${tConf2}`, { headers: k2 });
+    const confClose = await req('POST', `/api/v2/tickets/${tConf2}/close`, { headers: k2 });
+    check('API v2: ticket confidentiel introuvable et non fermable', r.status === 404 && confClose.status === 404, [r.status, confClose.status].join());
+    r = await req('GET', `/api/v2/tickets/${t0.id}`, { headers: k2 });
+    check('API v2: détail avec messages et pièces jointes', r.status === 200 && Array.isArray(r.body.messages) && Array.isArray(r.body.attachments) && r.body.id === t0.id, JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', `/api/v2/tickets/${t0.id}/attachments/999999`, { headers: k2 });
+    check('API v2: pièce jointe inconnue → 404', r.status === 404, r.status);
+
+    r = await req('GET', '/api/v2/contacts', { headers: { Authorization: 'Bearer ' + key } });
+    check('API v2: contacts refusés sans read_contacts', r.status === 403, r.status);
+    r = await req('GET', '/api/v2/contacts', { headers: k2, query: { limit: 100 } });
+    const c0 = r.body.data?.find(c => c.identities.length);
+    check('API v2: contacts avec leurs identités, sans notes internes', r.status === 200 && !!c0 && c0.identities.every(i => i.value && i.kind) && r.body.data.every(c => !('notes' in c)), JSON.stringify(r.body).slice(0, 300));
+    const one = await req('GET', `/api/v2/contacts/${c0.id}`, { headers: k2 });
+    const byContact = await req('GET', '/api/v2/tickets', { headers: k2, query: { contact_id: c0.id, limit: 100 } });
+    check('API v2: fiche contact et ses tickets', one.status === 200 && one.body.tickets.total === byContact.body.data.length && byContact.body.data.every(t => c0.identities.some(i => i.value === t.owner.id)), JSON.stringify([one.body.tickets, byContact.body.data?.length]));
+    const qr = await req('GET', '/api/v2/contacts', { headers: k2, query: { q: c0.display_name.slice(0, 4) } });
+    check('API v2: recherche de contacts', qr.status === 200 && qr.body.data.some(c => c.id === c0.id), JSON.stringify(qr.body).slice(0, 200));
+
+    const tOpen = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('48','u48','capiv2','open','Test v2')")).insertId;
+    r = await req('POST', `/api/v2/tickets/${tOpen}/close`, { headers: { ...k2, 'X-Requested-With': '' } });
+    const [closedV2] = await db('SELECT status, closed_by_tag FROM tickets WHERE id = ?', [tOpen]);
+    check('API v2: fermeture comme en v1 (clé, sans en-tête CSRF)', r.status === 200 && closedV2.status === 'closed' && closedV2.closed_by_tag === 'API · v2', JSON.stringify([r.body, closedV2]));
+    r = await req('GET', '/api/v2/stats', { headers: k2 });
+    check('API v2: stats sans read_stats → 403', r.status === 403, r.status);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tConf2, tOpen]]);
+  }
+
   // ── Browser crashes reported to the super-admin error journal ──
   {
     r = await req('POST', '/api/client-errors', { sid: sessions.FV, body: { message: 'TypeError: x is undefined (test navigateur)', stack: 'at Tickets.jsx:10', url: '/tickets', kind: 'rendu', component: 'in Tickets' } });
