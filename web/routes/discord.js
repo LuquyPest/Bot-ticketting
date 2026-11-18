@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { ChannelType } = require('discord.js');
 
+// A space without a Discord server (or the demo) has no channels, categories nor roles: an empty
+// list, not an error (Settings asks for them on every space — each visit logged 3 false errors)
+router.use(async (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const discordless = !(await require('../../utils/spaces').hasDiscord(req.guildId).catch(() => true)) || req.guildId === require('../../utils/demo').DEMO_GUILD_ID;
+  return discordless ? res.json([]) : next();
+});
+
 router.get('/categories', async (req, res) => {
   try {
     const client = req.app.locals.client;

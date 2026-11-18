@@ -3789,6 +3789,10 @@ async function main() {
     const errG = await realC.guilds.fetch(SP).then(() => null, e => e);
     check('espaces: jamais demandé à Discord', errG?.code === 10004, String(errG));
     await realC.destroy();
+    await mk('SPD', { user: { id: U.F, username: 'F', role: null }, currentGuildId: SP });
+    const dl = [];
+    for (const k of ['channels', 'categories', 'roles']) { const x = await req('GET', `/api/discord/${k}`, { sid: sessions.SPD }); dl.push(`${x.status}:${JSON.stringify(x.body)}`); }
+    check('espaces: salons, catégories et rôles Discord = listes vides, pas une erreur', dl.every(x => x === '200:[]'), dl.join(' '));
     // Listed for the owner, whatever the way they signed in
     await mk('OWNP', { user: { id: U.F, username: 'F', role: null }, authMethod: 'password' });
     r = await req('GET', '/api/auth/guilds', { sid: sessions.OWNP });
@@ -4309,6 +4313,25 @@ async function main() {
       await db('DELETE FROM email_contacts WHERE owner_id IN (?)', [owners]);
       await db('DELETE FROM contacts WHERE id IN (SELECT contact_id FROM contact_identities WHERE value IN (?))', [owners]);
     }
+  }
+
+  // ── Dashboard leaderboard: week and month, staff only ──
+  {
+    const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET leaderboard_enabled = 1 WHERE id = 1');
+    const tLb = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000088', 'lb', 'db-lb', 'open', 'Classement')")).insertId;
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'F', 'réponse', 'reply'), (?, 'system', 'Attribution automatique', 'attribué', 'system'), (?, 'rule-bot', 'Robot', 'x', 'web')", [tLb, U.F, tLb, tLb]);
+    const week = await req('GET', '/api/dashboard/leaderboard', { sid: sessions.F, query: { period: 'week' } });
+    const month = await req('GET', '/api/dashboard/leaderboard', { sid: sessions.F, query: { period: 'month' } });
+    const ids = x => (x.body.staff || []).map(p => p.userId);
+    check('classement: la semaine répond (elle échouait toujours)', week.status === 200 && ids(week).includes(U.F), JSON.stringify(week.body).slice(0, 200));
+    check('classement: le mois répond aussi', month.status === 200 && ids(month).includes(U.F), month.status);
+    const cmp = [];
+    for (const period of ['today', 'week', 'month', 'all']) cmp.push((await req('GET', '/api/analytics/staff-compare', { sid: sessions.F, query: { period } })).status);
+    check('comparatif staff: chaque période répond (7 jours échouait toujours)', cmp.every(x => x === 200), cmp.join());
+    check('classement: seulement des membres du staff, jamais les notes automatiques', !ids(week).includes('system') && !ids(week).includes('rule-bot'), JSON.stringify(ids(week)));
+    await db('DELETE FROM tickets WHERE id = ?', [tLb]);
+    await db('UPDATE guild_config SET leaderboard_enabled = ? WHERE id = 1', [lbCfg.leaderboard_enabled]);
   }
 
   // ── Public knowledge base (utils/knowledgeBase.js, routes/kb.js, v4.2) ──

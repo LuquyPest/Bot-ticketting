@@ -198,13 +198,14 @@ router.get('/staff-compare', async (req, res) => {
     // INTERVAL unit must be a SQL keyword — cannot be parameterized.
     // The frozen map is the authoritative allowlist; any value not present falls back to 'month'.
     // Never interpolate req.query.period directly.
-    const PERIOD_MAP = Object.freeze({ today: 'DAY', week: '7 DAY', month: 'MONTH', all: null });
+    // Whole intervals (« INTERVAL 1 7 DAY » was invalid: the « 7 days » view always failed)
+    const PERIOD_MAP = Object.freeze({ today: 'INTERVAL 1 DAY', week: 'INTERVAL 7 DAY', month: 'INTERVAL 1 MONTH', all: null });
     const period = Object.prototype.hasOwnProperty.call(PERIOD_MAP, req.query.period) ? req.query.period : 'month';
     const interval = PERIOD_MAP[period];
 
-    const whereDate   = interval ? `AND n.created_at >= DATE_SUB(NOW(), INTERVAL 1 ${interval})` : '';
-    const whereRating = interval ? `AND tr.rated_at   >= DATE_SUB(NOW(), INTERVAL 1 ${interval})` : '';
-    const whereClose  = interval ? `AND t.closed_at   >= DATE_SUB(NOW(), INTERVAL 1 ${interval})` : '';
+    const whereDate   = interval ? `AND n.created_at >= DATE_SUB(NOW(), ${interval})` : '';
+    const whereRating = interval ? `AND tr.rated_at   >= DATE_SUB(NOW(), ${interval})` : '';
+    const whereClose  = interval ? `AND t.closed_at   >= DATE_SUB(NOW(), ${interval})` : '';
 
     const [notes, ratings, closures] = await Promise.all([
       req.guildDb(`
@@ -214,7 +215,8 @@ router.get('/staff-compare', async (req, res) => {
                ROUND(AVG(TIMESTAMPDIFF(SECOND, t.created_at, t.first_response_at)) / 60) as avg_first_response_min
         FROM ticket_notes n
         JOIN tickets t ON t.id = n.ticket_id
-        WHERE n.source NOT IN ('user', 'scheduled') ${whereDate}
+        JOIN dashboard_users u ON u.user_id = n.author_id AND u.role IN ('support', 'fondateur')
+        WHERE n.source NOT IN ('user', 'scheduled', 'system') ${whereDate}
         GROUP BY n.author_id, n.author_tag
       `),
       req.guildDb(`
