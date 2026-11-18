@@ -42,7 +42,7 @@ features:
     link: /guide/equipe
     linkText: Organiser l'équipe
   - title: À toi, sans intermédiaire
-    details: Logiciel libre (AGPL-3.0) sur ton serveur : tes moyens de connexion (Discord, Google, Microsoft, OpenID Connect, mot de passe), sauvegardes chiffrées, mises à jour en un clic, interface accessible (WCAG 2.1 AA).
+    details: Logiciel libre (AGPL-3.0) sur ton serveur — tes moyens de connexion (Discord, Google, Microsoft, OpenID Connect, mot de passe), sauvegardes chiffrées, mises à jour en un clic, interface accessible (WCAG 2.1 AA).
     link: /guide/instance
     linkText: La section Instance
   - title: Sécurité sérieuse
