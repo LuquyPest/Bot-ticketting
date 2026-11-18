@@ -47,7 +47,17 @@ For people who are not on Discord: each e-mail received on the support address o
 
 **What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket.
 
-**Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The member space stays reserved to Discord accounts.
+**Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The person can also follow their tickets in the [member space](./member-space), signed in with a link received by e-mail.
+
+**Several addresses**: under **Other addresses**, add addresses that arrive in **the same mailbox** (aliases or redirections: `billing@`, `tech@`…), up to 20. For each:
+
+| | |
+|---|---|
+| **Subject** | The ticket's subject (among those of Settings → Tickets); the e-mail's subject line stays at the top of the first message. Without a subject: the e-mail's subject line, as for the main address |
+| **Tag** | Added to the ticket when it opens: with the [roles linked to tags](./team#roles-tied-to-tags), the ticket goes to that team |
+| **Reply from this address** | The ticket's replies leave from this address, with its display name. Your sending server must accept this address as sender; otherwise leave it unticked: replies leave from the main address, in the same thread |
+
+The receiving address is recognised in `To`, `Cc`, or the headers added by the mailbox (`Delivered-To`, `X-Original-To`) for a redirection. Subject rules then apply as usual. An e-mail coming from one of these addresses is ignored (no loop). Every addition, change or removal is in the journal.
 
 **Attachments**: kept on the server, downloadable from the ticket view (under their message, preview for images), with the same rights as the ticket. Everything is set in the same section:
 

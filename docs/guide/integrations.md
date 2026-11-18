@@ -47,7 +47,17 @@ Pour les personnes qui ne sont pas sur Discord : chaque e-mail reçu sur l'adres
 
 **Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre.
 
-**Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. L'espace membre reste réservé aux comptes Discord.
+**Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. La personne peut aussi suivre ses tickets dans l'[espace membre](./espace-membre), connectée par un lien reçu par e-mail.
+
+**Plusieurs adresses** : sous **Autres adresses**, ajoute des adresses qui arrivent dans **la même boîte** (alias ou redirections : `facturation@`, `technique@`…), jusqu'à 20. Pour chacune :
+
+| | |
+|---|---|
+| **Sujet** | Le sujet du ticket (parmi ceux de Paramètres → Tickets) ; l'objet de l'e-mail reste en tête du premier message. Sans sujet : l'objet de l'e-mail, comme pour l'adresse principale |
+| **Tag** | Ajouté au ticket à son ouverture : avec les [rôles rattachés à des tags](./equipe#les-roles-rattaches-a-des-tags), le ticket va à cette équipe |
+| **Répondre depuis cette adresse** | Les réponses du ticket partent de cette adresse, avec son nom affiché. Ton serveur d'envoi doit accepter cette adresse comme expéditeur ; sinon, laisse décoché : les réponses partent de l'adresse principale, dans le même fil |
+
+L'adresse de réception est reconnue dans `To`, `Cc`, ou les en-têtes ajoutés par la boîte (`Delivered-To`, `X-Original-To`) pour une redirection. Les règles par sujet s'appliquent ensuite comme d'habitude. Un e-mail venant d'une de ces adresses est ignoré (pas de boucle). Chaque ajout, modification ou retrait est au journal.
 
 **Pièces jointes** : gardées sur le serveur, téléchargeables depuis la fiche ticket (sous leur message, aperçu pour les images), avec les mêmes droits que le ticket. Tout se règle dans la même section :
 

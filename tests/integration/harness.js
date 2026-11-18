@@ -3223,6 +3223,66 @@ async function main() {
     const errU = await realC.users.fetch(rowT.owner_id).then(() => null, e => e);
     check('e-mail: un contact e-mail n est jamais demandé à Discord', errU?.code === 10013, String(errU));
     await realC.destroy();
+    // Additional addresses, routed to a subject and/or a tag (v4.1)
+    {
+      const [cfgA] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+      await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [JSON.stringify(['Facturation', 'Technique'])]);
+      const tagA = (await db("INSERT INTO ticket_tags (name, color) VALUES ('Compta', '#22c55e')")).insertId;
+      const toOf = m => (typeof m.to === 'string' ? m.to : m.to?.address);
+      const fromOf = m => (typeof m.from === 'string' ? m.from : m.from?.address);
+      r = await req('GET', '/api/email/addresses', { sid: sessions.S1T });
+      check('e-mail adresses: réservées aux fondateurs', r.status === 403, r.status);
+      r = await req('GET', '/api/email/addresses', { sid: sessions.F });
+      check('e-mail adresses: aucune par défaut, sujets et tags proposés', r.status === 200 && r.body.addresses.length === 0 && r.body.subjects.includes('Facturation') && r.body.tags.some(t => t.id === tagA), JSON.stringify(r.body));
+      const bad = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'pas une adresse' } });
+      const mainA = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'support@example.com' } });
+      const badS = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'x@example.com', subject: 'Inventé' } });
+      const badT = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'x@example.com', tagId: 999999 } });
+      check('e-mail adresses: adresse invalide, adresse principale, sujet ou tag inconnu refusés', [bad, mainA, badS, badT].every(x => x.status === 400), [bad, mainA, badS, badT].map(x => x.status).join());
+      r = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'Facturation@Example.com', displayName: 'Service facturation', subject: 'Facturation', tagId: tagA, replyFrom: true } });
+      const fact = r.body.addresses?.find(a => a.address === 'facturation@example.com');
+      check('e-mail adresses: ajoutée (en minuscules) avec sujet, tag et envoi', r.status === 200 && fact?.subject === 'Facturation' && fact.tag_id === tagA && fact.reply_from === true, JSON.stringify(r.body));
+      r = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'facturation@example.com' } });
+      check('e-mail adresses: doublon refusé', r.status === 400, JSON.stringify(r.body));
+      r = await req('POST', '/api/email/addresses', { sid: sessions.F, body: { address: 'equipe@example.com', tagId: tagA } });
+      const team = r.body.addresses?.find(a => a.address === 'equipe@example.com');
+      check('e-mail adresses: journal de l espace', (await db("SELECT id FROM audit_log WHERE action = 'email_address_add'")).length >= 2, '');
+
+      sent.length = 0;
+      let res = await email.processEmail(fakeClient, G, { ...mail('carol@mail.test', 'Carol', 'Facture 12 manquante', 'Je n ai pas reçu la facture 12.'), to: { value: [{ address: 'Facturation@example.com' }] } }, settings);
+      const [tF] = res.ticketId ? await db('SELECT subject FROM tickets WHERE id = ?', [res.ticketId]) : [];
+      const [tagF] = res.ticketId ? await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [res.ticketId, tagA]) : [];
+      const [thF] = res.ticketId ? await db('SELECT via_address_id FROM email_threads WHERE ticket_id = ?', [res.ticketId]) : [];
+      const [noteF] = res.ticketId ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id LIMIT 1", [res.ticketId]).catch(() => []) : [];
+      check('e-mail adresses: reçu sur une autre adresse → sujet et tag de cette adresse', res.created && res.via === 'facturation@example.com' && tF?.subject === 'Facturation' && !!tagF && thF?.via_address_id === fact.id, JSON.stringify([res, tF, tagF, thF]));
+      check('e-mail adresses: l objet de l e-mail reste dans le premier message', !noteF || /Objet :\*\* Facture 12 manquante/.test(noteF.content), JSON.stringify(noteF));
+      const welcomeF = sent.find(m => toOf(m) === 'carol@mail.test');
+      check('e-mail adresses: la réponse part de l adresse sur laquelle le ticket est arrivé', fromOf(welcomeF || {}) === 'facturation@example.com' && welcomeF.from.name === 'Service facturation', JSON.stringify(welcomeF?.from));
+
+      sent.length = 0;
+      res = await email.processEmail(fakeClient, G, { ...mail('dan@mail.test', 'Dan', 'Question sur le planning', 'Bonjour'), to: { value: [{ address: 'support@example.com' }] }, headers: new Map([['delivered-to', 'equipe@example.com']]) }, settings);
+      const [tD] = res.ticketId ? await db('SELECT subject FROM tickets WHERE id = ?', [res.ticketId]) : [];
+      const [tagD] = res.ticketId ? await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ? AND tag_id = ?', [res.ticketId, tagA]) : [];
+      const welcomeD = sent.find(m => toOf(m) === 'dan@mail.test');
+      check('e-mail adresses: reconnue par Delivered-To (redirection), tag seul, objet gardé', res.via === 'equipe@example.com' && tD?.subject === 'Question sur le planning' && !!tagD, JSON.stringify([res, tD, tagD]));
+      check('e-mail adresses: sans « répondre depuis », la réponse part de l adresse principale', fromOf(welcomeD || {}) === 'support@example.com', JSON.stringify(welcomeD?.from));
+      res = await email.processEmail(fakeClient, G, { ...mail('eve@mail.test', 'Eve', 'Autre chose', 'Bonjour'), to: { value: [{ address: 'support@example.com' }] } }, settings);
+      const [tagE] = res.ticketId ? await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [res.ticketId]) : [];
+      check('e-mail adresses: adresse principale → aucun routage', res.created && !res.via && !tagE, JSON.stringify([res, tagE]));
+      res = await email.processEmail(fakeClient, G, mail('facturation@example.com', 'Nous', 'Boucle', 'écho'), settings);
+      check('e-mail adresses: un message venant d une de nos adresses est ignoré', res.skipped === 'expéditeur', JSON.stringify(res));
+
+      r = await req('PUT', `/api/email/addresses/${team.id}`, { sid: sessions.F, body: { address: 'equipe@example.com', subject: 'Technique', tagId: null } });
+      check('e-mail adresses: modifiée', r.status === 200 && r.body.addresses.find(a => a.id === team.id)?.subject === 'Technique' && !r.body.addresses.find(a => a.id === team.id)?.tag_id, JSON.stringify(r.body));
+      r = await req('DELETE', `/api/email/addresses/${fact.id}`, { sid: sessions.F });
+      const [thF2] = await db('SELECT via_address_id FROM email_threads WHERE via_address_id = ?', [fact.id]);
+      check('e-mail adresses: retirée → ses tickets répondent de l adresse principale', r.status === 200 && !r.body.addresses.some(a => a.id === fact.id) && !thF2, JSON.stringify(r.body));
+
+      await db('DELETE FROM email_addresses');
+      await db('DELETE FROM ticket_tag_assignments WHERE tag_id = ?', [tagA]);
+      await db('DELETE FROM ticket_tags WHERE id = ?', [tagA]);
+      await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [cfgA.ticket_subjects == null || typeof cfgA.ticket_subjects === 'string' ? cfgA.ticket_subjects : JSON.stringify(cfgA.ticket_subjects)]);
+    }
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id LIKE 'mail:%'");
     await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
     delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;

@@ -3,6 +3,7 @@ import { Loader2, Mail, CheckCircle2, XCircle } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { uiLocale } from '../i18n';
+import EmailAddresses from './EmailAddresses';
 
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary';
 
@@ -140,6 +141,7 @@ export default function EmailSettings() {
             : s.lastFetchAt ? `Boîte lue le ${new Date(s.lastFetchAt).toLocaleString(uiLocale())}` : 'La boîte est lue chaque minute.'}
         </p>
       )}
+      <EmailAddresses />
     </div>
   );
 }

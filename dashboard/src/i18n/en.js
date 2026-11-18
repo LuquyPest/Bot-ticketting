@@ -589,6 +589,13 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // E-mail: additional addresses (v4.1)
+  ['Autres adresses', 'Other addresses'], ['Nom affiché (facultatif)', 'Display name (optional)'], ['Sujet : celui de l\'e-mail', 'Subject: the e-mail\'s'],
+  ['Aucun tag', 'No tag'], ['Répondre depuis cette adresse', 'Reply from this address'], ['Adresse enregistrée', 'Address saved'], ['Adresse ajoutée', 'Address added'], ['Adresse retirée', 'Address removed'],
+  ['Des adresses qui arrivent dans cette même boîte (alias, redirections). Un e-mail reçu sur l\'une d\'elles ouvre un ticket avec son sujet et son tag : le tag le rend visible des rôles qui y sont rattachés (une équipe). « Répondre depuis cette adresse » demande que le serveur d\'envoi accepte cette adresse d\'expéditeur.', 'Addresses that arrive in this same mailbox (aliases, redirections). An e-mail received on one of them opens a ticket with its subject and tag: the tag makes it visible to the roles linked to it (a team). « Reply from this address » requires the sending server to accept this sender address.'],
+  ['Adresse e-mail ajoutée', 'E-mail address added'], ['Adresse e-mail modifiée', 'E-mail address changed'], ['Adresse e-mail retirée', 'E-mail address removed'],
+  ['C\'est déjà l\'adresse principale de la boîte', 'It is already the main address of the mailbox'], ['Adresse déjà ajoutée', 'Address already added'],
+  ['Sujet inconnu (Paramètres → Tickets → Sujets)', 'Unknown subject (Settings → Tickets → Subjects)'], ['Adresse introuvable', 'Address not found'],
   // Web widget (v4.1)
   ['Widget web', 'Web widget'], ['Widget web modifié', 'Web widget changed'], ['Nouveau code du widget web', 'New code of the web widget'],
   ['Un formulaire de ticket à intégrer sur ton site, sans compte Discord. Enregistré à part.', 'A ticket form to embed on your site, without a Discord account. Saved separately.'],
@@ -681,6 +688,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Retirer {} ?', 'Remove {1}?'], ['Retirer {}', 'Remove {1}'], ['{} adresses au plus', '{1} addresses at most'],
   ['Adresse de site invalide : {} (attendu : https://exemple.com)', 'Invalid site address: {1} (expected: https://example.com)'],
   ['{} consultation(s)', '{1} view(s)'], ['Membres ({})', 'Members ({1})'], ['Tags ({})', 'Tags ({1})'],
   ['Modifier {}', 'Edit {1}'], ['Supprimer {}', 'Delete {1}'], ['Retirer {}', 'Remove {1}'], ['Ajouter un membre à {}', 'Add a member to {1}'], ['Rattacher un tag à {}', 'Attach a tag to {1}'],

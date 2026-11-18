@@ -586,6 +586,24 @@ const MIGRATIONS = [
       'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_origins TEXT DEFAULT NULL',
     ],
   },
+  {
+    version: 42,
+    name: 'E-mail : plusieurs adresses par espace, routées vers un sujet ou un tag (v4.1)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS email_addresses (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        address      VARCHAR(254) NOT NULL,
+        display_name VARCHAR(100) DEFAULT NULL,
+        subject      VARCHAR(100) DEFAULT NULL,
+        tag_id       INT DEFAULT NULL,
+        reply_from   TINYINT(1) NOT NULL DEFAULT 0,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_email_address (address)
+      )`,
+      // The address a ticket came in on (its replies can leave from it)
+      'ALTER TABLE email_threads ADD COLUMN IF NOT EXISTS via_address_id INT DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -12,6 +12,9 @@
 // for a mail server on the local network), standard ports only; automatic replies, bounces and
 // mailing lists are ignored; 10 messages per hour per sender and 60 new tickets per hour per server.
 // Attachments: kept or refused per the server's settings (utils/emailAttachments.js).
+// Several addresses (v4.1): other addresses delivered to the same mailbox (aliases, redirections),
+// each routed to a subject and/or a tag (a team, through the roles linked to tags); the replies of
+// a ticket can leave from the address it came in on (email_addresses, email_threads.via_address_id).
 const crypto = require('crypto');
 const { config } = require('./config');
 const { getTenantDb } = require('./tenantDb');
@@ -152,6 +155,33 @@ function threadTicketId(guildId, mail) {
   return null;
 }
 
+// ── Additional addresses (v4.1) ──
+const ROUTE_ACTOR = { id: 'system', tag: 'Adresse e-mail', source: 'system' };
+async function listAddresses(db) {
+  return (await db('SELECT id, address, display_name, subject, tag_id, reply_from FROM email_addresses ORDER BY address').catch(() => []))
+    .map(r => ({ ...r, reply_from: Number(r.reply_from) === 1 }));
+}
+// Every address the message was delivered to: To, Cc, and the headers the mailbox adds
+function recipientsOf(mail) {
+  const out = new Set();
+  for (const field of [mail.to, mail.cc]) {
+    for (const group of Array.isArray(field) ? field : [field]) for (const v of group?.value || []) if (v?.address) out.add(String(v.address).trim().toLowerCase());
+  }
+  for (const h of ['delivered-to', 'x-original-to', 'envelope-to']) {
+    const raw = mail.headers?.get?.(h);
+    for (const v of Array.isArray(raw) ? raw : [raw]) {
+      const text = typeof v === 'string' ? v : v?.text || v?.value?.[0]?.address || '';
+      for (const m of String(text).matchAll(/[^\s<>,;"]+@[^\s<>,;"]+/g)) out.add(m[0].toLowerCase());
+    }
+  }
+  return out;
+}
+async function routeOf(db, mail) {
+  const rec = recipientsOf(mail);
+  if (!rec.size) return null;
+  return (await listAddresses(db)).find(a => rec.has(a.address)) || null;
+}
+
 // ── Contacts ──
 async function contactOf(db, ownerId) {
   const [c] = await db('SELECT address, name FROM email_contacts WHERE owner_id = ?', [ownerId]).catch(() => []);
@@ -203,12 +233,16 @@ async function sendToEmailOwner(guildId, ownerId, build) {
   const [ticket] = await db("SELECT id, subject FROM tickets WHERE owner_id = ? ORDER BY status = 'open' DESC, id DESC LIMIT 1", [ownerId]);
   const { text, html, attachments } = renderPayload(payload);
   if (!text && !attachments.length) return null;
-  const [thread] = ticket ? await db('SELECT last_message_id FROM email_threads WHERE ticket_id = ?', [ticket.id]) : [];
-  const messageId = `<ticket-${ticket?.id || 0}.${ticket ? tokenFor(guildId, ticket.id) : 'x'}.${Date.now()}.${crypto.randomBytes(4).toString('hex')}@${domainOf(s.address)}>`;
+  const [thread] = ticket ? await db('SELECT last_message_id, via_address_id FROM email_threads WHERE ticket_id = ?', [ticket.id]) : [];
+  // Came in on another address that may send: the replies leave from it
+  const [via] = thread?.via_address_id ? await db('SELECT address, display_name FROM email_addresses WHERE id = ? AND reply_from = 1', [thread.via_address_id]).catch(() => []) : [];
+  const fromAddress = via?.address || s.address;
+  const fromName = (via && via.display_name) || s.display_name;
+  const messageId = `<ticket-${ticket?.id || 0}.${ticket ? tokenFor(guildId, ticket.id) : 'x'}.${Date.now()}.${crypto.randomBytes(4).toString('hex')}@${domainOf(fromAddress)}>`;
   try {
     const transport = await smtpTransport(s);
     const info = await transport.sendMail({
-      from: s.display_name ? { name: s.display_name, address: s.address } : s.address,
+      from: fromName ? { name: fromName, address: fromAddress } : fromAddress,
       to: contact.name ? { name: contact.name, address: contact.address } : contact.address,
       subject: ticket ? `${subjectTag(guildId, ticket.id)} ${ticket.subject || 'Support'}` : 'Support',
       text, html, attachments, messageId,
@@ -262,6 +296,8 @@ async function processEmailInLang(client, guildId, mail, s) {
   const address = String(fromVal?.address || '').trim().toLowerCase();
   if (!EMAIL_RE.test(address) || address === String(s.address).toLowerCase()) return { skipped: 'expéditeur' };
   if (AUTO(mail)) return { skipped: 'automatique' };
+  const addresses = await listAddresses(db);
+  if (addresses.some(a => a.address === address)) return { skipped: 'expéditeur' }; // one of our own addresses
   const ownerId = ownerIdFor(address);
   const { createManager } = require('./ticketManager');
   const tm = createManager(db, client, guildId);
@@ -298,13 +334,25 @@ async function processEmailInLang(client, guildId, mail, s) {
   if (!openTicket && cfg?.max_tickets_per_day && await tm.getDailyTicketCount(ownerId) >= cfg.max_tickets_per_day) return { skipped: 'limite quotidienne' };
   // Senders can be made up at will: new tickets by e-mail are capped per server as well
   if (!openTicket && !(await require('./rateLimit').allowBurst(`mailnew:${guildId}`, NEW_PER_HOUR, 3600 * 1000))) return { skipped: 'trop de nouveaux tickets par e-mail' };
-  const subject = String(mail.subject || '').replace(/^\s*((re|fwd?|tr|aw|wg)\s*:\s*)+/i, '').trim().slice(0, 100) || null;
-  const res = await tm.relayDmToTicket(user, body, [], subject);
+  const mailSubject = String(mail.subject || '').replace(/^\s*((re|fwd?|tr|aw|wg)\s*:\s*)+/i, '').trim().slice(0, 100) || null;
+  // Delivered to one of the additional addresses: its subject replaces the subject line (kept in the message)
+  const route = addresses.length ? await routeOf(db, mail) : null;
+  const subject = route?.subject || mailSubject;
+  const firstBody = route?.subject && mailSubject ? `**Objet :** ${mailSubject}\n\n${body}` : body;
+  const res = await tm.relayDmToTicket(user, openTicket ? body : firstBody, [], subject);
   if (!res?.ticket) return { skipped: 'ticket impossible' };
+  if (res.created && route) {
+    await db('INSERT INTO email_threads (ticket_id, via_address_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE via_address_id = VALUES(via_address_id)', [res.ticket.id, route.id]);
+    if (route.tag_id && (await db('INSERT IGNORE INTO ticket_tag_assignments (ticket_id, tag_id) SELECT ?, id FROM ticket_tags WHERE id = ?', [res.ticket.id, route.tag_id])).affectedRows) {
+      const { recordEvent } = require('./audit');
+      await recordEvent(db, { actor: ROUTE_ACTOR, action: 'ticket_tag_add', ticketId: res.ticket.id, targetType: 'tag', targetId: route.tag_id, details: { address: route.address } }).catch(() => null);
+      await require('./channelVisibility').syncAfterTagChange(db, client, guildId, res.ticket.id, route.tag_id).catch(() => null);
+    }
+  }
   await keepFiles(res.ticket).catch(err => console.error('email: pièces jointes', guildId, err.message));
   if (mail.messageId) await db('INSERT INTO email_threads (ticket_id, last_message_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_message_id = VALUES(last_message_id)', [res.ticket.id, String(mail.messageId).slice(0, 255)]);
   if (res.created) await tm.sendWelcomeDm(user, true, subject, res.ticket.id).catch(() => null);
-  return { ticketId: res.ticket.id, created: !!res.created };
+  return { ticketId: res.ticket.id, created: !!res.created, ...(route ? { via: route.address } : {}) };
 }
 
 // Reads the unread messages of a server's mailbox (BullMQ job « email-fetch », every minute)
@@ -357,6 +405,7 @@ async function runEmailFetch(client) {
 }
 
 module.exports = {
+  listAddresses, recipientsOf, routeOf,
   isEmailOwner, isExternalOwner, ownerIdFor, userFor, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
   fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
   smtpTransport, EMAIL_RE, SMTP_PORTS,
