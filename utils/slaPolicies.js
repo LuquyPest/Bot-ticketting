@@ -23,8 +23,10 @@ const shape = r => ({
   id: r.id, name: r.name, position: r.position, active: !!Number(r.active), businessHours: !!Number(r.business_hours),
   ttoMinutes: r.tto_minutes, ttrMinutes: r.ttr_minutes, conditions: { priorities: [], types: [], subjects: [], channels: [], ...(parseJsonField(r.conditions, {}) || {}) },
 });
-async function listPolicies(db) {
-  return (await db('SELECT * FROM sla_policies ORDER BY position, id').catch(() => [])).map(shape);
+async function listPolicies(db, { escalations = false } = {}) {
+  const list = (await db('SELECT * FROM sla_policies ORDER BY position, id').catch(() => [])).map(shape);
+  if (escalations) for (const p of list) p.escalations = await require('./slaEscalation').levelsOf(db, { policyId: p.id });
+  return list;
 }
 
 function clean(input = {}) {
@@ -44,6 +46,9 @@ async function savePolicy(db, id, input) {
   const r = clean(input);
   if (r.error) return r;
   const v = r.value;
+  const E = require('./slaEscalation');
+  const esc = await E.cleanLevels(db, input.escalations, ['tto', 'ttr']);
+  if (esc.error) return esc;
   const vals = [v.name, v.ttoMinutes, v.ttrMinutes, JSON.stringify(v.conditions), v.businessHours ? 1 : 0, v.active ? 1 : 0];
   if (id) {
     const res = await db('UPDATE sla_policies SET name = ?, tto_minutes = ?, ttr_minutes = ?, conditions = ?, business_hours = ?, active = ? WHERE id = ?', [...vals, id]);
@@ -53,11 +58,13 @@ async function savePolicy(db, id, input) {
     if (Number(n.n) >= MAX_POLICIES) return { error: `${MAX_POLICIES} objectifs au plus` };
     id = (await db('INSERT INTO sla_policies (name, tto_minutes, ttr_minutes, conditions, business_hours, active, position) VALUES (?, ?, ?, ?, ?, ?, ?)', [...vals, Number(n.pos) + 1])).insertId;
   }
+  await E.saveLevels(db, { policyId: id }, esc.value);
   return { ok: true, id };
 }
 async function deletePolicy(db, id) {
   const r = await db('DELETE FROM sla_policies WHERE id = ?', [id]);
   if (!r.affectedRows) return { error: 'Objectif introuvable', status: 404 };
+  await require('./slaEscalation').dropLevels(db, { policyId: id });
   return { ok: true };
 }
 async function reorderPolicies(db, ids) {
@@ -113,6 +120,7 @@ async function onStageChange(db, ticketId, kind) {
     return;
   }
   if (!t.sla_paused_at) return;
+  await require('./slaEscalation').onResume(db, t).catch(err => console.error('ola: reprise', t.id, err.message));
   const [p] = t.sla_policy_id ? await db('SELECT business_hours FROM sla_policies WHERE id = ?', [t.sla_policy_id]) : [];
   const c = p && Number(p.business_hours) ? await cal.calendarForTicket(db, t) : null;
   const from = new Date(t.sla_paused_at).getTime(), now = Date.now();
@@ -125,7 +133,8 @@ async function onStageChange(db, ticketId, kind) {
 async function refreshOpenTickets(db) {
   const policies = await listPolicies(db);
   const ids = (await db("SELECT id FROM tickets WHERE status = 'open' ORDER BY id DESC LIMIT 5000")).map(r => r.id);
-  for (const id of ids) await refreshSla(db, id, { policies }).catch(() => null);
+  const { refreshOla } = require('./slaEscalation');
+  for (const id of ids) { await refreshSla(db, id, { policies }).catch(() => null); await refreshOla(db, id).catch(() => null); }
   return ids.length;
 }
 
@@ -140,18 +149,22 @@ function objectiveState(dueAt, metAt, startMs, now) {
   return { dueAt: new Date(due).toISOString(), state: total > 0 && (due - now) / total <= WARNING_RATIO ? 'warning' : 'ok', minutesLeft: Math.round((due - now) / 60000) };
 }
 function objectives(t, now = Date.now()) {
-  if (!t?.sla_policy_id) return null;
+  if (!t?.sla_policy_id && !t?.ola_due_at) return null;
   const start = new Date(t.created_at).getTime();
   const done = t.resolved_at || t.closed_at;
-  const ttr = objectiveState(t.ttr_due_at, done, start, now);
+  const pause = o => (o && t.sla_paused_at && !done ? { ...o, state: 'paused' } : o);
+  // OLA (utils/slaEscalation.js): the team's own time, from when the ticket came to it
+  const ola = t.ola_due_at ? objectiveState(t.ola_due_at, done, new Date(t.team_since || t.created_at).getTime(), now) : null;
   return {
-    policyId: t.sla_policy_id,
-    tto: objectiveState(t.tto_due_at, t.first_response_at, start, now),
-    ttr: ttr && t.sla_paused_at && !done ? { ...ttr, state: 'paused' } : ttr,
+    policyId: t.sla_policy_id || null,
+    tto: t.sla_policy_id ? objectiveState(t.tto_due_at, t.first_response_at, start, now) : null,
+    ttr: t.sla_policy_id ? pause(objectiveState(t.ttr_due_at, done, start, now)) : null,
+    ola: ola ? { ...pause(ola), teamId: t.team_id } : null,
   };
 }
 // SQL: a ticket that has missed one of its objectives and is still open (« Hors délai » view)
 const OBJECTIVE_BREACHED_SQL = `(status = 'open' AND ((first_response_at IS NULL AND tto_due_at IS NOT NULL AND tto_due_at < NOW())
-  OR (resolved_at IS NULL AND sla_paused_at IS NULL AND ttr_due_at IS NOT NULL AND ttr_due_at < NOW())))`;
+  OR (resolved_at IS NULL AND sla_paused_at IS NULL AND ttr_due_at IS NOT NULL AND ttr_due_at < NOW())
+  OR (resolved_at IS NULL AND sla_paused_at IS NULL AND ola_due_at IS NOT NULL AND ola_due_at < NOW())))`;
 
 module.exports = { PRIORITIES, TYPES, CHANNELS, listPolicies, savePolicy, deletePolicy, reorderPolicies, pickPolicy, matches, refreshSla, refreshQuietly, onStageChange, refreshOpenTickets, objectives, OBJECTIVE_BREACHED_SQL, channelOf };

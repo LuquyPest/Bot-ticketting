@@ -866,6 +866,35 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_tickets_ttr ON tickets (ttr_due_at)',
     ],
   },
+  {
+    version: 58,
+    name: 'Escalade par niveaux et objectifs internes par équipe (OLA) (v5.1)',
+    statements: [
+      // A level belongs to an SLA objective (tto / ttr) or to a team (ola)
+      `CREATE TABLE IF NOT EXISTS sla_escalations (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        policy_id  INT DEFAULT NULL,
+        team_id    INT DEFAULT NULL,
+        objective  VARCHAR(8) NOT NULL,
+        percent    SMALLINT NOT NULL,
+        actions    JSON DEFAULT NULL,
+        INDEX idx_esc_policy (policy_id),
+        INDEX idx_esc_team (team_id)
+      )`,
+      // Each level fires once per ticket
+      `CREATE TABLE IF NOT EXISTS sla_escalation_fired (
+        ticket_id     INT NOT NULL,
+        escalation_id INT NOT NULL,
+        fired_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (ticket_id, escalation_id)
+      )`,
+      'ALTER TABLE teams ADD COLUMN IF NOT EXISTS ola_minutes INT DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS team_since DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ola_due_at DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ola_paused_minutes INT NOT NULL DEFAULT 0',
+      'UPDATE tickets SET team_since = created_at WHERE team_id IS NOT NULL AND team_since IS NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

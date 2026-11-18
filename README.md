@@ -9,7 +9,7 @@ Discord, e-mail, formulaire web, API : chaque demande devient un ticket, traité
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1518_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-1533_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
@@ -53,7 +53,7 @@ Côté équipe, tout se passe dans le **dashboard web temps réel** : files par 
 - **Tickets** : types (incident ou demande), résolution confirmée par le demandeur et clôture automatique, priorité urgence × impact, sujets en catégories et sous-catégories, formulaires d'ouverture, FAQ proposée avant d'ouvrir et base de connaissances publique, priorités, étapes et statuts personnalisés, Kanban, tags, notes internes, validations (accord du staff ou d'un responsable par e-mail), modèles de réponse et macros, fusion, transcripts, notation en fin de ticket ; sur Discord en salons, en fils privés, ou sans aucun salon (tout dans le dashboard).
 - **Équipe** : grades et permissions fines, rôles rattachés à des tags (tickets visibles d'eux seuls), tickets confidentiels, équipes avec leur file et attribution automatique (tour à tour, selon la charge), file personnelle, absences, objectifs, statistiques, rapports par équipe, catégorie et canal (export CSV), rapports PDF et statistiques publiques dans un salon.
 - **Demandeurs** : réponses en MP, par e-mail ou sur l'espace web, dans leur langue — et le staff aussi dans la sienne (français, anglais, espagnol, allemand, italien, portugais) ; espace web pour suivre et ouvrir des tickets. [Aider à traduire](https://docs.bot.daryu.xyz/guide/traduire).
-- **Automatismes** : horaires d'ouverture et jours fériés (réponse hors horaires), rappels, escalade, inactivité, objectifs SLA en heures ouvrées (prise en charge, résolution, par priorité, type, sujet ou canal), délais par étape, messages programmés, rapport hebdomadaire et mensuel, incidents annoncés aux membres.
+- **Automatismes** : horaires d'ouverture et jours fériés (réponse hors horaires), rappels, escalade, inactivité, objectifs SLA en heures ouvrées (prise en charge, résolution, par priorité, type, sujet ou canal) avec escalade par niveaux, objectifs internes par équipe (OLA), délais par étape, messages programmés, rapport hebdomadaire et mensuel, incidents annoncés aux membres.
 - **Intégrations** : webhooks sortants, notifications push, export et import de configuration, reprise des tickets ouverts d'un autre bot Discord (Ticket Tool, Tickets…).
 - **Sécurité** : 2FA (imposable par serveur), transcripts et secrets chiffrés, journal de toutes les actions, alerte de nouvel appareil, allowlist IP, déconnexion après inactivité.
 - **Instance** : réservée à son propriétaire — espaces (avec ou sans Discord), fondateurs, santé, erreurs et alertes, journal, sauvegardes vérifiées, mise à jour en un clic, métriques Prometheus, moyens de connexion (Discord, Google, Microsoft, OpenID Connect, e-mail et mot de passe).
@@ -82,7 +82,7 @@ Ensuite, ouvre ton domaine : connecte-toi avec le compte Discord propriétaire d
 Node 22, discord.js 14, Express 5, MariaDB 11 (une base par espace), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
-npm run test:integration                                  # 1518 vérifications sur MariaDB + Redis jetables
+npm run test:integration                                  # 1533 vérifications sur MariaDB + Redis jetables
 cd dashboard && npx vite build && node tests/smoke.mjs    # pages du dashboard + accessibilité (axe-core)
 ```
 

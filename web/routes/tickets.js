@@ -168,7 +168,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, first_response_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, first_response_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at, team_since, ola_due_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -238,7 +238,7 @@ router.get('/queue', async (req, res) => {
       : 'NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)';
     const rows = await req.guildDb(
       `SELECT id, owner_id, owner_tag, channel_id, status, stage, stage_changed_at, subject, priority, created_at, last_message_at,
-              first_response_at, resolved_at, closed_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at,
+              first_response_at, resolved_at, closed_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at, team_since, ola_due_at,
               (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source = 'user') AS last_member_at,
               (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source IN ('reply', 'scheduled')) AS last_staff_at
        FROM tickets WHERE status = 'open' AND ${where} AND ${vis.sql} LIMIT 300`,
@@ -251,7 +251,7 @@ router.get('/queue', async (req, res) => {
       // The stage deadline, or else the most pressing SLA objective (first response, then resolution)
       let sla = slaStatus(t, slaCfg, now);
       const ob = objectivesOf(t, now);
-      const worst = [ob?.tto, ob?.ttr].filter(Boolean).find(o => o.state === 'breached') || [ob?.tto, ob?.ttr].filter(Boolean).find(o => o.state === 'warning');
+      const worst = [ob?.tto, ob?.ttr, ob?.ola].filter(Boolean).find(o => o.state === 'breached') || [ob?.tto, ob?.ttr, ob?.ola].filter(Boolean).find(o => o.state === 'warning');
       if (worst && sla?.state !== 'breached' && !(sla?.state === 'warning' && worst.state === 'warning')) {
         sla = worst.state === 'breached' ? { state: 'breached', hours: 0, elapsedMinutes: worst.minutesLate } : { state: 'warning', hours: worst.minutesLeft / 60, elapsedMinutes: 0 };
       }
@@ -1132,6 +1132,7 @@ router.patch('/:id/team', async (req, res) => {
     if (!teamId) {
       if (ticket.team_id) {
         await req.guildDb('UPDATE tickets SET team_id = NULL WHERE id = ?', [ticket.id]);
+        await require('../../utils/slaEscalation').onTeamChange(req.guildDb, ticket.id);
         await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_team', ticketId: ticket.id, details: { team: null } });
         await require('../../utils/slaPolicies').refreshQuietly(req.guildDb, ticket.id);
       }

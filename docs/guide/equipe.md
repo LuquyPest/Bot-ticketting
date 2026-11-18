@@ -55,6 +55,7 @@ Un grade peut avoir un **parent** : les membres du parent voient aussi ce que vo
 | **Sujets et tags** | Un nouveau ticket d'un de ces sujets, ou portant un de ces tags (posés par les [règles par sujet](./tickets) ou par une [adresse e-mail](./integrations#tickets-par-e-mail)), va à l'équipe |
 | **Attribution** | *Aucune* : le ticket attend dans la file de l'équipe. *Tour à tour* : chaque membre à son tour. *Selon la charge* : au membre qui a le moins de tickets ouverts |
 | **Plafond** | Tickets ouverts au plus par personne ; au-delà, on passe au suivant (0 = sans plafond) |
+| **Objectif interne (OLA)** | Le temps que l'équipe se donne pour un ticket, compté **depuis son arrivée chez elle**, en heures ouvrées de ses horaires, en pause pendant l'attente du demandeur ; avec ses niveaux d'escalade (par exemple « à 100 %, passer à l'équipe Niveau 2 ») |
 
 L'attribution automatique passe les membres **absents** ou **en vacances**, ceux qui **ne peuvent pas voir** le ticket (grade, rôles rattachés à des tags) et ceux au plafond ; si personne n'est disponible, le ticket reste dans la file de l'équipe. Les tickets **confidentiels** ne sont jamais routés. L'attribution est notée au journal du ticket et la personne est prévenue comme pour une attribution à la main.
 
