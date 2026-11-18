@@ -190,6 +190,8 @@ export const MOCK = {
     { channelId: '33', name: 'ticket-0040', owner: null, adopted: true }] },
   '/api/config/public-stats': { stats: { days: 30, targetHours: 2, resolved: 184, firstResponseMedianMin: 23, withinTargetPct: 91, resolutionMedianMin: 260, satisfaction: { average: 4.7, count: 63 } }, messageUrl: 'https://discord.com/channels/1/2/3' },
 };
+// Ticket 8 (opened by e-mail, with copies): the same panels as ticket 1
+for (const k of ['time', 'procedures', 'approvals']) MOCK[`/api/tickets/8/${k}`] = MOCK[`/api/tickets/1/${k}`];
 
 // 1×1 image served for attachment previews
 export const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
