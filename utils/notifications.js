@@ -12,12 +12,14 @@ const { CONFIDENTIAL } = require('./gradePermissions');
 
 const EVENTS = ['ticket_created', 'member_reply', 'staff_reply', 'note', 'assigned', 'stage', 'closed', 'sla_breached'];
 const RECIPIENTS = ['assignee', 'assignees', 'followers', 'team', 'founders', 'emails'];
-const CHANNELS = ['dashboard', 'discord', 'email'];
+const CHANNELS = ['dashboard', 'discord', 'email', 'slack', 'teams'];
+const TEAM_CHANNELS = ['slack', 'teams']; // a channel of the space: one post per event, whoever the recipients
 const MAX_RULES = 40;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // The Discord client, for DMs from places that do not hold it (web/server.js sets it)
 let sharedClient = null;
 const setClient = c => { sharedClient = c; };
+const client = () => sharedClient;
 
 const TITLES = {
   ticket_created: (t, by) => `Nouveau ticket #${t.id}${by ? ` de ${by}` : ''}`,
@@ -46,7 +48,7 @@ function cleanRules(input) {
     if (emails.some(e => !EMAIL_RE.test(e) || e.length > 254)) return { error: 'Adresse e-mail invalide' };
     if (recipients.includes('assignee') && r.event !== 'assigned') return { error: '« La personne attribuée » ne vaut que pour une attribution' };
     if (recipients.includes('emails') && !emails.length) return { error: 'Indique au moins une adresse' };
-    if (!recipients.length || !channels.length) return { error: 'Chaque notification a des destinataires et des canaux' };
+    if (!channels.length || (!recipients.length && !channels.every(c => TEAM_CHANNELS.includes(c)))) return { error: 'Chaque notification a des destinataires et des canaux' };
     out.push({ event: r.event, recipients, channels, emails: recipients.includes('emails') ? emails : [], imposed: !!r.imposed, active: r.active !== false });
   }
   return { value: out };
@@ -84,7 +86,8 @@ async function savePrefs(db, userId, prefs) {
 }
 // What reaches this person, for the profile: the active rules naming them by role
 async function reachingRules(db) {
-  return (await listRules(db)).filter(r => r.active && r.recipients.some(x => x !== 'emails'));
+  return (await listRules(db)).filter(r => r.active && r.recipients.some(x => x !== 'emails'))
+    .map(r => ({ ...r, channels: r.channels.filter(c => !TEAM_CHANNELS.includes(c)) })).filter(r => r.channels.length);
 }
 
 // ── Sending ──
@@ -125,11 +128,16 @@ async function notify(db, guildId, event, ticket, opts = {}) {
     const done = new Set(); // user:channel already sent for this event
     const prefs = new Map();
     for (const rule of rules) {
+      for (const kind of rule.channels.filter(c => TEAM_CHANNELS.includes(c))) {
+        if (done.has(`space:${kind}`)) continue;
+        done.add(`space:${kind}`);
+        await require('./chatIntegrations').post(db, guildId, kind, ticket, { title, body }).catch(() => null);
+      }
       for (const uid of await recipientsOf(db, rule, ticket, opts)) {
         if (opts.byId && uid === String(opts.byId)) continue;
         if (!(await canUserSeeTicket(db, uid, ticket).catch(() => false))) continue;
         if (!prefs.has(uid)) prefs.set(uid, await prefsOf(db, uid));
-        for (const channel of rule.channels) {
+        for (const channel of rule.channels.filter(c => !TEAM_CHANNELS.includes(c))) {
           if (done.has(`${uid}:${channel}`)) continue;
           if (!rule.imposed && prefs.get(uid)[event]?.[channel] === false) continue;
           done.add(`${uid}:${channel}`);
@@ -216,4 +224,4 @@ async function saveTemplates(db, guildId, texts) {
 }
 const preview = text => String(text || '').replace(/\{(\w+)\}/g, (m, k) => (SAMPLE[k] !== undefined ? String(SAMPLE[k]) : m));
 
-module.exports = { setClient, EVENTS, RECIPIENTS, CHANNELS, TEMPLATE_KEYS, listRules, cleanRules, saveRules, prefsOf, savePrefs, reachingRules, notify, emit, listTemplates, saveTemplates, preview };
+module.exports = { setClient, client, TEAM_CHANNELS, EVENTS, RECIPIENTS, CHANNELS, TEMPLATE_KEYS, listRules, cleanRules, saveRules, prefsOf, savePrefs, reachingRules, notify, emit, listTemplates, saveTemplates, preview };

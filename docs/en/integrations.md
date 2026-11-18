@@ -159,6 +159,18 @@ The person gives their name (optional), their **e-mail address**, the subject if
 
 **Anti-spam**, with no third party: a hidden field only robots fill in, at least 3 seconds between opening the form and sending it (signed time, valid 2 hours), **5 sends per hour per IP address**, **3 per e-mail address**, 60 new web tickets per hour for the space, the space's daily ticket limit and the blacklist. **New code** invalidates the code already pasted (in case of abuse); every change is in the journal.
 
+## Slack and Microsoft Teams
+
+**Settings → Integrations → Slack and Microsoft Teams** (founders) connects a channel of each tool; **Settings → Notifications** chooses what goes there (« Slack » or « Teams » channel: one message per event, whatever the recipients). A confidential ticket gives only its number there.
+
+| | Slack | Microsoft Teams |
+|---|---|---|
+| **Connect** | A Slack app with *Incoming Webhooks*: paste the `https://hooks.slack.com/services/…` address | In the channel, *Workflows* → « post to a channel when a webhook request is received »: paste the address it gives |
+| **Take** | A real button: paste the app's *Signing secret* (*Basic Information → App Credentials*) and, under *Interactivity*, the address shown (`…/api/chat/slack/actions/<space>`). The first time, the person gets (visible to them only) a link to connect their Slack account to their account; then « Take » assigns them the ticket, with their rights | Opens the ticket in the dashboard, which offers to take it (Teams does not send back the clicks of a webhook) |
+| **Reply** | Opens the ticket in the dashboard | Opens the ticket in the dashboard |
+
+Each Slack call is checked (the app's HMAC signature, 5 minutes at most); the button refuses someone without the **Take charge** permission or who cannot see the ticket. The webhook addresses and the secret are encrypted and never shown again; **Test** sends a trial message.
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ and articles, templates and macros, rules, checklists, custom statuses, teams) and import on this server or another. Secrets are never exported.

@@ -5478,6 +5478,81 @@ async function main() {
     await db('DELETE FROM tickets WHERE id = ?', [tN]);
   }
 
+  // ── Slack and Microsoft Teams (utils/chatIntegrations.js, routes/chat*.js, v5.2) ──
+  {
+    const crypto = require('crypto');
+    const W = app('./utils/webhookEmitter');
+    const N = app('./utils/notifications');
+    const realPost = W.safePostJson;
+    const posted = [];
+    W.safePostJson = async (url, body) => { posted.push({ url, body }); return { status: 200 }; };
+    const until = async (fn, ms = 4000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await new Promise(r2 => setTimeout(r2, 50)); } return false; };
+    const SECRET = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    const SLACK_URL = 'https://hooks.slack.com/services/T0000/B0000/abcdefghijklmnop';
+    r = await req('GET', '/api/chat', { sid: sessions.S1 });
+    check('slack/teams: réglage réservé aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/chat/slack', { sid: sessions.F, body: { webhookUrl: 'https://exemple.test/hook', active: true } });
+    check('slack/teams: seule une adresse de webhook Slack est acceptée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/chat/teams', { sid: sessions.F, body: { webhookUrl: 'https://hooks.slack.com/services/x', active: true } });
+    check('slack/teams: Teams refuse une adresse qui n est pas Microsoft', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/chat/slack', { sid: sessions.F, body: { webhookUrl: SLACK_URL, signingSecret: SECRET, active: true } });
+    const stored = (await db("SELECT webhook_url, signing_secret FROM chat_integrations WHERE kind = 'slack'"))[0];
+    check('slack/teams: enregistré, scellé, jamais renvoyé', r.status === 200 && r.body.slack.configured && r.body.slack.hasSecret && !JSON.stringify(r.body).includes('hooks.slack.com/services')
+      && !stored.webhook_url.includes('hooks.slack.com') && !stored.signing_secret.includes(SECRET), JSON.stringify(r.body));
+    await req('PUT', '/api/chat/teams', { sid: sessions.F, body: { webhookUrl: 'https://contoso.webhook.office.com/webhookb2/abc', active: true } });
+
+    // A team notification: one post per event on Slack and Teams, whoever the recipients
+    const base = (await N.listRules(db)).map(({ id, ...x }) => x);
+    r = await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...base, { event: 'ticket_created', recipients: [], channels: ['slack', 'teams'] }] } });
+    check('slack/teams: une notification vers un canal d équipe, sans destinataire', r.status === 200, JSON.stringify(r.body).slice(0, 200));
+    const tC = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000066', 'chat', 'db-chat', 'open', 'Imprimante en panne')")).insertId;
+    const row = async () => (await db('SELECT * FROM tickets WHERE id = ?', [tC]))[0];
+    posted.length = 0;
+    await N.notify(db, G, 'ticket_created', await row(), { by: 'chat' });
+    const sl = posted.find(p => p.url === SLACK_URL), tm = posted.find(p => p.url.includes('webhook.office.com'));
+    const claimBtn = sl?.body.blocks?.[1]?.elements?.find(e => e.action_id === 'datick_claim');
+    check('slack/teams: posté une fois sur chacun, avec « Prendre » sur Slack', posted.length === 2 && claimBtn?.value === `${G}:${tC}` && JSON.stringify(sl.body).includes('Imprimante'), JSON.stringify(posted).slice(0, 400));
+    check('slack/teams: carte Teams avec Prendre (ouvre le dashboard) et Répondre', tm?.body.attachments?.[0]?.content?.actions?.some(a => a.title === 'Prendre' && a.url.endsWith(`/tickets/${tC}?prendre=1`)), JSON.stringify(tm?.body).slice(0, 300));
+    await db('UPDATE tickets SET visibility_grade_id = -1 WHERE id = ?', [tC]);
+    posted.length = 0;
+    await N.notify(db, G, 'ticket_created', await row(), { by: 'chat' });
+    check('slack/teams: ticket confidentiel → son numéro seulement', posted.length === 2 && posted.every(p => !JSON.stringify(p.body).includes('Imprimante')), JSON.stringify(posted).slice(0, 300));
+    await db('UPDATE tickets SET visibility_grade_id = NULL WHERE id = ?', [tC]);
+
+    // The « Prendre » button: signed by Slack, the Slack user linked once
+    const slackCall = (payload, { ts = Math.floor(Date.now() / 1000), secret = SECRET } = {}) => new Promise((resolve, reject) => {
+      const raw = `payload=${encodeURIComponent(JSON.stringify(payload))}`;
+      const sig = `v0=${crypto.createHmac('sha256', secret).update(`v0:${ts}:${raw}`).digest('hex')}`;
+      const rq = http.request({ host: '127.0.0.1', port: config.webServerPort, method: 'POST', path: `/api/chat/slack/actions/${G}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(raw), 'X-Slack-Request-Timestamp': String(ts), 'X-Slack-Signature': sig } }, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+      rq.on('error', reject); rq.write(raw); rq.end();
+    });
+    const click = { type: 'block_actions', team: { id: 'T0TEST' }, user: { id: 'U0TEST', team_id: 'T0TEST' }, response_url: 'https://hooks.slack.com/actions/T0TEST/1/abc', actions: [{ action_id: 'datick_claim', value: `${G}:${tC}` }] };
+    check('slack/teams: requête non signée par l espace refusée', await slackCall(click, { secret: 'f'.repeat(32) }) === 401, '');
+    check('slack/teams: requête trop ancienne refusée', await slackCall(click, { ts: Math.floor(Date.now() / 1000) - 600 }) === 401, '');
+    posted.length = 0;
+    check('slack/teams: requête signée acceptée', await slackCall(click) === 200, '');
+    await until(() => posted.some(p => p.url === click.response_url));
+    const linkMsg = posted.find(p => p.url === click.response_url)?.body.text || '';
+    const token = (/[?&]slack=([A-Za-z0-9_-]+)/.exec(linkMsg) || [])[1];
+    check('slack/teams: utilisateur Slack inconnu → lien pour relier son compte, rien de pris', !!token && !(await db('SELECT 1 FROM ticket_assignees WHERE ticket_id = ?', [tC])).length, linkMsg);
+    r = await req('POST', '/api/chat/slack/link', { sid: sessions.F, body: { token } });
+    const again = await req('POST', '/api/chat/slack/link', { sid: sessions.F, body: { token } });
+    check('slack/teams: compte relié, lien à usage unique', r.status === 200 && again.status === 400, JSON.stringify([r.body, again.body]));
+    posted.length = 0;
+    await slackCall(click);
+    check('slack/teams: « Prendre » depuis Slack → ticket attribué', await until(async () => (await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [tC])).some(x => x.user_id === U.F)), '');
+    check('slack/teams: réponse visible par lui seul dans Slack', await until(() => posted.some(p => p.url === click.response_url && /pris le ticket/.test(p.body.text) && p.body.response_type === 'ephemeral')), JSON.stringify(posted));
+    r = await req('POST', '/api/chat/slack/link', { sid: sessions.F, body: { token: 'x' } });
+    check('slack/teams: jeton de liaison invalide refusé', r.status === 400, r.status);
+
+    W.safePostJson = realPost;
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: base } });
+    await db('DELETE FROM chat_integrations');
+    await db('DELETE FROM chat_user_links');
+    await db('DELETE FROM tickets WHERE id = ?', [tC]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
