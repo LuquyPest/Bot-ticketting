@@ -45,6 +45,21 @@ Un grade peut avoir un **parent** : les membres du parent voient aussi ce que vo
 
 **Rôles** (fondateurs) : des groupes de membres du staff, rattachés à un ou plusieurs **tags**. Un ticket qui porte l'un de ces tags n'est plus visible que des membres du rôle et des fondateurs, partout : liste, fiche, recherche, statistiques, notifications, commandes Discord, salon du ticket. Utile pour une équipe Comptabilité, Modération, Partenariats…
 
+## Les équipes et leurs files
+
+**Équipe → Équipes** (fondateurs) regroupe le staff en équipes (« Facturation », « Technique »…), jusqu'à 30 :
+
+| Réglage | |
+|---|---|
+| **Membres** | Le staff de l'espace qui en fait partie (une personne peut être dans plusieurs équipes) |
+| **Sujets et tags** | Un nouveau ticket d'un de ces sujets, ou portant un de ces tags (posés par les [règles par sujet](./tickets) ou par une [adresse e-mail](./integrations#tickets-par-e-mail)), va à l'équipe |
+| **Attribution** | *Aucune* : le ticket attend dans la file de l'équipe. *Tour à tour* : chaque membre à son tour. *Selon la charge* : au membre qui a le moins de tickets ouverts |
+| **Plafond** | Tickets ouverts au plus par personne ; au-delà, on passe au suivant (0 = sans plafond) |
+
+L'attribution automatique passe les membres **absents** ou **en vacances**, ceux qui **ne peuvent pas voir** le ticket (grade, rôles rattachés à des tags) et ceux au plafond ; si personne n'est disponible, le ticket reste dans la file de l'équipe. Les tickets **confidentiels** ne sont jamais routés. L'attribution est notée au journal du ticket et la personne est prévenue comme pour une attribution à la main.
+
+Chaque membre retrouve les tickets de ses équipes dans **Ma file → Mes équipes**. La fiche ticket montre son équipe et permet de la changer (permission d'attribuer) : confier le ticket à une équipe qui attribue le donne aussitôt à un de ses membres s'il n'a personne. La liste des tickets se filtre par équipe ou « Sans équipe ». Supprimer une équipe laisse ses tickets, sans équipe.
+
 ## Double authentification
 
 - Chacun peut activer la **2FA** (application TOTP) dans son **Profil**, avec 10 codes de secours.

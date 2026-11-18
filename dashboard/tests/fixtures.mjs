@@ -9,6 +9,11 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/tickets/queue': { tickets: [] },
+  '/api/tickets/staff': [{ user_id: '1', username: 'Daryu', avatar: null, role: 'fondateur', availability: 'available', vacation_mode: 0 }, { user_id: '2', username: 'Lina', avatar: null, role: 'support', availability: 'available', vacation_mode: 0 }],
+  '/api/teams': [{ id: 1, name: 'Paiements', color: 'amber', assignMode: 'round_robin', maxOpen: 5, subjects: ['Paiement'], tagIds: [1], members: [{ userId: '1', username: 'Daryu', open: 2 }] }],
+  '/api/teams/mine': [{ id: 1, name: 'Paiements', color: 'amber' }],
+  '/api/teams/options': { subjects: ['Paiement', 'Bug en jeu'], tags: [{ id: 1, name: 'Litige' }] },
   '/api/stages': [
     { key: 'open', label: 'Ouvert', color: 'sky', kind: 'open', builtin: true, categoryId: '1', slaHours: 4 },
     { key: 'waiting', label: 'En attente', color: 'amber', kind: 'waiting', builtin: true, categoryId: '2', slaHours: 24 },

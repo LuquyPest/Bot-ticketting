@@ -30,6 +30,8 @@ const PAGES = [
   ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],
   ['settings-statuts', '/settings?tab=tickets', 'Attente fournisseur'],
   ['kanban-statuts', '/kanban', 'Attente fournisseur'],
+  ['equipes', '/equipe?tab=equipes', 'Reçoit les tickets des sujets'],
+  ['file-equipe', '/queue', 'Équipe Paiements'],
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
   ['settings-integrations', '/settings?tab=integrations', 'Tickets par e-mail'],
   ['settings-widget', '/settings?tab=integrations', 'Voir le formulaire'],

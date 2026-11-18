@@ -152,6 +152,9 @@ function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
 // embeddedId: shown next to the ticket list (split view, Tickets page); onClose leaves it
 export default function TicketDetail({ embeddedId = null, onClose = null }) {
   const STAGES = stageOptions(useStages());
+  // Teams of the space (v4.2): the ticket's team, changed here
+  const [teamList, setTeamList] = useState([]);
+  useEffect(() => { api.get('/teams').then(r => setTeamList(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
   const { id: routeId } = useParams();
   const id = embeddedId ? String(embeddedId) : routeId;
   const embedded = !!embeddedId;
@@ -657,6 +660,16 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
       toast.success(`Ticket passé en « ${data.label} »`);
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setMovingTicket(false); }
+  };
+
+  const changeTeam = async teamId => {
+    try {
+      const { data } = await api.patch(`/tickets/${id}/team`, { teamId: teamId ? Number(teamId) : null });
+      setTicket(t => ({ ...t, team_id: data.teamId }));
+      loadTicket();
+      const team = teamList.find(x => x.id === data.teamId);
+      toast.success(!team ? 'Ticket retiré de son équipe' : data.assignee ? `Équipe ${team.name} : attribué automatiquement` : `Ticket confié à l'équipe ${team.name}`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
   const saveSubject = async () => {
@@ -1969,6 +1982,18 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
               </div>
             )}
           </div>
+
+          {/* ÉQUIPE (v4.2) */}
+          {ticket.status === 'open' && teamList.length > 0 && (
+            <div className={panelCard}>
+              <SectionTitle>Équipe</SectionTitle>
+              <select value={ticket.team_id || ''} onChange={e => changeTeam(e.target.value)} disabled={!can('claim_ticket')} aria-label="Équipe du ticket"
+                className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs disabled:opacity-60">
+                <option value="">Aucune équipe</option>
+                {teamList.map(t => <option key={t.id} value={t.id}>{t.name}{t.assignMode !== 'none' ? ' · attribution auto' : ''}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* ÉTAPE */}
           {ticket.status === 'open' && can('reply_ticket') && (

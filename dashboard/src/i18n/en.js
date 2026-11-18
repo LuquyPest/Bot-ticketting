@@ -589,6 +589,17 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // Teams and queues (v4.2)
+  ['Équipes', 'Teams'], ['Mes équipes', 'My teams'], ['Aucune (file seulement)', 'None (queue only)'], ['Tour à tour', 'In turn'], ['Selon la charge', 'By load'],
+  ['Reçoit les tickets des sujets', 'Receives the tickets of the subjects'], ['… ou portant les tags', '… or carrying the tags'],
+  ['Créer l\'équipe', 'Create the team'], ['Nom de l\'équipe', 'Team name'], ['Couleur de l\'équipe', 'Team colour'], ['Attribution automatique', 'Automatic assignment'],
+  ['Attribution :', 'Assignment:'], ['Plafond de tickets ouverts par personne', 'Cap of open tickets per person'], ['Tickets ouverts au plus par personne avant de passer au suivant (0 = sans plafond)', 'Open tickets per person at most before moving to the next one (0 = no cap)'],
+  ['Une équipe reçoit les nouveaux tickets de ses sujets ou de ses tags, et les voit dans sa file (Ma file → Mes équipes). Avec l\'attribution automatique, chaque nouveau ticket va à un membre disponible, tour à tour ou à celui qui en a le moins ; les absents, les personnes en vacances, celles qui ne peuvent pas voir le ticket ou au plafond sont passés. Les tickets confidentiels ne sont jamais attribués.', 'A team receives the new tickets of its subjects or tags, and sees them in its queue (My queue → My teams). With automatic assignment, each new ticket goes to an available member, in turn or to the one who has the fewest; people away, on holiday, who cannot see the ticket or at the cap are skipped. Confidential tickets are never assigned.'],
+  ['Équipe enregistrée', 'Team saved'], ['Équipe créée', 'Team created'], ['Équipe supprimée', 'Team deleted'], ['Équipe modifiée', 'Team changed'],
+  ['Aucune équipe', 'No team'], ['Équipe du ticket', 'Ticket team'], ['· attribution auto', '· auto assignment'], ['Ticket retiré de son équipe', 'Ticket removed from its team'],
+  ['Toutes équipes', 'All teams'], ['Sans équipe', 'No team'],
+  ['Nom de l\'équipe requis (60 caractères au plus)', 'Team name required (60 characters at most)'], ['Plafond : entre 0 et 500 tickets ouverts par personne', 'Cap: between 0 and 500 open tickets per person'],
+  ['Seul le staff de l\'espace peut faire partie d\'une équipe', 'Only the staff of the space can be in a team'], ['Équipe introuvable', 'Team not found'],
   // Custom statuses (v4.2)
   ['Statuts', 'Statuses'], ['Des statuts propres à l\'espace, en plus de Ouvert, En attente et En cours. Enregistrés à part.', 'Statuses of the space, on top of Open, Waiting and In progress. Saved separately.'],
   ['Les trois statuts de base se règlent ci-dessus. Un statut ajouté apparaît partout (fiche ticket, Kanban, filtres, macros, délais) ; le demandeur, lui, voit le statut de base choisi. Supprimer un statut remet ses tickets dans ce statut de base.', 'The three built-in statuses are set above. An added status shows everywhere (ticket view, Kanban, filters, macros, deadlines); the requester sees the chosen built-in status. Deleting a status puts its tickets back in that built-in status.'],
@@ -701,6 +712,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Équipe {}', 'Team {1}'], ['Équipe {} : attribué automatiquement', 'Team {1}: assigned automatically'], ['Ticket confié à l\'équipe {}', 'Ticket given to the team {1}'], ['Supprimer l\'équipe « {} » ? Ses tickets restent, sans équipe.', 'Delete the team « {1} »? Its tickets stay, without a team.'], ['Supprimer l\'équipe {}', 'Delete the team {1}'], ['{} équipes au plus', '{1} teams at most'],
   ['Supprimer le statut « {} » ? Ses tickets reviennent en « {} ».', 'Delete the status « {1} »? Its tickets go back to « {2} ».'], ['Monter {}', 'Move {1} up'], ['Descendre {}', 'Move {1} down'], ['Supprimer {}', 'Delete {1}'], ['{} statuts personnalisés au plus', '{1} custom statuses at most'],
   ['Retirer {} ?', 'Remove {1}?'], ['Retirer {}', 'Remove {1}'], ['{} adresses au plus', '{1} addresses at most'],
   ['Adresse de site invalide : {} (attendu : https://exemple.com)', 'Invalid site address: {1} (expected: https://example.com)'],

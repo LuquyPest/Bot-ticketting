@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { uiLocale } from '../i18n';
-import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Clock, Ticket, AlertCircle, ExternalLink } from 'lucide-react';
+import { Users, BarChart2, RefreshCw, Lightbulb, Plus, X, Shield, PlaneTakeoff, Clock, Ticket, AlertCircle, ExternalLink, UsersRound } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import { useAuth } from '../App';
 import { fmtDate, fmtDuration } from '../utils/format';
 import Absences from '../components/Absences';
 import StarRating from '../components/StarRating';
+import TeamsEditor from '../components/TeamsEditor';
 
 // ─── Grade tag component ───────────────────────────────────────────
 function GradeTag({ grade, onRemove, canManage }) {
@@ -549,12 +550,13 @@ function StatsTab() {
 // ─── Main Equipe page ───────────────────────────────────────────────
 const TABS = [
   { key: 'gestion', label: 'Gestion', icon: Users },
-  { key: 'stats',   label: 'Statistiques', icon: BarChart2 }
+  { key: 'stats',   label: 'Statistiques', icon: BarChart2 },
+  { key: 'equipes', label: 'Équipes', icon: UsersRound },
 ];
 
 export default function Equipe() {
   const { user: me } = useAuth();
-  const [tab, setTab] = useState('gestion');
+  const [tab, setTab] = useState(() => (['stats', 'equipes'].includes(new URLSearchParams(window.location.search).get('tab')) ? new URLSearchParams(window.location.search).get('tab') : 'gestion'));
 
   return (
     <div className="p-6 space-y-5">
@@ -577,7 +579,7 @@ export default function Equipe() {
         ))}
       </div>
 
-      {tab === 'gestion' ? <GestionTab me={me} /> : <StatsTab />}
+      {tab === 'gestion' ? <GestionTab me={me} /> : tab === 'equipes' ? <TeamsEditor /> : <StatsTab />}
     </div>
   );
 }
