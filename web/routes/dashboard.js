@@ -164,17 +164,17 @@ router.get('/leaderboard', async (req, res) => {
     const cfg = await req.guildDb('SELECT leaderboard_enabled FROM guild_config LIMIT 1');
     if (!cfg[0]?.leaderboard_enabled) return res.json({ enabled: false, staff: [] });
 
-    const period = req.query.period === 'week' ? '7 DAY' : 'MONTH';
+    // 7 days or 1 month (« INTERVAL 1 7 DAY » was invalid: the weekly board always failed)
+    const interval = req.query.period === 'week' ? 'INTERVAL 7 DAY' : 'INTERVAL 1 MONTH';
+    // Only people of the staff: system notes (automations, approvals, rules) are not someone
     const staff = await req.guildDb(
-      `SELECT n.author_id as userId, n.author_tag as username,
-              COUNT(DISTINCT n.ticket_id) as ticketsHandled,
-              ROUND(AVG(tr.rating), 1) as avgRating
+      `SELECT n.author_id AS userId, MAX(n.author_tag) AS username, COUNT(DISTINCT n.ticket_id) AS ticketsHandled,
+              (SELECT ROUND(AVG(tr.rating), 1) FROM ticket_ratings tr WHERE tr.closed_by_id = n.author_id AND tr.rated_at >= DATE_SUB(NOW(), ${interval})) AS avgRating
        FROM ticket_notes n
-       LEFT JOIN ticket_ratings tr ON tr.closed_by_id = n.author_id
-         AND tr.rated_at >= DATE_SUB(NOW(), INTERVAL 1 ${period})
-       WHERE n.source NOT IN ('user','scheduled')
-         AND n.created_at >= DATE_SUB(NOW(), INTERVAL 1 ${period})
-       GROUP BY n.author_id, n.author_tag
+       JOIN dashboard_users u ON u.user_id = n.author_id AND u.role IN ('support', 'fondateur')
+       WHERE n.source NOT IN ('user', 'scheduled', 'system')
+         AND n.created_at >= DATE_SUB(NOW(), ${interval})
+       GROUP BY n.author_id
        ORDER BY ticketsHandled DESC
        LIMIT 10`
     );

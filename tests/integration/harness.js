@@ -4311,6 +4311,22 @@ async function main() {
     }
   }
 
+  // ── Dashboard leaderboard: week and month, staff only ──
+  {
+    const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET leaderboard_enabled = 1 WHERE id = 1');
+    const tLb = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000088', 'lb', 'db-lb', 'open', 'Classement')")).insertId;
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'F', 'réponse', 'reply'), (?, 'system', 'Attribution automatique', 'attribué', 'system'), (?, 'rule-bot', 'Robot', 'x', 'web')", [tLb, U.F, tLb, tLb]);
+    const week = await req('GET', '/api/dashboard/leaderboard', { sid: sessions.F, query: { period: 'week' } });
+    const month = await req('GET', '/api/dashboard/leaderboard', { sid: sessions.F, query: { period: 'month' } });
+    const ids = x => (x.body.staff || []).map(p => p.userId);
+    check('classement: la semaine répond (elle échouait toujours)', week.status === 200 && ids(week).includes(U.F), JSON.stringify(week.body).slice(0, 200));
+    check('classement: le mois répond aussi', month.status === 200 && ids(month).includes(U.F), month.status);
+    check('classement: seulement des membres du staff, jamais les notes automatiques', !ids(week).includes('system') && !ids(week).includes('rule-bot'), JSON.stringify(ids(week)));
+    await db('DELETE FROM tickets WHERE id = ?', [tLb]);
+    await db('UPDATE guild_config SET leaderboard_enabled = ? WHERE id = 1', [lbCfg.leaderboard_enabled]);
+  }
+
   // ── Public knowledge base (utils/knowledgeBase.js, routes/kb.js, v4.2) ──
   {
     const [cfgK] = await db('SELECT kb_public FROM guild_config WHERE id = 1');
