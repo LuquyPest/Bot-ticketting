@@ -704,7 +704,7 @@ function TabReports() {
       {data && (
         <ChartCard title={`${data.total} ticket(s) ouvert(s) sur la période`} icon={BarChart2}>
           {!data.rows.length ? <p className="text-xs text-ink-4">Aucun ticket sur la période</p> : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tableau du rapport">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-left text-ink-3 border-b border-overlay/6">

@@ -313,7 +313,7 @@ export const ENTRIES = [
   ['FAQ automatique activée', 'Automatic FAQ on'],
   ['Par équipe', 'By team'], ['Par catégorie', 'By category'], ['Par canal', 'By channel'], ['Rapports', 'Reports'], ['Regrouper', 'Group by'],
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
-  ['Groupe', 'Group'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
+  ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
   ['FAQ et base de connaissances', 'FAQ and knowledge base'], ['Nouvel article', 'New article'], ['Modifier l\'article', 'Edit the article'],
   ['Article enregistré', 'Article saved'], ['Aucun article pour l\'instant', 'No article yet'], ['Articles actifs', 'Active articles'],
