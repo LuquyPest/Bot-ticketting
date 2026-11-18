@@ -19,7 +19,7 @@ export function localizedVersion(v, lang) {
 export const VERSIONS = [
   {
     version: 'v5.0.0',
-    date: 'à venir',
+    date: '18 novembre 2026',
     title: 'Centre de services : l\'e-mail d\'entreprise',
     titleEn: 'Service desk: business e-mail',
     changes: [
