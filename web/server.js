@@ -292,6 +292,7 @@ app.use('/api/widget-settings', withGuild(['fondateur']),        widgetRoutes.se
 app.use('/api/stages',      withGuild(['support', 'fondateur']), require('./routes/stages')); // custom statuses (v4.2)
 app.use('/api/teams',       withGuild(['support', 'fondateur']), require('./routes/teams'));  // teams and queues (v4.2)
 app.use('/api/calendars',   withGuild(['support', 'fondateur']), require('./routes/calendars')); // opening hours (v5.1)
+app.use('/api/sla-policies', withGuild(['support', 'fondateur']), require('./routes/slaPolicies')); // SLA objectives (v5.1)
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
 app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));

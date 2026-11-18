@@ -47,6 +47,7 @@ async function setMatrixPriority({ db, client, guildId, ticket, urgency, impact,
   if (newLevel !== ticket.priority_level || u !== ticket.urgency || i !== ticket.impact) {
     await require('./audit').recordEvent(db, { actor, action: 'ticket_priority', ticketId: ticket.id, details: { from: ticket.priority_level, to: newLevel, urgency: u ?? null, impact: i ?? null, forced } });
   }
+  await require('./slaPolicies').refreshQuietly(db, ticket.id);
   require('./sse').broadcast('ticket', { id: ticket.id, priority, priority_level: newLevel }, guildId);
   await require('./ticketManager').createManager(db, client, guildId).updateChannelTopic(ticket.id).catch(() => null);
   return { urgency: u ?? null, impact: i ?? null, priority_level: newLevel, priority, forced };

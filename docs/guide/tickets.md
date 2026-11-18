@@ -82,6 +82,19 @@ Les **3 priorités** d'avant (basse, normale, urgente) restent et suivent le niv
 
 L'espace choisit son calendrier ; une **équipe** peut avoir le sien (**Équipe → Équipes → Horaires de l'équipe**), qui s'applique à ses tickets. La page montre en direct si le support est ouvert et quand il rouvre. Les délais en heures ouvrées s'appuient sur ces calendriers.
 
+## Les objectifs de délai (SLA)
+
+**Paramètres → Horaires → Objectifs SLA** : deux délais par ticket, comptés en heures ouvrées du calendrier de son équipe (sinon de l'espace) ou en heures pleines.
+
+| Objectif | |
+|---|---|
+| **Prise en charge** | Jusqu'à la première réponse du staff |
+| **Résolution** | Jusqu'à la fermeture (ou la solution proposée) ; en **pause** tant que le ticket attend le demandeur (étape « En attente ») |
+
+Un objectif s'applique aux tickets qui remplissent **tous** ses critères : priorités, types, sujets (une catégorie couvre ses sous-catégories), canaux (Discord, e-mail, web) ; un critère vide les prend tous. Quand plusieurs conviennent, le **plus précis** l'emporte, puis le premier de la liste (flèches pour l'ordre). Changer la priorité, le sujet, le type, l'équipe ou un calendrier recalcule les échéances des tickets ouverts.
+
+La fiche montre les deux échéances (dans les temps, bientôt dépassé, dépassé, tenu, manqué, en pause) ; la liste signale un objectif dépassé et le filtre **SLA dépassé** le trouve ; les rapports par sujet, équipe ou type donnent le **taux d'objectifs tenus** (et l'export CSV). Les délais par étape (**Paramètres → Tickets**) restent à part.
+
 ## Les statuts
 
 Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :

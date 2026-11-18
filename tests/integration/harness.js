@@ -5113,6 +5113,75 @@ async function main() {
     await req('DELETE', `/api/calendars/${calOpen.id}`, { sid: sessions.F });
   }
 
+  // ── SLA objectives in business hours (utils/slaPolicies.js, v5.1) ──
+  {
+    const SP = app('./utils/slaPolicies');
+    const C = app('./utils/calendars');
+    const mkT = async (extra = {}) => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, created_at) VALUES (?, 'sla', ?, 'open', ?, ?, ?)",
+      [extra.owner || '200000000000000062', `db-sla-${Math.random().toString(36).slice(2, 10)}`, extra.subject || 'Facturation', extra.priority || 'normal', extra.created || new Date()])).insertId;
+    const get = async id => (await db('SELECT * FROM tickets WHERE id = ?', [id]))[0];
+    r = await req('POST', '/api/sla-policies', { sid: sessions.S1, body: { name: 'x', ttoMinutes: 60 } });
+    check('SLA: objectifs réservés aux fondateurs', r.status === 403, r.status);
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Sans délai' } });
+    check('SLA: au moins un délai demandé', r.status === 400, JSON.stringify(r.body));
+    const t0 = await mkT();
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Standard', ttoMinutes: 60, ttrMinutes: 480, businessHours: false } });
+    const pStd = r.body.policies?.find(p => p.name === 'Standard');
+    const g0 = await get(t0);
+    check('SLA: objectif créé, les tickets ouverts reçoivent leurs échéances', r.status === 200 && r.body.refreshed >= 1 && g0.sla_policy_id === pStd.id
+      && Math.abs(new Date(g0.tto_due_at) - (new Date(g0.created_at).getTime() + 3600e3)) < 2000 && Math.abs(new Date(g0.ttr_due_at) - (new Date(g0.created_at).getTime() + 480 * 60e3)) < 2000, JSON.stringify([r.body.refreshed, g0.tto_due_at]));
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Urgent facturation', ttoMinutes: 15, ttrMinutes: 120, businessHours: false, conditions: { priorities: ['urgent'], subjects: ['Facturation'] } } });
+    const pUrg = r.body.policies.find(p => p.name === 'Urgent facturation');
+    const tU = await mkT({ priority: 'urgent', subject: 'Facturation › Avoir' });
+    await SP.refreshSla(db, tU);
+    const tN = await mkT({ priority: 'normal', subject: 'Facturation › Avoir' });
+    await SP.refreshSla(db, tN);
+    check('SLA: le plus précis gagne (la catégorie couvre ses sous-catégories)', (await get(tU)).sla_policy_id === pUrg.id && (await get(tN)).sla_policy_id === pStd.id, '');
+    await app('./utils/ticketManager').createManager(db, fakeClient, G).setPriority(tN, 'urgent', { id: U.F, username: 'F' });
+    check('SLA: un changement de priorité refait les échéances', (await get(tN)).sla_policy_id === pUrg.id, '');
+
+    // Business hours: Monday–Friday 9:00–18:00 in Paris; opened on Friday at 17:00 → first response due on Monday at 10:00
+    r = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Bureau SLA', timezone: 'Europe/Paris', hours: C.DEFAULT_HOURS } });
+    const calId = r.body.id;
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { calendarId: calId } });
+    r = await req('PUT', `/api/sla-policies/${pStd.id}`, { sid: sessions.F, body: { name: 'Standard', ttoMinutes: 120, ttrMinutes: 600, businessHours: true } });
+    const tB = await mkT({ created: new Date('2026-11-20T16:00:00Z') });
+    await SP.refreshSla(db, tB);
+    const gB = await get(tB);
+    check('SLA: compté en heures ouvrées (vendredi 17 h + 2 h → lundi 10 h ; + 10 h → lundi 18 h)', new Date(gB.tto_due_at).toISOString() === '2026-11-23T09:00:00.000Z' && new Date(gB.ttr_due_at).toISOString() === '2026-11-23T17:00:00.000Z', JSON.stringify([gB.tto_due_at, gB.ttr_due_at]));
+    // Waiting pauses the resolution: 30 business minutes spent waiting move it by 30 minutes
+    await SP.onStageChange(db, tB, 'waiting');
+    const paused = await get(tB);
+    check('SLA: « en attente » met la résolution en pause', !!paused.sla_paused_at && SP.objectives(paused).ttr.state === 'paused', JSON.stringify(SP.objectives(paused)));
+    await db('UPDATE tickets SET sla_paused_at = NOW() - INTERVAL 5 DAY WHERE id = ?', [tB]); // always covers working days
+    const before = new Date((await get(tB)).ttr_due_at).getTime();
+    await SP.onStageChange(db, tB, 'in_progress');
+    const resumed = await get(tB);
+    check('SLA: la reprise décale la résolution du temps ouvré passé en attente', !resumed.sla_paused_at && resumed.sla_paused_minutes > 0 && new Date(resumed.ttr_due_at).getTime() > before, JSON.stringify([resumed.sla_paused_minutes, resumed.ttr_due_at]));
+
+    // Overdue: first response not given in time
+    const tLate = await mkT({ created: new Date(Date.now() - 3 * 864e5) });
+    await req('PUT', `/api/sla-policies/${pStd.id}`, { sid: sessions.F, body: { name: 'Standard', ttoMinutes: 60, ttrMinutes: 6000, businessHours: false } });
+    r = await req('GET', '/api/tickets', { sid: sessions.F, query: { sla: 'breached', status: 'open' } });
+    const late = (r.body.tickets || []).find(x => x.id === tLate);
+    check('SLA: objectif manqué → dans « Hors délai », état visible dans la liste', !!late && late.objectives?.tto?.state === 'breached', JSON.stringify(late?.objectives));
+    r = await req('GET', `/api/tickets/${tLate}`, { sid: sessions.F });
+    check('SLA: la fiche montre les deux objectifs', r.body.objectives?.tto?.state === 'breached' && ['ok', 'warning'].includes(r.body.objectives.ttr?.state), JSON.stringify(r.body.objectives));
+    await db('UPDATE tickets SET first_response_at = NOW() WHERE id = ?', [tLate]);
+    check('SLA: réponse en retard → « manqué », plus en cours', SP.objectives(await get(tLate)).tto.state === 'missed', '');
+    await db('UPDATE tickets SET first_response_at = created_at + INTERVAL 10 MINUTE WHERE id = ?', [t0]);
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'channel', days: 7 } });
+    check('SLA: rapports — prise en charge dans le délai (%)', r.status === 200 && r.body.rows.some(x => x.ttoMetPct !== null), JSON.stringify(r.body.rows.map(x => [x.label, x.ttoMetPct])));
+
+    r = await req('DELETE', `/api/sla-policies/${pUrg.id}`, { sid: sessions.F });
+    await req('DELETE', `/api/sla-policies/${pStd.id}`, { sid: sessions.F });
+    const cleared = await get(t0);
+    check('SLA: sans objectif, plus d échéance (les délais par étape restent)', !cleared.sla_policy_id && !cleared.tto_due_at, JSON.stringify(cleared.tto_due_at));
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { calendarId: null } });
+    await req('DELETE', `/api/calendars/${calId}`, { sid: sessions.F });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[t0, tU, tN, tB, tLate]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

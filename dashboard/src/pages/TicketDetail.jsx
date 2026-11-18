@@ -11,6 +11,7 @@ import { useStages, STAGE_CLS } from '../hooks/useStages';
 import ApprovalPanel from '../components/ApprovalPanel';
 import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
+import ObjectivesPanel from '../components/ObjectivesPanel';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS, LEVEL_CLS } from '../utils/priorityLevels';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
@@ -2037,6 +2038,9 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
 
           {/* COPIES (v5.0): tickets opened by e-mail */}
           {String(ticket.owner_id || '').startsWith('mail:') && <CcPanel ticketId={ticket.id} canEdit={can('reply_ticket')} panelCard={panelCard} />}
+
+          {/* OBJECTIFS SLA (v5.1) */}
+          <ObjectivesPanel objectives={ticket.objectives} panelCard={panelCard} />
 
           {/* VALIDATION (v4.2) */}
           <ApprovalPanel ticketId={ticket.id} open={ticket.status === 'open'} me={user?.id} canAsk={can('reply_ticket')} isFounder={user?.role === 'fondateur'}

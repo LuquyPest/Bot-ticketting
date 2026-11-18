@@ -842,6 +842,30 @@ const MIGRATIONS = [
       'ALTER TABLE teams ADD COLUMN IF NOT EXISTS calendar_id INT DEFAULT NULL',
     ],
   },
+  {
+    version: 57,
+    name: 'Objectifs SLA : prise en charge et résolution en heures ouvrées (v5.1)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS sla_policies (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        name           VARCHAR(60) NOT NULL,
+        position       INT NOT NULL DEFAULT 0,
+        conditions     JSON DEFAULT NULL,
+        tto_minutes    INT DEFAULT NULL,
+        ttr_minutes    INT DEFAULT NULL,
+        business_hours TINYINT(1) NOT NULL DEFAULT 1,
+        active         TINYINT(1) NOT NULL DEFAULT 1,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // No objective = no deadline beyond the stage ones (as before)
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sla_policy_id INT DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS tto_due_at DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ttr_due_at DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sla_paused_at DATETIME DEFAULT NULL',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sla_paused_minutes INT NOT NULL DEFAULT 0',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_ttr ON tickets (ttr_due_at)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

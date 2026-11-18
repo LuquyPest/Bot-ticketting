@@ -15,6 +15,7 @@ import WidgetSettings from '../components/WidgetSettings';
 import StagesEditor from '../components/StagesEditor';
 import SubjectTreeEditor from '../components/SubjectTreeEditor';
 import CalendarsEditor from '../components/CalendarsEditor';
+import SlaPoliciesEditor from '../components/SlaPoliciesEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -914,6 +915,8 @@ export default function Settings() {
       {tab === 'horaires' && (
         <div role="tabpanel" id="panel-horaires" aria-labelledby="tab-horaires" className="space-y-5">
           <CalendarsEditor />
+          <h2 className="text-sm font-semibold text-ink-1 pt-2">Objectifs SLA</h2>
+          <SlaPoliciesEditor />
         </div>
       )}
 

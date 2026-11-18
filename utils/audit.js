@@ -103,6 +103,8 @@ const ACTIONS = {
   template_delete:          ['Modèle de réponse supprimé', 'config'],
   email_settings:           ['Tickets par e-mail modifiés', 'config'],
   calendar_save:            ['Calendrier enregistré', 'config'],
+  sla_policy_save:          ['Objectif SLA enregistré', 'config'],
+  sla_policy_delete:        ['Objectif SLA supprimé', 'config'],
   calendar_delete:          ['Calendrier supprimé', 'config'],
   email_quarantine_release: ['E-mail libéré de la quarantaine', 'config'],
   email_quarantine_delete:  ['E-mail de quarantaine supprimé', 'config'],
