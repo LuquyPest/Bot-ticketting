@@ -711,6 +711,19 @@ const MIGRATIONS = [
       'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS oauth_expires_at DATETIME DEFAULT NULL',
     ],
   },
+  {
+    version: 49,
+    name: 'Réception des e-mails par webhook : Mailgun, Postmark, SendGrid, Amazon SES (v5.0)',
+    statements: [
+      `ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS inbound_mode ENUM('imap','webhook') NOT NULL DEFAULT 'imap'`,
+      `ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS inbound_provider ENUM('mailgun','postmark','sendgrid','ses') DEFAULT NULL`,
+      // Secret of the URL and Mailgun signing key: sealed (utils/secretBox.js)
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS inbound_token TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS inbound_secret TEXT DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS inbound_topic VARCHAR(300) DEFAULT NULL',
+      'ALTER TABLE email_settings ADD COLUMN IF NOT EXISTS last_inbound_at DATETIME DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

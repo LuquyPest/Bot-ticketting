@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Mail, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Mail, CheckCircle2, XCircle, Copy, RefreshCw } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { uiLocale } from '../i18n';
 import EmailAddresses from './EmailAddresses';
 
+// Reception by webhook (utils/inboundEmail.js): where to paste the address at each provider
+const INBOUND = {
+  mailgun: { label: 'Mailgun', help: 'Receiving → Create route : action « forward » vers cette adresse (ajoute /mime à la fin pour recevoir le message brut). Colle la clé de signature des webhooks (Sending → Webhooks) : chaque requête est vérifiée.' },
+  postmark: { label: 'Postmark', help: 'Serveur → Default Inbound Stream → Settings : colle cette adresse dans « Webhook URL ». Coche « Include raw email content » si tu veux le message d\'origine complet.' },
+  sendgrid: { label: 'SendGrid', help: 'Settings → Inbound Parse → Add Host & URL : colle cette adresse et coche « POST the raw, full MIME message ».' },
+  ses: { label: 'Amazon SES', help: 'Règle de réception SES avec une action SNS (encodage Base64) vers un sujet SNS, puis un abonnement HTTPS de ce sujet vers cette adresse : il est confirmé tout seul. Seuls les messages signés par Amazon et venant du sujet indiqué sont acceptés.' },
+};
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary';
 
 // Tickets by e-mail (Paramètres → Intégrations): the support mailbox of the server. Saved on its
@@ -64,6 +71,22 @@ export default function EmailSettings() {
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
+  const inb = s.inbound || { mode: 'imap' };
+  const [inEdit, setInEdit] = [s.inEdit || { mode: inb.mode, provider: inb.provider || 'mailgun', topicArn: inb.topicArn || '', signingKey: '' }, v => set('inEdit', v)];
+  const saveInbound = async () => {
+    setBusy(true);
+    try { const r = await api.put('/email/inbound', inEdit); setS({ ...r.data, inEdit: undefined }); toast.success(inEdit.mode === 'webhook' ? 'Réception par webhook enregistrée' : 'Relève de la boîte (IMAP) rétablie'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const newInboundUrl = async () => {
+    if (!window.confirm('Créer une nouvelle adresse de réception ? L\'adresse collée chez le fournisseur cessera aussitôt de marcher.')) return;
+    setBusy(true);
+    try { setS((await api.post('/email/inbound/token')).data); toast.success('Nouvelle adresse créée : colle-la chez le fournisseur'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const webhook = inb.mode === 'webhook';
   const oauth = s.authMode === 'google' || s.authMode === 'microsoft';
   const [mode, setMode] = [oauth ? s.authMode : (s.uiMode || 'password'), m => set('uiMode', m)];
   const PROVIDER = { google: 'Google (Gmail, Workspace)', microsoft: 'Microsoft 365 (Outlook)' };
@@ -123,8 +146,53 @@ export default function EmailSettings() {
           ) : <p className="text-xs text-amber-400">Le propriétaire de l'instance doit d'abord déclarer l'application {mode === 'google' ? 'Google' : 'Microsoft'} (Instance → Connexion → Boîtes e-mail).</p>
         )}
       </fieldset>
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-ink-2 mb-1">Arrivée des e-mails</legend>
+        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Arrivée des e-mails">
+          {[['imap', 'Relever la boîte (IMAP), chaque minute'], ['webhook', 'Envoyés par un service (webhook), instantané']].map(([m, label]) => (
+            <button key={m} type="button" role="radio" aria-checked={inEdit.mode === m} onClick={() => setInEdit({ ...inEdit, mode: m })}
+              className={`px-3 py-1.5 rounded-lg text-xs border ${inEdit.mode === m ? 'bg-primary/15 text-primary-light border-primary/40' : 'border-overlay/8 text-ink-3 hover:text-ink-1'}`}>{label}</button>
+          ))}
+        </div>
+        {inEdit.mode === 'webhook' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="block text-xs text-ink-3">Service
+                <select value={inEdit.provider} onChange={e => setInEdit({ ...inEdit, provider: e.target.value })} className={`${INPUT} mt-1`}>
+                  {Object.entries(INBOUND).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </label>
+              {inEdit.provider === 'mailgun' && (
+                <label className="block text-xs text-ink-3">Clé de signature des webhooks
+                  <input type="password" autoComplete="new-password" value={inEdit.signingKey} onChange={e => setInEdit({ ...inEdit, signingKey: e.target.value })}
+                    placeholder={inb.signingKeySet ? '•••••••• (inchangée)' : ''} className={`${INPUT} mt-1`} />
+                </label>
+              )}
+              {inEdit.provider === 'ses' && (
+                <label className="block text-xs text-ink-3">ARN du sujet SNS
+                  <input value={inEdit.topicArn} onChange={e => setInEdit({ ...inEdit, topicArn: e.target.value })} placeholder="arn:aws:sns:eu-west-1:123456789012:support" className={`${INPUT} mt-1`} autoComplete="off" />
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-ink-3">{INBOUND[inEdit.provider]?.help}</p>
+          </div>
+        )}
+        {webhook && inb.url && inEdit.mode === 'webhook' && inEdit.provider === inb.provider && (
+          <div className="text-xs text-ink-3">Adresse de réception, à coller chez {INBOUND[inb.provider]?.label}
+            <div className="mt-1 flex items-center gap-1.5">
+              <code className="flex-1 min-w-0 truncate bg-overlay/4 rounded-lg px-2.5 py-1.5 text-ink-2" translate="no">{inb.url}</code>
+              <button type="button" aria-label="Copier l'adresse de réception" title="Copier" onClick={() => navigator.clipboard?.writeText(inb.url).then(() => toast.success('Copiée'))}
+                className="p-1.5 rounded-lg border border-overlay/8 text-ink-3 hover:text-ink-1"><Copy size={12} /></button>
+              <button type="button" aria-label="Nouvelle adresse de réception" title="Nouvelle adresse" onClick={newInboundUrl} disabled={busy}
+                className="p-1.5 rounded-lg border border-overlay/8 text-ink-3 hover:text-ink-1 disabled:opacity-50"><RefreshCw size={12} /></button>
+            </div>
+            <p className="mt-1" role="status">{inb.lastInboundAt ? `Dernier e-mail reçu le ${new Date(inb.lastInboundAt).toLocaleString(uiLocale())}` : 'Aucun e-mail reçu pour l\'instant.'} L'adresse contient un secret : ne la partage pas.</p>
+          </div>
+        )}
+        <button type="button" onClick={saveInbound} disabled={busy} className="px-3 py-1.5 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1 disabled:opacity-50">Enregistrer l'arrivée des e-mails</button>
+      </fieldset>
       {mode === 'password' && !oauth && <>
-      <fieldset className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      {!webhook && <fieldset className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <legend className="text-xs font-semibold text-ink-2 mb-1">Réception (IMAP)</legend>
         {field('Serveur', 'imapHost', { placeholder: 'imap.example.com' })}
         <label className="block text-xs text-ink-3">Port
@@ -134,7 +202,7 @@ export default function EmailSettings() {
         </label>
         {field('Identifiant', 'imapUser', { autoComplete: 'off' })}
         {password('Mot de passe', 'imapPassword', s.imapPasswordSet)}
-      </fieldset>
+      </fieldset>}
       <fieldset className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <legend className="text-xs font-semibold text-ink-2 mb-1">Envoi (SMTP)</legend>
         {field('Serveur', 'smtpHost', { placeholder: 'smtp.example.com' })}

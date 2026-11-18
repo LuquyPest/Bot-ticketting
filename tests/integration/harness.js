@@ -3855,6 +3855,128 @@ async function main() {
       const cols = Object.keys(savedEmail || {}).filter(c => !['id', 'updated_at'].includes(c));
       if (savedEmail) await db(`UPDATE email_settings SET ${cols.map(c => `${c} = ?`).join(', ')} WHERE id = 1`, cols.map(c => savedEmail[c]));
     }
+    // ── E-mails pushed by a provider (utils/inboundEmail.js, routes/inboundEmail.js, v5.0) ──
+    {
+      const inb = app('./utils/inboundEmail');
+      const NOXRW = { 'X-Requested-With': '' }; // providers send no such header: the CSRF guard must not apply
+      const savedIn = (await db('SELECT * FROM email_settings WHERE id = 1'))[0];
+      await db("UPDATE email_settings SET enabled = 1, auth_mode = 'password' WHERE id = 1");
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.S1, body: { mode: 'webhook', provider: 'postmark' } });
+      check('réception webhook: réglage réservé aux fondateurs', r.status === 403, r.status);
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'webhook', provider: 'yahoo' } });
+      check('réception webhook: fournisseur inconnu refusé', r.status === 400, JSON.stringify(r.body));
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'webhook', provider: 'postmark' } });
+      const urlPm = r.body.inbound?.url || '';
+      const pathPm = new URL(urlPm || 'http://x/').pathname;
+      const [tokRow] = await db('SELECT inbound_token FROM email_settings WHERE id = 1');
+      check('réception webhook: adresse propre à l espace, secret chiffré en base', r.status === 200 && r.body.inbound.mode === 'webhook' && pathPm.startsWith(`/api/inbound/postmark/${G}.`)
+        && /^enc:/.test(tokRow.inbound_token) && !JSON.stringify(await req('GET', '/api/email', { sid: sessions.F }).then(x => x.body.lastError)).includes(pathPm.split('.')[1]), urlPm);
+      check('réception webhook: la boîte n est plus relevée en IMAP', (await email.fetchMailbox(fakeClient, G)).skipped === 'webhook', '');
+      const pm = (from, subject, text, extra = {}) => ({ FromFull: { Email: from, Name: 'Paul' }, ToFull: [{ Email: 'support@example.com' }], Subject: subject, TextBody: text, Headers: [{ Name: 'Message-ID', Value: `<pm${Math.random()}@ext.test>` }], ...extra });
+      r = await req('POST', pathPm.replace(/\.[^.]+$/, '.' + 'x'.repeat(43)), { headers: NOXRW, body: pm('paul@ext.test', 'Faux', 'x') });
+      check('réception webhook: mauvais secret → inconnue', r.status === 404, r.status);
+      r = await req('POST', pathPm.replace('/postmark/', '/sendgrid/'), { headers: NOXRW, body: { email: 'x' } });
+      check('réception webhook: autre fournisseur que celui choisi → inconnue', r.status === 404, r.status);
+      r = await req('POST', pathPm, { headers: NOXRW, body: pm('paul@ext.test', 'Imprimante en panne', 'Elle ne répond plus.', { Attachments: [{ Name: 'photo.png', ContentType: 'image/png', Content: Buffer.from('PNGDATA').toString('base64') }] }) });
+      const [tPm] = r.body.ticket ? await db('SELECT id, owner_tag, subject FROM tickets WHERE id = ?', [r.body.ticket]) : [];
+      const [nPm] = tPm ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id LIMIT 1", [tPm.id]) : [];
+      check('réception webhook: Postmark (JSON) → ticket, comme un e-mail relevé, sans en-tête CSRF', r.status === 200 && tPm?.owner_tag === 'paul@ext.test' && tPm.subject === 'Imprimante en panne' && nPm?.content.includes('ne répond plus') && nPm.content.includes('photo.png'), JSON.stringify([r.status, r.body, tPm, nPm]));
+      r = await req('POST', pathPm, { headers: NOXRW, body: pm('paul@ext.test', `RE: ${email.subjectTag(G, tPm?.id)} Imprimante en panne`, 'Toujours en panne.') });
+      check('réception webhook: la réponse revient dans le même ticket', r.body.ticket === tPm?.id, JSON.stringify(r.body));
+      r = await req('POST', pathPm, { headers: NOXRW, body: pm('robot@ext.test', 'Absent', 'Je suis absent', { Headers: [{ Name: 'Auto-Submitted', Value: 'auto-replied' }] }) });
+      check('réception webhook: réponses automatiques ignorées (mêmes règles que l IMAP)', r.status === 200 && r.body.skipped === 'automatique', JSON.stringify(r.body));
+      const raw = `From: Rita <rita@ext.test>\r\nTo: support@example.com\r\nSubject: Message brut\r\nMessage-ID: <raw1@ext.test>\r\n\r\nCorps du message brut.\r\n`;
+      r = await req('POST', pathPm, { headers: NOXRW, body: { RawEmail: raw } });
+      check('réception webhook: Postmark avec le message brut', !!r.body.ticket, JSON.stringify(r.body));
+
+      // Mailgun: signed with the webhook signing key, each signed request once
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'webhook', provider: 'mailgun', signingKey: 'cle-de-signature-mailgun' } });
+      const pathMg = new URL(r.body.inbound.url).pathname;
+      check('réception webhook: même secret d adresse en changeant de fournisseur', pathMg.split('/').pop() === pathPm.split('/').pop() && r.body.inbound.signingKeySet, pathMg);
+      const sign = (key, ts = Math.floor(Date.now() / 1000), token = require('crypto').randomBytes(16).toString('hex')) => ({ timestamp: String(ts), token, signature: require('crypto').createHmac('sha256', key).update(`${ts}${token}`).digest('hex') });
+      const mgBody = { sender: 'mona@ext.test', from: 'Mona <mona@ext.test>', recipient: 'support@example.com', subject: 'Accès VPN', 'body-plain': 'Je n ai plus accès au VPN.', 'Message-Id': '<mg1@ext.test>' };
+      r = await req('POST', pathMg, { headers: NOXRW, body: { ...mgBody, ...sign('mauvaise-cle') } });
+      check('réception webhook: Mailgun, signature invalide refusée', r.status === 401, JSON.stringify(r.body));
+      r = await req('POST', pathMg, { headers: NOXRW, body: { ...mgBody, ...sign('cle-de-signature-mailgun', Math.floor(Date.now() / 1000) - 3600) } });
+      check('réception webhook: Mailgun, signature trop ancienne refusée', r.status === 401, JSON.stringify(r.body));
+      const good = sign('cle-de-signature-mailgun');
+      r = await req('POST', pathMg, { headers: NOXRW, body: { ...mgBody, ...good } });
+      const [tMg] = r.body.ticket ? await db('SELECT owner_tag, subject FROM tickets WHERE id = ?', [r.body.ticket]) : [];
+      check('réception webhook: Mailgun signé → ticket', r.status === 200 && tMg?.owner_tag === 'mona@ext.test' && tMg.subject === 'Accès VPN', JSON.stringify([r.body, tMg]));
+      r = await req('POST', pathMg, { headers: NOXRW, body: { ...mgBody, ...good } });
+      check('réception webhook: Mailgun, requête signée rejouée refusée', r.status === 409, r.status);
+      r = await req('POST', pathMg, { headers: NOXRW, body: { 'body-mime': raw.replace('raw1', 'raw2').replace('rita@', 'rito@'), ...sign('cle-de-signature-mailgun') } });
+      check('réception webhook: Mailgun avec le message brut (route …/mime)', !!r.body.ticket, JSON.stringify(r.body));
+
+      // As Mailgun really sends it with attachments: multipart/form-data
+      const fd = new FormData();
+      for (const [k, v] of Object.entries({ ...mgBody, from: 'Max <max@ext.test>', sender: 'max@ext.test', 'Message-Id': '<mg3@ext.test>', subject: 'Facture jointe', ...sign('cle-de-signature-mailgun') })) fd.append(k, v);
+      fd.append('attachment-1', new Blob([Buffer.from('%PDF-1.4 test')], { type: 'application/pdf' }), 'facture.pdf');
+      const mp = await fetch(`http://127.0.0.1:${config.webServerPort}${pathMg}`, { method: 'POST', body: fd }).then(async x => ({ status: x.status, body: await x.json() }));
+      const [nMp] = mp.body.ticket ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id LIMIT 1", [mp.body.ticket]) : [];
+      check('réception webhook: Mailgun en multipart, pièce jointe comprise', mp.status === 200 && nMp?.content.includes('facture.pdf'), JSON.stringify([mp, nMp]));
+
+      // SendGrid Inbound Parse: the raw message is required
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'webhook', provider: 'sendgrid' } });
+      const pathSg = new URL(r.body.inbound.url).pathname;
+      r = await req('POST', pathSg, { headers: NOXRW, body: { from: 'x@ext.test', text: 'x' } });
+      const [errSg] = await db('SELECT last_error FROM email_settings WHERE id = 1');
+      check('réception webhook: SendGrid sans le message brut → refus expliqué dans les réglages', r.status === 400 && /raw, full MIME/.test(errSg.last_error || ''), JSON.stringify([r.body, errSg]));
+      r = await req('POST', pathSg, { headers: NOXRW, body: { email: raw.replace('raw1', 'raw3').replace('rita@', 'riri@') } });
+      check('réception webhook: SendGrid → ticket', !!r.body.ticket, JSON.stringify(r.body));
+
+      // Amazon SES through SNS: signature checked with the certificate, topic pinned
+      const os = require('os'), fsx = require('fs');
+      const dir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-sns-'));
+      require('child_process').execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', path.join(dir, 'k.pem'), '-out', path.join(dir, 'c.pem'), '-subj', '/CN=sns.test', '-days', '1'], { stdio: 'ignore' });
+      const keyPem = fsx.readFileSync(path.join(dir, 'k.pem'), 'utf8'), certPem = fsx.readFileSync(path.join(dir, 'c.pem'), 'utf8');
+      const CERT_URL = 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-abc123.pem';
+      const TOPIC = 'arn:aws:sns:eu-west-1:123456789012:datick-in';
+      const axios = require('axios');
+      const realGet = axios.get;
+      const gets = [];
+      axios.get = async url => { gets.push(String(url)); if (url === CERT_URL) return { data: certPem }; if (/ConfirmSubscription/.test(url)) return { data: 'ok' }; return realGet(url); };
+      const snsSign = (m, key = keyPem) => {
+        const keys = m.Type === 'Notification' ? ['Message', 'MessageId', 'Subject', 'Timestamp', 'TopicArn', 'Type'] : ['Message', 'MessageId', 'SubscribeURL', 'Timestamp', 'Token', 'TopicArn', 'Type'];
+        const text = keys.filter(k => m[k] !== undefined).map(k => `${k}\n${m[k]}\n`).join('');
+        return { ...m, SignatureVersion: '2', SigningCertURL: CERT_URL, Signature: require('crypto').createSign('RSA-SHA256').update(text).sign(key, 'base64') };
+      };
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'webhook', provider: 'ses' } });
+      check('réception webhook: Amazon SES exige l ARN du sujet SNS', r.status === 400, JSON.stringify(r.body));
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'webhook', provider: 'ses', topicArn: TOPIC } });
+      const pathSes = new URL(r.body.inbound.url).pathname;
+      const now = new Date().toISOString();
+      const sub = snsSign({ Type: 'SubscriptionConfirmation', MessageId: 'm1', Token: 't', TopicArn: TOPIC, Message: 'confirm', SubscribeURL: 'https://sns.eu-west-1.amazonaws.com/?Action=ConfirmSubscription&TopicArn=x&Token=t', Timestamp: now });
+      r = await req('POST', pathSes, { headers: NOXRW, body: sub });
+      check('réception webhook: SES, abonnement SNS confirmé après vérification de la signature', r.status === 200 && r.body.subscribed && gets.some(u => /ConfirmSubscription/.test(u)), JSON.stringify(r.body));
+      const sesMsg = content => JSON.stringify({ notificationType: 'Received', receipt: { action: { type: 'SNS', encoding: 'BASE64' } }, content: Buffer.from(content).toString('base64') });
+      r = await req('POST', pathSes, { headers: NOXRW, body: { ...snsSign({ Type: 'Notification', MessageId: 'm2', TopicArn: TOPIC, Message: sesMsg(raw.replace('raw1', 'raw4')), Timestamp: now }), Message: sesMsg('From: x@evil.test\r\n\r\nfalsifié') } });
+      check('réception webhook: SES, message modifié après signature refusé', r.status === 401, JSON.stringify(r.body));
+      const otherKey = require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' });
+      r = await req('POST', pathSes, { headers: NOXRW, body: snsSign({ Type: 'Notification', MessageId: 'm3', TopicArn: TOPIC, Message: sesMsg(raw), Timestamp: now }, otherKey) });
+      check('réception webhook: SES, signé par une autre clé refusé', r.status === 401, r.status);
+      r = await req('POST', pathSes, { headers: NOXRW, body: { ...snsSign({ Type: 'Notification', MessageId: 'm4', TopicArn: TOPIC, Message: sesMsg(raw), Timestamp: now }), SigningCertURL: 'https://evil.example/SimpleNotificationService-abc123.pem' } });
+      check('réception webhook: SES, certificat hors d Amazon refusé', r.status === 401 && !gets.some(u => u.includes('evil.example')), r.status);
+      r = await req('POST', pathSes, { headers: NOXRW, body: snsSign({ Type: 'Notification', MessageId: 'm5', TopicArn: 'arn:aws:sns:eu-west-1:999999999999:autre', Message: sesMsg(raw), Timestamp: now }) });
+      check('réception webhook: SES, autre sujet SNS refusé', r.status === 403, r.status);
+      r = await req('POST', pathSes, { headers: NOXRW, body: snsSign({ Type: 'Notification', MessageId: 'm6', TopicArn: TOPIC, Message: sesMsg(raw.replace('raw1', 'raw5').replace('rita@', 'rose@')), Timestamp: now }) });
+      const [tSes] = r.body.ticket ? await db('SELECT owner_tag FROM tickets WHERE id = ?', [r.body.ticket]) : [];
+      check('réception webhook: SES signé → ticket', r.status === 200 && tSes?.owner_tag === 'rose@ext.test', JSON.stringify([r.body, tSes]));
+      axios.get = realGet;
+
+      r = await req('POST', '/api/email/inbound/token', { sid: sessions.F });
+      const newPath = new URL(r.body.inbound.url).pathname;
+      const old = await req('POST', pathSes, { headers: NOXRW, body: snsSign({ Type: 'Notification', MessageId: 'm7', TopicArn: TOPIC, Message: sesMsg(raw), Timestamp: now }) });
+      check('réception webhook: nouvelle adresse → l ancienne ne marche plus', newPath !== pathSes && old.status === 404, [newPath, old.status].join());
+      await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
+      r = await req('POST', newPath, { headers: NOXRW, body: snsSign({ Type: 'Notification', MessageId: 'm8', TopicArn: TOPIC, Message: sesMsg(raw), Timestamp: now }) });
+      check('réception webhook: tickets par e-mail coupés → refusé', r.status === 404, r.status);
+      r = await req('PUT', '/api/email/inbound', { sid: sessions.F, body: { mode: 'imap' } });
+      check('réception webhook: retour à la relève IMAP', r.status === 200 && r.body.inbound.mode === 'imap' && r.body.inbound.url === null, JSON.stringify(r.body.inbound));
+
+      const cols = Object.keys(savedIn || {}).filter(c => !['id', 'updated_at'].includes(c));
+      if (savedIn) await db(`UPDATE email_settings SET ${cols.map(c => `${c} = ?`).join(', ')} WHERE id = 1`, cols.map(c => savedIn[c]));
+    }
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id LIKE 'mail:%'");
     await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
     delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;

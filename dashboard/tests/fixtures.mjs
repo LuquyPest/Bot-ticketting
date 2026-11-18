@@ -176,7 +176,7 @@ export const MOCK = {
     heatmap: [], recentTickets: [] },
   '/api/profile/2fa': { enabled: true },
   '/api/profile/login-methods': { account: { id: '1', displayName: 'Daryu', email: null, createdAt: iso(60 * 24 * 90) }, password: false, identities: [{ provider: 'discord', label: 'Discord', subject: '1', createdAt: iso(60 * 24 * 90), lastUsedAt: iso(30) }], available: [{ id: 'google', label: 'Google' }] },
-  '/api/email': { authMode: 'password', oauthAvailable: { google: true, microsoft: false }, oauthCallbacks: {}, enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
+  '/api/email': { inbound: { mode: 'webhook', provider: 'mailgun', url: 'https://ticket.example/api/inbound/mailgun/123456789012345678.secret', signingKeySet: true, topicArn: '', lastInboundAt: new Date(Date.now() - 120000).toISOString() }, authMode: 'password', oauthAvailable: { google: true, microsoft: false }, oauthCallbacks: {}, enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
     smtpHost: 'smtp.example.com', smtpPort: 587, smtpUser: 'support', smtpPasswordSet: true, lastFetchAt: new Date(Date.now() - 60000).toISOString(), lastError: null,
     attachments: { enabled: true, maxMb: 10, quotaMb: 500, retentionDays: 90, postDiscord: true, blocked: ['exe', 'bat'], usage: { files: 12, bytes: 8400000 } } },
   '/api/instance/metrics': { enabled: true, createdAt: Date.now() - 86400000, url: 'https://tickets.example.com/metrics' },

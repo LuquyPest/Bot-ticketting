@@ -70,6 +70,19 @@ Google and Microsoft refuse ordinary passwords in IMAP and SMTP (Microsoft turne
 - **Reconnect** if the provider withdraws the access (account password changed, access revoked): the error message under the settings says so. **Disconnect** removes the access (at Google it is revoked too) and stops reading the mailbox.
 - The owner of the instance must first declare the application, once for all spaces: [Instance → Connexion → Mailboxes](./instance#mailboxes-gmail-microsoft-365).
 
+### Receiving by webhook (Mailgun, Postmark, SendGrid, Amazon SES)
+
+Instead of reading the mailbox every minute, an e-mail service can **send each message to Datick as soon as it arrives**. In **How e-mails arrive**, pick **Sent by a service (webhook)** and the service, then paste the **reception address** shown there at the service (it holds a secret of the space):
+
+| Service | Where to paste it | Check |
+|---|---|---|
+| **Mailgun** | *Receiving → Create route*, `forward` action to the address (add `/mime` at the end to get the raw message) | The **webhook signing key** (*Sending → Webhooks*): each request is signed, a replayed request is refused |
+| **Postmark** | *Default Inbound Stream → Settings → Webhook URL*; tick *Include raw email content* for the original message | The secret of the address |
+| **SendGrid** | *Settings → Inbound Parse*, with **POST the raw, full MIME message** ticked | The secret of the address |
+| **Amazon SES** | A receipt rule with an **SNS** action (Base64 encoding) to a topic, then an HTTPS subscription of the topic to the address (confirmed on its own) | **Amazon's signature** on each message, and the given **topic ARN** |
+
+An e-mail received this way follows exactly the path of one read from the mailbox: threads, rules, attachments, automatic replies ignored. **Replies** still leave through the mailbox's **SMTP** (or Google / Microsoft). **New address** replaces the reception address (if it leaked): the old one stops working at once. An error (signature refused, raw message missing) shows under the settings.
+
 **What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket. A **new e-mail**, without this token nor answering a message from the support, opens a **new ticket**, even if the person already has one open. When they have several open tickets, each staff reply goes in the thread of the ticket it is about.
 
 **Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The person can also follow their tickets in the [member space](./member-space), signed in with a link received by e-mail.

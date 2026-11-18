@@ -45,6 +45,8 @@ if (!UserManager.prototype.fetch.__emailAware) {
 
 // ── Settings ──
 const SECRET_COLUMNS = ['imap_password', 'smtp_password', 'oauth_refresh', 'oauth_access'];
+// Sealed too, read only where needed (utils/inboundEmail.js): never part of the settings object
+const HIDDEN_COLUMNS = ['inbound_token', 'inbound_secret'];
 async function emailSettings(db, { withSecrets = false } = {}) {
   const [row] = await db('SELECT * FROM email_settings WHERE id = 1').catch(() => []);
   if (!row) return { enabled: false, imap_port: 993, smtp_port: 587 };
@@ -55,12 +57,14 @@ async function emailSettings(db, { withSecrets = false } = {}) {
   }
   // OAuth2 (utils/mailOAuth.js): the access token is renewed and saved through the space's database
   if (withSecrets) Object.defineProperty(out, '_db', { value: db, enumerable: false });
+  for (const c of HIDDEN_COLUMNS) { out[`${c}_set`] = !!row[c]; if (!withSecrets) delete out[c]; }
   return out;
 }
 
 // input: { enabled, address, displayName, imapHost, imapPort, imapUser, imapPassword, smtpHost,
 // smtpPort, smtpUser, smtpPassword } — a password left empty keeps the saved one
-function cleanSettings(input = {}) {
+// opts.webhook: e-mails arrive by webhook (utils/inboundEmail.js): no IMAP account to ask for
+function cleanSettings(input = {}, { webhook = false } = {}) {
   const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
   const host = v => { const h = str(v, 255).toLowerCase(); return /^[a-z0-9.-]+$/.test(h) && h.includes('.') ? h : null; };
   const out = {
@@ -75,8 +79,8 @@ function cleanSettings(input = {}) {
   if (!SMTP_PORTS.includes(out.smtp_port)) return { error: `Port SMTP accepté : ${SMTP_PORTS.join(', ')}` };
   if (input.imapHost && !out.imap_host) return { error: 'Serveur IMAP invalide' };
   if (input.smtpHost && !out.smtp_host) return { error: 'Serveur SMTP invalide' };
-  if (out.enabled && (!out.address || !out.imap_host || !out.smtp_host || !out.imap_user || !out.smtp_user)) {
-    return { error: 'Pour activer, renseigne l\'adresse, les serveurs IMAP et SMTP et leurs identifiants' };
+  if (out.enabled && (!out.address || (!webhook && (!out.imap_host || !out.imap_user)) || !out.smtp_host || !out.smtp_user)) {
+    return { error: webhook ? 'Pour activer, renseigne l\'adresse et le serveur SMTP (les réponses partent par lui)' : 'Pour activer, renseigne l\'adresse, les serveurs IMAP et SMTP et leurs identifiants' };
   }
   for (const [k, c] of [['imapPassword', 'imap_password'], ['smtpPassword', 'smtp_password']]) {
     if (typeof input[k] === 'string' && input[k]) out[c] = seal(input[k].slice(0, 500));
@@ -87,14 +91,15 @@ function cleanSettings(input = {}) {
 async function saveEmailSettings(db, input) {
   // A mailbox connected by OAuth2: its servers and account are the provider's (set at connection),
   // the form only changes the rest (on/off, address shown, name, attachments)
-  const [cur] = await db('SELECT auth_mode, oauth_account, oauth_refresh FROM email_settings WHERE id = 1').catch(() => []);
+  const [cur] = await db('SELECT auth_mode, oauth_account, oauth_refresh, inbound_mode FROM email_settings WHERE id = 1').catch(() => []);
+  const webhook = cur?.inbound_mode === 'webhook';
   const mailOAuth = require('./mailOAuth');
   const oauth = mailOAuth.isOAuth(cur?.auth_mode) ? mailOAuth.PROVIDERS[cur.auth_mode] : null;
   if (oauth) {
     input = { ...input, imapHost: oauth.imap.host, imapPort: oauth.imap.port, imapUser: cur.oauth_account, smtpHost: oauth.smtp.host, smtpPort: oauth.smtp.port, smtpUser: cur.oauth_account };
     delete input.imapPassword; delete input.smtpPassword;
   }
-  const { value, error } = cleanSettings(input);
+  const { value, error } = cleanSettings(input, { webhook });
   if (error) return { error };
   const att = require('./emailAttachments').cleanAttachInput(input.attachments);
   if (att.error) return { error: att.error };
@@ -107,9 +112,9 @@ async function saveEmailSettings(db, input) {
     await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
     return { error: `Connecte d'abord la boîte avec ${oauth.label}` };
   }
-  if (!oauth && saved.enabled && (!saved.imap_password_set || !saved.smtp_password_set)) {
+  if (!oauth && saved.enabled && ((!webhook && !saved.imap_password_set) || (saved.smtp_user && !saved.smtp_password_set))) {
     await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
-    return { error: 'Renseigne les mots de passe IMAP et SMTP avant d\'activer' };
+    return { error: webhook ? 'Renseigne le mot de passe SMTP avant d\'activer' : 'Renseigne les mots de passe IMAP et SMTP avant d\'activer' };
   }
   return { value: saved };
 }
@@ -393,6 +398,7 @@ async function fetchMailbox(client, guildId) {
   const db = getTenantDb(guildId);
   const s = await emailSettings(db, { withSecrets: true });
   if (!s.enabled) return { skipped: 'désactivé' };
+  if (s.inbound_mode === 'webhook') return { skipped: 'webhook' };
   const { getRedis } = require('./redis');
   if (!(await getRedis().set(`lock:email:${guildId}`, '1', 'EX', 300, 'NX'))) return { skipped: 'déjà en cours' };
   const { simpleParser } = require('mailparser');
@@ -429,7 +435,8 @@ async function runEmailFetch(client) {
   const guilds = await globalQuery("SELECT guild_id FROM guilds WHERE status = 'active'");
   let handled = 0;
   for (const { guild_id: guildId } of guilds) {
-    const [on] = await getTenantDb(guildId)('SELECT enabled FROM email_settings WHERE id = 1 AND enabled = 1').catch(() => []);
+    // A box whose e-mails arrive by webhook is not read over IMAP
+    const [on] = await getTenantDb(guildId)("SELECT enabled FROM email_settings WHERE id = 1 AND enabled = 1 AND inbound_mode = 'imap'").catch(() => []);
     if (!on) continue;
     const r = await fetchMailbox(client, guildId);
     handled += r.handled || 0;

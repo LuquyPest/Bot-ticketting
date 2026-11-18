@@ -62,6 +62,7 @@ const PAGES = [
   ['instance-connexion', '/instance/login', 'Adresse de retour à déclarer'],
   ['instance-boites-email', '/instance/login', 'Enregistrer les applications e-mail'],
   ['email-oauth', '/settings?tab=integrations', 'Identifiant et mot de passe'],
+  ['email-webhook', '/settings?tab=integrations', 'Adresse de réception, à coller chez'],
   ['login-fournisseurs', '/login', 'Continuer avec', true],
   ['confidentialite', '/confidentialite', 'Données enregistrées', true],
   ['validation', '/validation#abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG', 'Geste commercial de 50 €', true],
