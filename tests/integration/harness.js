@@ -5354,6 +5354,62 @@ async function main() {
     await db('DELETE FROM ticket_tags WHERE id IN (?)', [[tagF, tagV]]);
   }
 
+  // ── Rules « when time passes » (utils/ruleTimers.js, v5.2) ──
+  {
+    const RT = app('./utils/ruleTimers');
+    const C = app('./utils/calendars');
+    const mkT = async (extra = {}) => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, stage, subject, created_at, ttr_due_at) VALUES ('200000000000000064', 'tmr', ?, 'open', ?, 'Temps', ?, ?)",
+      [`db-tmr-${Math.random().toString(36).slice(2, 10)}`, extra.stage || 'open', extra.created || new Date(), extra.ttrDue || null])).insertId;
+    const notesOf = async (id, text) => (await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND source = 'system' AND content = ?", [id, text])).length;
+    const ctx = { db, guildId: G, client: fakeClient };
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['time', 'created'], timer: { basis: 'created', minutes: 60 }, actions: [{ type: 'note', value: 'x' }] } });
+    check('temps: « le temps passe » seul', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['time'], timer: { basis: 'created', minutes: 60, direction: 'before' }, actions: [{ type: 'note', value: 'x' }] } });
+    check('temps: « avant » réservé aux échéances', r.status === 400, JSON.stringify(r.body));
+
+    // 2 hours after the staff's last message, while waiting for the requester
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Relance', triggers: ['time'], timer: { basis: 'last_staff', minutes: 120, businessHours: false },
+      conditions: [{ field: 'stage', values: ['waiting'] }], actions: [{ type: 'note', value: 'relance auto' }] } });
+    const rRel = r.body.id;
+    check('temps: règle créée avec son délai', r.status === 200 && r.body.rules.find(x => x.id === rRel)?.timer?.basis === 'last_staff', JSON.stringify(r.body).slice(0, 200));
+    const tW = await mkT({ stage: 'waiting' });
+    const tO = await mkT({ stage: 'open' });
+    for (const id of [tW, tO]) await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, created_at) VALUES (?, ?, 'F', 'réponse', 'reply', NOW() - INTERVAL 3 HOUR)", [id, U.F]);
+    await RT.runForGuild(ctx);
+    check('temps: délai écoulé + conditions → actions', await notesOf(tW, 'relance auto') === 1 && await notesOf(tO, 'relance auto') === 0, '');
+    await RT.runForGuild(ctx);
+    check('temps: une seule fois pour le même moment', await notesOf(tW, 'relance auto') === 1, '');
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source, created_at) VALUES (?, ?, 'F', 'encore', 'reply', NOW() - INTERVAL 150 MINUTE)", [tW, U.F]);
+    await RT.runForGuild(ctx);
+    check('temps: une nouvelle réponse relance le compte', await notesOf(tW, 'relance auto') === 2, '');
+    await req('DELETE', `/api/rules/${rRel}`, { sid: sessions.F });
+
+    // Business hours: opened on Friday at 17:00 (Paris), 2 business hours → Monday 10:00
+    r = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Bureau règles', timezone: 'Europe/Paris', hours: C.DEFAULT_HOURS } });
+    const calId = r.body.id;
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { calendarId: calId } });
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Ouvré', triggers: ['time'], timer: { basis: 'created', minutes: 120, businessHours: true }, actions: [{ type: 'note', value: 'deux heures ouvrées' }] } });
+    const rBiz = r.body.id;
+    const tB = await mkT({ created: new Date('2026-11-20T16:00:00Z') });
+    await RT.runForGuild(ctx, new Date('2026-11-21T12:00:00Z').getTime());
+    check('temps: en heures ouvrées, rien le week-end', await notesOf(tB, 'deux heures ouvrées') === 0, '');
+    await RT.runForGuild(ctx, new Date('2026-11-23T09:30:00Z').getTime());
+    check('temps: en heures ouvrées, lundi 10 h passé → appliquée', await notesOf(tB, 'deux heures ouvrées') === 1, '');
+    await req('DELETE', `/api/rules/${rBiz}`, { sid: sessions.F });
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { calendarId: null } });
+    await req('DELETE', `/api/calendars/${calId}`, { sid: sessions.F });
+
+    // Before a deadline: one hour before the resolution is due
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Bientôt', triggers: ['time'], timer: { basis: 'ttr_due', minutes: 60, direction: 'before', businessHours: false }, actions: [{ type: 'note', value: 'échéance proche' }] } });
+    const rDue = r.body.id;
+    const tSoon = await mkT({ ttrDue: new Date(Date.now() + 30 * 60e3) });
+    const tLater = await mkT({ ttrDue: new Date(Date.now() + 3 * 3600e3) });
+    await RT.runForGuild(ctx);
+    check('temps: avant une échéance SLA', await notesOf(tSoon, 'échéance proche') === 1 && await notesOf(tLater, 'échéance proche') === 0, '');
+    await req('DELETE', `/api/rules/${rDue}`, { sid: sessions.F });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tW, tO, tB, tSoon, tLater]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

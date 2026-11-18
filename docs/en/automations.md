@@ -30,11 +30,19 @@ Every scheduled job goes through **BullMQ** (Redis): each one runs only once, an
 
 | | |
 |---|---|
-| **When** | A ticket is opened · the requester writes · the staff replies · the status changes · the priority changes (one or more) |
+| **When** | A ticket is opened · the requester writes · the staff replies · the status changes · the priority changes (one or more) · **time passes** (see below) |
 | **If** (all, or at least one) | Channel (Discord, e-mail, web) · receiving address · type · subject (a category covers its sub-categories) · words in the message · requester (address, domain `@client.com`, name) · priority · status · tag · hours (support open or closed) · requester's language; each condition can be reversed (« is not ») |
 | **Then** | Priority · urgency and impact · type · subject · team · assign to someone · add or remove a tag · status · restrict to a grade · watchers · notify staff members · automatic reply to the requester · internal note · webhook · close |
 
 Rules run **in the order** of the list (arrows); **« stop after this rule »** prevents the next ones. Each rule applied is noted in the **ticket's journal** (« rule *VIP customers* applied: priority urgent, tag VIP »). **Test** shows, on an existing ticket, which conditions are met and what the rule would do, without changing anything.
+
+### When time passes
+
+A rule can act **some time after** a moment of the ticket: its opening, its last status change, the requester's last message, the staff's last reply, the last activity; or **before / after an SLA deadline** (first response, resolution). The delay counts in **business hours** of the ticket's calendar (its team's, else the space's) or in full hours.
+
+Examples: « 48 business hours after the staff's last reply, if the status is *Waiting*: automatic reply *Could you try it?* »; « 1 h before the resolution deadline: notify the lead ». The check runs every 5 minutes. A rule plays **only once** per ticket and per moment: a new reply or a new status starts the count again. A paused SLA deadline (waiting for the requester) or one already met triggers nothing.
+
+Inactivity and the escalation of urgent tickets (**Settings → Tickets**) keep their own settings.
 
 Guards: a change made by a rule does not start the rules again (no loop); 50 actions at most per event; restricting to a grade also needs the **Manage grades** permission; a rule never lifts a confidential ticket, never changes its team and only notifies staff who can see it.
 

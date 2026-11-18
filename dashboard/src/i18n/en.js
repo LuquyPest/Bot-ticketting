@@ -933,5 +933,9 @@ export const TEMPLATES = [
   ['Quand quelque chose arrive à un ticket, si ses conditions sont remplies, la règle agit. Les règles passent dans l\'ordre de la liste ; chacune est notée au journal du ticket. Une modification faite par une règle ne relance pas les règles ; 50 actions au plus par événement.', 'When something happens to a ticket, if its conditions are met, the rule acts. Rules run in the order of the list; each one is noted in the ticket\'s journal. A change made by a rule does not start the rules again; 50 actions at most per event.'],
   ['Plus {} règle(s) simple(s) par sujet ou mots-clés (Paramètres → Tickets), appliquées à l\'ouverture avant celles-ci.', 'Plus {1} simple rule(s) by subject or keywords (Settings → Tickets), applied at the opening before these.'],
   ['Supprimer la règle « {} » ?', 'Delete the rule « {1} »?'], ['Règle automatique appliquée', 'Automatic rule applied'], ['Règle automatique enregistrée', 'Automatic rule saved'], ['Règle automatique supprimée', 'Automatic rule deleted'],
-  ['règles par sujet', 'rules by subject'], ['règles automatiques', 'automatic rules']
+  ['règles par sujet', 'rules by subject'], ['règles automatiques', 'automatic rules'],
+  ['Le temps passe', 'Time passes'], ['l\'ouverture', 'the opening'], ['le dernier changement de statut', 'the last status change'], ['le dernier message du demandeur', 'the requester\'s last message'],
+  ['la dernière réponse du staff', 'the staff\'s last reply'], ['la dernière activité', 'the last activity'], ['l\'échéance de prise en charge', 'the first response deadline'], ['l\'échéance de résolution', 'the resolution deadline'],
+  ['Délai : heures', 'Delay: hours'], ['Délai : minutes', 'Delay: minutes'], ['Avant ou après', 'Before or after'], ['après', 'after'], ['avant', 'before'], ['Point de départ', 'Starting point'], ['en heures ouvrées', 'in business hours'],
+  ['Vérifié toutes les 5 minutes ; une fois par ticket, puis à nouveau si le point de départ change (nouvelle réponse, nouveau statut).', 'Checked every 5 minutes; once per ticket, then again if the starting point changes (new reply, new status).']
 ];

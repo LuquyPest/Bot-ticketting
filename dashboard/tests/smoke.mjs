@@ -34,6 +34,7 @@ const PAGES = [
   ['settings-horaires', '/settings?tab=horaires', 'Ajouter les jours fériés'],
   ['settings-escalade', '/settings?tab=horaires', 'Monter la priorité'],
   ['settings-regles', '/settings?tab=regles', 'Arrêter après cette règle'],
+  ['settings-regles-temps', '/settings?tab=regles', 'en heures ouvrées'],
   ['equipes-ola', '/equipe?tab=equipes', 'Objectif interne (OLA)'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],
   ['settings', '/settings', 'Paramètres'],

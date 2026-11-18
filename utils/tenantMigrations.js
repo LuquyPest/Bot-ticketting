@@ -929,6 +929,21 @@ const MIGRATIONS = [
       'DELETE FROM subject_rules',
     ],
   },
+  {
+    version: 60,
+    name: 'Règles temporelles : « quand le temps passe » (v5.2)',
+    statements: [
+      'ALTER TABLE ticket_rules ADD COLUMN IF NOT EXISTS timer JSON DEFAULT NULL',
+      // Once per rule, ticket and moment it counts from (a new reply or status starts it again)
+      `CREATE TABLE IF NOT EXISTS rule_timer_fired (
+        ticket_id INT NOT NULL,
+        rule_id   INT NOT NULL,
+        basis_at  DATETIME NOT NULL,
+        fired_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (ticket_id, rule_id, basis_at)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
