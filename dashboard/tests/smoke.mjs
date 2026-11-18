@@ -28,6 +28,8 @@ const PAGES = [
   ['settings', '/settings', 'Paramètres'],
   ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],
   ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],
+  ['settings-statuts', '/settings?tab=tickets', 'Attente fournisseur'],
+  ['kanban-statuts', '/kanban', 'Attente fournisseur'],
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
   ['settings-integrations', '/settings?tab=integrations', 'Tickets par e-mail'],
   ['settings-widget', '/settings?tab=integrations', 'Voir le formulaire'],

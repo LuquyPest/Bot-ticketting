@@ -2640,6 +2640,57 @@ async function main() {
   r = await req('GET', `/api/tickets/${st1.id}`, { sid: sessions.F });
   check('étapes: détail indique les étapes configurées', r.body.stages?.waiting === true && r.body.stages?.in_progress === false, JSON.stringify(r.body.stages));
 
+  // ── Custom statuses (utils/stages.js, routes/stages.js, v4.2) ──
+  {
+    r = await req('POST', '/api/stages', { sid: sessions.S1, body: { label: 'Interdit' } });
+    check('statuts: création réservée aux fondateurs', r.status === 403, r.status);
+    const builtinName = await req('POST', '/api/stages', { sid: sessions.F, body: { label: 'En cours' } });
+    const badSla = await req('POST', '/api/stages', { sid: sessions.F, body: { label: 'X', slaHours: 9999 } });
+    check('statuts: nom d un statut de base ou délai hors limites refusés', builtinName.status === 400 && badSla.status === 400, [builtinName.status, badSla.status].join());
+    r = await req('POST', '/api/stages', { sid: sessions.F, body: { label: 'Attente fournisseur', color: 'rose', kind: 'waiting', categoryId: CAT_WAIT, slaHours: 1 } });
+    const cs = Array.isArray(r.body) ? r.body.find(s => s.label === 'Attente fournisseur') : null;
+    check('statuts: créé avec sa couleur, son statut de base, sa catégorie et son délai', r.status === 200 && cs?.key === `s_${cs?.id}` && cs.color === 'rose' && cs.kind === 'waiting' && cs.categoryId === CAT_WAIT && cs.slaHours === 1 && !cs.builtin, JSON.stringify(r.body));
+    r = await req('POST', '/api/stages', { sid: sessions.F, body: { label: 'attente FOURNISSEUR' } });
+    check('statuts: nom en double refusé', r.status === 400, r.status);
+    r = await req('GET', '/api/stages', { sid: sessions.S1 });
+    check('statuts: liste pour tout le staff, statuts de base en tête', r.status === 200 && r.body.slice(0, 3).map(s => s.key).join() === 'open,waiting,in_progress' && r.body.some(s => s.key === cs.key), JSON.stringify(r.body.map(s => s.key)));
+
+    r = await req('PATCH', `/api/tickets/${st1.id}/move`, { sid: sessions.F, body: { stage: cs.key } });
+    const [csRow] = await db('SELECT stage FROM tickets WHERE id = ?', [st1.id]);
+    check('statuts: ticket passé dans un statut personnalisé (catégorie Discord du statut)', r.status === 200 && csRow.stage === cs.key && r.body.label === 'Attente fournisseur', JSON.stringify([r.body, csRow]));
+    const [evS] = await db("SELECT details FROM audit_log WHERE action = 'ticket_stage' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [st1.id]);
+    const evD = typeof evS?.details === 'string' ? JSON.parse(evS.details) : evS?.details;
+    check('statuts: changement noté au journal du ticket', evD?.to === cs.key && evD.from === 'waiting', JSON.stringify(evD));
+    r = await req('PATCH', `/api/tickets/${st1.id}/move`, { sid: sessions.F, body: { stage: 's_999999' } });
+    const bogus = await req('PATCH', `/api/tickets/${st1.id}/move`, { sid: sessions.F, body: { stage: 'n_importe_quoi' } });
+    check('statuts: statut inconnu refusé', r.status === 400 && bogus.status === 400, [r.status, bogus.status].join());
+
+    await db('UPDATE tickets SET stage_changed_at = NOW() - INTERVAL 2 HOUR WHERE id = ?', [st1.id]);
+    r = await req('GET', `/api/tickets/${st1.id}`, { sid: sessions.F });
+    check('statuts: délai propre au statut dans la fiche (SLA)', r.body.sla?.state === 'breached' && r.body.sla.hours === 1 && r.body.stages?.[cs.key] === true, JSON.stringify([r.body.sla, r.body.stages]));
+    const late = await req('GET', '/api/tickets', { sid: sessions.F, query: { status: 'open', sla: 'breached' } });
+    const byStage = await req('GET', '/api/tickets', { sid: sessions.F, query: { stage: cs.key } });
+    check('statuts: filtres « hors délai » et par statut', late.body.tickets.some(t => t.id === st1.id) && byStage.body.tickets.length >= 1 && byStage.body.tickets.every(t => t.stage === cs.key), JSON.stringify([late.body.tickets.map(t => t.id), byStage.body.tickets.map(t => t.stage)]));
+    const kanban = await req('GET', '/api/tickets', { sid: sessions.F, query: { status: 'open', page: 1 } });
+    const kt = kanban.body.tickets.find(t => t.id === st1.id);
+    check('statuts: le Kanban reçoit le statut et son délai', kt?.stage === cs.key && kt.sla?.state === 'breached', JSON.stringify(kt && { stage: kt.stage, sla: kt.sla }));
+    const q = await req('GET', '/api/analytics/quality', { sid: sessions.F, query: { days: 30 } });
+    const qs = q.body.stages?.find(x => x.stage === cs.key);
+    check('statuts: analytiques par statut, avec son nom et son délai', !!qs && qs.label === 'Attente fournisseur' && qs.slaHours === 1, JSON.stringify(q.body.stages));
+    const mt = await app('./utils/memberPortal').memberTicket({ id: u1.id }, G, st1.id, fakeClient);
+    check('statuts: le demandeur voit le statut de base, jamais le nom interne', mt?.ticket?.stage === 'waiting' && !JSON.stringify(mt).includes('Attente fournisseur'), JSON.stringify(mt?.ticket));
+    r = await req('POST', '/api/templates', { sid: sessions.F, body: { name: 'Macro statut', content: 'On relance le fournisseur', actions: { stage: cs.key } } });
+    check('statuts: utilisable dans une macro', r.status === 200 || r.status === 201, JSON.stringify(r.body));
+
+    r = await req('PUT', `/api/stages/${cs.id}`, { sid: sessions.F, body: { label: 'Chez le fournisseur', color: 'orange', kind: 'waiting', categoryId: CAT_WAIT, slaHours: 2 } });
+    check('statuts: modifié', r.status === 200 && r.body.find(s => s.key === cs.key)?.label === 'Chez le fournisseur', JSON.stringify(r.body));
+    r = await req('DELETE', `/api/stages/${cs.id}`, { sid: sessions.F });
+    const [back] = await db('SELECT stage FROM tickets WHERE id = ?', [st1.id]);
+    const [evDel] = await db("SELECT details FROM audit_log WHERE action = 'stage_delete' ORDER BY id DESC LIMIT 1");
+    check('statuts: supprimé → ses tickets reviennent dans son statut de base, journal', r.status === 200 && !r.body.some(s => s.key === cs.key) && back.stage === 'waiting' && !!evDel, JSON.stringify([back, evDel]));
+    await db("DELETE FROM reply_templates WHERE name = 'Macro statut'").catch(() => null);
+  }
+
   // ── Multi-assign ──
   r = await req('POST', `/api/tickets/${st1.id}/assignees`, { sid: sessions.F, body: { user_id: U.S3 } });
   r = await req('POST', `/api/tickets/${st1.id}/assignees`, { sid: sessions.F, body: { user_id: U.F } });
@@ -4078,7 +4129,9 @@ async function main() {
     check('e-mail instance: port non standard et activation incomplète refusés', r.status === 400 && r2.status === 400, JSON.stringify([r.body, r2.body]));
     r = await req('PUT', '/api/instance/email', { sid: sessions.OWN, body: { enabled: true, host: 'smtp.example.com', port: 587, user: 'datick', password: 'SECRET-SMTP-I', from: 'Datick@Example.com', fromName: 'Datick' } });
     const [rowI] = await globalQuery("SELECT v FROM instance_settings WHERE k = 'instance_email'");
-    const [auditI] = await globalQuery("SELECT details FROM instance_audit_log WHERE action = 'instance_email_update' ORDER BY id DESC LIMIT 1");
+    // The instance journal is written once the response has left: wait for it
+    let auditI;
+    for (let i = 0; i < 20 && !auditI; i++) { [auditI] = await globalQuery("SELECT details FROM instance_audit_log WHERE action = 'instance_email_update' ORDER BY id DESC LIMIT 1"); if (!auditI) await new Promise(res => setTimeout(res, 50)); }
     check('e-mail instance: enregistré, mot de passe chiffré, jamais renvoyé ni journalisé', r.status === 200 && r.body.passwordSet && r.body.from === 'datick@example.com' && !JSON.stringify(r.body).includes('SECRET') && !JSON.stringify(rowI.v).includes('SECRET') && !JSON.stringify(auditI.details).includes('SECRET'), JSON.stringify([r.body, auditI]));
     r = await req('POST', '/api/instance/email/test', { sid: sessions.OWN, body: { to: 'owner@example.com' } });
     check('e-mail instance: serveur résolu en adresse privée refusé', r.status === 502 && /privée|introuvable/.test(r.body.error), JSON.stringify(r.body));

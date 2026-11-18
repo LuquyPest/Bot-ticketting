@@ -9,6 +9,12 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/stages': [
+    { key: 'open', label: 'Ouvert', color: 'sky', kind: 'open', builtin: true, categoryId: '1', slaHours: 4 },
+    { key: 'waiting', label: 'En attente', color: 'amber', kind: 'waiting', builtin: true, categoryId: '2', slaHours: 24 },
+    { key: 'in_progress', label: 'En cours', color: 'emerald', kind: 'in_progress', builtin: true, categoryId: '3', slaHours: 8 },
+    { key: 's_1', id: 1, label: 'Attente fournisseur', color: 'rose', kind: 'waiting', builtin: false, categoryId: null, slaHours: 48, position: 1 },
+  ],
   '/api/email/addresses': { addresses: [{ id: 1, address: 'facturation@example.com', display_name: 'Facturation', subject: 'Paiement', tag_id: 1, reply_from: true }],
     subjects: ['Paiement', 'Bug en jeu'], tags: [{ id: 1, name: 'Litige' }] },
   '/api/widget-settings': { enabled: true, token: '123456789012345678.exempleexempleexemple12', origins: ['https://example.com'], mailReady: true,

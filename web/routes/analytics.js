@@ -144,8 +144,10 @@ router.get('/quality', async (req, res) => {
     const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
     const vis = await visibilityFilter(req, 't.visibility_grade_id');
     const db = req.guildDb;
-    const [cfg] = await db('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
-    const slaMin = { open: (cfg?.sla_open_hours || 0) * 60, waiting: (cfg?.sla_waiting_hours || 0) * 60, in_progress: (cfg?.sla_in_progress_hours || 0) * 60 };
+    // Every stage of the space, custom statuses included
+    const stageList = await require('../../utils/stages').listStages(db);
+    const slaMin = Object.fromEntries(stageList.map(s => [s.key, s.slaHours * 60]));
+    const stageLabels = Object.fromEntries(stageList.map(s => [s.key, s.label]));
 
     // First response
     const fr = await db(
@@ -164,7 +166,7 @@ router.get('/quality', async (req, res) => {
       `SELECT t.id, t.created_at, t.closed_at FROM tickets t
        WHERE (t.closed_at IS NULL OR t.closed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AND t.created_at <= NOW() AND ${vis.sql}
        ORDER BY t.id DESC LIMIT 3000`, [days, ...vis.params]);
-    const stages = await stageCompliance(db, tickets, slaMin);
+    const stages = await stageCompliance(db, tickets, slaMin, Date.now(), stageLabels);
 
     // Satisfaction
     const [ratingRows, comments] = await Promise.all([

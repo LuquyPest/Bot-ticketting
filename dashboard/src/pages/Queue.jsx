@@ -6,8 +6,9 @@ import toast from 'react-hot-toast';
 import { useSSE } from '../hooks/useSSE';
 import { useAuth } from '../App';
 import { fmtMinutes } from '../components/SlaBadge';
+import { useStages } from '../hooks/useStages';
 
-const STAGE_LABEL = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
+const STAGE_LABEL = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' }; // + custom statuses (Queue)
 
 // Why a ticket is high in the queue — icon + text, never color alone
 function Reason({ r }) {
@@ -23,6 +24,7 @@ function Reason({ r }) {
 }
 
 export default function Queue() {
+  for (const st of useStages()) STAGE_LABEL[st.key] = st.label;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [scope, setScope] = useState('mine');

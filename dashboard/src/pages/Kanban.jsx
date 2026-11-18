@@ -4,14 +4,18 @@ import { Kanban as KanbanIcon, RefreshCw, Users } from 'lucide-react';
 import api from '../api';
 import { useSSE } from '../hooks/useSSE';
 import SlaBadge from '../components/SlaBadge';
+import { useStages, STAGE_CLS } from '../hooks/useStages';
 
-const COLUMNS = [
-  // Columns follow the ticket stages (Paramètres → catégories Ouvert / En attente / En cours)
-  { key: 'open',        label: 'Ouvert',     color: 'sky',     filter: t => t.status === 'open' && (t.stage || 'open') === 'open' },
-  { key: 'waiting',     label: 'En attente', color: 'amber',   filter: t => t.status === 'open' && t.stage === 'waiting' },
-  { key: 'in_progress', label: 'En cours',   color: 'indigo',  filter: t => t.status === 'open' && t.stage === 'in_progress' },
-  { key: 'closed',      label: 'Fermés',     color: 'emerald', filter: t => t.status === 'closed' }
-];
+// Columns follow the ticket statuses of the space (built-in and custom, Paramètres → Tickets),
+// then the closed tickets. A ticket whose custom status was deleted shows under « Ouvert ».
+function columnsFor(stages) {
+  const known = new Set(stages.map(s => s.key));
+  return [
+    ...stages.map(s => ({ key: s.key, label: s.label, color: s.color,
+      filter: t => t.status === 'open' && ((t.stage || 'open') === s.key || (s.key === 'open' && !known.has(t.stage))) })),
+    { key: 'closed', label: 'Fermés', color: 'slate', filter: t => t.status === 'closed' },
+  ];
+}
 
 const PRIO_COLOR = {
   low:    'bg-sky-500/10 text-sky-400 border border-sky-500/20',
@@ -52,6 +56,8 @@ export default function Kanban() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const stages = useStages();
+  const COLUMNS = columnsFor(stages);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,12 +79,6 @@ export default function Kanban() {
     new_ticket: load
   });
 
-  const COL_STYLES = {
-    sky:     { header: 'border-sky-500/20 bg-sky-500/5', dot: 'bg-sky-400' },
-    amber:   { header: 'border-amber-500/20 bg-amber-500/5', dot: 'bg-amber-400' },
-    indigo:  { header: 'border-primary/20 bg-primary/5',     dot: 'bg-primary-light' },
-    emerald: { header: 'border-emerald-500/20 bg-emerald-500/5', dot: 'bg-emerald-400' },
-  };
 
   return (
     <div className="p-6 space-y-5 h-full flex flex-col">
@@ -89,17 +89,17 @@ export default function Kanban() {
             <h1>Kanban</h1>
           </div>
         </div>
-        <button onClick={load}
+        <button onClick={load} aria-label="Actualiser" title="Actualiser"
           className="p-2 rounded-xl text-ink-3 hover:text-ink-1 hover:bg-overlay/6
                      border border-overlay/6 transition-all">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 min-h-0">
+      <div className={`flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 ${COLUMNS.length > 4 ? 'xl:grid-cols-none xl:grid-flow-col xl:auto-cols-[minmax(16rem,1fr)] overflow-x-auto' : 'xl:grid-cols-4'}`}>
         {COLUMNS.map(col => {
           const items = tickets.filter(col.filter);
-          const s = COL_STYLES[col.color];
+          const s = STAGE_CLS[col.color] || STAGE_CLS.slate;
           return (
             <div key={col.key}
               className="flex flex-col bg-surface-card border border-overlay/6 rounded-2xl overflow-hidden shadow-card">
@@ -108,7 +108,7 @@ export default function Kanban() {
                   <span className={`w-2 h-2 rounded-full ${s.dot}`} />
                   <h3 className="text-sm font-semibold text-ink-1">{col.label}</h3>
                 </div>
-                <span className="text-xs font-bold text-ink-4 bg-overlay/5 px-2 py-0.5 rounded-full tabular-nums">
+                <span className="text-xs font-bold text-ink-3 bg-overlay/5 px-2 py-0.5 rounded-full tabular-nums">
                   {items.length}
                 </span>
               </div>

@@ -604,6 +604,24 @@ const MIGRATIONS = [
       'ALTER TABLE email_threads ADD COLUMN IF NOT EXISTS via_address_id INT DEFAULT NULL',
     ],
   },
+  {
+    version: 43,
+    name: 'Statuts personnalisés (v4.2)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_stages (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        label       VARCHAR(40) NOT NULL,
+        color       VARCHAR(16) NOT NULL DEFAULT 'violet',
+        kind        ENUM('open','waiting','in_progress') NOT NULL DEFAULT 'in_progress',
+        category_id VARCHAR(32) DEFAULT NULL,
+        sla_hours   INT NOT NULL DEFAULT 0,
+        position    INT NOT NULL DEFAULT 0,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      // « s_<id> » for a custom status; the three built-in values are unchanged
+      "ALTER TABLE tickets MODIFY stage VARCHAR(40) NOT NULL DEFAULT 'open'",
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

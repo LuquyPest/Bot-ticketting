@@ -33,7 +33,7 @@ sequenceDiagram
 
 | | |
 |---|---|
-| **Tickets** | Sujets et règles automatiques par sujet ou mots-clés, champs personnalisés, formulaires d'ouverture, FAQ automatique, panels à boutons, tickets confidentiels, priorités, étapes et Kanban, délais par étape (SLA), fusion, tickets liés, transcripts |
+| **Tickets** | Sujets et règles automatiques par sujet ou mots-clés, champs personnalisés, formulaires d'ouverture, FAQ automatique, panels à boutons, tickets confidentiels, priorités, étapes et statuts personnalisés, Kanban, délais par étape (SLA), fusion, tickets liés, transcripts |
 | **Dashboard** | Ma file, recherche plein texte avec opérateurs, vues enregistrées, vue fractionnée, notes internes épinglées, modèles de réponse et macros, mentions, suivi, rappels, temps passé, présence des collègues, brouillons, actions en masse |
 | **Équipe** | Grades aux permissions fines, rôles rattachés à des tags, synchronisation avec les rôles Discord, absences planifiées, objectifs, statistiques, comparaison de périodes, rapports PDF mensuels, statistiques publiques dans un salon |
 | **Membres** | Réponses en MP dans leur langue (français, anglais, espagnol, allemand, italien, portugais), espace web pour suivre et ouvrir des tickets, aide consultable, notation, réouverture |

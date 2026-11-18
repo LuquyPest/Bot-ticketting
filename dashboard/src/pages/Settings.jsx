@@ -12,6 +12,7 @@ import PublicStats from '../components/PublicStats';
 import BotImport from '../components/BotImport';
 import EmailSettings from '../components/EmailSettings';
 import WidgetSettings from '../components/WidgetSettings';
+import StagesEditor from '../components/StagesEditor';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -655,6 +656,11 @@ export default function Settings() {
           ))}
         </div>
       </Section>
+      {user?.role === 'fondateur' && (
+        <Section title="Statuts" description="Des statuts propres à l'espace, en plus de Ouvert, En attente et En cours. Enregistrés à part.">
+          <StagesEditor discord={discord} categories={categories} />
+        </Section>
+      )}
       <Section title="Limites et délais">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Alerte note basse (étoiles)" hint="Une note inférieure ou égale prévient les fondateurs et chefs support — 0 = désactivé">

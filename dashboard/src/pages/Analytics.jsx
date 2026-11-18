@@ -483,7 +483,7 @@ function TabQuality() {
           <tbody className="divide-y divide-overlay/4">
             {q.stages.map(s => (
               <tr key={s.stage}>
-                <td className="py-2.5 pr-4 text-ink-1 font-medium">{STAGE_NAME[s.stage]}</td>
+                <td className="py-2.5 pr-4 text-ink-1 font-medium">{STAGE_NAME[s.stage] || s.label}</td>
                 <td className="py-2.5 pr-4 text-ink-2">{s.slaHours ? `${s.slaHours} h` : 'aucun'}</td>
                 <td className="py-2.5 pr-4 text-ink-2 tabular-nums">{s.measured}{s.ongoing ? <span className="text-ink-4"> (+{s.ongoing} en cours)</span> : null}</td>
                 <td className="py-2.5 pr-4 text-ink-2 tabular-nums">{s.medianMinutes != null ? fmtMinutes(s.medianMinutes) : '—'}</td>
