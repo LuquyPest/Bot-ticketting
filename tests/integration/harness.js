@@ -2691,6 +2691,101 @@ async function main() {
     await db("DELETE FROM reply_templates WHERE name = 'Macro statut'").catch(() => null);
   }
 
+  // ── Teams and queues, automatic assignment (utils/teams.js, v4.2) ──
+  {
+    const web = app('./utils/webRequesters');
+    const teamsU = app('./utils/teams');
+    const [cfgT] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [JSON.stringify(['Paiement', 'Bug'])]);
+    const tagT = (await db("INSERT INTO ticket_tags (name, color) VALUES ('VIP équipe', '#f97316')")).insertId;
+    const opened = [];
+    let n = 0;
+    const open = async (subject = 'Paiement') => {
+      const addr = `equipe${n++}@example.com`;
+      const owner = web.webOwnerIdFor(addr);
+      await web.rememberAddress(db, owner, addr);
+      await app('./events/messageCreate').openTicketInGuild(web.webUserFor(owner, addr, G), 'Bonjour, une question', [], G, fakeClient, subject, { skipFaq: true, fieldsDone: true, intakeDone: true });
+      const [t] = await db('SELECT id, team_id FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [owner]);
+      const assignees = t ? (await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [t.id])).map(a => a.user_id) : [];
+      if (t) opened.push(t.id);
+      return { ...t, assignees, owner };
+    };
+
+    r = await req('POST', '/api/teams', { sid: sessions.S1, body: { name: 'Interdit' } });
+    check('équipes: création réservée aux fondateurs', r.status === 403, r.status);
+    const noName = await req('POST', '/api/teams', { sid: sessions.F, body: { name: ' ' } });
+    const badSub = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'X', subjects: ['Inventé'] } });
+    const outsider = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'X', members: [U.OUT] } });
+    const badCap = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'X', maxOpen: -1 } });
+    check('équipes: nom, sujet inconnu, membre hors staff et plafond invalides refusés', [noName, badSub, outsider, badCap].every(x => x.status === 400), [noName, badSub, outsider, badCap].map(x => x.status).join());
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Paiements', color: 'amber', assignMode: 'round_robin', subjects: ['Paiement'], members: [U.S1, U.S2] } });
+    const tA = r.body?.find?.(t => t.name === 'Paiements');
+    check('équipes: créée avec ses membres, ses sujets et son mode', r.status === 200 && tA?.assignMode === 'round_robin' && tA.members.length === 2 && tA.subjects.includes('Paiement'), JSON.stringify(r.body));
+    r = await req('GET', '/api/teams/options', { sid: sessions.F });
+    check('équipes: sujets et tags proposés', r.status === 200 && r.body.subjects.includes('Bug') && r.body.tags.some(g => g.id === tagT), JSON.stringify(r.body).slice(0, 200));
+
+    const a1 = await open(), a2 = await open(), a3 = await open();
+    check('équipes: nouveau ticket du sujet → équipe et attribution tour à tour', a1.team_id === tA.id && a1.assignees.join() === U.S1 && a2.assignees.join() === U.S2 && a3.assignees.join() === U.S1, JSON.stringify([a1, a2, a3].map(x => [x.team_id, x.assignees])));
+    const [evA] = await db("SELECT actor_tag FROM audit_log WHERE action = 'ticket_assign' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [a1.id]).catch(() => []);
+    check('équipes: attribution notée au journal au nom de l attribution automatique', !evA || /Attribution automatique/.test(evA.actor_tag || ''), JSON.stringify(evA));
+    const other = await open('Bug');
+    check('équipes: autre sujet → ni équipe ni attribution', !other.team_id && other.assignees.length === 0, JSON.stringify(other));
+
+    await db("UPDATE dashboard_users SET availability = 'away' WHERE user_id = ?", [U.S2]);
+    const a4 = await open();
+    check('équipes: un membre absent est passé', a4.assignees.join() === U.S1, JSON.stringify(a4.assignees));
+    await db("UPDATE dashboard_users SET availability = 'available' WHERE user_id = ?", [U.S2]);
+
+    r = await req('PUT', `/api/teams/${tA.id}`, { sid: sessions.F, body: { name: 'Paiements', color: 'amber', assignMode: 'load', subjects: ['Paiement'], members: [U.S1, U.S2] } });
+    const a5 = await open();
+    check('équipes: selon la charge → à celui qui a le moins de tickets ouverts', r.status === 200 && a5.assignees.join() === U.S2, JSON.stringify([r.status, a5.assignees]));
+    const [{ c1 }] = await db("SELECT COUNT(*) AS c1 FROM ticket_assignees a JOIN tickets t ON t.id = a.ticket_id WHERE a.user_id = ? AND t.status = 'open'", [U.S1]);
+    const [{ c2 }] = await db("SELECT COUNT(*) AS c2 FROM ticket_assignees a JOIN tickets t ON t.id = a.ticket_id WHERE a.user_id = ? AND t.status = 'open'", [U.S2]);
+    await req('PUT', `/api/teams/${tA.id}`, { sid: sessions.F, body: { name: 'Paiements', assignMode: 'load', maxOpen: Math.min(Number(c1), Number(c2)), subjects: ['Paiement'], members: [U.S1, U.S2] } });
+    const a6 = await open();
+    check('équipes: plafond atteint par tous → dans la file de l équipe, sans attribution', a6.team_id === tA.id && a6.assignees.length === 0, JSON.stringify(a6));
+    await req('PUT', `/api/teams/${tA.id}`, { sid: sessions.F, body: { name: 'Paiements', assignMode: 'load', maxOpen: 0, subjects: ['Paiement'], members: [U.S1, U.S2] } });
+
+    const tConfT = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('47','u47','cteam','open','Paiement', -1)")).insertId;
+    const [confRow] = await db('SELECT * FROM tickets WHERE id = ?', [tConfT]);
+    const confR = await teamsU.routeTicket({ db, tm: { addAssignee: async () => { throw new Error('jamais'); } }, ticket: confRow });
+    check('équipes: ticket confidentiel jamais routé ni attribué', confR.teamId === null && !(await db('SELECT team_id FROM tickets WHERE id = ?', [tConfT]))[0].team_id, JSON.stringify(confR));
+
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'VIP', tagIds: [tagT], members: [U.F] } });
+    const tB = r.body.find(t => t.name === 'VIP');
+    const tTag = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('46','u46','cteam2','open','Autre')")).insertId;
+    await db('INSERT INTO ticket_tag_assignments (ticket_id, tag_id) VALUES (?, ?)', [tTag, tagT]);
+    const [tagRow] = await db('SELECT * FROM tickets WHERE id = ?', [tTag]);
+    const tagR = await teamsU.routeTicket({ db, tm: { addAssignee: async () => null }, ticket: tagRow });
+    check('équipes: routage par tag, sans attribution pour une équipe sans mode', tagR.teamId === tB.id && tagR.assignee === null, JSON.stringify(tagR));
+
+    r = await req('GET', '/api/tickets/queue', { sid: sessions.F, query: { scope: 'team' } });
+    check('équipes: file de mes équipes', r.status === 200 && r.body.tickets.some(t => t.id === tTag) && !r.body.tickets.some(t => t.id === a1.id), JSON.stringify(r.body.tickets?.map(t => t.id)));
+    r = await req('GET', '/api/teams/mine', { sid: sessions.F });
+    check('équipes: mes équipes', r.status === 200 && r.body.length === 1 && r.body[0].id === tB.id, JSON.stringify(r.body));
+    r = await req('GET', '/api/tickets', { sid: sessions.F, query: { team: tA.id, status: 'open' } });
+    const none = await req('GET', '/api/tickets', { sid: sessions.F, query: { team: 'none', status: 'open' } });
+    check('équipes: filtre de la liste par équipe et « sans équipe »', r.body.tickets.length >= 6 && r.body.tickets.every(t => t.team_id === tA.id) && none.body.tickets.every(t => !t.team_id) && none.body.tickets.some(t => t.id === other.id), JSON.stringify([r.body.tickets.length, none.body.tickets.map(t => t.team_id)]));
+
+    r = await req('PATCH', `/api/tickets/${other.id}/team`, { sid: sessions.F, body: { teamId: tA.id } });
+    const [otherAs] = await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [other.id]);
+    check('équipes: confier un ticket à une équipe depuis la fiche → attribué', r.status === 200 && r.body.teamId === tA.id && !!r.body.assignee && otherAs?.user_id === r.body.assignee, JSON.stringify([r.body, otherAs]));
+    r = await req('PATCH', `/api/tickets/${other.id}/team`, { sid: sessions.S1, body: { teamId: null } });
+    check('équipes: changer d équipe demande la permission d attribuer', r.status === 403, r.status);
+    r = await req('PATCH', `/api/tickets/${other.id}/team`, { sid: sessions.F, body: { teamId: 999999 } });
+    check('équipes: équipe inconnue refusée', r.status === 400, r.status);
+
+    r = await req('DELETE', `/api/teams/${tA.id}`, { sid: sessions.F });
+    const [left] = await db('SELECT COUNT(*) AS n FROM tickets WHERE team_id = ?', [tA.id]);
+    check('équipes: supprimée → ses tickets restent, sans équipe ; journal', r.status === 200 && Number(left.n) === 0 && (await db("SELECT id FROM audit_log WHERE action IN ('team_create','team_update','team_delete')")).length >= 4, JSON.stringify([r.status, left]));
+
+    await db('DELETE FROM teams');
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[...opened, tConfT, tTag]]);
+    await db('DELETE FROM ticket_tag_assignments WHERE tag_id = ?', [tagT]);
+    await db('DELETE FROM ticket_tags WHERE id = ?', [tagT]);
+    await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [cfgT.ticket_subjects == null || typeof cfgT.ticket_subjects === 'string' ? cfgT.ticket_subjects : JSON.stringify(cfgT.ticket_subjects)]);
+  }
+
   // ── Multi-assign ──
   r = await req('POST', `/api/tickets/${st1.id}/assignees`, { sid: sessions.F, body: { user_id: U.S3 } });
   r = await req('POST', `/api/tickets/${st1.id}/assignees`, { sid: sessions.F, body: { user_id: U.F } });

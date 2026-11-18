@@ -45,6 +45,21 @@ A grade can have a **parent**: members of the parent also see what the child gra
 
 **Roles** (founders): groups of staff members, tied to one or more **tags**. A ticket carrying one of these tags is only visible to the members of the role and to the founders, everywhere: list, ticket view, search, statistics, notifications, Discord commands, ticket channel. Useful for an Accounting, Moderation or Partnerships team…
 
+## Teams and their queues
+
+**Team → Teams** (founders) groups the staff into teams (« Billing », « Tech »…), up to 30:
+
+| Setting | |
+|---|---|
+| **Members** | The space's staff who are part of it (a person can be in several teams) |
+| **Subjects and tags** | A new ticket of one of these subjects, or carrying one of these tags (set by [subject rules](./tickets) or by an [e-mail address](./integrations#tickets-by-e-mail)), goes to the team |
+| **Assignment** | *None*: the ticket waits in the team's queue. *In turn*: each member in turn. *By load*: to the member with the fewest open tickets |
+| **Cap** | Open tickets per person at most; beyond it, the next one is chosen (0 = no cap) |
+
+Automatic assignment skips members who are **away** or **on holiday**, those who **cannot see** the ticket (grade, roles tied to tags) and those at the cap; if nobody is available, the ticket stays in the team's queue. **Confidential** tickets are never routed. The assignment is noted in the ticket's journal and the person is told as for a manual assignment.
+
+Each member finds the tickets of their teams in **My queue → My teams**. The ticket view shows its team and lets you change it (assign permission): giving the ticket to a team that assigns hands it right away to one of its members if nobody has it. The ticket list filters by team or « No team ». Deleting a team leaves its tickets, without a team.
+
 ## Two-factor authentication
 
 - Everyone can turn on **2FA** (TOTP app) in their **Profile**, with 10 backup codes.

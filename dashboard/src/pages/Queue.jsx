@@ -28,6 +28,8 @@ export default function Queue() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [scope, setScope] = useState('mine');
+  const [myTeams, setMyTeams] = useState([]);
+  useEffect(() => { api.get('/teams/mine').then(r => setMyTeams(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
   const [data, setData] = useState(null);
   const canClaim = user?.role === 'fondateur' || user?.permissions?.includes('claim_ticket');
 
@@ -54,7 +56,7 @@ export default function Queue() {
         <h1 className="text-xl font-bold text-ink-1 flex items-center gap-2"><ListTodo size={20} /> Ma file</h1>
       </div>
       <div className="flex gap-1 p-1 rounded-xl bg-surface-card border border-overlay/6 w-fit" role="tablist">
-        {[['mine', 'Mes tickets'], ['unassigned', 'Non attribués']].map(([v, label]) => (
+        {[['mine', 'Mes tickets'], ...(myTeams.length ? [['team', myTeams.length === 1 ? `Équipe ${myTeams[0].name}` : 'Mes équipes']] : []), ['unassigned', 'Non attribués']].map(([v, label]) => (
           <button key={v} role="tab" aria-selected={scope === v} onClick={() => setScope(v)}
             className={`px-3.5 py-2 rounded-lg text-sm font-medium ${scope === v ? 'bg-primary/15 text-primary-light' : 'text-ink-4 hover:text-ink-2'}`}>
             {label}{data && scope === v ? ` (${data.tickets.length})` : ''}

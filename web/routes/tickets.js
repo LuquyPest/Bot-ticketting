@@ -111,6 +111,7 @@ router.get('/', async (req, res) => {
     }
     const following = str('following') === 'me';
     const tag = parseInt(str('tag')) || null;
+    const team = str('team') === 'none' ? 'none' : parseInt(str('team')) || null;
     const sla = str('sla');
     const fieldId = parseInt(str('field')) || null, fieldValue = str('fieldValue').slice(0, 100);
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
@@ -151,6 +152,8 @@ router.get('/', async (req, res) => {
     if (dateFrom) { where.push('created_at >= ?'); params.push(dateFrom); }
     if (dateTo)   { where.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(dateTo); }
     if (tag)      { where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta WHERE ta.ticket_id = tickets.id AND ta.tag_id = ?)'); params.push(tag); }
+    if (team === 'none') where.push('team_id IS NULL');
+    else if (team) { where.push('team_id = ?'); params.push(team); }
     const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
     if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(b.sql); params.push(...b.params); }
     if (fieldId && fieldValue) {
@@ -162,7 +165,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, team_id, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -218,17 +221,22 @@ const PRIORITY_RANK = { urgent: 2, normal: 1, low: 0 };
 router.get('/queue', async (req, res) => {
   if (!hasPerm(req, 'view_tickets')) return res.status(403).json({ error: 'Permission insuffisante' });
   try {
-    const scope = req.query.scope === 'unassigned' ? 'unassigned' : 'mine';
+    const scope = ['unassigned', 'team'].includes(req.query.scope) ? req.query.scope : 'mine';
     const vis = await visibilityFilter(req);
+    // team: the tickets of my teams (v4.2), or of one of them (?team=id)
+    const myTeams = scope === 'team' ? await require('../../utils/teams').teamIdsOf(req.guildDb, req.session.user.id) : [];
+    const oneTeam = parseInt(req.query.team) || null;
+    const teamIds = oneTeam ? myTeams.filter(id => id === oneTeam) : myTeams;
     const where = scope === 'mine'
       ? 'EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id AND a.user_id = ?)'
+      : scope === 'team' ? (teamIds.length ? 'team_id IN (?)' : '0 = 1')
       : 'NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)';
     const rows = await req.guildDb(
       `SELECT id, owner_id, owner_tag, channel_id, status, stage, stage_changed_at, subject, priority, created_at, last_message_at,
               (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source = 'user') AS last_member_at,
               (SELECT MAX(created_at) FROM ticket_notes n WHERE n.ticket_id = tickets.id AND n.source IN ('reply', 'scheduled')) AS last_staff_at
        FROM tickets WHERE status = 'open' AND ${where} AND ${vis.sql} LIMIT 300`,
-      [...(scope === 'mine' ? [req.session.user.id] : []), ...vis.params]
+      [...(scope === 'mine' ? [req.session.user.id] : scope === 'team' && teamIds.length ? [teamIds] : []), ...vis.params]
     );
     const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
     const now = Date.now();
@@ -1085,6 +1093,34 @@ router.delete('/:id/participants/:userId', async (req, res) => {
     }
 
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// PATCH /api/tickets/:id/team { teamId | null } — the team of the ticket; a team that assigns
+// gives it to one of its members if nobody has it (v4.2)
+router.patch('/:id/team', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'claim_ticket');
+    if (!ticket) return;
+    if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
+    const teams = require('../../utils/teams');
+    const teamId = req.body?.teamId ? parseInt(req.body.teamId) : null;
+    if (teamId && !(await teams.teamOf(req.guildDb, teamId))) return res.status(400).json({ error: 'Équipe introuvable' });
+    if (!teamId) {
+      if (ticket.team_id) {
+        await req.guildDb('UPDATE tickets SET team_id = NULL WHERE id = ?', [ticket.id]);
+        await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_team', ticketId: ticket.id, details: { team: null } });
+      }
+      broadcast('ticket', { id: ticket.id, team_id: null }, req.guildId);
+      return res.json({ ok: true, teamId: null, assignee: null });
+    }
+    const r = await teams.routeTicket({ db: req.guildDb, tm: getManager(req), ticket, teamId, actor: dashboardActor(req) });
+    broadcast('ticket', { id: ticket.id, team_id: r.teamId }, req.guildId);
+    if (r.assignee) broadcast('assigned', { ticketId: ticket.id, userId: r.assignee }, req.guildId);
+    res.json({ ok: true, ...r });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

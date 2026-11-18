@@ -347,6 +347,9 @@ async function processEmailInLang(client, guildId, mail, s) {
       const { recordEvent } = require('./audit');
       await recordEvent(db, { actor: ROUTE_ACTOR, action: 'ticket_tag_add', ticketId: res.ticket.id, targetType: 'tag', targetId: route.tag_id, details: { address: route.address } }).catch(() => null);
       await require('./channelVisibility').syncAfterTagChange(db, client, guildId, res.ticket.id, route.tag_id).catch(() => null);
+      // The tag may send the ticket to a team (routing at opening ran before the tag)
+      const [fresh] = await db('SELECT * FROM tickets WHERE id = ?', [res.ticket.id]);
+      if (fresh && !fresh.team_id) await require('./teams').routeTicket({ db, tm, ticket: fresh }).catch(() => null);
     }
   }
   await keepFiles(res.ticket).catch(err => console.error('email: pièces jointes', guildId, err.message));

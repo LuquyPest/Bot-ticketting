@@ -622,6 +622,33 @@ const MIGRATIONS = [
       "ALTER TABLE tickets MODIFY stage VARCHAR(40) NOT NULL DEFAULT 'open'",
     ],
   },
+  {
+    version: 44,
+    name: 'Équipes et files, attribution automatique (v4.2)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS teams (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        name         VARCHAR(60) NOT NULL,
+        color        VARCHAR(16) NOT NULL DEFAULT 'violet',
+        assign_mode  ENUM('none','round_robin','load') NOT NULL DEFAULT 'none',
+        max_open     INT NOT NULL DEFAULT 0,
+        subjects     TEXT DEFAULT NULL,
+        tag_ids      TEXT DEFAULT NULL,
+        last_user_id VARCHAR(32) DEFAULT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS team_members (
+        team_id  INT NOT NULL,
+        user_id  VARCHAR(32) NOT NULL,
+        added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (team_id, user_id),
+        INDEX idx_tm_user (user_id),
+        CONSTRAINT fk_tm_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+      )`,
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS team_id INT DEFAULT NULL',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_team ON tickets (team_id)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
