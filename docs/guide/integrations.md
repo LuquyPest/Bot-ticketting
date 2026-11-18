@@ -70,6 +70,19 @@ Google et Microsoft refusent les mots de passe ordinaires en IMAP et en SMTP (Mi
 - **Reconnecter** si le fournisseur retire l'accès (mot de passe du compte changé, accès révoqué) : le message d'erreur sous les réglages le dit. **Déconnecter** retire l'accès (chez Google, il est aussi révoqué) et coupe la lecture de la boîte.
 - Il faut d'abord que le propriétaire de l'instance déclare l'application, une fois pour tous les espaces : [Instance → Connexion → Boîtes e-mail](./instance#boites-e-mail-gmail-microsoft-365).
 
+### Recevoir par webhook (Mailgun, Postmark, SendGrid, Amazon SES)
+
+Au lieu de relever la boîte chaque minute, un service d'e-mails peut **envoyer chaque message à Datick dès qu'il arrive**. Dans **Arrivée des e-mails**, choisis **Envoyés par un service (webhook)** et le service, puis colle chez lui l'**adresse de réception** affichée (elle contient un secret propre à l'espace) :
+
+| Service | Où la coller | Vérification |
+|---|---|---|
+| **Mailgun** | *Receiving → Create route*, action `forward` vers l'adresse (ajoute `/mime` à la fin pour recevoir le message brut) | La **clé de signature des webhooks** (*Sending → Webhooks*) : chaque requête est signée, une requête rejouée est refusée |
+| **Postmark** | *Default Inbound Stream → Settings → Webhook URL* ; coche *Include raw email content* pour le message d'origine | Le secret de l'adresse |
+| **SendGrid** | *Settings → Inbound Parse*, avec **POST the raw, full MIME message** coché | Le secret de l'adresse |
+| **Amazon SES** | Règle de réception avec une action **SNS** (encodage Base64) vers un sujet, puis un abonnement HTTPS du sujet vers l'adresse (confirmé tout seul) | La **signature d'Amazon** sur chaque message, et l'**ARN du sujet** indiqué |
+
+Un e-mail reçu ainsi suit exactement le même chemin qu'un e-mail relevé : fils, règles, pièces jointes, réponses automatiques ignorées. Les **réponses** partent toujours par le **SMTP** de la boîte (ou Google / Microsoft). **Nouvelle adresse** remplace l'adresse de réception (en cas de fuite) : l'ancienne cesse aussitôt de marcher. Une erreur (signature refusée, message brut manquant) s'affiche sous les réglages.
+
 **Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre. Un **nouvel e-mail**, sans ce jeton ni réponse à un message du support, ouvre un **nouveau ticket**, même si la personne en a déjà un d'ouvert. Quand elle a plusieurs tickets ouverts, chaque réponse du staff part dans le fil du ticket concerné.
 
 **Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. La personne peut aussi suivre ses tickets dans l'[espace membre](./espace-membre), connectée par un lien reçu par e-mail.

@@ -315,6 +315,14 @@ export const ENTRIES = [
   ['Exporter (CSV)', 'Export (CSV)'], ['Impossible de charger le rapport.', 'Could not load the report.'], ['Aucun ticket sur la période', 'No ticket over the period'],
   ['Groupe', 'Group'], ['Tableau du rapport', 'Report table'], ['Encore ouverts', 'Still open'], ['Note', 'Rating'],
   ['Web (espace membre, widget)', 'Web (member space, widget)'],
+  ['Arrivée des e-mails', 'How e-mails arrive'], ['Relever la boîte (IMAP), chaque minute', 'Read the mailbox (IMAP), every minute'], ['Envoyés par un service (webhook), instantané', 'Sent by a service (webhook), instant'],
+  ['Service', 'Service'], ['Clé de signature des webhooks', 'Webhook signing key'], ['ARN du sujet SNS', 'SNS topic ARN'], ['Enregistrer l\'arrivée des e-mails', 'Save how e-mails arrive'],
+  ['Réception par webhook enregistrée', 'Reception by webhook saved'], ['Relève de la boîte (IMAP) rétablie', 'Mailbox reading (IMAP) back'], ['Nouvelle adresse créée : colle-la chez le fournisseur', 'New address created: paste it at the provider'],
+  ['Aucun e-mail reçu pour l\'instant.', 'No e-mail received yet.'], ['Copier l\'adresse de réception', 'Copy the reception address'], ['Nouvelle adresse de réception', 'New reception address'],
+  ['Receiving → Create route : action « forward » vers cette adresse (ajoute /mime à la fin pour recevoir le message brut). Colle la clé de signature des webhooks (Sending → Webhooks) : chaque requête est vérifiée.', 'Receiving → Create route: « forward » action to this address (add /mime at the end to get the raw message). Paste the webhook signing key (Sending → Webhooks): every request is checked.'],
+  ['Serveur → Default Inbound Stream → Settings : colle cette adresse dans « Webhook URL ». Coche « Include raw email content » si tu veux le message d\'origine complet.', 'Server → Default Inbound Stream → Settings: paste this address in « Webhook URL ». Tick « Include raw email content » for the full original message.'],
+  ['Settings → Inbound Parse → Add Host & URL : colle cette adresse et coche « POST the raw, full MIME message ».', 'Settings → Inbound Parse → Add Host & URL: paste this address and tick « POST the raw, full MIME message ».'],
+  ['Règle de réception SES avec une action SNS (encodage Base64) vers un sujet SNS, puis un abonnement HTTPS de ce sujet vers cette adresse : il est confirmé tout seul. Seuls les messages signés par Amazon et venant du sujet indiqué sont acceptés.', 'An SES receipt rule with an SNS action (Base64 encoding) to an SNS topic, then an HTTPS subscription of that topic to this address: it is confirmed on its own. Only messages signed by Amazon and coming from the given topic are accepted.'],
   ['Connexion à la boîte', 'Mailbox connection'], ['Identifiant et mot de passe', 'Login and password'], ['Google (Gmail, Workspace)', 'Google (Gmail, Workspace)'],
   ['Microsoft 365 (Outlook)', 'Microsoft 365 (Outlook)'], ['Reconnecter', 'Reconnect'], ['Déconnecter', 'Disconnect'], ['Boîte connectée', 'Mailbox connected'], ['Boîte déconnectée', 'Mailbox disconnected'],
   ['Se connecter avec Google', 'Sign in with Google'], ['Se connecter avec Microsoft', 'Sign in with Microsoft'], ['Boîtes e-mail', 'Mailboxes'],
@@ -757,6 +765,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Adresse de réception, à coller chez {}', 'Reception address, to paste at {1}'], ['Dernier e-mail reçu le {}', 'Last e-mail received on {1}'], ["{} L'adresse contient un secret : ne la partage pas.", '{1} The address holds a secret: do not share it.'],
   ['Connectée avec {} : {}', 'Connected with {1}: {2}'], ['Tu choisis la boîte du support chez {} et tu autorises Datick à la lire et à envoyer depuis elle. Aucun mot de passe n\'est enregistré.', 'You pick the support mailbox at {1} and allow Datick to read it and send from it. No password is stored.'], ['Le propriétaire de l\'instance doit d\'abord déclarer l\'application {} (Instance → Connexion → Boîtes e-mail).', 'The owner of the instance must first declare the {1} application (Instance → Connexion → Mailboxes).'],
   ['{} ticket(s) ouvert(s) sur la période', '{1} ticket(s) opened over the period'],
   ['En ligne, lisible sans connexion : {} article(s) public(s).', 'Online, readable without signing in: {1} public article(s).'], [' · lue {} fois', ' · read {1} time(s)'],

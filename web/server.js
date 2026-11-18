@@ -99,6 +99,10 @@ app.use(session({
   }
 }));
 
+// E-mails pushed by a provider (v5.0): own parsers and size, own authentication (secret URL,
+// provider signature), before the CSRF guard — no browser and no cookie there
+app.use('/api/inbound', require('./routes/inboundEmail'));
+
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
 app.use('/api/config/import', express.json({ limit: '2mb' }));

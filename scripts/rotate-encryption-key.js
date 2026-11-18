@@ -82,7 +82,7 @@ async function rotateEmailPasswords(box) {
     const db = getTenantDb(guild_id);
     const [row] = await db('SELECT * FROM email_settings WHERE id = 1').catch(() => []);
     if (!row) continue;
-    for (const col of ['imap_password', 'smtp_password', 'oauth_refresh', 'oauth_access']) {
+    for (const col of ['imap_password', 'smtp_password', 'oauth_refresh', 'oauth_access', 'inbound_token', 'inbound_secret']) {
       if (!row[col]) continue;
       out.total++;
       if (box.isCurrent(row[col])) continue;

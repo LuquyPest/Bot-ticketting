@@ -10,6 +10,7 @@ const { recordEvent, dashboardActor } = require('../../utils/audit');
 const attach = require('../../utils/emailAttachments');
 const mailOAuth = require('../../utils/mailOAuth');
 const view = async (s, db) => ({
+  inbound: require('../../utils/inboundEmail').view(await email.emailSettings(db, { withSecrets: true })),
   authMode: s.auth_mode || 'password', oauthAccount: s.oauth_account || null, oauthConnected: !!s.oauth_refresh_set,
   oauthAvailable: await mailOAuth.available(), oauthCallbacks: Object.fromEntries(mailOAuth.KEYS.map(k => [k, mailOAuth.callbackUrl(k)])),
   attachments: { ...attach.attachSettings(s), usage: await attach.usage(db) },
@@ -68,6 +69,24 @@ router.post('/oauth/disconnect', async (req, res, next) => {
   try {
     await mailOAuth.disconnect(req.guildDb);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { oauth: null, enabled: false } });
+    res.json(await view(await email.emailSettings(req.guildDb), req.guildDb));
+  } catch (err) { next(err); }
+});
+
+// ── Reception by webhook (utils/inboundEmail.js) ──
+// PUT /inbound { mode: 'imap' | 'webhook', provider, signingKey, topicArn } ; POST /inbound/token (new URL)
+router.put('/inbound', async (req, res, next) => {
+  try {
+    const r = await require('../../utils/inboundEmail').saveInbound(req.guildDb, req.guildId, req.body || {});
+    if (r.error) return res.status(400).json({ error: r.error });
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { inbound: req.body?.mode === 'webhook' ? req.body.provider : 'imap' } });
+    res.json(await view(await email.emailSettings(req.guildDb), req.guildDb));
+  } catch (err) { next(err); }
+});
+router.post('/inbound/token', async (req, res, next) => {
+  try {
+    await require('../../utils/inboundEmail').regenerateToken(req.guildDb, req.guildId);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'email_settings', details: { inboundToken: 'new' } });
     res.json(await view(await email.emailSettings(req.guildDb), req.guildDb));
   } catch (err) { next(err); }
 });
