@@ -6,7 +6,24 @@
 
 ## Public API
 
-Turned on per server (**Settings → Integrations → Public API**), with **API keys** (**API keys** page) created by the founders: permissions of your choice, optional expiry date. Only a fingerprint of the key is stored.
+Turned on per space (**Settings → Integrations → Public API**), with **API keys** (**API keys** page) created by the founders: permissions of your choice, optional expiry date. Only a fingerprint of the key is stored. The same keys work for both versions.
+
+**v2** (recommended for a new tool):
+
+| Method | Route | Permission |
+|---|---|---|
+| `GET` | `/api/v2/space` (the key's space and permissions) | any key |
+| `GET` | `/api/v2/tickets?status=open\|closed&contact_id=&limit=&cursor=` | `read_tickets` |
+| `GET` | `/api/v2/tickets/:id` (ticket, messages, attachments) | `read_tickets` |
+| `GET` | `/api/v2/tickets/:id/attachments/:fileId` (download) | `read_tickets` |
+| `POST` | `/api/v2/tickets/:id/close` | `close_tickets` |
+| `GET` | `/api/v2/contacts?q=&limit=&cursor=` | `read_contacts` |
+| `GET` | `/api/v2/contacts/:id` | `read_contacts` |
+| `GET` | `/api/v2/stats` | `read_stats` |
+
+Lists answer `{ "data": [...], "next_cursor": "…" }`: pass `next_cursor` back as `?cursor=` for the next page, `null` at the end (100 items per page at most, 50 by default). A ticket gives its requester with their type (`owner.kind`: `discord`, `email` or `web`), its contact card (`contact_id`), its stage and its tags. Contacts expose their identities, never the staff's internal notes; the `read_contacts` permission is ticked separately.
+
+**v1**, kept unchanged:
 
 | Method | Route | Permission |
 |---|---|---|
@@ -15,7 +32,7 @@ Turned on per server (**Settings → Integrations → Public API**), with **API 
 | `POST` | `/api/v1/tickets/:id/close` | `close_tickets` |
 | `GET` | `/api/v1/stats` | `read_stats` |
 
-The key goes in the `Authorization: Bearer <key>` header. The **OpenAPI 3** description is public on `/api/v1/openapi.json`, and the **API documentation** page of the dashboard shows it with a `curl` example and a sample response for each route. Confidential tickets are never reachable through the API.
+The key goes in the `Authorization: Bearer <key>` header. The **OpenAPI 3** description is public on `/api/v2/openapi.json` and `/api/v1/openapi.json`, and the **API documentation** page of the dashboard shows it with a `curl` example and a sample response for each route. Confidential tickets are never reachable through the API.
 
 ## Outgoing webhooks
 

@@ -589,6 +589,8 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // API v2 (v4.1)
+  ['toute clé', 'any key'], ['Version de l\'API', 'API version'], ['Lire les contacts (API v2)', 'Read contacts (API v2)'],
   // E-mail: additional addresses (v4.1)
   ['Autres adresses', 'Other addresses'], ['Nom affiché (facultatif)', 'Display name (optional)'], ['Sujet : celui de l\'e-mail', 'Subject: the e-mail\'s'],
   ['Aucun tag', 'No tag'], ['Répondre depuis cette adresse', 'Reply from this address'], ['Adresse enregistrée', 'Address saved'], ['Adresse ajoutée', 'Address added'], ['Adresse retirée', 'Address removed'],

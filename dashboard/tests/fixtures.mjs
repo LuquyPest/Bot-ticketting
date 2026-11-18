@@ -65,6 +65,14 @@ export const MOCK = {
     paths: { '/tickets/{id}': { get: { summary: 'Détail d’un ticket', description: 'Le ticket et ses messages.\n\nPermission', 'x-permission': 'read_tickets',
       parameters: [{ name: 'id', in: 'path', required: true, description: 'Numéro du ticket', schema: { type: 'integer' } }],
       responses: { 200: { content: { 'application/json': { example: { id: 42, status: 'open' } } } } } } } } },
+  '/api/v2/openapi.json': { openapi: '3.0.3', info: { title: 'API v2', version: '2', description: 'Les listes répondent `{ "data": [...], "next_cursor": "…" }`.' },
+    servers: [{ url: 'https://ticket.example/api/v2' }],
+    paths: {
+      '/space': { get: { summary: 'L’espace de la clé', description: 'Aucune permission requise.', 'x-permission': null, parameters: [], responses: { 200: { content: { 'application/json': { example: { id: '1', name: 'Support' } } } } } } },
+      '/contacts': { get: { summary: 'Lister les contacts', description: 'Les fiches contacts.\n\nPermission', 'x-permission': 'read_contacts',
+        parameters: [{ name: 'cursor', in: 'query', required: false, description: 'La valeur next_cursor', schema: { type: 'string' } }],
+        responses: { 200: { content: { 'application/json': { example: { data: [], next_cursor: null } } } } } } },
+    } },
   '/api/profile/whats-new': { seen: 'v2.15' },
   '/api/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', active: true, steps: [{ id: 'a1b2c3d4', text: 'Demander la capture' }, { id: 'b2c3d4e5', text: 'Vérifier sur le tableau Stripe' }] }],
   '/api/tickets/1/procedures': [{ id: 1, title: 'Vérification d’un paiement', subject: 'Paiement', done: 1, total: 2, steps: [

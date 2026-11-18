@@ -22,12 +22,14 @@ function CodeBlock({ code }) {
   );
 }
 
+// v2 by default (v4.1); v1 stays documented and available
 export default function ApiDocs() {
+  const [version, setVersion] = useState('2');
   const [spec, setSpec] = useState(null);
-  useEffect(() => { api.get('/v1/openapi.json').then(r => setSpec(r.data)).catch(() => setSpec(false)); }, []);
+  useEffect(() => { setSpec(null); api.get(`/v${version}/openapi.json`).then(r => setSpec(r.data)).catch(() => setSpec(false)); }, [version]);
   if (spec === false) return <p className="p-6 text-sm text-red-400">Documentation indisponible.</p>;
   if (!spec) return <div className="p-6"><div className="h-40 rounded-2xl bg-overlay/2.5 animate-pulse" /></div>;
-  const base = spec.servers?.[0]?.url || '/api/v1';
+  const base = spec.servers?.[0]?.url || `/api/v${version}`;
   const ops = Object.entries(spec.paths).flatMap(([path, methods]) => Object.entries(methods).map(([method, op]) => ({ path, method, op })));
 
   return (
@@ -37,9 +39,15 @@ export default function ApiDocs() {
           <h1 className="text-xl font-bold text-ink-1 flex items-center gap-2"><BookOpen size={20} className="text-primary-light" /> Documentation de l'API</h1>
           <p className="text-sm text-ink-3 mt-1"><Rich text={spec.info.description} /></p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <div role="group" aria-label="Version de l'API" className="inline-flex rounded-lg border border-overlay/8 p-0.5">
+            {['2', '1'].map(v => (
+              <button key={v} onClick={() => setVersion(v)} aria-pressed={version === v}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold ${version === v ? 'bg-primary text-white' : 'text-ink-3 hover:text-ink-1'}`}>v{v}</button>
+            ))}
+          </div>
           <Link to="/api-keys" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1"><KeyRound size={12} /> Clés API</Link>
-          <a href="/api/v1/openapi.json" download="openapi.json" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1"><Download size={12} /> OpenAPI (JSON)</a>
+          <a href={`/api/v${version}/openapi.json`} download={`openapi-v${version}.json`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1"><Download size={12} /> OpenAPI (JSON)</a>
         </div>
       </div>
 
@@ -61,7 +69,8 @@ export default function ApiDocs() {
               <span className={`px-2 py-0.5 rounded-md border text-[11px] font-bold uppercase ${METHOD_CLS[method] || 'bg-overlay/6 text-ink-2'}`}>{method}</span>
               <code className="text-sm text-ink-1 font-semibold">{path}</code>
               <span className="text-sm text-ink-3">— {op.summary}</span>
-              <span className="ml-auto text-[11px] text-ink-4">permission <code className="px-1 rounded bg-overlay/6 text-ink-2">{op['x-permission']}</code></span>
+              {op['x-permission'] ? <span className="ml-auto text-[11px] text-ink-4">permission <code className="px-1 rounded bg-overlay/6 text-ink-2">{op['x-permission']}</code></span>
+                : <span className="ml-auto text-[11px] text-ink-4">toute clé</span>}
             </div>
             <p className="text-sm text-ink-2"><Rich text={op.description.split('\n\n')[0]} /></p>
             {params.length > 0 && (
