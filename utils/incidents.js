@@ -26,7 +26,7 @@ async function notifyNewTicket({ db, client, guildId, ticketId, ownerId, subject
       if (!affectedRows) continue;
       await sendToMember(client, ownerId, guildId, () => ({
         embeds: [new EmbedBuilder().setColor(0xf59e0b).setTitle(t('incident.title')).setDescription(`**${inc.title}**\n${inc.message}`).setFooter({ text: t('incident.footer') })],
-      }));
+      }), { ticketId: ticketId });
       const nr = await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, '0', 'Système', ?, 'system')",
         [ticketId, `📢 Incident « ${inc.title} » communiqué au membre`]);
       broadcast('note', { ticketId, note: { id: nr.insertId, ticket_id: ticketId, author_id: '0', author_tag: 'Système', content: `📢 Incident « ${inc.title} » communiqué au membre`, source: 'system', created_at: new Date() } }, guildId);

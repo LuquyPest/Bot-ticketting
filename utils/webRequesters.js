@@ -18,7 +18,7 @@ async function rememberAddress(db, ownerId, address) {
 }
 
 // Sends what the bot would have sent by DM; returns a message-like object (or null)
-async function sendToWebOwner(guildId, ownerId, build) {
+async function sendToWebOwner(guildId, ownerId, build, ticketId = null) {
   const db = getTenantDb(guildId);
   const [contact] = await db('SELECT address FROM email_contacts WHERE owner_id = ?', [ownerId]).catch(() => []);
   if (!contact) return null;
@@ -27,7 +27,7 @@ async function sendToWebOwner(guildId, ownerId, build) {
   const payload = await build(webUserFor(ownerId, contact.address));
   const { text } = renderPayload(payload);
   if (!text) return null;
-  const [ticket] = await db("SELECT id FROM tickets WHERE owner_id = ? ORDER BY status = 'open' DESC, id DESC LIMIT 1", [ownerId]);
+  const ticket = await require('./emailTickets').requesterTicket(db, ownerId, ticketId);
   const { ticketWebUrl, portalUrl } = require('./memberPortal');
   const link = (ticket && await ticketWebUrl(guildId, ticket.id).catch(() => null)) || portalUrl() || '';
   const { globalQuery } = require('./globalDb');

@@ -436,14 +436,14 @@ function createManager(db, client, guildId) {
         if (portal) embed.addFields({ name: t('portal.title'), value: t('portal.body', { url: portal }) });
         const { memberReopenButton } = require('./components');
         return { embeds: [embed], components: canReopen ? [memberReopenButton(ticket.id, gid)] : [] };
-      });
+      }, { ticketId: ticket.id });
     }
 
     const { ratingButtons } = require('./components');
     await sendToMember(client, ticket.owner_id, gid, () => ({
       embeds: [new EmbedBuilder().setColor(0x6366f1).setDescription(t('rating.ask'))],
       components: [ratingButtons(ticket.id, gid)],
-    }));
+    }), { ticketId: ticket.id });
 
     if (cfg.close_log_channel_id) {
       const logCh = await fetchGuildChannel(client, gid, cfg.close_log_channel_id);
@@ -509,7 +509,7 @@ function createManager(db, client, guildId) {
       .setAuthor(ticketContextAuthor(client, gid, ticket))
       .setTitle(t('reopened.title', { id: ticket.id }))
       .setDescription(t('reopened.body'))
-      .setFooter({ text: t('welcome.footer') })] }));
+      .setFooter({ text: t('welcome.footer') })] }), { ticketId: ticket.id });
     return channel;
   }
 
@@ -540,7 +540,7 @@ function createManager(db, client, guildId) {
         .setTitle(t('staffOpen.title')).setDescription(t('staffOpen.body', { id: ticket.id }))
         .addFields(...(subject ? [{ name: t('welcome.subject'), value: subject.slice(0, 1024), inline: true }] : []))],
       components: await ticketDmComponents(ticket, gid, user.id),
-    }));
+    }), { ticketId: ticket.id });
     broadcast('new_ticket', { id: ticket.id, ownerTag: user.username || user.tag, subject: ticket.subject }, gid);
     return { channel, ticket };
   }
@@ -592,7 +592,7 @@ function createManager(db, client, guildId) {
     for (const uid of await getAllLinkedUserIds(ticket.id)) {
       await sendToMember(client, uid, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, ticket, {
         title: t('voice.title'), description: t('voice.body', { id: ticket.id, url }), color: 'primary',
-      })] }));
+      })] }), { ticketId: ticket.id });
     }
     await recordEvent(db, { actor: byUser, action: 'ticket_voice_open', ticketId: ticket.id });
     broadcast('ticket', { id: ticket.id, voice_channel_id: voice.id, voiceUrl: url }, gid);
@@ -752,7 +752,7 @@ function createManager(db, client, guildId) {
       await sendToMember(client, t2.owner_id, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, t2, {
         title: t(`stage.${kind}.title`), description: t(`stage.${kind}.body`), footer: t('reply.footer', { id: t2.id }),
         color: kind === 'waiting' ? 'warning' : 'primary',
-      })] }));
+      })] }), { ticketId: t2.id });
     }
     return { ok: true, label: stageInfo.label };
   }
@@ -802,7 +802,7 @@ function createManager(db, client, guildId) {
       await sendToMember(client, uid, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, target, {
         title: t('merged.title'),
         description: t('merged.body', { from: sourceId, subject: source.subject ? ` « ${source.subject} »` : '' }),
-      })] }));
+      })] }), { ticketId: targetId });
     }
     await updateChannelTopic(targetId).catch(() => null);
     return { ok: true, movedNotes: moved.affectedRows || 0, transcriptId: transcript?.transcriptId || null };

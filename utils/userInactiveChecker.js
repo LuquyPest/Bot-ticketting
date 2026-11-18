@@ -33,7 +33,7 @@ async function runUserInactiveCheck(client) {
           description: t('inactive.warn.body', { warn: warnHours, left: closeHours - warnHours }),
           color: 'warning',
           footer: t('reply.footer', { id: ticket.id }),
-        })] }));
+        })] }), { ticketId: ticket.id });
         // Also warn in the ticket channel
         const channel = await tm.channelOf(ticket);
         if (channel) {
@@ -55,7 +55,7 @@ async function runUserInactiveCheck(client) {
         await sendToMember(client, ticket.owner_id, guild_id, () => ({ embeds: [ticketNoticeDmEmbed(client, guild_id, ticket, {
           title: t('inactive.closed.title'),
           description: t('inactive.closed.body', { hours: closeHours }),
-        })] }));
+        })] }), { ticketId: ticket.id });
         await tm.closeTicketWithTranscript(channel, SYSTEM_CLOSER);
       }
     } catch (err) {

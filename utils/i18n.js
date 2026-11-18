@@ -468,17 +468,19 @@ async function inMemberLang(userId, guildId, client, fn) {
 }
 
 // Sends a DM built in the member's language: build() runs inside that language.
-async function sendToMember(client, userOrId, guildId, build) {
+// opts.ticketId: the ticket the message is about. An e-mail or web requester can have several
+// tickets open: without it, the e-mail would be threaded on another one (and their answer land there)
+async function sendToMember(client, userOrId, guildId, build, opts = {}) {
   // The demo sandbox never writes to anyone: a visitor could otherwise add any Discord ID as a
   // participant and have the bot send them messages and files
   if (guildId === require('./demo').DEMO_GUILD_ID) return null;
   // Someone who opened their ticket by e-mail: the message goes out as an e-mail (utils/emailTickets.js)
   const targetId = typeof userOrId === 'string' ? userOrId : userOrId?.id;
   const email = require('./emailTickets');
-  if (email.isEmailOwner(targetId)) return inMemberLang(targetId, guildId, client, () => email.sendToEmailOwner(guildId, targetId, build));
+  if (email.isEmailOwner(targetId)) return inMemberLang(targetId, guildId, client, () => email.sendToEmailOwner(guildId, targetId, build, opts.ticketId));
   // Someone from the web portal: an instance e-mail with a link to the conversation (utils/webRequesters.js)
   const web = require('./webRequesters');
-  if (web.isWebOwner(targetId)) return inMemberLang(targetId, guildId, client, () => web.sendToWebOwner(guildId, targetId, build));
+  if (web.isWebOwner(targetId)) return inMemberLang(targetId, guildId, client, () => web.sendToWebOwner(guildId, targetId, build, opts.ticketId));
   const user = typeof userOrId === 'string' ? await client?.users.fetch(userOrId).catch(() => null) : userOrId;
   if (!user) return null;
   return inMemberLang(user.id, guildId, client, async () => user.send(await build(user)).catch(() => null));
