@@ -19,7 +19,8 @@ async function ourAddresses(db) {
 }
 
 // { ok, cc } | { error } — by: who added it ('email' when it came with an e-mail)
-async function addCc(db, ticket, { address, name = null }, by = 'email') {
+// dryRun: only the checks (the API checks every change before writing any)
+async function addCc(db, ticket, { address, name = null }, by = 'email', { dryRun = false } = {}) {
   const a = norm(address);
   if (!EMAIL_RE.test(a) || a.length > 254) return { error: 'Adresse e-mail invalide' };
   if (ticket.visibility_grade_id === CONFIDENTIAL) return { error: 'Un ticket confidentiel n\'a jamais de copie' };
@@ -29,6 +30,7 @@ async function addCc(db, ticket, { address, name = null }, by = 'email') {
   if ((await ourAddresses(db)).has(a)) return { error: 'C\'est une adresse du support' };
   const [n] = await db('SELECT COUNT(*) AS n FROM ticket_cc WHERE ticket_id = ?', [ticket.id]);
   if (Number(n.n) >= MAX) return { error: `${MAX} copies au plus par ticket` };
+  if (dryRun) return { ok: true, address: a };
   const cleanName = name ? String(name).replace(/[\r\n\t"<>]+/g, ' ').trim().slice(0, 100) || null : null;
   const r = await db('INSERT IGNORE INTO ticket_cc (ticket_id, address, name, added_by) VALUES (?, ?, ?, ?)', [ticket.id, a, cleanName, String(by).slice(0, 100)]);
   return { ok: true, added: r.affectedRows === 1, address: a };

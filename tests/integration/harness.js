@@ -279,9 +279,9 @@ async function main() {
 
   // API v1
   await db('UPDATE guild_config SET api_keys_enabled = 1 WHERE id = 1');
-  r = await req('POST', '/api/api-keys', { sid: sessions.F, body: { name: 'ci', permissions: ['read_tickets', 'close_tickets', 'create_tickets'] } });
+  r = await req('POST', '/api/api-keys', { sid: sessions.F, body: { name: 'ci', permissions: ['read_tickets', 'close_tickets', 'delete_everything'] } });
   const key = r.body.key;
-  check('clé API créée au nouveau format', r.status === 200 && new RegExp(`^tb_${G}_[a-f0-9]{64}$`).test(key) && !r.body.permissions.includes('create_tickets'), JSON.stringify(r.body));
+  check('clé API créée au nouveau format', r.status === 200 && new RegExp(`^tb_${G}_[a-f0-9]{64}$`).test(key) && !r.body.permissions.includes('delete_everything'), JSON.stringify(r.body));
   r = await req('GET', '/api/v1/tickets');
   check('API v1 sans clé -> 401', r.status === 401, r.status);
   r = await req('GET', '/api/v1/tickets', { headers: { Authorization: 'Bearer ' + key } });
@@ -1709,6 +1709,91 @@ async function main() {
     r = await req('GET', '/api/v2/stats', { headers: k2 });
     check('API v2: stats sans read_stats → 403', r.status === 403, r.status);
     await db('DELETE FROM tickets WHERE id IN (?)', [[tConf2, tOpen]]);
+  }
+
+  // ── Public API v3 (routes/apiV3.js, v5.0): v2 + writes ──
+  {
+    await db('UPDATE guild_config SET api_keys_enabled = 1 WHERE id = 1');
+    await mk('FK3', { user: { id: U.F, username: 'F', role: null }, currentGuildId: G });
+    r = await req('POST', '/api/api-keys', { sid: sessions.FK3, body: { name: 'crm', permissions: ['read_tickets', 'close_tickets', 'create_tickets', 'reply_tickets', 'update_tickets'] } });
+    const k3 = { Authorization: `Bearer ${r.body.key}` };
+    check('API v3: nouvelles permissions d écriture pour les clés', r.status === 200 && ['create_tickets', 'reply_tickets', 'update_tickets'].every(p => r.body.permissions.includes(p)), JSON.stringify(r.body.permissions));
+    r = await req('POST', '/api/api-keys', { sid: sessions.FK3, body: { name: 'lecture', permissions: ['read_tickets'] } });
+    const kRead = { Authorization: `Bearer ${r.body.key}` };
+    r = await req('GET', '/api/v3/openapi.json');
+    const doc3 = Object.entries(r.body.paths || {}).flatMap(([p, m]) => Object.keys(m).map(k => `${k} ${p}`));
+    check('API v3: description OpenAPI (lectures de la v2, écritures avec leur corps)', r.status === 200 && r.body.info.version === '3' && /\/api\/v3$/.test(r.body.servers[0].url)
+      && ['get /tickets', 'get /contacts', 'post /tickets', 'post /tickets/{id}/reply', 'post /tickets/{id}/notes', 'patch /tickets/{id}', 'post /tickets/{id}/close'].every(x => doc3.includes(x))
+      && !!r.body.paths['/tickets'].post.requestBody && r.body.paths['/tickets'].post['x-permission'] === 'create_tickets', doc3.join(', '));
+    const routes3 = app('./web/routes/apiV3').ENDPOINTS.map(e => `${e.method} ${e.path}`);
+    check('API v3: chaque écriture documentée', routes3.length === 4 && routes3.every(x => doc3.includes(x)), routes3.join());
+    check('API v3: la v1 n a toujours pas de corps documenté', !JSON.stringify((await req('GET', '/api/v1/openapi.json')).body).includes('requestBody'), '');
+
+    const tag = (await db("INSERT INTO ticket_tags (name, color) VALUES ('API-VIP', '#aa0000')")).insertId;
+    const fld = (await db("INSERT INTO ticket_fields (label, type, required) VALUES ('N° commande API', 'number', 0)")).insertId;
+    const before = Number((await db('SELECT COUNT(*) AS n FROM tickets'))[0].n);
+    const body = { requester: { email: 'Client.API@example.com', name: 'Camille' }, subject: 'Commande 1287 non reçue', message: 'Ma commande n est pas arrivée.', priority: 'urgent', tags: ['API-VIP'], fields: { [fld]: '1287' } };
+    r = await req('POST', '/api/v3/tickets', { headers: kRead, body });
+    check('API v3: ouvrir un ticket demande create_tickets', r.status === 403, r.status);
+    r = await req('POST', '/api/v3/tickets', { headers: k3, body: { ...body, requester: { email: 'pas-une-adresse' } } });
+    const r2 = await req('POST', '/api/v3/tickets', { headers: k3, body: { ...body, tags: ['Inexistant'] } });
+    const r3 = await req('POST', '/api/v3/tickets', { headers: k3, body: { ...body, fields: { [fld]: 'abc' } } });
+    check('API v3: requêtes invalides refusées sans rien créer', r.status === 400 && r2.status === 400 && /Inexistant/.test(r2.body.error) && r3.status === 400 && Number((await db('SELECT COUNT(*) AS n FROM tickets'))[0].n) === before, JSON.stringify([r.body, r2.body, r3.body]));
+    r = await req('POST', '/api/v3/tickets', { headers: { ...k3, 'Idempotency-Key': 'commande-1287' }, body });
+    const tid = r.body.id;
+    const [tRow] = tid ? await db('SELECT owner_id, owner_tag, subject, priority FROM tickets WHERE id = ?', [tid]) : [];
+    check('API v3: ticket ouvert au nom du demandeur (priorité, tags, champs)', r.status === 200 && tRow?.owner_id.startsWith('mail:') && tRow.owner_tag === 'client.api@example.com' && tRow.subject === 'Commande 1287 non reçue'
+      && tRow.priority === 'urgent' && r.body.tags.includes('API-VIP') && r.body.fields[fld] === '1287' && r.body.owner.kind === 'email', JSON.stringify([r.body, tRow]));
+    const [evOpen] = await db("SELECT actor_tag, source FROM audit_log WHERE action = 'ticket_open_api' AND ticket_id = ?", [tid]);
+    check('API v3: au journal au nom de la clé, source API', evOpen?.actor_tag === 'API · crm' && evOpen.source === 'api', JSON.stringify(evOpen));
+    r = await req('POST', '/api/v3/tickets', { headers: { ...k3, 'Idempotency-Key': 'commande-1287' }, body });
+    check('API v3: requête rejouée (même Idempotency-Key) → le même ticket, pas de doublon', r.status === 200 && r.body.id === tid && r.headers['idempotent-replayed'] === 'true', JSON.stringify([r.body.id, tid]));
+
+    r = await req('POST', `/api/v3/tickets/${tid}/reply`, { headers: kRead, body: { message: 'x' } });
+    check('API v3: répondre demande reply_tickets', r.status === 403, r.status);
+    r = await req('POST', `/api/v3/tickets/${tid}/reply`, { headers: k3, body: { message: 'Votre colis est reparti ce matin.' } });
+    const [rep] = await db("SELECT author_id, author_tag, content FROM ticket_notes WHERE ticket_id = ? AND source = 'reply' ORDER BY id DESC LIMIT 1", [tid]);
+    const [fr] = await db('SELECT first_response_at FROM tickets WHERE id = ?', [tid]);
+    check('API v3: réponse au demandeur comme depuis le dashboard (historique, 1re réponse)', r.status === 200 && rep?.author_tag === 'API · crm' && rep.author_id.startsWith('api:') && rep.content.includes('reparti') && !!fr.first_response_at && r.body.note_id > 0, JSON.stringify([r.body, rep]));
+    r = await req('POST', `/api/v3/tickets/${tid}/notes`, { headers: k3, body: { message: 'Transporteur relancé.' } });
+    const [nt] = await db("SELECT source, author_tag FROM ticket_notes WHERE id = ?", [r.body.note_id || 0]);
+    check('API v3: note interne', r.status === 200 && nt?.source === 'web' && nt.author_tag === 'API · crm', JSON.stringify([r.body, nt]));
+
+    const team = (await db("INSERT INTO teams (name) VALUES ('Équipe API')")).insertId;
+    await db("INSERT INTO dashboard_users (user_id, username, role) VALUES ('300000000000000033', 'Agent API', 'support') ON DUPLICATE KEY UPDATE role = 'support'");
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { priority: 'low', stage: 'nimporte', tags_remove: ['API-VIP'] } });
+    const [still] = await db('SELECT priority FROM tickets WHERE id = ?', [tid]);
+    check('API v3: modification invalide → rien n est changé', r.status === 400 && still.priority === 'urgent', JSON.stringify([r.body, still]));
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { priority: 'low', cc_add: ['client.api@example.com'] } });
+    const [still3] = await db('SELECT priority FROM tickets WHERE id = ?', [tid]);
+    check('API v3: copie refusée (adresse du demandeur) → rien d autre n est changé', r.status === 400 && /demandeur/.test(r.body.error) && still3.priority === 'urgent', JSON.stringify([r.body, still3]));
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { assignees_add: ['999999999999999990'] } });
+    check('API v3: seul le staff peut être attribué', r.status === 400, JSON.stringify(r.body));
+    const [catsB] = await db('SELECT waiting_category_id FROM guild_config WHERE id = 1');
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { priority: 'low', stage: 'waiting' } });
+    const [still2] = await db('SELECT priority FROM tickets WHERE id = ?', [tid]);
+    check('API v3: statut impossible (pas de catégorie Discord) → rien d autre n est changé', r.status === 400 && still2.priority === 'urgent', JSON.stringify([r.body, still2]));
+    await db('UPDATE guild_config SET waiting_category_id = ? WHERE id = 1', [CAT_WAIT]);
+    r = await req('PATCH', `/api/v3/tickets/${tid}`, { headers: k3, body: { priority: 'normal', stage: 'waiting', team_id: team, assignees_add: ['300000000000000033'], tags_remove: ['API-VIP'], fields: { [fld]: null }, cc_add: ['direction@example.com'] } });
+    const [up] = await db('SELECT priority, stage, team_id FROM tickets WHERE id = ?', [tid]);
+    check('API v3: modifier priorité, statut, équipe, attribution, tags, champs, copies', r.status === 200 && up.priority === 'normal' && up.stage === 'waiting' && up.team_id === team && r.body.assignees.includes('300000000000000033')
+      && !r.body.tags.includes('API-VIP') && r.body.fields[fld] === undefined && r.body.cc.includes('direction@example.com'), JSON.stringify([r.body, up]));
+    check('API v3: chaque changement au journal au nom de la clé', (await db("SELECT DISTINCT action FROM audit_log WHERE ticket_id = ? AND actor_tag = 'API · crm'", [tid])).length >= 5, '');
+    r = await req('GET', `/api/v3/tickets/${tid}`, { headers: k3 });
+    check('API v3: les lectures de la v2 répondent aussi en v3', r.status === 200 && r.body.id === tid && Array.isArray(r.body.messages), r.status);
+    const tConf3 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('42','u42','db-api3c','open','Signalement', -1)")).insertId;
+    const confS = [];
+    for (const [m, p, b] of [['POST', `/api/v3/tickets/${tConf3}/reply`, { message: 'x' }], ['POST', `/api/v3/tickets/${tConf3}/notes`, { message: 'x' }], ['PATCH', `/api/v3/tickets/${tConf3}`, { priority: 'low' }]]) confS.push((await req(m, p, { headers: k3, body: b })).status);
+    check('API v3: un ticket confidentiel n existe pas pour une clé', confS.every(x => x === 404), confS.join());
+    r = await req('POST', `/api/v3/tickets/${tid}/close`, { headers: k3 });
+    const r4 = await req('POST', `/api/v3/tickets/${tid}/reply`, { headers: k3, body: { message: 'trop tard' } });
+    check('API v3: fermer, puis plus de réponse sur un ticket fermé', r.status === 200 && r4.status === 400, [r.status, r4.status].join());
+    await db('UPDATE guild_config SET waiting_category_id = ? WHERE id = 1', [catsB.waiting_category_id]);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tid, tConf3]]);
+    await db('DELETE FROM teams WHERE id = ?', [team]);
+    await db('DELETE FROM ticket_tags WHERE id = ?', [tag]);
+    await db("DELETE FROM dashboard_users WHERE user_id = '300000000000000033'");
+    await db('UPDATE ticket_fields SET active = 0 WHERE id = ?', [fld]);
   }
 
   // ── Browser crashes reported to the super-admin error journal ──

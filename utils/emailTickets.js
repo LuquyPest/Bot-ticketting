@@ -503,6 +503,6 @@ async function runEmailFetch(client) {
 module.exports = {
   listAddresses, recipientsOf, routeOf,
   isEmailOwner, isExternalOwner, ownerIdFor, userFor, requesterTicket, emailLook, emailSettings, saveEmailSettings, testEmailSettings, sendToEmailOwner, processEmail,
-  fetchMailbox, runEmailFetch, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
+  fetchMailbox, runEmailFetch, upsertContact, threadTicketId, subjectTag, tokenFor, renderPayload, newText, contactOf,
   smtpTransport, imapClient, EMAIL_RE, SMTP_PORTS,
 };

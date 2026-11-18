@@ -54,7 +54,7 @@ const PAGES = [
   ['procedures', '/procedures', 'Vérifier sur le tableau Stripe'],
   ['patchnotes', '/patchnotes', 'Patchnotes'],
   ['profile', '/profile', 'Dernière utilisation'],
-  ['docs-api', '/docs-api', 'Lister les contacts'],
+  ['docs-api', '/docs-api', 'Corps de la requête'],
   ['roles', '/roles', 'Comptabilité'],
   ['instance', '/instance/overview', "Vue d'ensemble"],
   ['instance-serveurs', '/instance/guilds', 'Daryu'],

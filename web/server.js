@@ -120,9 +120,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// CSRF guard for cookie-authenticated routes. /api/v1 and /api/v2 use bearer API keys (no cookies) so they are exempt.
+// CSRF guard for cookie-authenticated routes. /api/v1, /api/v2 and /api/v3 use bearer API keys (no cookies) so they are exempt.
 app.use((req, res, next) => {
-  if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method) && !req.path.startsWith('/api/v1/') && !req.path.startsWith('/api/v2/')) {
+  if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(req.method) && !req.path.startsWith('/api/v1/') && !req.path.startsWith('/api/v2/') && !req.path.startsWith('/api/v3/')) {
     if (req.headers['x-requested-with'] !== 'XMLHttpRequest') {
       return res.status(403).json({ error: 'Requête non autorisée' });
     }
@@ -171,6 +171,7 @@ app.get('/t/:token', (req, res) => {
 
 app.use('/api/v1',       require('./routes/apiV1'));
 app.use('/api/v2',       require('./routes/apiV2')); // v4.1: contacts, space, attachments, cursors
+app.use('/api/v3',       require('./routes/apiV3')); // v5.0: v2 + writes
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/auth',     require('./routes/passwordAuth')); // e-mail and password (v4)
 app.use('/api/auth',     require('./routes/oidcAuth'));     // Google, Microsoft, OpenID Connect (v4)

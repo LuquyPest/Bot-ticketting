@@ -208,6 +208,8 @@ function makeOpenApi({ endpoints, version, title, description }) {
     (paths[e.path] ||= {})[e.method] = {
       summary: e.summary, description: e.perm ? `${e.description}\n\nPermission de la clé : \`${e.perm}\`.` : e.description,
       'x-permission': e.perm, parameters, responses, security: [{ bearer: [] }],
+      // API v3: the body of a write, with its example (v1 and v2 have none: their description is unchanged)
+      ...(e.body ? { requestBody: { required: true, content: { 'application/json': { example: e.body } } } } : {}),
     };
   }
   return {

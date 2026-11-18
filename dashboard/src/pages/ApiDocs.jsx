@@ -22,9 +22,9 @@ function CodeBlock({ code }) {
   );
 }
 
-// v2 by default (v4.1); v1 stays documented and available
+// v3 by default (v5.0: writes); v2 and v1 stay documented and available
 export default function ApiDocs() {
-  const [version, setVersion] = useState('2');
+  const [version, setVersion] = useState('3');
   const [spec, setSpec] = useState(null);
   useEffect(() => { setSpec(null); api.get(`/v${version}/openapi.json`).then(r => setSpec(r.data)).catch(() => setSpec(false)); }, [version]);
   if (spec === false) return <p className="p-6 text-sm text-red-400">Documentation indisponible.</p>;
@@ -41,7 +41,7 @@ export default function ApiDocs() {
         </div>
         <div className="flex flex-wrap gap-2">
           <div role="group" aria-label="Version de l'API" className="inline-flex rounded-lg border border-overlay/8 p-0.5">
-            {['2', '1'].map(v => (
+            {['3', '2', '1'].map(v => (
               <button key={v} onClick={() => setVersion(v)} aria-pressed={version === v}
                 className={`px-2.5 py-1.5 rounded-md text-xs font-semibold ${version === v ? 'bg-primary text-white' : 'text-ink-3 hover:text-ink-1'}`}>v{v}</button>
             ))}
@@ -62,7 +62,9 @@ export default function ApiDocs() {
         const params = op.parameters || [];
         const example = op.responses?.[200]?.content?.['application/json']?.example;
         const sample = path.replace(/\{(\w+)\}/g, (_, n) => (n === 'id' ? '42' : `<${n}>`));
-        const curl = `curl${method === 'get' ? '' : ` -X ${method.toUpperCase()}`} -H "Authorization: Bearer $TICKETBOT_KEY" \\\n  "${base}${sample}${params.some(p => p.in === 'query') ? `?${params.filter(p => p.in === 'query').map(p => `${p.name}=${p.schema.enum?.[0] || '1'}`).join('&')}` : ''}"`;
+        // API v3: the body of a write, sent as JSON
+        const body = op.requestBody?.content?.['application/json']?.example;
+        const curl = `curl${method === 'get' ? '' : ` -X ${method.toUpperCase()}`} -H "Authorization: Bearer $TICKETBOT_KEY" \\\n  "${base}${sample}${params.some(p => p.in === 'query') ? `?${params.filter(p => p.in === 'query').map(p => `${p.name}=${p.schema.enum?.[0] || '1'}`).join('&')}` : ''}"${body ? ` \\\n  -H "Content-Type: application/json" -d '${JSON.stringify(body)}'` : ''}`;
         return (
           <section key={method + path} id={`${method}-${path}`} className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -87,6 +89,7 @@ export default function ApiDocs() {
                 </tbody>
               </table>
             )}
+            {body && (<><p className="text-xs font-semibold text-ink-3">Corps de la requête</p><CodeBlock code={JSON.stringify(body, null, 2)} /></>)}
             <p className="text-xs font-semibold text-ink-3">Exemple</p>
             <CodeBlock code={curl} />
             {example && (<><p className="text-xs font-semibold text-ink-3">Réponse</p><CodeBlock code={JSON.stringify(example, null, 2)} /></>)}

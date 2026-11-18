@@ -212,3 +212,6 @@ function buildOpenApi(name = 'Datick') {
 module.exports = router;
 module.exports.ENDPOINTS = ENDPOINTS;
 module.exports.buildOpenApi = buildOpenApi;
+module.exports.shapeTickets = shapeTickets;
+module.exports.TICKET_COLS = TICKET_COLS;
+module.exports.attachmentsOf = attachmentsOf;

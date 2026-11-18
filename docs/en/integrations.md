@@ -8,7 +8,18 @@
 
 Turned on per space (**Settings → Integrations → Public API**), with **API keys** (**API keys** page) created by the founders: permissions of your choice, optional expiry date. Only a fingerprint of the key is stored. The same keys work for both versions.
 
-**v2** (recommended for a new tool):
+**v3** (recommended: v2 plus writing) — every v2 route under `/api/v3/…`, and:
+
+| Method | Route | Permission |
+|---|---|---|
+| `POST` | `/api/v3/tickets` — open a ticket for an e-mail address (`requester`, `subject`, `message`, `priority`, `tags`, `cc`, `fields`, `notify`) | `create_tickets` |
+| `POST` | `/api/v3/tickets/:id/reply` — answer the requester on their channel (`message`, `anonymous`; one file in multipart, field `file`) | `reply_tickets` |
+| `POST` | `/api/v3/tickets/:id/notes` — internal note | `reply_tickets` |
+| `PATCH` | `/api/v3/tickets/:id` — `priority`, `stage`, `team_id`, `assignees_add` / `_remove`, `tags_add` / `_remove`, `fields`, `cc_add` / `_remove` | `update_tickets` |
+
+A key acts **under its own name** (« API · key name »): each action is in the log, source *API*, and never counts as a staff member in the statistics. A change is **fully checked before writing**: an error changes nothing. The `Idempotency-Key` header on `POST /tickets` gives back the same ticket if the request is replayed (24 h), handy for a tool that retries. Writes: 120 per minute and per key. Confidential tickets do not exist for a key.
+
+**v2**:
 
 | Method | Route | Permission |
 |---|---|---|
@@ -32,7 +43,7 @@ Lists answer `{ "data": [...], "next_cursor": "…" }`: pass `next_cursor` back 
 | `POST` | `/api/v1/tickets/:id/close` | `close_tickets` |
 | `GET` | `/api/v1/stats` | `read_stats` |
 
-The key goes in the `Authorization: Bearer <key>` header. The **OpenAPI 3** description is public on `/api/v2/openapi.json` and `/api/v1/openapi.json`, and the **API documentation** page of the dashboard shows it with a `curl` example and a sample response for each route. Confidential tickets are never reachable through the API.
+The key goes in the `Authorization: Bearer <key>` header. The **OpenAPI 3** description is public on `/api/v3/openapi.json`, `/api/v2/openapi.json` and `/api/v1/openapi.json`, and the **API documentation** page of the dashboard shows it with a `curl` example and a sample response for each route. Confidential tickets are never reachable through the API.
 
 ## Outgoing webhooks
 
