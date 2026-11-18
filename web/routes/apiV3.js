@@ -36,25 +36,26 @@ async function openTicketOf(req, res, { open = true } = {}) {
   return t;
 }
 async function ticketView(req, id) {
-  const [t] = await req.guildDb(`SELECT ${v2.TICKET_COLS}, t.team_id FROM tickets t WHERE t.id = ?`, [id]);
+  const [t] = await req.guildDb(`SELECT ${v2.TICKET_COLS}, t.team_id, t.ticket_type FROM tickets t WHERE t.id = ?`, [id]);
   const [shaped] = await v2.shapeTickets(req.guildDb, [t]);
   const assignees = (await req.guildDb('SELECT user_id FROM ticket_assignees WHERE ticket_id = ? ORDER BY assigned_at', [id]).catch(() => [])).map(a => a.user_id);
   const cc = (await require('../../utils/ticketCc').listCc(req.guildDb, id)).map(c => c.address);
   const fields = Object.fromEntries((await req.guildDb('SELECT field_id, value FROM ticket_field_values WHERE ticket_id = ?', [id]).catch(() => [])).map(f => [f.field_id, f.value]));
-  return { ...shaped, team_id: t.team_id || null, assignees, cc, fields };
+  const { ticket_type, ...rest } = shaped;
+  return { ...rest, type: ticket_type || 'request', team_id: t.team_id || null, assignees, cc, fields };
 }
 const TICKET_OUT = {
   id: 87, status: 'open', stage: 'open', subject: 'Commande 1287 non reçue', priority: 'normal', claimed_by: null, created_at: '2026-11-18T09:12:00.000Z', closed_at: null,
   closed_by_tag: null, last_message_at: '2026-11-18T09:12:00.000Z', contact_id: 12, owner: { id: 'mail:3f0c9a1b2c3d4e5f60718293', tag: 'client@example.com', kind: 'email' },
-  tags: ['Livraison'], team_id: 2, assignees: ['234567890123456789'], cc: ['adjoint@example.com'], fields: { 3: '1287' },
+  tags: ['Livraison'], type: 'request', team_id: 2, assignees: ['234567890123456789'], cc: ['adjoint@example.com'], fields: { 3: '1287' },
 };
 
 // ── Open a ticket ──
 const PRIORITIES = ['low', 'normal', 'urgent'];
 endpoint({
   method: 'post', path: '/tickets', perm: 'create_tickets', summary: 'Ouvrir un ticket',
-  description: 'Ouvre un ticket au nom d\'une personne, identifiée par son adresse e-mail : comme si elle avait écrit au support (règles, équipe, attribution automatique, accusé de réception par e-mail si `notify` n\'est pas `false`). Facultatif : priorité, tags (par nom), copies, champs personnalisés (par identifiant). L\'en-tête `Idempotency-Key` évite un doublon si la requête est rejouée (24 h).',
-  body: { requester: { email: 'client@example.com', name: 'Camille' }, subject: 'Commande 1287 non reçue', message: 'Bonjour, ma commande n\'est pas arrivée.', priority: 'normal', tags: ['Livraison'], cc: ['adjoint@example.com'], fields: { 3: '1287' }, notify: true },
+  description: 'Ouvre un ticket au nom d\'une personne, identifiée par son adresse e-mail : comme si elle avait écrit au support (règles, équipe, attribution automatique, accusé de réception par e-mail si `notify` n\'est pas `false`). Facultatif : type (\`incident\` ou \`request\`, si l\'espace utilise les types ; sinon celui de son sujet), priorité, tags (par nom), copies, champs personnalisés (par identifiant). L\'en-tête `Idempotency-Key` évite un doublon si la requête est rejouée (24 h).',
+  body: { requester: { email: 'client@example.com', name: 'Camille' }, type: 'request', subject: 'Commande 1287 non reçue', message: 'Bonjour, ma commande n\'est pas arrivée.', priority: 'normal', tags: ['Livraison'], cc: ['adjoint@example.com'], fields: { 3: '1287' }, notify: true },
   example: TICKET_OUT, errors: [400],
 }, async (req, res) => {
   const b = req.body || {};
@@ -66,7 +67,7 @@ endpoint({
   const subject = typeof b.subject === 'string' ? b.subject.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 100) : '';
   if (b.priority !== undefined && !PRIORITIES.includes(b.priority)) return res.status(400).json({ error: `priority : ${PRIORITIES.join(', ')}` });
   const name = typeof b.requester?.name === 'string' ? b.requester.name.replace(/[\r\n\t"<>]+/g, ' ').trim().slice(0, 100) : null;
-  const check = await checkChanges(req, { tags_add: b.tags, fields: b.fields, cc_add: b.cc });
+  const check = await checkChanges(req, { tags_add: b.tags, fields: b.fields, cc_add: b.cc, type: b.type });
   if (check.error) return res.status(400).json({ error: check.error });
   const emailRe = require('../../utils/emailTickets').EMAIL_RE;
   if (check.value.cc_add.some(c => !emailRe.test(String(c).trim().toLowerCase()))) return res.status(400).json({ error: 'cc : adresse e-mail invalide' });
@@ -91,7 +92,7 @@ endpoint({
   if (idemKey) await redis.set(idemKey, String(id), 'EX', 24 * 3600).catch(() => null);
   await recordEvent(req.guildDb, { actor: actorOf(req), action: 'ticket_open_api', ticketId: id, details: { requester: address } });
   const [fresh] = await req.guildDb('SELECT * FROM tickets WHERE id = ?', [id]);
-  await applyChanges(req, fresh, { priority: b.priority, ...check.value });
+  await applyChanges(req, fresh, { ...check.value, priority: b.priority });
   if (b.notify !== false) await tm.sendWelcomeDm(user, true, subject || null, id).catch(() => null);
   res.json(await ticketView(req, id));
 });
@@ -146,6 +147,12 @@ async function checkChanges(req, b) {
   if (b.priority !== undefined) {
     if (!PRIORITIES.includes(b.priority)) return { error: `priority : ${PRIORITIES.join(', ')}` };
     out.priority = b.priority;
+  }
+  if (b.type !== undefined) {
+    const tt = require('../../utils/ticketTypes');
+    if (!tt.TYPES.includes(b.type)) return { error: `type : ${tt.TYPES.join(', ')}` };
+    if (!(await tt.typeSettings(db)).enabled) return { error: 'type : les types de tickets ne sont pas activés sur cet espace' };
+    out.type = b.type;
   }
   if (b.stage !== undefined) {
     if (!(await require('../../utils/stages').stageOf(db, String(b.stage)))) return { error: 'stage : statut inconnu (open, waiting, in_progress ou s_<id> d\'un statut de l\'espace)' };
@@ -210,6 +217,13 @@ async function applyChanges(req, t, c) {
     if (!r.ok) throw Object.assign(new Error(r.error || 'Changement de statut impossible'), { status: 400 });
   }
   if (c.priority && c.priority !== t.priority) await tm.setPriority(t.id, c.priority, a);
+  if (c.type) {
+    const [cur] = await db('SELECT ticket_type FROM tickets WHERE id = ?', [t.id]);
+    if (cur?.ticket_type !== c.type) {
+      await db('UPDATE tickets SET ticket_type = ? WHERE id = ?', [c.type, t.id]);
+      await recordEvent(db, { actor: a, action: 'ticket_type', ticketId: t.id, details: { from: cur?.ticket_type, to: c.type } });
+    }
+  }
   if (c.team_id !== undefined) {
     if (c.team_id === null) {
       await db('UPDATE tickets SET team_id = NULL WHERE id = ?', [t.id]);
@@ -253,9 +267,9 @@ async function applyChanges(req, t, c) {
 
 endpoint({
   method: 'patch', path: '/tickets/{id}', perm: 'update_tickets', summary: 'Modifier un ticket',
-  description: 'Change ce qui est donné, le reste ne bouge pas : `priority` (low, normal, urgent), `stage` (open, waiting, in_progress ou le `s_<id>` d\'un statut de l\'espace), `team_id` (`null` : sans équipe ; une équipe qui attribue donne le ticket à l\'un de ses membres), `assignees_add` / `assignees_remove` (identifiants du staff), `tags_add` / `tags_remove` (noms), `fields` (`{ identifiant: valeur }`, `null` efface), `cc_add` / `cc_remove` (adresses, tickets par e-mail). Tout est vérifié avant d\'écrire : une erreur ne change rien. Chaque changement est au journal, au nom de la clé.',
+  description: 'Change ce qui est donné, le reste ne bouge pas : `type` (incident, request), `priority` (low, normal, urgent), `stage` (open, waiting, in_progress ou le `s_<id>` d\'un statut de l\'espace), `team_id` (`null` : sans équipe ; une équipe qui attribue donne le ticket à l\'un de ses membres), `assignees_add` / `assignees_remove` (identifiants du staff), `tags_add` / `tags_remove` (noms), `fields` (`{ identifiant: valeur }`, `null` efface), `cc_add` / `cc_remove` (adresses, tickets par e-mail). Tout est vérifié avant d\'écrire : une erreur ne change rien. Chaque changement est au journal, au nom de la clé.',
   params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
-  body: { priority: 'urgent', stage: 'in_progress', team_id: 2, assignees_add: ['234567890123456789'], tags_add: ['VIP'], fields: { 3: '1287' }, cc_add: ['direction@example.com'] },
+  body: { type: 'incident', priority: 'urgent', stage: 'in_progress', team_id: 2, assignees_add: ['234567890123456789'], tags_add: ['VIP'], fields: { 3: '1287' }, cc_add: ['direction@example.com'] },
   example: TICKET_OUT, errors: [400, 404],
 }, async (req, res) => {
   const t = await openTicketOf(req, res);

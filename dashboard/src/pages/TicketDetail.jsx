@@ -1031,6 +1031,19 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           <span className="text-sm font-bold text-ink-1 tabular-nums">Ticket #{ticket.id}</span>
           <Badge label={ticket.status} variant={ticket.status} />
           <Badge label={PRIORITY_LABELS[ticket.priority] || ticket.priority} variant={ticket.priority} />
+          {/* Incident or request (v5.1), when the space uses types */}
+          {ticket.types?.enabled && (
+            <select value={ticket.ticket_type || 'request'} aria-label="Type du ticket" disabled={!can('reply_ticket')}
+              onChange={async e => {
+                const type = e.target.value;
+                try { await api.patch(`/tickets/${ticket.id}/type`, { type }); setTicket(x => ({ ...x, ticket_type: type })); toast.success('Type changé'); }
+                catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+              }}
+              className={`text-[11px] font-semibold rounded-md border px-1.5 py-0.5 bg-surface ${ticket.ticket_type === 'incident' ? 'text-red-300 border-red-400/30' : 'text-ink-2 border-overlay/10'}`}>
+              <option value="incident">{ticket.types.labels.incident}</option>
+              <option value="request">{ticket.types.labels.request}</option>
+            </select>
+          )}
           {ticket.owner_tag && (
             <span className="text-xs text-ink-3 ml-0.5">{ticket.owner_tag}</span>
           )}

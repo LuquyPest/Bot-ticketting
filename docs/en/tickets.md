@@ -44,6 +44,14 @@ A sub-category **inherits** what is set on its category: subject rules, custom f
 | **Help** | Similar tickets already solved with their answer, per-subject checklists, the requester's [contact card](#contacts) (labels, history, staff thread) |
 | **Time** | Per-ticket timer and time added by hand, per-stage deadline (SLA) with time left and an « Overdue » alert |
 
+## Types: incident or request
+
+In **Settings → General → Types of tickets**, a space can tell **incidents** (something no longer works) from **requests** (someone asks for something: an access, equipment, information), and rename them (« Outage », « Order »…).
+
+- **At the opening**, the type comes from the **subject** (set per subject; a sub-category takes its category's when it has none), otherwise it is a request. The [API v3](./integrations#public-api) can give it.
+- The staff **changes it from the ticket view** (reply permission), in the log. The list **filters by type**, and [Analytics → Reports](./team#reports) groups **by type**.
+- Turned off, only requests exist and no screen shows the type. An existing space keeps it off until it is turned on; a new space has it on.
+
 ## Statuses
 
 An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:

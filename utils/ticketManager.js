@@ -297,6 +297,8 @@ function createManager(db, client, guildId) {
       broadcast('note', { ticketId: ticket.id, note: { id: nr.insertId, ticket_id: ticket.id, author_id: user.id, author_tag: user.tag, content: noteContent, source: 'user', created_at: new Date() } }, gid);
       await require('./dmEdits').linkDmNote(db, gid, user.id, nr.insertId, noteContent).catch(() => null);
     }
+    // Incident or request, from the subject (utils/ticketTypes.js): before the rules, which may change it
+    await require('./ticketTypes').applyDefaultType(db, ticket).catch(() => null);
     await require('./subjectRules').applySubjectRules({ db, client, guildId: gid, ticket, firstMessage }).catch(() => null);
     // Team of the ticket (subject, tags set by the rules above) and automatic assignment
     const [routed] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);

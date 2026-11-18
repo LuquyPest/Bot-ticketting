@@ -42,10 +42,10 @@ export const MOCK = {
     { user_id: '2', username: 'Lina', avatar: null, role: 'support', grades: [] },
     { user_id: '3', username: 'Malo', avatar: null, role: 'support', grades: [] },
   ],
-  '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i)), total: 6, page: 1, pages: 1 },
+  '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i, i === 2 ? { ticket_type: 'incident' } : {})), total: 6, page: 1, pages: 1, types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } } },
   '/api/tickets/8': { ...ticket(8), owner_id: 'mail:0123456789abcdef01234567', owner_tag: 'claire@ext.test', subject: 'Accès au partage', participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null },
   '/api/tickets/8/cc': { available: true, cc: [{ id: 1, address: 'adjoint@ext.test', name: 'Adjoint', added_by: 'email' }, { id: 2, address: 'rh@ext.test', name: null, added_by: 'Daryu' }] },
-  '/api/tickets/1': { ...ticket(1), participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
+  '/api/tickets/1': { ...ticket(1), ticket_type: 'incident', types: { enabled: true, labels: { incident: 'Panne', request: 'Demande' } }, participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
     rating: { rating: 4, comment: 'Très rapide, merci !', rated_at: iso(5) } },
   '/api/tickets/1/notes': [
     { id: 1, ticket_id: 1, author_id: '20', author_tag: 'membre1', content: 'Bonjour, je n\'arrive pas à payer.', source: 'user', created_at: iso(50) },
@@ -76,7 +76,7 @@ export const MOCK = {
     weekly: Array.from({ length: 12 }, (_, i) => ({ week: new Date(now - (11 - i) * 7 * 864e5).toISOString().slice(0, 10), replies: (i * 7) % 11, closed: i % 4, rating: i % 3 ? 4 + (i % 2) * 0.5 : null })) },
   '/api/incidents': [{ id: 1, title: 'Paiements par carte indisponibles', message: 'Notre prestataire est en panne, ne réessaie pas pour l’instant.', subjects: ['Paiement'], notify_on_resolve: true, created_by_tag: 'Daryu', created_at: iso(90), resolved_at: null, members: 7, tickets: 8 },
     { id: 2, title: 'Connexion lente', message: 'Résolu', subjects: null, notify_on_resolve: false, created_by_tag: 'Daryu', created_at: iso(5000), resolved_at: iso(4000), resolved_by_tag: 'Daryu', members: 3, tickets: 3 }],
-  '/api/config': { ticketSubjects: ['Paiement', 'Paiement › Remboursement', 'Compte', 'Autre'], subjectSla: { Paiement: 4 } },
+  '/api/config': { ticketSubjects: ['Paiement', 'Paiement › Remboursement', 'Compte', 'Autre'], subjectSla: { Paiement: 4 }, ticketTypesEnabled: true, ticketTypeLabels: { incident: 'Panne', request: 'Demande' }, subjectTypes: { Paiement: 'incident' } },
   '/api/member/guilds': [{ id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.', kb: true }],
   '/api/kb/123456789012345678': { space: { id: '123456789012345678', name: 'Sunset FA', logo: null, color: '#e67e22' }, articles: [
     { id: 3, question: 'Comment suivre ma livraison ?', answer: 'Le lien de suivi arrive par e-mail.', category: 'Commandes', updated_at: iso(600), created_at: iso(9000) },

@@ -112,6 +112,7 @@ router.get('/', async (req, res) => {
     const following = str('following') === 'me';
     const tag = parseInt(str('tag')) || null;
     const team = str('team') === 'none' ? 'none' : parseInt(str('team')) || null;
+    const ticketType = ['incident', 'request'].includes(str('type')) ? str('type') : null;
     const sla = str('sla');
     const fieldId = parseInt(str('field')) || null, fieldValue = str('fieldValue').slice(0, 100);
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
@@ -132,6 +133,7 @@ router.get('/', async (req, res) => {
     params.push(...vis.params);
     if (status)   { where.push('status = ?');     params.push(status); }
     if (priority) { where.push('priority = ?');   params.push(priority); }
+    if (ticketType) { where.push('ticket_type = ?'); params.push(ticketType); }
     if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
     if (stage)    { where.push('stage = ?');      params.push(stage); }
     if (claimed === 'true')  where.push('EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
@@ -165,14 +167,15 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, team_id, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, visibility_grade_id, team_id, ticket_type, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
     ]);
 
     const withSla = tickets.map(t => ({ ...t, sla: slaStatus(t, slaCfg) }));
-    res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit) });
+    const tt = await require('../../utils/ticketTypes').typeSettings(req.guildDb);
+    res.json({ tickets: await attachAssignees(req, withSla), total, page, pages: Math.ceil(total / limit), types: { enabled: tt.enabled, labels: tt.labels } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -395,7 +398,9 @@ router.get('/:id', async (req, res) => {
       links: await linkedTickets(req, ticket.id),
       fields: await fieldsForTicket(req.guildDb, ticket.id),
       transcript: transcript[0] || null,
-      rating: rating[0] || null
+      rating: rating[0] || null,
+      // Incident or request (utils/ticketTypes.js): shown only when the space uses types
+      types: await (async () => { const t = await require('../../utils/ticketTypes').typeSettings(req.guildDb); return { enabled: t.enabled, labels: t.labels }; })(),
     });
   } catch (err) {
     console.error(err);
@@ -1126,6 +1131,24 @@ router.patch('/:id/team', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// PATCH /api/tickets/:id/type { type: 'incident' | 'request' } (v5.1)
+router.patch('/:id/type', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const tt = require('../../utils/ticketTypes');
+    const type = req.body?.type;
+    if (!tt.TYPES.includes(type)) return res.status(400).json({ error: 'Type invalide' });
+    if (!(await tt.typeSettings(req.guildDb)).enabled) return res.status(400).json({ error: 'Les types de tickets ne sont pas activés (Paramètres → Tickets)' });
+    if (type !== ticket.ticket_type) {
+      await req.guildDb('UPDATE tickets SET ticket_type = ? WHERE id = ?', [type, ticket.id]);
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_type', ticketId: ticket.id, details: { from: ticket.ticket_type, to: type } });
+      broadcast('ticket', { id: ticket.id, ticket_type: type }, req.guildId);
+    }
+    res.json({ ok: true, type });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ── Copies of a ticket by e-mail (utils/ticketCc.js, v5.0) ──

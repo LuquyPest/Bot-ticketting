@@ -79,6 +79,10 @@ const FIELD_MAP = {
   subjectWelcomeMessages:   'subject_welcome_messages',
   subjectSla:               'subject_sla',
   ipAllowlist:              'ip_allowlist',
+  // v5.1 — types of tickets (utils/ticketTypes.js)
+  ticketTypesEnabled:       'ticket_types_enabled',
+  ticketTypeLabels:         'ticket_type_labels',
+  subjectTypes:             'subject_types',
 };
 
 const SNOWFLAKE = v => v === null || v === '' || (typeof v === 'string' && /^\d{17,20}$/.test(v));
@@ -92,6 +96,9 @@ const VALIDATORS = {
   ticketSubjects:           v => Array.isArray(v) && v.length <= 60 && v.every(s => typeof s === 'string' && s.length <= 100),
   subjectSla:               v => v === null || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 60 && Object.values(v).every(h => Number.isInteger(h) && h >= 0 && h <= 720)),
   maxTicketsPerDay:         v => Number.isInteger(v) && v >= 1 && v <= 100,
+  ticketTypesEnabled:       v => v === 0 || v === 1 || v === true || v === false,
+  ticketTypeLabels:         v => !require('../../utils/ticketTypes').labelsProblem(v),
+  subjectTypes:             v => !require('../../utils/ticketTypes').subjectTypesProblem(v),
   inactiveWarningHours:     v => Number.isInteger(v) && v >= 1 && v <= 720,
   inactiveHours:            v => Number.isInteger(v) && v >= 1 && v <= 720,
   replyRateLimitSeconds:    v => Number.isInteger(v) && v >= 0 && v <= 300,
@@ -162,14 +169,14 @@ const VALIDATORS = {
 };
 
 // Fields stored as JSON in the DB
-const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist', 'subject_sla']);
+const JSON_FIELDS = new Set(['ticket_subjects', 'support_role_ids', 'chief_role_ids', 'webhook_events', 'subject_welcome_messages', 'ip_allowlist', 'subject_sla', 'ticket_type_labels', 'subject_types']);
 
 function dbRow2Api(row) {
   const out = {};
   for (const [apiKey, dbCol] of Object.entries(FIELD_MAP)) {
     if (dbCol in row) {
       let val = row[dbCol];
-      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, ['subject_welcome_messages', 'subject_sla'].includes(dbCol) ? {} : []);
+      if (JSON_FIELDS.has(dbCol)) val = parseJsonField(val, ['subject_welcome_messages', 'subject_sla', 'ticket_type_labels', 'subject_types'].includes(dbCol) ? {} : []);
       out[apiKey] = val;
     }
   }
@@ -250,6 +257,25 @@ async function applyConfigUpdates(req, updates, { source = 'settings', restoredF
   if ('subjectSla' in updates) {
     if (typeof updates.subjectSla === 'string') updates.subjectSla = parseJsonField(updates.subjectSla, null);
     if (Array.isArray(updates.subjectSla) || (updates.subjectSla && typeof updates.subjectSla === 'object' && !Object.keys(updates.subjectSla).length)) updates.subjectSla = null;
+  }
+  // Types per subject: only subjects of the tree; those of removed subjects go with them
+  for (const k of ['subjectTypes', 'ticketTypeLabels']) {
+    if (typeof updates[k] === 'string') updates[k] = parseJsonField(updates[k], null);
+    if (Array.isArray(updates[k]) || (updates[k] && typeof updates[k] === 'object' && !Object.keys(updates[k]).length)) updates[k] = null;
+  }
+  if ('ticketSubjects' in updates || 'subjectTypes' in updates) {
+    const tt = require('../../utils/ticketTypes');
+    let list = updates.ticketSubjects;
+    if (list === undefined) list = parseJsonField((await req.guildDb('SELECT ticket_subjects FROM guild_config WHERE id = 1'))[0]?.ticket_subjects, []);
+    if ('ticketSubjects' in updates && !('subjectTypes' in updates) && Array.isArray(list)) {
+      const cur = parseJsonField((await req.guildDb('SELECT subject_types FROM guild_config WHERE id = 1'))[0]?.subject_types, {}) || {};
+      const kept = Object.fromEntries(Object.entries(cur).filter(([k]) => list.includes(k)));
+      if (Object.keys(kept).length !== Object.keys(cur).length) updates.subjectTypes = Object.keys(kept).length ? kept : null;
+    }
+    if (updates.subjectTypes && Array.isArray(list)) {
+      const p = tt.subjectTypesProblem(updates.subjectTypes, list);
+      if (p) return { status: 400, error: p };
+    }
   }
   if ('ticketSubjects' in updates || 'subjectSla' in updates) {
     const tree = require('../../utils/subjectTree');

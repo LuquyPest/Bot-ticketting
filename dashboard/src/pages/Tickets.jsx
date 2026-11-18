@@ -25,7 +25,7 @@ import MessageSearch from '../components/MessageSearch';
 import { useStages, STAGE_CLS as STAGE_COLOR_CLS } from '../hooks/useStages';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '', team: '' };
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '', team: '', type: '' };
 
 // Operators of the search box (parsed by utils/searchQuery.js on the server)
 const SEARCH_HELP = [
@@ -586,6 +586,15 @@ export default function Tickets() {
             ...Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
           ]}
         />
+        {data?.types?.enabled && (
+          <Select
+            className="w-36"
+            value={filters.type}
+            onChange={v => { setFilter('type', v); setActiveView(''); }}
+            placeholder="Tous types"
+            options={[{ value: '', label: 'Tous types' }, { value: 'incident', label: data.types.labels.incident }, { value: 'request', label: data.types.labels.request }]}
+          />
+        )}
         {teamList.length > 0 && (
           <Select
             className="w-40"
@@ -756,6 +765,7 @@ export default function Tickets() {
                   <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
                   {PRIORITY_LABELS[t.priority] || t.priority}
                 </span>
+                {data?.types?.enabled && <span className={t.ticket_type === 'incident' ? 'text-red-300 font-medium' : ''}>{data.types.labels[t.ticket_type] || data.types.labels.request}</span>}
                 {t.status === 'open' && t.stage && t.stage !== 'open' && (
                   <span className={`font-medium ${STAGE_CLS[t.stage]}`}>{STAGE_LABELS[t.stage]}</span>
                 )}

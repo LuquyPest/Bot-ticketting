@@ -775,6 +775,21 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 53,
+    name: 'Types de tickets : Incident ou Demande (v5.1)',
+    statements: [
+      // The existing tickets are requests
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS ticket_type ENUM('incident','request') NOT NULL DEFAULT 'request'`,
+      'CREATE INDEX IF NOT EXISTS idx_tickets_type ON tickets (ticket_type)',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_types_enabled TINYINT(1) NOT NULL DEFAULT 1',
+      // An existing space keeps its screens as they were (turned on in Settings); a space created
+      // after this version has its row inserted after the migrations, so it keeps the default (on)
+      'UPDATE guild_config SET ticket_types_enabled = 0',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_type_labels JSON DEFAULT NULL',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS subject_types JSON DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

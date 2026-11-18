@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.1.0',
+    date: 'à venir',
+    title: 'Centre de services : cycle de vie et délais',
+    titleEn: 'Service desk: life cycle and deadlines',
+    changes: [
+      { type: 'new',  text: 'Types de tickets (Paramètres → Général) : incident ou demande, renommables, type par sujet à l\'ouverture (la sous-catégorie hérite), changé depuis la fiche, filtre de la liste, rapports par type, champ type de l\'API v3. Coupé sur les espaces existants jusqu\'à ce qu\'on l\'active', en: 'Types of tickets (Settings → General): incident or request, renamable, type per subject at the opening (the sub-category inherits), changed from the ticket view, list filter, reports by type, type field of the API v3. Off on existing spaces until turned on' },
+    ],
+  },
+  {
     version: 'v5.0.0',
     date: '18 novembre 2026',
     title: 'Centre de services : l\'e-mail d\'entreprise',

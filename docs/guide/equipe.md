@@ -83,6 +83,7 @@ Chaque membre retrouve les tickets de ses équipes dans **Ma file → Mes équip
 | **Par catégorie** | La catégorie du sujet : une sous-catégorie (« Facturation › Remboursement ») compte dans sa catégorie |
 | **Par sujet** | Le sujet complet, sous-catégorie comprise |
 | **Par canal** | Discord, e-mail, ou web (espace membre et widget) |
+| **Par type** | Incidents et demandes, si l'espace utilise les [types](./tickets#les-types-incident-ou-demande) |
 
 Pour chaque groupe : tickets ouverts, fermés, encore ouverts, délai médian de première réponse, durée médiane jusqu'à la fermeture, note moyenne (et nombre de notes), temps passé. **Exporter (CSV)** télécharge le même tableau, prêt pour un tableur. Les chiffres ne comptent que les tickets que la personne a le droit de voir : un ticket confidentiel ou restreint à un grade n'y entre pas pour les autres ; les tickets fusionnés dans un autre ne sont comptés qu'une fois.
 - **Journal** : chaque action, avec son auteur et sa source (dashboard, Discord, automatisme, API), filtrable et exportable.
