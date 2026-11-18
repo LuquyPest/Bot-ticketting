@@ -38,4 +38,4 @@ Rules of the repository:
 
 ## Publishing a version (maintainers)
 
-`scripts/release.sh v3.1.0`: checks that the release notes know the version, updates `package.json`, creates the tag and pushes it. The *Release* action builds the image on native amd64 and arm64 runners, publishes it on `ghcr.io/luquypest/bot-ticketting` and creates the GitHub release.
+`scripts/release.sh v3.1.0`: checks that the release notes know the version, updates `package.json`, creates the tag and pushes it. The *Release* action builds the image on native amd64 and arm64 runners, publishes it on `ghcr.io/luquypest/datick` (and under the old name `ghcr.io/luquypest/bot-ticketting` for all of v4) and creates the GitHub release.

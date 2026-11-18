@@ -3,7 +3,7 @@
 //   node scripts/release-notes.mjs v2.24 [ghcr.io/owner/repo]
 import { VERSIONS, TAG, TAG_EN, localizedVersion } from '../dashboard/src/data/patchnotes.js';
 
-const [tag, image = 'ghcr.io/luquypest/bot-ticketting'] = process.argv.slice(2);
+const [tag, image = 'ghcr.io/luquypest/datick'] = process.argv.slice(2);
 if (!tag) { console.error('Usage : node scripts/release-notes.mjs vX.Y [image]'); process.exit(1); }
 const version = VERSIONS.find(v => v.version === tag);
 if (!version) { console.error(`Version ${tag} absente de dashboard/src/data/patchnotes.js`); process.exit(1); }

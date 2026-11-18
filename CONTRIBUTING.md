@@ -40,4 +40,4 @@ Règles du dépôt :
 
 ## Publier une version (mainteneurs)
 
-`scripts/release.sh v2.25` : vérifie que les patchnotes connaissent la version, met `package.json` à jour, crée le tag et le pousse. L'action *Release* construit l'image (amd64 + arm64), la publie sur `ghcr.io/luquypest/bot-ticketting` et crée la release GitHub.
+`scripts/release.sh v2.25` : vérifie que les patchnotes connaissent la version, met `package.json` à jour, crée le tag et le pousse. L'action *Release* construit l'image (amd64 + arm64), la publie sur `ghcr.io/luquypest/datick` (et sous l'ancien nom `ghcr.io/luquypest/bot-ticketting` pendant toute la v4) et crée la release GitHub.
