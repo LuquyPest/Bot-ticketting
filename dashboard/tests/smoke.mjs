@@ -27,6 +27,7 @@ const PAGES = [
   ['ticket', '/tickets/1', 'Voici la capture'],
   // side panel of the ticket view: on a phone it is a drawer behind the « Infos du ticket » button
   ['ticket-validation', '/tickets/1', 'Rembourser 120 € hors délai', false, true],
+  ['ticket-copies', '/tickets/8', 'adjoint@ext.test', false, true],
   ['settings', '/settings', 'Paramètres'],
   ['settings-salons', '/settings?tab=salons', 'Statistiques publiques'],
   ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],

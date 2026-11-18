@@ -109,6 +109,8 @@ const ACTIONS = {
   stage_create:             ['Statut créé', 'config'],
   team_create:              ['Équipe créée', 'config'],
   approval_request:         ['Validation demandée', 'tickets'],
+  ticket_cc_add:            ['Copie ajoutée', 'tickets'],
+  ticket_cc_remove:         ['Copie retirée', 'tickets'],
   approval_approved:        ['Validation accordée', 'tickets'],
   approval_rejected:        ['Validation refusée', 'tickets'],
   approval_remind:          ['Validation relancée', 'tickets'],

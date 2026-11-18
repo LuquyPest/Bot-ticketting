@@ -43,6 +43,8 @@ export const MOCK = {
     { user_id: '3', username: 'Malo', avatar: null, role: 'support', grades: [] },
   ],
   '/api/tickets': { tickets: [1, 2, 3, 4, 5, 6].map(i => ticket(i)), total: 6, page: 1, pages: 1 },
+  '/api/tickets/8': { ...ticket(8), owner_id: 'mail:0123456789abcdef01234567', owner_tag: 'claire@ext.test', subject: 'Accès au partage', participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null },
+  '/api/tickets/8/cc': { available: true, cc: [{ id: 1, address: 'adjoint@ext.test', name: 'Adjoint', added_by: 'email' }, { id: 2, address: 'rh@ext.test', name: null, added_by: 'Daryu' }] },
   '/api/tickets/1': { ...ticket(1), participants: [], stages: { open: true, waiting: true, in_progress: true }, transcript: null,
     rating: { rating: 4, comment: 'Très rapide, merci !', rated_at: iso(5) } },
   '/api/tickets/1/notes': [
