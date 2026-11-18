@@ -62,6 +62,14 @@ Pour les personnes qui ne sont pas sur Discord : chaque e-mail reçu sur l'adres
 
 **Tester la connexion** vérifie les deux avant d'activer. Les mots de passe sont chiffrés en base (`ENCRYPTION_KEY`) et ne sont jamais réaffichés.
 
+### Gmail et Microsoft 365, sans mot de passe
+
+Google et Microsoft refusent les mots de passe ordinaires en IMAP et en SMTP (Microsoft a coupé cette connexion, Google exige des mots de passe d'application). Dans **Connexion à la boîte**, choisis **Google (Gmail, Workspace)** ou **Microsoft 365 (Outlook)**, puis **Se connecter avec…** : tu choisis la boîte du support chez le fournisseur et tu autorises Datick à la lire et à envoyer depuis elle.
+
+- Les serveurs et le compte se règlent tout seuls ; aucun mot de passe n'est enregistré. Datick garde un **jeton d'accès** renouvelé tout seul, chiffré en base comme les mots de passe.
+- **Reconnecter** si le fournisseur retire l'accès (mot de passe du compte changé, accès révoqué) : le message d'erreur sous les réglages le dit. **Déconnecter** retire l'accès (chez Google, il est aussi révoqué) et coupe la lecture de la boîte.
+- Il faut d'abord que le propriétaire de l'instance déclare l'application, une fois pour tous les espaces : [Instance → Connexion → Boîtes e-mail](./instance#boites-e-mail-gmail-microsoft-365).
+
 **Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre. Un **nouvel e-mail**, sans ce jeton ni réponse à un message du support, ouvre un **nouveau ticket**, même si la personne en a déjà un d'ouvert. Quand elle a plusieurs tickets ouverts, chaque réponse du staff part dans le fil du ticket concerné.
 
 **Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. La personne peut aussi suivre ses tickets dans l'[espace membre](./espace-membre), connectée par un lien reçu par e-mail.

@@ -15,6 +15,17 @@ export default function EmailSettings() {
   const [test, setTest] = useState(null);
   const [pw, setPw] = useState({ imapPassword: '', smtpPassword: '' });
   useEffect(() => { api.get('/email').then(r => setS(r.data)).catch(() => setS(false)); }, []);
+  // Back from Google / Microsoft (web/routes/emailSettings.js): ?email=connected or the reason
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const code = p.get('email');
+    if (!code) return;
+    const msg = { connected: ['Boîte connectée', true], no_refresh: ['Le fournisseur n\'a pas donné d\'accès durable : retire l\'accès de Datick dans ton compte, puis reconnecte la boîte', false],
+      no_address: ['Le fournisseur n\'a pas donné l\'adresse de la boîte', false], invalid_state: ['La connexion a expiré, recommence', false], provider_off: ['Application non déclarée sur l\'instance', false] }[code] || ['Connexion refusée par le fournisseur', false];
+    (msg[1] ? toast.success : toast.error)(msg[0]);
+    p.delete('email');
+    window.history.replaceState(null, '', `${window.location.pathname}?${p}`);
+  }, []);
   if (s === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;
   if (s === false) return <p className="text-xs text-ink-4">Indisponible.</p>;
   const set = (k, v) => setS(x => ({ ...x, [k]: v }));
@@ -41,6 +52,21 @@ export default function EmailSettings() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
+  const connect = async provider => {
+    setBusy(true);
+    try { window.location.href = (await api.post(`/email/oauth/${provider}/start`)).data.url; }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); setBusy(false); }
+  };
+  const disconnect = async () => {
+    if (!window.confirm('Déconnecter la boîte ? Elle ne sera plus lue tant qu\'elle n\'est pas reconnectée.')) return;
+    setBusy(true);
+    try { setS((await api.post('/email/oauth/disconnect')).data); toast.success('Boîte déconnectée'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const oauth = s.authMode === 'google' || s.authMode === 'microsoft';
+  const [mode, setMode] = [oauth ? s.authMode : (s.uiMode || 'password'), m => set('uiMode', m)];
+  const PROVIDER = { google: 'Google (Gmail, Workspace)', microsoft: 'Microsoft 365 (Outlook)' };
   const runTest = async () => {
     setBusy(true); setTest(null);
     try { setTest((await api.post('/email/test')).data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -72,6 +98,32 @@ export default function EmailSettings() {
         {field('Adresse du support', 'address', { type: 'email', placeholder: 'support@example.com' })}
         {field('Nom affiché (facultatif)', 'displayName', { placeholder: 'Support Sunset' })}
       </div>
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-ink-2 mb-1">Connexion à la boîte</legend>
+        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Connexion à la boîte">
+          {[['password', 'Identifiant et mot de passe'], ['google', PROVIDER.google], ['microsoft', PROVIDER.microsoft]].map(([m, label]) => (
+            <button key={m} type="button" role="radio" aria-checked={mode === m} disabled={oauth && m !== s.authMode} onClick={() => setMode(m)}
+              className={`px-3 py-1.5 rounded-lg text-xs border disabled:opacity-40 ${mode === m ? 'bg-primary/15 text-primary-light border-primary/40' : 'border-overlay/8 text-ink-3 hover:text-ink-1'}`}>{label}</button>
+          ))}
+        </div>
+        {oauth ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm text-ink-2">
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-400" aria-hidden="true" />Connectée avec {PROVIDER[s.authMode]} : <strong className="text-ink-1">{s.oauthAccount}</strong></span>
+            <button type="button" onClick={() => connect(s.authMode)} disabled={busy} className="px-2.5 py-1 rounded-md border border-overlay/8 text-xs text-ink-2 hover:text-ink-1 disabled:opacity-50">Reconnecter</button>
+            <button type="button" onClick={disconnect} disabled={busy} className="px-2.5 py-1 rounded-md border border-overlay/8 text-xs text-ink-3 hover:text-red-400 disabled:opacity-50">Déconnecter</button>
+          </div>
+        ) : mode !== 'password' && (
+          s.oauthAvailable?.[mode] ? (
+            <div className="space-y-1.5">
+              <button type="button" onClick={() => connect(mode)} disabled={busy} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2">
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />} Se connecter avec {mode === 'google' ? 'Google' : 'Microsoft'}
+              </button>
+              <p className="text-xs text-ink-3">Tu choisis la boîte du support chez {mode === 'google' ? 'Google' : 'Microsoft'} et tu autorises Datick à la lire et à envoyer depuis elle. Aucun mot de passe n'est enregistré.</p>
+            </div>
+          ) : <p className="text-xs text-amber-400">Le propriétaire de l'instance doit d'abord déclarer l'application {mode === 'google' ? 'Google' : 'Microsoft'} (Instance → Connexion → Boîtes e-mail).</p>
+        )}
+      </fieldset>
+      {mode === 'password' && !oauth && <>
       <fieldset className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <legend className="text-xs font-semibold text-ink-2 mb-1">Réception (IMAP)</legend>
         {field('Serveur', 'imapHost', { placeholder: 'imap.example.com' })}
@@ -94,6 +146,7 @@ export default function EmailSettings() {
         {field('Identifiant', 'smtpUser', { autoComplete: 'off' })}
         {password('Mot de passe', 'smtpPassword', s.smtpPasswordSet)}
       </fieldset>
+      </>}
       <fieldset className="space-y-3">
         <legend className="text-xs font-semibold text-ink-2 mb-1">Pièces jointes reçues</legend>
         <label className="flex items-center gap-2 text-sm text-ink-1">
@@ -130,7 +183,7 @@ export default function EmailSettings() {
       </fieldset>
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={save} disabled={busy} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold disabled:opacity-50">Enregistrer</button>
-        <button onClick={runTest} disabled={busy || !s.imapPasswordSet} className="px-3 py-2 rounded-lg border border-overlay/8 text-sm text-ink-2 hover:text-ink-1 disabled:opacity-50 inline-flex items-center gap-1.5">
+        <button onClick={runTest} disabled={busy || !(s.imapPasswordSet || s.oauthConnected)} className="px-3 py-2 rounded-lg border border-overlay/8 text-sm text-ink-2 hover:text-ink-1 disabled:opacity-50 inline-flex items-center gap-1.5">
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />} Tester la connexion
         </button>
         <Result label="IMAP" r={test?.imap} /> <Result label="SMTP" r={test?.smtp} />

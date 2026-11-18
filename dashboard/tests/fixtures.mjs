@@ -54,6 +54,8 @@ export const MOCK = {
   '/api/dashboard/stats': { unclaimedTickets: 3, openTickets: 8, closedToday: 4, avgRating: 4.6, totalTickets: 120, priorityBreakdown: { low: 2, normal: 5, urgent: 1 } },
   '/api/dashboard/activity': { opened: days(14), closed: days(14), unclaimed: days(14) },
   '/api/dashboard/heatmap': Array.from({ length: 24 }, (_, hour) => ({ hour, count: (hour * 3) % 7 })),
+  '/api/instance/mail-oauth': { google: { clientId: 'gid.apps', secretSet: true, configured: true, callbackUrl: 'https://ticket.example/api/email/oauth/google/callback' },
+    microsoft: { clientId: '', tenant: 'common', secretSet: false, configured: false, callbackUrl: 'https://ticket.example/api/email/oauth/microsoft/callback' } },
   '/api/analytics/breakdown': { by: 'team', days: 30, total: 31, truncated: false, rows: [
     { key: '1', label: 'Facturation', opened: 18, closed: 15, stillOpen: 3, firstResponseMedianMin: 42, resolutionMedianHours: 6.5, avgRating: 4.6, ratings: 9, timeHours: 7.5 },
     { key: '', label: 'Sans équipe', opened: 13, closed: 9, stillOpen: 4, firstResponseMedianMin: null, resolutionMedianHours: null, avgRating: null, ratings: 0, timeHours: 0 }] },
@@ -174,7 +176,7 @@ export const MOCK = {
     heatmap: [], recentTickets: [] },
   '/api/profile/2fa': { enabled: true },
   '/api/profile/login-methods': { account: { id: '1', displayName: 'Daryu', email: null, createdAt: iso(60 * 24 * 90) }, password: false, identities: [{ provider: 'discord', label: 'Discord', subject: '1', createdAt: iso(60 * 24 * 90), lastUsedAt: iso(30) }], available: [{ id: 'google', label: 'Google' }] },
-  '/api/email': { enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
+  '/api/email': { authMode: 'password', oauthAvailable: { google: true, microsoft: false }, oauthCallbacks: {}, enabled: true, address: 'support@example.com', displayName: 'Support', imapHost: 'imap.example.com', imapPort: 993, imapUser: 'support', imapPasswordSet: true,
     smtpHost: 'smtp.example.com', smtpPort: 587, smtpUser: 'support', smtpPasswordSet: true, lastFetchAt: new Date(Date.now() - 60000).toISOString(), lastError: null,
     attachments: { enabled: true, maxMb: 10, quotaMb: 500, retentionDays: 90, postDiscord: true, blocked: ['exe', 'bat'], usage: { files: 12, bytes: 8400000 } } },
   '/api/instance/metrics': { enabled: true, createdAt: Date.now() - 86400000, url: 'https://tickets.example.com/metrics' },

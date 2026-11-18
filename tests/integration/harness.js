@@ -3761,6 +3761,100 @@ async function main() {
       await db('DELETE FROM ticket_tags WHERE id = ?', [tagA]);
       await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [cfgA.ticket_subjects == null || typeof cfgA.ticket_subjects === 'string' ? cfgA.ticket_subjects : JSON.stringify(cfgA.ticket_subjects)]);
     }
+    // ── Mailbox connected by OAuth2 (utils/mailOAuth.js, v5.0) ──
+    {
+      const axios = require('axios');
+      const realPost = axios.post;
+      const mo = app('./utils/mailOAuth');
+      const box = app('./utils/secretBox');
+      const jwt = claims => `x.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.y`;
+      const posts = [];
+      let tokenReply = null;
+      axios.post = async (url, body) => {
+        posts.push({ url: String(url), body: String(body) });
+        if (/oauth2\.googleapis\.com\/token|login\.microsoftonline\.com\/.*\/token/.test(url)) { const x = tokenReply(String(body)); if (x instanceof Error) throw x; return { data: x }; }
+        if (/oauth2\.googleapis\.com\/revoke/.test(url)) return { data: {} };
+        return realPost(url, body);
+      };
+      const savedEmail = (await db('SELECT * FROM email_settings WHERE id = 1'))[0];
+      r = await req('GET', '/api/email', { sid: sessions.F });
+      check('e-mail OAuth: mode mot de passe par défaut, aucune application déclarée', r.body.authMode === 'password' && r.body.oauthAvailable.google === false && r.body.oauthCallbacks.google.endsWith('/api/email/oauth/google/callback'), JSON.stringify([r.body.authMode, r.body.oauthAvailable]));
+      r = await req('POST', '/api/email/oauth/google/start', { sid: sessions.F });
+      check('e-mail OAuth: sans application déclarée → refus clair', r.status === 409 && /Instance → Connexion/.test(r.body.error), JSON.stringify(r.body));
+      r = await req('PUT', '/api/instance/mail-oauth', { sid: sessions.S1, body: { google: { clientId: 'x', clientSecret: 'y' } } });
+      check('e-mail OAuth: application déclarée par le propriétaire seulement', r.status === 401 || r.status === 403, r.status);
+      r = await req('PUT', '/api/instance/mail-oauth', { sid: sessions.OWN, body: { google: { clientId: 'gid.apps', clientSecret: 'G-SECRET-42' }, microsoft: { clientId: 'mid', clientSecret: 'M-SECRET-42', tenant: 'evil/../x' } } });
+      check('e-mail OAuth: annuaire Microsoft invalide refusé', r.status === 400, JSON.stringify(r.body));
+      r = await req('PUT', '/api/instance/mail-oauth', { sid: sessions.OWN, body: { google: { clientId: 'gid.apps', clientSecret: 'G-SECRET-42' }, microsoft: { clientId: 'mid', clientSecret: 'M-SECRET-42', tenant: 'organizations' } } });
+      const stored = await app('./utils/instanceSettings').getSetting('mail_oauth', {});
+      check('e-mail OAuth: secrets chiffrés et jamais renvoyés', r.status === 200 && r.body.google.secretSet && r.body.google.configured && !JSON.stringify(r.body).includes('SECRET-42') && box.isCurrent(stored.google.clientSecret), JSON.stringify(r.body).slice(0, 200));
+
+      r = await req('POST', '/api/email/oauth/google/start', { sid: sessions.F });
+      const u = new URL(r.body.url || 'http://x');
+      check('e-mail OAuth: départ vers Google avec accès hors ligne, PKCE et state', r.status === 200 && u.host === 'accounts.google.com' && u.searchParams.get('scope').includes('https://mail.google.com/')
+        && u.searchParams.get('access_type') === 'offline' && u.searchParams.get('code_challenge_method') === 'S256' && !!u.searchParams.get('state'), r.body.url);
+      r = await req('GET', '/api/email/oauth/google/callback', { sid: sessions.F, query: { state: 'faux', code: 'c' } });
+      check('e-mail OAuth: retour avec un mauvais state refusé', r.status === 302 && /email=invalid_state/.test(r.headers.location), r.headers.location);
+      r = await req('GET', '/api/email/oauth/google/callback', { sid: sessions.F, query: { state: u.searchParams.get('state'), code: 'c' } });
+      check('e-mail OAuth: un départ ne sert qu une fois', /email=invalid_state/.test(r.headers.location), r.headers.location);
+      r = await req('POST', '/api/email/oauth/google/start', { sid: sessions.F });
+      const st = new URL(r.body.url).searchParams.get('state');
+      tokenReply = () => ({ access_token: 'AT-1', expires_in: 3600, id_token: jwt({ email: 'Support.Boite@gmail.com' }) }); // no refresh token
+      r = await req('GET', '/api/email/oauth/google/callback', { sid: sessions.F, query: { state: st, code: 'c1' } });
+      check('e-mail OAuth: sans jeton de rafraîchissement → refus (la boîte cesserait de marcher dans une heure)', /email=no_refresh/.test(r.headers.location), r.headers.location);
+      r = await req('POST', '/api/email/oauth/google/start', { sid: sessions.F });
+      const st2 = new URL(r.body.url).searchParams.get('state');
+      tokenReply = body => (/code_verifier=/.test(body) ? { access_token: 'AT-1', refresh_token: 'RT-1', expires_in: 3600, id_token: jwt({ email: 'Support.Boite@gmail.com' }) } : new Error('?'));
+      r = await req('GET', '/api/email/oauth/google/callback', { sid: sessions.F, query: { state: st2, code: 'c2' } });
+      const [row] = await db('SELECT * FROM email_settings WHERE id = 1');
+      check('e-mail OAuth: boîte connectée (serveurs Google, compte, jetons chiffrés)', /email=connected/.test(r.headers.location) && row.auth_mode === 'google' && row.oauth_account === 'support.boite@gmail.com'
+        && row.imap_host === 'imap.gmail.com' && row.smtp_host === 'smtp.gmail.com' && row.smtp_port === 465 && box.open(row.oauth_refresh) === 'RT-1' && !String(row.oauth_refresh).includes('RT-1'), JSON.stringify([r.headers.location, row.auth_mode, row.oauth_account]));
+      r = await req('GET', '/api/email', { sid: sessions.F });
+      check('e-mail OAuth: réglages sans aucun jeton', r.body.authMode === 'google' && r.body.oauthConnected && r.body.oauthAccount === 'support.boite@gmail.com' && !JSON.stringify(r.body).includes('RT-1') && !JSON.stringify(r.body).includes('AT-1'), JSON.stringify(r.body).slice(0, 200));
+      r = await req('PUT', '/api/email', { sid: sessions.F, body: { ...r.body, enabled: true, imapHost: 'evil.example.com', smtpHost: 'evil.example.com', imapPassword: 'x' } });
+      const [row2] = await db('SELECT enabled, imap_host, smtp_host, imap_password FROM email_settings WHERE id = 1');
+      check('e-mail OAuth: le formulaire ne change pas les serveurs d une boîte connectée', r.status === 200 && Number(row2.enabled) === 1 && row2.imap_host === 'imap.gmail.com' && row2.smtp_host === 'smtp.gmail.com', JSON.stringify(row2));
+
+      const sx = await email.emailSettings(db, { withSecrets: true });
+      const nm = require('nodemailer');
+      let smtpOpts = null;
+      const stubNm = nm.createTransport;
+      nm.createTransport = o => { smtpOpts = o; return { sendMail: async () => ({}), verify: async () => true, close: () => {} }; };
+      await email.smtpTransport(sx);
+      check('e-mail OAuth: SMTP en XOAUTH2 avec le jeton valide, sans le renouveler', smtpOpts?.auth?.type === 'OAuth2' && smtpOpts.auth.user === 'support.boite@gmail.com' && smtpOpts.auth.accessToken === 'AT-1' && !posts.some(p => /refresh_token=/.test(p.body)), JSON.stringify(smtpOpts?.auth));
+      await db('UPDATE email_settings SET oauth_expires_at = NOW() - INTERVAL 1 MINUTE WHERE id = 1');
+      tokenReply = body => (/grant_type=refresh_token/.test(body) && /refresh_token=RT-1/.test(body) ? { access_token: 'AT-2', refresh_token: 'RT-2', expires_in: 3600 } : new Error('?'));
+      const sx2 = await email.emailSettings(db, { withSecrets: true });
+      const imapC = await email.imapClient(sx2);
+      await email.smtpTransport(sx2);
+      const [row3] = await db('SELECT oauth_refresh, oauth_access, oauth_expires_at FROM email_settings WHERE id = 1');
+      check('e-mail OAuth: jeton expiré renouvelé une seule fois, nouveau jeton de rafraîchissement gardé', imapC.options.auth.accessToken === 'AT-2' && smtpOpts.auth.accessToken === 'AT-2'
+        && box.open(row3.oauth_refresh) === 'RT-2' && box.open(row3.oauth_access) === 'AT-2' && new Date(row3.oauth_expires_at) > new Date() && posts.filter(p => /grant_type=refresh_token/.test(p.body)).length === 1, JSON.stringify(imapC.options.auth));
+      await db('UPDATE email_settings SET oauth_expires_at = NOW() - INTERVAL 1 MINUTE WHERE id = 1');
+      tokenReply = () => Object.assign(new Error('400'), { response: { data: { error: 'invalid_grant' } } });
+      let refused = null;
+      try { await email.smtpTransport(await email.emailSettings(db, { withSecrets: true })); } catch (e) { refused = e.message; }
+      const [row4] = await db('SELECT last_error FROM email_settings WHERE id = 1');
+      check('e-mail OAuth: accès retiré chez Google → message clair dans les réglages', /reconnecte/.test(refused || '') && /reconnecte/.test(row4.last_error || ''), String(refused));
+      nm.createTransport = stubNm;
+
+      r = await req('POST', '/api/email/oauth/disconnect', { sid: sessions.F });
+      const [row5] = await db('SELECT auth_mode, oauth_refresh, oauth_access, enabled FROM email_settings WHERE id = 1');
+      check('e-mail OAuth: déconnexion → jeton révoqué chez Google, effacé, boîte coupée', r.status === 200 && row5.auth_mode === 'password' && !row5.oauth_refresh && !row5.oauth_access && Number(row5.enabled) === 0 && posts.some(p => /revoke/.test(p.url)), JSON.stringify(row5));
+
+      r = await req('POST', '/api/email/oauth/microsoft/start', { sid: sessions.F });
+      const mu = new URL(r.body.url);
+      check('e-mail OAuth: Microsoft dans l annuaire choisi, IMAP et SMTP d Outlook, accès hors ligne', mu.host === 'login.microsoftonline.com' && mu.pathname.startsWith('/organizations/') && /IMAP\.AccessAsUser\.All/.test(mu.searchParams.get('scope')) && /SMTP\.Send/.test(mu.searchParams.get('scope')) && /offline_access/.test(mu.searchParams.get('scope')), r.body.url);
+      r = await req('POST', '/api/email/oauth/yahoo/start', { sid: sessions.F });
+      check('e-mail OAuth: fournisseur inconnu refusé', r.status === 404, r.status);
+      r = await req('POST', '/api/email/oauth/google/start', { sid: sessions.S1 });
+      check('e-mail OAuth: connexion de la boîte réservée aux fondateurs', r.status === 403, r.status);
+
+      axios.post = realPost;
+      await app('./utils/instanceSettings').setSetting('mail_oauth', {});
+      const cols = Object.keys(savedEmail || {}).filter(c => !['id', 'updated_at'].includes(c));
+      if (savedEmail) await db(`UPDATE email_settings SET ${cols.map(c => `${c} = ?`).join(', ')} WHERE id = 1`, cols.map(c => savedEmail[c]));
+    }
     await db("UPDATE tickets SET status = 'closed' WHERE owner_id LIKE 'mail:%'");
     await db('UPDATE email_settings SET enabled = 0 WHERE id = 1');
     delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
@@ -4919,7 +5013,21 @@ async function main() {
     box.resetKeys();
     check('rotation: anciens secrets lisibles avec la nouvelle clé configurée', box.open(before) === 'KRSXG5CTMVRXEZLU' && box.open(legacyV1) === 'JBSWY3DPEHPK3PXP');
     await globalQuery("INSERT INTO user_totp (user_id, totp_secret, totp_enabled) VALUES ('100000000000000077', ?, 1), ('100000000000000078', ?, 1)", [before, legacyV1]);
+    // Secrets added in v4/v5: sign-in providers, mailbox OAuth2 applications and tokens
+    const iset = app('./utils/instanceSettings');
+    const lpBefore = await iset.getSetting('login_providers', {}), moBefore = await iset.getSetting('mail_oauth', {});
+    await iset.setSetting('login_providers', { ...lpBefore, google: { ...(lpBefore.google || {}), enabled: false, clientId: 'rot', clientSecret: before } });
+    await iset.setSetting('mail_oauth', { ...moBefore, microsoft: { clientId: 'rot', clientSecret: before, tenant: 'common' } });
+    const [ems] = await db('SELECT oauth_refresh FROM email_settings WHERE id = 1');
+    await db('INSERT INTO email_settings (id, oauth_refresh) VALUES (1, ?) ON DUPLICATE KEY UPDATE oauth_refresh = VALUES(oauth_refresh)', [before]);
     const rep = await require(path.join(ROOT, 'scripts/rotate-encryption-key.js')).rotate();
+    const lpAfter = await iset.getSetting('login_providers', {}), moAfter = await iset.getSetting('mail_oauth', {});
+    const [emsAfter] = await db('SELECT oauth_refresh FROM email_settings WHERE id = 1');
+    check('rotation: secrets des fournisseurs de connexion, des applications e-mail et jetons OAuth rechiffrés',
+      [lpAfter.google.clientSecret, moAfter.microsoft.clientSecret, emsAfter.oauth_refresh].every(v => box.isCurrent(v) && box.open(v) === 'KRSXG5CTMVRXEZLU') && rep.loginProviders.rewritten === 1 && rep.mailOAuth.rewritten === 1,
+      JSON.stringify([rep.loginProviders, rep.mailOAuth, rep.emailPasswords]));
+    await iset.setSetting('login_providers', lpBefore); await iset.setSetting('mail_oauth', moBefore);
+    await db('UPDATE email_settings SET oauth_refresh = ? WHERE id = 1', [ems?.oauth_refresh ?? null]);
     const rows = await globalQuery("SELECT totp_secret FROM user_totp WHERE user_id IN ('100000000000000077', '100000000000000078') ORDER BY user_id");
     check('rotation: secrets rechiffrés avec la nouvelle clé', rep.user_totp.rewritten >= 2 && rep.user_totp.failed === 0 && rows.every(r => box.isCurrent(r.totp_secret)) && box.open(rows[0].totp_secret) === 'KRSXG5CTMVRXEZLU' && box.open(rows[1].totp_secret) === 'JBSWY3DPEHPK3PXP', JSON.stringify(rep));
     const trRows = await db('SELECT id, html, txt FROM transcript_snapshots WHERE id IN (?) ORDER BY id', [[trClear, trOld]]);

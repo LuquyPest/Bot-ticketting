@@ -62,6 +62,14 @@ For people who are not on Discord: each e-mail received on the support address o
 
 **Test the connection** checks both before turning it on. Passwords are encrypted in the database (`ENCRYPTION_KEY`) and never shown again.
 
+### Gmail and Microsoft 365, without a password
+
+Google and Microsoft refuse ordinary passwords in IMAP and SMTP (Microsoft turned this sign-in off, Google requires app passwords). In **Mailbox connection**, pick **Google (Gmail, Workspace)** or **Microsoft 365 (Outlook)**, then **Sign in with…**: you pick the support mailbox at the provider and allow Datick to read it and send from it.
+
+- Servers and account are set on their own; no password is stored. Datick keeps an **access token** renewed on its own, encrypted in the database like the passwords.
+- **Reconnect** if the provider withdraws the access (account password changed, access revoked): the error message under the settings says so. **Disconnect** removes the access (at Google it is revoked too) and stops reading the mailbox.
+- The owner of the instance must first declare the application, once for all spaces: [Instance → Connexion → Mailboxes](./instance#mailboxes-gmail-microsoft-365).
+
 **What goes out by e-mail**: everything the bot would have sent by DM — acknowledgement, staff replies (dashboard, `/reply`, templates), stage changes, closing. The subject carries `[#<ticket>-<token>]`: an answer lands in its ticket only with this token **and** from the address that opened it — a forged sender cannot write into someone else's ticket. A **new e-mail**, without this token nor answering a message from the support, opens a **new ticket**, even if the person already has one open. When they have several open tickets, each staff reply goes in the thread of the ticket it is about.
 
 **Ignored**: automatic replies (out of office, `Auto-Submitted`), bounces, mailing lists, the support address itself; beyond 10 e-mails per hour from the same sender. The quoted text of the previous message is removed. The person can also follow their tickets in the [member space](./member-space), signed in with a link received by e-mail.

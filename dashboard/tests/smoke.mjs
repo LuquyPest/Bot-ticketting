@@ -60,6 +60,8 @@ const PAGES = [
   ['instance-blocages', '/instance/blocked', 'Aucune adresse bloquée'],
   ['instance-sante', '/instance/health', 'Mettre à jour'],
   ['instance-connexion', '/instance/login', 'Adresse de retour à déclarer'],
+  ['instance-boites-email', '/instance/login', 'Enregistrer les applications e-mail'],
+  ['email-oauth', '/settings?tab=integrations', 'Identifiant et mot de passe'],
   ['login-fournisseurs', '/login', 'Continuer avec', true],
   ['confidentialite', '/confidentialite', 'Données enregistrées', true],
   ['validation', '/validation#abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG', 'Geste commercial de 50 €', true],
