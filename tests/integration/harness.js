@@ -3638,7 +3638,14 @@ async function main() {
     check('e-mail: un numéro de ticket qui n est pas le sien est ignoré', (await email.requesterTicket(db, rowT.owner_id, other))?.id !== other, '');
     await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [other, rowT.owner_id]);
     check('e-mail: un participant reçoit le message dans le fil du ticket concerné', (await email.requesterTicket(db, rowT.owner_id, other))?.id === other, '');
-    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tE2, other]]);
+    // A new e-mail without reference is a new request: not added to the open ticket, nor to a ticket
+    // where the person only takes part (its owner would read it)
+    res = await email.processEmail(fakeClient, G, mail('alice@mail.test', 'Alice', 'Nouvelle demande : facture', 'Pouvez-vous renvoyer ma facture ?'), settings);
+    const inOther = (await db("SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id IN (?) AND content LIKE '%renvoyer ma facture%'", [[tE, other]]))[0].n;
+    check('e-mail: un nouvel e-mail sans référence ouvre un nouveau ticket', res.created && ![tE, tE2, other].includes(res.ticketId) && Number(inOther) === 0, JSON.stringify(res));
+    const [fresh] = await db('SELECT subject, owner_id FROM tickets WHERE id = ?', [res.ticketId]);
+    check('e-mail: le nouveau ticket est à elle, avec l objet de son e-mail', fresh?.owner_id === rowT.owner_id && fresh.subject === 'Nouvelle demande : facture', JSON.stringify(fresh));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tE2, other, res.ticketId]]);
     // Attachments kept on the server (utils/emailAttachments.js)
     {
       const os = require('os'), fsx = require('fs');

@@ -62,7 +62,7 @@ Pour les personnes qui ne sont pas sur Discord : chaque e-mail reçu sur l'adres
 
 **Tester la connexion** vérifie les deux avant d'activer. Les mots de passe sont chiffrés en base (`ENCRYPTION_KEY`) et ne sont jamais réaffichés.
 
-**Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre.
+**Ce qui part par e-mail** : tout ce que le bot aurait envoyé en MP — accusé de réception, réponses du staff (dashboard, `/reply`, modèles), changement d'étape, fermeture. Le sujet porte `[#<ticket>-<jeton>]` : une réponse arrive dans son ticket seulement avec ce jeton **et** depuis l'adresse qui l'a ouvert — un expéditeur usurpé ne peut pas écrire dans le ticket de quelqu'un d'autre. Un **nouvel e-mail**, sans ce jeton ni réponse à un message du support, ouvre un **nouveau ticket**, même si la personne en a déjà un d'ouvert. Quand elle a plusieurs tickets ouverts, chaque réponse du staff part dans le fil du ticket concerné.
 
 **Ignorés** : réponses automatiques (absence, `Auto-Submitted`), retours d'erreur, listes de diffusion, l'adresse du support elle-même ; au-delà de 10 e-mails par heure d'un même expéditeur. Le texte cité de l'ancien message est retiré. La personne peut aussi suivre ses tickets dans l'[espace membre](./espace-membre), connectée par un lien reçu par e-mail.
 
