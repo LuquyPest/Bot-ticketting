@@ -22,6 +22,7 @@ import ContactMember from '../components/ContactMember';
 import TicketDetail from './TicketDetail';
 import SlaBadge from '../components/SlaBadge';
 import MessageSearch from '../components/MessageSearch';
+import { useStages, STAGE_CLS as STAGE_COLOR_CLS } from '../hooks/useStages';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
 const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '' };
@@ -48,8 +49,13 @@ const BUILTIN_VIEWS = [
   { id: 'all',         label: 'Tous',          filters: {} },
 ];
 
+// Completed with the custom statuses of the space on each render (syncStages)
 const STAGE_LABELS = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
 const STAGE_CLS = { open: 'text-sky-300', waiting: 'text-amber-300', in_progress: 'text-emerald-300' };
+function syncStages(stages) {
+  for (const k of Object.keys(STAGE_LABELS)) if (!stages.some(s => s.key === k)) { delete STAGE_LABELS[k]; delete STAGE_CLS[k]; }
+  for (const st of stages) { STAGE_LABELS[st.key] = st.label; STAGE_CLS[st.key] = (STAGE_COLOR_CLS[st.color] || STAGE_COLOR_CLS.slate).text; }
+}
 const assigneeNames = t => (t.assignees || []).map(a => a.username).join(', ');
 
 /* ── Quick-view tooltip (apparaît après 1.5s de survol, suit la souris) ── */
@@ -199,6 +205,7 @@ function isUnread(ticketId, lastMessageAt) {
 export default function Tickets() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  syncStages(useStages());
 
   const [data, setData]   = useState({ tickets: [], total: 0, pages: 1 });
   const [page, setPage]   = useState(1);
@@ -573,10 +580,8 @@ export default function Tickets() {
           onChange={v => { setFilter('stage', v); setActiveView(''); }}
           placeholder="Toutes étapes"
           options={[
-            { value: '',            label: 'Toutes étapes' },
-            { value: 'open',        label: 'Ouvert' },
-            { value: 'waiting',     label: 'En attente' },
-            { value: 'in_progress', label: 'En cours' },
+            { value: '', label: 'Toutes étapes' },
+            ...Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
           ]}
         />
         {/* Custom field filter */}

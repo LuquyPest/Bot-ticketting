@@ -23,6 +23,9 @@ async function portalEnabled(db) {
   return !cfg || cfg.member_portal_enabled === null || Number(cfg.member_portal_enabled) === 1;
 }
 
+// The requester sees the built-in stage a custom status behaves like, never its internal name
+const STAGE_KIND = "COALESCE((SELECT ts.kind FROM ticket_stages ts WHERE CONCAT('s_', ts.id) = t.stage), t.stage)";
+
 const ownTicketsSql = `(t.owner_id IN (?) OR t.id IN (SELECT ticket_id FROM ticket_participants WHERE user_id IN (?)))`;
 
 // Identities of a signed-in member: { id, email? } → the owner IDs their tickets may carry
@@ -46,7 +49,7 @@ async function listMemberTickets(member, client) {
       const db = getTenantDb(guild_id);
       if (!(await portalEnabled(db))) continue;
       const tickets = await db(
-        `SELECT t.id, t.subject, t.status, t.stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
+        `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
                 EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
                 (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating
          FROM tickets t WHERE ${ownTicketsSql}
@@ -83,7 +86,7 @@ async function memberTicket(member, guildId, ticketId, client) {
   const db = getTenantDb(guildId);
   if (!(await portalEnabled(db))) return null;
   const [ticket] = await db(
-    `SELECT t.id, t.subject, t.status, t.stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
+    `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
             t.visibility_grade_id = -1 AS confidential,
             EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
             (SELECT rating FROM ticket_ratings r WHERE r.ticket_id = t.id LIMIT 1) AS rating

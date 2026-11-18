@@ -9,6 +9,7 @@ import {
 import api from '../api';
 import toast from 'react-hot-toast';
 import { fmtDate } from '../utils/format';
+import { useStages } from '../hooks/useStages';
 
 // Categorical slots in fixed order (CSS tokens, validated for both themes)
 const CATEGORY_ORDER = ['tickets', 'moderation', 'equipe', 'config', 'integrations'];
@@ -20,7 +21,7 @@ const SOURCE_STYLE = {
   api:       'text-amber-300 bg-amber-500/10 border-amber-500/25',
   sa:        'text-red-300 bg-red-500/10 border-red-500/25',
 };
-const STAGE = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
+const STAGE = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' }; // + custom statuses (Audit)
 const PRIORITY = { low: 'Faible', normal: 'Normale', urgent: 'Urgente' };
 const EMPTY = { category: '', action: '', source: '', actor: '', ticket: '', from: '', to: '', q: '' };
 
@@ -234,6 +235,7 @@ function Analytics({ filters, meta }) {
 }
 
 export default function Audit() {
+  for (const st of useStages()) STAGE[st.key] = st.label;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tab, setTab] = useState('journal');

@@ -704,13 +704,13 @@ function createManager(db, client, guildId) {
     if (adminUser) await addAssignee(ticketId, adminUser, adminUser);
   }
 
-  // ── Stages ── Ouvert / En attente / En cours, each mapped to a Discord category in Paramètres.
-  const STAGE_CATEGORY = { open: 'ticket_category_id', waiting: 'waiting_category_id', in_progress: 'in_progress_category_id' };
-  const STAGE_LABEL = { open: 'Ouvert', waiting: 'En attente', in_progress: 'En cours' };
+  // ── Stages ── Ouvert / En attente / En cours and the custom statuses (utils/stages.js), each
+  // mapped to a Discord category in Paramètres.
 
   // Returns { ok, error?, label }. Moves the Discord channel into the stage's category.
   async function moveToStage(ticketId, stage, byUser) {
-    if (!STAGE_CATEGORY[stage]) return { ok: false, error: 'Étape invalide' };
+    const stageInfo = await require('./stages').stageOf(db, stage);
+    if (!stageInfo) return { ok: false, error: 'Étape invalide' };
     const [ticket] = await db('SELECT id, channel_id, status FROM tickets WHERE id = ?', [ticketId]);
     if (!ticket || ticket.status !== 'open') return { ok: false, error: 'Ticket fermé ou introuvable' };
     const cfg = await getGuildConfig(db);
@@ -719,8 +719,8 @@ function createManager(db, client, guildId) {
     // Threads and tickets without a channel: the stage is only recorded
     let category = null;
     if (!channel.isThread() && !channel.virtual) {
-      const categoryId = cfg[STAGE_CATEGORY[stage]];
-      if (!categoryId) return { ok: false, error: `Aucune catégorie Discord n'est associée à « ${STAGE_LABEL[stage]} » (Paramètres)` };
+      const categoryId = stageInfo.categoryId;
+      if (!categoryId) return { ok: false, error: `Aucune catégorie Discord n'est associée à « ${stageInfo.label} » (Paramètres)` };
       category = await fetchGuildChannel(client, gid, categoryId);
       if (!category || category.type !== ChannelType.GuildCategory) return { ok: false, error: 'Catégorie Discord introuvable' };
       // Already in that category or one of its overflow categories: no move
@@ -733,20 +733,24 @@ function createManager(db, client, guildId) {
     // stage_changed_at must be computed before stage is overwritten)
     await db('UPDATE tickets SET stage_changed_at = IF(stage = ?, stage_changed_at, NOW()), stage = ? WHERE id = ?', [stage, stage, ticketId]);
     await recordEvent(db, { actor: byUser, action: 'ticket_stage', ticketId, details: { from: before?.stage || 'open', to: stage } });
-    const stageName = (await staffL())(`stage.${stage}`);
-    await logMoveTicket(ticketId, category ? `${stageName} (${category.name})` : stageName, byUser);
     const Lst = await staffL();
-    await channel.send(Lst('tm.stageMoved', { stage: Lst(`stage.${stage}`), by: byUser.username || byUser.tag })).catch(() => null);
-    // Optional: tell the member (guild setting notify_member_stage)
-    if (cfg.notify_member_stage && before?.stage !== stage) {
+    // A custom status is named as the space named it; the built-in ones in the staff's language
+    const stageName = stageInfo.builtin ? Lst(`stage.${stage}`) : stageInfo.label;
+    await logMoveTicket(ticketId, category ? `${stageName} (${category.name})` : stageName, byUser);
+    await channel.send(Lst('tm.stageMoved', { stage: stageName, by: byUser.username || byUser.tag })).catch(() => null);
+    // Optional: tell the member (guild setting notify_member_stage), in the words of the
+    // built-in stage the status behaves like — only when that changes for them
+    const beforeKind = await require('./stages').kindOf(db, before?.stage || 'open');
+    if (cfg.notify_member_stage && before?.stage !== stage && beforeKind !== stageInfo.kind) {
+      const kind = stageInfo.kind;
       const [t2] = await db('SELECT id, owner_id, subject FROM tickets WHERE id = ?', [ticketId]);
       const { ticketNoticeDmEmbed } = require('./dmEmbeds');
       await sendToMember(client, t2.owner_id, gid, () => ({ embeds: [ticketNoticeDmEmbed(client, gid, t2, {
-        title: t(`stage.${stage}.title`), description: t(`stage.${stage}.body`), footer: t('reply.footer', { id: t2.id }),
-        color: stage === 'waiting' ? 'warning' : 'primary',
+        title: t(`stage.${kind}.title`), description: t(`stage.${kind}.body`), footer: t('reply.footer', { id: t2.id }),
+        color: kind === 'waiting' ? 'warning' : 'primary',
       })] }));
     }
-    return { ok: true, label: STAGE_LABEL[stage] };
+    return { ok: true, label: stageInfo.label };
   }
 
   // Merges an open ticket into another open ticket of the same member: history, participants,

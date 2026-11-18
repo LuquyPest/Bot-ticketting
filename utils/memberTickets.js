@@ -16,6 +16,8 @@ async function myTicketsEmbed(user, client) {
   if (!tickets.length) return embed.setDescription(t('myTickets.none'));
   for (const tk of tickets.slice(0, 25)) {
     const [{ n }] = await tk.db('SELECT COUNT(*) AS n FROM ticket_assignees WHERE ticket_id = ?', [tk.ticket.id]);
+    // A custom status is worded like the built-in stage it behaves like
+    if (/^s_/.test(tk.ticket.stage || '')) tk.ticket = { ...tk.ticket, stage: await require('./stages').kindOf(tk.db, tk.ticket.stage) };
     const last = tk.ticket.last_message_at ? `<t:${Math.floor(new Date(tk.ticket.last_message_at).getTime() / 1000)}:R>` : '—';
     embed.addFields({
       name: `${tk.guildName} · #${tk.ticket.id} — ${tk.ticket.subject || t('route.noSubject')}`.slice(0, 256),

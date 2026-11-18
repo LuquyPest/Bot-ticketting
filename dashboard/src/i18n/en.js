@@ -589,6 +589,17 @@ export const ENTRIES = [
   ['Envoyer des e-mails', 'Send e-mails'], ['Serveur SMTP', 'SMTP server'], ['Identifiant (facultatif)', 'Username (optional)'], ['Adresse d\'expéditeur', 'Sender address'],
   ['Envoyer un test à', 'Send a test to'], ['Envoyer le test', 'Send the test'], ['E-mail de l\'instance enregistré', 'E-mail of the instance saved'],
   ['E-mail de l\'instance modifié', 'E-mail of the instance changed'], ['E-mail de test envoyé', 'Test e-mail sent'],
+  // Custom statuses (v4.2)
+  ['Statuts', 'Statuses'], ['Des statuts propres à l\'espace, en plus de Ouvert, En attente et En cours. Enregistrés à part.', 'Statuses of the space, on top of Open, Waiting and In progress. Saved separately.'],
+  ['Les trois statuts de base se règlent ci-dessus. Un statut ajouté apparaît partout (fiche ticket, Kanban, filtres, macros, délais) ; le demandeur, lui, voit le statut de base choisi. Supprimer un statut remet ses tickets dans ce statut de base.', 'The three built-in statuses are set above. An added status shows everywhere (ticket view, Kanban, filters, macros, deadlines); the requester sees the chosen built-in status. Deleting a status puts its tickets back in that built-in status.'],
+  ['Nom du statut', 'Status name'], ['Vu par le demandeur comme', 'Seen by the requester as'], ['Catégorie Discord : aucune', 'Discord category: none'],
+  ['Délai (heures)', 'Deadline (hours)'], ['Délai en heures (0 = aucun)', 'Deadline in hours (0 = none)'], ['Pour le demandeur :', 'For the requester:'],
+  ['Bleu ciel', 'Sky blue'], ['Ambre', 'Amber'], ['Vert', 'Green'], ['Violet', 'Purple'], ['Rose', 'Pink'], ['Orange', 'Orange'], ['Sarcelle', 'Teal'], ['Indigo', 'Indigo'], ['Gris', 'Grey'],
+  ['Statut enregistré', 'Status saved'], ['Statut ajouté', 'Status added'], ['Statut supprimé', 'Status deleted'], ['Ordre enregistré', 'Order saved'],
+  ['Statut créé', 'Status created'], ['Statut modifié', 'Status changed'], ['Ordre des statuts modifié', 'Order of statuses changed'],
+  ['Nom du statut requis (40 caractères au plus)', 'Status name required (40 characters at most)'], ['Ce nom est celui d\'un statut de base', 'This name is that of a built-in status'],
+  ['Délai : un nombre d\'heures entre 0 et 720', 'Deadline: a number of hours between 0 and 720'], ['Un statut porte déjà ce nom', 'A status already has this name'], ['Statut introuvable', 'Status not found'],
+  ['Réservé aux fondateurs', 'Founders only'], ['Catégorie Discord invalide', 'Invalid Discord category'], ['Attente fournisseur', 'Waiting on supplier'],
   // API v2 (v4.1)
   ['toute clé', 'any key'], ['Version de l\'API', 'API version'], ['Lire les contacts (API v2)', 'Read contacts (API v2)'],
   // E-mail: additional addresses (v4.1)
@@ -690,6 +701,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Supprimer le statut « {} » ? Ses tickets reviennent en « {} ».', 'Delete the status « {1} »? Its tickets go back to « {2} ».'], ['Monter {}', 'Move {1} up'], ['Descendre {}', 'Move {1} down'], ['Supprimer {}', 'Delete {1}'], ['{} statuts personnalisés au plus', '{1} custom statuses at most'],
   ['Retirer {} ?', 'Remove {1}?'], ['Retirer {}', 'Remove {1}'], ['{} adresses au plus', '{1} addresses at most'],
   ['Adresse de site invalide : {} (attendu : https://exemple.com)', 'Invalid site address: {1} (expected: https://example.com)'],
   ['{} consultation(s)', '{1} view(s)'], ['Membres ({})', 'Members ({1})'], ['Tags ({})', 'Tags ({1})'],

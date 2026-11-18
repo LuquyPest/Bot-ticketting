@@ -42,7 +42,9 @@ async function computeMonthlyStats(db, month) {
   ]);
 
   const answered = fr.filter(r => r.m !== null).map(r => Math.max(0, Number(r.m)));
-  const slaMin = { open: (cfg?.sla_open_hours || 0) * 60, waiting: (cfg?.sla_waiting_hours || 0) * 60, in_progress: (cfg?.sla_in_progress_hours || 0) * 60 };
+  const stageList = await require('./stages').listStages(db, cfg);
+  const slaMin = Object.fromEntries(stageList.map(s => [s.key, s.slaHours * 60]));
+  const stageLabels = Object.fromEntries(stageList.map(s => [s.key, s.label]));
   const stageTickets = await db('SELECT id, created_at, closed_at FROM tickets WHERE created_at < ? AND (closed_at IS NULL OR closed_at >= ?) LIMIT 5000', [to, from]);
   const end = Math.min(Date.now(), new Date(to.replace(' ', 'T')).getTime());
   const distribution = [1, 2, 3, 4, 5].map(rating => ({ rating, n: Number(ratings.find(r => r.rating === rating)?.n || 0) }));
@@ -57,7 +59,7 @@ async function computeMonthlyStats(db, month) {
       answered: answered.length, unanswered: fr.length - answered.length, medianMinutes: median(answered), avgMinutes: avg(answered),
       within1h: answered.length ? Math.round((answered.filter(m => m <= 60).length / answered.length) * 100) : null,
     },
-    stages: await stageCompliance(db, stageTickets, slaMin, end),
+    stages: await stageCompliance(db, stageTickets, slaMin, end, stageLabels),
     satisfaction: {
       total: totalRatings, distribution,
       average: totalRatings ? Math.round((distribution.reduce((a, d) => a + d.rating * d.n, 0) / totalRatings) * 10) / 10 : null,
@@ -126,7 +128,7 @@ function renderReportPdf(stats, guildName) {
     doc.moveDown(0.5);
     row(['Étape', 'Délai', 'Passages', 'Durée médiane', 'Hors délai', 'Respect'], [90, 60, 70, 100, 80, 100], true);
     for (const s of stats.stages) {
-      row([STAGE_NAME[s.stage], s.slaHours ? `${s.slaHours} h` : 'aucun', s.measured, fmtMin(s.medianMinutes), s.slaHours ? s.breached : '—', s.compliance != null ? `${s.compliance} %` : '—'], [90, 60, 70, 100, 80, 100]);
+      row([STAGE_NAME[s.stage] || s.label, s.slaHours ? `${s.slaHours} h` : 'aucun', s.measured, fmtMin(s.medianMinutes), s.slaHours ? s.breached : '—', s.compliance != null ? `${s.compliance} %` : '—'], [90, 60, 70, 100, 80, 100]);
     }
 
     h2('Satisfaction');

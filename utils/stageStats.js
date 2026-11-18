@@ -9,11 +9,13 @@ const median = arr => {
 };
 const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
 
-// tickets: [{ id, created_at, closed_at }]; slaMin: { open, waiting, in_progress } in minutes (0 = none)
-async function stageCompliance(db, tickets, slaMin, now = Date.now()) {
-  const stageStats = { open: [], waiting: [], in_progress: [] };
-  const breached = { open: 0, waiting: 0, in_progress: 0 };
-  const ongoing = { open: 0, waiting: 0, in_progress: 0 };
+// tickets: [{ id, created_at, closed_at }]; slaMin: { stage: minutes } (0 = none) for every stage
+// of the space (built-in and custom); labels: { stage: name } (optional)
+async function stageCompliance(db, tickets, slaMin, now = Date.now(), labels = {}) {
+  const keys = Object.keys(slaMin);
+  const stageStats = Object.fromEntries(keys.map(k => [k, []]));
+  const breached = Object.fromEntries(keys.map(k => [k, 0]));
+  const ongoing = Object.fromEntries(keys.map(k => [k, 0]));
   if (tickets.length) {
     const events = await db(
       "SELECT ticket_id, details, created_at FROM audit_log WHERE action = 'ticket_stage' AND ticket_id IN (?) ORDER BY created_at ASC, id ASC",
@@ -46,7 +48,7 @@ async function stageCompliance(db, tickets, slaMin, now = Date.now()) {
   return Object.keys(stageStats).map(key => {
     const list = stageStats[key];
     return {
-      stage: key, slaHours: slaMin[key] / 60, measured: list.length, ongoing: ongoing[key],
+      stage: key, label: labels[key] || key, slaHours: slaMin[key] / 60, measured: list.length, ongoing: ongoing[key],
       avgMinutes: avg(list), medianMinutes: median(list), breached: breached[key],
       compliance: slaMin[key] && list.length ? Math.round(((list.length - breached[key]) / list.length) * 100) : null,
     };

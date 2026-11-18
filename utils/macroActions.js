@@ -28,7 +28,7 @@ async function applyMacroActions({ client, db, guildId, tm, ticket, actions, act
   }
   if (actions.stage && actions.stage !== (ticket.stage || 'open') && !actions.close) {
     const moved = await tm.moveToStage(ticket.id, actions.stage, actor);
-    if (moved.ok) applied.push(`Étape ${STAGE_NAMES[actions.stage]}`); else warnings.push(`Étape : ${moved.error}`);
+    if (moved.ok) applied.push(`Étape ${STAGE_NAMES[actions.stage] || moved.label}`); else warnings.push(`Étape : ${moved.error}`);
   }
   if (actions.close) {
     if (!can('close_ticket')) warnings.push('Fermeture : permission close_ticket manquante');

@@ -10,7 +10,9 @@ const { sendPushToGuild } = require('./push');
 
 const VALID_STATUS   = new Set(['open', 'closed']);
 const VALID_PRIORITY = new Set(['low', 'normal', 'urgent']);
-const VALID_STAGE    = new Set(['open', 'waiting', 'in_progress']);
+// Stages: built-in or « s_<id> » (custom statuses, utils/stages.js), checked against the space's list
+const STAGE_RE       = /^(open|waiting|in_progress|s_\d{1,9})$/;
+const isStage = async (db, key) => STAGE_RE.test(String(key || '')) && !!(await require('../../utils/stages').stageOf(db, key));
 const SNOWFLAKE_RE   = /^\d{17,20}$/;
 const DATE_RE        = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -113,7 +115,7 @@ router.get('/', async (req, res) => {
     const fieldId = parseInt(str('field')) || null, fieldValue = str('fieldValue').slice(0, 100);
     if (status   && !VALID_STATUS.has(status))    return res.status(400).json({ error: 'Statut invalide' });
     if (priority && !VALID_PRIORITY.has(priority)) return res.status(400).json({ error: 'Priorité invalide' });
-    if (stage    && !VALID_STAGE.has(stage))       return res.status(400).json({ error: 'Étape invalide' });
+    if (stage    && !STAGE_RE.test(stage))         return res.status(400).json({ error: 'Étape invalide' });
     if (assignee && !SNOWFLAKE_RE.test(assignee))  return res.status(400).json({ error: 'Assigné invalide' });
     if ((dateFrom && !DATE_RE.test(dateFrom)) || (dateTo && !DATE_RE.test(dateTo))) return res.status(400).json({ error: 'Date invalide' });
 
@@ -149,7 +151,7 @@ router.get('/', async (req, res) => {
     if (dateFrom) { where.push('created_at >= ?'); params.push(dateFrom); }
     if (dateTo)   { where.push('created_at < DATE_ADD(?, INTERVAL 1 DAY)'); params.push(dateTo); }
     if (tag)      { where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta WHERE ta.ticket_id = tickets.id AND ta.tag_id = ?)'); params.push(tag); }
-    const [slaCfg] = await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
+    const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
     if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(b.sql); params.push(...b.params); }
     if (fieldId && fieldValue) {
       where.push('EXISTS (SELECT 1 FROM ticket_field_values fv WHERE fv.ticket_id = tickets.id AND fv.field_id = ? AND fv.value LIKE ?)');
@@ -228,7 +230,7 @@ router.get('/queue', async (req, res) => {
        FROM tickets WHERE status = 'open' AND ${where} AND ${vis.sql} LIMIT 300`,
       [...(scope === 'mine' ? [req.session.user.id] : []), ...vis.params]
     );
-    const [slaCfg] = await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1');
+    const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
     const now = Date.now();
     const queue = rows.map(t => {
       const sla = slaStatus(t, slaCfg, now);
@@ -367,15 +369,17 @@ router.get('/:id', async (req, res) => {
       })
     );
 
-    const [cfg] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours, low_rating_threshold, ticket_mode FROM guild_config WHERE id = 1');
+    const [cfgRow] = await req.guildDb('SELECT ticket_category_id, waiting_category_id, in_progress_category_id, sla_open_hours, sla_waiting_hours, sla_in_progress_hours, low_rating_threshold, ticket_mode FROM guild_config WHERE id = 1');
+    const cfg = await require('../../utils/stages').withStageSla(req.guildDb, cfgRow);
     const thread = cfg?.ticket_mode === 'thread';
+    const stageList = await require('../../utils/stages').listStages(req.guildDb, cfgRow);
     res.json({
       ...ticket,
       participants,
       assignees: await getManager(req).getAssignees(ticket.id),
       // Stages whose Discord category is configured (Paramètres)
       // Threads: every stage is available (no category involved)
-      stages: { open: thread || !!cfg?.ticket_category_id, waiting: thread || !!cfg?.waiting_category_id, in_progress: thread || !!cfg?.in_progress_category_id },
+      stages: Object.fromEntries(stageList.map(s => [s.key, thread || !!s.categoryId])),
       voiceUrl: ticket.voice_channel_id ? `https://discord.com/channels/${req.guildId}/${ticket.voice_channel_id}` : null,
       following: await require('../../utils/followers').isFollowing(req.guildDb, ticket.id, req.session.user.id),
       sla: slaStatus(ticket, cfg),
@@ -1094,7 +1098,7 @@ router.patch('/:id/move', async (req, res) => {
     if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
 
     const { stage } = req.body;
-    if (!VALID_STAGE.has(stage)) return res.status(400).json({ error: 'Étape invalide (open | waiting | in_progress)' });
+    if (!(await isStage(req.guildDb, stage))) return res.status(400).json({ error: 'Étape invalide' });
     if (!req.app.locals.client) return res.status(503).json({ error: 'Bot Discord non disponible' });
 
     const tm = getManager(req);
@@ -1453,7 +1457,7 @@ router.post('/bulk', async (req, res) => {
     cleanIds = (await req.guildDb(`SELECT id FROM tickets WHERE id IN (?) AND ${vis.sql}`, [cleanIds, ...vis.params])).map(t => t.id);
     if (!cleanIds.length) return res.json({ ok: true, affected: 0 });
     if (action === 'stage') {
-      if (!VALID_STAGE.has(value)) return res.status(400).json({ error: 'Étape invalide' });
+      if (!(await isStage(req.guildDb, value))) return res.status(400).json({ error: 'Étape invalide' });
       const tm = getManager(req);
       let affected = 0;
       const errors = new Set();

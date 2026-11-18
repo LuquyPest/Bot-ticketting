@@ -1,9 +1,12 @@
-// Per-stage service level: each stage (Ouvert / En attente / En cours) may have a maximum time
-// in hours (guild_config sla_*_hours, 0 = none). Time counts from the last stage change.
+// Per-stage service level: each stage (Ouvert / En attente / En cours, and the custom statuses
+// of the space) may have a maximum time in hours (0 = none). Time counts from the last stage
+// change. cfg.stageSla ({ stage: hours }, utils/stages.js withStageSla) covers every stage;
+// without it, the three guild_config columns.
 const SLA_COLUMN = { open: 'sla_open_hours', waiting: 'sla_waiting_hours', in_progress: 'sla_in_progress_hours' };
 const WARNING_RATIO = 0.75;
 
 function slaHours(cfg, stage) {
+  if (cfg?.stageSla) return Number(cfg.stageSla[stage || 'open']) || 0;
   return Number(cfg?.[SLA_COLUMN[stage || 'open']]) || 0;
 }
 
@@ -23,8 +26,9 @@ function slaStatus(ticket, cfg, now = Date.now()) {
 function breachedSql(cfg) {
   const parts = [];
   const params = [];
-  for (const [stage, col] of Object.entries(SLA_COLUMN)) {
-    const h = Number(cfg?.[col]) || 0;
+  const stages = cfg?.stageSla ? Object.keys(cfg.stageSla) : Object.keys(SLA_COLUMN);
+  for (const stage of stages) {
+    const h = slaHours(cfg, stage);
     if (!h) continue;
     parts.push(`(stage = ? AND TIMESTAMPDIFF(MINUTE, COALESCE(stage_changed_at, created_at), NOW()) >= ?)`);
     params.push(stage, h * 60);

@@ -279,6 +279,7 @@ app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes
 app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/email',       withGuild(['fondateur']),            require('./routes/emailSettings')); // tickets by e-mail
 app.use('/api/widget-settings', withGuild(['fondateur']),        widgetRoutes.settings); // web widget (v4.1)
+app.use('/api/stages',      withGuild(['support', 'fondateur']), require('./routes/stages')); // custom statuses (v4.2)
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
 app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));

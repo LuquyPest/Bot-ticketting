@@ -12,12 +12,18 @@ module.exports = {
         .setName('etape')
         .setDescription('Nouvelle étape')
         .setRequired(true)
-        .addChoices(
-          { name: 'Ouvert', value: 'open' },
-          { name: 'En attente', value: 'waiting' },
-          { name: 'En cours', value: 'in_progress' },
-        )
+        // The statuses of the space, custom ones included (utils/stages.js)
+        .setAutocomplete(true)
     ),
+
+  async autocomplete(client, interaction) {
+    const L = await require('../utils/staffI18n').forInteraction(interaction);
+    const typed = String(interaction.options.getFocused() || '').toLowerCase();
+    const stages = await require('../utils/stages').listStages(getTenantDb(interaction.guildId));
+    const choices = stages.map(s => ({ name: (s.builtin ? L(`stage.${s.key}`) : s.label).slice(0, 100), value: s.key }))
+      .filter(c => !typed || c.name.toLowerCase().includes(typed) || c.value.includes(typed));
+    await interaction.respond(choices.slice(0, 25));
+  },
 
   async execute(client, interaction) {
     const L = await require('../utils/staffI18n').forInteraction(interaction);
@@ -34,6 +40,6 @@ module.exports = {
       .catch(() => ({ ok: false, error: L('move.failed') }));
     if (!result.ok) return interaction.reply({ content: `❌ ${result.error}`, flags: MessageFlags.Ephemeral });
     await tm.updateChannelTopic(ticket.id).catch(() => null);
-    return interaction.reply({ content: L('move.done', { stage: L(`stage.${interaction.options.getString('etape', true)}`) }), flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: L('move.done', { stage: result.label && !require('../utils/stages').BUILTIN.includes(interaction.options.getString('etape', true)) ? result.label : L(`stage.${interaction.options.getString('etape', true)}`) }), flags: MessageFlags.Ephemeral });
   }
 };

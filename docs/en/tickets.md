@@ -38,6 +38,19 @@ When picking the subject, the member can ask for a **confidential** ticket (repo
 | **Help** | Similar tickets already solved with their answer, per-subject checklists, the requester's [contact card](#contacts) (labels, history, staff thread) |
 | **Time** | Per-ticket timer and time added by hand, per-stage deadline (SLA) with time left and an « Overdue » alert |
 
+## Statuses
+
+An open ticket is in a **status**: **Open**, **Waiting** or **In progress** by default. In **Settings → Tickets → Statuses**, a founder adds others of the space's own (« Waiting on supplier », « To approve »…), up to 20:
+
+| Setting | |
+|---|---|
+| **Name and colour** | Shown everywhere: ticket view, Kanban (one column per status), list and filters, queue, journal, analytics |
+| **For the requester** | The built-in status they see instead (Open, Waiting or In progress): in the member space, `/mestickets` and the stage-change DM. The internal name is never shown to them |
+| **Discord category** | The ticket's channel moves there (as for the built-in statuses); without a category, only threads and tickets without a channel can enter it |
+| **Deadline (SLA)** | Maximum time in this status before « Overdue », 0 = none; counted in the analytics and the monthly report |
+
+The status changes from the ticket view, in bulk from the list, through a macro, or on Discord with `/moveticket` (the space's statuses are offered). The order is set with the arrows. **Deleting** a status puts its tickets back in its built-in status, without moving their channel. Every change is in the journal.
+
 ## Contacts
 
 **Contacts** (Support menu): one card per person, whatever the channel. Each card gathers their **identities**: their Discord account, their address for [tickets by e-mail](./integrations#tickets-by-e-mail), later the web portal. Cards are created on their own from the tickets, nothing to type in.

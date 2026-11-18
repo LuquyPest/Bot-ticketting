@@ -36,7 +36,8 @@ function cleanActions(actions) {
   if (actions === undefined || actions === null) return { value: null };
   if (typeof actions !== 'object' || Array.isArray(actions)) return { error: 'Actions invalides' };
   const out = {};
-  if (actions.stage) { if (!['open', 'waiting', 'in_progress'].includes(actions.stage)) return { error: 'Étape invalide' }; out.stage = actions.stage; }
+  // A custom status (s_<id>) deleted later is refused when the macro runs (moveToStage)
+  if (actions.stage) { if (!/^(open|waiting|in_progress|s_\d{1,9})$/.test(actions.stage)) return { error: 'Étape invalide' }; out.stage = actions.stage; }
   if (actions.priority) { if (!['low', 'normal', 'urgent'].includes(actions.priority)) return { error: 'Priorité invalide' }; out.priority = actions.priority; }
   if (actions.tagId) { const id = parseInt(actions.tagId); if (!id) return { error: 'Tag invalide' }; out.tagId = id; }
   if (actions.assignSelf) out.assignSelf = true;

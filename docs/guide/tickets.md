@@ -38,6 +38,19 @@ Au moment du sujet, le membre peut demander un ticket **confidentiel** (signalem
 | **Aide** | Tickets similaires déjà résolus avec leur réponse, procédures à cocher par sujet, [fiche contact](#les-contacts) du demandeur (étiquettes, historique, fil du staff) |
 | **Temps** | Chronomètre par ticket et temps ajouté à la main, délai par étape (SLA) avec temps restant et alerte « Hors délai » |
 
+## Les statuts
+
+Un ticket ouvert est dans un **statut** : **Ouvert**, **En attente** ou **En cours** par défaut. Dans **Paramètres → Tickets → Statuts**, un fondateur en ajoute d'autres, propres à l'espace (« Attente fournisseur », « À valider »…), jusqu'à 20 :
+
+| Réglage | |
+|---|---|
+| **Nom et couleur** | Affichés partout : fiche ticket, Kanban (une colonne par statut), liste et filtres, file, journal, analytiques |
+| **Pour le demandeur** | Le statut de base qu'il voit à la place (Ouvert, En attente ou En cours) : dans l'espace membre, `/mestickets` et le MP de changement d'étape. Le nom interne ne lui est jamais montré |
+| **Catégorie Discord** | Le salon du ticket y est déplacé (comme pour les statuts de base) ; sans catégorie, seuls les fils et les tickets sans salon peuvent y passer |
+| **Délai (SLA)** | Temps maximal dans ce statut avant « Hors délai », 0 = aucun ; compté dans les analytiques et le rapport mensuel |
+
+On change de statut depuis la fiche, en masse depuis la liste, par une macro, ou sur Discord avec `/moveticket` (les statuts de l'espace sont proposés). L'ordre se règle avec les flèches. **Supprimer** un statut remet ses tickets dans son statut de base, sans déplacer leur salon. Chaque changement est au journal.
+
 ## Les contacts
 
 **Contacts** (menu Support) : une fiche par personne, quel que soit le canal. Chaque fiche regroupe ses **identités** : son compte Discord, son adresse pour les [tickets par e-mail](./integrations#tickets-par-e-mail), plus tard le portail web. Les fiches se créent d'elles-mêmes à partir des tickets, rien à saisir.

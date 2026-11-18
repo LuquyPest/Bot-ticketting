@@ -33,7 +33,7 @@ sequenceDiagram
 
 | | |
 |---|---|
-| **Tickets** | Subjects and automatic rules per subject or keywords, custom fields, intake forms, automatic FAQ, button panels, confidential tickets, priorities, stages and Kanban, per-stage deadlines (SLA), merging, linked tickets, transcripts |
+| **Tickets** | Subjects and automatic rules per subject or keywords, custom fields, intake forms, automatic FAQ, button panels, confidential tickets, priorities, stages and custom statuses, Kanban, per-stage deadlines (SLA), merging, linked tickets, transcripts |
 | **Dashboard** | My queue, full-text search with operators, saved views, split view, pinned internal notes, reply templates and macros, mentions, following, reminders, time spent, colleagues' presence, drafts, bulk actions |
 | **Team** | Grades with fine-grained permissions, roles tied to tags, sync with Discord roles, planned absences, goals, statistics, period comparison, monthly PDF reports, public statistics in a channel |
 | **Members** | DM replies in their language (English, French, Spanish, German, Italian, Portuguese), a web space to follow and open tickets, browsable help, rating, reopening |

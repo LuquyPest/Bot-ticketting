@@ -7,6 +7,7 @@ import {
   Lock, CheckCircle2, Eye, EyeOff, Layers, Check, ChevronDown, History, Users, Sparkles, GitMerge, Paperclip, AlarmClock, Link2, PanelRight, Pin, PinOff, Volume2, Bell, BellRing, ImagePlus
 } from 'lucide-react';
 import api from '../api';
+import { useStages, STAGE_CLS } from '../hooks/useStages';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
 import toast from 'react-hot-toast';
@@ -39,11 +40,8 @@ function resolveVars(text, ticket, staffUsername) {
 }
 
 const PRIORITY_LABELS = { low: 'Faible', normal: 'Normal', urgent: 'Urgent' };
-const STAGES = [
-  { value: 'open',        label: 'Ouvert',     cls: 'text-sky-300 bg-sky-500/10 border-sky-500/25' },
-  { value: 'waiting',     label: 'En attente', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
-  { value: 'in_progress', label: 'En cours',   cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25' },
-];
+// The statuses of the space (built-in and custom), as buttons and options
+const stageOptions = stages => stages.map(st => ({ value: st.key, label: st.label, cls: (STAGE_CLS[st.color] || STAGE_CLS.slate).badge }));
 
 const PRIORITY_ACTIVE = {
   low:    'bg-sky-500/10 text-sky-400 border-sky-500/20',
@@ -153,6 +151,7 @@ function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
 /* ─── Main component ─────────────────────────────────────────── */
 // embeddedId: shown next to the ticket list (split view, Tickets page); onClose leaves it
 export default function TicketDetail({ embeddedId = null, onClose = null }) {
+  const STAGES = stageOptions(useStages());
   const { id: routeId } = useParams();
   const id = embeddedId ? String(embeddedId) : routeId;
   const embedded = !!embeddedId;
