@@ -5060,6 +5060,59 @@ async function main() {
     await db('UPDATE guild_config SET priority_matrix_enabled = ?, priority_matrix = ? WHERE id = 1', [cfgP.priority_matrix_enabled, cfgP.priority_matrix == null || typeof cfgP.priority_matrix === 'string' ? cfgP.priority_matrix : JSON.stringify(cfgP.priority_matrix)]);
   }
 
+  // ── Calendars: opening hours, time zone, closed days (utils/calendars.js, v5.1) ──
+  {
+    const C = app('./utils/calendars');
+    const cal = { tz: 'Europe/Paris', hours: C.DEFAULT_HOURS, closed: [{ from: '2026-12-24', to: '2026-12-26', label: 'Fermeture' }] };
+    const at = x => Date.parse(x);
+    check('calendriers: ouvert / fermé selon les horaires et le fuseau', C.isOpen(cal, at('2026-11-18T08:30:00Z')) && !C.isOpen(cal, at('2026-11-18T07:30:00Z')) && !C.isOpen(cal, at('2026-11-21T10:00:00Z')), '');
+    check('calendriers: période de fermeture', !C.isOpen(cal, at('2026-12-24T10:00:00Z')) && !C.isOpen(cal, at('2026-12-26T10:00:00Z')) && new Date(C.nextOpening(cal, at('2026-12-24T10:00:00Z'))).toISOString() === '2026-12-28T08:00:00.000Z', new Date(C.nextOpening(cal, at('2026-12-24T10:00:00Z'))).toISOString());
+    check('calendriers: minutes ouvrées par-dessus un week-end', C.businessMinutes(cal, at('2026-11-20T16:00:00Z'), at('2026-11-23T09:00:00Z')) === 120 && new Date(C.addBusinessMinutes(cal, at('2026-11-20T15:00:00Z'), 240)).toISOString() === '2026-11-23T10:00:00.000Z', '');
+    check('calendriers: changement d heure (9 h de Paris = 8 h UTC en hiver, 7 h en été)', new Date(C.zoned(2026, 3, 27, 9, 0, 'Europe/Paris')).toISOString() === '2026-03-27T08:00:00.000Z' && new Date(C.zoned(2026, 3, 30, 9, 0, 'Europe/Paris')).toISOString() === '2026-03-30T07:00:00.000Z'
+      && C.businessMinutes(cal, at('2026-03-27T16:00:00Z'), at('2026-03-30T08:00:00Z')) === 120, '');
+    const night = { tz: 'America/Montreal', hours: { ...C.DEFAULT_HOURS, sat: [['20:00', '24:00']] }, closed: [] };
+    check('calendriers: plage jusqu à minuit, autre fuseau', C.isOpen(night, at('2026-11-22T04:30:00Z')) && !C.isOpen(night, at('2026-11-22T05:30:00Z')), '');
+    check('calendriers: jours fériés calculés (Pâques comprise)', new Date(C.easter(2027)).toISOString().slice(0, 10) === '2027-03-28' && C.holidaysFor('FR', 2027).some(h => h.from === '2027-05-06' && /Ascension/.test(h.label)) && C.holidaysFor('US', 2026).some(h => h.from === '2026-11-26'), '');
+
+    r = await req('POST', '/api/calendars', { sid: sessions.S1, body: { name: 'x' } });
+    check('calendriers: réservés aux fondateurs', r.status === 403, r.status);
+    r = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Paris', timezone: 'Mars/Olympus' } });
+    const r2 = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Paris', hours: { mon: [['09:00', '12:00'], ['11:00', '14:00']] } } });
+    check('calendriers: fuseau inconnu et plages qui se chevauchent refusés', r.status === 400 && r2.status === 400, JSON.stringify([r.body, r2.body]));
+    r = await req('GET', '/api/calendars/holidays', { sid: sessions.F, query: { country: 'FR', year: '2026' } });
+    const fr26 = r.body;
+    check('calendriers: jours fériés proposés par pays', r.status === 200 && fr26.some(h => h.from === '2026-04-06'), JSON.stringify(fr26).slice(0, 120));
+    const todayParis = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+    r = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Fermé aujourd hui', timezone: 'Europe/Paris', hours: C.DEFAULT_HOURS, closed: [...fr26, { from: todayParis, to: todayParis, label: 'Test' }], outsideReply: true } });
+    const calClosed = r.body;
+    r = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Toujours ouvert', timezone: 'UTC', hours: Object.fromEntries(C.DAYS.map(d => [d, [['00:00', '24:00']]])), outsideReply: true } });
+    const calOpen = r.body;
+    check('calendriers: créés, état en direct', calClosed.id > 0 && calClosed.openNow === false && !!calClosed.nextOpening && calOpen.openNow === true, JSON.stringify([calClosed.openNow, calOpen.openNow]));
+    r = await req('PATCH', '/api/config', { sid: sessions.F, body: { calendarId: 999999 } });
+    check('calendriers: calendrier de l espace inconnu refusé', r.status === 400, r.status);
+    await req('PATCH', '/api/config', { sid: sessions.F, body: { calendarId: calClosed.id } });
+    const MC = '200000000000000064';
+    memberRoles.set(MC, new Map());
+    const tmC = app('./utils/ticketManager').createManager(db, fakeClient, G);
+    memberDms.length = 0;
+    const rc = await tmC.createTicket({ id: MC, username: 'membre64', tag: 'membre64', send: async p => memberDms.push({ id: MC, p }) }, 'Bonjour', [], null, { forceNew: true });
+    const closedMsg = memberDms.filter(m => m.id === MC).some(m => /fermé/.test(JSON.stringify(m.p)));
+    check('calendriers: ticket ouvert hors horaires → « le support est fermé », avec la réouverture', closedMsg, JSON.stringify(memberDms.map(m => m.p?.embeds?.[0]?.data?.title)));
+    const team = (await db("INSERT INTO teams (name, calendar_id) VALUES ('Équipe 24/7', ?)", [calOpen.id])).insertId;
+    await db('UPDATE tickets SET team_id = ? WHERE id = ?', [team, rc.ticket.id]);
+    const forTicket = await C.calendarForTicket(db, (await db('SELECT * FROM tickets WHERE id = ?', [rc.ticket.id]))[0]);
+    check('calendriers: le calendrier de l équipe passe avant celui de l espace', forTicket?.id === calOpen.id, JSON.stringify(forTicket?.name));
+    r = await req('DELETE', `/api/calendars/${calClosed.id}`, { sid: sessions.F });
+    const [cfgC] = await db('SELECT calendar_id FROM guild_config WHERE id = 1');
+    check('calendriers: supprimé → l espace redevient toujours ouvert', r.status === 200 && cfgC.calendar_id === null, JSON.stringify(cfgC));
+    memberDms.length = 0;
+    await tmC.createTicket({ id: MC, username: 'membre64', tag: 'membre64', send: async p => memberDms.push({ id: MC, p }) }, 'Encore', [], null, { forceNew: true });
+    check('calendriers: sans calendrier, pas de message « fermé »', !memberDms.some(m => /fermé/.test(JSON.stringify(m.p))), '');
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_id = ?", [MC]);
+    await db('DELETE FROM teams WHERE id = ?', [team]);
+    await req('DELETE', `/api/calendars/${calOpen.id}`, { sid: sessions.F });
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

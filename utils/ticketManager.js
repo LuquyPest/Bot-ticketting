@@ -304,6 +304,9 @@ function createManager(db, client, guildId) {
     const [routed] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
     await require('./teams').routeTicket({ db, tm: { addAssignee }, ticket: routed })
       .catch(err => console.error('équipes: routage', gid, ticket.id, err.message));
+    // Opened outside the opening hours: « we are closed, back on … » (utils/calendars.js)
+    const [placed] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
+    await require('./calendars').outsideHoursReply({ db, client, guildId: gid, ticket: placed || ticket }).catch(() => null);
     return { channel, ticket, created: true };
   }
 

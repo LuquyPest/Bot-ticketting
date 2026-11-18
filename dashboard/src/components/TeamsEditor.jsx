@@ -6,7 +6,7 @@ import { STAGE_CLS, STAGE_COLOR_NAMES } from '../hooks/useStages';
 
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden focus:border-primary';
 const MODES = [['none', 'Aucune (file seulement)'], ['round_robin', 'Tour à tour'], ['load', 'Selon la charge']];
-const EMPTY = { name: '', color: 'violet', assignMode: 'none', maxOpen: 0, subjects: [], tagIds: [], members: [] };
+const EMPTY = { name: '', color: 'violet', assignMode: 'none', maxOpen: 0, subjects: [], tagIds: [], members: [], calendarId: null };
 
 function Chips({ options, value, onChange, label }) {
   return (
@@ -23,7 +23,7 @@ function Chips({ options, value, onChange, label }) {
   );
 }
 
-function TeamForm({ initial, staff, subjects, tags, onSave, onDelete, busy }) {
+function TeamForm({ initial, staff, subjects, tags, calendars = [], onSave, onDelete, busy }) {
   const [t, setT] = useState(initial);
   const set = (k, v) => setT(x => ({ ...x, [k]: v }));
   return (
@@ -39,6 +39,14 @@ function TeamForm({ initial, staff, subjects, tags, onSave, onDelete, busy }) {
         <input type="number" min={0} max={500} value={t.maxOpen} onChange={e => set('maxOpen', Math.max(0, Math.min(500, parseInt(e.target.value) || 0)))}
           aria-label="Plafond de tickets ouverts par personne" title="Tickets ouverts au plus par personne avant de passer au suivant (0 = sans plafond)" className={INPUT} />
       </div>
+      {calendars.length > 0 && (
+        <label className="block text-[11px] font-semibold text-ink-3">Horaires de l'équipe
+          <select value={t.calendarId || ''} onChange={e => set('calendarId', e.target.value ? Number(e.target.value) : null)} className={`${INPUT} mt-1 font-normal`}>
+            <option value="">Ceux de l'espace</option>
+            {calendars.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+      )}
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold text-ink-3">Membres</p>
         <Chips label="Membres" options={staff.map(s => [s.user_id, s.username])} value={t.members} onChange={v => set('members', v)} />
@@ -76,8 +84,8 @@ export default function TeamsEditor() {
   const [key, setKey] = useState(0);
   useEffect(() => {
     api.get('/teams').then(r => setTeams(r.data)).catch(() => setTeams(false));
-    Promise.all([api.get('/tickets/staff'), api.get('/teams/options')])
-      .then(([s, o]) => setCtx({ staff: s.data || [], subjects: o.data?.subjects || [], tags: o.data?.tags || [] }))
+    Promise.all([api.get('/tickets/staff'), api.get('/teams/options'), api.get('/calendars').catch(() => ({ data: {} }))])
+      .then(([s, o, c]) => setCtx({ staff: s.data || [], subjects: o.data?.subjects || [], tags: o.data?.tags || [], calendars: c.data?.calendars || [] }))
       .catch(() => {});
   }, []);
   if (teams === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;
@@ -87,7 +95,7 @@ export default function TeamsEditor() {
     try { setTeams((await fn()).data); toast.success(ok); setKey(k => k + 1); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
-  const body = t => ({ name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members });
+  const body = t => ({ name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members, calendarId: t.calendarId || null });
   return (
     <div className="space-y-4 max-w-4xl">
       <p className="text-sm text-ink-3 inline-flex items-start gap-2"><UsersRound size={16} className="shrink-0 mt-0.5 text-primary-light" aria-hidden="true" />
@@ -95,7 +103,7 @@ export default function TeamsEditor() {
       </p>
       {teams.map(t => (
         <TeamForm key={`${t.id}-${key}`} busy={busy} {...ctx}
-          initial={{ id: t.id, name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members.map(m => m.userId) }}
+          initial={{ id: t.id, name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members.map(m => m.userId), calendarId: t.calendarId || null }}
           onSave={v => run(() => api.put(`/teams/${t.id}`, body(v)), 'Équipe enregistrée')}
           onDelete={() => window.confirm(`Supprimer l'équipe « ${t.name} » ? Ses tickets restent, sans équipe.`) && run(() => api.delete(`/teams/${t.id}`), 'Équipe supprimée')} />
       ))}

@@ -102,6 +102,8 @@ const ACTIONS = {
   template_update:          ['Modèle de réponse modifié', 'config'],
   template_delete:          ['Modèle de réponse supprimé', 'config'],
   email_settings:           ['Tickets par e-mail modifiés', 'config'],
+  calendar_save:            ['Calendrier enregistré', 'config'],
+  calendar_delete:          ['Calendrier supprimé', 'config'],
   email_quarantine_release: ['E-mail libéré de la quarantaine', 'config'],
   email_quarantine_delete:  ['E-mail de quarantaine supprimé', 'config'],
   email_address_add:        ['Adresse e-mail ajoutée', 'config'],
