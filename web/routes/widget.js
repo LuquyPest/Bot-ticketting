@@ -2,6 +2,7 @@
 //   GET  /widget.js                       → script to paste on a site (floating button, or inline)
 //   GET  /widget/:token                   → the form, a standalone page shown in an iframe
 //   POST /api/widget/:token/tickets       → opens the ticket (public, anti-spam)
+//   GET  /api/widget/:token/suggest?q=    → public articles of the knowledge base matching the message
 //   GET / PUT /api/widget-settings, POST /api/widget-settings/token → Paramètres (founders)
 const express = require('express');
 const crypto = require('crypto');
@@ -51,6 +52,7 @@ main{padding:18px}h1{font-size:17px;margin:0 0 12px}label{display:block;font-siz
 input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg);font:inherit}
 textarea{min-height:120px;resize:vertical}button{margin-top:14px;width:100%;padding:11px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;font-size:14px;cursor:pointer}
 button:disabled{opacity:.6}.note{font-size:12px;color:var(--muted);margin-top:10px}.msg{padding:10px 12px;border-radius:10px;margin-top:12px}
+.kb{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}.kb p{margin:0 0 6px;font-size:12px;color:var(--muted)}.kb ul{margin:0;padding-left:18px}.kb a{color:var(--fg)}
 .err{background:rgba(220,38,38,.12);color:#dc2626}.ok{background:rgba(22,163,74,.12)}.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 </style></head><body><main>${body}</main></body></html>`;
 }
@@ -77,12 +79,18 @@ pages.get('/widget/:token', async (req, res, next) => {
 <label for="e">${esc(L('widget.email'))}</label><input id="e" name="email" type="email" maxlength="254" required autocomplete="email">
 ${subjects.length ? `<label for="s">${esc(L('widget.subject'))}</label><select id="s" name="subject" required><option value=""></option>${subjects.map(s => `<option>${esc(s)}</option>`).join('')}</select>` : ''}
 <label for="m">${esc(L('widget.message'))}</label><textarea id="m" name="message" maxlength="2000" required></textarea>
+<div id="k" class="kb" hidden><p>${esc(L('widget.maybe'))}</p><ul id="kl"></ul></div>
 <div class="hp" aria-hidden="true"><label for="w">Website</label><input id="w" name="website" tabindex="-1" autocomplete="off"></div>
 <input type="hidden" name="t" value="${esc(widget.stamp(w.guildId))}">
 <button id="b" type="submit">${esc(L('widget.send'))}</button>
 <p class="note">${esc(L('widget.privacy'))}</p><div id="r" role="status" aria-live="polite"></div>
 </form>
 <script nonce="${nonce}">
+(function(){var m=document.getElementById('m'),k=document.getElementById('k'),kl=document.getElementById('kl'),tm=null,last='';
+m.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(function(){var q=m.value.trim();if(q.length<8||q===last)return;last=q;
+fetch(${JSON.stringify(`/api/widget/${req.params.token}/suggest?q=`)}+encodeURIComponent(q)).then(function(x){return x.json();}).then(function(list){
+kl.textContent='';(Array.isArray(list)?list:[]).forEach(function(a){var li=document.createElement('li'),l=document.createElement('a');l.href=a.url;l.target='_blank';l.rel='noopener';l.textContent=a.question;li.appendChild(l);kl.appendChild(li);});
+k.hidden=!kl.children.length;}).catch(function(){});},600);});})();
 document.getElementById('f').addEventListener('submit',function(ev){ev.preventDefault();var f=ev.target,b=document.getElementById('b'),r=document.getElementById('r');
 var data={};new FormData(f).forEach(function(v,k){data[k]=v;});b.disabled=true;r.className='';r.textContent='';
 fetch(${JSON.stringify(`/api/widget/${req.params.token}/tickets`)},{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest','X-Member-Lang':${JSON.stringify(lang)}},body:JSON.stringify(data)})
@@ -97,6 +105,21 @@ r.className='msg err';r.textContent=(x.j&&x.j.error)||'Erreur';b.disabled=false;
 
 // ── Public API ──
 const api = express.Router();
+
+// Before sending, the visitor may find their answer: only public articles, only if the page is on
+api.get('/:token/suggest', async (req, res) => {
+  try {
+    const w = await widget.resolveToken(req.params.token);
+    const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 2000) : '';
+    const kb = require('../../utils/knowledgeBase');
+    if (!w || !w.settings.enabled || !(await kb.kbEnabled(w.db))) return res.json([]);
+    const matches = await require('../../utils/faq').findFaqMatches(w.db, q, 3, { publicOnly: true });
+    res.json(matches.map(m => ({ id: m.id, question: m.question, url: kb.kbUrl(w.guildId, m.id) })));
+  } catch (err) {
+    console.error('widget suggest error:', err.message);
+    res.json([]);
+  }
+});
 
 api.post('/:token/tickets', async (req, res) => {
   const lang = langOf(req);

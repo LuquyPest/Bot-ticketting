@@ -126,6 +126,10 @@ async function openTicketForGuildInLang(user, content, attachments, guildEntry, 
   // Automatic FAQ: suggest answers before asking the subject (the member may not need a ticket)
   if (subject === null && config.faq_enabled && !opts.skipFaq) {
     const matches = await findFaqMatches(db, content);
+    const kb = require('../utils/knowledgeBase');
+    if (matches.some(m => m.visibility === 'public') && await kb.kbEnabled(db)) {
+      for (const m of matches) if (m.visibility === 'public' && /^https?:\/\//.test(kb.kbUrl(guildId, m.id))) m.url = kb.kbUrl(guildId, m.id);
+    }
     if (matches.length) {
       await db('UPDATE faq_entries SET shown_count = shown_count + 1 WHERE id IN (?)', [matches.map(m => m.id)]).catch(() => null);
       await store.setPending('faq', user.id, { guildId, content, attachments, entryIds: matches.map(m => m.id) }, PENDING_TTL_MS);

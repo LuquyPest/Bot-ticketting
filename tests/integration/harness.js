@@ -4209,6 +4209,72 @@ async function main() {
     }
   }
 
+  // ── Public knowledge base (utils/knowledgeBase.js, routes/kb.js, v4.2) ──
+  {
+    const [cfgK] = await db('SELECT kb_public FROM guild_config WHERE id = 1');
+    check('base: migration 47 → FAQ reprise, page publique coupée par défaut', Number(cfgK.kb_public) === 0
+      && Number((await db("SELECT COUNT(*) AS n FROM faq_entries WHERE visibility <> 'members'"))[0].n) === 0, JSON.stringify(cfgK));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Comment suivre ma livraison colis ?', answer: 'Le lien de suivi arrive par e-mail.', keywords: 'livraison, colis', category: '  Commandes  ', visibility: 'public' } });
+    const PUB = r.body.id;
+    check('base: article public créé avec sa catégorie', r.status === 200 && r.body.visibility === 'public' && r.body.category === 'Commandes', JSON.stringify(r.body));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Code promo réservé aux membres livraison', answer: 'Code interne MEMBRES10.', keywords: 'livraison, promo' } });
+    const PRIV = r.body.id;
+    check('base: article réservé aux membres par défaut', r.status === 200 && r.body.visibility === 'members', JSON.stringify(r.body));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'x', answer: 'y', visibility: 'tout-le-monde' } });
+    check('base: visibilité inconnue refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Long', answer: 'a'.repeat(5001) } });
+    check('base: article limité à 5000 caractères', r.status === 400, r.status);
+
+    r = await req('GET', `/api/kb/${G}`);
+    check('base: page coupée → 404, même réponse qu un espace inconnu', r.status === 404 && (await req('GET', '/api/kb/999999999999999999')).status === 404 && (await req('GET', '/api/kb/..%2F..')).status === 404, r.status);
+    r = await req('PUT', '/api/faq/public', { sid: sessions.S1, body: { enabled: true } });
+    check('base: mise en ligne réservée aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/faq/public', { sid: sessions.F, body: { enabled: true } });
+    check('base: mise en ligne par un fondateur, au journal', r.status === 200 && JSON.stringify((await db("SELECT details FROM audit_log WHERE action = 'config_update' ORDER BY id DESC LIMIT 1"))[0]?.details || '').includes('kbPublic'), JSON.stringify(r.body));
+
+    r = await req('GET', `/api/kb/${G}`);
+    const ids = (r.body.articles || []).map(a => a.id);
+    check('base: sans connexion, seuls les articles publics et actifs', r.status === 200 && ids.includes(PUB) && !ids.includes(PRIV) && r.body.space?.id === G, JSON.stringify(r.body).slice(0, 300));
+    check('base: ni mots-clés ni auteur ni compteurs exposés', !JSON.stringify(r.body).includes('created_by_tag') && !JSON.stringify(r.body).includes('keywords') && !JSON.stringify(r.body).includes('solved_count'), '');
+    r = await req('GET', `/api/kb/${G}/articles/${PRIV}`);
+    check('base: article réservé aux membres → 404 sans connexion', r.status === 404, r.status);
+    r = await req('GET', `/api/kb/${G}/articles/${PUB}`, { headers: { 'X-Forwarded-For': '10.40.0.1' } });
+    await req('GET', `/api/kb/${G}/articles/${PUB}`, { headers: { 'X-Forwarded-For': '10.40.0.1' } });
+    const [vc] = await db('SELECT view_count FROM faq_entries WHERE id = ?', [PUB]);
+    check('base: article lu, compté une fois par visiteur et par heure', r.status === 200 && r.body.article?.answer === 'Le lien de suivi arrive par e-mail.' && vc.view_count === 1, JSON.stringify([r.body, vc]));
+    await req('PATCH', `/api/faq/${PUB}`, { sid: sessions.F, body: { active: false } });
+    r = await req('GET', `/api/kb/${G}/articles/${PUB}`);
+    check('base: article désactivé → plus public', r.status === 404, r.status);
+    await req('PATCH', `/api/faq/${PUB}`, { sid: sessions.F, body: { active: true } });
+    const [upd] = await db('SELECT updated_at FROM faq_entries WHERE id = ?', [PUB]);
+    check('base: date de mise à jour tenue', !!upd.updated_at, JSON.stringify(upd));
+
+    // Member space: everything, public or not; the help page links to the public base
+    r = await req('GET', '/api/faq', { sid: sessions.F });
+    check('base: le staff voit l adresse de la page publique', r.body.kbPublic === true && r.body.kbUrl.endsWith(`/aide/${G}`), JSON.stringify([r.body.kbPublic, r.body.kbUrl]));
+    const { findFaqMatches } = app('./utils/faq');
+    const all = await findFaqMatches(db, 'Problème de livraison de mon colis');
+    const pubOnly = await findFaqMatches(db, 'Problème de livraison de mon colis', 3, { publicOnly: true });
+    check('base: suggestions publiques sans les articles réservés', all.some(m => m.id === PRIV) && pubOnly.length && pubOnly.every(m => m.id !== PRIV), JSON.stringify([all.map(m => m.id), pubOnly.map(m => m.id)]));
+    const emb = app('./utils/dmEmbeds').faqSuggestEmbed('S', [{ question: 'Q', answer: 'b'.repeat(1100), url: `https://ticket.example.test/aide/${G}/${PUB}` }]).data;
+    check('base: en MP, lien vers l article public, réponse tronquée pour tenir', emb.fields[0].value.length <= 1024 && emb.fields[0].value.endsWith(`(https://ticket.example.test/aide/${G}/${PUB})`), emb.fields[0].value.slice(-80));
+
+    // Widget: suggestions while the visitor types, public articles only
+    r = await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: true, origins: 'https://site.example.test' } });
+    const TOKK = r.body.token;
+    r = await req('GET', `/api/widget/${TOKK}/suggest`, { query: { q: 'Où en est la livraison de mon colis' } });
+    check('base: widget → articles publics suggérés à l ouverture', r.status === 200 && r.body.some(a => a.id === PUB && a.url.endsWith(`/aide/${G}/${PUB}`)) && !r.body.some(a => a.id === PRIV), JSON.stringify(r.body));
+    r = await req('GET', `/api/widget/${G}.mauvaiscodemauvaiscodemauvais/suggest`, { query: { q: 'livraison colis' } });
+    check('base: widget, code inconnu → aucune suggestion', r.status === 200 && Array.isArray(r.body) && r.body.length === 0, JSON.stringify(r.body));
+
+    await req('PUT', '/api/faq/public', { sid: sessions.F, body: { enabled: false } });
+    r = await req('GET', `/api/widget/${TOKK}/suggest`, { query: { q: 'livraison colis' } });
+    const off = await req('GET', `/api/kb/${G}/articles/${PUB}`);
+    check('base: page coupée → plus rien de public, plus de suggestion', off.status === 404 && r.body.length === 0, JSON.stringify([off.status, r.body]));
+    await db('UPDATE guild_config SET widget_enabled = 0, widget_token = NULL, widget_origins = NULL WHERE id = 1');
+    await db('DELETE FROM faq_entries WHERE id IN (?)', [[PUB, PRIV]]);
+  }
+
   // ── Accounts (utils/accounts.js, v4 PR 3): created by the Discord sign-in, ID = Discord ID ──
   {
     const axios = require('axios');

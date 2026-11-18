@@ -311,6 +311,14 @@ export const ENTRIES = [
   ['Retirer le message Discord ?', 'Remove the Discord message?'], ['Message Discord supprimé', 'Discord message deleted'], ['Publié #', 'Published #'], ['Menu de sujets', 'Subject menu'],
 
   ['FAQ automatique activée', 'Automatic FAQ on'],
+  ['FAQ et base de connaissances', 'FAQ and knowledge base'], ['Nouvel article', 'New article'], ['Modifier l\'article', 'Edit the article'],
+  ['Article enregistré', 'Article saved'], ['Aucun article pour l\'instant', 'No article yet'], ['Articles actifs', 'Active articles'],
+  ['FAQ en MP activée', 'FAQ in DMs on'], ['FAQ en MP désactivée', 'FAQ in DMs off'], ['Visible par', 'Visible to'],
+  ['Réponse (envoyée en MP, affichée dans l\'espace membre et la base publique)', 'Answer (sent in DM, shown in the member space and the public base)'],
+  ['Les membres connectés', 'Signed-in members'], ['Tout le monde (base publique)', 'Everyone (public base)'], ['Compte, Facturation…', 'Account, Billing…'],
+  ['Base de connaissances publique', 'Public knowledge base'], ['Ouvrir la page', 'Open the page'], ['En ligne', 'Online'], ['Hors ligne', 'Offline'],
+  ['Hors ligne. Une fois activée, les articles « Tout le monde » sont lisibles sans connexion et suggérés dans le widget.', 'Offline. Once on, the « Everyone » articles can be read without signing in and are suggested in the widget.'],
+  ['Page publique activée', 'Public page on'], ['Page publique désactivée', 'Public page off'], ['Public', 'Public'],
   ['FAQ automatique désactivée', 'Automatic FAQ off'], ['Nouvelle entrée', 'New entry'], ['Nouvelle entrée de FAQ', 'New FAQ entry'], ['Modifier l\'entrée', 'Edit the entry'], ['Question', 'Question'], ['Mots-clés (séparés par des virgules)', 'Keywords (separated by commas)'],
   ['Question et réponse requises', 'Question and answer required'], ['Entrée enregistrée', 'Entry saved'], ['Aucune entrée pour l\'instant', 'No entry yet'], ['Entrées actives', 'Active entries'], ['Réponses proposées', 'Answers offered'],
   ['Questions résolues sans ticket', 'Questions solved without a ticket'], ['Tester un message de membre', 'Test a member message'],
@@ -737,6 +745,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['En ligne, lisible sans connexion : {} article(s) public(s).', 'Online, readable without signing in: {1} public article(s).'], [' · lue {} fois', ' · read {1} time(s)'],
   [' · demandée à {} par {}', ' · asked of {1} by {2}'], ['Une fois accordée : passe en « {} »', 'Once granted: moves to « {1} »'], ['Une fois accordée : {}', 'Once granted: {1}'], ['{} relance(s)', '{1} reminder(s)'],
   ['{} ({}) demande ton accord sur le ticket #{}{}.', '{1} ({2}) asks for your approval on ticket #{3}{4}.'], ['{} demande ton accord sur le ticket #{}{}', '{1} asks for your approval on ticket #{2}{3}'], ['{} a accordé la validation du ticket #{}', '{1} granted the approval of ticket #{2}'], ['{} a refusé la validation du ticket #{}', '{1} refused the approval of ticket #{2}'], ['{} relances au plus', '{1} reminders at most'],
   ['{} h (catégorie)', '{1} h (category)'], ['Délai de « {} » (heures)', 'Deadline of « {1} » (hours)'], ['Nouvelle sous-catégorie de {}', 'New sub-category of {1}'], ['Ajouter la sous-catégorie à {}', 'Add the sub-category to {1}'], ['Retirer « {} » et ses {} sous-catégorie(s) ?', 'Remove « {1} » and its {2} sub-category(ies)?'], ['Retirer le sujet {}', 'Remove the subject {1}'],

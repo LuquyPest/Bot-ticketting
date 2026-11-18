@@ -40,7 +40,7 @@ async function exportConfig(db) {
     panels: panels.map(p => ({ name: p.name, title: p.title, description: p.description, color: p.color, footer_text: p.footer_text, image_url: p.image_url,
       buttons: buttons.filter(b => b.panel_id === p.id).map(({ panel_id, form_id, ...b }) => ({ ...b, form: formName.get(form_id) || null })) })),
     fields: await db('SELECT label, type, required, subject, position, active, var_name FROM ticket_fields ORDER BY position, id'),
-    faq: await db('SELECT question, answer, keywords, active FROM faq_entries ORDER BY id'),
+    faq: await db('SELECT question, answer, keywords, category, visibility, active FROM faq_entries ORDER BY id'),
     templates: (await db("SELECT name, content, subject, actions FROM reply_templates WHERE scope = 'shared' ORDER BY id"))
       .map(t => {
         const actions = parseJsonField(t.actions, null);
@@ -155,8 +155,9 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
       [f.type === 'number' ? 'number' : 'text', bool(f.required), str(f.subject, 100), int(f.position), bool(f.active ?? 1), varName]);
   }
   for (const q of Array.isArray(data.faq) ? data.faq.slice(0, 200) : []) {
-    if (!str(q.question, 200) || !str(q.answer, 2000)) continue;
-    await upsertBy('faq', 'faq_entries', 'question', str(q.question, 200), ['answer', 'keywords', 'active'], [str(q.answer, 2000), str(q.keywords, 500) || '', bool(q.active ?? 1)]);
+    if (!str(q.question, 200) || !str(q.answer, 5000)) continue;
+    await upsertBy('faq', 'faq_entries', 'question', str(q.question, 200), ['answer', 'keywords', 'category', 'visibility', 'active'],
+      [str(q.answer, 5000), str(q.keywords, 500) || '', str(q.category, 80) || '', q.visibility === 'public' ? 'public' : 'members', bool(q.active ?? 1)]);
   }
   for (const t of Array.isArray(data.templates) ? data.templates.slice(0, 200) : []) {
     if (!str(t.name, 100) || !str(t.content, 2000)) continue;

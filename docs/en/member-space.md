@@ -5,8 +5,21 @@ Members sign in on **`/espace`** of your domain — with Discord, or **without a
 - **Follow**: a status written for them (« waiting for your answer », « being handled »…), the conversation with the staff, the rating they gave, a download of the exchange.
 - **Reply** from the web, exactly as by DM (same limits, same channel on the staff side).
 - **Open a ticket**: server, subject, the subject's fields and form, with FAQ entries that look like the request suggested while typing.
-- **Help**: each server's FAQ, searchable.
+- **Help**: each server's FAQ, searchable, with a link to its [public knowledge base](#public-knowledge-base) if it is online.
 - **Direct link**: a « View on the web » button under each DM tied to a ticket.
+
+## Public knowledge base
+
+The server's FAQ (menu **FAQ**) is made of **articles**: a question, an answer (up to 5,000 characters), keywords for the automatic FAQ in DM, an optional **category** (« Account », « Orders »…) and a **visibility**:
+
+| Visible to | Where the article shows |
+|---|---|
+| **Signed-in members** (default) | The **Help** tab of the member space, suggestions while opening a ticket, automatic FAQ in DM |
+| **Everyone** | Also: the public page **`/aide/<server>`**, readable **without signing in**, and the suggestions of the [web widget](./integrations#web-widget) |
+
+The public page is **offline** until a **founder** puts it online (**FAQ → Public knowledge base**). Online, it lists the active « Everyone » articles, grouped by category and searchable, each with its own address to share; the **Help** tab of the member space links to it, and the answers offered in DM add a « Read the article » link. Each article counts its reads (one per visitor and hour).
+
+FAQ entries from before v4.2 are kept as they were, for signed-in members: nothing becomes public unless someone picks it. An article turned off, or set back to « signed-in members », leaves the public page at once. The page shows neither keywords, nor author, nor counters; an unknown server or one whose page is offline gets the same « not found » answer. Articles and their visibility are part of the [configuration export](./integrations#backing-up-the-configuration).
 
 ## Without Discord: sign-in link by e-mail
 

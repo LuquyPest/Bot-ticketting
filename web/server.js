@@ -153,6 +153,7 @@ app.use('/api', apiLimiter);
 const widgetRoutes = require('./routes/widget');
 app.use(widgetRoutes.pages);
 app.use('/api/widget', widgetRoutes.api);
+app.use('/api/kb', require('./routes/kb')); // public knowledge base (v4.2), no sign-in
 
 app.get('/t/:token', (req, res) => {
   const page = pages.get(req.params.token);
