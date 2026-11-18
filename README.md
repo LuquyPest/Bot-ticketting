@@ -9,7 +9,7 @@ Discord, e-mail, formulaire web, API : chaque demande devient un ticket, traité
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1322_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-1323_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
@@ -82,7 +82,7 @@ Ensuite, ouvre ton domaine : connecte-toi avec le compte Discord propriétaire d
 Node 22, discord.js 14, Express 5, MariaDB 11 (une base par espace), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
-npm run test:integration                                  # 1322 vérifications sur MariaDB + Redis jetables
+npm run test:integration                                  # 1323 vérifications sur MariaDB + Redis jetables
 cd dashboard && npx vite build && node tests/smoke.mjs    # pages du dashboard + accessibilité (axe-core)
 ```
 

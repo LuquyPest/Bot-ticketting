@@ -4322,6 +4322,9 @@ async function main() {
     const ids = x => (x.body.staff || []).map(p => p.userId);
     check('classement: la semaine répond (elle échouait toujours)', week.status === 200 && ids(week).includes(U.F), JSON.stringify(week.body).slice(0, 200));
     check('classement: le mois répond aussi', month.status === 200 && ids(month).includes(U.F), month.status);
+    const cmp = [];
+    for (const period of ['today', 'week', 'month', 'all']) cmp.push((await req('GET', '/api/analytics/staff-compare', { sid: sessions.F, query: { period } })).status);
+    check('comparatif staff: chaque période répond (7 jours échouait toujours)', cmp.every(x => x === 200), cmp.join());
     check('classement: seulement des membres du staff, jamais les notes automatiques', !ids(week).includes('system') && !ids(week).includes('rule-bot'), JSON.stringify(ids(week)));
     await db('DELETE FROM tickets WHERE id = ?', [tLb]);
     await db('UPDATE guild_config SET leaderboard_enabled = ? WHERE id = 1', [lbCfg.leaderboard_enabled]);
