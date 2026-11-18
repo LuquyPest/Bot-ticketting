@@ -30,6 +30,7 @@ const PAGES = [
   ['settings-tickets', '/settings?tab=tickets', 'Tickets sur Discord'],
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
   ['settings-integrations', '/settings?tab=integrations', 'Tickets par e-mail'],
+  ['settings-widget', '/settings?tab=integrations', 'Voir le formulaire'],
   ['analytics', '/analytics', 'Analytiques'],
   ['audit', '/audit', "Journal d'activité"],
   ['equipe', '/equipe', 'Équipe'],

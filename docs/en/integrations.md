@@ -66,6 +66,23 @@ The space used is shown, with **Apply the retention now** and **Delete those of 
 For safety, the IMAP and SMTP servers must have a public address (the bot never connects to an internal address chosen from the dashboard). For a mail server at home, `EMAIL_ALLOW_PRIVATE_HOSTS=true` in `.env`.
 :::
 
+## Web widget
+
+A ticket form to paste on **your site**, for people without a Discord account. **Settings → Integrations → Web widget**:
+
+1. Tick **Turn the widget on**. Optionally list the **sites allowed** to show it (one per line, `https://example.com`); empty, any site can show it.
+2. **Save** gives the code to paste before the end of the `<body>` tag:
+
+   ```html
+   <script src="https://your-domain/widget.js" data-datick-widget="…" async></script>
+   ```
+
+   A **Support** button appears at the bottom right and opens the form. Options: `data-label` (button text), `data-color` (`#5865f2`), `data-lang` (`fr`, `en`, `es`, `de`, `it`, `pt`; otherwise the browser's language), `data-mode="inline"` (the form shows where the code is, height set with `data-height`).
+
+The person gives their name (optional), their **e-mail address**, the subject if the space offers some, and their message. The ticket is theirs as in the [member space](./member-space) without Discord: the confirmation and the staff's answers reach them through the [e-mail of the instance](./instance#e-mail-of-the-instance), with the link to follow and answer in the member space. **Without the e-mail of the instance, the form stays unavailable.** Custom fields and the intake form are not asked by the widget.
+
+**Anti-spam**, with no third party: a hidden field only robots fill in, at least 3 seconds between opening the form and sending it (signed time, valid 2 hours), **5 sends per hour per IP address**, **3 per e-mail address**, 60 new web tickets per hour for the space, the space's daily ticket limit and the blacklist. **New code** invalidates the code already pasted (in case of abuse); every change is in the journal.
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ, templates, rules, checklists) and import on this server or another. Secrets are never exported.

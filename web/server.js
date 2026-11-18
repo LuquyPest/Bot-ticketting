@@ -148,6 +148,11 @@ app.use('/api/guest/session', authLimiter); // guest links: token guessing is ra
 app.use('/api/demo', authLimiter);
 app.use('/api', apiLimiter);
 
+// Web widget (v4.1): the script and the form page, public, framed by other sites
+const widgetRoutes = require('./routes/widget');
+app.use(widgetRoutes.pages);
+app.use('/api/widget', widgetRoutes.api);
+
 app.get('/t/:token', (req, res) => {
   const page = pages.get(req.params.token);
   if (!page) return res.status(410).type('html').send(EXPIRED_HTML);
@@ -272,6 +277,7 @@ app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/email',       withGuild(['fondateur']),            require('./routes/emailSettings')); // tickets by e-mail
+app.use('/api/widget-settings', withGuild(['fondateur']),        widgetRoutes.settings); // web widget (v4.1)
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));
 app.use('/api/absences',    withGuild(['support', 'fondateur']), require('./routes/absences'));
 app.use('/api/messages',    withGuild(['support', 'fondateur']), require('./routes/messages'));

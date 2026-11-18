@@ -11,6 +11,7 @@ import BackupKey from '../components/BackupKey';
 import PublicStats from '../components/PublicStats';
 import BotImport from '../components/BotImport';
 import EmailSettings from '../components/EmailSettings';
+import WidgetSettings from '../components/WidgetSettings';
 import { useAuth } from '../App';
 
 // What each ticket format does (Paramètres → Tickets)
@@ -874,6 +875,10 @@ export default function Settings() {
 
       <Section title="Tickets par e-mail" description="Chaque e-mail reçu sur l'adresse du support ouvre un ticket ; les réponses du staff partent par e-mail. Enregistré à part (mots de passe chiffrés).">
         <EmailSettings />
+      </Section>
+
+      <Section title="Widget web" description="Un formulaire de ticket à intégrer sur ton site, sans compte Discord. Enregistré à part.">
+        <WidgetSettings />
       </Section>
 
         </div>

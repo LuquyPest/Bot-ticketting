@@ -102,6 +102,8 @@ const ACTIONS = {
   template_update:          ['Modèle de réponse modifié', 'config'],
   template_delete:          ['Modèle de réponse supprimé', 'config'],
   email_settings:           ['Tickets par e-mail modifiés', 'config'],
+  widget_settings:          ['Widget web modifié', 'config'],
+  widget_token:             ['Nouveau code du widget web', 'config'],
   email_attachments_purge:  ['Pièces jointes des e-mails supprimées', 'config'],
   subject_rule_create:      ['Règle par sujet créée', 'config'],
   subject_rule_delete:      ['Règle par sujet supprimée', 'config'],

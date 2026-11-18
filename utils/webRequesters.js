@@ -42,8 +42,9 @@ async function sendToWebOwner(guildId, ownerId, build) {
 }
 
 // A user-like object for the ticket code (like the e-mail one): « send » is an instance e-mail
-const webUserFor = (ownerId, address, guildId = null) => ({
-  id: ownerId, username: address.slice(0, 100), tag: address.slice(0, 100), bot: false,
+// name: the one given in the web widget, else the address
+const webUserFor = (ownerId, address, guildId = null, name = '') => ({
+  id: ownerId, username: (name || address).slice(0, 100), tag: address.slice(0, 100), bot: false,
   send: async payload => (guildId ? sendToWebOwner(guildId, ownerId, () => payload) : null),
 });
 
