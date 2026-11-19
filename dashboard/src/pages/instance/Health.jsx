@@ -308,6 +308,12 @@ export default function Health() {
           <p className="text-[11px] text-ink-4 mb-1">Base de données</p>
           <State ok={h.database.ok} label={h.database.ok ? 'OK' : 'Injoignable'} />
           <p className="text-[11px] text-ink-3 mt-1">{h.database.ok ? `réponse en ${h.database.ms} ms` : h.database.error}</p>
+          {h.database.pools && (
+            <p className="text-[11px] text-ink-3 mt-1">
+              {`Connexions : instance ${h.database.pools.global.open - h.database.pools.global.idle}/${h.database.pools.global.limit} · espaces ${h.database.pools.tenants.open - h.database.pools.tenants.idle} en cours (${h.database.pools.tenants.limit} max par espace)`}
+              {(h.database.pools.global.waiting + h.database.pools.tenants.waiting) > 0 && <span className="text-amber-400">{` · ${h.database.pools.global.waiting + h.database.pools.tenants.waiting} requête(s) en attente`}</span>}
+            </p>
+          )}
         </div>
         <div className={card}>
           <p className="text-[11px] text-ink-4 mb-1">Redis</p>

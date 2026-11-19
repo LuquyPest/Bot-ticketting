@@ -229,7 +229,7 @@ export const MOCK = {
   '/api/instance/blocked': { ips: [] },
   '/api/instance/health': {
     now: Date.now(), discord: { ok: true, status: 'prêt', pingMs: 42, guilds: 2, user: 'Ticket Bot#0001' },
-    database: { ok: true, ms: 2 }, redis: { ok: true, ms: 1 },
+    database: { ok: true, ms: 2, pools: { global: { limit: 20, open: 4, idle: 3, waiting: 0 }, tenants: { pools: 2, limit: 10, open: 6, idle: 5, waiting: 0, busiest: null } } }, redis: { ok: true, ms: 1 },
     jobs: { counts: { waiting: 0, active: 0, delayed: 3, failed: 0 }, jobs: [{ name: 'backup-watch', schedule: '20 * * * *', last: { at: Date.now() - 600000, ok: true, durationMs: 3 }, next: Date.now() + 600000 }] },
     process: { uptimeS: 86400, node: 'v22.0.0', rssMb: 180, heapMb: 90, pid: 1 },
     schemas: { latest: 30, guilds: [{ guildId: '1', name: 'Sunset FA', version: 30 }] },

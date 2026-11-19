@@ -3510,6 +3510,7 @@ async function main() {
     r = await req('GET', '/api/instance/health', { sid: sessions.NOWN });
     check('santé: réservée au propriétaire', r.status === 403, r.status);
     r = await req('GET', '/api/instance/health', { sid: sessions.OWN });
+    check('santé: connexions des pools (limites par défaut 20 et 10, en cours, en attente)', r.body.database?.pools?.global?.limit === 20 && r.body.database.pools.tenants.limit === 10 && r.body.database.pools.global.open >= 1 && r.body.database.pools.tenants.pools >= 1 && Number.isInteger(r.body.database.pools.tenants.waiting), JSON.stringify(r.body.database));
     const tm2 = app('./utils/tenantMigrations');
     check('santé: base et Redis joignables', r.status === 200 && r.body.database.ok && r.body.redis.ok && typeof r.body.process.uptimeS === 'number', JSON.stringify([r.body.database, r.body.redis]));
     check('santé: tâches planifiées listées', r.body.jobs?.jobs?.length === Object.keys(app('./utils/jobQueue').JOBS).length && r.body.jobs.jobs.every(j => j.schedule), JSON.stringify(r.body.jobs).slice(0, 300));
@@ -3706,6 +3707,7 @@ async function main() {
     r = await req('GET', '/metrics', { headers: { Authorization: `Bearer ${token}` } });
     const text = String(r.body);
     check('métriques: format Prometheus, tickets par serveur, base, Redis, version', r.status === 200 && /# TYPE ticketbot_tickets_open gauge/.test(text) && new RegExp(`ticketbot_tickets_open\\{guild_id="${G}",guild="[^"]*"\\} \\d+`).test(text) && /ticketbot_database_up 1/.test(text) && /ticketbot_redis_up 1/.test(text) && /ticketbot_info\{version="v[\d.]+"\} 1/.test(text), text.slice(0, 500));
+    check('métriques: connexions des pools MariaDB (instance et espaces)', /ticketbot_database_pool_limit\{pool="global"\} 20/.test(text) && /ticketbot_database_pool_limit\{pool="space"\} 10/.test(text) && /ticketbot_database_pool_connections\{pool="spaces"\} \d+/.test(text), (text.match(/ticketbot_database_pool[^\n]*/g) || []).join(' | '));
     check('métriques: aucun sujet ni nom de membre', !/owner_tag|subject/i.test(text), '');
     check('métriques: échappement des étiquettes', metrics.render([['x', 'gauge', 'h', [[{ guild: 'a"b\\c\nd' }, 1]]]]).includes('x{guild="a\\"b\\\\c d"} 1'), metrics.render([['x', 'gauge', 'h', [[{ guild: 'a"b\\c\nd' }, 1]]]]));
     const again = await req('PUT', '/api/instance/metrics', { sid: sessions.OWN, body: { enabled: true } });

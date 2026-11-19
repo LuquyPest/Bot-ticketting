@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Reliability',
     changes: [
       { type: 'tech', text: 'Analyse statique (ESLint) du serveur et du dashboard dans la CI, bloquante sur les vrais bugs (variable ou composant non défini, clé en double, code inatteignable) ; la suite d\'intégration envoie des corps malformés à toutes les routes publiques et du staff', en: 'Static analysis (ESLint) of the server and the dashboard in the CI, blocking on real bugs (undefined variable or component, duplicate key, unreachable code); the integration suite sends malformed bodies to every public and staff route' },
+      { type: 'impr', text: 'Connexions à la base : taille réglable (DB_POOL_SIZE, DB_TENANT_POOL_SIZE), valeurs par défaut relevées (20 pour l\'instance, 10 par espace au lieu de 5), connexions en cours et requêtes en attente sur la page Santé et dans les métriques', en: 'Database connections: adjustable size (DB_POOL_SIZE, DB_TENANT_POOL_SIZE), higher defaults (20 for the instance, 10 per space instead of 5), connections in use and waiting queries on the Health page and in the metrics' },
     ],
   },
   {

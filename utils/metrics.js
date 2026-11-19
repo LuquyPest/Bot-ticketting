@@ -66,6 +66,12 @@ async function collect(client) {
   families.push(['ticketbot_discord_ping_seconds', 'gauge', 'Discord gateway latency', [[{}, client?.ws?.ping >= 0 ? client.ws.ping / 1000 : null]]]);
   families.push(['ticketbot_database_up', 'gauge', '1 when MariaDB answers', [[{}, db.up]]]);
   families.push(['ticketbot_database_latency_seconds', 'gauge', 'Time of a trivial MariaDB query', [[{}, db.s]]]);
+  // Connection pools (v6): the instance's, and all the spaces' together
+  const ps = require('./globalDb').poolStats();
+  families.push(['ticketbot_database_pool_connections', 'gauge', 'Open connections of the MariaDB pools', [[{ pool: 'global' }, ps.global.open], [{ pool: 'spaces' }, ps.tenants.open]]]);
+  families.push(['ticketbot_database_pool_idle', 'gauge', 'Idle connections of the MariaDB pools', [[{ pool: 'global' }, ps.global.idle], [{ pool: 'spaces' }, ps.tenants.idle]]]);
+  families.push(['ticketbot_database_pool_waiting', 'gauge', 'Queries waiting for a MariaDB connection', [[{ pool: 'global' }, ps.global.waiting], [{ pool: 'spaces' }, ps.tenants.waiting]]]);
+  families.push(['ticketbot_database_pool_limit', 'gauge', 'Connection limit of each MariaDB pool', [[{ pool: 'global' }, ps.global.limit], [{ pool: 'space' }, ps.tenants.limit]]]);
   families.push(['ticketbot_redis_up', 'gauge', '1 when Redis answers', [[{}, redis.up]]]);
   families.push(['ticketbot_redis_latency_seconds', 'gauge', 'Time of a Redis PING', [[{}, redis.s]]]);
 
