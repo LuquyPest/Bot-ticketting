@@ -166,6 +166,18 @@ La zone de réponse et de note a une **barre de mise en forme** (gras, italique,
 
 Dans la liste, **Colonnes** choisit ce qui s'affiche (type, équipe, organisation, dernier message…), gardé pour chacun. Une **vue enregistrée** peut être **partagée avec une équipe** dont on fait partie : ses membres la voient (lecture seule), chacun avec ses propres droits sur les tickets.
 
+### Les coûts
+
+Menu **Coûts** (fondateurs et permission **Voir et gérer les coûts** d'un grade) : ce que coûte le support, pour refacturer un client ou un service.
+
+| | |
+|---|---|
+| **Temps** | Le temps passé sur un ticket (chronomètre et ajout à la main), au taux horaire de la **personne**, sinon de l'**équipe** du ticket, sinon de l'**espace** (taux réglés par les fondateurs) |
+| **Forfait** | Un montant fixe par ticket ouvert |
+| **Frais** | Des frais ajoutés à un ticket depuis sa fiche (déplacement, pièce…), au journal du ticket |
+
+La fiche ticket montre son coût ; le rapport regroupe par **organisation**, **ticket**, **personne** ou **équipe** sur une période libre (le temps compte à sa date, les frais à la leur, le forfait au jour d'ouverture), et s'exporte en **CSV**. Il ne compte que les tickets que la personne voit.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

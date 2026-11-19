@@ -151,6 +151,9 @@ export const MOCK = {
   '/api/tickets/1/tasks': { progress: { total: 2, done: 1 }, tasks: [
     { id: 1, ticketId: 1, title: 'Vérifier le paiement chez Stripe', description: '', assigneeId: '1', assigneeName: 'Daryu', teamId: null, plannedMinutes: 15, spentSeconds: 600, dueAt: null, state: 'done', visible: true, position: 1, doneAt: iso(30), doneBy: 'Daryu', createdAt: iso(100) },
     { id: 2, ticketId: 1, title: 'Rembourser la commande en double', description: '', assigneeId: null, assigneeName: null, teamId: null, plannedMinutes: 30, spentSeconds: 0, dueAt: new Date(Date.now() + 86400000).toISOString(), state: 'todo', visible: false, position: 2, doneAt: null, doneBy: null, createdAt: iso(90) }] },
+  '/api/costs/settings': { currency: 'EUR', defaultRateCents: 4500, fixedCents: 500, userRates: { '1': 6000 }, teamRates: {} },
+  '/api/costs/report': { currency: 'EUR', by: 'organization', totalCents: 41250, rows: [{ key: '1', label: 'Acme', tickets: 4, seconds: 21600, timeCents: 36000, fixedCents: 2000, extraCents: 3250, totalCents: 41250 }] },
+  '/api/costs/tickets/1': { currency: 'EUR', time: [{ userId: '1', userTag: 'Daryu', seconds: 1800, rateCents: 6000, cents: 3000 }], fixedCents: 500, extras: [{ id: 1, label: 'Remboursement des frais de port', amountCents: 890, by: 'Daryu', createdAt: iso(20) }], totalCents: 4390 },
   '/api/profile/ui-prefs': { listColumns: ['user', 'status', 'priority', 'assignee', 'team', 'organization', 'created'] },
   '/api/planning': { tasks: [{ id: 1, ticketId: 1, title: 'Préparer le poste de Léa', subject: 'Arrivée', dueAt: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(), plannedMinutes: 60, state: 'todo', assigneeId: '1', assigneeName: 'Daryu' }],
     deadlines: [{ ticketId: 2, subject: 'Commande', dueAt: new Date(new Date().setHours(16, 0, 0, 0)).toISOString(), priority: 'urgent' }], absences: [] },

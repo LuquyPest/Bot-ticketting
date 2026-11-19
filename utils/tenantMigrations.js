@@ -1149,6 +1149,33 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_tv_team ON ticket_views (team_id)',
     ],
   },
+  {
+    version: 70,
+    name: 'Coûts : taux horaires, forfait par ticket, frais ajoutés (v5.4)',
+    statements: [
+      "ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS cost_currency VARCHAR(3) NOT NULL DEFAULT 'EUR'",
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS cost_default_rate_cents INT NOT NULL DEFAULT 0',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS cost_fixed_cents INT NOT NULL DEFAULT 0',
+      `CREATE TABLE IF NOT EXISTS cost_rates (
+        scope        VARCHAR(4) NOT NULL,
+        target_id    VARCHAR(32) NOT NULL,
+        hourly_cents INT NOT NULL,
+        PRIMARY KEY (scope, target_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_costs (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id      INT NOT NULL,
+        label          VARCHAR(120) NOT NULL,
+        amount_cents   INT NOT NULL,
+        created_by_id  VARCHAR(32) DEFAULT NULL,
+        created_by_tag VARCHAR(100) DEFAULT NULL,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_tc_ticket (ticket_id),
+        INDEX idx_tc_date (created_at),
+        CONSTRAINT fk_tc_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

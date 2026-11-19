@@ -20,7 +20,8 @@ const ALL_PERMISSIONS = [
   { id: 'manage_grades',       label: 'Gérer les grades' },
   { id: 'manage_settings',     label: 'Paramètres du bot' },
   { id: 'view_audit',          label: 'Journal d\'audit' },
-  { id: 'manage_rules',        label: 'Gérer les règles automatiques' }
+  { id: 'manage_rules',        label: 'Gérer les règles automatiques' },
+  { id: 'manage_costs',        label: 'Voir et gérer les coûts' }
 ];
 
 const PRESET_COLORS = [

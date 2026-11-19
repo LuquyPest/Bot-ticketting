@@ -13,6 +13,7 @@ import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
 import TasksPanel from '../components/TasksPanel';
+import CostPanel from '../components/CostPanel';
 import FormatBar, { formatKeys } from '../components/FormatBar';
 import ShortcutsHelp from '../components/ShortcutsHelp';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS, LEVEL_CLS } from '../utils/priorityLevels';
@@ -2086,6 +2087,8 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           <ObjectivesPanel objectives={ticket.objectives} panelCard={panelCard} />
           {/* TÂCHES (v5.4) */}
           <TasksPanel ticketId={ticket.id} staff={staff} canEdit={can('reply_ticket') && ticket.status === 'open'} panelCard={panelCard} />
+          {/* COÛT (v5.4) */}
+          {(user?.role === 'fondateur' || user?.permissions?.includes('manage_costs')) && <CostPanel ticketId={ticket.id} panelCard={panelCard} />}
           {ticket.organization && (
             <div className={panelCard}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>

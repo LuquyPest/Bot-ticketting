@@ -5919,6 +5919,45 @@ async function main() {
     await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
   }
 
+  // ── Costs (utils/costs.js, v5.4) ──
+  {
+    r = await req('GET', '/api/costs/settings', { sid: sessions.S1 });
+    check('coûts: réservés (fondateurs, permission Coûts)', r.status === 403, r.status);
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe coûts' } })).body.find(t => t.name === 'Équipe coûts');
+    r = await req('PUT', '/api/costs/settings', { sid: sessions.F, body: { currency: 'EUR', defaultRateCents: 3000, fixedCents: 500, userRates: { [U.OUT]: 1000 } } });
+    check('coûts: un taux par personne seulement pour le staff', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/costs/settings', { sid: sessions.F, body: { currency: 'EUR', defaultRateCents: 3000, fixedCents: 500, userRates: { [U.S1]: 6000 }, teamRates: { [team.id]: 4500 } } });
+    check('coûts: taux et forfait enregistrés, au journal', r.status === 200 && r.body.userRates[U.S1] === 6000 && r.body.teamRates[String(team.id)] === 4500 && r.body.fixedCents === 500
+      && (await db("SELECT 1 FROM audit_log WHERE action = 'cost_settings'")).length > 0, JSON.stringify(r.body));
+    const org = (await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Client coûts' } })).body.id;
+    const tc = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, team_id, organization_id) VALUES ('200000000000000070', 'cout', 'db-cost', 'open', 'Intervention', ?, ?)", [team.id, org])).insertId;
+    const tNo = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000071', 'cout2', 'db-cost2', 'open', 'Sans équipe')")).insertId;
+    await db("INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds) VALUES (?, ?, 'S1', 'manual', NOW(), NOW(), 3600), (?, ?, 'S2', 'manual', NOW(), NOW(), 1800), (?, ?, 'S2', 'manual', NOW(), NOW(), 3600)",
+      [tc, U.S1, tc, U.S2, tNo, U.S2]);
+    r = await req('POST', `/api/costs/tickets/${tc}`, { sid: sessions.F, body: { label: 'Déplacement', amountCents: 1200 } });
+    check('coûts: coût du ticket (taux de la personne, sinon de l équipe, forfait, frais)', r.status === 200 && r.body.time.find(x => x.userId === U.S1)?.cents === 6000
+      && r.body.time.find(x => x.userId === U.S2)?.cents === 2250 && r.body.fixedCents === 500 && r.body.totalCents === 6000 + 2250 + 500 + 1200, JSON.stringify(r.body));
+    r = await req('GET', `/api/costs/tickets/${tNo}`, { sid: sessions.F });
+    check('coûts: sans équipe → taux de l espace', r.body.time[0]?.cents === 3000 && r.body.totalCents === 3500, JSON.stringify(r.body));
+    r = await req('POST', `/api/costs/tickets/${tc}`, { sid: sessions.F, body: { label: 'x', amountCents: -5 } });
+    check('coûts: montant vérifié', r.status === 400, r.status);
+    const from = new Date(Date.now() - 864e5).toISOString(), to = new Date(Date.now() + 864e5).toISOString();
+    r = await req('GET', '/api/costs/report', { sid: sessions.F, query: { from, to, by: 'organization' } });
+    const rowOrg = r.body.rows?.find(x => x.label === 'Client coûts');
+    check('coûts: rapport par organisation sur la période', r.status === 200 && rowOrg?.totalCents === 9950 && rowOrg.tickets === 1 && r.body.rows.some(x => x.label === 'Sans organisation'), JSON.stringify(r.body.rows));
+    r = await req('GET', '/api/costs/report', { sid: sessions.F, query: { from, to, by: 'user' } });
+    check('coûts: rapport par personne (temps et frais)', r.body.rows.find(x => x.key === U.S1)?.timeCents === 6000 && r.body.rows.find(x => x.key === U.S2)?.timeCents === 2250 + 3000, JSON.stringify(r.body.rows));
+    r = await req('GET', '/api/costs/report', { sid: sessions.F, query: { from, to, by: 'organization', format: 'csv' } });
+    check('coûts: export CSV', r.status === 200 && /text\/csv/.test(r.headers['content-type']) && /Client coûts;1;1\.50;82\.50;5\.00;12\.00;99\.50/.test(r.body), String(r.body).slice(0, 300));
+    const extraId = (await db('SELECT id FROM ticket_costs WHERE ticket_id = ?', [tc]))[0].id;
+    r = await req('DELETE', `/api/costs/tickets/${tc}/${extraId}`, { sid: sessions.F });
+    check('coûts: frais retiré, au journal du ticket', r.body.extras.length === 0 && (await db("SELECT 1 FROM audit_log WHERE ticket_id = ? AND action IN ('ticket_cost_add', 'ticket_cost_delete')", [tc])).length === 2, '');
+    await req('PUT', '/api/costs/settings', { sid: sessions.F, body: { currency: 'EUR', defaultRateCents: 0, fixedCents: 0 } });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tc, tNo]]);
+    await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
