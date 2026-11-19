@@ -178,6 +178,12 @@ Menu **Coûts** (fondateurs et permission **Voir et gérer les coûts** d'un gra
 
 La fiche ticket montre son coût ; le rapport regroupe par **organisation**, **ticket**, **personne** ou **équipe** sur une période libre (le temps compte à sa date, les frais à la leur, le forfait au jour d'ouverture), et s'exporte en **CSV**. Il ne compte que les tickets que la personne voit.
 
+## Les problèmes
+
+Menu **Problèmes** (coupé par défaut ; un fondateur l'active) : un **problème** est la cause commune de plusieurs tickets, à la façon d'ITIL en plus léger. Il a un titre, une description, des **symptômes**, une **cause**, un **contournement**, un statut (**ouvert**, **erreur connue**, **résolu**, **fermé**), une personne qui s'en occupe et des tâches.
+
+Les tickets s'y relient depuis le problème ou depuis leur fiche (permission **Répondre**), seulement ceux qu'on voit. Sur la fiche d'un ticket relié, le contournement est **proposé** : **Insérer dans la réponse** le met dans la zone de réponse. **Résoudre le problème** enregistre sa solution et peut la **proposer sur tous ses tickets ouverts** d'un coup (comme la [résolution](#la-resolution-et-la-cloture) d'un ticket, le demandeur confirme). Chaque création, lien et résolution est au journal.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

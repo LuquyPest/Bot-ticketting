@@ -5958,6 +5958,50 @@ async function main() {
     await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
   }
 
+  // ── Problems (utils/problems.js, v5.5) ──
+  {
+    r = await req('GET', '/api/problems', { sid: sessions.F });
+    check('problèmes: coupés par défaut (migration 71)', r.status === 404, r.status);
+    r = await req('PUT', '/api/problems/settings', { sid: sessions.S1, body: { enabled: true } });
+    check('problèmes: activation réservée aux fondateurs', r.status === 403, r.status);
+    await req('PUT', '/api/problems/settings', { sid: sessions.F, body: { enabled: true } });
+    const [rsBefore] = await db('SELECT resolution_enabled FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET resolution_enabled = 1 WHERE id = 1');
+    const mkT = async (n, extra = '') => (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject${extra ? ', visibility_grade_id' : ''}) VALUES (?, 'pb', ?, 'open', 'VPN coupé'${extra ? ', -1' : ''})`, [`20000000000000007${n}`, `db-pb-${n}`])).insertId;
+    const t1 = await mkT(2), t2 = await mkT(3), tConf = await mkT(4, true);
+    r = await req('POST', '/api/problems', { sid: sessions.F, body: { title: '' } });
+    check('problèmes: titre requis', r.status === 400, r.status);
+    r = await req('POST', '/api/problems', { sid: sessions.F, body: { title: 'Passerelle VPN saturée', symptoms: 'Déconnexions toutes les 10 minutes', workaround: 'Se reconnecter sur vpn2.exemple.fr', ticketId: t1 } });
+    const pid = r.body.id;
+    check('problèmes: créé depuis un ticket (relié)', r.status === 200 && r.body.linked.some(t => t.id === t1) && r.body.status === 'open', JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', `/api/problems/${pid}/tickets`, { sid: sessions.S1, body: { ticketId: t2 } });
+    check('problèmes: un ticket relié par le staff', r.status === 200 && r.body.linked.length === 2, JSON.stringify(r.body.linked));
+    r = await req('POST', `/api/problems/${pid}/tickets`, { sid: sessions.S1, body: { ticketId: tConf } });
+    check('problèmes: on ne relie pas un ticket qu on ne voit pas', r.status === 404, r.status);
+    await req('POST', `/api/problems/${pid}/tickets`, { sid: sessions.F, body: { ticketId: tConf } });
+    r = await req('GET', `/api/problems/${pid}`, { sid: sessions.S1 });
+    check('problèmes: ses tickets à travers la visibilité', r.body.linked.length === 2 && !r.body.linked.some(t => t.id === tConf) && r.body.tickets === 3, JSON.stringify(r.body.linked.map(t => t.id)));
+    r = await req('GET', `/api/problems/ticket/${t2}`, { sid: sessions.S1 });
+    check('problèmes: le contournement proposé sur le ticket', r.body.problems?.[0]?.workaround === 'Se reconnecter sur vpn2.exemple.fr', JSON.stringify(r.body));
+    r = await req('PATCH', `/api/problems/${pid}`, { sid: sessions.F, body: { status: 'known_error', cause: 'Licence limitée à 50 sessions' } });
+    check('problèmes: erreur connue, cause', r.body.status === 'known_error' && r.body.cause === 'Licence limitée à 50 sessions', JSON.stringify(r.body).slice(0, 200));
+    r = await req('PATCH', `/api/problems/${pid}`, { sid: sessions.F, body: { status: 'peut-être' } });
+    check('problèmes: statut vérifié', r.status === 400, r.status);
+    r = await req('POST', `/api/problems/${pid}/tasks`, { sid: sessions.F, body: { title: 'Commander 50 licences de plus' } });
+    const tk = r.body.tasks?.[0];
+    r = await req('PATCH', `/api/problems/${pid}/tasks/${tk.id}`, { sid: sessions.F, body: { done: true } });
+    check('problèmes: tâches', r.body.tasks[0].done === true, JSON.stringify(r.body.tasks));
+    r = await req('POST', `/api/problems/${pid}/resolve`, { sid: sessions.S1, body: { solution: 'Licences ajoutées, la passerelle tient la charge.', resolveTickets: true } });
+    const [r1] = await db('SELECT resolved_at, resolution FROM tickets WHERE id = ?', [t1]);
+    const [rc] = await db('SELECT resolved_at FROM tickets WHERE id = ?', [tConf]);
+    check('problèmes: résolution groupée (solution proposée sur ses tickets ouverts)', r.status === 200 && r.body.status === 'resolved' && r.body.result.resolved === 2 && !!r1.resolved_at && /Licences ajoutées/.test(r1.resolution), JSON.stringify(r.body.result));
+    check('problèmes: la résolution groupée ne touche pas les tickets qu on ne voit pas', !rc.resolved_at, '');
+    check('problèmes: au journal', (await db("SELECT 1 FROM audit_log WHERE action IN ('problem_create', 'problem_link', 'problem_resolve')")).length >= 3, '');
+    await db('DELETE FROM problems WHERE id = ?', [pid]);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[t1, t2, tConf]]);
+    await db('UPDATE guild_config SET resolution_enabled = ?, problems_enabled = 0 WHERE id = 1', [rsBefore.resolution_enabled]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

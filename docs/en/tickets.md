@@ -178,6 +178,12 @@ In the list, **Columns** chooses what shows (type, team, organisation, last mess
 
 The ticket view shows its cost; the report groups by **organisation**, **ticket**, **person** or **team** over a free period (time counts on its date, costs on theirs, the fixed amount on the opening day), and exports to **CSV**. It only counts the tickets the person can see.
 
+## Problems
+
+**Problems** menu (off by default; a founder turns it on): a **problem** is the common cause of several tickets, ITIL-style but lighter. It has a title, a description, **symptoms**, a **cause**, a **workaround**, a status (**open**, **known error**, **resolved**, **closed**), a person handling it and tasks.
+
+Tickets are linked to it from the problem or from their view (**Reply** permission), only those you can see. On the view of a linked ticket, the workaround is **offered**: **Insert into the reply** puts it into the reply area. **Resolve the problem** records its solution and can **propose it on all its open tickets** at once (like a ticket's [resolution](#resolution-and-closing), the requester confirms). Each creation, link and resolution is in the journal.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

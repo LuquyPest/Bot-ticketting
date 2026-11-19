@@ -1176,6 +1176,45 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 71,
+    name: 'Problèmes : la cause commune de plusieurs tickets (v5.5, désactivé par défaut)',
+    statements: [
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS problems_enabled TINYINT(1) NOT NULL DEFAULT 0',
+      `CREATE TABLE IF NOT EXISTS problems (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        title       VARCHAR(200) NOT NULL,
+        description TEXT DEFAULT NULL,
+        symptoms    TEXT DEFAULT NULL,
+        cause       TEXT DEFAULT NULL,
+        workaround  TEXT DEFAULT NULL,
+        solution    TEXT DEFAULT NULL,
+        status      VARCHAR(12) NOT NULL DEFAULT 'open',
+        assignee_id VARCHAR(32) DEFAULT NULL,
+        team_id     INT DEFAULT NULL,
+        created_by  VARCHAR(32) DEFAULT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME DEFAULT NULL,
+        INDEX idx_pb_status (status)
+      )`,
+      `CREATE TABLE IF NOT EXISTS problem_tickets (
+        problem_id INT NOT NULL,
+        ticket_id  INT NOT NULL,
+        linked_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (problem_id, ticket_id),
+        INDEX idx_pt_ticket (ticket_id),
+        CONSTRAINT fk_pt_problem FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE,
+        CONSTRAINT fk_pt_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS problem_tasks (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        problem_id INT NOT NULL,
+        title      VARCHAR(200) NOT NULL,
+        done       TINYINT(1) NOT NULL DEFAULT 0,
+        CONSTRAINT fk_pk_problem FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

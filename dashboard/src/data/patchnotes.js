@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.5.0',
+    date: 'à venir',
+    title: 'Centre de services : problèmes et changements',
+    titleEn: 'Service desk: problems and changes',
+    changes: [
+      { type: 'new',  text: 'Problèmes (menu Problèmes, coupé par défaut) : la cause commune de plusieurs tickets, avec symptômes, cause, contournement proposé sur les tickets reliés (inséré dans la réponse), statut (ouvert, erreur connue, résolu, fermé), tâches et résolution groupée de ses tickets ouverts', en: 'Problems (Problems menu, off by default): the common cause of several tickets, with symptoms, cause, workaround offered on the linked tickets (inserted into the reply), status (open, known error, resolved, closed), tasks and grouped resolution of its open tickets' },
+    ],
+  },
+  {
     version: 'v5.4.0',
     date: 'à venir',
     title: 'Centre de services : le travail du staff',
