@@ -71,6 +71,10 @@ Under the providers, **LDAP / Active Directory directory** lets the staff sign i
 
 Founders also import the directory's people as **contacts**, attached to their organisation: **Settings → Backup → Import from another tool → LDAP / AD directory** (instance owner only), with the contacts base and filter set here.
 
+**Sync**: pick a frequency (**every hour**, **every day**, or by hand) and the spaces that receive the contacts; the directory's people become contacts there, and those already imported are **updated** (name, organisation). **Sync now** runs it right away; the date and result of the last sync are shown below.
+
+**Accounts created at sign-in** (off by default): a member of the **allowed group** without an account gets one at their first sign-in, with the directory address (taken as confirmed), and joins the chosen spaces with the **support** role (a founder then gives other rights). An allowed group is required; an address already taken by an account, even unconfirmed, does not get a second one. Each account created is written to the instance journal.
+
 ### Mailboxes (Gmail, Microsoft 365)
 
 Below the ways to sign in, **Mailboxes** declares the applications the spaces use to connect their support mailbox [without a password](./integrations#gmail-and-microsoft-365-without-a-password). Each shows its redirect address (`https://your-domain/api/email/oauth/google/callback`, etc.); the secret is encrypted and never shown again.

@@ -71,6 +71,10 @@ Sous les fournisseurs, **Annuaire LDAP / Active Directory** permet au staff de s
 
 Les fondateurs importent aussi les personnes de l'annuaire comme **contacts**, rattachés à leur organisation : **Paramètres → Sauvegarde → Importer depuis un autre outil → Annuaire LDAP / AD** (réservé au propriétaire de l'instance), avec la base et le filtre des contacts réglés ici.
 
+**Synchronisation** : choisis une fréquence (**chaque heure**, **chaque jour**, ou à la main) et les espaces qui reçoivent les contacts ; les personnes de l'annuaire y deviennent des contacts, et celles déjà importées sont **mises à jour** (nom, organisation). **Synchroniser maintenant** lance tout de suite ; la date et le résultat de la dernière synchronisation s'affichent dessous.
+
+**Comptes créés à la connexion** (désactivé par défaut) : un membre du **groupe autorisé** qui n'a pas encore de compte en reçoit un à sa première connexion, avec l'adresse de l'annuaire (tenue pour confirmée), et rejoint les espaces choisis avec le rôle **support** (un fondateur lui donne ensuite d'autres droits). Il faut un groupe autorisé ; une adresse déjà prise par un compte, même non confirmée, n'en reçoit pas un second. Chaque compte créé est inscrit au journal de l'instance.
+
 ### Boîtes e-mail (Gmail, Microsoft 365)
 
 Sous les moyens de connexion, **Boîtes e-mail** déclare les applications avec lesquelles les espaces connectent leur boîte de support [sans mot de passe](./integrations#gmail-et-microsoft-365-sans-mot-de-passe). Chacune affiche son adresse de retour (`https://ton-domaine/api/email/oauth/google/callback`, etc.) ; le secret est chiffré et jamais réaffiché.

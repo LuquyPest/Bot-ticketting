@@ -47,6 +47,11 @@ router.post('/ldap-login', async (req, res) => {
         if (!already) { await accounts.linkIdentity(PROVIDER, who.subject, byMail.id); account = await accounts.getAccount(byMail.id); }
       }
     }
+    // v6: an account for a member of the allowed group, if the owner turned it on
+    if (!account) {
+      account = await directory.provision(who).catch(err => { console.error('ldap provision:', err.message); return null; });
+      if (account) await accounts.linkIdentity(PROVIDER, who.subject, account.id);
+    }
     if (!account) {
       logLogin(req, 'inconnu', PROVIDER, 'blocked');
       return res.status(403).json({ error: 'Aucun compte n\'utilise l\'adresse de ton compte de l\'annuaire. Demande une invitation, ou connecte-toi autrement puis confirme cette adresse dans Profil → Connexion.' });

@@ -73,6 +73,17 @@ router.put('/ldap', async (req, res, next) => {
     res.json(await dir.publicSettings());
   } catch (err) { next(err); }
 });
+// POST /api/instance/ldap/sync — the scheduled sync, now (v6); GET → the last one
+router.post('/ldap/sync', async (req, res, next) => {
+  try {
+    const r = await require('../../utils/ldapDirectory').syncNow({ force: true });
+    if (r.skipped) return res.status(400).json({ error: 'Choisis d\'abord les espaces à synchroniser et enregistre l\'annuaire' });
+    res.json(r);
+  } catch (err) { next(err); }
+});
+router.get('/ldap/sync', async (req, res, next) => {
+  try { res.json(await require('../../utils/ldapDirectory').syncState()); } catch (err) { next(err); }
+});
 router.post('/ldap/test', async (req, res, next) => {
   const dir = require('../../utils/ldapDirectory');
   try {
