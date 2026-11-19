@@ -8,13 +8,13 @@ import { useAuth } from '../App';
 // Organisations (v5.3, utils/organizations.js): contacts grouped by e-mail domain or by hand,
 // with their own hours, SLA (Paramètres → Horaires → objectifs), team and account manager
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden focus:border-primary';
-const EMPTY = { name: '', parentId: null, domains: [], teamId: null, managerId: null, calendarId: null, fields: {}, notes: '' };
+const EMPTY = { name: '', portalVisibility: 'none', parentId: null, domains: [], teamId: null, managerId: null, calendarId: null, fields: {}, notes: '' };
 
 function OrgForm({ initial, ctx, orgs, busy, onSave, onDelete }) {
   const [o, setO] = useState({ ...initial, domainsText: (initial.domains || []).join(', '), fieldRows: Object.entries(initial.fields || {}) });
   const set = (k, v) => setO(x => ({ ...x, [k]: v }));
   const [contacts, setContacts] = useState(null);
-  const body = () => ({ name: o.name, parentId: o.parentId || null, domains: o.domainsText, teamId: o.teamId || null, managerId: o.managerId || null, calendarId: o.calendarId || null,
+  const body = () => ({ name: o.name, portalVisibility: o.portalVisibility || 'none', parentId: o.parentId || null, domains: o.domainsText, teamId: o.teamId || null, managerId: o.managerId || null, calendarId: o.calendarId || null,
     fields: Object.fromEntries(o.fieldRows.filter(([k, v]) => k.trim() && String(v).trim())), notes: o.notes });
   const parents = orgs.filter(x => !x.parentId && x.id !== initial.id);
   return (
@@ -25,6 +25,13 @@ function OrgForm({ initial, ctx, orgs, busy, onSave, onDelete }) {
           <option value="">Pas de parente</option>{parents.map(p => <option key={p.id} value={p.id}>{`Sous-organisation de ${p.name}`}</option>)}
         </select>
       </div>
+      <label className="block text-[11px] font-semibold text-ink-3">Dans l'espace membre, les tickets de l'organisation sont visibles par
+        <select value={o.portalVisibility || 'none'} onChange={e => set('portalVisibility', e.target.value)} className={`${INPUT} mt-1 font-normal`}>
+          <option value="none">Personne (chacun ne voit que les siens)</option>
+          <option value="manager">Ses responsables (cochés sur leur fiche contact)</option>
+          <option value="all">Tous ses membres</option>
+        </select>
+      </label>
       <label className="block text-[11px] font-semibold text-ink-3">Domaines d'adresse e-mail (rattachement automatique)
         <input value={o.domainsText} onChange={e => set('domainsText', e.target.value)} placeholder="acme.fr, acme.com" className={`${INPUT} mt-1 font-normal`} />
       </label>

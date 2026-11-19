@@ -193,7 +193,7 @@ function TicketList({ me }) {
         <h1 className="text-xl font-bold text-ink-1">{STR.title}</h1>
         <p className="text-sm text-ink-3 mt-0.5">{STR.subtitle}</p>
       </div>
-      {groups.map(({ guild, tickets }) => (
+      {groups.map(({ guild, tickets, orgTickets = [] }) => (
         <section key={guild.id} className="space-y-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-1 border-l-4 pl-2" style={{ borderColor: guild.color || 'transparent' }}><GuildIcon guild={guild} />{guild.name}</h2>
           <ul className="space-y-2">
@@ -217,6 +217,27 @@ function TicketList({ me }) {
               </li>
             ))}
           </ul>
+          {/* The tickets of their organisation (v5.3), read only */}
+          {orgTickets.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <h3 className="text-xs font-semibold text-ink-3">{STR.orgTitle}</h3>
+              <ul className="space-y-2">
+                {orgTickets.map(t => (
+                  <li key={t.id}>
+                    <Link to={`/espace/${guild.id}/${t.id}`} className="block bg-surface-card border border-overlay/6 rounded-2xl p-4 hover:border-overlay/12 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-ink-1 truncate"><span className="font-mono text-ink-4 mr-1.5">#{t.id}</span>{t.subject || '—'}</p>
+                          <p className="text-[11px] text-ink-4 mt-1">{STR.orgBy.replace('{name}', t.requester || '—')} · {STR.opened} {fmt(t.created_at)}</p>
+                        </div>
+                        <StatusBadge ticket={t} />
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       ))}
     </div>
@@ -314,6 +335,7 @@ function TicketView({ guildId, ticketId, me }) {
   if (error) return <p className="text-sm text-ink-3 py-10 text-center">{STR.notFound} <Link to="/espace" className="underline">{STR.back}</Link></p>;
   if (!data) return <div className="flex justify-center py-16"><Loader2 className="animate-spin text-ink-4" /></div>;
   const { guild, ticket: t, messages } = data;
+  const readOnly = data.access === 'org'; // a ticket of their organisation (v5.3): read only
   return (
     <div className="space-y-5">
       <button onClick={() => navigate('/espace')} className="inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1">
@@ -325,7 +347,7 @@ function TicketView({ guildId, ticketId, me }) {
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold text-ink-1 mt-2"><span className="font-mono text-ink-4 mr-1.5">#{t.id}</span>{t.subject || '—'}</h1>
             {t.confidential && <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-red-400">🔒 {STR.confidentialBadge}</p>}
-            <p className="text-[11px] text-ink-4 mt-1">{STR.opened} {fmt(t.created_at)}{t.closed_at ? ` · ${STR.closed} ${fmt(t.closed_at)}` : ''}</p>
+            <p className="text-[11px] text-ink-4 mt-1">{STR.opened} {fmt(t.created_at)}{t.closed_at ? ` · ${STR.closed} ${fmt(t.closed_at)}` : ''}{readOnly && t.requester ? ` · ${STR.orgBy.replace('{name}', t.requester)}` : ''}</p>
           </div>
           <StatusBadge ticket={t} />
         </div>
@@ -335,14 +357,15 @@ function TicketView({ guildId, ticketId, me }) {
               {STR.rating} {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} className={i <= t.rating ? 'text-amber-400 fill-amber-400' : 'text-ink-4'} />)}
             </span>
           )}
-          <a href={`/api/member/tickets/${guildId}/${ticketId}/transcript?lang=${MEMBER_LANG}`}
+          {!readOnly && <a href={`/api/member/tickets/${guildId}/${ticketId}/transcript?lang=${MEMBER_LANG}`}
             className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-overlay/8 text-xs text-ink-2 hover:text-ink-1 hover:border-overlay/15">
             <Download size={12} /> {STR.transcript}
-          </a>
+          </a>}
         </div>
+        {readOnly && <p className="text-xs text-ink-3" role="note">{STR.orgReadOnly}</p>}
       </div>
 
-      {t.status === 'open' && t.resolved_at && <ResolutionBanner guildId={guildId} ticketId={ticketId} solution={t.resolution} onDone={load} />}
+      {!readOnly && t.status === 'open' && t.resolved_at && <ResolutionBanner guildId={guildId} ticketId={ticketId} solution={t.resolution} onDone={load} />}
       {data.files?.length > 0 && (
         <div className="bg-surface-card border border-overlay/6 rounded-2xl p-3">
           <p className="text-xs font-semibold text-ink-2 mb-2">{STR.files}</p>
@@ -377,7 +400,7 @@ function TicketView({ guildId, ticketId, me }) {
           </li>
         ))}
       </ol>
-      {t.status === 'open' && !t.merged_into ? (
+      {readOnly ? null : t.status === 'open' && !t.merged_into ? (
         <div className="bg-surface-card border border-overlay/6 rounded-2xl p-3 space-y-2">
           <textarea value={reply} onChange={e => setReply(e.target.value)} rows={3} maxLength={2000} aria-label={STR.replyPh} placeholder={STR.replyPh}
             onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && (reply.trim() || files.length)) send(); }}

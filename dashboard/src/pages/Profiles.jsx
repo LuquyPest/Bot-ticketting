@@ -141,6 +141,8 @@ function Post({ post, me, isFounder, canWrite, onChange, reply }) {
 // The card itself: identities (with merge and detach), name, address and notes of the staff
 // Organisation of the contact (v5.3): by its e-mail domain, or placed by hand
 function OrgPicker({ memberId, org, canWrite, onChanged }) {
+  const { user } = useAuth();
+  const canManageOrgs = user?.role === 'fondateur' || user?.permissions?.includes('manage_settings');
   const [orgs, setOrgs] = useState(null);
   useEffect(() => { if (canWrite) api.get('/organizations').then(r => setOrgs(r.data)).catch(() => setOrgs([])); }, [canWrite]);
   const change = async value => {
@@ -159,6 +161,12 @@ function OrgPicker({ memberId, org, canWrite, onChanged }) {
           {orgs.map(o => <option key={o.id} value={o.id}>{`${o.parentId ? '— ' : ''}${o.name} (à la main)`}</option>)}
         </select>
       ) : <p className="text-ink-2">{org.name || '—'}</p>}
+      {canManageOrgs && org.id && org.portalVisibility === 'manager' && (
+        <label className="mt-1.5 flex items-center gap-1.5 text-ink-2">
+          <input type="checkbox" checked={org.portalManager} onChange={e => api.put(`/profiles/${encodeURIComponent(memberId)}/organization`, { portalManager: e.target.checked }).then(() => onChanged()).catch(err => toast.error(err.response?.data?.error || 'Erreur'))} className="accent-primary" />
+          Responsable côté client : voit les tickets de l'organisation dans l'espace membre
+        </label>
+      )}
     </div>
   );
 }

@@ -33,6 +33,12 @@ As soon as the **instance e-mail** is set up (Instance → Santé), the sign-in 
 
 Anti-abuse limits: 3 links per address per quarter of an hour (beyond that, the answer is the same but nothing is sent), attempts limited per IP address, 3 openings per minute and per person, the server's daily limit, 60 new tickets per hour and per space from e-mail sign-ins, and the blacklist (under any of their identities).
 
+## The tickets of one's organisation
+
+An [organisation](./tickets#organisations) chooses who, among its contacts, sees **its tickets** in the member space: **nobody** (by default: everyone sees only their own), **its managers** (the contacts ticked « Client-side manager » on their card, by a founder or the **Settings** permission), or **all its members**. A parent organisation also shows the tickets of its sub-organisations.
+
+These tickets show under **My organisation's tickets**, with the name of the person who opened them. They can be read, not written: no reply, no confirming a solution, no files nor transcript; only the person who opened the ticket replies. A **confidential** ticket, or one restricted to a grade, never shows there.
+
 ## What is shown, and what never is
 
 Only what the member received or sent by DM. **Never** internal notes, messages typed by the staff in the Discord channel, or the name behind an anonymous reply.

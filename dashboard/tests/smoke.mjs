@@ -87,6 +87,7 @@ const PAGES = [
   ['solution', '/solution#123456789012345678.abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG', 'Le remboursement de 50 €', true],
   ['espace-login', '/espace', 'Recevoir un lien de connexion', true],
   ['espace', '/espace', 'Ancienne commande'],
+  ['espace-organisation', '/espace', 'Imprimante du 2e étage'],
   ['espace-ticket', '/espace/123456789012345678/1', 'Colis renvoyé'],
   ['espace-fichiers', '/espace/123456789012345678/1', 'facture-1287.pdf'],
   ['espace-solution', '/espace/123456789012345678/1', 'Paiement validé de notre côté'],

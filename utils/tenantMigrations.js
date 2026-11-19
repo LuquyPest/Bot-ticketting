@@ -1027,6 +1027,15 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_tickets_org ON tickets (organization_id)',
     ],
   },
+  {
+    version: 64,
+    name: 'Portail d\'organisation : les tickets de son organisation dans l\'espace membre (v5.3)',
+    statements: [
+      // Nobody by default: nothing new is shown until a founder chooses it
+      "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS portal_visibility VARCHAR(8) NOT NULL DEFAULT 'none'",
+      'ALTER TABLE contacts ADD COLUMN IF NOT EXISTS org_portal_manager TINYINT(1) NOT NULL DEFAULT 0',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -109,6 +109,7 @@ const ACTIONS = {
   chat_integration_update:  ['Slack ou Teams modifié', 'config'],
   chat_link:                ['Compte Slack relié', 'integrations'],
   contact_organization:     ['Organisation d\'un contact changée', 'tickets'],
+  contact_portal_manager:   ['Responsable côté client (portail)', 'tickets'],
   organization_save:        ['Organisation enregistrée', 'config'],
   organization_delete:      ['Organisation supprimée', 'config'],
   organization_import:      ['Organisations importées', 'config'],

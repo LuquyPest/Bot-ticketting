@@ -158,6 +158,7 @@ Menu **Organisations** : les sociétés clientes, services ou sites de tes conta
 | **SLA** | Un objectif avec le critère **organisation** (Paramètres → Horaires → Objectifs SLA) |
 | **Équipe, responsable** | Ses tickets vont à son équipe (si ni le sujet ni un tag n'en désignent une) ; son responsable de compte peut être prévenu (destinataire « le responsable de l'organisation » des notifications) |
 | **Champs et notes** | Contrat, téléphone… (20 champs libres) et des notes internes |
+| **Portail** | Qui voit les tickets de l'organisation dans l'[espace membre](./espace-membre#les-tickets-de-son-organisation) : personne, ses responsables ou tous ses membres |
 
 Un ticket garde l'organisation de son demandeur à l'ouverture : elle apparaît sur la fiche, filtre la liste (**Toutes organisations**), sert de condition aux [règles automatiques](./automatismes#les-regles-automatiques). Déplacer un contact déplace ses tickets ouverts.
 

@@ -121,16 +121,18 @@ router.get('/tickets', requireMember, async (req, res) => {
   }
 });
 
-async function loadOwn(req, res) {
-  const data = await memberTicket(req.member, req.params.guildId, parseInt(req.params.ticketId), req.app.locals.client);
+async function loadOwn(req, res, { allowOrg = false } = {}) {
+  const data = await memberTicket(req.member, req.params.guildId, parseInt(req.params.ticketId), req.app.locals.client, { allowOrg });
   if (!data) res.status(404).json({ error: tr(req, 'portal.ticketNotFound') });
   return data;
 }
 
 router.get('/tickets/:guildId/:ticketId', requireMember, async (req, res) => {
   try {
-    const data = await loadOwn(req, res);
+    // A ticket of their organisation (v5.3): read only, without its files
+    const data = await loadOwn(req, res, { allowOrg: true });
     if (!data) return;
+    if (data.access === 'org') return res.json({ ...data, files: [], upload: { enabled: false } });
     // The files of the conversation, and what may be sent (v5.0)
     const db = getTenantDb(data.guild.id);
     const files = (await require('../../utils/emailAttachments').listForTicket(db, data.ticket.id).catch(() => []))

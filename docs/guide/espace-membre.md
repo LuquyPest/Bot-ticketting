@@ -35,6 +35,12 @@ Dès que l'**e-mail de l'instance** est configuré (Instance → Santé), la pag
 
 Limites anti-abus : 3 liens par adresse par quart d'heure (au-delà, la réponse est la même mais rien n'est envoyé), les tentatives limitées par adresse IP, 3 ouvertures par minute et par personne, la limite quotidienne du serveur, 60 nouveaux tickets par heure et par espace depuis des connexions e-mail, et la liste noire (sous n'importe laquelle de ses identités).
 
+## Les tickets de son organisation
+
+Une [organisation](./tickets#les-organisations) choisit qui, parmi ses contacts, voit **ses tickets** dans l'espace membre : **personne** (par défaut : chacun ne voit que les siens), **ses responsables** (les contacts cochés « Responsable côté client » sur leur fiche, par un fondateur ou la permission **Paramètres**), ou **tous ses membres**. Une organisation parente montre aussi les tickets de ses sous-organisations.
+
+Ces tickets apparaissent sous **Tickets de mon organisation**, avec le nom de la personne qui les a ouverts. Ils se lisent sans s'écrire : pas de réponse, pas de confirmation de solution, pas de fichiers ni de transcript ; seule la personne qui a ouvert le ticket y répond. Un ticket **confidentiel** ou réservé à un grade n'y apparaît jamais.
+
 ## Ce qui est montré, et ce qui ne l'est jamais
 
 Uniquement ce que le membre a reçu ou envoyé en MP. **Jamais** les notes internes, les messages tapés par le staff dans le salon Discord, ni le nom derrière une réponse anonyme.

@@ -50,8 +50,8 @@ router.get('/:memberId', async (req, res, next) => {
 });
 
 async function orgOfContact(db, contactId) {
-  const [r] = await db('SELECT c.org_manual, o.id, o.name FROM contacts c LEFT JOIN organizations o ON o.id = c.organization_id WHERE c.id = ?', [contactId]).catch(() => []);
-  return r ? { id: r.id || null, name: r.name || null, manual: !!Number(r.org_manual) } : null;
+  const [r] = await db('SELECT c.org_manual, c.org_portal_manager, o.id, o.name, o.portal_visibility FROM contacts c LEFT JOIN organizations o ON o.id = c.organization_id WHERE c.id = ?', [contactId]).catch(() => []);
+  return r ? { id: r.id || null, name: r.name || null, manual: !!Number(r.org_manual), portalManager: !!Number(r.org_portal_manager), portalVisibility: r.portal_visibility || 'none' } : null;
 }
 // PUT /api/profiles/:memberId/organization { organizationId } (null = none) | { auto: true } (by the e-mail domain)
 router.put('/:memberId/organization', async (req, res, next) => {
@@ -59,6 +59,14 @@ router.put('/:memberId/organization', async (req, res, next) => {
     if (!has(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
     if (!req.card.contact) return res.status(404).json({ error: 'Contact introuvable' });
     const orgs = require('../../utils/organizations');
+    // { portalManager } alone: sees the tickets of their organisation in the member space (v5.3)
+    if (req.body && 'portalManager' in req.body && !('organizationId' in req.body) && !req.body.auto) {
+      // It opens the tickets of other people to this contact: those who manage the organisations decide
+      if (!(req.userIsFondateur || req.userPermissions?.has('manage_settings'))) return res.status(403).json({ error: 'Réservé aux fondateurs et à la permission « Paramètres »' });
+      await orgs.setPortalManager(req.guildDb, req.card.contact.id, !!req.body.portalManager);
+      await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'contact_portal_manager', targetType: 'contact', targetId: req.card.contact.id, details: { on: !!req.body.portalManager } });
+      return res.json({ organization: await orgOfContact(req.guildDb, req.card.contact.id) });
+    }
     const r = await orgs.setContactOrg(req.guildDb, req.card.contact.id, req.body?.organizationId ? Number(req.body.organizationId) : null, { auto: !!req.body?.auto });
     if (r.error) return res.status(400).json({ error: r.error });
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'contact_organization', targetType: 'contact', targetId: req.card.contact.id, details: { organizationId: req.body?.organizationId || null, auto: !!req.body?.auto } });
