@@ -62,9 +62,52 @@ async function exportConfig(db) {
     // Business rules (v5.2): tags, teams, grades and statuses by name; the people chosen in a rule
     // are accounts of this space, left out
     rules: await exportRules(db, { tagName, gradeName, stageLabel }),
+    // v6: SLA objectives (escalation levels name people of this space: left out), service catalogue
+    // and task templates, teams by name
+    ...await exportServiceDesk(db),
     teams: teams.map(t => ({ name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0, subjects: parseJsonField(t.subjects, []),
       tags: parseJsonField(t.tag_ids, []).map(id => tagName.get(Number(id))).filter(Boolean) })),
   };
+}
+
+async function exportServiceDesk(db) {
+  const teamName = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.id, t.name]));
+  const sla = await require('./slaPolicies').listPolicies(db).catch(() => []);
+  const services = await require('./catalog').listServices(db).catch(() => []);
+  const tpls = await require('./tasks').listTemplates(db).catch(() => []);
+  return {
+    slaPolicies: sla.map(p => ({ name: p.name, ttoMinutes: p.ttoMinutes, ttrMinutes: p.ttrMinutes, businessHours: p.businessHours, active: p.active,
+      conditions: { priorities: p.conditions.priorities, types: p.conditions.types, subjects: p.conditions.subjects, channels: p.conditions.channels } })),
+    services: services.map(s => ({ name: s.name, description: s.description, icon: s.icon, category: s.category, active: s.active, fields: s.fields,
+      template: { subject: s.template.subject, type: s.template.type, priority: s.template.priority, team: teamName.get(s.template.teamId) || null } })),
+    taskTemplates: tpls.map(t => ({ name: t.name, tasks: t.tasks.map(({ teamId, ...x }) => ({ ...x, team: teamName.get(teamId) || null })) })),
+  };
+}
+async function importServiceDesk(db, data, count) {
+  const teamId = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.name, t.id]));
+  const byName = async (table, name) => (await db(`SELECT id FROM ${table} WHERE name = ?`, [name]).catch(() => []))[0]?.id || null;
+  for (const p of Array.isArray(data.slaPolicies) ? data.slaPolicies.slice(0, 50) : []) {
+    if (!p || typeof p.name !== 'string') continue;
+    const id = await byName('sla_policies', p.name.slice(0, 60));
+    const r = await require('./slaPolicies').savePolicy(db, id, { ...p, escalations: undefined }); // the levels of this space stay
+    if (r && !r.error) count('slaPolicies', id ? 'updated' : 'created');
+  }
+  for (const s of Array.isArray(data.services) ? data.services.slice(0, 100) : []) {
+    if (!s || typeof s.name !== 'string') continue;
+    const id = await byName('catalog_services', s.name.slice(0, 80));
+    const t = s.template || {};
+    const r = await require('./catalog').saveService(db, id, { ...s, template: { subject: t.subject || null, type: t.type || null, priority: t.priority || null, teamId: teamId.get(t.team) || null } });
+    if (r && r.error && /Sujet inconnu/.test(r.error)) { // the subject is not one of this space: the service without it
+      const r2 = await require('./catalog').saveService(db, id, { ...s, template: { type: t.type || null, priority: t.priority || null, teamId: teamId.get(t.team) || null } });
+      if (r2 && !r2.error) count('services', id ? 'updated' : 'created');
+    } else if (r && !r.error) count('services', id ? 'updated' : 'created');
+  }
+  for (const tpl of Array.isArray(data.taskTemplates) ? data.taskTemplates.slice(0, 50) : []) {
+    if (!tpl || typeof tpl.name !== 'string') continue;
+    const id = await byName('task_templates', tpl.name.slice(0, 80));
+    const r = await require('./tasks').saveTemplate(db, id, { name: tpl.name, tasks: (Array.isArray(tpl.tasks) ? tpl.tasks : []).map(({ team, ...x }) => ({ ...x, teamId: teamId.get(team) || null })) });
+    if (r && !r.error) count('taskTemplates', id ? 'updated' : 'created');
+  }
 }
 
 const PERSONAL = ['assign', 'follower', 'notify'];
@@ -256,6 +299,9 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
     const r = row ? await teamsLib.updateTeam(db, row.id, input) : await teamsLib.createTeam(db, input);
     if (r.ok) count('teams', row ? 'updated' : 'created');
   }
+
+  // v6: SLA objectives, catalogue, task templates (after the teams, before the rules that name them)
+  await importServiceDesk(db, data, count);
 
   // Business rules (by name), after the teams they may hand tickets to; what is unknown here is left out
   const engine = require('./ruleEngine');

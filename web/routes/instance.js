@@ -129,11 +129,33 @@ router.put('/mail-oauth', async (req, res, next) => {
 
 // ─── GUILDS ──────────────────────────────────────────────────────────────────
 
-// POST /api/instance/guilds { name } — a space without a Discord server (v4)
+// POST /api/instance/guilds { name, templateId } — a space without a Discord server (v4); v6: with
+// the configuration of another space (statuses, subjects, fields, grades, tags, forms, SLA, rules,
+// catalogue, task and reply templates, knowledge base), never its people, tickets or Discord ids
 router.post('/guilds', async (req, res) => {
   try {
+    const templateId = req.body?.templateId ? String(req.body.templateId) : null;
+    if (templateId && !(/^\d{17,20}$/.test(templateId) && (await globalQuery("SELECT 1 FROM guilds WHERE guild_id = ? AND status = 'active'", [templateId])).length)) return res.status(400).json({ error: 'Espace modèle introuvable' });
     const r = await require('../../utils/spaces').createSpace({ name: req.body?.name, by: req.owner });
     if (r.error) return res.status(400).json({ error: r.error });
+    if (templateId) {
+      const T = require('../../utils/configTransfer');
+      const db = getTenantDb(r.space.id);
+      const data = await T.exportConfig(getTenantDb(templateId));
+      const fakeReq = { guildDb: db, guildId: r.space.id, session: { user: { id: req.owner.id, username: req.owner.username } }, app: req.app, body: {}, userIsFondateur: true, ip: req.ip, get: () => '' };
+      const { applyConfigUpdates } = require('./config');
+      const report = await T.importConfig(db, data, { includeDiscordIds: false, actor: fakeReq.session.user, applyConfig: async cols => {
+        const byColumn = Object.fromEntries(Object.entries(require('./config').FIELD_MAP || {}).map(([api, col]) => [col, api]));
+        const updates = {};
+        for (const [col, v] of Object.entries(cols)) if (byColumn[col] && !['require2fa', 'ticketMode', 'threadParentChannelId'].includes(byColumn[col])) updates[byColumn[col]] = v;
+        if (!Object.keys(updates).length) return { ok: true, count: 0 };
+        const u = await applyConfigUpdates(fakeReq, updates, { source: 'import' });
+        return u.error ? u : { ok: true, count: Object.keys(updates).length };
+      } });
+      // A space without Discord keeps its tickets in the database
+      await db("UPDATE guild_config SET ticket_mode = 'database' WHERE id = 1");
+      return res.json({ ...r.space, template: { id: templateId, report } });
+    }
     res.json(r.space);
   } catch (err) {
     console.error('space create error:', err.message);

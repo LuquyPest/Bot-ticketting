@@ -215,14 +215,15 @@ function DiscordModal({ guild, onClose, onDone }) {
 }
 
 // A space without a Discord server (v4): tickets by e-mail, member space and dashboard only
-function NewSpace({ onCreated }) {
+function NewSpace({ onCreated, spaces = [] }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [busy, setBusy] = useState(false);
   const create = async e => {
     e.preventDefault();
     setBusy(true);
-    try { await api.post('/instance/guilds', { name }); toast.success(`Espace « ${name} » créé`); setName(''); setOpen(false); onCreated(); }
+    try { await api.post('/instance/guilds', { name, templateId: templateId || undefined }); toast.success(templateId ? `Espace « ${name} » créé avec la configuration du modèle` : `Espace « ${name} » créé`); setName(''); setTemplateId(''); setOpen(false); onCreated(); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
@@ -235,6 +236,11 @@ function NewSpace({ onCreated }) {
     <form onSubmit={create} className="flex items-center gap-2">
       <input value={name} onChange={e => setName(e.target.value)} maxLength={100} autoFocus required placeholder="Nom de l'espace" aria-label="Nom de l'espace"
         className="bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1 w-56" />
+      <select value={templateId} onChange={e => setTemplateId(e.target.value)} aria-label="Reprendre la configuration de" title="Statuts, sujets, champs, grades, tags, formulaires, SLA, règles, catalogue, modèles et base de connaissances ; jamais l'équipe, les tickets ni les salons Discord"
+        className="bg-surface border border-overlay/8 rounded-xl px-3 py-2 text-sm text-ink-1 max-w-56">
+        <option value="">Configuration vierge</option>
+        {spaces.filter(g => g.status === 'active').map(g => <option key={g.guild_id} value={g.guild_id}>{`Comme « ${g.guild_name || g.guild_id} »`}</option>)}
+      </select>
       <button type="submit" disabled={busy || !name.trim()} className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-white disabled:opacity-50">Créer</button>
       <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 rounded-xl text-sm text-ink-3 hover:text-ink-1">Annuler</button>
     </form>
@@ -330,7 +336,7 @@ export default function Guilds() {
           <p className="text-sm text-ink-3">{guilds.length} espace(s) enregistré(s)</p>
         </div>
         <div className="flex items-center gap-2">
-          <NewSpace onCreated={load} />
+          <NewSpace onCreated={load} spaces={guilds} />
           <button onClick={load} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-ink-3
                        hover:text-ink-1 hover:bg-overlay/5 transition-all border border-overlay/6">

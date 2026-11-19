@@ -540,3 +540,4 @@ router.patch('/bot-identity', async (req, res) => {
 
 module.exports = router;
 module.exports.applyConfigUpdates = applyConfigUpdates;
+module.exports.FIELD_MAP = FIELD_MAP;

@@ -175,7 +175,7 @@ Chaque appel de Slack est vérifié (signature HMAC de l'app, 5 minutes au plus)
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.
 
-L'import fusionne par nom et ne supprime rien. Une macro qui change le statut retrouve le statut du même nom dans l'espace d'arrivée. La catégorie Discord d'un statut n'est reprise que si tu coches la reprise des salons. Les équipes arrivent avec leurs réglages, leurs sujets et leurs tags, mais sans membres : ce sont des comptes propres à chaque espace, et une équipe déjà présente garde les siens.
+Depuis la v6, l'export contient aussi les **objectifs SLA** (sans leurs niveaux d'escalade, qui nomment des personnes), le **catalogue de services** et les **modèles de tâches** ; les organisations, champs et objectifs cités par les règles le sont par leur nom. L'import fusionne par nom et ne supprime rien. Une macro qui change le statut retrouve le statut du même nom dans l'espace d'arrivée. La catégorie Discord d'un statut n'est reprise que si tu coches la reprise des salons. Les équipes arrivent avec leurs réglages, leurs sujets et leurs tags, mais sans membres : ce sont des comptes propres à chaque espace, et une équipe déjà présente garde les siens.
 
 ## Venir d'un autre bot de tickets
 

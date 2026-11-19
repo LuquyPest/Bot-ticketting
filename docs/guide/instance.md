@@ -22,6 +22,8 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 
 **Un espace sans Discord** : **Instance → Espaces → Créer un espace**. C'est un espace de support sans serveur Discord : tickets par [e-mail](./integrations#tickets-par-e-mail), espace membre, dashboard, avec ses propres réglages, son équipe et son journal. Ses tickets n'ont pas de salon (format « Aucun salon »), rien n'est jamais demandé à Discord à son sujet, et le dashboard y masque les fonctions propres à Discord (panels, rôles, santé du serveur, newsletter, salons). Tu en es fondateur ; il apparaît dans **Mes espaces** quelle que soit ta façon de te connecter.
 
+**Comme un autre espace** : à la création, choisis « Comme « *espace* » » pour reprendre sa configuration, celle de l'[export de configuration](./integrations#sauvegarde-de-la-configuration) : statuts, sujets, champs, grades, tags, formulaires, objectifs SLA, règles, catalogue de services, modèles de tâches et de réponses, base de connaissances. L'équipe, les tickets, les contacts et les salons Discord ne sont jamais repris ; le nouvel espace reste sans Discord.
+
 **Relier ou délier Discord** : sur la ligne d'un espace sans Discord, le bouton **Relier à Discord** demande l'identifiant du serveur Discord puis donne le lien d'invitation du bot, valable une heure. À l'arrivée du bot, l'espace devient celui du serveur : tickets, réglages, équipe et journal sont conservés, aucun nouvel espace n'est créé. À l'inverse, **Délier de Discord** (confirmé en tapant le nom) garde l'espace et tout son contenu : ses tickets ouverts continuent sans salon, le format passe à « Aucun salon », et le bot quitte le serveur. Réinviter le bot sur ce serveur le relie de nouveau.
 
 ## Les pages
