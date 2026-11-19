@@ -31,6 +31,19 @@ Attends une ou deux minutes. Sinon : `docker compose restart bot`.
 **Les salons des tickets restreints restent visibles**
 Le bot n'a pas la permission **Gérer les rôles** : **Santé du serveur** le signale. Réinvite-le ou ajoute-lui la permission.
 
+## Vérifier Discord
+
+**Instance → Santé → Serveurs Discord** passe en revue chaque serveur de l'instance, en lecture seule : son état (actif, en attente, suspendu, et pourquoi), puis pour les actifs les problèmes de leur page **Santé du serveur** : permissions du bot qui manquent, salons, catégories et rôles réglés qui n'existent plus, catégories pleines, et **panels** publiés dont le salon ou le message a disparu ou où le bot ne peut plus écrire. **Vérifier** relance tout.
+
+Ce diagnostic ne remplace pas un essai réel. Après une mise à jour importante ou un changement sur le serveur, fais ce tour, avec un compte de test qui n'est pas du staff :
+
+1. **Panel** : clique sur un bouton d'un panel publié → le formulaire s'ouvre, le ticket est créé (salon, fil ou MP selon le mode).
+2. **MP** : écris au bot en privé → il propose les sujets, puis ouvre le ticket.
+3. **Réponse du staff** depuis le dashboard → le membre la reçoit (salon ou MP) ; sa réponse revient dans le dashboard.
+4. **Grade ou ticket confidentiel** → le salon n'est visible que des bons rôles.
+5. **Fermeture** → transcript dans le salon de logs, demande de note au membre, salon supprimé ou archivé.
+6. **Commandes** `/ticket` et `/close` dans un ticket.
+
 ## Dashboard
 
 **Je ne vois pas la section Instance, ni « Inviter le bot »**

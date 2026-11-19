@@ -104,6 +104,17 @@ async function checkGuildHealth(db, client, guildId) {
       if (!entry.ok) report.problems.push({ id: `role:${id}`, text: `${label} supprimé (${id})` });
     }
   }
+  // Published panels (v6): their channel and message still there, and the bot can write in it
+  report.panels = [];
+  for (const p of await db('SELECT id, name, channel_id, message_id FROM ticket_panels WHERE channel_id IS NOT NULL AND message_id IS NOT NULL').catch(() => [])) {
+    const ch = guild.channels.cache.get(p.channel_id) || await guild.channels.fetch(p.channel_id).catch(() => null);
+    let problem = null;
+    if (!ch) problem = 'Salon supprimé';
+    else if (!ch.permissionsFor?.(me)?.has([F.ViewChannel, F.SendMessages, F.EmbedLinks])) problem = 'Le bot ne peut plus y écrire';
+    else if (!(await ch.messages?.fetch?.(p.message_id).catch(() => null))) problem = 'Message du panel supprimé : republie-le';
+    report.panels.push({ id: p.id, name: p.name, channelId: p.channel_id, channelName: ch?.name || null, ok: !problem, problem });
+    if (problem) report.problems.push({ id: `panel:${p.id}:${problem}`, text: `Panel « ${p.name} » : ${problem.charAt(0).toLowerCase()}${problem.slice(1)}` });
+  }
   const total = guild.channels.cache.size;
   report.channelCount = { used: total, limit: 500 };
   if (!['thread', 'database'].includes(cfg.ticket_mode) && !(cfg.ticket_mode === 'auto' && cfg.thread_parent_channel_id) && total >= 480) report.problems.push({ id: 'guild_channels', text: `Le serveur approche de la limite de 500 salons (${total})` });

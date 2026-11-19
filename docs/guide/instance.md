@@ -31,7 +31,7 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 | **Vue d'ensemble** | Espaces, tickets ouverts, tickets par jour sur 30 jours, staff, erreurs des dernières 24 heures, tableau par espace |
 | **Espaces** | Créer, relier à Discord ou délier, suspendre, réactiver, mettre en maintenance, supprimer (sa base est effacée, le bot quitte le serveur Discord relié) ; nommer ou retirer des fondateurs |
 | **Connexion** | Les [moyens de connexion](#moyens-de-connexion) du dashboard : Discord, Google, Microsoft, OpenID Connect, annuaire LDAP / AD |
-| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; espace de démonstration, [métriques Prometheus](#supervision-prometheus) |
+| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base, **serveurs Discord** (diagnostic de chacun, ci-dessous) ; espace de démonstration, [métriques Prometheus](#supervision-prometheus) |
 | **Erreurs** | Journal centralisé des erreurs du bot, du dashboard et des navigateurs, avec filtres ; **alerte** par MP (au propriétaire par défaut) ou webhook au-delà d'un seuil, et en cas de déconnexion de Discord |
 | **Journal** | Chaque modification faite depuis la section, avec son auteur et l'espace concerné |
 | **Blocages** | Adresses IP bloquées par les limites de connexion ou d'API, avec déblocage |

@@ -83,6 +83,26 @@ router.post('/ldap/test', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/instance/discord-health — every Discord server of the instance in one view (v6): its
+// status, and the problems of « Santé du serveur » (utils/guildHealth.js) for the active ones
+router.get('/discord-health', async (req, res, next) => {
+  try {
+    const client = req.app.locals.client;
+    const { checkGuildHealth } = require('../../utils/guildHealth');
+    const rows = await globalQuery('SELECT guild_id, guild_name, status, suspension_reason, discord FROM guilds ORDER BY guild_name');
+    const out = [];
+    for (const g of rows) {
+      if (g.status !== 'active') { out.push({ guildId: g.guild_id, name: g.guild_name, status: g.status, reason: g.suspension_reason || null, problems: [] }); continue; }
+      // A space without Discord has nothing to check here
+      if (Number(g.discord) === 0) { out.push({ guildId: g.guild_id, name: g.guild_name, status: g.status, discord: false, problems: [] }); continue; }
+      const db = getTenantDb(g.guild_id);
+      const r = await checkGuildHealth(db, client, g.guild_id).catch(err => ({ problems: [{ id: 'error', text: `Vérification impossible : ${err.message}` }] }));
+      out.push({ guildId: g.guild_id, name: g.guild_name, status: g.status, discord: true, botInGuild: r.botInGuild, problems: r.problems, panels: (r.panels || []).length });
+    }
+    res.json({ checkedAt: new Date().toISOString(), discordConnected: client?.ws?.status === 0, guilds: out });
+  } catch (err) { next(err); }
+});
+
 // GET / PUT /api/instance/mail-oauth — the OAuth2 applications used by the spaces to connect their
 // support mailbox (Gmail, Microsoft 365); secrets never sent back
 router.get('/mail-oauth', async (req, res, next) => {
