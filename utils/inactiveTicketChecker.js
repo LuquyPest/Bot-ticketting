@@ -20,6 +20,8 @@ async function runInactiveCheck(client) {
       const db = getTenantDb(guild_id);
       const tm = createManager(db, client, guild_id);
       const cfg = await getGuildConfig(db);
+      // v6: the space's inactivity is a pair of rules « when time passes » (migration 82)
+      if (Number(cfg.timers_in_rules) === 1) continue;
       const warningHours = cfg.inactive_warning_hours ?? 48;
       const closeHours   = cfg.inactive_hours ?? 72;
 

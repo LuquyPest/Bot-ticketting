@@ -192,6 +192,8 @@ function dbRow2Api(row) {
       out[apiKey] = val;
     }
   }
+  // v6: inactivity and escalation are rules (read only here, migration 82)
+  out.timersInRules = Number(row.timers_in_rules) === 1;
   return out;
 }
 

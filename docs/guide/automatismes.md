@@ -42,7 +42,16 @@ Une règle peut agir **un certain temps après** un moment du ticket : son ouver
 
 Exemples : « 48 h ouvrées après la dernière réponse du staff, si le statut est *En attente* : réponse automatique *As-tu pu essayer ?* » ; « 1 h avant l'échéance de résolution : prévenir le responsable ». La vérification tourne toutes les 5 minutes. Une règle ne joue **qu'une fois** par ticket et par moment : une nouvelle réponse ou un nouveau statut relance le compte. Une échéance SLA en pause (attente du demandeur) ou déjà tenue ne déclenche rien.
 
-L'inactivité et l'escalade des tickets urgents (**Paramètres → Tickets**) gardent leurs réglages propres.
+Depuis la v6, l'**inactivité** et l'**escalade** des tickets urgents sont elles aussi des règles, créées à la mise à jour avec les délais et le texte de l'espace (dans la langue du staff), au même effet :
+
+| Règle | Quand | Si | Alors |
+|---|---|---|---|
+| **Inactivité : avertissement** | 48 h après le **dernier message** (un ticket sans aucun message n'est jamais concerné) | pas résolu | réponse automatique « inactif depuis 48 h, fermé dans 14 h » |
+| **Inactivité : fermeture** | 62 h après le dernier message | pas résolu | fermer |
+| **Escalade : alerte** | 24 h après la dernière activité | priorité urgente, **attribué**, pas résolu | **message dans un salon Discord** (le salon des alertes d'escalade, sinon celui des logs) |
+| **Escalade : fermeture** | 72 h après la dernière activité | priorité urgente, attribué, pas résolu | réponse automatique, puis fermer |
+
+Change leurs délais, leurs textes, leurs conditions, ou désactive-les comme n'importe quelle règle ; un ticket déjà averti ou déjà alerté avant la mise à jour ne l'est pas une seconde fois. Le message dans un salon accepte `{id}`, `{subject}`, `{requester}` et `{assignee}` (un ticket confidentiel n'y montre ni demandeur ni sujet). Les conditions **Attribué** et **Résolu** (oui / non) et le point de départ **dernier message** servent aussi à vos propres règles.
 
 Garde-fous : une modification faite par une règle ne relance pas les règles (pas de boucle) ; 50 actions au plus par événement ; restreindre à un grade demande aussi la permission **Gérer les grades** ; une règle ne lève jamais un ticket confidentiel, ne le change pas d'équipe et ne prévient que du staff qui le voit.
 

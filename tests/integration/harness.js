@@ -7909,6 +7909,54 @@ async function main() {
     await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${G5}\``).catch(() => null);
   }
 
+  // ── Inactivity and escalation become rules « when time passes » (migration 82, v6): same effect ──
+  {
+    const RT = app('./utils/ruleTimers');
+    const ALERT = '950000000000000777';
+    channels.set(ALERT, mkChannel(ALERT, G, 0, 'alertes'));
+    const [cfgBefore] = await db('SELECT inactive_warning_hours, inactive_hours, escalation_alert_hours, escalation_close_hours, staff_language, escalation_alert_channel_id, timers_in_rules FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET inactive_warning_hours = 48, inactive_hours = 62, escalation_alert_hours = 24, escalation_close_hours = 72, staff_language = 'en', escalation_alert_channel_id = ?, timers_in_rules = 0 WHERE id = 1", [ALERT]);
+    const others = (await db("SELECT id FROM ticket_rules WHERE active = 1 AND JSON_CONTAINS(triggers, '\"time\"')")).map(x => x.id);
+    if (others.length) await db('UPDATE ticket_rules SET active = 0 WHERE id IN (?)', [others]);
+    await db("DELETE FROM ticket_rules WHERE origin IN ('inactivity_warn', 'inactivity_close', 'escalation_alert', 'escalation_close')");
+    const mkI = async (sub, hoursAgo, extra = {}) => (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, claimed_by, created_at, last_message_at, warned_inactive, escalation_alerted)
+      VALUES ('200000000000000094', 'u94', ?, 'open', ?, ?, ?, NOW() - INTERVAL 200 HOUR, ${hoursAgo === null ? 'NULL' : 'NOW() - INTERVAL ? HOUR'}, ?, ?)`,
+      [`in82-${crypto.randomBytes(4).toString('hex')}`, sub, extra.priority || 'normal', extra.claimed || null, ...(hoursAgo === null ? [] : [hoursAgo]), extra.warned ? 1 : 0, extra.alerted ? 1 : 0])).insertId;
+    const tWarn = await mkI('M82 à avertir', 50), tWarned = await mkI('M82 déjà averti', 50, { warned: true }), tClose = await mkI('M82 à fermer', 63);
+    const tSilent = await mkI('M82 sans message', null), tAlert = await mkI('M82 urgent', 25, { priority: 'urgent', claimed: 'staff1' });
+    const tAlerted = await mkI('M82 urgent déjà alerté', 25, { priority: 'urgent', claimed: 'staff1', alerted: true });
+    const tUnclaimed = await mkI('M82 urgent non pris', 25, { priority: 'urgent' }), tEscClose = await mkI('M82 urgent à fermer', 73, { priority: 'urgent', claimed: 'staff1', alerted: true });
+    await db('UPDATE tickets SET last_message_at = NOW() - INTERVAL 30 HOUR WHERE id = ?', [tUnclaimed]);
+    const m82 = app('./utils/tenantMigrations').MIGRATIONS.find(m => m.version === 82);
+    for (const sql of m82.statements) await db(sql);
+    const made = await db("SELECT origin, timer, conditions, actions FROM ticket_rules WHERE origin IN ('inactivity_warn', 'inactivity_close', 'escalation_alert', 'escalation_close') ORDER BY position");
+    const [flag] = await db('SELECT timers_in_rules FROM guild_config WHERE id = 1');
+    const pj = v => (typeof v === 'string' ? JSON.parse(v) : v);
+    const warnRule = made.find(x => x.origin === 'inactivity_warn');
+    check('migration 82: quatre règles temporelles, délais repris, texte dans la langue du staff, anciennes vérifications coupées', made.length === 4 && Number(flag.timers_in_rules) === 1
+      && pj(warnRule.timer).basis === 'last_message' && pj(warnRule.timer).minutes === 48 * 60 && /inactive for more than 48 h\. It will be closed automatically in 14 h/.test(pj(warnRule.actions)[0].value)
+      && pj(made.find(x => x.origin === 'escalation_close').timer).minutes === 72 * 60, JSON.stringify(made.map(x => [x.origin, pj(x.timer)])));
+    const sentBefore = sent.length;
+    await RT.runForGuild({ db, client: fakeClient, guildId: G });
+    const st = async id => (await db('SELECT status FROM tickets WHERE id = ?', [id]))[0].status;
+    const warnNote = async id => (await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND source = 'system' AND content LIKE '%inactive for more than 48 h%'", [id])).length;
+    check('inactivité en règles: avertissement envoyé, pas deux fois pour un ticket déjà averti', (await warnNote(tWarn)) === 1 && (await warnNote(tWarned)) === 0 && await st(tWarn) === 'open', '');
+    check('inactivité en règles: fermeture après le délai, ticket sans aucun message jamais fermé', await st(tClose) === 'closed' && await st(tSilent) === 'open', JSON.stringify([await st(tClose), await st(tSilent)]));
+    const alerts = sent.slice(sentBefore).filter(x => x.id === ALERT).map(x => String(x.p?.content || ''));
+    check('escalade en règles: alerte dans le salon pour l urgent pris en charge (pas l urgent non pris, pas deux fois)', alerts.length === 1 && alerts[0].includes(`#${tAlert}`) && alerts[0].includes('u94') && alerts[0].includes('staff1'), JSON.stringify(alerts));
+    check('escalade en règles: fermeture de l urgent sans réponse', await st(tEscClose) === 'closed' && await st(tAlert) === 'open' && await st(tUnclaimed) === 'open', '');
+    // The old checks do nothing once the space has its rules
+    await db('UPDATE tickets SET last_message_at = NOW() - INTERVAL 100 HOUR WHERE id = ?', [tSilent]);
+    await app('./utils/inactiveTicketChecker').runInactiveCheck(fakeClient);
+    check('migration 82: l ancienne vérification d inactivité ne ferme plus rien', await st(tSilent) === 'open', '');
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tWarn, tWarned, tClose, tSilent, tAlert, tAlerted, tUnclaimed, tEscClose]]);
+    await db("DELETE FROM ticket_rules WHERE origin IN ('inactivity_warn', 'inactivity_close', 'escalation_alert', 'escalation_close')");
+    if (others.length) await db('UPDATE ticket_rules SET active = 1 WHERE id IN (?)', [others]);
+    await db('UPDATE guild_config SET inactive_warning_hours = ?, inactive_hours = ?, escalation_alert_hours = ?, escalation_close_hours = ?, staff_language = ?, escalation_alert_channel_id = ?, timers_in_rules = ? WHERE id = 1',
+      [cfgBefore.inactive_warning_hours, cfgBefore.inactive_hours, cfgBefore.escalation_alert_hours, cfgBefore.escalation_close_hours, cfgBefore.staff_language, cfgBefore.escalation_alert_channel_id, cfgBefore.timers_in_rules]);
+    channels.delete(ALERT);
+  }
+
   // ── Images of the knowledge base articles (utils/kbImages.js, v6) ──
   {
     const fsx = require('fs'), os = require('os'), path = require('path');

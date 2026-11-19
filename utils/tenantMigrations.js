@@ -4,6 +4,41 @@
 // never edit an applied one. GET_LOCK keeps two bot instances from migrating the same base.
 const logger = require('./logger');
 
+// v6 (migration 82): the inactivity and escalation settings become four rules « when time passes »
+// with the same effect, in the staff's language; tickets already warned or alerted are not again
+function timersAsRulesStatements() {
+  const T = require('./locales/staff');
+  const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
+  const q = v => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "''")}'`;
+  // The text in the staff language (auto and unknown: French), as an SQL expression
+  const text = key => `CASE staff_language ${LANGS.map((l, i) => `WHEN '${l}' THEN ${q(T[key][i])}`).join(' ')} ELSE ${q(T[key][0])} END`;
+  const timer = (basis, minutes) => `JSON_OBJECT('basis', '${basis}', 'minutes', ${minutes}, 'direction', 'after', 'businessHours', false)`;
+  const rule = (origin, name, position, timerSql, conditions, actions) => `INSERT INTO ticket_rules (name, position, active, triggers, match_mode, conditions, actions, stop_after, origin, timer)
+    SELECT ${q(name)}, ${position}, 1, '["time"]', 'all', ${conditions}, ${actions}, 0, '${origin}', ${timerSql}
+    FROM guild_config WHERE id = 1 AND NOT EXISTS (SELECT 1 FROM ticket_rules WHERE origin = '${origin}')`;
+  const notResolved = `JSON_OBJECT('field', 'resolved', 'not', false, 'values', JSON_ARRAY('no'))`;
+  const urgentHandled = `JSON_ARRAY(JSON_OBJECT('field', 'priority', 'not', false, 'values', JSON_ARRAY('urgent')), JSON_OBJECT('field', 'assigned', 'not', false, 'values', JSON_ARRAY('yes')), ${notResolved})`;
+  const fill = (sql, vars) => Object.entries(vars).reduce((acc, [k, v]) => `REPLACE(${acc}, '{${k}}', ${v})`, sql);
+  return [
+    'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS timers_in_rules TINYINT(1) NOT NULL DEFAULT 0',
+    rule('inactivity_warn', 'Inactivité : avertissement', 1000, timer('last_message', 'inactive_warning_hours * 60'), `JSON_ARRAY(${notResolved})`,
+      `JSON_ARRAY(JSON_OBJECT('type', 'reply', 'value', ${fill(text('inactive.warn'), { h: 'inactive_warning_hours', left: 'GREATEST(inactive_hours - inactive_warning_hours, 0)' })}))`),
+    rule('inactivity_close', 'Inactivité : fermeture', 1001, timer('last_message', 'inactive_hours * 60'), `JSON_ARRAY(${notResolved})`, `JSON_ARRAY(JSON_OBJECT('type', 'close', 'value', true))`),
+    rule('escalation_alert', 'Escalade : alerte', 1002, timer('last_activity', 'escalation_alert_hours * 60'), urgentHandled,
+      `JSON_ARRAY(JSON_OBJECT('type', 'channelPost', 'value', JSON_OBJECT('channelId', NULL, 'text', ${fill(text('escalation.alert'), { h: 'escalation_alert_hours' })})))`),
+    rule('escalation_close', 'Escalade : fermeture', 1003, timer('last_activity', 'escalation_close_hours * 60'), urgentHandled,
+      `JSON_ARRAY(JSON_OBJECT('type', 'reply', 'value', ${text('escalation.closed')}), JSON_OBJECT('type', 'close', 'value', true))`),
+    // Already done by the old checks: not again for the same moment
+    `INSERT IGNORE INTO rule_timer_fired (ticket_id, rule_id, basis_at)
+      SELECT t.id, r.id, t.last_message_at FROM tickets t JOIN ticket_rules r ON r.origin = 'inactivity_warn'
+      WHERE t.status = 'open' AND t.warned_inactive = 1 AND t.last_message_at IS NOT NULL`,
+    `INSERT IGNORE INTO rule_timer_fired (ticket_id, rule_id, basis_at)
+      SELECT t.id, r.id, COALESCE(t.last_message_at, t.created_at) FROM tickets t JOIN ticket_rules r ON r.origin = 'escalation_alert'
+      WHERE t.status = 'open' AND t.escalation_alerted = 1`,
+    "UPDATE guild_config SET timers_in_rules = 1 WHERE id = 1 AND EXISTS (SELECT 1 FROM ticket_rules WHERE origin = 'inactivity_close')",
+  ];
+}
+
 const MIGRATIONS = [
   {
     version: 1,
@@ -1452,6 +1487,11 @@ const MIGRATIONS = [
     statements: [
       `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sla_forced TINYINT(1) NOT NULL DEFAULT 0`,
     ],
+  },
+  {
+    version: 82,
+    name: 'Inactivité et escalade deviennent des règles temporelles, même effet (v6)',
+    statements: timersAsRulesStatements(),
   },
 ];
 
