@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Service desk: organisations and self-service',
     changes: [
       { type: 'new',  text: 'Organisations (menu Organisations) : contacts regroupés par domaine d\'adresse e-mail, à la main ou par import CSV ; sous-organisations (un niveau) ; horaires propres (avant ceux de l\'équipe), SLA par le critère « organisation », équipe et responsable de compte (prévenu par les notifications), champs et notes ; sur la fiche ticket, filtre de la liste, condition des règles', en: 'Organisations (Organisations menu): contacts grouped by e-mail address domain, by hand or by CSV import; sub-organisations (one level); own hours (before the team\'s), SLA through the « organisation » criterion, team and account manager (notified by the notifications), fields and notes; on the ticket view, list filter, rule condition' },
+      { type: 'new',  text: 'Portail d\'organisation : dans l\'espace membre, les tickets de son organisation (et de ses sous-organisations), selon le réglage de l\'organisation (personne, ses responsables côté client, tous ses membres) ; en lecture seule, jamais un ticket confidentiel ou réservé à un grade', en: 'Organisation portal: in the member space, the tickets of one\'s organisation (and its sub-organisations), as the organisation sets it (nobody, its client-side managers, all its members); read only, never a confidential ticket or one restricted to a grade' },
     ],
   },
   {

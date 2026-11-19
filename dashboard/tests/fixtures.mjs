@@ -10,7 +10,7 @@ export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
   '/api/organizations': [
-    { id: 1, name: 'Acme', parentId: null, teamId: 1, managerId: '1', calendarId: 1, domains: ['acme.example'], fields: { Contrat: 'Support Or' }, notes: 'Client depuis 2024', contacts: 12, openTickets: 3 },
+    { id: 1, name: 'Acme', portalVisibility: 'manager', parentId: null, teamId: 1, managerId: '1', calendarId: 1, domains: ['acme.example'], fields: { Contrat: 'Support Or' }, notes: 'Client depuis 2024', contacts: 12, openTickets: 3 },
     { id: 2, name: 'Acme Lyon', parentId: 1, teamId: null, managerId: null, calendarId: null, domains: [], fields: {}, notes: '', contacts: 2, openTickets: 1 }],
   '/api/organizations/1/contacts': [{ id: 1, display_name: 'Paul Martin', email: 'paul@acme.example', org_manual: 0, identity: 'mail:000000000000000000000001' }],
   '/api/chat': { slack: { configured: true, active: true, hasSecret: true, actionUrl: 'https://ticket.example.com/api/chat/slack/actions/1' }, teams: { configured: false, active: false, hasSecret: false } },
@@ -167,7 +167,7 @@ export const MOCK = {
   '/api/member/tickets': [{ guild: { id: '123456789012345678', name: 'Sunset FA', icon: null }, tickets: [
     { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), closed_at: null, assigned: true, participant: false },
     { id: 2, subject: 'Ancienne commande', status: 'closed', stage: 'open', created_at: iso(9000), closed_at: iso(8000), assigned: true, participant: false, rating: 5 },
-  ] }],
+  ], orgTickets: [{ id: 7, subject: 'Imprimante du 2e étage', status: 'open', stage: 'in_progress', created_at: iso(300), closed_at: null, assigned: true, requester: 'Bruno' }] }],
   '/api/member/tickets/123456789012345678/1': { files: [{ id: 3, filename: 'facture-1287.pdf', size: 48213, created_at: new Date(Date.now() - 3600000).toISOString() }], upload: { enabled: true, maxMb: 10, maxFiles: 5, blocked: ['exe'] }, guild: { id: '123456789012345678', name: 'Sunset FA', icon: null, color: '#e67e22', welcome: 'Bienvenue sur le support Sunset, réponse sous 24 h.' },
     ticket: { id: 1, subject: 'Problème de paiement', status: 'open', stage: 'waiting', created_at: iso(120), assigned: true, participant: false, resolved_at: iso(30), resolution: 'Paiement validé de notre côté, réessaie maintenant.' },
     messages: [

@@ -20,7 +20,7 @@ async function listOrgs(db) {
   const domains = await db('SELECT domain, organization_id FROM organization_domains ORDER BY domain').catch(() => []);
   return orgs.map(o => ({
     id: o.id, name: o.name, parentId: o.parent_id || null, teamId: o.team_id || null, managerId: o.manager_id || null, calendarId: o.calendar_id || null,
-    fields: parseJsonField(o.fields, {}) || {}, notes: o.notes || '', contacts: Number(o.contacts), openTickets: Number(o.open_tickets),
+    fields: parseJsonField(o.fields, {}) || {}, notes: o.notes || '', portalVisibility: o.portal_visibility || 'none', contacts: Number(o.contacts), openTickets: Number(o.open_tickets),
     domains: domains.filter(d => d.organization_id === o.id).map(d => d.domain),
   }));
 }
@@ -57,7 +57,9 @@ async function clean(db, id, input = {}) {
     const key = String(k).replace(/\s+/g, ' ').trim().slice(0, 40), val = String(v ?? '').trim().slice(0, 300);
     if (key && val) fields[key] = val;
   }
-  return { value: { name, parentId, domains, teamId, managerId, calendarId, fields, notes: typeof input.notes === 'string' ? input.notes.slice(0, 5000) : '' } };
+  // Organisation portal (v5.3): who among its contacts sees its tickets in the member space
+  const portalVisibility = ['none', 'manager', 'all'].includes(input.portalVisibility) ? input.portalVisibility : 'none';
+  return { value: { name, parentId, domains, teamId, managerId, calendarId, fields, portalVisibility, notes: typeof input.notes === 'string' ? input.notes.slice(0, 5000) : '' } };
 }
 
 async function saveOrg(db, id, input) {
@@ -68,9 +70,9 @@ async function saveOrg(db, id, input) {
   const r = await clean(db, id, input);
   if (r.error) return r;
   const v = r.value;
-  const vals = [v.name, v.parentId, v.teamId, v.managerId, v.calendarId, JSON.stringify(v.fields), v.notes || null];
-  if (id) await db('UPDATE organizations SET name = ?, parent_id = ?, team_id = ?, manager_id = ?, calendar_id = ?, fields = ?, notes = ? WHERE id = ?', [...vals, id]);
-  else id = (await db('INSERT INTO organizations (name, parent_id, team_id, manager_id, calendar_id, fields, notes) VALUES (?, ?, ?, ?, ?, ?, ?)', vals)).insertId;
+  const vals = [v.name, v.parentId, v.teamId, v.managerId, v.calendarId, JSON.stringify(v.fields), v.notes || null, v.portalVisibility];
+  if (id) await db('UPDATE organizations SET name = ?, parent_id = ?, team_id = ?, manager_id = ?, calendar_id = ?, fields = ?, notes = ?, portal_visibility = ? WHERE id = ?', [...vals, id]);
+  else id = (await db('INSERT INTO organizations (name, parent_id, team_id, manager_id, calendar_id, fields, notes, portal_visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', vals)).insertId;
   await db('DELETE FROM organization_domains WHERE organization_id = ?', [id]);
   for (const d of v.domains) await db('INSERT INTO organization_domains (domain, organization_id) VALUES (?, ?)', [d, id]);
   // Contacts of these domains (unless placed by hand), and of the domains it no longer has
@@ -146,4 +148,10 @@ async function importCsv(db, text) {
   return { created, updated, errors: errors.slice(0, 20) };
 }
 
-module.exports = { PUBLIC_DOMAINS, listOrgs, orgOf, saveOrg, deleteOrg, attachByDomain, setContactOrg, assignTicket, refreshOpenTickets, importCsv };
+// A contact who sees the tickets of their organisation when it is set to « its managers »
+async function setPortalManager(db, contactId, on) {
+  await db('UPDATE contacts SET org_portal_manager = ? WHERE id = ?', [on ? 1 : 0, contactId]);
+  return { ok: true };
+}
+
+module.exports = { setPortalManager, PUBLIC_DOMAINS, listOrgs, orgOf, saveOrg, deleteOrg, attachByDomain, setContactOrg, assignTicket, refreshOpenTickets, importCsv };

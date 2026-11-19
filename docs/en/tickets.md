@@ -158,6 +158,7 @@ One pending approval per ticket; the person who asked, or a founder, can **cance
 | **SLA** | An objective with the **organisation** criterion (Settings → Hours → SLA objectives) |
 | **Team, manager** | Its tickets go to its team (if neither the subject nor a tag names one); its account manager can be notified (« the organisation's manager » recipient of notifications) |
 | **Fields and notes** | Contract, phone… (20 free fields) and internal notes |
+| **Portal** | Who sees the organisation's tickets in the [member space](./member-space#the-tickets-of-one-s-organisation): nobody, its managers or all its members |
 
 A ticket keeps its requester's organisation at the opening: it shows on the ticket view, filters the list (**All organisations**), is a condition of [automatic rules](./automations#automatic-rules). Moving a contact moves their open tickets.
 

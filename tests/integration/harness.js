@@ -5636,6 +5636,55 @@ async function main() {
     await db('DELETE FROM contacts WHERE id IN (?)', [[a.cid, b.cid]]);
   }
 
+  // ── Organisation portal: the tickets of one's organisation in the member space (v5.3) ──
+  {
+    const O = app('./utils/organizations');
+    const MA = '200000000000000101', MB = '200000000000000102', MC = '200000000000000103';
+    const mkPerson = async (id, name) => {
+      const cid = (await db('INSERT INTO contacts (display_name, seed) VALUES (?, ?)', [name, id])).insertId;
+      await db("INSERT INTO contact_identities (value, contact_id, kind, label) VALUES (?, ?, 'discord', ?)", [id, cid, name]);
+      return cid;
+    };
+    const mkT = async (owner, tag, extra = '') => (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject${extra ? ', visibility_grade_id' : ''}) VALUES (?, ?, ?, 'open', ?${extra ? ', ?' : ''})`,
+      [owner, tag, `db-po-${Math.random().toString(36).slice(2, 9)}`, `Demande de ${tag}`, ...(extra ? [extra] : [])])).insertId;
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Portail SA' } });
+    const org = r.body.id;
+    const cA = await mkPerson(MA, 'Alice'), cB = await mkPerson(MB, 'Bruno'), cC = await mkPerson(MC, 'Chloé');
+    for (const c of [cA, cB]) await O.setContactOrg(db, c, org);
+    const tA = await mkT(MA, 'Alice'), tB = await mkT(MB, 'Bruno'), tConf = await mkT(MB, 'Bruno', -1), tC = await mkT(MC, 'Chloé');
+    const [gR] = await db('SELECT id FROM grades LIMIT 1');
+    const tGrade = await mkT(MB, 'Bruno', gR.id);
+    for (const id of [tA, tB, tConf, tGrade, tC]) await O.assignTicket(db, id, { sync: false });
+    await mk('POA', { member: { id: MA, username: 'alice', avatar: null } });
+    const orgIds = async () => ((await req('GET', '/api/member/tickets', { sid: sessions.POA })).body.find(g => g.guild.id === G)?.orgTickets || []).map(t => t.id);
+    check('portail org: « personne » par défaut → rien de plus', (await orgIds()).length === 0, '');
+    await req('PUT', `/api/organizations/${org}`, { sid: sessions.F, body: { name: 'Portail SA', portalVisibility: 'manager' } });
+    check('portail org: « responsables » → pas pour un contact ordinaire', (await orgIds()).length === 0, '');
+    r = await req('PUT', `/api/profiles/${MA}/organization`, { sid: sessions.S1, body: { portalManager: true } });
+    check('portail org: désigner un responsable côté client est réservé', r.status === 403, r.status);
+    r = await req('PUT', `/api/profiles/${MA}/organization`, { sid: sessions.F, body: { portalManager: true } });
+    check('portail org: responsable côté client désigné, au journal', r.status === 200 && r.body.organization.portalManager === true
+      && (await db("SELECT 1 FROM audit_log WHERE action = 'contact_portal_manager'")).length > 0, JSON.stringify(r.body));
+    let ids = await orgIds();
+    check('portail org: le responsable voit les tickets de ses collègues', ids.includes(tB) && !ids.includes(tA), JSON.stringify(ids));
+    check('portail org: jamais un ticket confidentiel ni restreint à un grade', !ids.includes(tConf) && !ids.includes(tGrade), JSON.stringify(ids));
+    check('portail org: jamais hors de son organisation', !ids.includes(tC), JSON.stringify(ids));
+    r = await req('GET', `/api/member/tickets/${G}/${tB}`, { sid: sessions.POA });
+    check('portail org: le ticket d un collègue se lit, sans fichiers ni envoi', r.status === 200 && r.body.access === 'org' && r.body.ticket.requester === 'Bruno' && r.body.upload.enabled === false && r.body.files.length === 0, JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', `/api/member/tickets/${G}/${tB}/messages`, { sid: sessions.POA, body: { content: 'Je réponds à la place de Bruno' } });
+    check('portail org: lecture seule (pas de réponse dans le ticket d un collègue)', r.status === 404, r.status);
+    r = await req('GET', `/api/member/tickets/${G}/${tConf}`, { sid: sessions.POA });
+    check('portail org: un ticket confidentiel reste introuvable', r.status === 404, r.status);
+    await req('PUT', `/api/profiles/${MA}/organization`, { sid: sessions.F, body: { portalManager: false } });
+    await req('PUT', `/api/organizations/${org}`, { sid: sessions.F, body: { name: 'Portail SA', portalVisibility: 'all' } });
+    ids = await orgIds();
+    check('portail org: « tous les membres » → chacun voit les tickets de l organisation', ids.includes(tB) && !ids.includes(tConf), JSON.stringify(ids));
+    await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
+    check('portail org: organisation supprimée → plus rien', (await orgIds()).length === 0, '');
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tA, tB, tConf, tGrade, tC]]);
+    await db('DELETE FROM contacts WHERE id IN (?)', [[cA, cB, cC]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

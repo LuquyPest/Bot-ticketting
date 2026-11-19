@@ -28,6 +28,23 @@ const STAGE_KIND = "COALESCE((SELECT ts.kind FROM ticket_stages ts WHERE CONCAT(
 
 const ownTicketsSql = `(t.owner_id IN (?) OR t.id IN (SELECT ticket_id FROM ticket_participants WHERE user_id IN (?)))`;
 
+// Organisation portal (v5.3, utils/organizations.js): the organisations whose tickets this member
+// may read — set per organisation: nobody, its managers (contacts marked as such), or all its
+// members; a parent organisation includes its sub-organisations. Read only. Never a confidential
+// ticket, nor one the staff restricted to a grade.
+async function orgScope(db, ids) {
+  const rows = await db(`SELECT o.id, o.portal_visibility, c.org_portal_manager FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id
+    JOIN organizations o ON o.id = c.organization_id WHERE ci.value IN (?)`, [ids]).catch(() => []);
+  const out = new Set();
+  for (const r of rows) {
+    if (!(r.portal_visibility === 'all' || (r.portal_visibility === 'manager' && Number(r.org_portal_manager) === 1))) continue;
+    out.add(Number(r.id));
+    for (const c of await db('SELECT id FROM organizations WHERE parent_id = ?', [r.id]).catch(() => [])) out.add(Number(c.id));
+  }
+  return [...out];
+}
+const ORG_TICKET_SQL = 't.organization_id IN (?) AND t.visibility_grade_id IS NULL';
+
 // Identities of a signed-in member: { id, email? } → the owner IDs their tickets may carry
 function memberIds(member) {
   if (!member?.email) return [String(member.id)];
@@ -56,15 +73,22 @@ async function listMemberTickets(member, client) {
          ORDER BY COALESCE(t.last_message_at, t.created_at) DESC LIMIT 200`,
         [ids, ids]
       );
-      if (!tickets.length) continue;
+      const scope = await orgScope(db, ids);
+      const orgTickets = scope.length ? await db(
+        `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.resolved_at, t.owner_tag,
+                EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned
+         FROM tickets t WHERE ${ORG_TICKET_SQL} AND NOT ${ownTicketsSql}
+         ORDER BY COALESCE(t.last_message_at, t.created_at) DESC LIMIT 200`, [scope, ids, ids]) : [];
+      if (!tickets.length && !orgTickets.length) continue;
       const g = client?.guilds?.cache?.get(guild_id);
       out.push({
         guild: { id: guild_id, name: g?.name || guild_name || guild_id, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
         tickets: tickets.map(({ owner_id, ...t }) => ({ ...t, assigned: !!Number(t.assigned), participant: !ids.includes(owner_id) })),
+        orgTickets: orgTickets.map(({ owner_tag, ...t }) => ({ ...t, assigned: !!Number(t.assigned), requester: owner_tag })),
       });
     } catch { /* tenant DB unavailable */ }
   }
-  const last = g => Math.max(...g.tickets.map(t => new Date(t.last_message_at || t.created_at).getTime()));
+  const last = g => Math.max(...[...g.tickets, ...(g.orgTickets || [])].map(t => new Date(t.last_message_at || t.created_at).getTime()));
   return out.sort((a, b) => last(b) - last(a));
 }
 
@@ -76,8 +100,9 @@ function authorLabel(note, ids) {
   return note.author_tag;
 }
 
-// { guild, ticket, messages } or null when the member may not see it
-async function memberTicket(member, guildId, ticketId, client) {
+// { guild, ticket, messages, access } or null when the member may not see it. allowOrg: a ticket of
+// their organisation (read only: never for replying, confirming or downloading)
+async function memberTicket(member, guildId, ticketId, client, { allowOrg = false } = {}) {
   const ids = memberIds(member);
   if (!SNOWFLAKE_RE.test(String(guildId)) || !(ticketId > 0)) return null;
   const guilds = await getActiveGuilds();
@@ -85,7 +110,7 @@ async function memberTicket(member, guildId, ticketId, client) {
   if (!guild) return null;
   const db = getTenantDb(guildId);
   if (!(await portalEnabled(db))) return null;
-  const [ticket] = await db(
+  let [ticket] = await db(
     `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id,
             t.visibility_grade_id = -1 AS confidential, t.resolved_at, t.resolution,
             EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned,
@@ -93,16 +118,28 @@ async function memberTicket(member, guildId, ticketId, client) {
      FROM tickets t WHERE t.id = ? AND ${ownTicketsSql}`,
     [ticketId, ids, ids]
   );
+  let access = 'own';
+  if (!ticket && allowOrg) {
+    const scope = await orgScope(db, ids);
+    if (scope.length) {
+      const [o] = await db(
+        `SELECT t.id, t.subject, t.status, ${STAGE_KIND} AS stage, t.created_at, t.closed_at, t.last_message_at, t.merged_into, t.owner_id, t.owner_tag,
+                0 AS confidential, t.resolved_at, t.resolution, EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = t.id) AS assigned, NULL AS rating
+         FROM tickets t WHERE t.id = ? AND ${ORG_TICKET_SQL}`, [ticketId, scope]);
+      if (o) { ticket = o; access = 'org'; }
+    }
+  }
   if (!ticket) return null;
   const notes = await db(
     'SELECT id, author_id, author_tag, content, source, created_at, edited_at, deleted_at FROM ticket_notes WHERE ticket_id = ? AND source IN (?) ORDER BY created_at ASC, id ASC',
     [ticketId, MEMBER_SOURCES]
   );
   const g = client?.guilds?.cache?.get(guildId);
-  const { owner_id, ...t } = ticket;
+  const { owner_id, owner_tag, ...t } = ticket;
   return {
+    access,
     guild: { id: guildId, name: g?.name || guild.guild_name || guildId, icon: g?.iconURL?.({ size: 64 }) || null, ...(await guildBranding(db)) },
-    ticket: { ...t, assigned: !!Number(t.assigned), confidential: !!Number(t.confidential), participant: !ids.includes(owner_id) },
+    ticket: { ...t, assigned: !!Number(t.assigned), confidential: !!Number(t.confidential), participant: access === 'own' && !ids.includes(owner_id), ...(access === 'org' ? { requester: owner_tag } : {}) },
     messages: notes.map(n => ({
       id: n.id,
       kind: n.source === 'user' ? (ids.includes(n.author_id) ? 'me' : 'member') : n.source === 'system' ? 'event' : 'staff',
