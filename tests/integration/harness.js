@@ -8060,6 +8060,22 @@ async function main() {
     channels.delete(ALERT);
   }
 
+  // ── Installable dashboard (PWA, v6): manifest, icons, offline page ──
+  {
+    r = await req('GET', '/manifest.webmanifest');
+    const mf = r.body;
+    const icon = sz => mf.icons?.find(i => i.sizes === sz && (i.purpose || 'any') === 'any');
+    check('PWA: manifeste servi (nom de l instance, autonome, icônes 192 et 512, maskable, raccourcis)', r.status === 200 && /manifest\+json/.test(r.headers['content-type'] || '') && !!mf.name && mf.display === 'standalone' && mf.start_url === '/'
+      && !!icon('192x192') && !!icon('512x512') && mf.icons.some(i => i.purpose === 'maskable') && mf.shortcuts?.length >= 2, JSON.stringify(mf).slice(0, 300));
+    const fsx = require('fs'), path = require('path');
+    const dimOf = f => { const b = fsx.readFileSync(path.join(__dirname, '../../dashboard/public', f)); return b.toString('ascii', 1, 4) === 'PNG' ? [b.readUInt32BE(16), b.readUInt32BE(20)] : null; };
+    check('PWA: icônes PNG aux bonnes dimensions', JSON.stringify(dimOf('icons/icon-192.png')) === '[192,192]' && JSON.stringify(dimOf('icons/icon-512.png')) === '[512,512]' && JSON.stringify(dimOf('icons/maskable-512.png')) === '[512,512]', '');
+    const sw = fsx.readFileSync(path.join(__dirname, '../../dashboard/public/sw.js'), 'utf8');
+    const off = fsx.readFileSync(path.join(__dirname, '../../dashboard/public/offline.html'), 'utf8');
+    check('PWA: page hors ligne mise en cache et servie quand le réseau manque, sans script en ligne (CSP)', /addAll\(\['\/offline\.html'/.test(sw) && /mode !== 'navigate'/.test(sw) && /caches\.match\('\/offline\.html'\)/.test(sw)
+      && !/<script|onclick=|onload=/i.test(off), '');
+  }
+
   // ── All my spaces (web/routes/mySpaces.js, v6): each space read with the rights one has there ──
   {
     const CONF = app('./utils/gradePermissions').CONFIDENTIAL;

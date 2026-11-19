@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v6.4.0',
+    date: 'à venir',
+    title: 'Mobile',
+    titleEn: 'Mobile',
+    changes: [
+      { type: 'new',  text: 'Le dashboard s\'installe comme une application (PWA) sur téléphone et ordinateur : plein écran, nom de l\'instance, icône, raccourcis vers Ma file, Tickets et Tous mes espaces, page « Pas de connexion » hors ligne', en: 'The dashboard installs like an app (PWA) on phone and desktop: full screen, instance name, icon, shortcuts to My queue, Tickets and All my spaces, « No connection » page when offline' },
+    ],
+  },
+  {
     version: 'v6.3.0',
     date: 'à venir',
     title: 'Plusieurs espaces',

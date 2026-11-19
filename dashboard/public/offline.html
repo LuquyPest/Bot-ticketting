@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2f6feb">
+<title>Hors ligne</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #e6e8ee; }
+  main { max-width: 28rem; padding: 2rem 1.25rem; text-align: center; }
+  img { width: 64px; height: 64px; border-radius: 14px; }
+  h1 { font-size: 1.25rem; margin: 1rem 0 .5rem; }
+  p { color: #b4b9c6; line-height: 1.5; margin: 0 0 1.25rem; }
+  .btn { display: inline-block; font-weight: 600; padding: .6rem 1.2rem; border-radius: .75rem; background: #2f6feb; color: #fff; text-decoration: none; }
+  @media (prefers-color-scheme: light) { body { background: #f5f6fa; color: #1b1e27; } p { color: #4a5063; } }
+</style>
+</head>
+<body>
+<main>
+  <img src="/icons/icon-192.png" alt="">
+  <h1>Pas de connexion</h1>
+  <p>Le dashboard a besoin du réseau pour afficher les tickets. Vérifie ta connexion, puis réessaie.<br><span lang="en">No connection: check your network, then try again.</span></p>
+  <a class="btn" href="/">Réessayer</a>
+</main>
+</body>
+</html>
