@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.7.0',
+    date: 'à venir',
+    title: 'Centre de services : arriver avec ses données',
+    titleEn: 'Service desk: bring your data',
+    changes: [
+      { type: 'new',  text: 'Import depuis Zendesk, Freshdesk, GLPI, osTicket, Zammad ou un CSV / JSON : tickets avec leur conversation, contacts, organisations, articles en brouillon ; colonnes reconnues en anglais ou en français, essai à blanc, pas de doublon en réimportant', en: 'Import from Zendesk, Freshdesk, GLPI, osTicket, Zammad or a CSV / JSON: tickets with their conversation, contacts, organisations, articles as drafts; columns recognised in English or French, dry run, no duplicate when importing again' },
+    ],
+  },
+  {
     version: 'v5.6.0',
     date: 'à venir',
     title: 'Centre de services : connaissances et pilotage',

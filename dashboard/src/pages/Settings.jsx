@@ -23,6 +23,7 @@ import CatalogEditor from '../components/CatalogEditor';
 import RecurringEditor from '../components/RecurringEditor';
 import TaskTemplatesEditor from '../components/TaskTemplatesEditor';
 import SurveySettings from '../components/SurveySettings';
+import HelpdeskImport from '../components/HelpdeskImport';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -1010,6 +1011,11 @@ export default function Settings() {
       )}
       {tab === 'sauvegarde' && (
         <div role="tabpanel" id="panel-sauvegarde" aria-labelledby="tab-sauvegarde" className="space-y-5">
+      {user?.role === 'fondateur' && (
+        <Section title="Importer depuis un autre outil" description="Zendesk, Freshdesk, GLPI, osTicket, Zammad, ou un CSV / JSON aux mêmes colonnes.">
+          <HelpdeskImport />
+        </Section>
+      )}
       <Section title="Sauvegarde et transfert">
         <ConfigTransfer />
       </Section>
