@@ -7883,6 +7883,53 @@ async function main() {
     await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${G5}\``).catch(() => null);
   }
 
+  // ── Images of the knowledge base articles (utils/kbImages.js, v6) ──
+  {
+    const fsx = require('fs'), os = require('os'), path = require('path');
+    const cfgK = app('./utils/config').config;
+    const prevDir = cfgK.attachmentsDir;
+    cfgK.attachmentsDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-kbimg-'));
+    const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), crypto.randomBytes(64)]);
+    const fid = (await db("INSERT INTO faq_entries (question, answer, keywords, category, visibility, status) VALUES ('Article illustré KBI', 'Voir l image', '', '', 'public', 'draft')")).insertId;
+    r = await reqMultipart(`/api/faq/${fid}/images`, { sid: sessions.F, file: { field: 'file', name: 'capture écran.png', content: PNG } });
+    const up = r.body;
+    check('images KB: PNG envoyée → adresse et Markdown à insérer', r.status === 201 && /^\/api\/kb\/\d+\/images\/[0-9a-f]{32}$/.test(up.url || '') && up.markdown === `![capture écran](${up.url})`, JSON.stringify(r.body));
+    r = await reqMultipart(`/api/faq/${fid}/images`, { sid: sessions.F, file: { field: 'file', name: 'logo.svg', content: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>') } });
+    const r2 = await reqMultipart(`/api/faq/${fid}/images`, { sid: sessions.F, file: { field: 'file', name: 'faux.png', content: Buffer.from('MZ' + 'x'.repeat(100)) } });
+    check('images KB: SVG et faux PNG refusés (type lu dans le fichier)', r.status === 415 && r2.status === 415, JSON.stringify([r.status, r2.status]));
+    r = await reqMultipart(`/api/faq/${fid}/images`, { sid: sessions.F, file: { field: 'file', name: 'gros.png', content: Buffer.concat([PNG, Buffer.alloc(5 * 1024 * 1024)]) } });
+    check('images KB: plus de 5 Mo refusé', r.status === 413, r.status);
+    r = await reqMultipart(`/api/faq/999999/images`, { sid: sessions.F, file: { field: 'file', name: 'a.png', content: PNG } });
+    check('images KB: article inconnu → 404', r.status === 404, r.status);
+    r = await req('GET', up.url);
+    const rs = await req('GET', up.url, { sid: sessions.F });
+    check('images KB: brouillon → invisible du public, servie au staff (type, nosniff)', r.status === 404 && rs.status === 200 && rs.headers['content-type'] === 'image/png' && rs.headers['x-content-type-options'] === 'nosniff', JSON.stringify([r.status, rs.status, rs.headers['content-type']]));
+    await db("UPDATE faq_entries SET status = 'published' WHERE id = ?", [fid]);
+    r = await req('GET', up.url);
+    check('images KB: article publié et public → servie à tous', r.status === 200 && /public/.test(r.headers['cache-control'] || ''), JSON.stringify([r.status, r.headers['cache-control']]));
+    await db("UPDATE faq_entries SET visibility = 'members' WHERE id = ?", [fid]);
+    await mk('KBMEM', { member: { id: '200000000000000099', username: 'lecteur' } });
+    r = await req('GET', up.url);
+    const rm = await req('GET', up.url, { sid: sessions.KBMEM });
+    check('images KB: article réservé aux membres → membre connecté oui, public non', r.status === 404 && rm.status === 200, JSON.stringify([r.status, rm.status]));
+    await db("UPDATE faq_entries SET visibility = 'staff' WHERE id = ?", [fid]);
+    check('images KB: article réservé au staff → refusée au membre', (await req('GET', up.url, { sid: sessions.KBMEM })).status === 404, '');
+    r = await req('GET', up.url.replace(/[0-9a-f]{32}$/, 'f'.repeat(32)), { sid: sessions.F });
+    check('images KB: jeton inconnu → 404', r.status === 404, r.status);
+    const ef = app('./utils/emailFormat');
+    const html = ef.markdownToHtml(`Avant\n\n${up.markdown}\n\n![pisteur](https://tracker.example/p.gif)`);
+    const base = (cfgK.webServerBaseUrl || '').replace(/\/$/, '');
+    check('images KB: rendu HTML (pages publiques, e-mails) avec l adresse complète ; image extérieure jamais affichée', html.includes(`<img src="${base}${up.url}"`) && !/<img[^>]+tracker/.test(html), html.slice(0, 300));
+    check('images KB: en texte (MP Discord), un lien vers l image', ef.markdownToText(up.markdown) === `capture écran : ${base}${up.url}`, ef.markdownToText(up.markdown));
+    const [imgRow] = await db('SELECT stored_name FROM faq_images WHERE faq_id = ?', [fid]);
+    const filePath = path.join(cfgK.attachmentsDir, 'kb', G, imgRow.stored_name);
+    const existed = fsx.existsSync(filePath);
+    r = await req('DELETE', `/api/faq/${fid}`, { sid: sessions.F });
+    check('images KB: supprimer l article supprime ses images (fichier et ligne)', r.status === 200 && existed && !fsx.existsSync(filePath) && !(await db('SELECT 1 FROM faq_images WHERE faq_id = ?', [fid])).length, JSON.stringify([r.status, existed]));
+    fsx.rmSync(cfgK.attachmentsDir, { recursive: true, force: true });
+    if (prevDir === undefined) delete cfgK.attachmentsDir; else cfgK.attachmentsDir = prevDir;
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

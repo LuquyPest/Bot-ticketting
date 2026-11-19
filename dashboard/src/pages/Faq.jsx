@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, HelpCircle, FlaskConical, Loader2, Globe, Lock, ExternalLink } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, HelpCircle, FlaskConical, Loader2, Globe, Lock, ExternalLink, ImagePlus } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirmToast';
@@ -23,6 +23,27 @@ function Revisions({ entryId, onRestored }) {
         ))}
       </ul>
     </details>
+  );
+}
+
+// An image in the answer (utils/kbImages.js, v6): sent, then inserted where the cursor is
+function ArticleImage({ entryId, onAdded }) {
+  const [busy, setBusy] = useState(false);
+  if (!entryId) return <p className="text-[11px] text-ink-4 mt-1">Enregistre l'article une première fois pour y ajouter des images.</p>;
+  const send = async e => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { toast.error('Image trop lourde (5 Mo au plus)'); return; }
+    setBusy(true);
+    try { const fd = new FormData(); fd.append('file', f); const { data } = await api.post(`/faq/${entryId}/images`, fd); onAdded(data.markdown); toast.success('Image ajoutée'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  return (
+    <label className="inline-flex items-center gap-1.5 mt-1 text-xs text-ink-3 hover:text-ink-1 cursor-pointer">
+      <ImagePlus size={13} aria-hidden="true" /> {busy ? 'Envoi…' : 'Ajouter une image (PNG, JPEG, GIF, WebP, 5 Mo)'}
+      <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={send} disabled={busy} className="sr-only" />
+    </label>
   );
 }
 
@@ -62,6 +83,10 @@ function EntryModal({ entry, categories, originals = [], onClose, onSave }) {
           <span className="text-xs text-ink-3">Réponse (envoyée en MP, affichée dans l'espace membre et la base publique)</span>
           <FormatBar textareaRef={answerRef} value={form.answer} setValue={v => set('answer', typeof v === 'function' ? v(form.answer) : v)} />
           <textarea ref={answerRef} value={form.answer} onChange={e => set('answer', e.target.value)} maxLength={5000} rows={7} className={`${input} resize-y`} />
+          <ArticleImage entryId={entry?.id} onAdded={md => {
+            const el = answerRef.current; const at = el ? el.selectionStart : form.answer.length;
+            set('answer', `${form.answer.slice(0, at)}${at && form.answer[at - 1] !== '\n' ? '\n' : ''}${md}\n${form.answer.slice(at)}`);
+          }} />
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block space-y-1.5">

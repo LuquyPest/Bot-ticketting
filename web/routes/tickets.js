@@ -730,7 +730,7 @@ async function sendStaffReply(req, ticket, { content, file_url, anonymous, uploa
 // POST /api/tickets/:id/reply-file — multipart: file (8 Mo max) + optional content / anonymous
 const multer = require('multer');
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
-const uploadOne = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 4 } }).single('file');
+const uploadOne = multer({ storage: multer.memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 4 } }).single('file');
 const cleanFileName = n => (String(n || 'fichier').normalize('NFC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || 'fichier').slice(0, 100);
 
 router.post('/:id/reply-file', (req, res, next) => uploadOne(req, res, err => {

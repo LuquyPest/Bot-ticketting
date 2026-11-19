@@ -1,6 +1,7 @@
 // Public knowledge base (utils/knowledgeBase.js), read without signing in:
 //   GET /api/kb/:guildId                → the space and its public articles
 //   GET /api/kb/:guildId/articles/:id   → one article (counted as read)
+//   GET /api/kb/:guildId/images/:token  → an image of an article, with the article's visibility (v6)
 // A space whose public page is off, unknown or suspended answers the same 404.
 const express = require('express');
 const crypto = require('crypto');
@@ -19,6 +20,35 @@ router.get('/:guildId', async (req, res, next) => {
       space: { id: space.id, name: space.name, logo: space.logo, color: space.color },
       articles: await kb.publicArticles(space.db, { lang: /^[a-z]{2}$/.test(req.query.lang || '') ? req.query.lang : null }),
     });
+  } catch (err) { next(err); }
+});
+
+// GET /api/kb/:guildId/images/:token — an image of an article (utils/kbImages.js, v6), with the
+// article's visibility: published and public → anyone; published for members → a signed-in member;
+// otherwise (draft, staff, organisation, team) → the staff of the space only
+router.get('/:guildId/images/:token', async (req, res, next) => {
+  try {
+    const gid = String(req.params.guildId);
+    if (!/^\d{17,20}$/.test(gid)) return res.status(404).json(NOT_FOUND);
+    const [g] = await require('../../utils/globalDb').globalQuery("SELECT guild_id FROM guilds WHERE guild_id = ? AND status = 'active'", [gid]);
+    if (!g) return res.status(404).json(NOT_FOUND);
+    const db = require('../../utils/tenantDb').getTenantDb(gid);
+    const images = require('../../utils/kbImages');
+    const img = await images.find(db, req.params.token);
+    if (!img) return res.status(404).json(NOT_FOUND);
+    const live = Number(img.live) === 1;
+    let allowed = live && img.visibility === 'public';
+    if (!allowed && live && img.visibility === 'members') allowed = !!(req.session?.member || req.session?.user);
+    if (!allowed && req.session?.user && !req.session.user.demo) {
+      const [st] = await db("SELECT 1 AS x FROM dashboard_users WHERE user_id = ? AND role IN ('support', 'fondateur')", [req.session.user.id]).catch(() => []);
+      allowed = !!st || await require('../../utils/instance').isOwner(req.app.locals.client, req.session.user.id).catch(() => false);
+    }
+    if (!allowed) return res.status(404).json(NOT_FOUND);
+    res.setHeader('Content-Type', img.content_type);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline; filename="image"');
+    res.setHeader('Cache-Control', live && img.visibility === 'public' ? 'public, max-age=86400' : 'private, max-age=3600');
+    res.sendFile(images.fileOf(gid, img), err => { if (err && !res.headersSent) res.status(404).json(NOT_FOUND); });
   } catch (err) { next(err); }
 });
 

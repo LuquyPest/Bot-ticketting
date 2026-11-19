@@ -187,6 +187,7 @@ const ACTIONS = {
   faq_create:               ['Entrée de FAQ créée', 'config'],
   faq_update:               ['Entrée de FAQ modifiée', 'config'],
   faq_delete:               ['Entrée de FAQ supprimée', 'config'],
+  faq_image_add:            ['Image ajoutée à un article', 'config'],
   faq_solved:               ['Question résolue par la FAQ', 'tickets'],
   // Intégrations
   api_key_create:           ['Clé API créée', 'integrations'],

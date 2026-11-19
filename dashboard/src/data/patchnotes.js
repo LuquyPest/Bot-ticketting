@@ -18,6 +18,16 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v6.1.0',
+    date: 'à venir',
+    title: 'Compléments',
+    titleEn: 'Finishing touches',
+    changes: [
+      { type: 'new',  text: 'Images dans les articles de la base de connaissances : envoyées depuis l\'éditeur (PNG, JPEG, GIF, WebP), affichées selon la visibilité de l\'article, en lien dans les MP Discord ; aucune image extérieure affichée', en: 'Images in knowledge base articles: uploaded from the editor (PNG, JPEG, GIF, WebP), shown according to the article\'s visibility, as a link in Discord DMs; no outside image shown' },
+      { type: 'fix',  text: 'Fichiers envoyés (réponses du staff, espace membre, widget, API, e-mails reçus par webhook) : les noms avec accents ne sont plus abîmés (« écran » au lieu de « Ã©cran »)', en: 'Uploaded files (staff replies, member space, widget, API, e-mails received by webhook): names with accents are no longer garbled' },
+    ],
+  },
+  {
     version: 'v6.0.0',
     date: 'à venir',
     title: 'Fiabilité',
