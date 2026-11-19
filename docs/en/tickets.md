@@ -154,6 +154,12 @@ The **time spent** goes to a task: the stopwatch of a task, or time added by han
 
 **Task templates** (**Settings → Catalogue → Task templates**; « new employee » = 6 tasks) are applied from the ticket view or by an [automatic rule](./automations#automatic-rules) (**Task template** action); each task can have a « D+n » due date. In the [member space](./member-space), the requester sees the visible tasks and their state, never who handles them. Each addition, state and deletion is in the ticket's journal.
 
+### Planning
+
+**Planning** menu: the week of a person or a team: the **planned tasks**, the **resolution deadline** of assigned tickets (in red), the **absences**. You see your own planning and your teams' (a founder sees everyone), always through what you are allowed to see. **Dragging a task** onto another day reschedules it, at the same time.
+
+**In my calendar (iCal)** gives a secret link to add to Google Calendar, Outlook or Calendar: your planned tasks, your tickets' deadlines and your absences (30 days back, 90 ahead). The link is kept hashed; creating a new one, or removing it, cuts the old one.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

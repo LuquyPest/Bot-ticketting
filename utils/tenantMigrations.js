@@ -1130,6 +1130,15 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_tt_task ON ticket_time (task_id)',
     ],
   },
+  {
+    version: 68,
+    name: 'Planning : flux iCal personnel (v5.4)',
+    statements: [
+      // The secret link of a staff member's iCal feed, stored hashed (none until they ask for one)
+      'ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS ical_token_hash CHAR(64) DEFAULT NULL',
+      'CREATE INDEX IF NOT EXISTS idx_du_ical ON dashboard_users (ical_token_hash)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

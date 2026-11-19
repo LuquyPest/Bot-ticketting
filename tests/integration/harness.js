@@ -5847,6 +5847,51 @@ async function main() {
     await db('DELETE FROM tickets WHERE id IN (?)', [[tk, tk2]]);
   }
 
+  // ── Planning and iCal feed (utils/planning.js, v5.4) ──
+  {
+    const tomorrow = new Date(Date.now() + 864e5);
+    const tP = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, ttr_due_at) VALUES ('200000000000000068', 'plan', 'db-plan', 'open', 'Migration du serveur', ?)", [new Date(Date.now() + 2 * 864e5)])).insertId;
+    await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [tP, U.F]);
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000069', 'conf', 'db-plan2', 'open', 'Secret', -1)")).insertId;
+    r = await req('POST', `/api/tickets/${tP}/tasks`, { sid: sessions.F, body: { title: 'Sauvegarder avant migration', assigneeId: U.F, dueAt: tomorrow.toISOString(), plannedMinutes: 45 } });
+    const task = r.body.tasks[0];
+    await db("INSERT INTO ticket_tasks (ticket_id, title, assignee_id, due_at) VALUES (?, 'Tâche confidentielle', ?, ?)", [tConf, U.S1, tomorrow]);
+    const absId = (await db("INSERT INTO staff_absences (user_id, starts_at, ends_at, reason, created_by_id, created_by_tag) VALUES (?, ?, ?, 'Congés', ?, 'F')", [U.F, new Date(Date.now() + 3 * 864e5), new Date(Date.now() + 5 * 864e5), U.F])).insertId;
+    r = await req('GET', '/api/planning', { sid: sessions.F, query: { from: new Date().toISOString(), to: new Date(Date.now() + 7 * 864e5).toISOString() } });
+    check('planning: mes tâches planifiées, échéances de mes tickets, absences', r.status === 200 && r.body.tasks.some(k => k.id === task.id) && r.body.deadlines.some(d => d.ticketId === tP) && r.body.absences.some(a => a.id === absId), JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', '/api/planning', { sid: sessions.F, query: { from: new Date().toISOString(), to: new Date(Date.now() + 90 * 864e5).toISOString() } });
+    check('planning: période bornée', r.status === 400, r.status);
+    r = await req('GET', '/api/planning', { sid: sessions.S1, query: { user: U.F } });
+    check('planning: celui d un collègue hors de son équipe refusé', r.status === 403, r.status);
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe planning', members: [U.S1] } })).body.find(t => t.name === 'Équipe planning');
+    r = await req('GET', '/api/planning', { sid: sessions.S2, query: { team: team.id } });
+    check('planning: une équipe réservée à ses membres', r.status === 403, r.status);
+    r = await req('GET', '/api/planning', { sid: sessions.S1 });
+    check('planning: jamais une tâche d un ticket qu on ne voit pas', r.status === 200 && !r.body.tasks.some(k => k.title === 'Tâche confidentielle'), JSON.stringify(r.body.tasks));
+    // Drag and drop: the task changes day
+    const later = new Date(Date.now() + 4 * 864e5);
+    await req('PATCH', `/api/tickets/${tP}/tasks/${task.id}`, { sid: sessions.F, body: { dueAt: later.toISOString() } });
+    r = await req('GET', '/api/planning', { sid: sessions.F, query: { from: new Date(Date.now() + 3 * 864e5).toISOString(), to: new Date(Date.now() + 6 * 864e5).toISOString() } });
+    check('planning: replanifier une tâche (glisser-déposer)', r.body.tasks.some(k => k.id === task.id), JSON.stringify(r.body.tasks.map(k => k.dueAt)));
+
+    // iCal feed
+    r = await req('POST', '/api/planning/ical', { sid: sessions.F });
+    const path = new URL(r.body.url, 'http://x').pathname;
+    const raw = (await db('SELECT ical_token_hash FROM dashboard_users WHERE user_id = ?', [U.F]))[0].ical_token_hash;
+    check('ical: lien secret créé, stocké haché', r.status === 200 && /\/api\/ical\/\d+\.[A-Za-z0-9_-]{32}\.ics$/.test(path) && raw && !path.includes(raw), path);
+    r = await req('GET', path);
+    check('ical: flux au format iCalendar avec la tâche', r.status === 200 && /text\/calendar/.test(r.headers['content-type']) && /BEGIN:VCALENDAR/.test(r.body) && /SUMMARY:Tâche : Sauvegarder avant migration/.test(r.body) && /BEGIN:VEVENT/.test(r.body), String(r.body).slice(0, 300));
+    r = await req('GET', `/api/ical/${G}.${'x'.repeat(32)}.ics`);
+    check('ical: secret inconnu → 404', r.status === 404, r.status);
+    const r2 = await req('POST', '/api/planning/ical', { sid: sessions.F });
+    check('ical: un nouveau lien coupe l ancien', (await req('GET', path)).status === 404 && (await req('GET', new URL(r2.body.url, 'http://x').pathname)).status === 200, '');
+    await req('DELETE', '/api/planning/ical', { sid: sessions.F });
+    check('ical: lien retiré → 404', (await req('GET', new URL(r2.body.url, 'http://x').pathname)).status === 404, '');
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+    await db('DELETE FROM staff_absences WHERE id = ?', [absId]);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tP, tConf]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

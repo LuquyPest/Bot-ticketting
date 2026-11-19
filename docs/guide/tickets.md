@@ -154,6 +154,12 @@ Le **temps passé** se rattache à une tâche : le chronomètre d'une tâche, ou
 
 Les **modèles de tâches** (**Paramètres → Catalogue → Modèles de tâches** ; « arrivée d'un salarié » = 6 tâches) s'appliquent depuis la fiche ou par une [règle automatique](./automatismes#les-regles-automatiques) (action **Modèle de tâches**) ; chaque tâche peut avoir une échéance « J+n ». Dans l'[espace membre](./espace-membre), le demandeur voit les tâches visibles et leur état, jamais qui s'en occupe. Chaque ajout, état et suppression est au journal du ticket.
 
+### Le planning
+
+Menu **Planning** : la semaine d'une personne ou d'une équipe : les **tâches planifiées**, l'**échéance de résolution** des tickets attribués (en rouge), les **absences**. On voit son propre planning et ceux de ses équipes (un fondateur voit tout le monde), toujours à travers ce qu'on a le droit de voir. **Glisser une tâche** sur un autre jour la replanifie, à la même heure.
+
+**Dans mon agenda (iCal)** donne un lien secret à ajouter à Google Agenda, Outlook ou Calendrier : ses tâches planifiées, les échéances de ses tickets et ses absences (30 jours en arrière, 90 en avant). Le lien est gardé chiffré ; en créer un nouveau, ou le retirer, coupe l'ancien.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

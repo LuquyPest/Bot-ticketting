@@ -110,6 +110,7 @@ const ACTIONS = {
   chat_link:                ['Compte Slack relié', 'integrations'],
   contact_organization:     ['Organisation d\'un contact changée', 'tickets'],
   contact_portal_manager:   ['Responsable côté client (portail)', 'tickets'],
+  ical_link:                ['Lien iCal du planning créé ou retiré', 'equipe'],
   task_add:                 ['Tâche ajoutée', 'tickets'],
   task_state:               ['Tâche faite ou rouverte', 'tickets'],
   task_delete:              ['Tâche supprimée', 'tickets'],
