@@ -27,7 +27,8 @@ router.get('/info', async (req, res) => {
     // application); the first installation
     ...await (async () => {
       const active = await require('../../utils/loginProviders').activeProviders().catch(() => []);
-      return { discordLogin: active.some(p => p.id === 'discord'), providers: active.filter(p => p.id !== 'discord') };
+      const ldap = await require('../../utils/ldapDirectory').active().catch(() => null);
+      return { discordLogin: active.some(p => p.id === 'discord'), providers: active.filter(p => p.id !== 'discord'), ldap };
     })(),
     setupNeeded: await require('../../utils/installation').setupNeeded(client).catch(() => false),
   });
@@ -55,6 +56,30 @@ router.put('/login-providers', async (req, res, next) => {
     if (!left.length) return res.status(400).json({ error: 'Tu n\'aurais plus aucun moyen de te connecter : définis d\'abord un mot de passe ou relie un autre fournisseur dans Profil → Connexion' });
     await lp.save(r.settings);
     res.json(await lp.publicSettings());
+  } catch (err) { next(err); }
+});
+
+// GET / PUT /api/instance/ldap — the LDAP / Active Directory directory (password never sent back);
+// POST /api/instance/ldap/test — the settings of the form, before they are saved
+router.get('/ldap', async (req, res, next) => {
+  try { res.json(await require('../../utils/ldapDirectory').publicSettings()); } catch (err) { next(err); }
+});
+router.put('/ldap', async (req, res, next) => {
+  const dir = require('../../utils/ldapDirectory');
+  try {
+    const r = await dir.prepare(req.body);
+    if (r.error) return res.status(400).json({ error: r.error });
+    await dir.save(r.settings);
+    res.json(await dir.publicSettings());
+  } catch (err) { next(err); }
+});
+router.post('/ldap/test', async (req, res, next) => {
+  const dir = require('../../utils/ldapDirectory');
+  try {
+    const r = await dir.prepare({ ...req.body, enabled: false });
+    if (r.error) return res.status(400).json({ error: r.error });
+    if (!r.settings.url || !r.settings.baseDn || !r.settings.bindDn || !r.settings.bindPassword) return res.status(400).json({ error: 'Adresse, base, compte de service et son mot de passe requis' });
+    res.json(await dir.test(r.settings));
   } catch (err) { next(err); }
 });
 
