@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v6.2.0',
+    date: 'à venir',
+    title: 'Annuaire',
+    titleEn: 'Directory',
+    changes: [
+      { type: 'new',  text: 'Annuaire LDAP / Active Directory : synchronisation programmée des contacts (chaque heure ou chaque jour) vers les espaces choisis, qui met à jour les fiches déjà importées ; option pour créer le compte d\'un membre du groupe autorisé à sa première connexion, avec le rôle support', en: 'LDAP / Active Directory: scheduled sync of the contacts (every hour or every day) into the chosen spaces, updating the cards already imported; option to create the account of a member of the allowed group at their first sign-in, with the support role' },
+    ],
+  },
+  {
     version: 'v6.1.0',
     date: 'à venir',
     title: 'Compléments',

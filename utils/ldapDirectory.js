@@ -17,7 +17,11 @@ const DEFAULTS = {
   bindDn: '', bindPassword: '', baseDn: '',
   loginAttr: 'uid', userFilter: '(objectClass=person)', mailAttr: 'mail', nameAttr: 'displayName,cn',
   group: '', contactsBase: '', contactsFilter: '(&(objectClass=person)(mail=*))', orgAttr: 'company,o',
+  // v6: scheduled sync of the contacts into these spaces, accounts created at sign-in
+  syncInterval: 'off', syncSpaces: [], autoCreate: false, provisionSpaces: [],
 };
+const INTERVALS = { hourly: 3600e3, daily: 86400e3 };
+const SNOW = /^\d{17,20}$/;
 const URL_RE = /^ldaps?:\/\/[A-Za-z0-9.-]{1,253}(:\d{1,5})?\/?$/;
 const ATTR_RE = /^[A-Za-z][A-Za-z0-9-]{0,63}$/;
 const TIMEOUT = 10000;
@@ -71,6 +75,22 @@ async function prepare(input) {
   if (!filterOk(s.userFilter) || !filterOk(s.contactsFilter)) return { error: 'Filtre LDAP invalide (entre parenthèses, équilibrées)' };
   if (s.ca && !/^-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----\s*$/.test(s.ca)) return { error: 'Certificat de l\'autorité au format PEM attendu' };
   if (s.enabled && !configured(s)) return { error: 'Adresse, base, compte de service et son mot de passe requis pour l\'activer' };
+  // v6: sync and accounts
+  if (i.syncInterval !== undefined) {
+    if (!['off', 'hourly', 'daily'].includes(i.syncInterval)) return { error: 'Fréquence de synchronisation invalide' };
+    s.syncInterval = i.syncInterval;
+  }
+  if (i.autoCreate !== undefined) s.autoCreate = !!i.autoCreate;
+  for (const k of ['syncSpaces', 'provisionSpaces']) {
+    if (i[k] === undefined) continue;
+    const ids = [...new Set((Array.isArray(i[k]) ? i[k] : []).map(String))].slice(0, 50);
+    if (!ids.every(id => SNOW.test(id))) return { error: 'Espace invalide' };
+    const known = ids.length ? (await require('./globalDb').globalQuery("SELECT guild_id FROM guilds WHERE guild_id IN (?) AND status = 'active'", [ids])).map(r => r.guild_id) : [];
+    if (known.length !== ids.length) return { error: 'Espace introuvable' };
+    s[k] = ids;
+  }
+  if (s.autoCreate && !s.group) return { error: 'Créer les comptes à la connexion demande un groupe autorisé : seuls ses membres en reçoivent un' };
+  if (s.autoCreate && !s.provisionSpaces.length) return { error: 'Choisis au moins un espace que rejoignent les comptes créés' };
   return { settings: s };
 }
 const save = settings => setSetting(KEY, settings);
@@ -189,4 +209,56 @@ async function test(settings) {
   }
 }
 
-module.exports = { KEY, DEFAULTS, load, active, publicSettings, prepare, save, authenticate, contactRows, test, escapeFilter };
+// ── Scheduled sync (v6): contacts and organisations of the directory into the chosen spaces, updated ──
+const SYNC_KEY = 'ldap_sync_state';
+async function syncNow({ force = false } = {}) {
+  const s = await load();
+  if (!configured(s) || !s.syncSpaces.length) return { skipped: 'nothing to sync' };
+  const state = await getSetting(SYNC_KEY, {});
+  if (!force) {
+    if (!INTERVALS[s.syncInterval]) return { skipped: 'off' };
+    if (state.at && Date.now() - new Date(state.at).getTime() < INTERVALS[s.syncInterval] - 60e3) return { skipped: 'not due' };
+  }
+  const got = await contactRows(s);
+  const results = {};
+  if (got.error) results.error = got.error;
+  else {
+    const H = require('./helpdeskImport');
+    const { getTenantDb } = require('./tenantDb');
+    for (const gid of s.syncSpaces) {
+      const db = getTenantDb(gid);
+      const r = await H.importRows(db, { source: 'ldap', kind: 'contacts', rows: got.rows, update: true }).catch(err => ({ error: err.message }));
+      results[gid] = r.error ? { error: r.error } : { created: r.created, updated: r.updated, unchanged: r.skipped, errors: r.errors.length };
+      if (!r.error && (r.created || r.updated)) await require('./audit').recordEvent(db, { actor: { id: 'system', tag: 'Annuaire' }, action: 'helpdesk_import', details: { source: 'ldap', kind: 'contacts', created: r.created, updated: r.updated, scheduled: !force } }).catch(() => null);
+    }
+  }
+  const next = { at: new Date().toISOString(), people: got.rows?.length || 0, results };
+  await setSetting(SYNC_KEY, next);
+  return next;
+}
+const runLdapSync = () => syncNow().catch(err => console.error('ldap sync:', err.message));
+const syncState = () => getSetting(SYNC_KEY, {});
+
+// ── Accounts created at sign-in (v6, off by default): a member of the allowed group without an
+// account gets one, with the directory address (confirmed: the directory vouches for it), and joins
+// the chosen spaces as support. Written to the instance journal.
+async function provision(who) {
+  const s = await load();
+  if (!s.autoCreate || !s.group || !s.provisionSpaces.length || !who?.email) return null;
+  const { globalQuery } = require('./globalDb');
+  const [taken] = await globalQuery('SELECT id FROM accounts WHERE email = ?', [who.email]);
+  if (taken) return null; // an account (even unconfirmed) already has this address: not taken over
+  const id = `u_${require('crypto').randomBytes(12).toString('hex')}`;
+  const name = String(who.name || who.email).slice(0, 100);
+  await globalQuery('INSERT INTO accounts (id, email, email_verified, display_name, last_login_at) VALUES (?, ?, 1, ?, NOW())', [id, who.email, name]);
+  const { getTenantDb } = require('./tenantDb');
+  for (const gid of s.provisionSpaces) {
+    await getTenantDb(gid)(`INSERT INTO dashboard_users (user_id, username, avatar, role, discord_has_role, approved_by, approved_at) VALUES (?, ?, NULL, 'support', 0, 'ldap', NOW())
+      ON DUPLICATE KEY UPDATE user_id = user_id`, [id, name]).catch(err => console.error('ldap provision', gid, err.message));
+  }
+  await globalQuery('INSERT INTO instance_audit_log (actor_id, actor_name, action, details) VALUES (?, ?, ?, ?)',
+    ['system', 'Annuaire', 'ldap_account_created', JSON.stringify({ account: id, name, spaces: s.provisionSpaces })]).catch(() => null);
+  return require('./accounts').getAccount(id);
+}
+
+module.exports = { KEY, DEFAULTS, syncNow, runLdapSync, syncState, provision, load, active, publicSettings, prepare, save, authenticate, contactRows, test, escapeFilter };

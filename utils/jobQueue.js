@@ -29,6 +29,7 @@ const JOBS = {
   'staff-absences':      { every: 5 * 60 * 1000,  run: () => require('./absences').runAbsenceCheck() },
   // Resolved tickets without an answer from their requester are closed after N days (utils/resolution.js)
   'resolution-autoclose': { every: 60 * 60 * 1000, run: client => require('./resolution').runResolutionAutoClose(client) },
+  'ldap-sync':           { every: 15 * 60 * 1000, run: () => require('./ldapDirectory').runLdapSync() },
   'approval-reminders':  { every: 60 * 60 * 1000, run: client => require('./approvals').runApprovalReminders(client) },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
   'public-stats':        { discord: true, pattern: '5 * * * *',  run: client => require('./publicStats').refreshAllPublicStats(client) },

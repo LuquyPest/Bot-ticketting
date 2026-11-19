@@ -15,7 +15,13 @@ export default function LdapDirectory() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [test, setTest] = useState(null);
-  useEffect(() => { api.get('/instance/ldap').then(r => setS(r.data)).catch(() => setS(false)); }, []);
+  const [spaces, setSpaces] = useState([]);
+  const [sync, setSync] = useState(null);
+  useEffect(() => {
+    api.get('/instance/ldap').then(r => setS(r.data)).catch(() => setS(false));
+    api.get('/instance/guilds').then(r => setSpaces((Array.isArray(r.data) ? r.data : []).filter(g => g.status === 'active'))).catch(() => {});
+    api.get('/instance/ldap/sync').then(r => setSync(r.data)).catch(() => {});
+  }, []);
   if (!s) return null;
   const set = (k, v) => setS(x => ({ ...x, [k]: v }));
   const body = () => ({ ...s, bindPassword: password || undefined });
@@ -31,6 +37,23 @@ export default function LdapDirectory() {
     catch (err) { setTest({ ok: false, error: err.response?.data?.error || 'Erreur' }); }
     setBusy(false);
   };
+  const syncNow = async () => {
+    setBusy(true);
+    try { const r = await api.post('/instance/ldap/sync'); setSync(r.data); toast.success('Annuaire synchronisé'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
+  const toggleIn = (k, id) => set(k, (s[k] || []).includes(id) ? s[k].filter(x => x !== id) : [...(s[k] || []), id]);
+  const spaceChips = k => (
+    <span className="inline-flex flex-wrap gap-1" role="group" aria-label="Espaces">
+      {spaces.map(g => {
+        const on = (s[k] || []).includes(g.guild_id);
+        return <button key={g.guild_id} type="button" aria-pressed={on} onClick={() => toggleIn(k, g.guild_id)}
+          className={`px-2 py-0.5 rounded-md text-[11px] border ${on ? 'bg-primary/15 text-primary-light border-primary/40' : 'border-overlay/8 text-ink-3 hover:text-ink-1'}`}>{g.guild_name || g.guild_id}</button>;
+      })}
+    </span>
+  );
+  const lastSync = sync?.at ? Object.values(sync.results || {}).reduce((a, r) => ({ created: a.created + (r.created || 0), updated: a.updated + (r.updated || 0) }), { created: 0, updated: 0 }) : null;
   const field = (label, k, props = {}) => (
     <label className="text-xs text-ink-3 block">{label}
       <input value={s[k] || ''} onChange={e => set(k, e.target.value)} className={`${INPUT} mt-1`} translate="no" {...props} />
@@ -74,6 +97,26 @@ export default function LdapDirectory() {
       <label className="text-xs text-ink-3 block">Certificat de l'autorité (PEM, si l'annuaire utilise une autorité interne)
         <textarea value={s.ca || ''} onChange={e => set('ca', e.target.value)} rows={3} placeholder="-----BEGIN CERTIFICATE-----" className={`${INPUT} mt-1 font-mono`} translate="no" />
       </label>
+      <div className="border-t border-overlay/6 pt-3 space-y-2 text-xs text-ink-2">
+        <p className="font-semibold text-ink-1">Synchronisation des contacts</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="ldap-sync">Fréquence</label>
+          <select id="ldap-sync" value={s.syncInterval || 'off'} onChange={e => set('syncInterval', e.target.value)} className="bg-surface border border-overlay/8 rounded-lg px-2 py-1 text-xs text-ink-1">
+            <option value="off">à la main</option><option value="hourly">chaque heure</option><option value="daily">chaque jour</option>
+          </select>
+          <span>vers</span>{spaceChips('syncSpaces')}
+        </div>
+        <p className="text-[11px] text-ink-3">Les personnes de l'annuaire deviennent des contacts de ces espaces, rattachés à leur organisation ; les fiches déjà importées sont mises à jour (nom, organisation).</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={syncNow} disabled={busy} className="px-2.5 py-1 rounded-lg border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Synchroniser maintenant</button>
+          {sync?.at && <span role="status" className="text-[11px] text-ink-3">{sync.results?.error ? `Dernière synchronisation en échec : ${sync.results.error}` : `Dernière synchronisation : ${new Date(sync.at).toLocaleString()} · ${sync.people} personne(s) · ${lastSync.created} créée(s), ${lastSync.updated} mise(s) à jour`}</span>}
+        </div>
+        <p className="font-semibold text-ink-1 pt-2">Comptes</p>
+        <label className="flex items-start gap-2"><input type="checkbox" checked={!!s.autoCreate} onChange={e => set('autoCreate', e.target.checked)} className="accent-primary mt-0.5" />
+          <span>Créer un compte à la première connexion d'un membre du groupe autorisé, sans invitation, avec le rôle support dans :</span></label>
+        {s.autoCreate && <div className="pl-6">{spaceChips('provisionSpaces')}</div>}
+        <p className="text-[11px] text-ink-4">Désactivé par défaut. Exige un groupe autorisé ; une adresse déjà utilisée par un compte n'en reçoit pas un second. Chaque compte créé est inscrit au journal de l'instance.</p>
+      </div>
       <div className="flex gap-2 items-center">
         <button type="button" onClick={save} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 size={14} className="animate-spin" />} Enregistrer l'annuaire</button>
         <button type="button" onClick={run} disabled={busy} className="px-3 py-2 rounded-lg text-sm border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Tester</button>

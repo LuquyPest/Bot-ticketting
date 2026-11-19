@@ -6416,7 +6416,7 @@ async function main() {
     const BASE = 'dc=example,dc=org';
     const adminPw = process.env.LDAP_TEST_ADMIN_PASSWORD || 'ldaptest';
     const svcPw = crypto.randomBytes(12).toString('hex');
-    const pw = { alice: crypto.randomBytes(9).toString('base64url'), bob: crypto.randomBytes(9).toString('base64url'), dave: crypto.randomBytes(9).toString('base64url') };
+    const pw = { alice: crypto.randomBytes(9).toString('base64url'), bob: crypto.randomBytes(9).toString('base64url'), dave: crypto.randomBytes(9).toString('base64url'), eve: crypto.randomBytes(9).toString('base64url') };
     const admin = new Client({ url: process.env.LDAP_TEST_URL, tlsOptions: { ca: CA } });
     await admin.bind(`cn=admin,${BASE}`, adminPw);
     const add = (dn, entry) => admin.add(dn, entry).catch(e => { if (e.code !== 68) throw e; });
@@ -6424,7 +6424,7 @@ async function main() {
     await add(`ou=groups,${BASE}`, { objectClass: ['organizationalUnit'], ou: 'groups' });
     await add(`cn=datick,${BASE}`, { objectClass: ['simpleSecurityObject', 'organizationalRole'], cn: 'datick', userPassword: svcPw }); // ggignore
     await admin.modify(`cn=datick,${BASE}`, [new (require('ldapts').Change)({ operation: 'replace', modification: new (require('ldapts').Attribute)({ type: 'userPassword', values: [svcPw] }) })]); // ggignore
-    for (const [uid, name, org] of [['alice', 'Alice Annuaire', 'Org LDAP'], ['bob', 'Bob Sans Compte', 'Org LDAP'], ['dave', 'Dave Hors Groupe', 'Autre Org LDAP']]) {
+    for (const [uid, name, org] of [['alice', 'Alice Annuaire', 'Org LDAP'], ['bob', 'Bob Sans Compte', 'Org LDAP'], ['dave', 'Dave Hors Groupe', 'Autre Org LDAP'], ['eve', 'Eve Nouvelle', 'Org LDAP']]) {
       await add(`uid=${uid},ou=people,${BASE}`, { objectClass: ['inetOrgPerson'], uid, cn: name, sn: name.split(' ')[1], displayName: name, mail: `${uid}@ldap-test.fr`, o: org, userPassword: pw[uid] }); // ggignore
       await admin.modify(`uid=${uid},ou=people,${BASE}`, [new (require('ldapts').Change)({ operation: 'replace', modification: new (require('ldapts').Attribute)({ type: 'userPassword', values: [pw[uid]] }) })]);
     }
@@ -6451,7 +6451,7 @@ async function main() {
     r = await req('GET', '/api/instance/info');
     check('ldap: page de connexion → formulaire de l annuaire avec son nom', r.body.ldap?.label === 'Annuaire maison', JSON.stringify(r.body.ldap));
     r = await req('POST', '/api/instance/ldap/test', { sid: sessions.OWN, body: {} });
-    check('ldap: test du compte de service (LDAPS, autorité fournie)', r.status === 200 && r.body.ok && r.body.people === 3, JSON.stringify(r.body));
+    check('ldap: test du compte de service (LDAPS, autorité fournie)', r.status === 200 && r.body.ok && r.body.people === 4, JSON.stringify(r.body));
     r = await req('POST', '/api/instance/ldap/test', { sid: sessions.OWN, body: { ca: '' } });
     check('ldap: certificat d une autorité inconnue → refusé', r.status === 200 && !r.body.ok && /CERT|certificate/i.test(r.body.error), JSON.stringify(r.body));
     r = await req('POST', '/api/instance/ldap/test', { sid: sessions.OWN, body: { bindPassword: 'pas le bon' } }); // ggignore
@@ -6487,12 +6487,48 @@ async function main() {
     check('ldap: import de l annuaire réservé', r.status === 403, r.status);
     await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { contactsBase: `ou=people,${BASE}`, contactsFilter: '(&(objectClass=inetOrgPerson)(mail=*))' } });
     r = await req('POST', '/api/imports/directory', { sid: sessions.F, body: { dryRun: true } });
-    check('ldap: essai à blanc de l import des contacts', r.status === 200 && r.body.dryRun && r.body.created === 3 && !(await db("SELECT 1 FROM contacts WHERE email = 'bob@ldap-test.fr'")).length, JSON.stringify(r.body));
+    check('ldap: essai à blanc de l import des contacts', r.status === 200 && r.body.dryRun && r.body.created === 4 && !(await db("SELECT 1 FROM contacts WHERE email = 'bob@ldap-test.fr'")).length, JSON.stringify(r.body));
     r = await req('POST', '/api/imports/directory', { sid: sessions.F, body: {} });
     const [cb] = await db("SELECT c.display_name, o.name AS org FROM contacts c LEFT JOIN organizations o ON o.id = c.organization_id WHERE c.email = 'bob@ldap-test.fr'");
-    check('ldap: contacts importés avec leur organisation', r.body.created === 3 && cb?.display_name === 'Bob Sans Compte' && cb.org === 'Org LDAP', JSON.stringify([r.body, cb]));
+    check('ldap: contacts importés avec leur organisation', r.body.created === 4 && cb?.display_name === 'Bob Sans Compte' && cb.org === 'Org LDAP', JSON.stringify([r.body, cb]));
     r = await req('POST', '/api/imports/directory', { sid: sessions.F, body: {} });
-    check('ldap: réimporter l annuaire ne crée pas de doublon', r.body.created === 0 && r.body.skipped === 3, JSON.stringify(r.body));
+    check('ldap: réimporter l annuaire ne crée pas de doublon', r.body.created === 0 && r.body.skipped === 4, JSON.stringify(r.body));
+    // v6: scheduled sync (updates what was imported) and accounts created at sign-in
+    {
+      const { Client: C2, Change, Attribute } = require('ldapts');
+      const adm = new C2({ url: process.env.LDAP_TEST_URL, tlsOptions: { ca: CA } });
+      await adm.bind(`cn=admin,${BASE}`, adminPw);
+      r = await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { autoCreate: true } });
+      check('ldap v6: comptes à la connexion sans espace choisi → refusé', r.status === 400, JSON.stringify(r.body));
+      r = await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { syncSpaces: ['999999999999999990'] } });
+      check('ldap v6: espace inconnu refusé', r.status === 400, JSON.stringify(r.body));
+      r = await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { syncInterval: 'hourly', syncSpaces: [G] } });
+      check('ldap v6: synchronisation programmée enregistrée', r.status === 200 && r.body.syncInterval === 'hourly' && r.body.syncSpaces[0] === G, JSON.stringify(r.body).slice(0, 200));
+      await adm.modify(`uid=bob,ou=people,${BASE}`, [new Change({ operation: 'replace', modification: new Attribute({ type: 'o', values: ['Org LDAP Nouvelle'] }) })]);
+      r = await req('POST', '/api/instance/ldap/sync', { sid: sessions.OWN, body: {} });
+      const [cbo] = await db("SELECT o.name AS org FROM contacts c LEFT JOIN organizations o ON o.id = c.organization_id WHERE c.email = 'bob@ldap-test.fr'");
+      check('ldap v6: synchroniser maintenant met à jour les fiches importées (organisation changée)', r.status === 200 && r.body.results?.[G]?.updated >= 1 && cbo?.org === 'Org LDAP Nouvelle', JSON.stringify([r.body, cbo]));
+      const again = await app('./utils/ldapDirectory').syncNow();
+      check('ldap v6: synchronisation programmée pas relancée avant son heure', again.skipped === 'not due', JSON.stringify(again));
+      const pwE = pw.eve;
+      await adm.modify(`cn=support,ou=groups,${BASE}`, [new Change({ operation: 'add', modification: new Attribute({ type: 'member', values: [`uid=eve,ou=people,${BASE}`] }) })]).catch(() => null);
+      r = await login('eve', pwE);
+      check('ldap v6: option coupée → pas de compte créé', r.status === 403 && !(await globalQuery("SELECT 1 FROM accounts WHERE email = 'eve@ldap-test.fr'")).length, JSON.stringify(r.body));
+      r = await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { autoCreate: true, provisionSpaces: [G] } });
+      check('ldap v6: comptes à la connexion activés (groupe et espace choisis)', r.status === 200 && r.body.autoCreate === true, JSON.stringify(r.body).slice(0, 200));
+      r = await login('eve', pwE);
+      const [acc] = await globalQuery("SELECT id, email_verified, display_name FROM accounts WHERE email = 'eve@ldap-test.fr'");
+      const [du] = acc ? await db('SELECT role FROM dashboard_users WHERE user_id = ?', [acc.id]) : [];
+      const [ja] = await globalQuery("SELECT 1 AS x FROM instance_audit_log WHERE action = 'ldap_account_created' AND details LIKE ?", [`%${acc?.id}%`]);
+      check('ldap v6: membre du groupe sans compte → compte créé (adresse confirmée), support dans l espace, au journal de l instance', r.status === 200 && !!acc && Number(acc.email_verified) === 1 && acc.display_name === 'Eve Nouvelle' && du?.role === 'support' && !!ja, JSON.stringify([r.status, r.body, acc, du]));
+      r = await login('dave', pw.dave);
+      check('ldap v6: hors du groupe → toujours refusé, aucun compte', r.status === 401 && !(await globalQuery("SELECT 1 FROM accounts WHERE email = 'dave-new@ldap-test.fr'")).length, JSON.stringify(r.body));
+      await adm.unbind();
+      if (acc) { await db('DELETE FROM dashboard_users WHERE user_id = ?', [acc.id]); await globalQuery('DELETE FROM accounts WHERE id = ?', [acc.id]); }
+      await globalQuery("DELETE FROM instance_settings WHERE k = 'ldap_sync_state'");
+      await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { autoCreate: false, syncInterval: 'off', syncSpaces: [], provisionSpaces: [] } });
+      await db("DELETE FROM organizations WHERE name = 'Org LDAP Nouvelle'");
+    }
     await req('PUT', '/api/instance/ldap', { sid: sessions.OWN, body: { enabled: false } });
     r = await login('alice', pw.alice);
     check('ldap: annuaire désactivé → connexion refusée', r.status === 404, r.status);
