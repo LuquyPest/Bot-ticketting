@@ -85,6 +85,19 @@ async function applyRetention(db, guildId) {
   return out;
 }
 
+// Everything due, batch after batch (v6 « apply now », and the nightly run): at most maxBatches
+// batches or maxMs, so that a huge backlog finishes over several runs instead of blocking one
+async function applyAll(db, guildId, { maxBatches = 40, maxMs = 120000 } = {}) {
+  const started = Date.now();
+  const total = { anonymized: 0, deleted: 0, batches: 0 };
+  while (total.batches < maxBatches && Date.now() - started < maxMs) {
+    const r = await applyRetention(db, guildId);
+    if (!r.anonymized && !r.deleted) break;
+    total.anonymized += r.anonymized; total.deleted += r.deleted; total.batches++;
+  }
+  return { ...total, remaining: await due(db) };
+}
+
 // The archive condition for the ticket list (null when archives are off)
 async function archiveSql(db) {
   const s = await settings(db);
@@ -92,4 +105,4 @@ async function archiveSql(db) {
   return { sql: "NOT (status = 'closed' AND closed_at < DATE_SUB(NOW(), INTERVAL ? MONTH))", params: [s.archiveMonths], onlySql: "status = 'closed' AND closed_at < DATE_SUB(NOW(), INTERVAL ? MONTH)" };
 }
 
-module.exports = { MODES, BATCH, ANON, settings, save, due, applyRetention, archiveSql };
+module.exports = { MODES, BATCH, ANON, settings, save, due, applyRetention, applyAll, archiveSql };

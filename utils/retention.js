@@ -47,7 +47,7 @@ async function runRetentionPurge() {
       report.transcripts += await purge(db, 'transcript_snapshots', 'created_at', s.transcriptDays);
       // Closed tickets: each space's own setting (Paramètres → Tickets → Rétention), before the
       // attachments so the files of deleted tickets go in the same run
-      const t = await require('./ticketRetention').applyRetention(db, g.guild_id);
+      const t = await require('./ticketRetention').applyAll(db, g.guild_id, { maxBatches: 10, maxMs: 60000 });
       report.tickets_anonymized += t.anonymized; report.tickets_deleted += t.deleted;
       // Attachments of the e-mails: each server's own setting (Paramètres → Intégrations)
       report.email_attachments += (await require('./emailAttachments').runAttachmentRetention(g.guild_id, db)).files;

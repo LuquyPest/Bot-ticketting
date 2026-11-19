@@ -6553,6 +6553,20 @@ async function main() {
     await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'delete', months: 48 } });
     const rep = await app('./utils/retention').runRetentionPurge();
     check('rétention: mode suppression par la purge de nuit (ticket et messages supprimés, anonymisé de 40 mois gardé)', rep.tickets_deleted >= 1 && !(await db('SELECT 1 FROM tickets WHERE id = ?', [del])).length && !(await db('SELECT 1 FROM ticket_notes WHERE ticket_id = ?', [del])).length && (await db('SELECT 1 FROM tickets WHERE id = ?', [old])).length === 1, JSON.stringify(rep));
+    // v6 « apply now »: everything due, more than one batch of 500
+    {
+      const vals = [], params = [];
+      for (let k = 0; k < 1200; k++) { vals.push("(?, 'rgpd-retention@test-datick.fr', 'Lot RT', 'closed', NOW() - INTERVAL 61 MONTH, NOW() - INTERVAL 60 MONTH)"); params.push(`lot-${k}-${crypto.randomBytes(3).toString('hex')}`); }
+      await db(`INSERT INTO tickets (channel_id, owner_tag, subject, status, created_at, closed_at) VALUES ${vals.join(', ')}`, params).catch(async () => {
+        await db(`INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, status, created_at, closed_at) VALUES ${vals.map(v => v.replace('(?, ', "(?, 'mail:bbbbbbbbbbbbbbbbbbbbbbbb', ")).join(', ')}`, params);
+      });
+      r = await req('POST', '/api/ticket-retention/apply', { sid: sessions.S1, body: { confirm: true } });
+      const rNo = await req('POST', '/api/ticket-retention/apply', { sid: sessions.F, body: {} });
+      check('rétention maintenant: fondateurs seulement, confirmation requise', r.status === 403 && rNo.status === 400, JSON.stringify([r.status, rNo.status]));
+      r = await req('POST', '/api/ticket-retention/apply', { sid: sessions.F, body: { confirm: true } });
+      const left = (await db("SELECT COUNT(*) AS n FROM tickets WHERE subject = 'Lot RT'"))[0].n;
+      check('rétention maintenant: tout ce qui est dû traité par lots (1200 tickets, plus d un lot), rien ne reste', r.status === 200 && r.body.deleted >= 1200 && r.body.batches >= 3 && r.body.remaining === 0 && Number(left) === 0, JSON.stringify([r.body, left]));
+    }
     check('rétention: au journal', (await db("SELECT 1 FROM audit_log WHERE action = 'ticket_retention'")).length >= 1 && (await db("SELECT 1 FROM audit_log WHERE action = 'ticket_retention_update'")).length >= 1, '');
 
     // Archives: out of the default list, found by a search
