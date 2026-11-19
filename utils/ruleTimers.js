@@ -13,7 +13,7 @@ const BASIS_SQL = `SELECT t.*,
 
 function basisOf(t, basis) {
   const v = { created: t.created_at, stage: t.stage_changed_at || t.created_at, last_member: t.last_member_at, last_staff: t.last_staff_at,
-    last_activity: t.last_message_at || t.created_at, tto_due: t.first_response_at ? null : t.tto_due_at, ttr_due: t.resolved_at || t.sla_paused_at ? null : t.ttr_due_at }[basis];
+    last_activity: t.last_message_at || t.created_at, last_message: t.last_message_at, tto_due: t.first_response_at ? null : t.tto_due_at, ttr_due: t.resolved_at || t.sla_paused_at ? null : t.ttr_due_at }[basis];
   return v ? new Date(v) : null;
 }
 

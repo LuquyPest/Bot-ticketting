@@ -12,6 +12,8 @@ async function runEscalationCheckForGuild(client, guild_id) {
   const db = getTenantDb(guild_id);
   const tm = createManager(db, client, guild_id);
   const cfg = await getGuildConfig(db);
+  // v6: the space's escalation is a pair of rules « when time passes » (migration 82)
+  if (Number(cfg.timers_in_rules) === 1) return;
 
   const alertHours = cfg.escalation_alert_hours ?? 24;
   const closeHours = cfg.escalation_close_hours ?? 72;

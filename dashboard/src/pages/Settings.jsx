@@ -772,6 +772,7 @@ export default function Settings() {
             <input type="number" min={0} max={300} value={cfg.replyRateLimitSeconds ?? 3}
               onChange={e => set('replyRateLimitSeconds', parseInt(e.target.value))} className={NUM_INPUT} />
           </Field>
+          {!cfg.timersInRules && <>
           <Field label="Avertissement inactivité (h)">
             <input type="number" min={1} max={720} value={cfg.inactiveWarningHours ?? 24}
               onChange={e => set('inactiveWarningHours', parseInt(e.target.value))} className={NUM_INPUT} />
@@ -780,11 +781,15 @@ export default function Settings() {
             <input type="number" min={1} max={720} value={cfg.inactiveHours ?? 48}
               onChange={e => set('inactiveHours', parseInt(e.target.value))} className={NUM_INPUT} />
           </Field>
+          </>}
         </div>
+        {cfg.timersInRules && (
+          <p className="text-xs text-ink-3 mt-3">L'inactivité (avertissement puis fermeture) et l'escalade des tickets urgents sont des <a href="/settings?tab=regles" className="text-primary-light underline">règles « quand le temps passe »</a> : « Inactivité : avertissement », « Inactivité : fermeture », « Escalade : alerte », « Escalade : fermeture ». Change leurs délais, leurs textes ou désactive-les là.</p>
+        )}
       </Section>
 
-      {/* Escalation */}
-      <Section title="Escalade automatique"
+      {/* Escalation (before v6; then a rule) */}
+      {!cfg.timersInRules && <Section title="Escalade automatique"
         description="Un ticket urgent sans réponse staff déclenche une alerte puis une fermeture.">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Délai d'alerte (h)" hint="Sans réponse avant alerte Discord">
@@ -796,7 +801,7 @@ export default function Settings() {
               onChange={e => set('escalationCloseHours', parseInt(e.target.value))} className={NUM_INPUT} />
           </Field>
         </div>
-      </Section>
+      </Section>}
 
         </div>
       )}

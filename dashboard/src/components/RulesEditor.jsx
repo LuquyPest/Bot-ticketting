@@ -8,15 +8,16 @@ import { useStages } from '../hooks/useStages';
 const INPUT = 'bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary';
 const TRIGGERS = [['created', 'Un ticket est ouvert'], ['member_reply', 'Le demandeur écrit'], ['staff_reply', 'Le staff répond'], ['stage', 'Le statut change'], ['priority', 'La priorité change'], ['time', 'Le temps passe']];
 const BASES = [['created', 'l\'ouverture'], ['stage', 'le dernier changement de statut'], ['last_member', 'le dernier message du demandeur'], ['last_staff', 'la dernière réponse du staff'],
-  ['last_activity', 'la dernière activité'], ['tto_due', 'l\'échéance de prise en charge'], ['ttr_due', 'l\'échéance de résolution']];
+  ['last_activity', 'la dernière activité'], ['last_message', 'le dernier message'], ['tto_due', 'l\'échéance de prise en charge'], ['ttr_due', 'l\'échéance de résolution']];
 const FIELDS = [['channel', 'Canal'], ['address', 'Adresse de réception'], ['type', 'Type'], ['subject', 'Sujet'], ['text', 'Mots dans le message'], ['requester', 'Demandeur'],
-  ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation'], ['customField', 'Champ personnalisé']];
+  ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation'], ['customField', 'Champ personnalisé'], ['assigned', 'Attribué'], ['resolved', 'Résolu']];
 const ACTIONS = [['priority', 'Priorité'], ['urgency', 'Urgence'], ['impact', 'Impact'], ['type', 'Type'], ['subject', 'Sujet'], ['team', 'Équipe'], ['assign', 'Attribuer à'],
   ['tagAdd', 'Ajouter le tag'], ['tagRemove', 'Retirer le tag'], ['stage', 'Statut'], ['grade', 'Restreindre au grade'], ['follower', 'Observateur'], ['notify', 'Prévenir'],
-  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
+  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['channelPost', 'Message dans un salon Discord'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
 const CHOICES = {
   channel: [['discord', 'Discord'], ['email', 'E-mail'], ['web', 'Web']], type: [['incident', 'Incident'], ['request', 'Demande']],
   priority: [['low', 'Basse'], ['normal', 'Normale'], ['urgent', 'Urgente']], hours: [['open', 'Support ouvert'], ['closed', 'Support fermé']],
+  assigned: [['yes', 'Oui'], ['no', 'Non']], resolved: [['yes', 'Oui'], ['no', 'Non']],
   language: [['fr', 'Français'], ['en', 'English'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'], ['pt', 'Português']],
 };
 const FREE = { customField: 'valeur, autre valeur', text: 'remboursement, carte refusée', requester: '@client.fr, Paul', address: 'support@exemple.fr' };
@@ -48,7 +49,7 @@ function ConditionRow({ c, ctx, onChange, onRemove }) {
       <select value={c.not ? 'not' : 'is'} onChange={e => onChange({ ...c, not: e.target.value === 'not' })} aria-label="Sens de la condition" className={INPUT}>
         <option value="is">{c.field === 'text' ? 'contient' : 'est'}</option><option value="not">{c.field === 'text' ? 'ne contient pas' : 'n\'est pas'}</option>
       </select>
-      {opts ? <Chips options={opts} value={c.values} onChange={v => onChange({ ...c, values: v })} single={c.field === 'hours'} label="Valeurs" />
+      {opts ? <Chips options={opts} value={c.values} onChange={v => onChange({ ...c, values: v })} single={['hours', 'assigned', 'resolved'].includes(c.field)} label="Valeurs" />
         : <input value={c.field === 'text' ? (c.values[0] || '') : c.values.join(', ')} placeholder={FREE[c.field]} aria-label="Valeurs (séparées par des virgules)"
           onChange={e => onChange({ ...c, values: c.field === 'text' ? [e.target.value] : e.target.value.split(',').map(x => x.trim()).filter(Boolean) })} className={`${INPUT} flex-1 min-w-48`} />}
       <button type="button" onClick={onRemove} aria-label="Retirer la condition" className="ml-auto p-1 text-ink-3 hover:text-red-400"><Trash2 size={12} /></button>
@@ -75,13 +76,21 @@ function ActionRow({ a, ctx, onChange, onRemove }) {
     case 'grade': input = sel(ctx.grades.map(g => [g.id, g.name]), 'Grade'); break;
     case 'tasks': input = sel((ctx.taskTemplates || []).map(t => [t.id, t.name]), 'Modèle de tâches'); break;
     case 'sla': input = sel((ctx.slaPolicies || []).map(p => [p.id, p.name]), 'Objectif SLA'); break;
+    case 'channelPost': {
+      const v = a.value && typeof a.value === 'object' ? a.value : { channelId: '', text: '' };
+      input = (<>
+        <input value={v.channelId || ''} onChange={e => set({ ...v, channelId: e.target.value.replace(/\D/g, '') })} placeholder="Salon (vide : alertes d'escalade)" aria-label="Identifiant du salon Discord" className={`${INPUT} w-56 font-mono`} />
+        <textarea value={v.text || ''} onChange={e => set({ ...v, text: e.target.value })} maxLength={1500} rows={2} aria-label="Texte du message" placeholder="Ticket #{id} ({subject}) pour {requester}, attribué à {assignee}" className={`${INPUT} flex-1 min-w-60`} />
+      </>);
+      break;
+    }
     case 'follower': case 'notify': input = <Chips options={ctx.staff.map(s => [s.user_id, s.username])} value={Array.isArray(a.value) ? a.value : []} onChange={set} label="Personnes" />; break;
     case 'reply': case 'note': input = <textarea value={a.value || ''} onChange={e => set(e.target.value)} maxLength={2000} rows={2} aria-label="Texte" placeholder={a.type === 'reply' ? 'Bonjour, nous avons bien reçu ta demande…' : 'À traiter avant midi'} className={`${INPUT} flex-1 min-w-60`} />; break;
     default: input = null;
   }
   return (
     <div className="flex flex-wrap items-center gap-2 bg-overlay/2.5 rounded-lg px-2 py-1.5">
-      <select value={a.type} onChange={e => onChange({ type: e.target.value, value: ['webhook', 'close'].includes(e.target.value) ? true : ['follower', 'notify'].includes(e.target.value) ? [] : '' })} aria-label="Action" className={INPUT}>
+      <select value={a.type} onChange={e => onChange({ type: e.target.value, value: ['webhook', 'close'].includes(e.target.value) ? true : ['follower', 'notify'].includes(e.target.value) ? [] : e.target.value === 'channelPost' ? { channelId: '', text: '' } : '' })} aria-label="Action" className={INPUT}>
         {ACTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
       {input}

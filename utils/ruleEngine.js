@@ -14,10 +14,11 @@ const logger = require('./logger');
 
 const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority', 'time'];
 // « When time passes » (utils/ruleTimers.js): so long after (or before) a moment of the ticket
-const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'tto_due', 'ttr_due'];
+// last_message (v6): the last message only — a ticket without any message never reaches it
+const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'last_message', 'tto_due', 'ttr_due'];
 const DUE_BASES = ['tto_due', 'ttr_due'];
-const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization', 'customField'];
-const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks', 'sla'];
+const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization', 'customField', 'assigned', 'resolved'];
+const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks', 'sla', 'channelPost'];
 const PRIORITIES = ['low', 'normal', 'urgent'];
 const CHANNELS = ['discord', 'email', 'web'];
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
@@ -58,6 +59,8 @@ async function cleanCondition(db, c) {
   const bad = {
     channel: () => only(CHANNELS), type: () => only(['incident', 'request']), priority: () => only(PRIORITIES), language: () => only(LANGS),
     hours: () => (values.length === 1 && ['open', 'closed'].includes(values[0]) ? null : { error: 'Horaires : ouvert ou fermé' }),
+    assigned: () => (values.length === 1 && ['yes', 'no'].includes(values[0]) ? null : { error: 'Attribué : oui ou non' }),
+    resolved: () => (values.length === 1 && ['yes', 'no'].includes(values[0]) ? null : { error: 'Résolu : oui ou non' }),
     stage: () => (values.every(v => /^(open|waiting|in_progress|s_\d{1,9})$/.test(v)) ? null : { error: 'Statut invalide' }),
     subject: () => (values.every(v => v.length <= 100) ? null : { error: 'Sujet trop long' }),
     text: () => (values.every(v => v.length <= 300 && keywordList(v).every(w => w.length >= 3 && w.length <= 60)) ? null : { error: 'Mots-clés : de 3 à 60 caractères, séparés par des virgules' }),
@@ -117,6 +120,14 @@ async function cleanAction(db, a, { canGrade }) {
       return text ? { value: { type: a.type, value: text } } : { error: 'Texte requis (2000 caractères au plus)' };
     }
     case 'webhook': case 'close': return { value: { type: a.type, value: true } };
+    case 'channelPost': {
+      // A message in a Discord channel (v6): the escalation alert channel when none is chosen
+      const channelId = v && typeof v === 'object' && v.channelId ? String(v.channelId) : '';
+      const text = v && typeof v === 'object' && typeof v.text === 'string' ? v.text.trim().slice(0, 1500) : '';
+      if (channelId && !/^\d{17,20}$/.test(channelId)) return { error: 'Salon Discord invalide' };
+      if (!text) return { error: 'Texte du message requis (1500 caractères au plus)' };
+      return { value: { type: a.type, value: { channelId: channelId || null, text } } };
+    }
     default: return { error: 'Action inconnue' };
   }
 }
@@ -217,6 +228,12 @@ async function holds(db, c, ctx) {
       ok = c.values.some(id => Number(id) === Number(t.organization_id) || (o?.parent_id && Number(id) === Number(o.parent_id)));
       break;
     }
+    case 'assigned': {
+      const on = !!t.claimed_by || (await db('SELECT 1 AS x FROM ticket_assignees WHERE ticket_id = ? LIMIT 1', [t.id]).catch(() => [])).length > 0;
+      ok = c.values[0] === 'yes' ? on : !on;
+      break;
+    }
+    case 'resolved': ok = c.values[0] === 'yes' ? !!t.resolved_at : !t.resolved_at; break;
     case 'customField': {
       const [v] = await db('SELECT value FROM ticket_field_values WHERE ticket_id = ? AND field_id = ?', [t.id, c.fieldId]).catch(() => []);
       const val = String(v?.value ?? '').trim().toLowerCase();
@@ -342,6 +359,17 @@ async function apply(env, a, rule) {
     case 'tasks': {
       const r = await require('./tasks').applyTemplate(db, t.id, a.value, RULE_ACTOR, { guildId });
       return r.added ? `${r.added} tâche(s)` : null;
+    }
+    case 'channelPost': {
+      const [cfg] = await db('SELECT escalation_alert_channel_id, close_log_channel_id FROM guild_config WHERE id = 1').catch(() => []);
+      const chId = a.value.channelId || cfg?.escalation_alert_channel_id || cfg?.close_log_channel_id;
+      const ch = chId ? await require('./discordGuard').fetchGuildChannel(client, guildId, chId) : null;
+      if (!ch?.isTextBased?.()) return null;
+      const [as] = await db('SELECT GROUP_CONCAT(username SEPARATOR \', \') AS who FROM ticket_assignees a JOIN dashboard_users u ON u.user_id = a.user_id WHERE a.ticket_id = ?', [t.id]).catch(() => []);
+      // A confidential ticket: neither its requester nor its subject in a shared channel
+      const vars = { id: t.id, subject: confidential ? '(confidentiel)' : (t.subject || '—'), requester: confidential ? '—' : (t.owner_tag || '—'), assignee: as?.who || t.claimed_by || '—' };
+      const text = a.value.text.replace(/\{(id|subject|requester|assignee)\}/g, (m, k) => String(vars[k])).slice(0, 2000);
+      return (await ch.send({ content: text, allowedMentions: { parse: [] } }).catch(() => null)) ? 'message dans un salon' : null;
     }
     case 'sla': {
       // A chosen SLA objective (v6): kept by the ticket instead of the automatic choice

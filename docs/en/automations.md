@@ -42,7 +42,16 @@ A rule can act **some time after** a moment of the ticket: its opening, its last
 
 Examples: « 48 business hours after the staff's last reply, if the status is *Waiting*: automatic reply *Could you try it?* »; « 1 h before the resolution deadline: notify the lead ». The check runs every 5 minutes. A rule plays **only once** per ticket and per moment: a new reply or a new status starts the count again. A paused SLA deadline (waiting for the requester) or one already met triggers nothing.
 
-Inactivity and the escalation of urgent tickets (**Settings → Tickets**) keep their own settings.
+Since v6, **inactivity** and the **escalation** of urgent tickets are rules too, created at the update with the space's delays and text (in the staff language), with the same effect:
+
+| Rule | When | If | Then |
+|---|---|---|---|
+| **Inactivity: warning** | 48 h after the **last message** (a ticket without any message is never concerned) | not resolved | automatic reply « inactive for 48 h, closed in 14 h » |
+| **Inactivity: closing** | 62 h after the last message | not resolved | close |
+| **Escalation: alert** | 24 h after the last activity | urgent priority, **assigned**, not resolved | **message in a Discord channel** (the escalation alert channel, else the log channel) |
+| **Escalation: closing** | 72 h after the last activity | urgent priority, assigned, not resolved | automatic reply, then close |
+
+Change their delays, texts, conditions, or turn them off like any rule; a ticket already warned or alerted before the update is not warned again. The channel message accepts `{id}`, `{subject}`, `{requester}` and `{assignee}` (a confidential ticket shows neither requester nor subject there). The **Assigned** and **Resolved** conditions (yes / no) and the **last message** starting point also serve your own rules.
 
 Guards: a change made by a rule does not start the rules again (no loop); 50 actions at most per event; restricting to a grade also needs the **Manage grades** permission; a rule never lifts a confidential ticket, never changes its team and only notifies staff who can see it.
 
