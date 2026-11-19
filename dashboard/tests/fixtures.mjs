@@ -61,6 +61,7 @@ export const MOCK = {
   '/api/widget-settings': { enabled: true, token: '123456789012345678.exempleexempleexemple12', origins: ['https://example.com'], mailReady: true,
     snippet: '<script src="https://ticket.example.com/widget.js" data-datick-widget="123456789012345678.exempleexempleexemple12" async></script>',
     url: 'https://ticket.example.com/widget/123456789012345678.exempleexempleexemple12' },
+  '/api/instance/ldap': { enabled: true, label: 'Annuaire', url: 'ldaps://annuaire.example.com:636', startTls: false, tlsVerify: true, ca: '', bindDn: 'cn=datick,dc=example,dc=com', baseDn: 'ou=people,dc=example,dc=com', loginAttr: 'uid', userFilter: '(objectClass=person)', mailAttr: 'mail', nameAttr: 'displayName,cn', group: '', contactsBase: '', contactsFilter: '(&(objectClass=person)(mail=*))', orgAttr: 'company,o', passwordSet: true, configured: true },
   '/api/instance/login-providers': {
     callbackBase: 'https://ticket.example.com/api/auth/oidc', discordApp: true,
     discord: { enabled: true, configured: true },

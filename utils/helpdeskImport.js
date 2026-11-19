@@ -6,7 +6,7 @@
 // external ID) is skipped, never duplicated. A dry run counts without writing.
 const { parseJsonField } = require('./jsonField');
 
-const SOURCES = ['zendesk', 'freshdesk', 'glpi', 'osticket', 'zammad', 'generic'];
+const SOURCES = ['zendesk', 'freshdesk', 'glpi', 'osticket', 'zammad', 'generic', 'ldap'];
 const KINDS = ['tickets', 'contacts', 'organizations', 'articles'];
 const MAX_ROWS = 20000;
 
@@ -59,6 +59,8 @@ const ALIASES = {
   priority: ['priority', 'priorite', 'urgency', 'urgence', 'priorityname', 'priorityid'],
   email: ['requesteremail', 'requester', 'email', 'mail', 'demandeur', 'requestermail', 'customeremail', 'contactemail', 'from', 'emailaddress', 'customer', 'useremail', 'demandeuremail', 'emaildemandeur', 'emaildudemandeur', 'requesteremailaddress', 'contactmail', 'courriel'],
   name: ['requestername', 'contactname', 'customername', 'nomdudemandeur', 'fullname', 'displayname', 'username', 'firstname'],
+  // A contact's own name: also a bare « name » column (for tickets that one is the subject)
+  personname: ['requestername', 'contactname', 'customername', 'nomdudemandeur', 'fullname', 'displayname', 'name', 'nom', 'username', 'firstname'],
   organization: ['organization', 'organisation', 'organizationname', 'company', 'societe', 'entreprise', 'entity', 'entite', 'companyname'],
   domains: ['domains', 'domaines', 'domainnames', 'domain'],
   created: ['createdat', 'created', 'creation', 'datecreation', 'opendate', 'dateouverture', 'datedouverture', 'datedeouverture', 'createdtime', 'date'],
@@ -148,7 +150,7 @@ async function importRows(db, { source, kind, rows, dryRun = false }) {
         const email = pick(row, 'email');
         if (!EMAIL_RE.test(String(email || '').trim())) { out.errors.push(`Ligne ${i + 1} : adresse e-mail manquante ou invalide`); continue; }
         if (dryRun) { out.created++; continue; }
-        const who = await requester(db, email, pick(row, 'name'));
+        const who = await requester(db, email, pick(row, 'personname'));
         const [ci] = await db('SELECT contact_id FROM contact_identities WHERE value = ?', [who.owner]);
         let cid = ci?.contact_id;
         if (!cid) {

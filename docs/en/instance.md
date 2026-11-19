@@ -30,7 +30,7 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 |---|---|
 | **Overview** | Spaces, open tickets, tickets per day over 30 days, staff, errors of the last 24 hours, table per space |
 | **Spaces** | Create, link to Discord or unlink, suspend, reactivate, put in maintenance, delete (its database is erased, the bot leaves the linked Discord server); name or remove founders |
-| **Sign-in** | The [ways to sign in](#ways-to-sign-in) to the dashboard: Discord, Google, Microsoft, OpenID Connect |
+| **Sign-in** | The [ways to sign in](#ways-to-sign-in) to the dashboard: Discord, Google, Microsoft, OpenID Connect, LDAP / AD directory |
 | **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database; demonstration space, [Prometheus metrics](#monitoring-prometheus) |
 | **Errors** | Central log of the errors of the bot, the dashboard and browsers, with filters; **alert** by DM (to the owner by default) or webhook beyond a threshold, and when the bot is disconnected from Discord |
 | **Log** | Every change made from the section, with its author and the space concerned |
@@ -52,6 +52,24 @@ Each provider shows its **redirect address**, to declare as is on its side (`htt
 **Who can sign in this way**: nobody gets an account by signing in; accounts come from [invitations](./team#accounts), from Discord or from the installation. At the first Google, Microsoft or OpenID Connect sign-in, the identity is linked to the account with **the same confirmed e-mail address**, and only if the provider vouches for that address. Otherwise everyone links it themselves from **Profile → Sign-in → Link**, once signed in. Microsoft does not vouch for its accounts' addresses: unless your application returns the optional claim `xms_edov`, everyone links Microsoft from their profile.
 
 **Discord**: turning off the Discord sign-in does not turn off the integration (bot, DMs, channels, panels); the member space also keeps its Discord sign-in for requesters. You cannot turn off the last way to sign in of your own account: first set a password or link another provider in **Profile → Sign-in**.
+
+### LDAP / Active Directory directory
+
+Under the providers, **LDAP / Active Directory directory** lets the staff sign in with **their directory login and password** (a « Continue with… » form on the sign-in page). The **OpenLDAP** and **Active Directory** buttons fill in the usual values.
+
+| Setting | Example |
+|---|---|
+| **Server address** | `ldaps://directory.example.com:636`, or `ldap://directory.example.com:389` with **StartTLS** ticked: never in clear |
+| **Service account** | A read-only account (`cn=datick,ou=services,dc=example,dc=com`) and its password, encrypted in the database and never shown again |
+| **Search base** | `ou=people,dc=example,dc=com` |
+| **Login attribute** | `uid` (OpenLDAP), `sAMAccountName` (Active Directory) |
+| **People filter** | `(objectClass=person)`; for Active Directory, disabled accounts are left out |
+| **Allowed group** | Optional: only its members sign in (`member`, `uniqueMember` or `memberUid`) |
+| **Authority certificate** | If the directory uses an internal authority. The server certificate is always checked, unless you untick the check (not advised) |
+
+**Test** checks the service account and counts the people found, before saving. At sign-in, the person is looked up with the service account, then their password is checked by the directory itself: Datick does not keep it. As with the other providers, nobody gets an account: the directory account is linked to the account with **the same confirmed e-mail address**, then recognised by its stable identifier (`entryUUID`, `objectGUID`). The account's two-factor authentication applies; 10 failures in a quarter of an hour lock the login.
+
+Founders also import the directory's people as **contacts**, attached to their organisation: **Settings → Backup → Import from another tool → LDAP / AD directory** (instance owner only), with the contacts base and filter set here.
 
 ### Mailboxes (Gmail, Microsoft 365)
 

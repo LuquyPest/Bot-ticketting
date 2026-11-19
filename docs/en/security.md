@@ -8,6 +8,7 @@ The project has been through several audits, including an OWASP Top 10 audit, al
 |---|---|
 | **Accounts** | One account per person, created at their first sign-in and can be disabled; **Profile → Sign-in** lists its sign-in methods |
 | **Sign-in** | Discord OAuth2, with state verification (CSRF protection of the OAuth return); e-mail address and password (see below); Google, Microsoft or OpenID Connect ([ways to sign in](./instance#ways-to-sign-in)) |
+| **LDAP / AD directory** | LDAPS or StartTLS only, server certificate checked (system or given authority); password checked by the directory (bind as the person), never kept; empty password refused (no anonymous bind); values escaped in filters (RFC 4515); same answer for an unknown login and a wrong password, 10 failures in 15 minutes lock the login; no account created at sign-in |
 | **OpenID Connect** | *Authorization code* flow with `state`, `nonce` and PKCE (S256); ID token received straight from the provider, issuer, application, expiry and nonce checked; automatic link to an account only on an e-mail address **verified** by the provider; no account created at sign-in |
 | **Passwords** | Hashed with scrypt (salt per account), at least 10 characters; 10 failures in 15 minutes lock the password sign-in of the account; same answer and same computing time whether the address exists or not; the account's 2FA applies |
 | **Sessions** | `Secure`, `HttpOnly`, `SameSite=Lax` cookie, stored in Redis, regenerated on every change of rights, revocable from the profile |

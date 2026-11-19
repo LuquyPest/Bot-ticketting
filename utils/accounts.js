@@ -5,7 +5,7 @@
 // already stores user IDs (staff accounts, assignees, notes, 2FA, preferences) stays valid.
 const { globalQuery } = require('./globalDb');
 
-const PROVIDERS = { discord: 'Discord', 'oidc:google': 'Google', 'oidc:microsoft': 'Microsoft', 'oidc:oidc': 'OpenID Connect' };
+const PROVIDERS = { discord: 'Discord', 'oidc:google': 'Google', 'oidc:microsoft': 'Microsoft', 'oidc:oidc': 'OpenID Connect', ldap: 'Annuaire (LDAP)' };
 
 // Discord sign-in: finds or creates the account, keeps its name and avatar up to date.
 // Returns the account ({ id, display_name, disabled… }).

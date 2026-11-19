@@ -40,6 +40,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Annuaire OpenLDAP de test (autorité et certificat propres)
+        run: bash tests/integration/ldap-server.sh ldap 389 636 "$RUNNER_TEMP/ldap-certs"
       - name: Suite d'intégration
         run: node tests/integration/harness.js
         env:
@@ -48,6 +50,9 @@ jobs:
           DB_USER: root
           DB_PASSWORD: root
           REDIS_HOST: 127.0.0.1
+          LDAP_TEST_URL: ldaps://localhost:636
+          LDAP_TEST_STARTTLS_URL: ldap://localhost:389
+          LDAP_TEST_CA: ${{ runner.temp }}/ldap-certs/ca.crt
           REDIS_PORT: 6379
       - name: Audit des dépendances de production
         run: npm audit --omit=dev --audit-level=high

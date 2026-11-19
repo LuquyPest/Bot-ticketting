@@ -49,6 +49,38 @@ function PasswordForm({ onError }) {
   );
 }
 
+// LDAP / Active Directory: login and password of the directory (utils/ldapDirectory.js)
+function LdapForm({ label, onError }) {
+  const [open, setOpen] = useState(false);
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async e => {
+    e.preventDefault();
+    setBusy(true); onError('');
+    try {
+      const { data } = await api.post('/auth/ldap-login', { login, password });
+      window.location.href = data.totp ? '/totp-verify' : (data.redirect || '/select-guild');
+    } catch (err) { onError(err.response?.data?.error || 'Erreur, réessaie.'); setBusy(false); }
+  };
+  const input = 'w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-primary/50';
+  if (!open) return (
+    <button type="button" onClick={() => setOpen(true)} className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5">
+      <KeyRound size={15} aria-hidden="true" /> Continuer avec <span translate="no">{label}</span>
+    </button>
+  );
+  return (
+    <form onSubmit={submit} className="space-y-2.5">
+      <input autoComplete="username" required autoFocus value={login} onChange={e => setLogin(e.target.value)} placeholder={`Identifiant (${label})`} aria-label="Identifiant de l'annuaire" className={input} />
+      <input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe de l'annuaire" aria-label="Mot de passe de l'annuaire" className={input} />
+      <button type="submit" disabled={busy || !login || !password}
+        className="w-full py-2.5 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5 disabled:opacity-50 inline-flex items-center justify-center gap-2">
+        {busy && <Loader2 size={14} className="animate-spin" />} Se connecter avec <span translate="no">{label}</span>
+      </button>
+    </form>
+  );
+}
+
 export default function Login() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -152,9 +184,10 @@ export default function Login() {
           </div>
           </>)}
 
-          {info?.providers?.length > 0 && (<>
+          {(info?.providers?.length > 0 || info?.ldap) && (<>
             <div className={`space-y-2 ${info?.discordLogin !== false ? 'mt-5' : ''}`}>
-              {info.providers.map(p => (
+              {info.ldap && <LdapForm label={info.ldap.label} onError={setError} />}
+              {(info.providers || []).map(p => (
                 <a key={p.id} href={`/api/auth/oidc/${p.id}`}
                   className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5">
                   <KeyRound size={15} aria-hidden="true" /> Continuer avec <span translate="no">{p.label}</span>

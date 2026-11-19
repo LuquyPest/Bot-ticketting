@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { KeyRound, Loader2, Copy } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
+import LdapDirectory from '../../components/LdapDirectory';
 
 const INPUT = 'w-full bg-surface border border-overlay/8 rounded-lg px-2.5 py-1.5 text-xs text-ink-1';
 
@@ -163,6 +164,8 @@ export default function LoginProviders() {
       <button onClick={save} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-2">
         {busy && <Loader2 size={14} className="animate-spin" />} Enregistrer
       </button>
+
+      <LdapDirectory />
 
       <MailboxApps />
     </div>
