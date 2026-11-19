@@ -6,7 +6,7 @@ const attach = require('./emailAttachments');
 
 const MAX_FILES = 5;
 // Hard cap of the upload itself; the space's own limit (≤ 25 Mo) is applied by decide()
-const upload = (maxFiles = MAX_FILES) => multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: maxFiles, fields: 20, fieldSize: 64 * 1024 } }).array('files', maxFiles);
+const upload = (maxFiles = MAX_FILES) => multer({ storage: multer.memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: 25 * 1024 * 1024, files: maxFiles, fields: 20, fieldSize: 64 * 1024 } }).array('files', maxFiles);
 
 // What the requester is allowed to send here: for the form
 async function uploadRules(db) {

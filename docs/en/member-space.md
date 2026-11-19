@@ -39,6 +39,8 @@ Each article has a **state** (draft or published: a draft is visible to the staf
 
 Each change of the text keeps the **previous version** (**Previous versions**, **Go back to this one**). An article can be the **translation** of another in one of the 6 languages: readers see the one in their language, and the others are offered. At the bottom of a public article, **Did this article help you?** (yes, or no with what is missing); the staff's FAQ page shows the **feedback**, the most useful articles, what is **to review**, and the public base's **searches without results** (what is missing). From a solved ticket, **Create an article from the solution** makes it a draft.
 
+**Images**: once the article is saved, **Add an image** under the answer uploads an image (PNG, JPEG, GIF or WebP, 5 MB at most, 30 per article) and inserts it where the cursor is, as `![text](/api/kb/…/images/…)`. It follows the article's visibility: everyone for a published public article, signed-in members for a members-only article, otherwise the staff only. It is shown in e-mails and public pages; in Discord DMs it becomes a link. Images from elsewhere (`![…](https://…)`) are never shown, so nobody tracks the readers. Deleting the article deletes its images.
+
 ### Search engines
 
 The pages of the public base (`/aide/<space>` and each article) are sent **ready-made by the server**: title, description, canonical address, languages (`hreflang`), structured data (FAQ, article) and the content itself. They read **without JavaScript** and search engines index them; the dashboard then takes over the page as before. The **sitemap** is at `/aide/<space>/sitemap.xml`. Only what is public and published shows there; a draft, a restricted article or an offline page answer « not found ».

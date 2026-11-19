@@ -154,7 +154,8 @@ function faqSuggestEmbed(guildName, matches) {
     .setDescription(t('faq.body'));
   matches.forEach((m, i) => {
     const link = m.url ? `\n[${t('faq.read')}](${m.url})` : '';
-    const answer = m.answer.length + link.length > 1024 ? `${m.answer.slice(0, 1020 - link.length)}…` : m.answer;
+    const text = require('./kbImages').toLinks(m.answer); // images of the article: links (v6)
+    const answer = text.length + link.length > 1024 ? `${text.slice(0, 1020 - link.length)}…` : text;
     embed.addFields({ name: `${i + 1}. ${m.question}`.slice(0, 256), value: answer + link });
   });
   return embed;

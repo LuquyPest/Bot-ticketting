@@ -4,6 +4,14 @@ import { FileText } from 'lucide-react';
 // Message text with clickable links; Discord attachments become image previews (or a file chip),
 // loaded through /api/attachment so expired Discord links are re-signed on the fly.
 const URL_RE = /(https?:\/\/[^\s<>"]+)/g;
+// ![text](/api/kb/<space>/images/<token>): an image of a knowledge base article (v6), our path only
+const KB_IMG_RE = /(!\[[^\]\n]{0,200}\]\(\/api\/kb\/\d{17,20}\/images\/[0-9a-f]{32}\))/g;
+const KB_IMG_PARTS = /^!\[([^\]\n]{0,200})\]\((\/api\/kb\/\d{17,20}\/images\/[0-9a-f]{32})\)$/;
+function withLinks(text, linkClass, keyPrefix) {
+  return text.split(URL_RE).map((part, i) => (i % 2 === 1
+    ? <a key={`${keyPrefix}-${i}`} href={part} target="_blank" rel="noopener noreferrer" className={linkClass}>{part}</a>
+    : part));
+}
 const DISCORD_ATTACHMENT = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\/(ephemeral-)?attachments\//;
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
@@ -34,9 +42,12 @@ export default function MessageContent({ text, linkClass = 'underline break-all'
     <span translate="no" className="contents">
       {body && (
         <span className="whitespace-pre-wrap wrap-break-word">
-          {body.split(URL_RE).map((part, i) => (i % 2 === 1
-            ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={linkClass}>{part}</a>
-            : part))}
+          {body.split(KB_IMG_RE).map((chunk, j) => {
+            const img = j % 2 === 1 && KB_IMG_PARTS.exec(chunk);
+            return img
+              ? <img key={`i${j}`} src={img[2]} alt={img[1]} loading="lazy" className="block max-w-full h-auto rounded-lg my-2" />
+              : withLinks(chunk, linkClass, j);
+          })}
         </span>
       )}
       {files.length > 0 && (

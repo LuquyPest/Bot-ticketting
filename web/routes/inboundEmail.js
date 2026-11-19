@@ -12,7 +12,7 @@ const inbound = require('../../utils/inboundEmail');
 const { allowBurst } = require('../../utils/rateLimit');
 
 const LIMIT = '15mb';
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 20, fields: 200, fieldSize: 12 * 1024 * 1024 } }).any();
+const upload = multer({ storage: multer.memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: 10 * 1024 * 1024, files: 20, fields: 200, fieldSize: 12 * 1024 * 1024 } }).any();
 const parsers = [
   express.json({ limit: LIMIT }),
   express.urlencoded({ extended: false, limit: LIMIT }),

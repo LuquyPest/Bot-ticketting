@@ -100,7 +100,7 @@ endpoint({
 
 // ── Answer and note ──
 const replyUpload = (req, res, next) => (req.is('multipart/form-data')
-  ? require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 5 } }).single('file')(req, res, e => (e ? res.status(413).json({ error: 'Fichier trop volumineux (8 Mo au plus)' }) : next()))
+  ? require('multer')({ storage: require('multer').memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 5 } }).single('file')(req, res, e => (e ? res.status(413).json({ error: 'Fichier trop volumineux (8 Mo au plus)' }) : next()))
   : next());
 endpoint({
   method: 'post', path: '/tickets/{id}/reply', perm: 'reply_tickets', summary: 'Répondre au demandeur',

@@ -1427,6 +1427,25 @@ const MIGRATIONS = [
       `ALTER TABLE rule_timer_fired ADD CONSTRAINT fk_rtf_ticket FOREIGN KEY IF NOT EXISTS (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE`,
     ],
   },
+  {
+    version: 80,
+    name: 'Images des articles de la base de connaissances (v6)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS faq_images (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        token        CHAR(32) NOT NULL,
+        faq_id       INT NOT NULL,
+        content_type VARCHAR(20) NOT NULL,
+        size         INT NOT NULL,
+        sha256       CHAR(64) NOT NULL,
+        stored_name  CHAR(32) NOT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_fi_token (token),
+        INDEX idx_fi_faq (faq_id),
+        CONSTRAINT fk_fi_faq FOREIGN KEY (faq_id) REFERENCES faq_entries(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

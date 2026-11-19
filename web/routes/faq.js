@@ -180,10 +180,25 @@ router.post('/:id/revisions/:revId/restore', async (req, res) => {
   res.json({ ...row, active: !!row.active });
 });
 
+// POST /api/faq/:id/images — an image for the article (multipart « file »), v6: { url, markdown }
+const imageUpload = (req, res, next) => require('multer')({ storage: require('multer').memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: require('../../utils/kbImages').MAX_BYTES, files: 1, fields: 2 } })
+  .single('file')(req, res, err => (err ? res.status(413).json({ error: 'Image trop lourde (5 Mo au plus)' }) : next()));
+router.post('/:id/images', (req, res, next) => (canManage(req) ? next() : res.status(403).json({ error: 'Permission insuffisante' })), imageUpload, async (req, res, next) => {
+  try {
+    const [entry] = await req.guildDb('SELECT id FROM faq_entries WHERE id = ?', [parseInt(req.params.id) || 0]);
+    if (!entry) return res.status(404).json({ error: 'Entrée introuvable' });
+    const r = await require('../../utils/kbImages').store(req.guildDb, req.guildId, entry.id, req.file);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'faq_image_add', targetType: 'faq', targetId: entry.id });
+    res.status(201).json(r);
+  } catch (err) { next(err); }
+});
+
 router.delete('/:id', async (req, res) => {
   if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
   const [entry] = await req.guildDb('SELECT id, question FROM faq_entries WHERE id = ?', [parseInt(req.params.id)]);
   if (!entry) return res.status(404).json({ error: 'Entrée introuvable' });
+  await require('../../utils/kbImages').removeForArticle(req.guildDb, req.guildId, entry.id);
   await req.guildDb('DELETE FROM faq_entries WHERE id = ?', [entry.id]);
   await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'faq_delete', targetType: 'faq', targetId: entry.id, details: { question: entry.question } });
   res.json({ ok: true });

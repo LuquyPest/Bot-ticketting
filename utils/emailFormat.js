@@ -16,6 +16,8 @@ function inline(escaped) {
   let s = escaped
     .replace(/`([^`\n]+)`/g, (m, c) => keep(`<code style="font-family:ui-monospace,monospace;background:#f1f2f6;padding:1px 4px;border-radius:4px">${c}</code>`))
     .replace(/&lt;t:(\d{1,12})(?::\w)?&gt;/g, (m, t) => dateOf(t))
+    // ![text](/api/kb/<space>/images/<token>): an image of a knowledge base article (v6), only that path
+    .replace(/!\[([^\]\n]{0,200})\]\((\/api\/kb\/\d{17,20}\/images\/[0-9a-f]{32})\)/g, (m, alt, p) => keep(`<img src="${escapeHtml(`${(require('./config').config.webServerBaseUrl || '').replace(/\/$/, '')}${p}`)}" alt="${alt}" style="max-width:100%;height:auto;border-radius:8px">`))
     // [text](url): the URL was escaped with the rest; it is checked again before becoming a link
     .replace(/\[([^\]\n]{1,300})\]\(([^)\s]{1,2000})\)/g, (m, text, url) => {
       const raw = url.replace(/&amp;/g, '&');
@@ -68,7 +70,7 @@ function markdownToHtml(md) {
 
 // Plain text version: markdown marks removed, links as « text (url) »
 function markdownToText(md) {
-  return String(md || '')
+  return require('./kbImages').toLinks(String(md || ''))
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g, '$1 ($2)')
     .replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/~~(.+?)~~/g, '$1')
     .replace(/```\w*\n?/g, '').replace(/`([^`\n]+)`/g, '$1')
