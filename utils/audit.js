@@ -123,6 +123,7 @@ const ACTIONS = {
   problem_unlink:           ['Ticket détaché d\'un problème', 'tickets'],
   problem_resolve:          ['Problème résolu', 'tickets'],
   problems_toggle:          ['Problèmes activés ou coupés', 'config'],
+  report_schedule:          ['Rapport programmé enregistré', 'config'],
   cost_settings:            ['Taux et forfaits des coûts modifiés', 'config'],
   ticket_cost_add:          ['Frais ajouté au ticket', 'tickets'],
   ticket_cost_delete:       ['Frais retiré du ticket', 'tickets'],

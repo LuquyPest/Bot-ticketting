@@ -56,7 +56,7 @@ function renderMail(template, lang, vars = {}) {
 }
 
 // Sends one of the templates; throws a readable error if the instance e-mail is off or fails
-async function sendInstanceMail({ to, template, lang = 'fr', vars = {} }) {
+async function sendInstanceMail({ to, template, lang = 'fr', vars = {}, attachments = [] }) {
   const s = await mailSettings({ withSecret: true });
   if (!s.enabled) throw Object.assign(new Error('L\'e-mail de l\'instance n\'est pas configuré (Instance → Santé)'), { status: 409 });
   const { EMAIL_RE, smtpTransport } = require('./emailTickets');
@@ -66,7 +66,7 @@ async function sendInstanceMail({ to, template, lang = 'fr', vars = {} }) {
   try {
     await transport.sendMail({
       from: s.fromName ? { name: s.fromName, address: s.from } : s.from,
-      to, subject: mail.subject, text: mail.text, html: mail.html,
+      to, subject: mail.subject, text: mail.text, html: mail.html, ...(attachments.length ? { attachments } : {}),
       headers: { 'Auto-Submitted': 'auto-generated' },
     });
   } finally { transport.close?.(); }

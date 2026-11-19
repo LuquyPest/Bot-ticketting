@@ -2,13 +2,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { uiLocale } from '../i18n';
 import {
   BarChart2, Activity, Users, Shield, Clock, AlertTriangle,
-  TrendingUp, CheckCircle, RefreshCw, Star, Download, Timer } from 'lucide-react';
+  TrendingUp, CheckCircle, RefreshCw, Star, Download, Timer, X
+} from 'lucide-react';
 import { fmtSeconds } from '../utils/duration';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 import api from '../api';
+import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 import {} from '../utils/format';
 import Badge from '../components/Badge';
@@ -676,12 +678,47 @@ function StatsCsvDownload() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 // Reports by team, category, subject or channel (utils/breakdownReport.js), exportable as CSV
-const BREAKDOWN_BY = [['team', 'Par équipe'], ['category', 'Par catégorie'], ['subject', 'Par sujet'], ['channel', 'Par canal'], ['type', 'Par type']];
+const BREAKDOWN_BY = [['team', 'Par équipe'], ['category', 'Par catégorie'], ['subject', 'Par sujet'], ['channel', 'Par canal'], ['type', 'Par type'], ['organization', 'Par organisation'], ['assignee', 'Par personne'], ['priority', 'Par priorité']];
+// Reports sent by e-mail on a schedule (v5.6, utils/scheduledReports.js)
+function ScheduledReports() {
+  const [list, setList] = useState(null);
+  const [form, setForm] = useState({ name: '', by: 'organization', days: 7, format: 'xlsx', frequency: 'weekly', weekday: 1, monthday: 1, time: '08:00', recipients: '' });
+  useEffect(() => { api.get('/analytics/scheduled').then(r => setList(Array.isArray(r.data?.reports) ? r.data.reports : false)).catch(() => setList(false)); }, []);
+  if (!list) return null;
+  const I = 'bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs';
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const add = async () => { try { setList((await api.post('/analytics/scheduled', form)).data.reports); setForm(f => ({ ...f, name: '', recipients: '' })); toast.success('Rapport programmé'); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
+  const del = async id => { try { setList((await api.delete(`/analytics/scheduled/${id}`)).data.reports); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
+  return (
+    <section className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-2">
+      <h2 className="text-sm font-semibold text-ink-2">Rapports programmés</h2>
+      {list.map(r => <p key={r.id} className="text-xs text-ink-2 flex items-center gap-2"><span className="flex-1">{`${r.name} · ${r.format.toUpperCase()} · ${r.frequency === 'weekly' ? 'chaque semaine' : 'chaque mois'} · ${r.recipients.join(', ')}`}</span>
+        <button type="button" onClick={() => del(r.id)} aria-label={`Supprimer le rapport ${r.name}`} className="text-ink-4 hover:text-red-400"><X size={12} /></button></p>)}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <input value={form.name} onChange={e => set('name', e.target.value)} maxLength={80} placeholder="Hebdo direction" aria-label="Nom du rapport" className={`${I} w-36`} />
+        <select value={form.by} onChange={e => set('by', e.target.value)} aria-label="Regrouper par" className={I}>{BREAKDOWN_BY.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select>
+        <select value={form.days} onChange={e => set('days', Number(e.target.value))} aria-label="Sur" className={I}>{[7, 30, 90].map(d => <option key={d} value={d}>{`${d} derniers jours`}</option>)}</select>
+        <select value={form.format} onChange={e => set('format', e.target.value)} aria-label="Format" className={I}><option value="xlsx">XLSX</option><option value="pdf">PDF</option><option value="csv">CSV</option></select>
+        <select value={form.frequency} onChange={e => set('frequency', e.target.value)} aria-label="Envoi" className={I}><option value="weekly">Chaque lundi</option><option value="monthly">Le 1er du mois</option></select>
+        <input type="time" value={form.time} onChange={e => set('time', e.target.value)} aria-label="Heure d'envoi" className={I} />
+        <input value={form.recipients} onChange={e => set('recipients', e.target.value)} placeholder="direction@exemple.fr, compta@exemple.fr" aria-label="Destinataires" className={`${I} flex-1 min-w-48`} />
+        <button type="button" onClick={add} disabled={!form.name.trim() || !form.recipients.trim()} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50">Programmer</button>
+      </div>
+    </section>
+  );
+}
+
 function TabReports() {
   const [by, setBy] = useState('team');
   const [days, setDays] = useState(30);
+  // A free period (v5.6): « custom » with two dates
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const custom = days === 0 && from && to;
+  const params = custom ? { by, from, to } : { by, days: days || 30 };
+  const qs = new URLSearchParams(params).toString();
   const [data, setData] = useState(null);
-  useEffect(() => { setData(null); api.get('/analytics/breakdown', { params: { by, days } }).then(r => setData(r.data)).catch(() => setData(false)); }, [by, days]);
+  useEffect(() => { setData(null); api.get('/analytics/breakdown', { params }).then(r => setData(r.data)).catch(() => setData(false)); }, [by, days, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
   const num = v => (v == null ? '—' : v);
   return (
     <div className="space-y-5">
@@ -694,10 +731,17 @@ function TabReports() {
         </div>
         <select value={days} onChange={e => setDays(Number(e.target.value))} aria-label="Période" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs">
           {[7, 30, 90, 365].map(d => <option key={d} value={d}>{d} jours</option>)}
+          <option value={0}>Période libre</option>
         </select>
-        <a href={`/api/analytics/export/breakdown.csv?by=${by}&days=${days}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-light bg-primary/10 border border-primary/20 hover:bg-primary/20">
-          <Download size={12} /> Exporter (CSV)
-        </a>
+        {days === 0 && <>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} aria-label="Du" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs" />
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} aria-label="Au" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs" />
+        </>}
+        {['csv', 'xlsx', 'pdf'].map(f => (
+          <a key={f} href={`/api/analytics/export/breakdown.${f}?${qs}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-primary-light bg-primary/10 border border-primary/20 hover:bg-primary/20">
+            <Download size={12} /> {f.toUpperCase()}
+          </a>
+        ))}
       </div>
       {data === false && <p className="text-sm text-red-400">Impossible de charger le rapport.</p>}
       {data === null && <SkeletonCard />}
@@ -782,7 +826,7 @@ export default function Analytics() {
       {tab === 'time'   && <TabTime />}
       {tab === 'compare' && <TabCompare />}
       {tab === 'reopens' && <TabReopens />}
-      {tab === 'reports' && <TabReports />}
+      {tab === 'reports' && <><TabReports /><ScheduledReports /></>}
     </div>
   );
 }

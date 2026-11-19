@@ -1324,6 +1324,32 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 75,
+    name: 'Rapports programmés envoyés par e-mail (v5.6)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS scheduled_reports (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        owner_id     VARCHAR(32) NOT NULL,
+        name         VARCHAR(80) NOT NULL,
+        dimension    VARCHAR(16) NOT NULL,
+        days         INT NOT NULL DEFAULT 30,
+        format       VARCHAR(4) NOT NULL DEFAULT 'xlsx',
+        frequency    VARCHAR(8) NOT NULL DEFAULT 'weekly',
+        weekday      TINYINT DEFAULT 1,
+        monthday     TINYINT DEFAULT 1,
+        run_time     VARCHAR(5) NOT NULL DEFAULT '08:00',
+        timezone     VARCHAR(64) NOT NULL DEFAULT 'Europe/Paris',
+        recipients   TEXT NOT NULL,
+        active       TINYINT(1) NOT NULL DEFAULT 1,
+        next_run_at  DATETIME DEFAULT NULL,
+        last_sent_at DATETIME DEFAULT NULL,
+        last_error   VARCHAR(300) DEFAULT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sr_next (active, next_run_at)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
