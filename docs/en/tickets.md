@@ -160,6 +160,12 @@ The **time spent** goes to a task: the stopwatch of a task, or time added by han
 
 **In my calendar (iCal)** gives a secret link to add to Google Calendar, Outlook or Calendar: your planned tasks, your tickets' deadlines and your absences (30 days back, 90 ahead). The link is kept hashed; creating a new one, or removing it, cuts the old one.
 
+### Writing, going fast
+
+The reply and note area has a **formatting bar** (bold, italic, code, link, lists, quote; **Ctrl+B**, **Ctrl+I**, **Ctrl+K**, **Ctrl+E**): the text stays Markdown, which Discord, e-mails and the member space show safely. **?** opens the list of **shortcuts**: on the ticket view, **r** reply, **n** note, **a** assign it to me, **s** change the status, **.** and **,** next or previous open ticket; in the list, **j**/**k** and **Enter**.
+
+In the list, **Columns** chooses what shows (type, team, organisation, last message…), kept for each person. A **saved view** can be **shared with a team** you belong to: its members see it (read only), each with their own rights on the tickets.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

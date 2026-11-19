@@ -1139,6 +1139,16 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_du_ical ON dashboard_users (ical_token_hash)',
     ],
   },
+  {
+    version: 69,
+    name: 'Interface du staff : colonnes de la liste, vues partagées par équipe (v5.4)',
+    statements: [
+      'ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS ui_prefs JSON DEFAULT NULL',
+      // A saved view of the ticket list can be shared with a team: its members see it
+      'ALTER TABLE ticket_views ADD COLUMN IF NOT EXISTS team_id INT DEFAULT NULL',
+      'CREATE INDEX IF NOT EXISTS idx_tv_team ON ticket_views (team_id)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

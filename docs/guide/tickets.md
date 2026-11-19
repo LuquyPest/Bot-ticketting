@@ -160,6 +160,12 @@ Menu **Planning** : la semaine d'une personne ou d'une équipe : les **tâches p
 
 **Dans mon agenda (iCal)** donne un lien secret à ajouter à Google Agenda, Outlook ou Calendrier : ses tâches planifiées, les échéances de ses tickets et ses absences (30 jours en arrière, 90 en avant). Le lien est gardé chiffré ; en créer un nouveau, ou le retirer, coupe l'ancien.
 
+### Écrire, aller vite
+
+La zone de réponse et de note a une **barre de mise en forme** (gras, italique, code, lien, listes, citation ; **Ctrl+B**, **Ctrl+I**, **Ctrl+K**, **Ctrl+E**) : le texte reste du Markdown, que Discord, les e-mails et l'espace membre affichent sans risque. **?** ouvre la liste des **raccourcis** : sur la fiche, **r** répondre, **n** note, **a** me l'attribuer, **s** changer le statut, **.** et **,** ticket ouvert suivant ou précédent ; dans la liste, **j**/**k** et **Entrée**.
+
+Dans la liste, **Colonnes** choisit ce qui s'affiche (type, équipe, organisation, dernier message…), gardé pour chacun. Une **vue enregistrée** peut être **partagée avec une équipe** dont on fait partie : ses membres la voient (lecture seule), chacun avec ses propres droits sur les tickets.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

@@ -13,6 +13,8 @@ import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
 import TasksPanel from '../components/TasksPanel';
+import FormatBar, { formatKeys } from '../components/FormatBar';
+import ShortcutsHelp from '../components/ShortcutsHelp';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS, LEVEL_CLS } from '../utils/priorityLevels';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
@@ -547,6 +549,35 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setClaimLoading(false); }
   };
+  // More shortcuts (v5.4): a = take it, s = status, . / , = next / previous open ticket, ? = help
+  const [showKeys, setShowKeys] = useState(false);
+  const shortcutState = useRef({});
+  shortcutState.current = { ticket, user, addAssignee };
+  useEffect(() => {
+    async function neighbour(step) {
+      const { ticket: t } = shortcutState.current;
+      if (!t) return;
+      const { data: list } = await api.get('/tickets', { params: { status: 'open', page: 1 } }).catch(() => ({ data: { tickets: [] } }));
+      const ids = (list.tickets || []).map(x => x.id);
+      const i = ids.indexOf(t.id);
+      const next = ids[i === -1 ? 0 : i + step];
+      if (next && next !== t.id) navigate(`/tickets/${next}`);
+      else toast('Pas d\'autre ticket ouvert dans ce sens', { icon: 'ℹ️' });
+    }
+    function handler(e) {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const { ticket: t, user: u, addAssignee: assign } = shortcutState.current;
+      if (e.key === '?') { e.preventDefault(); setShowKeys(true); return; }
+      if (!t) return;
+      if (e.key === 'a' && t.status === 'open' && !(t.assignees || []).some(x => x.user_id === u?.id)) { e.preventDefault(); assign(u.id); return; }
+      if (e.key === 's') { const b = document.querySelector('#stage-buttons button:not([disabled])'); if (b) { e.preventDefault(); b.focus(); } return; }
+      if (e.key === '.') { e.preventDefault(); neighbour(1); return; }
+      if (e.key === ',') { e.preventDefault(); neighbour(-1); }
+    }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [navigate]);
+
   // Opened from the « Prendre » button of a Teams card: asked once
   const claimAsked = useRef(false);
   useEffect(() => {
@@ -934,6 +965,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
 
   return (
     <div className="flex flex-1 min-h-screen overflow-hidden">
+      {showKeys && <ShortcutsHelp which="ticket" onClose={() => setShowKeys(false)} />}
 
       {/* ── Modal: réouvrir ─────────────────────────────────── */}
       {showReopenModal && (
@@ -1414,6 +1446,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                 <ImagePlus size={16} /> Dépose le fichier pour le joindre à la réponse
               </div>
             )}
+            {!preview && <FormatBar textareaRef={replyRef} value={composeText} setValue={setComposeText} />}
             {preview ? (
               <div className="min-h-[5.5rem] max-h-72 overflow-y-auto rounded-xl border border-overlay/8 bg-[#313338]/40 px-4 py-3" aria-label="Aperçu du message sur Discord">
                 {composeText.trim() ? <DiscordPreview text={composeMode === 'reply' ? resolveVars(composeText, ticket, user?.username) : composeText} />
@@ -1425,7 +1458,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
               value={composeText}
               onChange={e => setComposeText(e.target.value)}
               onPaste={pasteFile}
-              onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
+              onKeyDown={e => { if (formatKeys(e, composeText, setComposeText)) return; if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
               placeholder={composeMode === 'reply'
                 ? 'Répondre à l\'utilisateur... (Ctrl+Entrée)'
                 : 'Note interne (non visible par l\'utilisateur)...'}
@@ -2080,7 +2113,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           {ticket.status === 'open' && can('reply_ticket') && (
             <div className={panelCard}>
               <SectionTitle>Étape</SectionTitle>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div id="stage-buttons" className="grid grid-cols-3 gap-1.5">
                 {STAGES.map(st => {
                   const active = (ticket.stage || 'open') === st.value;
                   const configured = ticket.stages?.[st.value] !== false;

@@ -5892,6 +5892,33 @@ async function main() {
     await db('DELETE FROM tickets WHERE id IN (?)', [[tP, tConf]]);
   }
 
+  // ── Staff interface: columns of the list, views shared with a team (v5.4) ──
+  {
+    r = await req('PUT', '/api/profile/ui-prefs', { sid: sessions.S1, body: { listColumns: ['user', 'motdepasse'] } });
+    check('interface: colonne inconnue refusée', r.status === 400, r.status);
+    r = await req('PUT', '/api/profile/ui-prefs', { sid: sessions.S1, body: { listColumns: ['user', 'team', 'organization', 'last'] } });
+    const back = await req('GET', '/api/profile/ui-prefs', { sid: sessions.S1 });
+    check('interface: colonnes de la liste gardées par personne', r.status === 200 && back.body.listColumns?.join() === 'user,team,organization,last'
+      && !(await req('GET', '/api/profile/ui-prefs', { sid: sessions.S2 })).body.listColumns, JSON.stringify(back.body));
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe vues', members: [U.S1, U.S2] } })).body.find(t => t.name === 'Équipe vues');
+    r = await req('POST', '/api/ticket-views', { sid: sessions.S3, body: { name: 'Hors équipe', filters: { status: 'open' }, team_id: team.id } });
+    check('vues: on ne partage qu avec une équipe dont on fait partie', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/ticket-views', { sid: sessions.S1, body: { name: 'Urgents de l équipe', filters: { status: 'open', priority: 'urgent', organization: '3' }, team_id: team.id } });
+    const vid = r.body.id;
+    check('vues: vue partagée avec l équipe (filtre organisation compris)', r.status === 201 && r.body.team_id === team.id && r.body.filters.organization === '3', JSON.stringify(r.body));
+    r = await req('GET', '/api/ticket-views', { sid: sessions.S2 });
+    const seen = r.body.find(v => v.id === vid);
+    check('vues: un membre de l équipe la voit, en lecture seule', seen?.shared === true && seen.author === 'S1' && seen.team_name === 'Équipe vues', JSON.stringify(seen));
+    r = await req('DELETE', `/api/ticket-views/${vid}`, { sid: sessions.S2 });
+    check('vues: seul son auteur la supprime', (await db('SELECT 1 FROM ticket_views WHERE id = ?', [vid])).length === 1, '');
+    r = await req('GET', '/api/ticket-views', { sid: sessions.S3 });
+    check('vues: hors de l équipe, invisible', !r.body.some(v => v.id === vid), JSON.stringify(r.body.map(v => v.id)));
+    await req('PATCH', `/api/ticket-views/${vid}`, { sid: sessions.S1, body: { team_id: null } });
+    check('vues: le partage se retire', !(await req('GET', '/api/ticket-views', { sid: sessions.S2 })).body.some(v => v.id === vid), '');
+    await req('DELETE', `/api/ticket-views/${vid}`, { sid: sessions.S1 });
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
