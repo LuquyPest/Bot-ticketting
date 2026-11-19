@@ -17,6 +17,7 @@ export default function HelpdeskImport() {
   const [fileName, setFileName] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [update, setUpdate] = useState(false);
   const pickFile = async e => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -25,7 +26,7 @@ export default function HelpdeskImport() {
   };
   const run = async dryRun => {
     setBusy(true);
-    try { const r = source === 'ldap' ? await api.post('/imports/directory', { dryRun }) : await api.post('/imports', { source, kind, format, text, dryRun }); setResult(r.data); if (!dryRun) toast.success(`${r.data.created} importé(s), ${r.data.skipped} déjà là`); }
+    try { const r = source === 'ldap' ? await api.post('/imports/directory', { dryRun, update }) : await api.post('/imports', { source, kind, format, text, dryRun, update }); setResult(r.data); if (!dryRun) toast.success(update ? `${r.data.created} importé(s), ${r.data.updated} mis à jour, ${r.data.skipped} inchangé(s)` : `${r.data.created} importé(s), ${r.data.skipped} déjà là`); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
@@ -44,6 +45,10 @@ export default function HelpdeskImport() {
         </>}
       </div>
       {source === 'ldap' && <p className="text-xs text-ink-3">Les personnes de l'annuaire réglé dans Instance → Connexion (propriétaire de l'instance) deviennent des contacts, rattachés à leur organisation.</p>}
+      <label className="flex items-start gap-2 text-xs text-ink-2">
+        <input type="checkbox" checked={update} onChange={e => setUpdate(e.target.checked)} className="accent-primary mt-0.5" />
+        <span>Mettre à jour ce qui est déjà importé (noms, organisations, textes des articles ; pour un ticket, son statut et sa priorité seulement)</span>
+      </label>
       <div className="flex gap-2">
         <button type="button" onClick={() => run(true)} disabled={busy || (source !== 'ldap' && !text)} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50 inline-flex items-center gap-1.5">
           {busy ? <Loader2 size={12} className="animate-spin" /> : <FlaskConical size={12} />} Essai à blanc

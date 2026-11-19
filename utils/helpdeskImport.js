@@ -53,6 +53,10 @@ function parse(format, text) {
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/[^a-z0-9]+/g, '');
 const ALIASES = {
   id: ['id', 'ticketid', 'ticketnumber', 'number', 'numero', 'ref', 'reference', 'externalid', 'iddisplayed'],
+  // The identifier of what is imported when it is not a ticket (Freshdesk « Contact ID »…)
+  contactid: ['id', 'contactid', 'userid', 'customerid', 'requesterid', 'externalid'],
+  organizationid: ['id', 'organizationid', 'organisationid', 'companyid', 'entityid', 'entiteid', 'externalid'],
+  articleid: ['id', 'articleid', 'solutionid', 'faqid', 'kbid', 'externalid'],
   subject: ['subject', 'title', 'titre', 'sujet', 'objet', 'summary', 'name', 'nom'],
   description: ['description', 'descriptiontext', 'content', 'contenu', 'body', 'message', 'details', 'issue', 'texte'],
   status: ['status', 'statut', 'state', 'etat', 'stateid', 'statusname'],
@@ -128,17 +132,63 @@ async function requester(db, email, name) {
   return { owner, address, tag: text(name, 100) || address };
 }
 
-async function importRows(db, { source, kind, rows, dryRun = false }) {
+// v6 « update what is already imported »: what the export says now replaces what was kept, without
+// touching what only exists here (a ticket keeps its conversation: only status and priority follow)
+async function updateExisting(db, { source, kind, row, localId, orgs }) {
+  if (kind === 'organizations') {
+    const domains = text(pick(row, 'domains'), 500).split(/[\s,;]+/).map(d => d.toLowerCase().replace(/^@/, '')).filter(d => /^([a-z0-9-]+\.)+[a-z]{2,63}$/.test(d)).slice(0, 20);
+    let n = 0;
+    for (const d of domains) n += (await db('INSERT IGNORE INTO organization_domains (domain, organization_id) VALUES (?, ?)', [d, localId])).affectedRows;
+    return n > 0;
+  }
+  if (kind === 'contacts') {
+    const [c] = await db('SELECT display_name, organization_id FROM contacts WHERE id = ?', [localId]);
+    if (!c) return false;
+    const name = text(pick(row, 'personname'), 100);
+    const org = pick(row, 'organization');
+    const orgIdNow = org ? await orgId(db, org, orgs) : c.organization_id;
+    if ((!name || name === c.display_name) && Number(orgIdNow) === Number(c.organization_id)) return false;
+    await db('UPDATE contacts SET display_name = ?, organization_id = ?, org_manual = IF(? IS NULL, org_manual, 1) WHERE id = ?', [name || c.display_name, orgIdNow || null, org ? 1 : null, localId]);
+    return true;
+  }
+  if (kind === 'articles') {
+    const [a] = await db('SELECT question, answer, category, created_by_tag FROM faq_entries WHERE id = ?', [localId]);
+    if (!a) return false;
+    const question = text(pick(row, 'question'), 200) || a.question;
+    const answer = (text(pick(row, 'answer'), 5000) || a.answer).replace(/<[^>]+>/g, '');
+    const category = text(pick(row, 'category'), 80) || a.category;
+    if (question === a.question && answer === a.answer && category === (a.category || '')) return false;
+    // The text before stays in « Previous versions »
+    await db('INSERT INTO faq_revisions (faq_id, question, answer, category, edited_by_tag) VALUES (?, ?, ?, ?, ?)', [localId, a.question, a.answer, a.category || '', `Import ${source}`]);
+    await db('UPDATE faq_entries SET question = ?, answer = ?, category = ? WHERE id = ?', [question, answer, category, localId]);
+    return true;
+  }
+  const [t] = await db('SELECT status, priority FROM tickets WHERE id = ?', [localId]);
+  if (!t) return false;
+  const status = isClosed(source, pick(row, 'status')) ? 'closed' : 'open';
+  const priority = pick(row, 'priority') == null ? t.priority : priorityOf(pick(row, 'priority'));
+  if (status === t.status && priority === t.priority) return false;
+  await db(`UPDATE tickets SET status = ?, priority = ?, closed_at = ${status === 'closed' ? 'COALESCE(closed_at, NOW())' : 'NULL'}, closed_by_tag = ${status === 'closed' ? 'COALESCE(closed_by_tag, ?)' : 'NULL'} WHERE id = ?`,
+    status === 'closed' ? [status, priority, `Import ${source}`, localId] : [status, priority, localId]);
+  return true;
+}
+
+async function importRows(db, { source, kind, rows, dryRun = false, update = false }) {
   if (!SOURCES.includes(source)) return { error: 'Outil inconnu' };
   if (!KINDS.includes(kind)) return { error: 'Type d\'import inconnu' };
-  const out = { rows: rows.length, created: 0, skipped: 0, errors: [] };
+  const out = { rows: rows.length, created: 0, skipped: 0, updated: 0, errors: [] };
   const orgs = new Map();
   const { newVirtualChannelId } = require('./virtualChannel');
   for (const [i, row] of rows.entries()) {
     try {
       // Without an identifier column, the row is recognised by a fingerprint of its content (#76)
-      const extId = text(pick(row, 'id'), 64) || `h:${require('crypto').createHash('sha256').update(JSON.stringify(row)).digest('hex').slice(0, 40)}`;
-      if (await seen(db, source, kind, extId)) { out.skipped++; continue; }
+      const extId = text(pick(row, { contacts: 'contactid', organizations: 'organizationid', articles: 'articleid' }[kind] || 'id'), 64) || `h:${require('crypto').createHash('sha256').update(JSON.stringify(row)).digest('hex').slice(0, 40)}`;
+      const localId = await seen(db, source, kind, extId);
+      if (localId) {
+        if (update && !dryRun && await updateExisting(db, { source, kind, row, localId, orgs })) out.updated++;
+        else out.skipped++;
+        continue;
+      }
       if (kind === 'organizations') {
         const name = text(pick(row, 'organization') || pick(row, 'subject'), 100);
         if (!name) { out.errors.push(`Ligne ${i + 1} : nom manquant`); continue; }

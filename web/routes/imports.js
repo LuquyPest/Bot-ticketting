@@ -11,14 +11,15 @@ router.use((req, res, next) => (req.userIsFondateur ? next() : res.status(403).j
 router.post('/', async (req, res, next) => {
   try {
     const { source, kind, format, text, dryRun } = req.body || {};
+    const update = req.body?.update === true;
     if (source === 'ldap') return res.status(400).json({ error: 'L\'annuaire s\'importe directement, sans fichier' });
     if (typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'Colle ou choisis le fichier exporté' });
     if (text.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'Fichier trop gros (10 Mo au plus : découpe l\'export)' });
     const rows = H.parse(format === 'json' ? 'json' : 'csv', text);
     if (!rows.length) return res.status(400).json({ error: 'Aucune ligne lue : vérifie le format (CSV avec une ligne d\'en-tête, ou JSON)' });
-    const r = await H.importRows(req.guildDb, { source, kind, rows, dryRun: !!dryRun });
+    const r = await H.importRows(req.guildDb, { source, kind, rows, dryRun: !!dryRun, update });
     if (r.error) return res.status(400).json({ error: r.error });
-    if (!dryRun) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'helpdesk_import', details: { source, kind, created: r.created, skipped: r.skipped, errors: r.errors.length } });
+    if (!dryRun) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'helpdesk_import', details: { source, kind, created: r.created, updated: r.updated, skipped: r.skipped, errors: r.errors.length } });
     // What the columns were understood as, on the first row (to check before importing)
     const first = rows[0];
     const preview = Object.fromEntries(['id', 'subject', 'email', 'name', 'status', 'priority', 'organization', 'created', 'question', 'category'].map(k => [k, H.pick(first, k)]).filter(([, v]) => v !== null).map(([k, v]) => [k, String(typeof v === 'object' ? JSON.stringify(v) : v).slice(0, 80)]));
@@ -33,7 +34,7 @@ router.post('/directory', async (req, res, next) => {
     const got = await require('../../utils/ldapDirectory').contactRows();
     if (got.error) return res.status(400).json({ error: got.error });
     const dryRun = !!req.body?.dryRun;
-    const r = await H.importRows(req.guildDb, { source: 'ldap', kind: 'contacts', rows: got.rows, dryRun });
+    const r = await H.importRows(req.guildDb, { source: 'ldap', kind: 'contacts', rows: got.rows, dryRun, update: req.body?.update === true });
     if (!dryRun) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'helpdesk_import', details: { source: 'ldap', kind: 'contacts', created: r.created, skipped: r.skipped, errors: r.errors.length } });
     const first = got.rows[0] || {};
     res.json({ ...r, dryRun, preview: Object.fromEntries(['id', 'email', 'name', 'organization'].filter(k => first[k]).map(k => [k, String(first[k]).slice(0, 80)])) });
