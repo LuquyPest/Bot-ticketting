@@ -136,6 +136,12 @@ router.get('/', async (req, res) => {
     if (priority) { where.push('priority = ?');   params.push(priority); }
     if (ticketType) { where.push('ticket_type = ?'); params.push(ticketType); }
     if (subject)  { where.push('subject LIKE ?'); params.push(`%${subject}%`); }
+    // Archives (Paramètres → Tickets → Rétention): out of the default list, still found by a
+    // search; « archived=only » shows them alone, « archived=all » with the others
+    const archived = str('archived');
+    const arch = await require('../../utils/ticketRetention').archiveSql(req.guildDb);
+    if (arch && archived === 'only') { where.push(arch.onlySql); params.push(...arch.params); }
+    else if (arch && archived !== 'all' && !subject && !op.subject.length) { where.push(arch.sql); params.push(...arch.params); }
     if (stage)    { where.push('stage = ?');      params.push(stage); }
     if (claimed === 'true')  where.push('EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');
     if (claimed === 'false' || unassigned) where.push('NOT EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id)');

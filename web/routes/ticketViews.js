@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 
-const FILTER_KEYS = ['status', 'priority', 'stage', 'subject', 'claimed', 'assignee', 'dateFrom', 'dateTo', 'tag', 'sla', 'field', 'fieldValue', 'following', 'team', 'type', 'organization'];
+const FILTER_KEYS = ['status', 'priority', 'stage', 'subject', 'claimed', 'assignee', 'dateFrom', 'dateTo', 'tag', 'sla', 'field', 'fieldValue', 'following', 'team', 'type', 'organization', 'archived'];
 const MAX_VIEWS = 20;
 
 // Keeps only known filter keys with short string values.

@@ -124,6 +124,8 @@ const ACTIONS = {
   problem_resolve:          ['Problème résolu', 'tickets'],
   problems_toggle:          ['Problèmes activés ou coupés', 'config'],
   helpdesk_import:          ['Import depuis un autre outil', 'config'],
+  ticket_retention:         ['Rétention des tickets clos appliquée', 'config'],
+  ticket_retention_update:  ['Rétention des tickets modifiée', 'config'],
   survey_settings:          ['Enquête de satisfaction modifiée', 'config'],
   report_schedule:          ['Rapport programmé enregistré', 'config'],
   cost_settings:            ['Taux et forfaits des coûts modifiés', 'config'],

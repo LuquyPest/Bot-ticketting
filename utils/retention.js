@@ -35,6 +35,8 @@ async function runRetentionPurge() {
     audit_log: 0,
     transcripts: 0,
     email_attachments: 0,
+    tickets_anonymized: 0,
+    tickets_deleted: 0,
   };
 
   const guilds = await globalQuery('SELECT guild_id FROM guilds WHERE status IN ("active", "suspended")');
@@ -43,6 +45,10 @@ async function runRetentionPurge() {
       const db = getTenantDb(g.guild_id);
       report.audit_log += await purge(db, 'audit_log', 'created_at', s.auditLogDays);
       report.transcripts += await purge(db, 'transcript_snapshots', 'created_at', s.transcriptDays);
+      // Closed tickets: each space's own setting (Paramètres → Tickets → Rétention), before the
+      // attachments so the files of deleted tickets go in the same run
+      const t = await require('./ticketRetention').applyRetention(db, g.guild_id);
+      report.tickets_anonymized += t.anonymized; report.tickets_deleted += t.deleted;
       // Attachments of the e-mails: each server's own setting (Paramètres → Intégrations)
       report.email_attachments += (await require('./emailAttachments').runAttachmentRetention(g.guild_id, db)).files;
     } catch (err) {
