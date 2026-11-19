@@ -37,6 +37,7 @@ const NAV_GROUPS = [
   { id: 'suivi', label: 'Suivi', items: [
     { to: '/activite',    label: 'Mon activité', icon: Gauge,           roles: ['support','fondateur'] },
     { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
+    { to: '/tableaux',    label: 'Tableaux',     icon: LayoutDashboard, roles: ['support','fondateur'] },
     { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
     { to: '/couts',       label: 'Coûts',        icon: Coins,           roles: ['fondateur'], perm: 'manage_costs' },
     { to: '/audit',       label: 'Journal',      icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },

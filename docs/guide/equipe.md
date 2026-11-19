@@ -74,6 +74,12 @@ Chaque membre retrouve les tickets de ses équipes dans **Ma file → Mes équip
 - **Mon activité** : ses chiffres sur 7, 30 ou 90 jours comparés à l'équipe.
 - **Analytiques** : volume, délais, satisfaction, comparaison de périodes, réouvertures, temps passé, [rapports](#les-rapports), exports CSV et rapport mensuel PDF.
 
+## Les tableaux de bord
+
+Menu **Tableaux** : chacun compose ses **tableaux de bord** de **widgets** — un **compteur** (tickets ouverts, ouverts sans attribution, mes tickets, créés ou fermés sur la période, objectifs SLA dépassés, en attente du demandeur), une **courbe** des tickets créés et fermés par jour, une **liste** de tickets ouverts (urgents d'abord), le taux d'**objectifs SLA tenus**, la **satisfaction** (moyenne, part de 4 ou 5, répartition). Chaque widget a ses **filtres** : équipe, organisation (sous-organisations comprises), priorité, période.
+
+Un tableau est **personnel**, **partagé avec une équipe** dont on fait partie, ou (fondateurs) **avec tout le staff** ; seul son auteur le modifie. Les chiffres sont toujours calculés pour **qui regarde**, à travers ce qu'il a le droit de voir : un même tableau partagé ne montre pas un ticket confidentiel à qui ne le voit pas.
+
 ## Les rapports
 
 **Analytiques → Rapports** regroupe les tickets ouverts sur la période (7, 30, 90 ou 365 jours) :

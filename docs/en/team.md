@@ -74,6 +74,12 @@ Each member finds the tickets of their teams in **My queue → My teams**. The t
 - **My activity**: one's figures over 7, 30 or 90 days compared with the team.
 - **Analytics**: volume, response times, satisfaction, period comparison, reopenings, time spent, [reports](#reports), CSV exports and a monthly PDF report.
 
+## Dashboards
+
+**Boards** menu: everyone builds their **dashboards** out of **widgets** — a **counter** (open tickets, open and unassigned, my tickets, created or closed over the period, SLA objectives breached, waiting for the requester), a **curve** of tickets created and closed per day, a **list** of open tickets (urgent first), the rate of **SLA objectives met**, **satisfaction** (average, share of 4 or 5, distribution). Each widget has its **filters**: team, organisation (sub-organisations included), priority, period.
+
+A board is **personal**, **shared with a team** you belong to, or (founders) **with all the staff**; only its author changes it. Figures are always computed for **whoever looks**, through what they are allowed to see: the same shared board does not show a confidential ticket to someone who cannot see it.
+
 ## Reports
 
 **Analytics → Reports** groups the tickets opened over the period (7, 30, 90 or 365 days):

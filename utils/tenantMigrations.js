@@ -1307,6 +1307,23 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 74,
+    name: 'Tableaux de bord : widgets, tableaux personnels et partagés (v5.6)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS dashboards (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        owner_id   VARCHAR(32) NOT NULL,
+        name       VARCHAR(60) NOT NULL,
+        widgets    JSON NOT NULL,
+        sharing    VARCHAR(8) NOT NULL DEFAULT 'private',
+        team_id    INT DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_db_owner (owner_id),
+        INDEX idx_db_sharing (sharing, team_id)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
