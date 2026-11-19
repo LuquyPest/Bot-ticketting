@@ -106,6 +106,8 @@ const ACTIONS = {
   sla_policy_save:          ['Objectif SLA enregistré', 'config'],
   notifications_update:     ['Notifications modifiées', 'config'],
   notification_templates_update: ['Textes envoyés au demandeur modifiés', 'config'],
+  chat_integration_update:  ['Slack ou Teams modifié', 'config'],
+  chat_link:                ['Compte Slack relié', 'security'],
   ticket_rule:              ['Règle automatique appliquée', 'tickets'],
   rule_save:                ['Règle automatique enregistrée', 'config'],
   rule_delete:              ['Règle automatique supprimée', 'config'],

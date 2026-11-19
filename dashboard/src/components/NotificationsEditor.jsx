@@ -11,7 +11,7 @@ export const EVENT_LABELS = {
   stage: 'Changement de statut', closed: 'Fermeture', sla_breached: 'Objectif SLA dépassé',
 };
 const RECIPIENT_LABELS = { assignee: 'La personne attribuée', assignees: 'Les personnes attribuées', followers: 'Les observateurs', team: 'L\'équipe du ticket', founders: 'Les fondateurs', emails: 'Des adresses' };
-export const CHANNEL_LABELS = { dashboard: 'Dashboard et navigateur', discord: 'MP Discord', email: 'E-mail' };
+export const CHANNEL_LABELS = { dashboard: 'Dashboard et navigateur', discord: 'MP Discord', email: 'E-mail', slack: 'Canal Slack', teams: 'Canal Teams' };
 const KEY_LABELS = {
   'welcome.default': 'Ticket créé', 'staffOpen.title': 'Le staff ouvre un ticket : titre', 'staffOpen.body': 'Le staff ouvre un ticket : texte',
   'stage.open.title': 'De nouveau en file : titre', 'stage.open.body': 'De nouveau en file : texte', 'stage.waiting.title': 'En attente : titre', 'stage.waiting.body': 'En attente : texte',
@@ -65,6 +65,7 @@ function Rules() {
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-4">Par
             <Chips label="Canaux" options={Object.entries(CHANNEL_LABELS)} value={r.channels} onChange={v => set(i, 'channels', v)} />
           </div>
+          {r.channels.some(c => c === 'slack' || c === 'teams') && <p className="text-[11px] text-ink-4">Slack et Teams : un message dans le canal de l'espace (Paramètres → Intégrations), quels que soient les destinataires.</p>}
         </div>
       ))}
       <div className="flex gap-2">

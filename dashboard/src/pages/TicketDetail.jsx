@@ -176,6 +176,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
   // ?note=<id> (from the message search): scroll to that message and highlight it
   const [searchParams] = useSearchParams();
   const focusNote = parseInt(searchParams.get('note')) || null;
+  const wantsClaim = searchParams.get('prendre') === '1'; // « Prendre » from Teams (utils/chatIntegrations.js)
   const [flashNote, setFlashNote] = useState(null);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -545,6 +546,14 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setClaimLoading(false); }
   };
+  // Opened from the « Prendre » button of a Teams card: asked once
+  const claimAsked = useRef(false);
+  useEffect(() => {
+    if (!wantsClaim || claimAsked.current || !ticket || !user?.id || ticket.status !== 'open') return;
+    claimAsked.current = true;
+    if ((ticket.assignees || []).some(a => a.user_id === user.id)) return;
+    confirmToast(`Prendre le ticket #${ticket.id} ?`).then(ok => ok && addAssignee(user.id));
+  }, [wantsClaim, ticket, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeAssignee = async (userId) => {
     setClaimLoading(true);

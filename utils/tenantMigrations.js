@@ -979,6 +979,26 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 62,
+    name: 'Slack et Microsoft Teams : notifications d\'équipe et bouton « Prendre » (v5.2)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS chat_integrations (
+        kind           VARCHAR(8) PRIMARY KEY,
+        webhook_url    TEXT DEFAULT NULL,
+        signing_secret TEXT DEFAULT NULL,
+        active         TINYINT(1) NOT NULL DEFAULT 0
+      )`,
+      `CREATE TABLE IF NOT EXISTS chat_user_links (
+        provider    VARCHAR(8) NOT NULL,
+        team_id     VARCHAR(32) NOT NULL,
+        external_id VARCHAR(32) NOT NULL,
+        user_id     VARCHAR(32) NOT NULL,
+        linked_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (provider, team_id, external_id)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
