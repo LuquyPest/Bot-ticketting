@@ -1,6 +1,6 @@
 {
   "name": "datick",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "Système de tickets complet à héberger soi-même : Discord, e-mail, web et API, dashboard temps réel",
   "main": "index.js",
   "scripts": {
