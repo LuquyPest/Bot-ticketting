@@ -27,7 +27,10 @@ async function events(db, { userIds, teamId = null, from, to, vis }) {
     ORDER BY t.ttr_due_at LIMIT 500`, [from, to, ids, ...(teamId ? [teamId] : []), ...vis.params]);
   const absences = await db(`SELECT a.id, a.user_id, u.username, a.starts_at, a.ends_at, a.reason FROM staff_absences a LEFT JOIN dashboard_users u ON u.user_id = a.user_id
     WHERE a.user_id IN (?) AND a.starts_at < ? AND a.ends_at > ? ORDER BY a.starts_at LIMIT 200`, [ids, to, from]);
+  // Changes they lead (v5.5), when the space uses them
+  const changes = (await require('./changes').enabled(db).catch(() => false)) ? await require('./changes').inPeriod(db, userIds, teamId, from, to) : [];
   return {
+    changes,
     tasks: tasks.map(k => ({ id: k.id, ticketId: k.ticket_id, title: k.title, subject: k.subject, dueAt: k.due_at, plannedMinutes: k.planned_minutes, state: k.state, assigneeId: k.assignee_id, assigneeName: k.assignee_name })),
     deadlines: deadlines.map(d => ({ ticketId: d.id, subject: d.subject, dueAt: d.due_at, priority: d.priority })),
     absences: absences.map(a => ({ id: a.id, userId: a.user_id, username: a.username, startsAt: a.starts_at, endsAt: a.ends_at, reason: a.reason })),

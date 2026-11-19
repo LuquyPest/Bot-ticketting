@@ -184,6 +184,12 @@ The ticket view shows its cost; the report groups by **organisation**, **ticket*
 
 Tickets are linked to it from the problem or from their view (**Reply** permission), only those you can see. On the view of a linked ticket, the workaround is **offered**: **Insert into the reply** puts it into the reply area. **Resolve the problem** records its solution and can **propose it on all its open tickets** at once (like a ticket's [resolution](#resolution-and-closing), the requester confirms). Each creation, link and resolution is in the journal.
 
+## Changes
+
+**Changes** menu (off by default; a founder turns it on): a planned modification (an update, a migration). It has a description, a **deployment plan**, a **rollback plan**, **risks** and a risk level, the impact, a **window** (it shows in the [planning](#planning) of whoever leads it), tasks, and the tickets and problems it deals with.
+
+It follows a flow: **draft** → **waiting for approval** → **approved** (all approvals) or **refused** (at the first refusal, with its reason) → **in progress** → **done** or **failed**; **cancelled** at any time. **Approvals** are given by the chosen staff members, each for themself, in the dashboard; it only starts once approved, and its plans and risks are frozen once it is (going back to draft resets the approvals). Everything is in the journal.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

@@ -60,7 +60,7 @@ function Detail({ id, staff, onChanged }) {
           <textarea value={solution} onChange={e => setSolution(e.target.value)} rows={2} maxLength={2000} placeholder="La solution, envoyée aussi aux demandeurs" aria-label="Solution du problème" className={INPUT} />
           <label className="flex items-center gap-1.5 text-xs text-ink-2"><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} className="accent-primary" />Proposer cette solution sur ses tickets ouverts</label>
           <button type="button" disabled={!solution.trim()} onClick={async () => { const d = await act(api.post(`/problems/${id}/resolve`, { solution, resolveTickets: all })); if (d) toast.success(`Problème résolu · ${d.result.resolved} ticket(s) résolu(s)${d.result.skipped ? `, ${d.result.skipped} non` : ''}`); }}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50">Résoudre</button>
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 text-white disabled:opacity-50">Résoudre</button>
         </section>
       )}
       {p.solution && <p className="text-xs text-ink-2"><span className="font-semibold">Solution : </span>{p.solution}</p>}

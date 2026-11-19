@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Service desk: problems and changes',
     changes: [
       { type: 'new',  text: 'Problèmes (menu Problèmes, coupé par défaut) : la cause commune de plusieurs tickets, avec symptômes, cause, contournement proposé sur les tickets reliés (inséré dans la réponse), statut (ouvert, erreur connue, résolu, fermé), tâches et résolution groupée de ses tickets ouverts', en: 'Problems (Problems menu, off by default): the common cause of several tickets, with symptoms, cause, workaround offered on the linked tickets (inserted into the reply), status (open, known error, resolved, closed), tasks and grouped resolution of its open tickets' },
+      { type: 'new',  text: 'Changements (menu Changements, coupé par défaut) : plans de déploiement et de retour arrière, risques, impact, créneau (dans le planning), tâches, tickets et problèmes traités ; validations par le staff (validé quand toutes sont données, refusé au premier non), plans figés une fois validé', en: 'Changes (Changes menu, off by default): deployment and rollback plans, risks, impact, window (in the planning), tasks, tickets and problems dealt with; approvals by the staff (approved when all are given, refused at the first no), plans frozen once approved' },
     ],
   },
   {

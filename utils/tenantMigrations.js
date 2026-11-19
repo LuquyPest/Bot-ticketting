@@ -1215,6 +1215,57 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 72,
+    name: 'Changements : plans, risques, validations, créneau, tâches (v5.5, désactivé par défaut)',
+    statements: [
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS changes_enabled TINYINT(1) NOT NULL DEFAULT 0',
+      `CREATE TABLE IF NOT EXISTS changes (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        title         VARCHAR(200) NOT NULL,
+        description   TEXT DEFAULT NULL,
+        deploy_plan   TEXT DEFAULT NULL,
+        rollback_plan TEXT DEFAULT NULL,
+        risks         TEXT DEFAULT NULL,
+        impact        TEXT DEFAULT NULL,
+        risk_level    VARCHAR(6) NOT NULL DEFAULT 'low',
+        status        VARCHAR(12) NOT NULL DEFAULT 'draft',
+        assignee_id   VARCHAR(32) DEFAULT NULL,
+        team_id       INT DEFAULT NULL,
+        starts_at     DATETIME DEFAULT NULL,
+        ends_at       DATETIME DEFAULT NULL,
+        created_by    VARCHAR(32) DEFAULT NULL,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ch_status (status),
+        INDEX idx_ch_start (starts_at)
+      )`,
+      `CREATE TABLE IF NOT EXISTS change_approvals (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        change_id   INT NOT NULL,
+        approver_id VARCHAR(32) NOT NULL,
+        decision    VARCHAR(8) NOT NULL DEFAULT 'pending',
+        comment     VARCHAR(1000) DEFAULT NULL,
+        decided_at  DATETIME DEFAULT NULL,
+        UNIQUE KEY uniq_ca (change_id, approver_id),
+        CONSTRAINT fk_ca_change FOREIGN KEY (change_id) REFERENCES changes(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS change_links (
+        change_id INT NOT NULL,
+        kind      VARCHAR(8) NOT NULL,
+        target_id INT NOT NULL,
+        PRIMARY KEY (change_id, kind, target_id),
+        INDEX idx_cl_target (kind, target_id),
+        CONSTRAINT fk_cl_change FOREIGN KEY (change_id) REFERENCES changes(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS change_tasks (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        change_id INT NOT NULL,
+        title     VARCHAR(200) NOT NULL,
+        done      TINYINT(1) NOT NULL DEFAULT 0,
+        CONSTRAINT fk_ck_change FOREIGN KEY (change_id) REFERENCES changes(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
