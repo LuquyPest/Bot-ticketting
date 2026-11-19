@@ -24,7 +24,8 @@ function Reason({ r }) {
 }
 
 export default function Queue() {
-  for (const st of useStages()) STAGE_LABEL[st.key] = st.label;
+  const stages = useStages();
+  for (const st of stages) STAGE_LABEL[st.key] = st.label;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [scope, setScope] = useState('mine');

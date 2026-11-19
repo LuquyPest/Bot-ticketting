@@ -235,7 +235,8 @@ function Analytics({ filters, meta }) {
 }
 
 export default function Audit() {
-  for (const st of useStages()) STAGE[st.key] = st.label;
+  const stages = useStages();
+  for (const st of stages) STAGE[st.key] = st.label;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tab, setTab] = useState('journal');

@@ -23,11 +23,12 @@ cd dashboard && npm run dev   # dashboard Vite avec rechargement, proxy vers l'A
 Les grandes évolutions sont décrites dans [`conception/`](https://github.com/LuquyPest/datick/tree/main/conception) avant d'être codées : la [v4](https://github.com/LuquyPest/datick/blob/main/conception/v4.md) (Discord devient un canal parmi d'autres) y fixe le découpage en pull requests. Une PR de la v4 suit ce découpage et cite son issue.
 
 ```bash
-npm run test:integration                           # suite d'intégration (MariaDB + Redis jetables)
+npm run lint                                       # analyse statique (variables et composants non définis…)
+npm run test:integration                           # suite d'intégration (MariaDB + Redis + OpenLDAP jetables)
 cd dashboard && npx vite build && node tests/smoke.mjs   # pages du dashboard, accessibilité (axe-core)
 ```
 
-La CI rejoue les deux à chaque push, plus `npm audit`. Une PR est fusionnée quand elle passe la CI et qu'elle est relue.
+La CI rejoue les trois à chaque push, plus `npm audit`. La suite envoie aussi des corps malformés à toutes les routes publiques et du staff : aucune ne doit répondre 500. Une PR est fusionnée quand elle passe la CI et qu'elle est relue.
 
 Règles du dépôt :
 
