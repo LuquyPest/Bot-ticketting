@@ -44,6 +44,7 @@ const PAGES = [
   ['settings-modeles-taches', '/settings?tab=catalogue', 'Nouveau modèle de tâches'],
   ['planning', '/planning', 'Préparer le poste de Léa'],
   ['couts', '/couts', 'Acme'],
+  ['tableaux', '/tableaux', 'Ouverts sans attribution'],
   ['problemes', '/problemes/1', 'Commander 50 licences de plus'],
   ['changements', '/changements/1', 'Ta validation est demandée'],
   ['ticket-changement', '/tickets/1', 'Migration de la base de données', false, true],

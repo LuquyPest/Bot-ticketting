@@ -6159,6 +6159,45 @@ async function main() {
     await db('UPDATE guild_config SET kb_public = ? WHERE id = 1', [kb0.kb_public]);
   }
 
+  // ── Dashboards and widgets (utils/dashboards.js, v5.6) ──
+  {
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe tableaux', members: [U.S1] } })).body.find(t => t.name === 'Équipe tableaux');
+    const mkT = async (extra = {}) => (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, team_id, visibility_grade_id, created_at, closed_at) VALUES ('200000000000000077', 'tb', ?, ?, 'Tableaux', ?, ?, ?, ?, ?)`,
+      [`db-tb-${Math.random().toString(36).slice(2, 8)}`, extra.status || 'open', extra.priority || 'normal', team.id, extra.vis ?? null, extra.created || new Date(), extra.closed || null])).insertId;
+    const a = await mkT({ priority: 'urgent' }), b = await mkT(), c = await mkT({ status: 'closed', closed: new Date() }), conf = await mkT({ vis: -1 });
+    await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [b, U.S1]);
+    await db("INSERT INTO ticket_ratings (ticket_id, owner_id, rating) VALUES (?, '200000000000000077', 5), (?, '200000000000000077', 2)", [c, b]);
+    const W = (kind, extra = {}) => ({ kind, filters: { team: team.id, days: 7 }, ...extra });
+    r = await req('POST', '/api/dashboards/data', { sid: sessions.S1, body: { widgets: [W('count', { metric: 'open' }), W('count', { metric: 'unassigned' }), W('count', { metric: 'mine' }), W('count', { metric: 'closed' }),
+      W('count', { metric: 'open', filters: { team: team.id, priority: 'urgent', days: 7 } }), W('chart'), W('list', { limit: 5 }), W('satisfaction'), W('nope')] } });
+    const d = r.body.data || [];
+    check('tableaux: compteurs filtrés, à travers la visibilité (pas le confidentiel)', d[0]?.count === 2 && d[1]?.count === 1 && d[2]?.count === 1 && d[3]?.count === 1 && d[4]?.count === 1, JSON.stringify(d.slice(0, 5)));
+    r = await req('POST', '/api/dashboards/data', { sid: sessions.F, body: { widgets: [W('count', { metric: 'open' })] } });
+    check('tableaux: un fondateur compte aussi le confidentiel', r.body.data[0].count === 3, JSON.stringify(r.body.data));
+    check('tableaux: courbe créés / fermés par jour', d[5]?.days?.length === 7 && d[5].days[6].created >= 3 && d[5].days[6].closed === 1, JSON.stringify(d[5]?.days?.slice(-1)));
+    check('tableaux: liste (urgent d abord), satisfaction', d[6]?.tickets?.[0]?.id === a && !d[6].tickets.some(t => t.id === conf) && d[7]?.count === 2 && d[7].average === 3.5 && d[7].distribution[4] === 1, JSON.stringify([d[6]?.tickets?.map(t => t.id), d[7]]));
+    check('tableaux: widget inconnu signalé', !!d[8]?.error, JSON.stringify(d[8]));
+    // Boards: personal, shared with a team
+    r = await req('POST', '/api/dashboards', { sid: sessions.S2, body: { name: 'Hors équipe', sharing: 'team', teamId: team.id, widgets: [] } });
+    check('tableaux: on ne partage qu avec une équipe dont on fait partie', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/dashboards', { sid: sessions.S1, body: { name: 'Équipe tableaux', sharing: 'team', teamId: team.id, widgets: [W('count', { metric: 'open' }), W('chart')] } });
+    const bid = r.body.id;
+    check('tableaux: tableau partagé avec l équipe', r.status === 200 && r.body.boards.find(x => x.id === bid)?.widgets.length === 2, JSON.stringify(r.body).slice(0, 200));
+    r = await req('POST', '/api/dashboards', { sid: sessions.S1, body: { name: 'Mon tableau', widgets: [W('count', { metric: 'mine' })] } });
+    const mine = r.body.id;
+    await db('INSERT INTO team_members (team_id, user_id) VALUES (?, ?)', [team.id, U.S3]);
+    r = await req('GET', '/api/dashboards', { sid: sessions.S3 });
+    check('tableaux: un membre voit le tableau de l équipe, pas le personnel', r.body.boards.some(x => x.id === bid && !x.mine) && !r.body.boards.some(x => x.id === mine), JSON.stringify(r.body.boards.map(x => x.id)));
+    r = await req('PUT', `/api/dashboards/${bid}`, { sid: sessions.S3, body: { name: 'Pris', widgets: [] } });
+    check('tableaux: seul son auteur le modifie', r.status === 404, r.status);
+    r = await req('POST', '/api/dashboards', { sid: sessions.S1, body: { name: 'x', widgets: [{ kind: 'count', metric: 'salaires' }] } });
+    check('tableaux: compteur inconnu refusé', r.status === 400, JSON.stringify(r.body));
+    await req('DELETE', `/api/dashboards/${bid}`, { sid: sessions.S1 });
+    await req('DELETE', `/api/dashboards/${mine}`, { sid: sessions.S1 });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[a, b, c, conf]]);
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
