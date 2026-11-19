@@ -13,10 +13,12 @@ export default function TasksPanel({ ticketId, staff = [], canEdit, panelCard })
   const [templates, setTemplates] = useState([]);
   const [title, setTitle] = useState('');
   const [assignee, setAssignee] = useState('');
-  const load = () => api.get(`/tickets/${ticketId}/tasks`).then(r => setData(r.data)).catch(() => setData(false));
-  useEffect(() => { load(); api.get('/task-templates').then(r => setTemplates(r.data.templates || [])).catch(() => {}); }, [ticketId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A missing or odd answer (older server, demo) shows nothing rather than breaking the ticket view
+  const ok = d => (Array.isArray(d?.tasks) ? { tasks: d.tasks, progress: d.progress || { total: 0, done: 0 } } : false);
+  const load = () => api.get(`/tickets/${ticketId}/tasks`).then(r => setData(ok(r.data))).catch(() => setData(false));
+  useEffect(() => { load(); api.get('/task-templates').then(r => setTemplates(Array.isArray(r.data?.templates) ? r.data.templates : [])).catch(() => {}); }, [ticketId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!data) return null;
-  const act = async p => { try { setData((await p).data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
+  const act = async p => { try { const d = ok((await p).data); if (d) setData(d); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
   const add = () => act(api.post(`/tickets/${ticketId}/tasks`, { title, assigneeId: assignee || null })).then(() => { setTitle(''); setAssignee(''); });
   const next = { todo: 'done', done: 'todo', na: 'todo' };
   if (!data.tasks.length && !canEdit) return null;
