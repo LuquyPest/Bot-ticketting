@@ -31,6 +31,19 @@ Wait a minute or two. Otherwise: `docker compose restart bot`.
 **Channels of restricted tickets stay visible**
 The bot lacks the **Manage Roles** permission: **Server health** reports it. Re-invite it or give it the permission.
 
+## Checking Discord
+
+**Instance → Health → Discord servers** reviews every server of the instance, read-only: its state (active, pending, suspended, and why), then for the active ones the problems of their **Server health** page: missing bot permissions, configured channels, categories and roles that no longer exist, full categories, and published **panels** whose channel or message is gone or where the bot can no longer write. **Check** runs it all again.
+
+This diagnostic does not replace a real try. After a major update or a change on the server, go through this round, with a test account that is not staff:
+
+1. **Panel**: click a button of a published panel → the form opens, the ticket is created (channel, thread or DM depending on the mode).
+2. **DM**: write to the bot privately → it offers the subjects, then opens the ticket.
+3. **Staff reply** from the dashboard → the member receives it (channel or DM); their answer comes back in the dashboard.
+4. **Grade or confidential ticket** → the channel is visible to the right roles only.
+5. **Closing** → transcript in the log channel, rating request to the member, channel deleted or archived.
+6. **Commands** `/ticket` and `/close` in a ticket.
+
 ## Dashboard
 
 **I see neither the Instance section nor « Invite the bot »**

@@ -268,6 +268,42 @@ function RestoreCard() {
   );
 }
 
+// Instance → Santé → Serveurs Discord (v6): each server's status and the problems of its
+// « Santé du serveur » page (permissions, channels, categories, roles, panels)
+const STATUS_LABEL = { active: 'actif', pending: 'en attente', suspended: 'suspendu' };
+function DiscordServersCard() {
+  const [d, setD] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => { setBusy(true); api.get('/instance/discord-health').then(r => setD(r.data)).catch(() => setD(false)).finally(() => setBusy(false)); };
+  useEffect(load, []);
+  if (d === false) return null;
+  return (
+    <div className={card}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <h2 className="text-sm font-semibold text-ink-1">Serveurs Discord</h2>
+        <button type="button" onClick={load} disabled={busy} className="text-xs px-2.5 py-1 rounded-lg border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">{busy ? 'Vérification…' : 'Vérifier'}</button>
+      </div>
+      <p className="text-[11px] text-ink-3 mb-3">Permissions du bot, salons, catégories, rôles et panels de chaque serveur, en lecture seule. Le détail est sur la page « Santé du serveur » de chaque espace.</p>
+      {!d ? <p className="text-xs text-ink-3">Vérification…</p> : (
+        <ul className="space-y-1.5 text-xs">
+          {d.guilds.map(g => (
+            <li key={g.guildId} className="bg-overlay/3 rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-ink-2 truncate">{g.name || g.guildId}</span>
+                {g.discord === false ? <span className="text-ink-4">sans Discord</span>
+                  : g.status !== 'active' ? <State warn label={STATUS_LABEL[g.status] || g.status} />
+                  : g.problems.length ? <State warn label={`${g.problems.length} problème(s)`} /> : <State ok label="OK" />}
+              </div>
+              {g.status !== 'active' && g.reason && <p className="text-[11px] text-ink-4 mt-1">{`Raison : ${g.reason}`}</p>}
+              {g.problems.length > 0 && <ul className="mt-1 list-disc list-inside text-[11px] text-amber-400">{g.problems.slice(0, 6).map(p => <li key={p.id}>{p.text}</li>)}</ul>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function Health() {
   const [h, setH] = useState(null);
   const load = useCallback(() => {
@@ -368,6 +404,8 @@ export default function Health() {
       <BackupsCard b={h.backups} />
 
       <RestoreCard />
+
+      <DiscordServersCard />
 
       <div className={card}>
         <h2 className="text-sm font-semibold text-ink-1 mb-1">Schéma des bases</h2>

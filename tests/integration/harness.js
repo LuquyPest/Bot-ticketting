@@ -3510,6 +3510,11 @@ async function main() {
     r = await req('GET', '/api/instance/health', { sid: sessions.NOWN });
     check('santé: réservée au propriétaire', r.status === 403, r.status);
     r = await req('GET', '/api/instance/health', { sid: sessions.OWN });
+    {
+      const dh = await req('GET', '/api/instance/discord-health', { sid: sessions.OWN });
+      const dhNo = await req('GET', '/api/instance/discord-health', { sid: sessions.S1 });
+      check('diagnostic Discord: tous les serveurs de l instance, réservé au propriétaire', dh.status === 200 && Array.isArray(dh.body.guilds) && dh.body.guilds.some(g => g.guildId === G && Array.isArray(g.problems)) && dhNo.status === 403, JSON.stringify([dh.status, (dh.body.guilds || []).length, dhNo.status]));
+    }
     check('santé: connexions des pools (limites par défaut 20 et 10, en cours, en attente)', r.body.database?.pools?.global?.limit === 20 && r.body.database.pools.tenants.limit === 10 && r.body.database.pools.global.open >= 1 && r.body.database.pools.tenants.pools >= 1 && Number.isInteger(r.body.database.pools.tenants.waiting), JSON.stringify(r.body.database));
     const tm2 = app('./utils/tenantMigrations');
     check('santé: base et Redis joignables', r.status === 200 && r.body.database.ok && r.body.redis.ok && typeof r.body.process.uptimeS === 'number', JSON.stringify([r.body.database, r.body.redis]));
@@ -7235,6 +7240,16 @@ async function main() {
     check('santé: salon de logs sans droit d écrire détecté', /Envoyer des messages/.test(rep.channels.find(c => c.field === 'close_log_channel_id')?.problem || ''), JSON.stringify(rep.channels));
     check('santé: rôle support supprimé détecté', ids.includes('role:800000000000000077') && !ids.includes('role:800000000000000001'), JSON.stringify(ids));
     check('santé: remplissage de la catégorie', rep.categories[0]?.count === 50 && rep.categories[0]?.limit === 50, JSON.stringify(rep.categories));
+    // Published panels (v6): channel gone, channel the bot cannot write in, message deleted
+    const PCH = '950000000000000003';
+    hc.set(PCH, { id: PCH, name: 'support', type: 0, isTextBased: () => true, permissionsFor: () => perms(ALL), messages: { fetch: async () => { throw new Error('Unknown Message'); } } });
+    const pIds = [];
+    for (const [name, ch] of [['Panel parti', GONE], ['Panel muet', LOG], ['Panel effacé', PCH]]) pIds.push((await db("INSERT INTO ticket_panels (name, channel_id, message_id) VALUES (?, ?, '950000000000000099')", [name, ch])).insertId);
+    const repP = await health.checkGuildHealth(db, hClient, G);
+    const pp = Object.fromEntries((repP.panels || []).map(x => [x.name, x.problem]));
+    check('santé: panels publiés vérifiés (salon supprimé, bot sans droit d écrire, message supprimé)', pp['Panel parti'] === 'Salon supprimé' && pp['Panel muet'] === 'Le bot ne peut plus y écrire' && /Message du panel supprimé/.test(pp['Panel effacé'] || '')
+      && pIds.every(id => repP.problems.some(x => x.id.startsWith(`panel:${id}:`))), JSON.stringify(repP.panels.filter(x => pIds.includes(x.id))));
+    await db('DELETE FROM ticket_panels WHERE id IN (?)', [pIds]); hc.delete(PCH);
     await redis.del(`health:problems:${G}`);
     const fresh1 = await health.alertNewProblems(db, hClient, G, 'Test', rep);
     const dmsAfter1 = healthDms.length;

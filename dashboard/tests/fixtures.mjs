@@ -227,6 +227,10 @@ export const MOCK = {
     perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, staff: 5, opened30d: 50, avgRating: 4.5 }] },
   '/api/instance/guilds': [{ guild_id: '9123456789012345678', guild_name: 'Support e-mail', guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: null, discord: 0, created_at: iso(60) }, { guild_id: '1', guild_name: 'Sunset FA', discord: 1, guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: 1200, created_at: iso(60 * 24 * 30) }],
   '/api/instance/blocked': { ips: [] },
+  '/api/instance/discord-health': { checkedAt: new Date().toISOString(), discordConnected: true, guilds: [
+    { guildId: '123456789012345678', name: 'Daryu', status: 'active', discord: true, botInGuild: true, problems: [{ id: 'perm:ManageRoles', text: 'Permission manquante : Gérer les rôles' }], panels: 1 },
+    { guildId: '223456789012345678', name: 'Serveur en attente', status: 'pending', discord: true, problems: [] },
+    { guildId: '323456789012345678', name: 'Espace e-mail', status: 'active', discord: false, problems: [] }] },
   '/api/instance/health': {
     now: Date.now(), discord: { ok: true, status: 'prêt', pingMs: 42, guilds: 2, user: 'Ticket Bot#0001' },
     database: { ok: true, ms: 2, pools: { global: { limit: 20, open: 4, idle: 3, waiting: 0 }, tenants: { pools: 2, limit: 10, open: 6, idle: 5, waiting: 0, busiest: null } } }, redis: { ok: true, ms: 1 },
