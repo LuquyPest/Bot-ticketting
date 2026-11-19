@@ -10,16 +10,16 @@ const TRIGGERS = [['created', 'Un ticket est ouvert'], ['member_reply', 'Le dema
 const BASES = [['created', 'l\'ouverture'], ['stage', 'le dernier changement de statut'], ['last_member', 'le dernier message du demandeur'], ['last_staff', 'la dernière réponse du staff'],
   ['last_activity', 'la dernière activité'], ['tto_due', 'l\'échéance de prise en charge'], ['ttr_due', 'l\'échéance de résolution']];
 const FIELDS = [['channel', 'Canal'], ['address', 'Adresse de réception'], ['type', 'Type'], ['subject', 'Sujet'], ['text', 'Mots dans le message'], ['requester', 'Demandeur'],
-  ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation']];
+  ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation'], ['customField', 'Champ personnalisé']];
 const ACTIONS = [['priority', 'Priorité'], ['urgency', 'Urgence'], ['impact', 'Impact'], ['type', 'Type'], ['subject', 'Sujet'], ['team', 'Équipe'], ['assign', 'Attribuer à'],
   ['tagAdd', 'Ajouter le tag'], ['tagRemove', 'Retirer le tag'], ['stage', 'Statut'], ['grade', 'Restreindre au grade'], ['follower', 'Observateur'], ['notify', 'Prévenir'],
-  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
+  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
 const CHOICES = {
   channel: [['discord', 'Discord'], ['email', 'E-mail'], ['web', 'Web']], type: [['incident', 'Incident'], ['request', 'Demande']],
   priority: [['low', 'Basse'], ['normal', 'Normale'], ['urgent', 'Urgente']], hours: [['open', 'Support ouvert'], ['closed', 'Support fermé']],
   language: [['fr', 'Français'], ['en', 'English'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'], ['pt', 'Português']],
 };
-const FREE = { text: 'remboursement, carte refusée', requester: '@client.fr, Paul', address: 'support@exemple.fr' };
+const FREE = { customField: 'valeur, autre valeur', text: 'remboursement, carte refusée', requester: '@client.fr, Paul', address: 'support@exemple.fr' };
 
 function Chips({ options, value, onChange, single = false, label }) {
   return (
@@ -40,6 +40,11 @@ function ConditionRow({ c, ctx, onChange, onRemove }) {
       <select value={c.field} onChange={e => onChange({ field: e.target.value, not: false, values: [] })} aria-label="Champ de la condition" className={INPUT}>
         {FIELDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
+      {c.field === 'customField' && (
+        <select value={c.fieldId ?? ''} onChange={e => onChange({ ...c, fieldId: e.target.value ? Number(e.target.value) : '' })} aria-label="Champ personnalisé" className={INPUT}>
+          <option value="">—</option>{(ctx.fields || []).map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+        </select>
+      )}
       <select value={c.not ? 'not' : 'is'} onChange={e => onChange({ ...c, not: e.target.value === 'not' })} aria-label="Sens de la condition" className={INPUT}>
         <option value="is">{c.field === 'text' ? 'contient' : 'est'}</option><option value="not">{c.field === 'text' ? 'ne contient pas' : 'n\'est pas'}</option>
       </select>
@@ -69,6 +74,7 @@ function ActionRow({ a, ctx, onChange, onRemove }) {
     case 'stage': input = sel(ctx.stages.map(s => [s.key, s.label]), 'Statut'); break;
     case 'grade': input = sel(ctx.grades.map(g => [g.id, g.name]), 'Grade'); break;
     case 'tasks': input = sel((ctx.taskTemplates || []).map(t => [t.id, t.name]), 'Modèle de tâches'); break;
+    case 'sla': input = sel((ctx.slaPolicies || []).map(p => [p.id, p.name]), 'Objectif SLA'); break;
     case 'follower': case 'notify': input = <Chips options={ctx.staff.map(s => [s.user_id, s.username])} value={Array.isArray(a.value) ? a.value : []} onChange={set} label="Personnes" />; break;
     case 'reply': case 'note': input = <textarea value={a.value || ''} onChange={e => set(e.target.value)} maxLength={2000} rows={2} aria-label="Texte" placeholder={a.type === 'reply' ? 'Bonjour, nous avons bien reçu ta demande…' : 'À traiter avant midi'} className={`${INPUT} flex-1 min-w-60`} />; break;
     default: input = null;
@@ -107,7 +113,7 @@ function TimerFields({ timer, onChange }) {
 }
 
 // Numbers stay numbers for the server (ids, levels)
-const NUMERIC = ['urgency', 'impact', 'team', 'tagAdd', 'tagRemove', 'grade', 'tasks'];
+const NUMERIC = ['urgency', 'impact', 'team', 'tagAdd', 'tagRemove', 'grade', 'tasks', 'sla'];
 const bodyOf = r => ({
   name: r.name, triggers: r.triggers, match: r.match, stop: r.stop, active: r.active, conditions: r.conditions, timer: r.triggers.includes('time') ? r.timer : null,
   actions: r.actions.map(a => (NUMERIC.includes(a.type) && a.value !== '' ? { ...a, value: Number(a.value) } : a)),
@@ -182,8 +188,8 @@ export default function RulesEditor() {
   const { stages } = useStages();
   useEffect(() => {
     api.get('/rules').then(r => setList(r.data)).catch(() => setList(false));
-    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/tickets/staff'), api.get('/grades'), api.get('/organizations'), api.get('/task-templates')].map(p => p.catch(() => ({ data: null }))))
-      .then(([o, t, s, g, org, tt]) => setCtx(c => ({ ...c, taskTemplates: tt.data?.templates || [], subjects: o.data?.subjects || [], tags: o.data?.tags || [], teams: t.data || [], staff: s.data || [], grades: Array.isArray(g.data) ? g.data : [], orgs: Array.isArray(org.data) ? org.data : [] })));
+    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/tickets/staff'), api.get('/grades'), api.get('/organizations'), api.get('/task-templates'), api.get('/fields'), api.get('/sla-policies')].map(p => p.catch(() => ({ data: null }))))
+      .then(([o, t, s, g, org, tt, fl, sp]) => setCtx(c => ({ ...c, taskTemplates: tt.data?.templates || [], fields: Array.isArray(fl.data) ? fl.data : [], slaPolicies: sp.data?.policies || [], subjects: o.data?.subjects || [], tags: o.data?.tags || [], teams: t.data || [], staff: s.data || [], grades: Array.isArray(g.data) ? g.data : [], orgs: Array.isArray(org.data) ? org.data : [] })));
   }, []);
   const full = { ...ctx, stages: stages || [] };
   if (list === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;

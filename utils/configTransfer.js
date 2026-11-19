@@ -70,12 +70,19 @@ async function exportConfig(db) {
 const PERSONAL = ['assign', 'follower', 'notify'];
 async function exportRules(db, { tagName, gradeName, stageLabel }) {
   const teamName = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.id, t.name]));
+  // v6: organisations, custom fields and SLA objectives by name (ids differ from one space to another)
+  const orgName = new Map((await db('SELECT id, name FROM organizations').catch(() => [])).map(o => [o.id, o.name]));
+  const fieldLabel = new Map((await db('SELECT id, label FROM ticket_fields').catch(() => [])).map(f => [f.id, f.label]));
+  const slaName = new Map((await db('SELECT id, name FROM sla_policies').catch(() => [])).map(p => [p.id, p.name]));
   const stage = v => stageLabel.get(v) ? { stageLabel: stageLabel.get(v) } : { value: v };
   return (await require('./ruleEngine').listRules(db)).filter(r => r.origin !== 'subject').map(r => ({
     name: r.name, active: r.active, triggers: r.triggers, timer: r.timer, match: r.match, stop: r.stop,
     conditions: r.conditions.map(c => (c.field === 'tag' ? { ...c, values: c.values.map(id => tagName.get(Number(id))).filter(Boolean) }
-      : c.field === 'stage' ? { ...c, values: c.values.map(v => stageLabel.get(v) || v) } : c)),
+      : c.field === 'stage' ? { ...c, values: c.values.map(v => stageLabel.get(v) || v) }
+        : c.field === 'organization' ? { ...c, values: c.values.map(id => orgName.get(Number(id))).filter(Boolean) }
+          : c.field === 'customField' ? { field: c.field, not: c.not, fieldLabel: fieldLabel.get(Number(c.fieldId)) || null, values: c.values } : c)).filter(c => c.field !== 'customField' || c.fieldLabel),
     actions: r.actions.filter(a => !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagName.get(a.value) || null }
+      : a.type === 'sla' ? { type: a.type, value: slaName.get(a.value) || null }
       : a.type === 'team' ? { type: a.type, value: teamName.get(a.value) || null } : a.type === 'grade' ? { type: a.type, value: gradeName.get(a.value) || null }
         : a.type === 'stage' ? { type: a.type, ...stage(a.value) } : a)).filter(a => a.value !== null),
   }));
@@ -254,12 +261,19 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
   const engine = require('./ruleEngine');
   const teamIdOf = new Map((await db('SELECT id, name FROM teams').catch(() => [])).map(t => [t.name, t.id]));
   const stageKeyOf = new Map((await db('SELECT id, label FROM ticket_stages').catch(() => [])).map(x => [x.label.toLowerCase(), `s_${x.id}`]));
+  const orgIdOf = new Map((await db('SELECT id, name FROM organizations').catch(() => [])).map(o => [o.name, o.id]));
+  const fieldIdOf = new Map((await db('SELECT id, label FROM ticket_fields').catch(() => [])).map(f => [f.label, f.id]));
+  const slaIdOf = new Map((await db('SELECT id, name FROM sla_policies').catch(() => [])).map(p => [p.name, p.id]));
   for (const r of Array.isArray(data.rules) ? data.rules.slice(0, engine.MAX_RULES || 100) : []) {
     if (!r || typeof r !== 'object' || !str(r.name, 80)) continue;
     const conditions = (Array.isArray(r.conditions) ? r.conditions : []).map(c => (c?.field === 'tag' ? { ...c, values: (c.values || []).map(n => tagId.get(n)).filter(Boolean) }
-      : c?.field === 'stage' ? { ...c, values: (c.values || []).map(v => stageKeyOf.get(String(v).toLowerCase()) || v) } : c)).filter(c => !Array.isArray(c?.values) || c.values.length);
+      : c?.field === 'stage' ? { ...c, values: (c.values || []).map(v => stageKeyOf.get(String(v).toLowerCase()) || v) }
+        : c?.field === 'organization' ? { ...c, values: (c.values || []).map(n => orgIdOf.get(n)).filter(Boolean) }
+          : c?.field === 'customField' ? (fieldIdOf.has(c.fieldLabel) ? { field: c.field, not: !!c.not, fieldId: fieldIdOf.get(c.fieldLabel), values: c.values || [] } : null) : c))
+      .filter(c => c && (!Array.isArray(c.values) || c.values.length));
     const actions = (Array.isArray(r.actions) ? r.actions : []).filter(a => a && !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagId.get(a.value) }
       : a.type === 'team' ? { type: a.type, value: teamIdOf.get(a.value) } : a.type === 'grade' ? { type: a.type, value: gradeId.get(a.value) }
+        : a.type === 'sla' ? { type: a.type, value: slaIdOf.get(a.value) }
         : a.type === 'stage' ? { type: a.type, value: a.stageLabel ? stageKeyOf.get(String(a.stageLabel).toLowerCase()) : a.value } : a)).filter(a => a.value !== undefined && a.value !== null);
     const [row] = await db("SELECT id FROM ticket_rules WHERE name = ? AND (origin IS NULL OR origin <> 'subject')", [str(r.name, 80)]);
     const res = await engine.saveRule(db, row?.id || null, { ...r, conditions, actions }, { canGrade: true });

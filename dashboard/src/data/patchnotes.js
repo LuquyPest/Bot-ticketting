@@ -25,6 +25,7 @@ export const VERSIONS = [
     changes: [
       { type: 'new',  text: 'Images dans les articles de la base de connaissances : envoyées depuis l\'éditeur (PNG, JPEG, GIF, WebP), affichées selon la visibilité de l\'article, en lien dans les MP Discord ; aucune image extérieure affichée', en: 'Images in knowledge base articles: uploaded from the editor (PNG, JPEG, GIF, WebP), shown according to the article\'s visibility, as a link in Discord DMs; no outside image shown' },
       { type: 'fix',  text: 'Fichiers envoyés (réponses du staff, espace membre, widget, API, e-mails reçus par webhook) : les noms avec accents ne sont plus abîmés (« écran » au lieu de « Ã©cran »)', en: 'Uploaded files (staff replies, member space, widget, API, e-mails received by webhook): names with accents are no longer garbled' },
+      { type: 'new',  text: 'Règles : condition sur un champ personnalisé, action « objectif SLA » (gardé par le ticket au lieu du choix automatique) ; l\'export de configuration reprend organisations, champs et objectifs par leur nom', en: 'Rules: condition on a custom field, « SLA objective » action (kept by the ticket instead of the automatic choice); the configuration export carries organisations, fields and objectives by name' },
     ],
   },
   {

@@ -5361,6 +5361,32 @@ async function main() {
     r = await app('./utils/configTransfer').importConfig(db, { format: r.body.format, version: r.body.version, rules: [exported] }, { applyConfig: async () => ({ ok: true }) });
     const back = (await E.listRules(db)).find(x => x.name === 'Bavarde 0');
     check('règles: importées avec leurs tags', !!back && back.conditions[0].values[0] === tagV && back.actions[0].value === tagV, JSON.stringify(back));
+    // v6: condition on a custom field, action « SLA objective » (kept by later recalculations)
+    {
+      const fV = (await db("INSERT INTO ticket_fields (label, type, required) VALUES ('Niveau de contrat RV6', 'text', 0)")).insertId;
+      const pA = (await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Contrat or RV6', ttoMinutes: 30, ttrMinutes: 240, businessHours: false, conditions: { priorities: ['low'] } } })).body.policies?.find(p => p.name === 'Contrat or RV6');
+      r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['created'], conditions: [{ field: 'customField', fieldId: 999999, values: ['Or'] }], actions: [{ type: 'priority', value: 'low' }] } });
+      const rBad = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'x', triggers: ['created'], actions: [{ type: 'sla', value: 999999 }] } });
+      check('règles v6: champ personnalisé ou objectif SLA inconnus refusés', r.status === 400 && rBad.status === 400, JSON.stringify([r.body, rBad.body]));
+      r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Contrat or RV6', triggers: ['created'], conditions: [{ field: 'customField', fieldId: fV, values: ['Or', 'Platine'] }], actions: [{ type: 'sla', value: pA.id }] } });
+      const ruleV6 = r.body.rules?.find(x => x.name === 'Contrat or RV6');
+      check('règles v6: règle enregistrée avec la condition sur le champ', r.status === 200 && ruleV6?.conditions[0].fieldId === fV && ruleV6.actions[0].value === pA.id, JSON.stringify(r.body).slice(0, 300));
+      const mkV = async val => { const id = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority) VALUES ('200000000000000093', 'u93', ?, 'open', 'Contrat RV6', 'normal')", [`rv6-${crypto.randomBytes(4).toString('hex')}`])).insertId; if (val) await db('INSERT INTO ticket_field_values (ticket_id, field_id, value) VALUES (?, ?, ?)', [id, fV, val]); return id; };
+      const tGold = await mkV('or'), tNone = await mkV('Bronze');
+      for (const id of [tGold, tNone]) await app('./utils/ruleEngine').runRules({ db, client: fakeClient, guildId: G, ticketId: id, trigger: 'created' });
+      const [gG] = await db('SELECT sla_policy_id, sla_forced, tto_due_at, created_at FROM tickets WHERE id = ?', [tGold]);
+      const [gN] = await db('SELECT sla_policy_id, sla_forced FROM tickets WHERE id = ?', [tNone]);
+      check('règles v6: valeur du champ (casse ignorée) → objectif SLA choisi, échéances calculées ; autre valeur → rien', gG.sla_policy_id === pA.id && Number(gG.sla_forced) === 1 && Math.abs(new Date(gG.tto_due_at) - (new Date(gG.created_at).getTime() + 30 * 60e3)) < 2000
+        && Number(gN.sla_forced) === 0 && gN.sla_policy_id !== pA.id, JSON.stringify([gG, gN]));
+      await app('./utils/slaPolicies').refreshSla(db, tGold);
+      const [gG2] = await db('SELECT sla_policy_id FROM tickets WHERE id = ?', [tGold]);
+      check('règles v6: l objectif choisi par la règle reste après un nouveau calcul', gG2.sla_policy_id === pA.id, JSON.stringify(gG2));
+      const ex = await app('./utils/configTransfer').exportConfig?.(db).catch(() => null);
+      const exRule = ex?.rules?.find(x => x.name === 'Contrat or RV6');
+      check('règles v6: export par noms (champ, objectif SLA)', (exRule?.conditions[0].fieldLabel === 'Niveau de contrat RV6' && exRule.actions[0].value === 'Contrat or RV6' && exRule.conditions[0].fieldId === undefined), JSON.stringify(exRule));
+      await db('DELETE FROM ticket_rules WHERE id = ?', [ruleV6.id]); await db('DELETE FROM tickets WHERE id IN (?, ?)', [tGold, tNone]);
+      await db('DELETE FROM sla_policies WHERE id = ?', [pA.id]); await db('DELETE FROM ticket_fields WHERE id = ?', [fV]);
+    }
     if (back) await db('DELETE FROM ticket_rules WHERE id = ?', [back.id]);
     await db('DELETE FROM tickets WHERE id IN (?)', [[c1.ticket.id, v1.ticket.id, v2.ticket.id]]);
     await db('DELETE FROM ticket_tags WHERE id IN (?)', [[tagF, tagV]]);
