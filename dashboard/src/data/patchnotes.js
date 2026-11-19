@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v6.5.0',
+    date: 'à venir',
+    title: 'Faire connaître',
+    titleEn: 'Getting known',
+    changes: [
+      { type: 'new',  text: 'Guides pas à pas dans la documentation : venir de GLPI, venir de Zendesk ou Freshdesk, mettre en place un SLA, brancher son Active Directory', en: 'Step-by-step guides in the documentation: coming from GLPI, coming from Zendesk or Freshdesk, setting up an SLA, connecting your Active Directory' },
+    ],
+  },
+  {
     version: 'v6.4.0',
     date: 'à venir',
     title: 'Mobile',
