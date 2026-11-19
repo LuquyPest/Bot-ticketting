@@ -69,6 +69,8 @@ const PAGES = [
   ['analytics', '/analytics', 'Analytiques'],
   ['analytics-rapports', '/analytics?tab=reports', 'Sans équipe'],
   ['analytics-programmes', '/analytics?tab=reports', 'Hebdo direction'],
+  ['analytics-enquete', '/analytics?tab=reports', 'taux de réponse 65 %'],
+  ['settings-enquete', '/settings?tab=tickets', 'Ajouter une question'],
   ['tickets-types', '/tickets', 'Tous types'],
   ['settings-types', '/settings', 'Nom des incidents'],
   ['audit', '/audit', "Journal d'activité"],

@@ -458,11 +458,8 @@ function createManager(db, client, guildId) {
       }, { ticketId: ticket.id });
     }
 
-    const { ratingButtons } = require('./components');
-    await sendToMember(client, ticket.owner_id, gid, () => ({
-      embeds: [new EmbedBuilder().setColor(0x6366f1).setDescription(t('rating.ask'))],
-      components: [ratingButtons(ticket.id, gid)],
-    }), { ticketId: ticket.id });
+    // Satisfaction survey (utils/surveys.js): now or after the space's delay, built-in or external
+    await require('./surveys').onClose({ db, client, guildId: gid, ticket }).catch(err => console.error('enquête: fermeture', gid, ticket.id, err.message));
 
     if (cfg.close_log_channel_id) {
       const logCh = await fetchGuildChannel(client, gid, cfg.close_log_channel_id);
@@ -871,6 +868,7 @@ function createManager(db, client, guildId) {
 
   async function saveRating(ticketId, ownerId, closedById, rating, closedByTag) {
     await db('INSERT INTO ticket_ratings (ticket_id, owner_id, closed_by_id, rating) VALUES (?, ?, ?, ?)', [ticketId, ownerId, closedById, rating]);
+    await require('./surveys').markAnswered(db, ticketId);
     await recordEvent(db, { actor: { id: ownerId, tag: ownerId, source: 'discord' }, action: 'ticket_rating', ticketId, details: { rating, staff: closedByTag || null } });
     require('./lowRating').notifyLowRating(db, client, gid, ticketId, rating).catch(() => null);
     if (!closedById) return;

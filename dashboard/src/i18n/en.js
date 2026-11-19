@@ -1050,6 +1050,12 @@ export const TEMPLATES = [
   ['Par priorité', 'By priority'], ['Période libre', 'Custom period'], ['Rapports programmés', 'Scheduled reports'], ['Rapport programmé', 'Report scheduled'],
   ['Supprimer le rapport {}', 'Delete the report {1}'], ['Nom du rapport', 'Report name'], ['Sur', 'Over'], ['{} derniers jours', 'last {1} days'], ['Format', 'Format'], ['Envoi', 'Sending'], ['Chaque lundi', 'Every Monday'],
   ['Le 1er du mois', 'On the 1st of the month'], ['Heure d\'envoi', 'Sending time'], ['chaque semaine', 'every week'], ['chaque mois', 'every month'], ['Rapport programmé enregistré', 'Scheduled report saved'],
+  ['Enquête de satisfaction', 'Satisfaction survey'], ['Ce que le demandeur reçoit quand son ticket est fermé : quand, et quelles questions.', 'What the requester gets when their ticket is closed: when, and which questions.'],
+  ['à la fermeture', 'at the closing'], ['1 h après', '1 h after'], ['4 h après', '4 h after'], ['1 jour après', '1 day after'], ['3 jours après', '3 days after'], ['1 semaine après', '1 week after'], ['Enquête', 'Survey'], ['Celle de Datick', 'Datick\'s own'],
+  ['Un lien vers mon outil', 'A link to my tool'], ['Adresse de l\'enquête externe', 'External survey address'], ['La note sur 5 et un commentaire, plus jusqu\'à 5 questions :', 'The rating out of 5 and a comment, plus up to 5 questions:'], ['Question {}', 'Question {1}'],
+  ['Type de la question {}', 'Type of question {1}'], ['Note sur 5', 'Rating out of 5'], ['Oui / non', 'Yes / no'], ['Retirer la question {}', 'Remove question {1}'], ['Ajouter une question', 'Add a question'], ['Enregistrer l\'enquête', 'Save the survey'], ['Enquête enregistrée', 'Survey saved'],
+  ['Enquête de satisfaction (30 jours)', 'Satisfaction survey (30 days)'], ['{} réponse(s) sur {} enquête(s) envoyée(s) · taux de réponse {} %', '{1} answer(s) out of {2} survey(s) sent · response rate {3} %'], ['{} : {} / 5', '{1}: {2} / 5'], ['{} : {} % de oui', '{1}: {2} % yes'],
+  ['{} : {} réponse(s)', '{1}: {2} answer(s)'], ['Enquête de satisfaction modifiée', 'Satisfaction survey changed'],
   ['Service du catalogue supprimé', 'Catalogue service deleted'],
   ['Responsable côté client : voit les tickets de l\'organisation dans l\'espace membre', 'Client-side manager: sees the organisation\'s tickets in the member space'], ['Responsable côté client (portail)', 'Client-side manager (portal)'], ['Organisation d\'un contact changée', 'Contact\'s organisation changed'], ['Organisations importées', 'Organisations imported']
 ];

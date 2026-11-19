@@ -6245,6 +6245,48 @@ async function main() {
     await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
   }
 
+  // ── Satisfaction survey: delay, questions, external link, response rate (utils/surveys.js, v5.6) ──
+  {
+    const SV = app('./utils/surveys');
+    r = await req('GET', '/api/surveys/settings', { sid: sessions.F });
+    check('enquête: par défaut, à la fermeture et intégrée (comme avant)', r.body.delayMinutes === 0 && r.body.mode === 'builtin', JSON.stringify(r.body));
+    r = await req('PUT', '/api/surveys/settings', { sid: sessions.F, body: { mode: 'external', externalUrl: 'http://enquete.example.com' } });
+    check('enquête: lien externe en https', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/surveys/settings', { sid: sessions.F, body: { delayMinutes: 60, mode: 'builtin', questions: [{ label: 'Le délai vous a-t-il convenu ?', type: 'yesno' }, { label: 'Clarté des réponses', type: 'rating' }, { label: 'Une suggestion ?', type: 'text' }] } });
+    check('enquête: délai et questions enregistrés', r.status === 200 && r.body.delayMinutes === 60 && r.body.questions.length === 3 && r.body.questions[1].id === 'q2', JSON.stringify(r.body));
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, closed_at) VALUES ('200000000000000080', 'sv', 'db-sv', 'closed', 'Enquête', NOW())")).insertId;
+    await SV.onClose({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [tk]))[0] });
+    const [rq] = await db('SELECT * FROM survey_requests WHERE ticket_id = ?', [tk]);
+    check('enquête: différée (pas encore envoyée)', rq && !rq.sent_at && !!rq.pending_token, JSON.stringify(rq));
+    check('enquête: rien avant l heure', await SV.runForGuild({ db, client: fakeClient, guildId: G }) === 0, '');
+    const token = `${G}.${rq.pending_token}`;
+    await db('UPDATE survey_requests SET send_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [rq.id]);
+    memberDms.length = 0;
+    const n = await SV.runForGuild({ db, client: fakeClient, guildId: G });
+    const [rq2] = await db('SELECT sent_at, pending_token FROM survey_requests WHERE id = ?', [rq.id]);
+    check('enquête: envoyée à l heure, le jeton en clair oublié', n === 1 && rq2.sent_at && !rq2.pending_token && memberDms.some(m => m.id === '200000000000000080'), JSON.stringify([n, rq2]));
+    const H = { 'X-Forwarded-For': '203.0.113.81' };
+    r = await req('POST', '/api/survey/link', { headers: H, body: { token } });
+    check('enquête: la page montre le sujet et les questions, pas la conversation', r.status === 200 && r.body.subject === 'Enquête' && r.body.questions.length === 3 && !JSON.stringify(r.body).includes('owner'), JSON.stringify(r.body));
+    r = await req('POST', '/api/survey/answer', { headers: H, body: { token, rating: 9 } });
+    check('enquête: note de 1 à 5', r.status === 400, r.status);
+    r = await req('POST', '/api/survey/answer', { headers: H, body: { token, rating: 4, comment: 'Rapide', answers: { q1: 'yes', q2: 5, q3: 'Un suivi par SMS' } } });
+    const again = await req('POST', '/api/survey/answer', { headers: H, body: { token, rating: 1 } });
+    const [rt] = await db('SELECT rating, comment FROM ticket_ratings WHERE ticket_id = ?', [tk]);
+    check('enquête: réponse enregistrée une seule fois (note, commentaire)', r.status === 200 && again.status === 410 && rt?.rating === 4 && rt.comment === 'Rapide', JSON.stringify([r.body, again.status, rt]));
+    r = await req('GET', '/api/surveys/stats', { sid: sessions.F, query: { days: 7 } });
+    const q = r.body.questions || [];
+    check('enquête: taux de réponse et questions dans les rapports', r.body.sent >= 1 && r.body.answered >= 1 && r.body.ratePct > 0 && q[0]?.yesPct === 100 && q[1]?.average === 5 && q[2]?.last?.[0] === 'Un suivi par SMS', JSON.stringify(r.body));
+    // A rating through the Discord buttons answers the survey too
+    const tk2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, closed_at) VALUES ('200000000000000081', 'sv2', 'db-sv2', 'closed', 'Enquête 2', NOW())")).insertId;
+    await SV.onClose({ db, client: fakeClient, guildId: G, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [tk2]))[0] });
+    await createManager(db, fakeClient, G).saveRating(tk2, '200000000000000081', null, 5, null);
+    check('enquête: une note par les boutons Discord vaut réponse', !!(await db('SELECT answered_at FROM survey_requests WHERE ticket_id = ?', [tk2]))[0].answered_at, '');
+    await req('PUT', '/api/surveys/settings', { sid: sessions.F, body: { delayMinutes: 0, mode: 'builtin', questions: [] } });
+    await db('DELETE FROM survey_requests WHERE ticket_id IN (?)', [[tk, tk2]]); await db('DELETE FROM survey_responses WHERE ticket_id IN (?)', [[tk, tk2]]);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tk, tk2]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

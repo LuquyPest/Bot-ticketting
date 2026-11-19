@@ -22,6 +22,7 @@ import ChatIntegrations from '../components/ChatIntegrations';
 import CatalogEditor from '../components/CatalogEditor';
 import RecurringEditor from '../components/RecurringEditor';
 import TaskTemplatesEditor from '../components/TaskTemplatesEditor';
+import SurveySettings from '../components/SurveySettings';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -693,6 +694,9 @@ export default function Settings() {
       )}
       {tab === 'tickets' && (
         <div role="tabpanel" id="panel-tickets" aria-labelledby="tab-tickets" className="space-y-5">
+      <Section title="Enquête de satisfaction" description="Ce que le demandeur reçoit quand son ticket est fermé : quand, et quelles questions.">
+        <SurveySettings />
+      </Section>
       <Section title={discord ? 'Tickets sur Discord' : 'Délais par étape'} description={discord ? 'Où et sous quelle forme les tickets sont créés sur le serveur Discord, et combien de temps chaque étape peut durer.' : 'Combien de temps chaque étape d\'un ticket peut durer.'}>
         {discord && <>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
