@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Getting known',
     changes: [
       { type: 'new',  text: 'Guides pas à pas dans la documentation : venir de GLPI, venir de Zendesk ou Freshdesk, mettre en place un SLA, brancher son Active Directory', en: 'Step-by-step guides in the documentation: coming from GLPI, coming from Zendesk or Freshdesk, setting up an SLA, connecting your Active Directory' },
+      { type: 'impr', text: 'README et page d\'accueil de la documentation : Datick présenté comme un centre de services complet (pour qui, changer d\'outil)', en: 'README and documentation home page: Datick presented as a complete service desk (who it is for, switching tools)' },
     ],
   },
   {

@@ -1,12 +1,12 @@
 ---
 layout: home
 title: Datick
-titleTemplate: A complete, self-hosted ticketing system
+titleTemplate: A complete, self-hosted service desk
 
 hero:
   name: Datick
-  text: A complete ticketing system.
-  tagline: Discord, e-mail, web form, API — every request becomes a ticket, and your team handles them all from one real-time dashboard. You host it yourself, and it depends on no one. Discord is one channel among others, and it is optional.
+  text: A complete service desk.
+  tagline: E-mail, web form, widget, Discord, API — every request becomes a ticket, with its deadlines, rules, catalogue and knowledge base. The service desk of GLPI, Zendesk or Freshdesk, without the inventory part, installed on your server in twenty minutes.
   image:
     src: /images/dashboard.png
     alt: Datick dashboard
@@ -45,6 +45,10 @@ features:
     details: Free software (AGPL-3.0) on your server — your ways to sign in (Discord, Google, Microsoft, OpenID Connect, LDAP / Active Directory, password), encrypted backups, one-click updates, accessible interface (WCAG 2.1 AA).
     link: /en/instance
     linkText: The Instance section
+  - title: Switch tools without losing anything
+    details: Import from GLPI, Zendesk, Freshdesk, osTicket, Zammad or a CSV (tickets and conversations, contacts, organisations, articles), sign-in and contacts through LDAP / Active Directory, space templates.
+    link: /en/from-glpi
+    linkText: The guides
   - title: Serious security
     details: Enforceable 2FA, encrypted secrets and transcripts, a log of every action, new-device alerts, OWASP audits fixed.
     link: /en/security
