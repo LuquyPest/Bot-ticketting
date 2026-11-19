@@ -6368,6 +6368,30 @@ async function main() {
     r = await imp({ source: 'zammad', kind: 'articles', format: 'json', text: JSON.stringify([{ id: 3, title: 'Réinitialiser son mot de passe', body: '<p>Va dans <b>Profil</b></p>', category: 'Compte' }]) });
     const [ar] = await db("SELECT status, answer, category FROM faq_entries WHERE question = 'Réinitialiser son mot de passe'");
     check('imports: articles en brouillon, sans HTML', r.body.created === 1 && ar?.status === 'draft' && ar.answer === 'Va dans Profil' && ar.category === 'Compte', JSON.stringify(ar));
+    // v6: « update what is already imported »
+    {
+      const glpi2 = 'ID;Titre;Statut;Priorité;Demandeur;Date d\'ouverture;Entité\n502;Accès VPN GLPI;6;Haute;zoe@glpi-test.fr;2026-02-03 11:00;Entité A\n';
+      const [before] = await db("SELECT id, status, priority FROM tickets WHERE subject = 'Accès VPN GLPI'");
+      const notesBefore = (await db('SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id = ?', [before.id]))[0].n;
+      r = await imp({ source: 'glpi', kind: 'tickets', format: 'csv', text: glpi2 });
+      const [still] = await db('SELECT status FROM tickets WHERE id = ?', [before.id]);
+      check('imports v6: sans l option, un ticket déjà importé ne change pas', r.body.updated === 0 && r.body.skipped === 1 && still.status === before.status, JSON.stringify(r.body));
+      r = await imp({ source: 'glpi', kind: 'tickets', format: 'csv', text: glpi2, update: true });
+      const [after] = await db('SELECT status, priority, closed_at FROM tickets WHERE id = ?', [before.id]);
+      const notesAfter = (await db('SELECT COUNT(*) AS n FROM ticket_notes WHERE ticket_id = ?', [before.id]))[0].n;
+      check('imports v6: mise à jour d un ticket → statut et priorité suivent, conversation gardée, pas de doublon', r.body.updated === 1 && r.body.created === 0 && after.status === 'closed' && after.priority === 'urgent' && !!after.closed_at
+        && Number(notesAfter) === Number(notesBefore) && (await db("SELECT COUNT(*) AS n FROM tickets WHERE subject = 'Accès VPN GLPI'"))[0].n == 1, JSON.stringify([r.body, after]));
+      r = await imp({ source: 'glpi', kind: 'tickets', format: 'csv', text: glpi2, update: true });
+      check('imports v6: rien de nouveau → inchangé', r.body.updated === 0 && r.body.skipped === 1, JSON.stringify(r.body));
+      r = await imp({ source: 'freshdesk', kind: 'contacts', format: 'csv', text: 'Contact ID,Full Name,Email,Company\n1,Ana Fresh-Martin,ana@fresh-test.io,Fresh Corp Europe\n', update: true });
+      const [ct2] = await db("SELECT c.display_name, o.name AS org FROM contacts c LEFT JOIN organizations o ON o.id = c.organization_id JOIN contact_identities ci ON ci.contact_id = c.id WHERE ci.value = ?", [app('./utils/emailTickets').ownerIdFor('ana@fresh-test.io')]);
+      check('imports v6: mise à jour d un contact (nom, organisation)', r.body.updated === 1 && ct2?.display_name === 'Ana Fresh-Martin' && ct2.org === 'Fresh Corp Europe', JSON.stringify([r.body, ct2]));
+      r = await imp({ source: 'zammad', kind: 'articles', format: 'json', text: JSON.stringify([{ id: 3, title: 'Réinitialiser son mot de passe', body: '<p>Va dans <b>Profil → Sécurité</b></p>', category: 'Compte' }]), update: true });
+      const [ar2] = await db("SELECT id, status, answer FROM faq_entries WHERE question = 'Réinitialiser son mot de passe'");
+      const revs = await db('SELECT answer FROM faq_revisions WHERE faq_id = ?', [ar2.id]);
+      check('imports v6: mise à jour d un article (texte, ancienne version gardée, état inchangé)', r.body.updated === 1 && ar2.answer === 'Va dans Profil → Sécurité' && ar2.status === 'draft' && revs.some(v => v.answer === 'Va dans Profil'), JSON.stringify([r.body, ar2, revs.length]));
+      await db("DELETE FROM organizations WHERE name = 'Fresh Corp Europe'");
+    }
     r = await imp({ source: 'mantis', kind: 'tickets', format: 'csv', text: 'a,b\n1,2' });
     check('imports: outil inconnu refusé', r.status === 400, r.status);
     // #76: an export without an identifier column, imported twice, must not duplicate its tickets
