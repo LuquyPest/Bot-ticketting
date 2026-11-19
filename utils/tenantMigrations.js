@@ -1266,6 +1266,47 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 73,
+    name: 'Base de connaissances gérée : brouillons, visibilités, révisions, traductions, retours (v5.6)',
+    statements: [
+      // Every existing article stays published, with the visibility it had
+      "ALTER TABLE faq_entries MODIFY COLUMN visibility ENUM('members','public','staff','organization','team') NOT NULL DEFAULT 'members'",
+      "ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS status VARCHAR(10) NOT NULL DEFAULT 'published'",
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS organization_id INT DEFAULT NULL',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS team_id INT DEFAULT NULL',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS review_at DATE DEFAULT NULL',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS expires_at DATE DEFAULT NULL',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS lang VARCHAR(2) DEFAULT NULL',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS translation_of INT DEFAULT NULL',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS helpful_yes INT NOT NULL DEFAULT 0',
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS helpful_no INT NOT NULL DEFAULT 0',
+      `CREATE TABLE IF NOT EXISTS faq_revisions (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        faq_id         INT NOT NULL,
+        question       VARCHAR(200) NOT NULL,
+        answer         TEXT NOT NULL,
+        category       VARCHAR(80) NOT NULL DEFAULT '',
+        edited_by_tag  VARCHAR(100) DEFAULT NULL,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_fr_faq (faq_id, id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS faq_feedback (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        faq_id     INT NOT NULL,
+        helpful    TINYINT(1) NOT NULL,
+        comment    VARCHAR(1000) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ff_faq (faq_id, created_at)
+      )`,
+      // What readers looked for and did not find
+      `CREATE TABLE IF NOT EXISTS kb_searches (
+        query   VARCHAR(100) PRIMARY KEY,
+        misses  INT NOT NULL DEFAULT 0,
+        last_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.6.0',
+    date: 'à venir',
+    title: 'Centre de services : connaissances et pilotage',
+    titleEn: 'Service desk: knowledge and steering',
+    changes: [
+      { type: 'new',  text: 'Base de connaissances gérée : brouillon et publication, visibilité par article (tout le monde, membres, organisation, staff, équipe), dates de relecture et d\'expiration, versions précédentes et retour à une version, traductions dans les 6 langues, avis des lecteurs et recherches sans résultat, article créé depuis la solution d\'un ticket', en: 'Managed knowledge base: draft and publishing, visibility per article (everyone, members, organisation, staff, team), review and expiry dates, previous versions and going back to one, translations in the 6 languages, readers\' feedback and searches without results, article created from a ticket\'s solution' },
+    ],
+  },
+  {
     version: 'v5.5.0',
     date: 'à venir',
     title: 'Centre de services : problèmes et changements',

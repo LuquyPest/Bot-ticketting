@@ -35,6 +35,12 @@ Dès que l'**e-mail de l'instance** est configuré (Instance → Santé), la pag
 
 Limites anti-abus : 3 liens par adresse par quart d'heure (au-delà, la réponse est la même mais rien n'est envoyé), les tentatives limitées par adresse IP, 3 ouvertures par minute et par personne, la limite quotidienne du serveur, 60 nouveaux tickets par heure et par espace depuis des connexions e-mail, et la liste noire (sous n'importe laquelle de ses identités).
 
+### Une base gérée
+
+Chaque article a un **état** (brouillon ou publié : un brouillon n'est visible que du staff), une **visibilité** (tout le monde, les membres connectés, une **organisation**, le **staff seulement**, une **équipe** du staff), une date **à relire** et une date d'**expiration** (expiré, il disparaît pour les lecteurs). La réponse a la même **barre de mise en forme** que les réponses aux tickets.
+
+Chaque changement du texte garde la **version d'avant** (**Versions précédentes**, **Revenir à celle-ci**). Un article peut être la **traduction** d'un autre dans une des 6 langues : le lecteur voit celle de sa langue, et les autres sont proposées. En bas d'un article public, **Cet article t'a-t-il aidé ?** (oui, ou non avec ce qui manque) ; la page FAQ du staff montre les **avis**, les articles les plus utiles, ce qui est **à relire**, et les **recherches sans résultat** de la base publique (ce qui manque). Depuis un ticket résolu, **Créer un article à partir de la solution** en fait un brouillon.
+
 ## Le catalogue de services
 
 **Paramètres → Catalogue** (fondateurs et permission **Paramètres**) : ce que les demandeurs peuvent demander, rangé par catégorie (« Matériel », « Accès »…), chaque **service** avec son icône et sa description. Dans l'espace membre, **Nouveau ticket** commence par ce catalogue ; **Autre demande** garde le formulaire libre d'avant.

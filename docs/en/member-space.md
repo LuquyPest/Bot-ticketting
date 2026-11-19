@@ -33,6 +33,12 @@ As soon as the **instance e-mail** is set up (Instance → Santé), the sign-in 
 
 Anti-abuse limits: 3 links per address per quarter of an hour (beyond that, the answer is the same but nothing is sent), attempts limited per IP address, 3 openings per minute and per person, the server's daily limit, 60 new tickets per hour and per space from e-mail sign-ins, and the blacklist (under any of their identities).
 
+### A managed knowledge base
+
+Each article has a **state** (draft or published: a draft is visible to the staff only), a **visibility** (everyone, signed-in members, an **organisation**, the **staff only**, a staff **team**), a **review** date and an **expiry** date (expired, it disappears for readers). The answer has the same **formatting bar** as ticket replies.
+
+Each change of the text keeps the **previous version** (**Previous versions**, **Go back to this one**). An article can be the **translation** of another in one of the 6 languages: readers see the one in their language, and the others are offered. At the bottom of a public article, **Did this article help you?** (yes, or no with what is missing); the staff's FAQ page shows the **feedback**, the most useful articles, what is **to review**, and the public base's **searches without results** (what is missing). From a solved ticket, **Create an article from the solution** makes it a draft.
+
 ## The service catalogue
 
 **Settings → Catalogue** (founders and the **Settings** permission): what requesters can ask for, by category (« Hardware », « Access »…), each **service** with its icon and description. In the member space, **New ticket** starts with this catalogue; **Something else** keeps the free form of before.

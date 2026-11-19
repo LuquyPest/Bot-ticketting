@@ -1756,6 +1756,11 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                       </button>
                     )}
                     <ResolutionPanel ticket={ticket} settings={ticket.resolutionSettings} onChange={loadTicket} />
+                    {/* An article of the knowledge base from the solution (v5.6), as a draft */}
+                    {ticket.resolution && (user?.role === 'fondateur' || user?.permissions?.includes('manage_settings')) && (
+                      <button type="button" onClick={async () => { try { await api.post('/faq', { question: (ticket.subject || `Ticket #${ticket.id}`).slice(0, 200), answer: ticket.resolution, status: 'draft', visibility: 'members' }); toast.success('Brouillon d\'article créé dans la base de connaissances'); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } }}
+                        className="mt-1 text-[11px] text-primary-light underline">Créer un article à partir de la solution</button>
+                    )}
                     {can('close_ticket') && (
                       <button onClick={() => changeStatus('closed')} disabled={actionLoading}
                         className="w-full py-2.5 px-3 text-xs rounded-xl font-semibold transition-all
