@@ -44,6 +44,8 @@ const PAGES = [
   ['settings-modeles-taches', '/settings?tab=catalogue', 'Nouveau modèle de tâches'],
   ['planning', '/planning', 'Préparer le poste de Léa'],
   ['couts', '/couts', 'Acme'],
+  ['problemes', '/problemes/1', 'Commander 50 licences de plus'],
+  ['ticket-probleme', '/tickets/1', 'Se reconnecter sur vpn2.example.com', false, true],
   ['ticket-cout', '/tickets/1', 'Remboursement des frais de port', false, true],
   ['tickets-colonnes', '/tickets', 'Organisation', false, true],
   ['espace-taches', '/espace/123456789012345678/1', 'Rembourser la commande'],

@@ -151,6 +151,12 @@ export const MOCK = {
   '/api/tickets/1/tasks': { progress: { total: 2, done: 1 }, tasks: [
     { id: 1, ticketId: 1, title: 'Vérifier le paiement chez Stripe', description: '', assigneeId: '1', assigneeName: 'Daryu', teamId: null, plannedMinutes: 15, spentSeconds: 600, dueAt: null, state: 'done', visible: true, position: 1, doneAt: iso(30), doneBy: 'Daryu', createdAt: iso(100) },
     { id: 2, ticketId: 1, title: 'Rembourser la commande en double', description: '', assigneeId: null, assigneeName: null, teamId: null, plannedMinutes: 30, spentSeconds: 0, dueAt: new Date(Date.now() + 86400000).toISOString(), state: 'todo', visible: false, position: 2, doneAt: null, doneBy: null, createdAt: iso(90) }] },
+  '/api/problems/settings': { enabled: true },
+  '/api/problems': { problems: [{ id: 1, title: 'Passerelle VPN saturée', status: 'known_error', tickets: 6, openTickets: 4, assigneeId: '1', assigneeName: 'Daryu', teamId: null, description: '', symptoms: '', cause: '', workaround: '', solution: '', createdAt: iso(600), resolvedAt: null }] },
+  '/api/problems/1': { id: 1, title: 'Passerelle VPN saturée', description: 'Les connexions tombent en fin de matinée.', symptoms: 'Déconnexions toutes les 10 minutes', cause: 'Licence limitée à 50 sessions', workaround: 'Se reconnecter sur vpn2.example.com', solution: '', status: 'known_error',
+    assigneeId: '1', assigneeName: 'Daryu', teamId: null, tickets: 2, openTickets: 2, createdAt: iso(600), resolvedAt: null, tasks: [{ id: 1, title: 'Commander 50 licences de plus', done: false }],
+    linked: [{ id: 1, subject: 'Problème de paiement', status: 'open', owner_tag: 'Membre', resolved_at: null, created_at: iso(120) }] },
+  '/api/problems/ticket/1': { problems: [{ id: 1, title: 'Passerelle VPN saturée', status: 'known_error', workaround: 'Se reconnecter sur vpn2.example.com' }] },
   '/api/costs/settings': { currency: 'EUR', defaultRateCents: 4500, fixedCents: 500, userRates: { '1': 6000 }, teamRates: {} },
   '/api/costs/report': { currency: 'EUR', by: 'organization', totalCents: 41250, rows: [{ key: '1', label: 'Acme', tickets: 4, seconds: 21600, timeCents: 36000, fixedCents: 2000, extraCents: 3250, totalCents: 41250 }] },
   '/api/costs/tickets/1': { currency: 'EUR', time: [{ userId: '1', userTag: 'Daryu', seconds: 1800, rateCents: 6000, cents: 3000 }], fixedCents: 500, extras: [{ id: 1, label: 'Remboursement des frais de port', amountCents: 890, by: 'Daryu', createdAt: iso(20) }], totalCents: 4390 },

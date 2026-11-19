@@ -14,6 +14,7 @@ import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
 import TasksPanel from '../components/TasksPanel';
 import CostPanel from '../components/CostPanel';
+import ProblemsPanel from '../components/ProblemsPanel';
 import FormatBar, { formatKeys } from '../components/FormatBar';
 import ShortcutsHelp from '../components/ShortcutsHelp';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS, LEVEL_CLS } from '../utils/priorityLevels';
@@ -2087,6 +2088,9 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           <ObjectivesPanel objectives={ticket.objectives} panelCard={panelCard} />
           {/* TÂCHES (v5.4) */}
           <TasksPanel ticketId={ticket.id} staff={staff} canEdit={can('reply_ticket') && ticket.status === 'open'} panelCard={panelCard} />
+          {/* PROBLÈMES (v5.5) */}
+          <ProblemsPanel ticketId={ticket.id} panelCard={panelCard} canEdit={can('reply_ticket') && ticket.status === 'open'}
+            onInsert={text => { setComposeMode('reply'); setReplyText(r => (r ? `${r}\n\n${text}` : text)); setTimeout(() => replyRef.current?.focus(), 30); }} />
           {/* COÛT (v5.4) */}
           {(user?.role === 'fondateur' || user?.permissions?.includes('manage_costs')) && <CostPanel ticketId={ticket.id} panelCard={panelCard} />}
           {ticket.organization && (

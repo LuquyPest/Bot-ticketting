@@ -296,6 +296,7 @@ app.use('/api/recurring',     withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/task-templates', withGuild(['support', 'fondateur']), require('./routes/taskTemplates')); // v5.4
 app.use('/api/planning',      withGuild(['support', 'fondateur']), require('./routes/planning')); // v5.4
 app.use('/api/costs',         withGuild(['support', 'fondateur']), require('./routes/costs')); // v5.4
+app.use('/api/problems',      withGuild(['support', 'fondateur']), require('./routes/problems')); // v5.5
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/email',       withGuild(['fondateur']),            require('./routes/emailSettings')); // tickets by e-mail
