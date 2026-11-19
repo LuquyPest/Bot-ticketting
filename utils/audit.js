@@ -149,6 +149,7 @@ const ACTIONS = {
   rule_save:                ['Règle automatique enregistrée', 'config'],
   rule_delete:              ['Règle automatique supprimée', 'config'],
   ticket_sla_escalation:    ['Escalade SLA', 'tickets'],
+  ticket_sla_forced:        ['Objectif SLA choisi par une règle', 'tickets'],
   sla_policy_delete:        ['Objectif SLA supprimé', 'config'],
   calendar_delete:          ['Calendrier supprimé', 'config'],
   email_quarantine_release: ['E-mail libéré de la quarantaine', 'config'],

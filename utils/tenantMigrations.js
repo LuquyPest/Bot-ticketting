@@ -1446,6 +1446,13 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 81,
+    name: 'Objectif SLA choisi par une règle (v6)',
+    statements: [
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS sla_forced TINYINT(1) NOT NULL DEFAULT 0`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

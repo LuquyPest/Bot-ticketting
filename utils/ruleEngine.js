@@ -16,8 +16,8 @@ const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority',
 // « When time passes » (utils/ruleTimers.js): so long after (or before) a moment of the ticket
 const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'tto_due', 'ttr_due'];
 const DUE_BASES = ['tto_due', 'ttr_due'];
-const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization'];
-const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks'];
+const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization', 'customField'];
+const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks', 'sla'];
 const PRIORITIES = ['low', 'normal', 'urgent'];
 const CHANNELS = ['discord', 'email', 'web'];
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
@@ -64,6 +64,7 @@ async function cleanCondition(db, c) {
     requester: () => (values.every(v => v.length >= 3 && v.length <= 100) ? null : { error: 'Demandeur : de 3 à 100 caractères (adresse, domaine, nom)' }),
     address: () => (values.every(v => /^[^\s@]+@[^\s@]+$/.test(v) && v.length <= 254) ? null : { error: 'Adresse de réception invalide' }),
     tag: () => null, organization: () => null,
+    customField: () => (values.every(v => v.length <= 200) ? null : { error: 'Valeur du champ : 200 caractères au plus' }),
   }[c.field]();
   if (bad) return bad;
   let out = values;
@@ -75,6 +76,12 @@ async function cleanCondition(db, c) {
   if (c.field === 'organization') {
     out = values.map(Number).filter(Number.isInteger);
     if (out.length !== values.length || (await db('SELECT id FROM organizations WHERE id IN (?)', [out])).length !== out.length) return { error: 'Organisation introuvable' };
+  }
+  // A custom field (v6): one field, its value among these (letter case ignored)
+  if (c.field === 'customField') {
+    const fieldId = Number(c.fieldId);
+    if (!Number.isInteger(fieldId) || !(await db('SELECT id FROM ticket_fields WHERE id = ?', [fieldId])).length) return { error: 'Champ personnalisé introuvable' };
+    return { value: { field: c.field, fieldId, not: !!c.not, values: out } };
   }
   return { value: { field: c.field, not: !!c.not, values: out } };
 }
@@ -94,6 +101,7 @@ async function cleanAction(db, a, { canGrade }) {
     case 'priority': return PRIORITIES.includes(v) ? { value: { type: a.type, value: v } } : { error: 'Priorité invalide' };
     case 'team': return one('SELECT id FROM teams WHERE id = ?', 'Équipe introuvable');
     case 'tasks': return one('SELECT id FROM task_templates WHERE id = ?', 'Modèle de tâches introuvable');
+    case 'sla': return one('SELECT id FROM sla_policies WHERE id = ?', 'Objectif SLA introuvable');
     case 'tagAdd': case 'tagRemove': return one('SELECT id FROM ticket_tags WHERE id = ?', 'Tag introuvable');
     case 'grade':
       if (!canGrade) return { error: 'Restreindre à un grade demande la permission manage_grades', status: 403 };
@@ -207,6 +215,12 @@ async function holds(db, c, ctx) {
       // An organisation covers its sub-organisations
       const [o] = t.organization_id ? await db('SELECT parent_id FROM organizations WHERE id = ?', [t.organization_id]) : [];
       ok = c.values.some(id => Number(id) === Number(t.organization_id) || (o?.parent_id && Number(id) === Number(o.parent_id)));
+      break;
+    }
+    case 'customField': {
+      const [v] = await db('SELECT value FROM ticket_field_values WHERE ticket_id = ? AND field_id = ?', [t.id, c.fieldId]).catch(() => []);
+      const val = String(v?.value ?? '').trim().toLowerCase();
+      ok = !!val && c.values.some(x => String(x).trim().toLowerCase() === val);
       break;
     }
     case 'hours': {
@@ -328,6 +342,13 @@ async function apply(env, a, rule) {
     case 'tasks': {
       const r = await require('./tasks').applyTemplate(db, t.id, a.value, RULE_ACTOR, { guildId });
       return r.added ? `${r.added} tâche(s)` : null;
+    }
+    case 'sla': {
+      // A chosen SLA objective (v6): kept by the ticket instead of the automatic choice
+      const r = await require('./slaPolicies').forcePolicy(db, t.id, a.value);
+      if (!r) return null;
+      await recordEvent(db, { actor: RULE_ACTOR, action: 'ticket_sla_forced', ticketId: t.id, targetType: 'sla_policy', targetId: a.value, details: { rule: rule.name } });
+      return `objectif SLA « ${r.name} »`;
     }
     case 'webhook':
       await require('./webhookEmitter').fireTicketWebhook(db, 'rule_applied', { ticketId: t.id, rule: rule.name, subject: t.subject || null });

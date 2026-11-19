@@ -97,7 +97,10 @@ const toDate = ms => (ms == null ? null : new Date(ms));
 async function refreshSla(db, ticketId, { policies = null } = {}) {
   const [t] = await db('SELECT t.*, o.parent_id AS org_parent_id FROM tickets t LEFT JOIN organizations o ON o.id = t.organization_id WHERE t.id = ?', [ticketId]);
   if (!t) return null;
-  const p = pickPolicy(policies || await listPolicies(db), t);
+  const all = policies || await listPolicies(db);
+  // An objective chosen by a rule (v6) stays, as long as it exists and is active
+  const forced = t.sla_forced ? all.find(x => x.id === Number(t.sla_policy_id) && x.active) : null;
+  const p = forced || pickPolicy(all, t);
   if (!p) {
     if (t.sla_policy_id || t.tto_due_at || t.ttr_due_at) await db('UPDATE tickets SET sla_policy_id = NULL, tto_due_at = NULL, ttr_due_at = NULL WHERE id = ?', [t.id]);
     return null;
@@ -110,6 +113,16 @@ async function refreshSla(db, ticketId, { policies = null } = {}) {
   const ttr = p.ttrMinutes ? toDate(add(start, p.ttrMinutes + Number(t.sla_paused_minutes || 0))) : null;
   await db('UPDATE tickets SET sla_policy_id = ?, tto_due_at = ?, ttr_due_at = ? WHERE id = ?', [p.id, tto, ttr, t.id]);
   return { policyId: p.id, ttoDueAt: tto, ttrDueAt: ttr };
+}
+// A rule sets the ticket's objective (v6): kept by later recalculations. { name } or null if unchanged
+async function forcePolicy(db, ticketId, policyId) {
+  const [p] = await db('SELECT id, name, active FROM sla_policies WHERE id = ?', [policyId]);
+  if (!p || !Number(p.active)) return null;
+  const [t] = await db('SELECT sla_policy_id, sla_forced FROM tickets WHERE id = ?', [ticketId]);
+  if (!t || (Number(t.sla_policy_id) === p.id && Number(t.sla_forced))) return null;
+  await db('UPDATE tickets SET sla_policy_id = ?, sla_forced = 1 WHERE id = ?', [p.id, ticketId]);
+  await refreshSla(db, ticketId);
+  return { name: p.name };
 }
 const refreshQuietly = (db, ticketId) => refreshSla(db, ticketId).catch(err => console.error('sla: calcul', ticketId, err.message));
 
@@ -170,4 +183,4 @@ const OBJECTIVE_BREACHED_SQL = `(status = 'open' AND ((first_response_at IS NULL
   OR (resolved_at IS NULL AND sla_paused_at IS NULL AND ttr_due_at IS NOT NULL AND ttr_due_at < NOW())
   OR (resolved_at IS NULL AND sla_paused_at IS NULL AND ola_due_at IS NOT NULL AND ola_due_at < NOW())))`;
 
-module.exports = { PRIORITIES, TYPES, CHANNELS, listPolicies, savePolicy, deletePolicy, reorderPolicies, pickPolicy, matches, refreshSla, refreshQuietly, onStageChange, refreshOpenTickets, objectives, OBJECTIVE_BREACHED_SQL, channelOf };
+module.exports = { PRIORITIES, TYPES, CHANNELS, listPolicies, savePolicy, deletePolicy, reorderPolicies, pickPolicy, matches, refreshSla, refreshQuietly, onStageChange, refreshOpenTickets, objectives, OBJECTIVE_BREACHED_SQL, channelOf, forcePolicy };

@@ -31,8 +31,8 @@ Toutes les tâches planifiées passent par **BullMQ** (Redis) : chacune ne s'ex�
 | | |
 |---|---|
 | **Quand** | Un ticket est ouvert · le demandeur écrit · le staff répond · le statut change · la priorité change (un ou plusieurs) · **le temps passe** (voir ci-dessous) |
-| **Si** (toutes, ou au moins une) | Canal (Discord, e-mail, web) · adresse de réception · type · sujet (une catégorie couvre ses sous-catégories) · mots dans le message · demandeur (adresse, domaine `@client.fr`, nom) · priorité · statut · tag · horaires (support ouvert ou fermé) · langue du demandeur ; chaque condition peut être inversée (« n'est pas ») |
-| **Alors** | Priorité · urgence et impact · type · sujet · équipe · attribuer à une personne · ajouter ou retirer un tag · statut · restreindre à un grade · observateurs · prévenir des membres du staff · réponse automatique au demandeur · note interne · webhook · fermer |
+| **Si** (toutes, ou au moins une) | Canal (Discord, e-mail, web) · adresse de réception · type · sujet (une catégorie couvre ses sous-catégories) · mots dans le message · demandeur (adresse, domaine `@client.fr`, nom) · priorité · statut · tag · horaires (support ouvert ou fermé) · langue du demandeur · organisation du demandeur (une organisation couvre ses sous-organisations) · **champ personnalisé** (sa valeur parmi celles données, majuscules ignorées) ; chaque condition peut être inversée (« n'est pas ») |
+| **Alors** | Priorité · urgence et impact · type · sujet · équipe · attribuer à une personne · ajouter ou retirer un tag · statut · restreindre à un grade · observateurs · prévenir des membres du staff · réponse automatique au demandeur · note interne · modèle de tâches · **objectif SLA** (gardé par le ticket au lieu du choix automatique) · webhook · fermer |
 
 Les règles passent **dans l'ordre** de la liste (flèches) ; **« arrêter après cette règle »** empêche les suivantes. Chaque règle appliquée est notée au **journal du ticket** (« règle *Clients VIP* appliquée : priorité urgente, tag VIP »). **Tester** montre, sur un ticket existant, quelles conditions sont remplies et ce que la règle ferait, sans rien changer.
 

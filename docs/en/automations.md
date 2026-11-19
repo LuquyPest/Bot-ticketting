@@ -31,8 +31,8 @@ Every scheduled job goes through **BullMQ** (Redis): each one runs only once, an
 | | |
 |---|---|
 | **When** | A ticket is opened · the requester writes · the staff replies · the status changes · the priority changes (one or more) · **time passes** (see below) |
-| **If** (all, or at least one) | Channel (Discord, e-mail, web) · receiving address · type · subject (a category covers its sub-categories) · words in the message · requester (address, domain `@client.com`, name) · priority · status · tag · hours (support open or closed) · requester's language; each condition can be reversed (« is not ») |
-| **Then** | Priority · urgency and impact · type · subject · team · assign to someone · add or remove a tag · status · restrict to a grade · watchers · notify staff members · automatic reply to the requester · internal note · webhook · close |
+| **If** (all, or at least one) | Channel (Discord, e-mail, web) · receiving address · type · subject (a category covers its sub-categories) · words in the message · requester (address, domain `@client.com`, name) · priority · status · tag · hours (support open or closed) · requester's language · requester's organisation (an organisation covers its sub-organisations) · **custom field** (its value among the given ones, letter case ignored); each condition can be reversed (« is not ») |
+| **Then** | Priority · urgency and impact · type · subject · team · assign to someone · add or remove a tag · status · restrict to a grade · watchers · notify staff members · automatic reply to the requester · internal note · task template · **SLA objective** (kept by the ticket instead of the automatic choice) · webhook · close |
 
 Rules run **in the order** of the list (arrows); **« stop after this rule »** prevents the next ones. Each rule applied is noted in the **ticket's journal** (« rule *VIP customers* applied: priority urgent, tag VIP »). **Test** shows, on an existing ticket, which conditions are met and what the rule would do, without changing anything.
 
