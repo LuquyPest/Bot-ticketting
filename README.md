@@ -2,8 +2,8 @@
 
 # Datick
 
-**Un système de tickets complet, à héberger soi-même.**
-Discord, e-mail, formulaire web, API : chaque demande devient un ticket, traité par ton équipe depuis un seul dashboard.
+**Un centre de services complet, à héberger soi-même.**
+E-mail, formulaire web, widget, Discord, API : chaque demande devient un ticket, avec ses délais (SLA), ses règles, son catalogue de services, sa base de connaissances, ses problèmes et changements — l'assistance de GLPI, Zendesk ou Freshdesk, sans la partie parc, installée chez toi en vingt minutes.
 
 *Anciennement Ticket Bot : depuis la v4, Discord n'est plus qu'un canal parmi d'autres, et il est facultatif.*
 
@@ -18,6 +18,14 @@ Discord, e-mail, formulaire web, API : chaque demande devient un ticket, traité
 <img src="docs/public/images/dashboard.png" alt="Tableau de bord" width="100%">
 
 </div>
+
+## Pour qui
+
+- Un **service informatique** (ou RH, services généraux) qui veut une assistance ITIL allégée — incidents et demandes, SLA en heures ouvrées, escalade, catalogue, problèmes et changements — avec la connexion par son **Active Directory**.
+- Un **support client** qui traite ses e-mails, son formulaire et son widget au même endroit, avec organisations, rapports et enquête de satisfaction.
+- Une **communauté Discord** qui veut un vrai outil de tickets derrière son serveur.
+
+Tu viens d'un autre outil ? Les guides **[Venir de GLPI](https://docs.bot.daryu.xyz/guide/venir-de-glpi)** et **[Venir de Zendesk ou Freshdesk](https://docs.bot.daryu.xyz/guide/venir-de-zendesk)** reprennent tickets, contacts, organisations et articles.
 
 ## Comment ça marche
 

@@ -1,12 +1,12 @@
 ---
 layout: home
 title: Datick
-titleTemplate: Système de tickets complet, à héberger soi-même
+titleTemplate: Centre de services complet, à héberger soi-même
 
 hero:
   name: Datick
-  text: Un système de tickets complet.
-  tagline: Discord, e-mail, formulaire web, API — chaque demande devient un ticket, et ton équipe les traite toutes depuis un seul dashboard temps réel. Tu l'installes chez toi, il ne dépend de personne. Discord est un canal parmi d'autres, et il est facultatif.
+  text: Un centre de services complet.
+  tagline: E-mail, formulaire web, widget, Discord, API — chaque demande devient un ticket, avec ses délais, ses règles, son catalogue et sa base de connaissances. L'assistance de GLPI, Zendesk ou Freshdesk, sans la partie parc, installée chez toi en vingt minutes.
   image:
     src: /images/dashboard.png
     alt: Tableau de bord de Datick
@@ -45,6 +45,10 @@ features:
     details: Logiciel libre (AGPL-3.0) sur ton serveur — tes moyens de connexion (Discord, Google, Microsoft, OpenID Connect, mot de passe), sauvegardes chiffrées, mises à jour en un clic, interface accessible (WCAG 2.1 AA).
     link: /guide/instance
     linkText: La section Instance
+  - title: Changer d'outil sans rien perdre
+    details: Import depuis GLPI, Zendesk, Freshdesk, osTicket, Zammad ou un CSV (tickets et conversations, contacts, organisations, articles), connexion et contacts par LDAP / Active Directory, modèle d'espace.
+    link: /guide/venir-de-glpi
+    linkText: Les guides
   - title: Sécurité sérieuse
     details: 2FA imposable, secrets et transcripts chiffrés, journal de chaque action, alerte de nouvel appareil, audits OWASP corrigés.
     link: /guide/securite
