@@ -1047,6 +1047,9 @@ export const TEMPLATES = [
   ['{} · de {}', '{1} · by {2}'], ['Supprimer le tableau', 'Delete the board'], ['Nouveau tableau', 'New board'], ['Nom du tableau', 'Board name'], ['Partage', 'Sharing'], ['Avec une équipe', 'With a team'], ['Avec tout le staff', 'With all the staff'],
   ['Équipe du partage', 'Team to share with'], ['Ajouter un widget', 'Add a widget'], ['Enregistrer le tableau', 'Save the board'],
   ['Aucun tableau. Crée le tien : des compteurs, une courbe, une liste, les SLA, la satisfaction, chacun avec ses filtres.', 'No board. Create yours: counters, a curve, a list, the SLA, satisfaction, each with its filters.'], ['Suivi de l\'équipe', 'Team follow-up'],
+  ['Par priorité', 'By priority'], ['Période libre', 'Custom period'], ['Rapports programmés', 'Scheduled reports'], ['Rapport programmé', 'Report scheduled'],
+  ['Supprimer le rapport {}', 'Delete the report {1}'], ['Nom du rapport', 'Report name'], ['Sur', 'Over'], ['{} derniers jours', 'last {1} days'], ['Format', 'Format'], ['Envoi', 'Sending'], ['Chaque lundi', 'Every Monday'],
+  ['Le 1er du mois', 'On the 1st of the month'], ['Heure d\'envoi', 'Sending time'], ['chaque semaine', 'every week'], ['chaque mois', 'every month'], ['Rapport programmé enregistré', 'Scheduled report saved'],
   ['Service du catalogue supprimé', 'Catalogue service deleted'],
   ['Responsable côté client : voit les tickets de l\'organisation dans l\'espace membre', 'Client-side manager: sees the organisation\'s tickets in the member space'], ['Responsable côté client (portail)', 'Client-side manager (portal)'], ['Organisation d\'un contact changée', 'Contact\'s organisation changed'], ['Organisations importées', 'Organisations imported']
 ];

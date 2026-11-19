@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { visibilityFilter } = require('../../utils/gradePermissions');
 
 // ── Volume chart: tickets opened/closed per day ───────────────────────────────
@@ -336,12 +337,17 @@ router.get('/export/stats.csv', async (req, res) => {
 // GET /api/analytics/breakdown?by=team|category|subject|channel&days= — one row per group
 // GET /api/analytics/export/breakdown.csv?by=…&days= — the same, as CSV
 const report = require('../../utils/breakdownReport');
-const BY_LABEL = { team: 'equipe', category: 'categorie', subject: 'sujet', channel: 'canal', type: 'type' };
+const BY_LABEL = { team: 'equipe', category: 'categorie', subject: 'sujet', channel: 'canal', type: 'type', organization: 'organisation', assignee: 'personne', priority: 'priorite' };
 async function breakdownOf(req) {
   const by = report.DIMENSIONS.includes(req.query.by) ? req.query.by : 'team';
   const vis = await visibilityFilter(req, 't.visibility_grade_id');
-  return report.breakdown(req.guildDb, vis, { by, days: clampDays(req.query.days) });
+  // A free period (v5.6): from / to (YYYY-MM-DD, to included), 400 days at most
+  const day = s => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? new Date(`${s}T00:00:00Z`) : null);
+  let from = day(req.query.from), to = day(req.query.to);
+  if (from && to) { to = new Date(to.getTime() + 864e5); if (to <= from || to - from > 400 * 864e5) { from = null; to = null; } } else { from = null; to = null; }
+  return report.breakdown(req.guildDb, vis, { by, days: clampDays(req.query.days), from, to });
 }
+const periodName = r => (r.from ? `${r.from.toISOString().slice(0, 10)}-${new Date(r.to.getTime() - 864e5).toISOString().slice(0, 10)}` : `${r.days}j`);
 router.get('/breakdown', async (req, res) => {
   try { res.json(await breakdownOf(req)); } catch (err) {
     console.error(err);
@@ -351,11 +357,55 @@ router.get('/breakdown', async (req, res) => {
 router.get('/export/breakdown.csv', async (req, res) => {
   try {
     const r = await breakdownOf(req);
-    sendCsv(res, `rapport-par-${BY_LABEL[r.by]}-${r.days}j-${stamp()}.csv`, report.CSV_HEADER, report.csvRows(r));
+    sendCsv(res, `rapport-par-${BY_LABEL[r.by]}-${periodName(r)}-${stamp()}.csv`, report.CSV_HEADER, report.csvRows(r));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+// The same report as a spreadsheet or a PDF (v5.6)
+router.get(['/export/breakdown.xlsx', '/export/breakdown.pdf'], async (req, res) => {
+  try {
+    req.params.fmt = req.path.endsWith('.pdf') ? 'pdf' : 'xlsx';
+    const r = await breakdownOf(req);
+    const name = `rapport-par-${BY_LABEL[r.by]}-${periodName(r)}-${stamp()}`;
+    const out = await require('../../utils/scheduledReports').render(r, req.params.fmt);
+    res.setHeader('Content-Type', out.type);
+    res.setHeader('Content-Disposition', `attachment; filename="${name}.${req.params.fmt}"`);
+    res.send(out.buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ── Scheduled reports (utils/scheduledReports.js): founders and view_audit ──
+const sched = () => require('../../utils/scheduledReports');
+const canSchedule = req => req.userIsFondateur || req.userPermissions?.has('view_audit');
+const schedActor = req => ({ isFounder: !!req.userIsFondateur, userId: String(req.session.user.id) });
+router.get('/scheduled', async (req, res) => {
+  if (!canSchedule(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  res.json({ reports: await sched().list(req.guildDb, { ownerId: req.userIsFondateur ? null : String(req.session.user.id) }) });
+});
+router.post('/scheduled', async (req, res) => {
+  if (!canSchedule(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  const r = await sched().save(req.guildDb, null, req.body || {}, schedActor(req));
+  if (r.error) return res.status(r.status || 400).json({ error: r.error });
+  await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'report_schedule', details: { name: req.body?.name, recipients: (req.body?.recipients || []).length } });
+  res.json({ id: r.id, reports: await sched().list(req.guildDb, { ownerId: req.userIsFondateur ? null : String(req.session.user.id) }) });
+});
+router.put('/scheduled/:id', async (req, res) => {
+  if (!canSchedule(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  const r = await sched().save(req.guildDb, parseInt(req.params.id) || 0, req.body || {}, schedActor(req));
+  if (r.error) return res.status(r.status || 400).json({ error: r.error });
+  await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'report_schedule', details: { name: req.body?.name } });
+  res.json({ reports: await sched().list(req.guildDb, { ownerId: req.userIsFondateur ? null : String(req.session.user.id) }) });
+});
+router.delete('/scheduled/:id', async (req, res) => {
+  if (!canSchedule(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+  const r = await sched().remove(req.guildDb, parseInt(req.params.id) || 0, schedActor(req));
+  if (r.error) return res.status(r.status || 400).json({ error: r.error });
+  res.json({ reports: await sched().list(req.guildDb, { ownerId: req.userIsFondateur ? null : String(req.session.user.id) }) });
 });
 
 module.exports = router;

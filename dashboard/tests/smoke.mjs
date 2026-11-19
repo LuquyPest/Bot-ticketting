@@ -68,6 +68,7 @@ const PAGES = [
   ['settings-adresses', '/settings?tab=integrations', 'Autres adresses'],
   ['analytics', '/analytics', 'Analytiques'],
   ['analytics-rapports', '/analytics?tab=reports', 'Sans équipe'],
+  ['analytics-programmes', '/analytics?tab=reports', 'Hebdo direction'],
   ['tickets-types', '/tickets', 'Tous types'],
   ['settings-types', '/settings', 'Nom des incidents'],
   ['audit', '/audit', "Journal d'activité"],

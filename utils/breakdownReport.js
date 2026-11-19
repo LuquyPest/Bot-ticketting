@@ -4,7 +4,7 @@
 const { median } = require('./stageStats');
 const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null); // stageStats.avg rounds to whole minutes
 
-const DIMENSIONS = ['team', 'category', 'subject', 'channel', 'type'];
+const DIMENSIONS = ['team', 'category', 'subject', 'channel', 'type', 'organization', 'assignee', 'priority'];
 const MAX_TICKETS = 50000;
 const SEP = ' › ';
 
@@ -16,25 +16,37 @@ function keyOf(by, t) {
   if (by === 'team') return t.team_id ? String(t.team_id) : '';
   if (by === 'channel') return t.channel;
   if (by === 'type') return t.ticket_type || 'request';
+  if (by === 'organization') return t.organization_id ? String(t.organization_id) : '';
+  if (by === 'assignee') return t.assignee_id ? String(t.assignee_id) : '';
+  if (by === 'priority') return t.priority || 'normal';
   const s = String(t.subject || '').trim();
   return by === 'category' ? s.split(SEP)[0] : s;
 }
 
 // vis: visibilityFilter(req, 't.visibility_grade_id') — restricted tickets stay out of the figures
-async function breakdown(db, vis, { by, days }) {
+// Period: the last `days` days, or from `from` to `to` (v5.6, a free period)
+async function breakdown(db, vis, { by, days, from = null, to = null }) {
   if (!DIMENSIONS.includes(by)) throw Object.assign(new Error('Dimension inconnue'), { status: 400 });
+  const period = from && to ? 't.created_at >= ? AND t.created_at < ?' : 't.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)';
+  const periodParams = from && to ? [from, to] : [days];
   const tickets = await db(
-    `SELECT t.id, t.subject, t.team_id, t.ticket_type, t.status, t.tto_due_at, t.ttr_due_at, t.resolved_at, t.created_at, t.first_response_at, t.closed_at, ${CHANNEL_SQL} AS channel,
+    `SELECT t.id, t.subject, t.team_id, t.organization_id, t.priority, (SELECT a.user_id FROM ticket_assignees a WHERE a.ticket_id = t.id ORDER BY a.assigned_at LIMIT 1) AS assignee_id, t.ticket_type, t.status, t.tto_due_at, t.ttr_due_at, t.resolved_at, t.created_at, t.first_response_at, t.closed_at, ${CHANNEL_SQL} AS channel,
             (SELECT AVG(r.rating) FROM ticket_ratings r WHERE r.ticket_id = t.id) AS rating,
             (SELECT COALESCE(SUM(COALESCE(tt.seconds, 0)), 0) FROM ticket_time tt WHERE tt.ticket_id = t.id) AS seconds
      FROM tickets t
-     WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND t.merged_into IS NULL AND ${vis.sql}
-     ORDER BY t.id LIMIT ${MAX_TICKETS}`, [days, ...vis.params]);
+     WHERE ${period} AND t.merged_into IS NULL AND ${vis.sql}
+     ORDER BY t.id LIMIT ${MAX_TICKETS}`, [...periodParams, ...vis.params]);
 
   const typeLabels = by === 'type' ? (await require('./ticketTypes').typeSettings(db)).labels : null;
   const teams = by === 'team' ? new Map((await db('SELECT id, name FROM teams')).map(x => [String(x.id), x.name])) : null;
+  const orgs = by === 'organization' ? new Map((await db('SELECT id, name FROM organizations').catch(() => [])).map(x => [String(x.id), x.name])) : null;
+  const people = by === 'assignee' ? new Map((await db('SELECT user_id, username FROM dashboard_users')).map(x => [String(x.user_id), x.username])) : null;
+  const PRIO = { low: 'Basse', normal: 'Normale', urgent: 'Urgente' };
   const label = key => {
     if (by === 'team') return key ? (teams.get(key) || `Équipe supprimée (#${key})`) : 'Sans équipe';
+    if (by === 'organization') return key ? (orgs.get(key) || `Organisation supprimée (#${key})`) : 'Sans organisation';
+    if (by === 'assignee') return key ? (people.get(key) || key) : 'Sans attribution';
+    if (by === 'priority') return PRIO[key] || key;
     if (by === 'channel') return CHANNEL_LABEL[key] || key;
     if (by === 'type') return typeLabels[key] || key;
     return key || 'Sans sujet';
@@ -68,7 +80,7 @@ async function breakdown(db, vis, { by, days }) {
       ttoMetPct, ttrMetPct,
     };
   }).sort((a, b) => b.opened - a.opened || a.label.localeCompare(b.label));
-  return { by, days, total: tickets.length, truncated: tickets.length >= MAX_TICKETS, rows };
+  return { by, days, from, to, total: tickets.length, truncated: tickets.length >= MAX_TICKETS, rows };
 }
 
 const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Prise en charge dans le délai (%)', 'Résolution dans le délai (%)'];

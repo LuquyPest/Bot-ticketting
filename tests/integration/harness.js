@@ -6198,6 +6198,53 @@ async function main() {
     await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
   }
 
+  // ── Advanced reports: dimensions, free period, XLSX / PDF, scheduled by e-mail (v5.6) ──
+  {
+    const org = (await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Org rapports' } })).body.id;
+    const t1 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, organization_id, created_at) VALUES ('200000000000000078', 'rp', 'db-rp1', 'open', 'Rapports', 'urgent', ?, '2026-03-10 10:00:00')", [org])).insertId;
+    const t2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority, created_at) VALUES ('200000000000000079', 'rp', 'db-rp2', 'open', 'Rapports', 'low', '2026-03-12 10:00:00')")).insertId;
+    await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [t1, U.S1]);
+    const q = by => ({ by, from: '2026-03-01', to: '2026-03-31' });
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: q('organization') });
+    check('rapports: par organisation sur une période libre', r.status === 200 && r.body.total === 2 && r.body.rows.some(x => x.label === 'Org rapports' && x.opened === 1) && r.body.rows.some(x => x.label === 'Sans organisation'), JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: q('assignee') });
+    check('rapports: par personne attribuée', r.body.rows.some(x => x.label === 'S1' && x.opened === 1) && r.body.rows.some(x => x.label === 'Sans attribution'), JSON.stringify(r.body.rows.map(x => x.label)));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: q('priority') });
+    check('rapports: par priorité', r.body.rows.some(x => x.label === 'Urgente') && r.body.rows.some(x => x.label === 'Basse'), JSON.stringify(r.body.rows.map(x => x.label)));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'priority', from: '2026-04-01', to: '2026-04-30' } });
+    check('rapports: la période libre borne bien', r.body.total === 0, r.body.total);
+    const rawGet = path => new Promise((resolve, reject) => {
+      const rq = http.request({ host: '127.0.0.1', port: config.webServerPort, path, headers: { Cookie: 'connect.sid=' + encodeURIComponent('s:' + sign(sessions.F, config.dashboard.sessionSecret)) } }, res2 => {
+        const chunks = []; res2.on('data', c => chunks.push(c)); res2.on('end', () => resolve({ status: res2.statusCode, headers: res2.headers, body: Buffer.concat(chunks) }));
+      });
+      rq.on('error', reject); rq.end();
+    });
+    let x = await rawGet('/api/analytics/export/breakdown.xlsx?by=organization&from=2026-03-01&to=2026-03-31');
+    check('rapports: export XLSX (classeur valide)', x.status === 200 && /spreadsheetml/.test(x.headers['content-type']) && x.body.slice(0, 2).toString() === 'PK' && x.body.includes(Buffer.from('Org rapports')), x.status);
+    x = await rawGet('/api/analytics/export/breakdown.pdf?by=organization&days=30');
+    check('rapports: export PDF', x.status === 200 && x.headers['content-type'] === 'application/pdf' && x.body.slice(0, 5).toString() === '%PDF-', x.status);
+    // Scheduled by e-mail
+    r = await req('POST', '/api/analytics/scheduled', { sid: sessions.S3, body: { name: 'x' } });
+    check('rapports programmés: réservés (fondateurs, journal)', r.status === 403, r.status);
+    r = await req('POST', '/api/analytics/scheduled', { sid: sessions.F, body: { name: 'Hebdo direction', by: 'organization', days: 7, format: 'xlsx', frequency: 'weekly', weekday: 1, time: '08:00', recipients: 'pas-une-adresse' } });
+    check('rapports programmés: adresses vérifiées', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/analytics/scheduled', { sid: sessions.F, body: { name: 'Hebdo direction', by: 'organization', days: 7, format: 'xlsx', frequency: 'weekly', weekday: 1, time: '08:00', recipients: ['direction@example.com', 'compta@example.com'] } });
+    const sid2 = r.body.id;
+    check('rapports programmés: créé, prochaine date calculée', r.status === 200 && new Date(r.body.reports.find(y => y.id === sid2).nextRunAt) > Date.now(), JSON.stringify(r.body).slice(0, 200));
+    const IM = app('./utils/instanceMail');
+    const realSend = IM.sendInstanceMail;
+    const sent = [];
+    IM.sendInstanceMail = async m => { sent.push(m); return { ok: true }; };
+    await db('UPDATE scheduled_reports SET next_run_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [sid2]);
+    const n = await app('./utils/scheduledReports').runForGuild({ db, guildId: G });
+    check('rapports programmés: envoyés à chaque adresse avec la pièce jointe', n === 1 && sent.length === 2 && sent[0].attachments?.[0]?.filename.endsWith('.xlsx') && sent[0].attachments[0].content.slice(0, 2).toString() === 'PK', JSON.stringify(sent.map(m => m.to)));
+    check('rapports programmés: une seule fois par échéance', await app('./utils/scheduledReports').runForGuild({ db, guildId: G }) === 0 && sent.length === 2, '');
+    IM.sendInstanceMail = realSend;
+    await req('DELETE', `/api/analytics/scheduled/${sid2}`, { sid: sessions.F });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[t1, t2]]);
+    await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

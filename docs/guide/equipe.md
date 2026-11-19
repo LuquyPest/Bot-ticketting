@@ -82,7 +82,7 @@ Un tableau est **personnel**, **partagé avec une équipe** dont on fait partie,
 
 ## Les rapports
 
-**Analytiques → Rapports** regroupe les tickets ouverts sur la période (7, 30, 90 ou 365 jours) :
+**Analytiques → Rapports** regroupe les tickets ouverts sur la période (7, 30, 90 ou 365 jours, ou une **période libre** du … au …) :
 
 | Regrouper | |
 |---|---|
@@ -91,6 +91,9 @@ Un tableau est **personnel**, **partagé avec une équipe** dont on fait partie,
 | **Par sujet** | Le sujet complet, sous-catégorie comprise |
 | **Par canal** | Discord, e-mail, ou web (espace membre et widget) |
 | **Par type** | Incidents et demandes, si l'espace utilise les [types](./tickets#les-types-incident-ou-demande) |
+| **Par organisation** | Les [organisations](./tickets#les-organisations) des demandeurs, plus « Sans organisation » |
+| **Par personne** | La première personne attribuée, plus « Sans attribution » |
+| **Par priorité** | Basse, normale, urgente |
 
-Pour chaque groupe : tickets ouverts, fermés, encore ouverts, délai médian de première réponse, durée médiane jusqu'à la fermeture, note moyenne (et nombre de notes), temps passé. **Exporter (CSV)** télécharge le même tableau, prêt pour un tableur. Les chiffres ne comptent que les tickets que la personne a le droit de voir : un ticket confidentiel ou restreint à un grade n'y entre pas pour les autres ; les tickets fusionnés dans un autre ne sont comptés qu'une fois.
+Pour chaque groupe : tickets ouverts, fermés, encore ouverts, délai médian de première réponse, durée médiane jusqu'à la fermeture, note moyenne (et nombre de notes), temps passé. Le même tableau se télécharge en **CSV**, **XLSX** (classeur Excel, LibreOffice, Numbers) ou **PDF**. Les **rapports programmés** (fondateurs et permission **Journal d'audit**) l'envoient par e-mail **chaque lundi** ou **le 1er du mois**, à l'heure choisie, en pièce jointe ; calculés avec ce que voit leur auteur ; les fondateurs les envoient à n'importe quelle adresse, les autres à leur propre adresse vérifiée. Les chiffres ne comptent que les tickets que la personne a le droit de voir : un ticket confidentiel ou restreint à un grade n'y entre pas pour les autres ; les tickets fusionnés dans un autre ne sont comptés qu'une fois.
 - **Journal** : chaque action, avec son auteur et sa source (dashboard, Discord, automatisme, API), filtrable et exportable.

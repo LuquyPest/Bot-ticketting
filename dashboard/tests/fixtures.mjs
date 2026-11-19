@@ -94,6 +94,7 @@ export const MOCK = {
   '/api/staff/me/signature': { signature: 'Daryu — support Sunset' },
   '/api/instance/mail-oauth': { google: { clientId: 'gid.apps', secretSet: true, configured: true, callbackUrl: 'https://ticket.example/api/email/oauth/google/callback' },
     microsoft: { clientId: '', tenant: 'common', secretSet: false, configured: false, callbackUrl: 'https://ticket.example/api/email/oauth/microsoft/callback' } },
+  '/api/analytics/scheduled': { reports: [{ id: 1, name: 'Hebdo direction', by: 'organization', days: 7, format: 'xlsx', frequency: 'weekly', weekday: 1, monthday: 1, time: '08:00', timezone: 'Europe/Paris', recipients: ['direction@example.com'], active: true, nextRunAt: iso(-1440), lastSentAt: null, ownerId: '1' }] },
   '/api/analytics/breakdown': { by: 'team', days: 30, total: 31, truncated: false, rows: [
     { key: '1', label: 'Facturation', opened: 18, closed: 15, stillOpen: 3, firstResponseMedianMin: 42, resolutionMedianHours: 6.5, avgRating: 4.6, ratings: 9, timeHours: 7.5 },
     { key: '', label: 'Sans équipe', opened: 13, closed: 9, stillOpen: 4, firstResponseMedianMin: null, resolutionMedianHours: null, avgRating: null, ratings: 0, timeHours: 0 }] },

@@ -82,7 +82,7 @@ A board is **personal**, **shared with a team** you belong to, or (founders) **w
 
 ## Reports
 
-**Analytics → Reports** groups the tickets opened over the period (7, 30, 90 or 365 days):
+**Analytics → Reports** groups the tickets opened over the period (7, 30, 90 or 365 days, or a **custom period** from … to …):
 
 | Group | |
 |---|---|
@@ -91,7 +91,10 @@ A board is **personal**, **shared with a team** you belong to, or (founders) **w
 | **By subject** | The full subject, sub-category included |
 | **By channel** | Discord, e-mail, or web (member space and widget) |
 | **By type** | Incidents and requests, if the space uses [types](./tickets#types-incident-or-request) |
+| **By organisation** | The requesters' [organisations](./tickets#organisations), plus « No organisation » |
+| **By person** | The first assigned person, plus « Unassigned » |
+| **By priority** | Low, normal, urgent |
 
-For each group: tickets opened, closed, still open, median first response time, median time to close, average rating (and number of ratings), time spent. **Export (CSV)** downloads the same table, ready for a spreadsheet. The figures only count the tickets the person may see: a confidential ticket or one restricted to a grade stays out for the others; tickets merged into another are counted once.
+For each group: tickets opened, closed, still open, median first response time, median time to close, average rating (and number of ratings), time spent. The same table downloads as **CSV**, **XLSX** (Excel, LibreOffice, Numbers workbook) or **PDF**. **Scheduled reports** (founders and the **Audit log** permission) send it by e-mail **every Monday** or **on the 1st of the month**, at the chosen time, attached; computed with what their author sees; founders send them to any address, the others to their own verified address. The figures only count the tickets the person may see: a confidential ticket or one restricted to a grade stays out for the others; tickets merged into another are counted once.
 - **Public statistics**: a message refreshed every hour in a channel of your choice — see [Automations](./automations#public-statistics).
 - **Log**: every action, with its author and its source (dashboard, Discord, automation, API), filterable and exportable.
