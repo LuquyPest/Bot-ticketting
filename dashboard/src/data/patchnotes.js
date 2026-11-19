@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v6.0.0',
+    date: 'à venir',
+    title: 'Fiabilité',
+    titleEn: 'Reliability',
+    changes: [
+      { type: 'tech', text: 'Analyse statique (ESLint) du serveur et du dashboard dans la CI, bloquante sur les vrais bugs (variable ou composant non défini, clé en double, code inatteignable) ; la suite d\'intégration envoie des corps malformés à toutes les routes publiques et du staff', en: 'Static analysis (ESLint) of the server and the dashboard in the CI, blocking on real bugs (undefined variable or component, duplicate key, unreachable code); the integration suite sends malformed bodies to every public and staff route' },
+    ],
+  },
+  {
     version: 'v5.7.0',
     date: '19 novembre 2026',
     title: 'Centre de services : arriver avec ses données',

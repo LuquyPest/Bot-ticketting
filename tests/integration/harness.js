@@ -7866,6 +7866,28 @@ async function main() {
     await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${G5}\``).catch(() => null);
   }
 
+  // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
+  // long strings in place of the expected fields; no route may answer 500 ──
+  {
+    const pub = ['/api/kb/G/articles/1/feedback', '/api/kb/G/searches', '/api/auth/select-guild', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/password-reset/confirm',
+      '/api/auth/ldap-login', '/api/auth/invitation/accept', '/api/installation/owner', '/api/member/auth/email', '/api/member/auth/email/verify', '/api/member/guilds/G/tickets', '/api/member/tickets/G/1/resolution', '/api/member/tickets/G/1/messages',
+      '/api/guest/session', '/api/approvals/link', '/api/approvals/decide', '/api/resolution/link', '/api/resolution/accept', '/api/survey/link', '/api/survey/answer'].map(x => x.replace('/G/', `/${G}/`));
+    const staff = ['/api/tickets', '/api/ticket-views', '/api/imports', '/api/ticket-retention', '/api/notifications/prefs', '/api/profile/ui-prefs', '/api/organizations', '/api/catalog', '/api/recurring', '/api/dashboards', '/api/costs', '/api/problems', '/api/changes', '/api/rules', '/api/members/resolve'];
+    const keys = ['email', 'password', 'token', 'code', 'login', 'guildId', 'subject', 'message', 'content', 'helpful', 'q', 'query', 'rating', 'comment', 'answers', 'decision', 'name', 'displayName', 'fields', 'reason', 'mode', 'months', 'title', 'filters', 'widgets', 'conditions', 'actions', 'items'];
+    const vals = [['x'], { a: 1 }, 123, null, true, 'a'.repeat(5000)];
+    const bad = [];
+    let k = 0;
+    for (const path of pub) for (const v of vals) {
+      const res = await req('POST', path, { body: Object.fromEntries(keys.map(x => [x, v])), headers: { 'X-Forwarded-For': `10.200.${Math.floor(k / 250)}.${k++ % 250}` } });
+      if (res.status >= 500) bad.push(`POST ${path} ${JSON.stringify(v).slice(0, 12)}`);
+    }
+    for (const path of staff) for (const v of vals) for (const m of ['POST', 'PUT']) {
+      const res = await req(m, path, { sid: sessions.F, body: Object.fromEntries(keys.map(x => [x, v])) });
+      if (res.status >= 500) bad.push(`${m} ${path} ${JSON.stringify(v).slice(0, 12)}`);
+    }
+    check('corps malformés: aucune route publique ni du staff ne répond 500', !bad.length, bad.slice(0, 10).join(' | '));
+  }
+
   console.log(`\n${pass} passed, ${failed} failed`);
   server.close();
   await redis.quit();

@@ -21,11 +21,12 @@ cd dashboard && npm run dev   # Vite dashboard with hot reload, proxied to the A
 ## Before opening a pull request
 
 ```bash
-npm run test:integration                                 # integration suite (throwaway MariaDB + Redis)
+npm run lint                                             # static analysis (undefined variables and components…)
+npm run test:integration                                 # integration suite (throwaway MariaDB + Redis + OpenLDAP)
 cd dashboard && npx vite build && node tests/smoke.mjs   # dashboard pages, accessibility (axe-core)
 ```
 
-The CI runs both on every push, plus `npm audit` and the builds of the documentation site and of the Docker image. A PR is merged once it passes the CI and has been reviewed.
+The CI runs all three on every push, and the suite also sends malformed bodies to every public and staff route (none may answer 500), plus `npm audit` and the builds of the documentation site and of the Docker image. A PR is merged once it passes the CI and has been reviewed.
 
 Rules of the repository:
 
