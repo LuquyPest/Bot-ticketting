@@ -1411,6 +1411,22 @@ const MIGRATIONS = [
       `CREATE INDEX IF NOT EXISTS idx_tickets_closed_at ON tickets (status, closed_at)`,
     ],
   },
+  {
+    version: 79,
+    name: 'Données rattachées à un ticket supprimées avec lui : enquêtes, fils e-mail, déclenchements (#76)',
+    statements: [
+      `DELETE FROM survey_requests WHERE ticket_id NOT IN (SELECT id FROM tickets)`,
+      `ALTER TABLE survey_requests ADD CONSTRAINT fk_sq_ticket FOREIGN KEY IF NOT EXISTS (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE`,
+      `DELETE FROM survey_responses WHERE ticket_id NOT IN (SELECT id FROM tickets)`,
+      `ALTER TABLE survey_responses ADD CONSTRAINT fk_srsp_ticket FOREIGN KEY IF NOT EXISTS (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE`,
+      `DELETE FROM email_threads WHERE ticket_id NOT IN (SELECT id FROM tickets)`,
+      `ALTER TABLE email_threads ADD CONSTRAINT fk_et_ticket FOREIGN KEY IF NOT EXISTS (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE`,
+      `DELETE FROM sla_escalation_fired WHERE ticket_id NOT IN (SELECT id FROM tickets)`,
+      `ALTER TABLE sla_escalation_fired ADD CONSTRAINT fk_sef_ticket FOREIGN KEY IF NOT EXISTS (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE`,
+      `DELETE FROM rule_timer_fired WHERE ticket_id NOT IN (SELECT id FROM tickets)`,
+      `ALTER TABLE rule_timer_fired ADD CONSTRAINT fk_rtf_ticket FOREIGN KEY IF NOT EXISTS (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -29,6 +29,7 @@ export const VERSIONS = [
       { type: 'impr', text: 'Données des membres : recherche par adresse e-mail (identités e-mail, web et Discord du demandeur), export couvrant toutes les identités de la fiche contact', en: 'Member data: search by e-mail address (the requester\'s e-mail, web and Discord identities), export covering every identity of the contact card' },
       { type: 'fix',  text: 'Import depuis un autre outil : un export sans colonne d\'identifiant réimporté ne crée plus de tickets en double (chaque ligne est reconnue par son contenu)', en: 'Import from another tool: an export without an identifier column imported again no longer creates duplicate tickets (each row is recognised by its content)' },
       { type: 'fix',  text: 'Rétention : un ticket anonymisé ferme ses liens d\'enquête de satisfaction, et une enquête pas encore envoyée ne part plus', en: 'Retention: an anonymised ticket closes its satisfaction survey links, and a survey not sent yet no longer leaves' },
+      { type: 'fix',  text: 'Effacement des données d\'un membre et suppression de tickets : l\'enquête de satisfaction (demande, note, commentaire), le fil e-mail et les déclenchements du ticket partent avec lui ; les restes laissés jusqu\'ici sont supprimés à la mise à jour', en: 'Erasing a member\'s data and deleting tickets: the ticket\'s satisfaction survey (request, rating, comment), e-mail thread and triggers go with it; the leftovers so far are removed at the update' },
     ],
   },
   {

@@ -912,6 +912,9 @@ async function main() {
     await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'member18', 'mes données', 'user'), (?, ?, 'member18', 'message chez un autre', 'user'), (?, ?, 'member19', 'message autre membre', 'user')", [g1t, MG, ot, MG, ot, OTHER]);
     await db('INSERT INTO ticket_participants (ticket_id, user_id) VALUES (?, ?)', [ot, MG]);
     await db('INSERT INTO ticket_ratings (ticket_id, owner_id, rating) VALUES (?, ?, 5)', [g2t, MG]);
+    // #76: the satisfaction survey of the ticket (request and answer) goes with it
+    await db("INSERT INTO survey_requests (ticket_id, owner_id, token_hash, send_at, expires_at) VALUES (?, ?, ?, NOW(), NOW() + INTERVAL 1 DAY)", [g2t, MG, crypto.randomBytes(32).toString('hex')]);
+    await db("INSERT INTO survey_responses (request_id, ticket_id, rating, comment, answers) VALUES (LAST_INSERT_ID(), ?, 4, 'Merci, je suis Jean de Lyon', '{}')", [g2t]);
     await db("INSERT INTO blacklist (user_id, user_tag, reason, added_by_id, added_by_tag) VALUES (?, 'member18', 'test', '1', 'F')", [MG]);
     await db("INSERT INTO audit_log (actor_id, actor_tag, action, source, ticket_id, details) VALUES (?, 'member18', 'ticket_open', 'discord', ?, '{\"x\":1}')", [MG, g1t]);
     await redis.set(`pending:route:${MG}`, '{}'); await redis.set(`locale:${MG}`, 'fr');
@@ -932,6 +935,8 @@ async function main() {
     const otherNotes = await db('SELECT author_id FROM ticket_notes WHERE ticket_id = ?', [ot]);
     const [aud] = await db('SELECT actor_id, actor_tag, details FROM audit_log WHERE ticket_id = ? AND action = ?', [g1t, 'ticket_open']);
     check('RGPD: tickets du membre supprimés, salon ouvert supprimé', r.status === 200 && Number(left.n) === 0 && gdel, JSON.stringify([r.status, r.body, left, gdel]));
+    const svLeft = [...await db('SELECT id FROM survey_requests WHERE ticket_id = ?', [g2t]), ...await db('SELECT id FROM survey_responses WHERE ticket_id = ?', [g2t])];
+    check('RGPD: l enquête de satisfaction du ticket (demande, commentaire) supprimée avec lui', svLeft.length === 0, JSON.stringify(svLeft));
     check('RGPD: le ticket d\'un autre est conservé, sans les messages du membre', Number(otherT.n) === 1 && otherNotes.length === 1 && otherNotes[0].author_id === OTHER, JSON.stringify(otherNotes));
     check('RGPD: journal anonymisé', aud?.actor_id === 'supprime' && aud.actor_tag === '[membre supprimé]' && aud.details === null, JSON.stringify(aud));
     check('RGPD: états MP et langue effacés', !(await redis.get(`pending:route:${MG}`)) && !(await redis.get(`locale:${MG}`)));
