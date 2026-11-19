@@ -61,6 +61,7 @@ const Organizations = lazy(() => import('./pages/Organizations'));
 const Planning    = lazy(() => import('./pages/Planning'));
 const Costs       = lazy(() => import('./pages/Costs'));
 const Problems    = lazy(() => import('./pages/Problems'));
+const Changes     = lazy(() => import('./pages/Changes'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
 const Health      = lazy(() => import('./pages/Health'));
 const GuestView   = lazy(() => import('./pages/GuestView'));
@@ -271,6 +272,8 @@ export default function App() {
                         <Route path="couts" element={<ErrorBoundary><Costs /></ErrorBoundary>} />
                         <Route path="problemes" element={<ErrorBoundary><Problems /></ErrorBoundary>} />
                         <Route path="problemes/:id" element={<ErrorBoundary><Problems /></ErrorBoundary>} />
+                        <Route path="changements" element={<ErrorBoundary><Changes /></ErrorBoundary>} />
+                        <Route path="changements/:id" element={<ErrorBoundary><Changes /></ErrorBoundary>} />
                         <Route path="procedures" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Procedures /></ErrorBoundary></RequireRole>} />
                         <Route path="incidents"  element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Incidents /></ErrorBoundary></RequireRole>} />
                         <Route path="fields"     element={

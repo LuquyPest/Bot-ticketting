@@ -65,6 +65,7 @@ export default function Planning() {
             const today = sameDay(day, new Date());
             const tasks = data.tasks.filter(k => sameDay(new Date(k.dueAt), day));
             const deadlines = data.deadlines.filter(d => sameDay(new Date(d.dueAt), day));
+            const changes = (data.changes || []).filter(c => new Date(c.startsAt) < new Date(day.getTime() + 864e5) && new Date(c.endsAt || c.startsAt) >= day);
             const absent = data.absences.filter(a => new Date(a.startsAt) < new Date(day.getTime() + 864e5) && new Date(a.endsAt) > day);
             return (
               <div key={day.toISOString()} onDragOver={e => e.preventDefault()} onDrop={e => drop(e, day)}
@@ -78,6 +79,7 @@ export default function Planning() {
                     <Link to={`/tickets/${k.ticketId}`} className="text-ink-4 hover:underline">{`#${k.ticketId}${k.assigneeName && scope !== 'me' ? ` · ${k.assigneeName}` : ''}`}</Link>
                   </div>
                 ))}
+                {changes.map(c => <Link key={`c${c.id}`} to={`/changements/${c.id}`} className="block text-[11px] rounded-md bg-sky-500/10 text-sky-300 px-1.5 py-0.5 hover:underline">{`${time(c.startsAt)} · changement : ${c.title}`}</Link>)}
                 {deadlines.map(d => (
                   <Link key={`d${d.ticketId}`} to={`/tickets/${d.ticketId}`} className="block text-[11px] rounded-md bg-red-500/10 text-red-300 px-1.5 py-0.5 hover:underline">{`${time(d.dueAt)} · échéance #${d.ticketId}`}</Link>
                 ))}

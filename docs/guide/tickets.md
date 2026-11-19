@@ -184,6 +184,12 @@ Menu **Problèmes** (coupé par défaut ; un fondateur l'active) : un **problèm
 
 Les tickets s'y relient depuis le problème ou depuis leur fiche (permission **Répondre**), seulement ceux qu'on voit. Sur la fiche d'un ticket relié, le contournement est **proposé** : **Insérer dans la réponse** le met dans la zone de réponse. **Résoudre le problème** enregistre sa solution et peut la **proposer sur tous ses tickets ouverts** d'un coup (comme la [résolution](#la-resolution-et-la-cloture) d'un ticket, le demandeur confirme). Chaque création, lien et résolution est au journal.
 
+## Les changements
+
+Menu **Changements** (coupé par défaut ; un fondateur l'active) : une modification planifiée (mise à jour, migration). Il a une description, un **plan de déploiement**, un **plan de retour arrière**, des **risques** et un niveau de risque, l'impact, un **créneau** (il apparaît dans le [planning](#le-planning) de qui le mène), des tâches, et les tickets et problèmes qu'il traite.
+
+Il suit un circuit : **brouillon** → **en attente de validation** → **validé** (toutes les validations) ou **refusé** (au premier refus, avec son motif) → **en cours** → **terminé** ou **en échec** ; **annulé** à tout moment. Les **validations** sont données par les membres du staff choisis, chacun pour soi, dans le dashboard ; il ne démarre qu'une fois validé, et ses plans et risques sont figés dès qu'il l'est (repasser en brouillon remet les validations à zéro). Tout est au journal.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

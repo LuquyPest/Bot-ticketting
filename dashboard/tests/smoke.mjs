@@ -45,6 +45,8 @@ const PAGES = [
   ['planning', '/planning', 'Préparer le poste de Léa'],
   ['couts', '/couts', 'Acme'],
   ['problemes', '/problemes/1', 'Commander 50 licences de plus'],
+  ['changements', '/changements/1', 'Ta validation est demandée'],
+  ['ticket-changement', '/tickets/1', 'Migration de la base de données', false, true],
   ['ticket-probleme', '/tickets/1', 'Se reconnecter sur vpn2.example.com', false, true],
   ['ticket-cout', '/tickets/1', 'Remboursement des frais de port', false, true],
   ['tickets-colonnes', '/tickets', 'Organisation', false, true],

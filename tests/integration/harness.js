@@ -6002,6 +6002,66 @@ async function main() {
     await db('UPDATE guild_config SET resolution_enabled = ?, problems_enabled = 0 WHERE id = 1', [rsBefore.resolution_enabled]);
   }
 
+  // ── Changes (utils/changes.js, v5.5) ──
+  {
+    r = await req('GET', '/api/changes', { sid: sessions.F });
+    check('changements: coupés par défaut (migration 72)', r.status === 404, r.status);
+    await req('PUT', '/api/changes/settings', { sid: sessions.F, body: { enabled: true } });
+    const start = new Date(Date.now() + 864e5), end = new Date(Date.now() + 864e5 + 2 * 3600e3);
+    r = await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'Migration de la base', deployPlan: '1. Sauvegarde 2. Bascule', rollbackPlan: 'Restaurer la sauvegarde', risk: 'high',
+      assigneeId: U.F, startsAt: start.toISOString(), endsAt: end.toISOString() } });
+    const cid = r.body.id;
+    check('changements: créé (plans, risque, créneau), en brouillon', r.status === 200 && r.body.status === 'draft' && r.body.risk === 'high' && r.body.rollbackPlan === 'Restaurer la sauvegarde', JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'x', startsAt: end.toISOString(), endsAt: start.toISOString() } });
+    check('changements: créneau vérifié', r.status === 400, r.status);
+    r = await req('POST', `/api/changes/${cid}/status`, { sid: sessions.F, body: { status: 'pending' } });
+    check('changements: pas de demande de validation sans validateur', r.status === 409, JSON.stringify(r.body));
+    r = await req('POST', `/api/changes/${cid}/status`, { sid: sessions.F, body: { status: 'in_progress' } });
+    check('changements: ne démarre pas sans validation', r.status === 409, r.status);
+    await req('POST', `/api/changes/${cid}/approvers`, { sid: sessions.F, body: { userId: U.S1 } });
+    r = await req('POST', `/api/changes/${cid}/approvers`, { sid: sessions.F, body: { userId: U.S2 } });
+    check('changements: deux validations', r.body.approvals.length === 2 && r.body.approvals.every(a => a.decision === 'pending'), JSON.stringify(r.body.approvals));
+    await req('POST', `/api/changes/${cid}/status`, { sid: sessions.F, body: { status: 'pending' } });
+    r = await req('POST', `/api/changes/${cid}/decide`, { sid: sessions.S3, body: { decision: 'approved' } });
+    check('changements: seul un validateur décide', r.status === 403, r.status);
+    r = await req('POST', `/api/changes/${cid}/decide`, { sid: sessions.S1, body: { decision: 'approved', comment: 'OK pour moi' } });
+    check('changements: une validation sur deux → toujours en attente', r.body.status === 'pending', r.body.status);
+    r = await req('POST', `/api/changes/${cid}/decide`, { sid: sessions.S2, body: { decision: 'approved' } });
+    check('changements: toutes les validations → validé', r.body.status === 'approved', r.body.status);
+    r = await req('PATCH', `/api/changes/${cid}`, { sid: sessions.F, body: { rollbackPlan: 'autre chose' } });
+    check('changements: plans figés une fois validé', r.status === 409, r.status);
+    r = await req('GET', '/api/planning', { sid: sessions.F, query: { from: new Date().toISOString(), to: new Date(Date.now() + 3 * 864e5).toISOString() } });
+    check('changements: dans le planning de qui le mène', r.body.changes?.some(c => c.id === cid), JSON.stringify(r.body.changes));
+    await req('POST', `/api/changes/${cid}/status`, { sid: sessions.F, body: { status: 'in_progress' } });
+    r = await req('POST', `/api/changes/${cid}/status`, { sid: sessions.F, body: { status: 'done' } });
+    check('changements: en cours puis terminé', r.body.status === 'done', r.body.status);
+    // Refused at the first no
+    const c2 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'Changement de pare-feu' } })).body.id;
+    await req('POST', `/api/changes/${c2}/approvers`, { sid: sessions.F, body: { userId: U.S1 } });
+    await req('POST', `/api/changes/${c2}/status`, { sid: sessions.F, body: { status: 'pending' } });
+    r = await req('POST', `/api/changes/${c2}/decide`, { sid: sessions.S1, body: { decision: 'refused', comment: 'Pas pendant la clôture' } });
+    check('changements: refusé au premier non', r.body.status === 'refused' && r.body.approvals[0].comment === 'Pas pendant la clôture', JSON.stringify(r.body).slice(0, 200));
+    // Links: tickets (visible ones) and problems
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000075', 'ch', 'db-ch', 'open', 'Lenteurs')")).insertId;
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000076', 'ch2', 'db-ch2', 'open', 'Secret', -1)")).insertId;
+    r = await req('POST', `/api/changes/${c2}/links`, { sid: sessions.S1, body: { kind: 'ticket', targetId: tk } });
+    check('changements: relié à un ticket', r.body.tickets.some(t => t.id === tk), JSON.stringify(r.body.tickets));
+    r = await req('POST', `/api/changes/${c2}/links`, { sid: sessions.S1, body: { kind: 'ticket', targetId: tConf } });
+    check('changements: pas un ticket qu on ne voit pas', r.status === 404, r.status);
+    const pb = (await db("INSERT INTO problems (title) VALUES ('Lenteurs réseau')")).insertId;
+    r = await req('POST', `/api/changes/${c2}/links`, { sid: sessions.S1, body: { kind: 'problem', targetId: pb } });
+    check('changements: relié à un problème', r.body.problems.some(p => p.id === pb), JSON.stringify(r.body.problems));
+    r = await req('GET', `/api/changes/ticket/${tk}`, { sid: sessions.S1 });
+    check('changements: visibles sur la fiche du ticket', r.body.changes?.some(c => c.id === c2), JSON.stringify(r.body));
+    r = await req('POST', `/api/changes/${c2}/tasks`, { sid: sessions.F, body: { title: 'Prévenir les utilisateurs' } });
+    check('changements: tâches', r.body.tasks.length === 1, JSON.stringify(r.body.tasks));
+    check('changements: au journal', (await db("SELECT 1 FROM audit_log WHERE action IN ('change_create', 'change_status', 'change_approval', 'change_link')")).length >= 6, '');
+    await db('DELETE FROM changes WHERE id IN (?)', [[cid, c2]]);
+    await db('DELETE FROM problems WHERE id = ?', [pb]);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tk, tConf]]);
+    await db('UPDATE guild_config SET changes_enabled = 0 WHERE id = 1');
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
