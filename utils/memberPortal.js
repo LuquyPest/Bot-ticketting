@@ -220,9 +220,19 @@ async function isMemberGuild(member, guildId, client) {
   return (await memberGuilds(member, client)).find(g => g.id === guildId) || null;
 }
 
-// Help of a server for its members: every active entry, public or kept for members
-async function guildFaq(guildId) {
-  return getTenantDb(guildId)("SELECT id, question, answer, category, visibility FROM faq_entries WHERE active = 1 ORDER BY category = '', category, solved_count DESC, id ASC LIMIT 200");
+// Help of a server for its members: every published entry, public, kept for members, or for
+// their organisation (v5.6); never the staff's or a team's articles
+async function guildFaq(guildId, member = null) {
+  const db = getTenantDb(guildId);
+  const { LIVE } = require('./knowledgeBase');
+  let orgs = [];
+  if (member) {
+    const rows = await db('SELECT c.organization_id, o.parent_id FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id LEFT JOIN organizations o ON o.id = c.organization_id WHERE ci.value IN (?) AND c.organization_id IS NOT NULL', [memberIds(member)]).catch(() => []);
+    orgs = [...new Set(rows.flatMap(r => [r.organization_id, r.parent_id]).filter(Boolean))];
+  }
+  return db(`SELECT id, question, answer, category, visibility FROM faq_entries WHERE ${LIVE} AND translation_of IS NULL
+    AND (visibility IN ('public', 'members')${orgs.length ? " OR (visibility = 'organization' AND organization_id IN (?))" : ''})
+    ORDER BY category = '', category, solved_count DESC, id ASC LIMIT 200`, orgs.length ? [orgs] : []);
 }
 
 // What the web form asks before opening a ticket: subjects, then (for a subject) custom fields

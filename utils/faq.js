@@ -25,7 +25,8 @@ const MIN_SCORE = 3;
 // opts.publicOnly: only the articles of the public knowledge base (visitors not signed in)
 async function findFaqMatches(db, message, limit = 3, { publicOnly = false } = {}) {
   if (!message || message.length < 3) return [];
-  const entries = await db(`SELECT id, question, answer, keywords, visibility FROM faq_entries WHERE active = 1${publicOnly ? " AND visibility = 'public'" : ''}`).catch(() => []);
+  // Only what a requester may read (v5.6): published, valid, public or for members
+  const entries = await db(`SELECT id, question, answer, keywords, visibility FROM faq_entries WHERE ${require('./knowledgeBase').LIVE} AND translation_of IS NULL AND visibility IN (${publicOnly ? "'public'" : "'public', 'members'"})`).catch(() => []);
   return entries
     .map(e => ({ ...e, score: scoreEntry(e, message) }))
     .filter(e => e.score >= MIN_SCORE)

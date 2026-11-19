@@ -109,6 +109,8 @@ const PAGES = [
   ['aide-publique', '/aide/123456789012345678', 'Comment suivre ma livraison', true],
   ['aide-article', '/aide/123456789012345678/3', 'dès l\'envoi du colis', true],
   ['faq', '/faq', 'Base de connaissances publique'],
+  ['faq-retours', '/faq', 'Il manque le lien vers le transporteur'],
+  ['aide-avis', '/aide/123456789012345678/3', 'Cet article t\'a-t-il aidé ?', true],
 ];
 // EventSource has no mock: its connection errors are expected
 const IGNORED = /EventSource|text\/event-stream|MIME type|\/api\/events|status of 401/;

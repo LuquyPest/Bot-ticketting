@@ -175,7 +175,7 @@ async function guildOf(req, res) {
 router.get('/guilds/:guildId/faq', requireMember, async (req, res) => {
   try {
     if (!(await guildOf(req, res))) return;
-    res.json(await guildFaq(req.params.guildId));
+    res.json(await guildFaq(req.params.guildId, req.member));
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
 });
 

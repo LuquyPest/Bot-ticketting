@@ -117,6 +117,8 @@ export const MOCK = {
     { id: 4, question: 'Mon paiement est refusé', answer: 'Vérifie que ta carte autorise les paiements en ligne.', category: '', updated_at: null, created_at: iso(9000) }] },
   '/api/kb/123456789012345678/articles/3': { space: { id: '123456789012345678', name: 'Sunset FA', logo: null, color: '#e67e22' },
     article: { id: 3, question: 'Comment suivre ma livraison ?', answer: 'Le lien de suivi arrive par e-mail, dès l\'envoi du colis.', category: 'Commandes', updated_at: iso(600), created_at: iso(9000) } },
+  '/api/faq/insights': { feedback: [{ id: 1, faq_id: 1, question: 'Suivre ma commande', helpful: 0, comment: 'Il manque le lien vers le transporteur', created_at: iso(60) }],
+    useful: [], misses: [{ query: 'facture en double', misses: 4, last_at: iso(30) }], review: [] },
   '/api/faq': { enabled: true, kbPublic: true, kbUrl: 'https://ticket.example/aide/123456789012345678', entries: [
     { id: 3, question: 'Comment suivre ma livraison ?', answer: 'Le lien de suivi arrive par e-mail.', keywords: 'livraison, colis', category: 'Commandes', visibility: 'public', active: true, shown_count: 12, solved_count: 5, view_count: 40 },
     { id: 5, question: 'Code promo des membres', answer: 'Code interne.', keywords: 'promo', category: '', visibility: 'members', active: true, shown_count: 2, solved_count: 1, view_count: 0 }] },

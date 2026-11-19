@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, FileText, Loader2, Search, LifeBuoy } from 'lucide-react';
 import api from '../api';
@@ -45,6 +45,13 @@ function ArticleList({ space, articles }) {
     }
     return [...map.entries()];
   }, [articles, query]);
+  // Nothing found: told to the staff once the reader stops typing (what is missing, v5.6)
+  const told = useRef('');
+  useEffect(() => {
+    if (groups.length || query.trim().length < 3) return undefined;
+    const t = setTimeout(() => { if (told.current !== query) { told.current = query; api.post(`/kb/${encodeURIComponent(space.id)}/searches`, { q: query }).catch(() => {}); } }, 1500);
+    return () => clearTimeout(t);
+  }, [groups.length, query, space.id]);
   return (
     <div className="space-y-5">
       <div>
@@ -76,6 +83,31 @@ function ArticleList({ space, articles }) {
   );
 }
 
+// « Did it help? » (v5.6), once per article
+function Feedback({ space, article }) {
+  const [state, setState] = useState(null); // null, 'no', 'sent'
+  const [comment, setComment] = useState('');
+  const send = async (helpful, text = '') => { await api.post(`/kb/${encodeURIComponent(space.id)}/articles/${article.id}/feedback`, { helpful, comment: text }).catch(() => {}); setState('sent'); };
+  if (state === 'sent') return <p className="text-xs text-emerald-300" role="status">{STR.kbThanks}</p>;
+  return (
+    <div className="rounded-xl border border-overlay/8 p-3 space-y-2">
+      <p className="text-sm text-ink-2">{STR.kbHelpful}</p>
+      {state === 'no' ? (
+        <div className="space-y-2">
+          <textarea value={comment} onChange={e => setComment(e.target.value)} rows={2} maxLength={1000} placeholder={STR.kbWhatMissing} aria-label={STR.kbWhatMissing} className={INPUT} />
+          <button type="button" onClick={() => send(false, comment)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white">{STR.kbSend}</button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button type="button" onClick={() => send(true)} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-1 hover:border-overlay/15">{STR.kbYes}</button>
+          <button type="button" onClick={() => setState('no')} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-1 hover:border-overlay/15">{STR.kbNo}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const LANG_NAMES = { fr: 'Français', en: 'English', es: 'Español', de: 'Deutsch', it: 'Italiano', pt: 'Português' };
 function Article({ space, article }) {
   return (
     <article className="space-y-4">
@@ -84,6 +116,10 @@ function Article({ space, article }) {
       <h1 className="text-xl font-bold text-ink-1">{article.question}</h1>
       <div className="text-sm text-ink-2 whitespace-pre-wrap leading-relaxed"><MessageContent text={article.answer} /></div>
       <p className="text-xs text-ink-4">{STR.kbUpdated} {new Date(article.updated_at || article.created_at).toLocaleDateString(memberLocale, { dateStyle: 'long' })}</p>
+      {article.translations?.length > 0 && (
+        <p className="text-xs text-ink-3">{STR.kbOtherLangs} {article.translations.map((t, i) => <React.Fragment key={t.id}>{i ? ' · ' : ''}<Link to={`/aide/${space.id}/${t.id}`} className="text-primary-light underline" lang={t.lang}>{LANG_NAMES[t.lang] || STR.kbOriginal}</Link></React.Fragment>)}</p>
+      )}
+      <Feedback key={article.id} space={space} article={article} />
       <Contact space={space} />
     </article>
   );
@@ -95,7 +131,8 @@ export default function KnowledgeBase() {
   useEffect(() => {
     setData(undefined);
     const url = articleId ? `/kb/${encodeURIComponent(guildId)}/articles/${encodeURIComponent(articleId)}` : `/kb/${encodeURIComponent(guildId)}`;
-    api.get(url).then(r => setData(r.data)).catch(() => setData(null));
+    // In the reader's language when the staff translated it (v5.6)
+    api.get(url, { params: { lang: MEMBER_LANG } }).then(r => setData(r.data)).catch(() => setData(null));
   }, [guildId, articleId]);
   useEffect(() => {
     if (data?.space) document.title = `${data.article ? `${data.article.question} · ` : ''}${data.space.name} · ${STR.kbTitle}`;

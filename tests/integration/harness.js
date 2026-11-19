@@ -6062,6 +6062,73 @@ async function main() {
     await db('UPDATE guild_config SET changes_enabled = 0 WHERE id = 1');
   }
 
+  // ── Managed knowledge base (v5.6): drafts, visibilities, revisions, translations, feedback ──
+  {
+    const [kbBefore] = await db('SELECT kb_public FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET kb_public = 1 WHERE id = 1');
+    const MWK = '200000000000000081';
+    await mk('MKB', { member: { id: MWK, username: 'member81', avatar: null } });
+    const pubIds = async (lang) => ((await req('GET', `/api/kb/${G}`, { query: lang ? { lang } : undefined })).body.articles || []).map(a => a.id);
+    const memIds = async () => ((await req('GET', `/api/member/guilds/${G}/faq`, { sid: sessions.MKB })).body || []).map(a => a.id);
+    check('base gérée: les articles d avant restent publiés', (await db("SELECT COUNT(*) AS n FROM faq_entries WHERE status <> 'published'"))[0].n == 0, '');
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Réinitialiser la double authentification', answer: 'Écris au support avec une pièce d identité.', visibility: 'public', status: 'draft' } });
+    const draft = r.body.id;
+    check('base gérée: un brouillon n est visible de personne d autre que le staff', r.status === 200 && r.body.status === 'draft' && !(await pubIds()).includes(draft) && !(await memIds()).includes(draft), JSON.stringify(r.body).slice(0, 200));
+    await req('PATCH', `/api/faq/${draft}`, { sid: sessions.F, body: { status: 'published' } });
+    check('base gérée: publié → visible', (await pubIds()).includes(draft) && (await memIds()).includes(draft), '');
+    await req('PATCH', `/api/faq/${draft}`, { sid: sessions.F, body: { expires_at: '2020-01-01' } });
+    check('base gérée: expiré → retiré', !(await pubIds()).includes(draft), '');
+    await req('PATCH', `/api/faq/${draft}`, { sid: sessions.F, body: { expires_at: null } });
+    // Visibilities: staff, organisation, team
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Procédure interne de remboursement', answer: 'Voir le classeur Compta.', visibility: 'staff' } });
+    const staffOnly = r.body.id;
+    check('base gérée: « staff seulement » jamais côté membre', !(await memIds()).includes(staffOnly) && !(await pubIds()).includes(staffOnly), '');
+    const org = (await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Org de la base' } })).body.id;
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Votre contrat', answer: 'Support Or 24 h.', visibility: 'organization' } });
+    check('base gérée: « organisation » demande l organisation', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Votre contrat', answer: 'Support Or 24 h.', visibility: 'organization', organization_id: org } });
+    const orgArt = r.body.id;
+    check('base gérée: article d organisation invisible hors de l organisation', !(await memIds()).includes(orgArt), '');
+    await app('./utils/contacts').sync(db, { force: true });
+    const [cMW] = await db('SELECT contact_id FROM contact_identities WHERE value = ?', [MWK]);
+    await app('./utils/organizations').setContactOrg(db, cMW.contact_id, org);
+    check('base gérée: … visible de ses membres', (await memIds()).includes(orgArt), '');
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe base', members: [U.S1] } })).body.find(t => t.name === 'Équipe base');
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Astreinte réseau', answer: 'Numéro : voir le tableau.', visibility: 'team', team_id: team.id } });
+    const teamArt = r.body.id;
+    const staffSees = async sid => ((await req('GET', '/api/faq', { sid })).body.entries || []).some(e => e.id === teamArt);
+    check('base gérée: article d équipe pour ses membres seulement', await staffSees(sessions.S1) && !(await staffSees(sessions.S3)) && !(await memIds()).includes(teamArt), '');
+    // Revisions
+    await req('PATCH', `/api/faq/${draft}`, { sid: sessions.F, body: { answer: 'Nouvelle procédure : depuis ton profil.' } });
+    r = await req('GET', `/api/faq/${draft}/revisions`, { sid: sessions.F });
+    const rev = r.body[0];
+    check('base gérée: la version d avant est gardée', rev?.answer === 'Écris au support avec une pièce d identité.', JSON.stringify(r.body).slice(0, 200));
+    r = await req('POST', `/api/faq/${draft}/revisions/${rev.id}/restore`, { sid: sessions.F });
+    check('base gérée: retour à une version', r.body.answer === 'Écris au support avec une pièce d identité.' && (await req('GET', `/api/faq/${draft}/revisions`, { sid: sessions.F })).body.length === 2, JSON.stringify(r.body).slice(0, 200));
+    // Translations
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Reset two-factor authentication', answer: 'Write to support with an ID.', visibility: 'public', lang: 'en', translation_of: draft } });
+    const tr = r.body.id;
+    check('base gérée: une traduction remplace l original dans sa langue', (await pubIds('en')).includes(tr) && !(await pubIds('en')).includes(draft) && (await pubIds()).includes(draft) && !(await pubIds()).includes(tr), '');
+    r = await req('GET', `/api/kb/${G}/articles/${draft}`, { query: { lang: 'en' } });
+    check('base gérée: article dans la langue demandée, avec ses traductions', r.body.article?.id === tr && r.body.article.translations.some(x => x.id === draft || x.lang === 'en'), JSON.stringify(r.body.article).slice(0, 300));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'x', answer: 'y', translation_of: tr } });
+    check('base gérée: on ne traduit qu un original', r.status === 400, JSON.stringify(r.body));
+    // Readers' feedback and searches without results
+    r = await req('POST', `/api/kb/${G}/articles/${draft}/feedback`, { headers: { 'X-Forwarded-For': '203.0.113.71' }, body: { helpful: false, comment: 'Il manque le lien vers le profil' } });
+    const again = await req('POST', `/api/kb/${G}/articles/${draft}/feedback`, { headers: { 'X-Forwarded-For': '203.0.113.71' }, body: { helpful: true } });
+    check('base gérée: retour d un lecteur, une fois par jour', r.status === 200 && again.status === 429 && (await db('SELECT helpful_no FROM faq_entries WHERE id = ?', [draft]))[0].helpful_no === 1, JSON.stringify([r.body, again.status]));
+    r = await req('POST', `/api/kb/${G}/articles/${staffOnly}/feedback`, { headers: { 'X-Forwarded-For': '203.0.113.72' }, body: { helpful: true } });
+    check('base gérée: pas de retour sur un article non public', r.status === 404, r.status);
+    for (const ip of ['203.0.113.73', '203.0.113.74']) await req('POST', `/api/kb/${G}/searches`, { headers: { 'X-Forwarded-For': ip }, body: { q: 'Facture en double ?' } });
+    r = await req('GET', '/api/faq/insights', { sid: sessions.F });
+    check('base gérée: commentaires et recherches sans résultat pour le staff', r.body.feedback?.some(f => f.comment === 'Il manque le lien vers le profil') && r.body.misses?.find(m => m.query === 'facture en double')?.misses === 2, JSON.stringify(r.body).slice(0, 400));
+    for (const id of [draft, staffOnly, orgArt, teamArt, tr]) await db('DELETE FROM faq_entries WHERE id = ?', [id]);
+    await db('DELETE FROM kb_searches'); await db('DELETE FROM faq_feedback'); await db('DELETE FROM faq_revisions');
+    await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+    await db('UPDATE guild_config SET kb_public = ? WHERE id = 1', [kbBefore.kb_public]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');
