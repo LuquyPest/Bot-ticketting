@@ -146,6 +146,21 @@ Une seule validation en attente par ticket ; la personne qui l'a demandée, ou u
 - **Droits** : lire demande `view_tickets` ; modifier, fusionner et détacher demandent `reply_ticket`. Chaque fusion et chaque détachement sont inscrits au journal.
 - L'**effacement des données** d'un membre (RGPD) retire aussi son identité de sa fiche, et la fiche si elle n'en a plus d'autre.
 
+## Les organisations
+
+Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).
+
+| | |
+|---|---|
+| **Rattachement** | Par les **domaines** d'adresse e-mail de l'organisation (`acme.fr` : tout contact `@acme.fr` la rejoint) ; **à la main** depuis la fiche du contact (le domaine ne le déplace plus ; « Par le domaine » revient à l'automatique) ; ou par **import** (`nom;domaines`, une ligne par organisation). Les messageries publiques (gmail.com, outlook.com…) sont refusées comme domaine |
+| **Sous-organisations** | Un niveau (« Acme » → « Acme Lyon ») : ce qui vise une organisation couvre ses sous-organisations |
+| **Horaires** | Un calendrier propre (son contrat), qui passe avant celui de l'équipe et de l'espace pour les délais en heures ouvrées |
+| **SLA** | Un objectif avec le critère **organisation** (Paramètres → Horaires → Objectifs SLA) |
+| **Équipe, responsable** | Ses tickets vont à son équipe (si ni le sujet ni un tag n'en désignent une) ; son responsable de compte peut être prévenu (destinataire « le responsable de l'organisation » des notifications) |
+| **Champs et notes** | Contrat, téléphone… (20 champs libres) et des notes internes |
+
+Un ticket garde l'organisation de son demandeur à l'ouverture : elle apparaît sur la fiche, filtre la liste (**Toutes organisations**), sert de condition aux [règles automatiques](./automatismes#les-regles-automatiques). Déplacer un contact déplace ses tickets ouverts.
+
 ## La liste des tickets
 
 - **Vues** : Ouverts, Mes tickets, Non attribués, Suivis, En attente, En cours, Urgents, Hors délai, Fermés, Tous — et tes propres vues enregistrées.

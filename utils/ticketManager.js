@@ -299,6 +299,8 @@ function createManager(db, client, guildId) {
     }
     // Incident or request, from the subject (utils/ticketTypes.js): before the rules, which may change it
     await require('./ticketTypes').applyDefaultType(db, ticket).catch(() => null);
+    // Organisation of the requester (utils/organizations.js): the rules, the SLA and the calendar read it
+    await require('./organizations').assignTicket(db, ticket.id).catch(err => console.error('organisations: ouverture', gid, ticket.id, err.message));
     // Business rules « at the opening » (utils/ruleEngine.js), which took over the rules by subject
     await require('./ruleEngine').runRules({ db, client, guildId: gid, ticketId: ticket.id, trigger: 'created', actor: user, message: firstMessage, address: extra.address || null })
       .catch(err => console.error('règles: ouverture', gid, ticket.id, err.message));

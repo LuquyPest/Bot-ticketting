@@ -26,7 +26,7 @@ import MessageSearch from '../components/MessageSearch';
 import { useStages, STAGE_CLS as STAGE_COLOR_CLS } from '../hooks/useStages';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '', team: '', type: '' };
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '', team: '', type: '', organization: '' };
 
 // Operators of the search box (parsed by utils/searchQuery.js on the server)
 const SEARCH_HELP = [
@@ -210,9 +210,12 @@ export default function Tickets() {
 
   const [data, setData]   = useState({ tickets: [], total: 0, pages: 1 });
   const [page, setPage]   = useState(1);
-  const [filters, setFilters] = useState({ ...EMPTY_FILTERS, status: 'open' });
+  // ?organization=<id> (Organisations page): its tickets, sub-organisations included
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, status: 'open', organization: new URLSearchParams(window.location.search).get('organization') || '' }));
   const [teamList, setTeamList] = useState([]);
   useEffect(() => { api.get('/teams').then(r => setTeamList(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
+  const [orgList, setOrgList] = useState([]);
+  useEffect(() => { api.get('/organizations').then(r => setOrgList(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
   const [activeView, setActiveView] = useState('open'); // built-in id or `saved:<id>`
   const [savedViews, setSavedViews] = useState([]);
   const [quickView, setQuickView] = useState(null);
@@ -603,6 +606,15 @@ export default function Tickets() {
             onChange={v => { setFilter('team', v); setActiveView(''); }}
             placeholder="Toutes équipes"
             options={[{ value: '', label: 'Toutes équipes' }, { value: 'none', label: 'Sans équipe' }, ...teamList.map(t => ({ value: String(t.id), label: t.name }))]}
+          />
+        )}
+        {orgList.length > 0 && (
+          <Select
+            className="w-44"
+            value={filters.organization}
+            onChange={v => { setFilter('organization', v); setActiveView(''); }}
+            placeholder="Toutes organisations"
+            options={[{ value: '', label: 'Toutes organisations' }, { value: 'none', label: 'Sans organisation' }, ...orgList.map(o => ({ value: String(o.id), label: `${o.parentId ? '— ' : ''}${o.name}` }))]}
           />
         )}
         {/* Custom field filter */}

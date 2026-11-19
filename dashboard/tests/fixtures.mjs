@@ -9,6 +9,10 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/organizations': [
+    { id: 1, name: 'Acme', parentId: null, teamId: 1, managerId: '1', calendarId: 1, domains: ['acme.example'], fields: { Contrat: 'Support Or' }, notes: 'Client depuis 2024', contacts: 12, openTickets: 3 },
+    { id: 2, name: 'Acme Lyon', parentId: 1, teamId: null, managerId: null, calendarId: null, domains: [], fields: {}, notes: '', contacts: 2, openTickets: 1 }],
+  '/api/organizations/1/contacts': [{ id: 1, display_name: 'Paul Martin', email: 'paul@acme.example', org_manual: 0, identity: 'mail:000000000000000000000001' }],
   '/api/chat': { slack: { configured: true, active: true, hasSecret: true, actionUrl: 'https://ticket.example.com/api/chat/slack/actions/1' }, teams: { configured: false, active: false, hasSecret: false } },
   '/api/notifications': { events: [], recipients: [], channels: [], rules: [
     { id: 1, event: 'member_reply', recipients: ['followers'], channels: ['dashboard'], emails: [], imposed: false, active: true },

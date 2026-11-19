@@ -34,7 +34,7 @@ function Chips({ label, options, value, onChange }) {
   );
 }
 
-function PolicyForm({ initial, subjects, teams, staff, onSave, onDelete, onMove, busy }) {
+function PolicyForm({ initial, subjects, teams, staff, orgs = [], onSave, onDelete, onMove, busy }) {
   const [p, setP] = useState(initial);
   const set = (k, v) => setP(x => ({ ...x, [k]: v }));
   const setC = (k, v) => setP(x => ({ ...x, conditions: { ...x.conditions, [k]: v } }));
@@ -53,6 +53,7 @@ function PolicyForm({ initial, subjects, teams, staff, onSave, onDelete, onMove,
       <Chips label="Priorités" options={PRIO} value={p.conditions.priorities} onChange={v => setC('priorities', v)} />
       <Chips label="Types" options={TYPES} value={p.conditions.types} onChange={v => setC('types', v)} />
       <Chips label="Canaux" options={CHANNELS} value={p.conditions.channels} onChange={v => setC('channels', v)} />
+      {orgs.length > 0 && <Chips label="Organisations" options={orgs.map(o => [o.id, o.name])} value={p.conditions.organizations || []} onChange={v => setC('organizations', v)} />}
       {subjects.length > 0 && <Chips label="Sujets" options={subjects.filter(s => !s.includes(' › ')).map(s => [s, s])} value={p.conditions.subjects} onChange={v => setC('subjects', v)} />}
       <EscalationLevels value={p.escalations || []} onChange={v => set('escalations', v)} objectives={['tto', 'ttr']} teams={teams} staff={staff} />
       <div className="flex gap-2">
@@ -65,13 +66,14 @@ function PolicyForm({ initial, subjects, teams, staff, onSave, onDelete, onMove,
   );
 }
 
-const NEW = { name: '', ttoMinutes: 240, ttrMinutes: 1440, businessHours: true, active: true, conditions: { priorities: [], types: [], subjects: [], channels: [] }, escalations: [] };
+const NEW = { name: '', ttoMinutes: 240, ttrMinutes: 1440, businessHours: true, active: true, conditions: { priorities: [], types: [], subjects: [], channels: [], organizations: [] }, escalations: [] };
 
 export default function SlaPoliciesEditor() {
   const [list, setList] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [teams, setTeams] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [orgs, setOrgs] = useState([]);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const [key, setKey] = useState(0);
@@ -80,6 +82,7 @@ export default function SlaPoliciesEditor() {
     api.get('/teams/options').then(r => setSubjects(r.data?.subjects || [])).catch(() => {});
     api.get('/teams').then(r => setTeams(r.data || [])).catch(() => {});
     api.get('/tickets/staff').then(r => setStaff(r.data || [])).catch(() => {});
+    api.get('/organizations').then(r => setOrgs(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
   if (list === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;
   if (list === false) return <p className="text-xs text-ink-4">Indisponible.</p>;
@@ -96,11 +99,11 @@ export default function SlaPoliciesEditor() {
         Les objectifs SLA : délai de prise en charge (première réponse) et de résolution. La résolution est en pause quand le ticket attend le demandeur. Un objectif prend les tickets qui remplissent tous ses critères (vide = tous) ; le plus précis l'emporte, puis le premier de la liste. Les délais par étape (Paramètres → Tickets) restent à part.
       </p>
       {list.map((p, i) => (
-        <PolicyForm key={`${p.id}-${key}`} initial={p} subjects={subjects} teams={teams} staff={staff} busy={busy} onMove={list.length > 1 ? d => move(i, d) : null}
+        <PolicyForm key={`${p.id}-${key}`} initial={p} subjects={subjects} teams={teams} staff={staff} orgs={orgs} busy={busy} onMove={list.length > 1 ? d => move(i, d) : null}
           onSave={v => run(() => api.put(`/sla-policies/${p.id}`, body(v)), 'Objectif enregistré')}
           onDelete={() => window.confirm(`Supprimer l'objectif « ${p.name} » ?`) && run(() => api.delete(`/sla-policies/${p.id}`), 'Objectif supprimé')} />
       ))}
-      {adding ? <PolicyForm key={`new-${key}`} initial={NEW} subjects={subjects} teams={teams} staff={staff} busy={busy} onSave={v => run(() => api.post('/sla-policies', body(v)), 'Objectif créé')} onDelete={() => setAdding(false)} />
+      {adding ? <PolicyForm key={`new-${key}`} initial={NEW} subjects={subjects} teams={teams} staff={staff} orgs={orgs} busy={busy} onSave={v => run(() => api.post('/sla-policies', body(v)), 'Objectif créé')} onDelete={() => setAdding(false)} />
         : <button onClick={() => setAdding(true)} className="px-3 py-2 rounded-lg text-xs font-semibold border border-overlay/8 text-ink-2 hover:text-ink-1 inline-flex items-center gap-1.5"><Plus size={13} /> Nouvel objectif SLA</button>}
     </div>
   );

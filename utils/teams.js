@@ -117,7 +117,12 @@ async function matchTeam(db, ticket) {
     if (bySubject) return bySubject;
   }
   const tags = (await db('SELECT tag_id FROM ticket_tag_assignments WHERE ticket_id = ?', [ticket.id])).map(r => Number(r.tag_id));
-  return teams.find(t => t.tagIds.some(id => tags.includes(id))) || null;
+  const byTag = teams.find(t => t.tagIds.some(id => tags.includes(id)));
+  if (byTag) return byTag;
+  // Else the team of the requester's organisation (utils/organizations.js), or of its parent
+  if (!ticket.organization_id) return null;
+  const [o] = await db('SELECT o.team_id, p.team_id AS parent_team FROM organizations o LEFT JOIN organizations p ON p.id = o.parent_id WHERE o.id = ?', [ticket.organization_id]).catch(() => []);
+  return teams.find(t => t.id === (o?.team_id || o?.parent_team)) || null;
 }
 
 // Can this staff member see the ticket (grade restriction, roles tied to tags)?

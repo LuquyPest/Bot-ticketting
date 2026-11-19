@@ -21,7 +21,7 @@ const SEP = ' › ';
 
 const shape = r => ({
   id: r.id, name: r.name, position: r.position, active: !!Number(r.active), businessHours: !!Number(r.business_hours),
-  ttoMinutes: r.tto_minutes, ttrMinutes: r.ttr_minutes, conditions: { priorities: [], types: [], subjects: [], channels: [], ...(parseJsonField(r.conditions, {}) || {}) },
+  ttoMinutes: r.tto_minutes, ttrMinutes: r.ttr_minutes, conditions: { priorities: [], types: [], subjects: [], channels: [], organizations: [], ...(parseJsonField(r.conditions, {}) || {}) },
 });
 async function listPolicies(db, { escalations = false } = {}) {
   const list = (await db('SELECT * FROM sla_policies ORDER BY position, id').catch(() => [])).map(shape);
@@ -38,7 +38,8 @@ function clean(input = {}) {
   if (tto === null && ttr === null) return { error: 'Donne au moins un délai : prise en charge ou résolution' };
   const list = (v, allowed, max = 60) => [...new Set((Array.isArray(v) ? v : []).map(String))].filter(x => !allowed || allowed.includes(x)).slice(0, max);
   const c = input.conditions || {};
-  const conditions = { priorities: list(c.priorities, PRIORITIES), types: list(c.types, TYPES), subjects: list(c.subjects, null).map(x => x.slice(0, 100)), channels: list(c.channels, CHANNELS) };
+  const conditions = { priorities: list(c.priorities, PRIORITIES), types: list(c.types, TYPES), subjects: list(c.subjects, null).map(x => x.slice(0, 100)), channels: list(c.channels, CHANNELS),
+    organizations: [...new Set((Array.isArray(c.organizations) ? c.organizations : []).map(Number).filter(Number.isInteger))].slice(0, 100) };
   return { value: { name, ttoMinutes: tto, ttrMinutes: ttr, conditions, businessHours: input.businessHours !== false, active: input.active !== false } };
 }
 
@@ -78,6 +79,8 @@ function matches(p, t) {
   if (c.priorities.length && !c.priorities.includes(t.priority)) return false;
   if (c.types.length && !c.types.includes(t.ticket_type || 'request')) return false;
   if (c.channels.length && !c.channels.includes(channelOf(t.owner_id))) return false;
+  // An organisation's objective covers its sub-organisations (t.org_parent_id, read by refreshSla)
+  if (c.organizations.length && !c.organizations.some(id => id === Number(t.organization_id) || id === Number(t.org_parent_id))) return false;
   if (c.subjects.length) {
     const s = String(t.subject || '');
     if (!c.subjects.some(x => s === x || s.startsWith(`${x}${SEP}`))) return false;
@@ -92,7 +95,7 @@ function pickPolicy(policies, t) {
 const toDate = ms => (ms == null ? null : new Date(ms));
 // The deadlines of one ticket, from its creation and what it has spent waiting
 async function refreshSla(db, ticketId, { policies = null } = {}) {
-  const [t] = await db('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+  const [t] = await db('SELECT t.*, o.parent_id AS org_parent_id FROM tickets t LEFT JOIN organizations o ON o.id = t.organization_id WHERE t.id = ?', [ticketId]);
   if (!t) return null;
   const p = pickPolicy(policies || await listPolicies(db), t);
   if (!p) {

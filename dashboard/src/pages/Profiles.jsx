@@ -139,6 +139,30 @@ function Post({ post, me, isFounder, canWrite, onChange, reply }) {
 }
 
 // The card itself: identities (with merge and detach), name, address and notes of the staff
+// Organisation of the contact (v5.3): by its e-mail domain, or placed by hand
+function OrgPicker({ memberId, org, canWrite, onChanged }) {
+  const [orgs, setOrgs] = useState(null);
+  useEffect(() => { if (canWrite) api.get('/organizations').then(r => setOrgs(r.data)).catch(() => setOrgs([])); }, [canWrite]);
+  const change = async value => {
+    try {
+      await api.put(`/profiles/${encodeURIComponent(memberId)}/organization`, value === 'auto' ? { auto: true } : { organizationId: value ? Number(value) : null });
+      toast.success('Organisation mise à jour'); onChanged();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  return (
+    <div className="text-xs">
+      <h3 className="text-xs text-ink-4 mb-1">Organisation</h3>
+      {canWrite && orgs ? (
+        <select value={org.manual ? String(org.id || '') : 'auto'} onChange={e => change(e.target.value)} aria-label="Organisation du contact" className="bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1 text-xs">
+          <option value="auto">{`Par le domaine${!org.manual && org.name ? ` (${org.name})` : ''}`}</option>
+          <option value="">Aucune (à la main)</option>
+          {orgs.map(o => <option key={o.id} value={o.id}>{`${o.parentId ? '— ' : ''}${o.name} (à la main)`}</option>)}
+        </select>
+      ) : <p className="text-ink-2">{org.name || '—'}</p>}
+    </div>
+  );
+}
+
 function ContactCard({ p, memberId, canWrite, onChanged }) {
   const navigate = useNavigate();
   const c = p.contact;
@@ -178,6 +202,7 @@ function ContactCard({ p, memberId, canWrite, onChanged }) {
   return (
     <section aria-labelledby="card-title" className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
       <h2 id="card-title" className="text-sm font-semibold text-ink-2">Fiche contact</h2>
+      {p.organization && <OrgPicker memberId={memberId} org={p.organization} canWrite={canWrite} onChanged={onChanged} />}
       <div>
         <h3 className="text-xs text-ink-4 mb-1.5">Identités</h3>
         <ul className="space-y-1">

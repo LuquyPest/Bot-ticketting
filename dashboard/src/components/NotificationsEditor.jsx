@@ -10,7 +10,7 @@ export const EVENT_LABELS = {
   ticket_created: 'Nouveau ticket', member_reply: 'Message du demandeur', staff_reply: 'Réponse du staff', note: 'Note interne', assigned: 'Attribution',
   stage: 'Changement de statut', closed: 'Fermeture', sla_breached: 'Objectif SLA dépassé',
 };
-const RECIPIENT_LABELS = { assignee: 'La personne attribuée', assignees: 'Les personnes attribuées', followers: 'Les observateurs', team: 'L\'équipe du ticket', founders: 'Les fondateurs', emails: 'Des adresses' };
+const RECIPIENT_LABELS = { assignee: 'La personne attribuée', assignees: 'Les personnes attribuées', followers: 'Les observateurs', team: 'L\'équipe du ticket', org_manager: 'Le responsable de l\'organisation', founders: 'Les fondateurs', emails: 'Des adresses' };
 export const CHANNEL_LABELS = { dashboard: 'Dashboard et navigateur', discord: 'MP Discord', email: 'E-mail', slack: 'Canal Slack', teams: 'Canal Teams' };
 const KEY_LABELS = {
   'welcome.default': 'Ticket créé', 'staffOpen.title': 'Le staff ouvre un ticket : titre', 'staffOpen.body': 'Le staff ouvre un ticket : texte',

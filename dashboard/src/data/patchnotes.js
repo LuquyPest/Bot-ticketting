@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.3.0',
+    date: 'à venir',
+    title: 'Centre de services : organisations et libre-service',
+    titleEn: 'Service desk: organisations and self-service',
+    changes: [
+      { type: 'new',  text: 'Organisations (menu Organisations) : contacts regroupés par domaine d\'adresse e-mail, à la main ou par import CSV ; sous-organisations (un niveau) ; horaires propres (avant ceux de l\'équipe), SLA par le critère « organisation », équipe et responsable de compte (prévenu par les notifications), champs et notes ; sur la fiche ticket, filtre de la liste, condition des règles', en: 'Organisations (Organisations menu): contacts grouped by e-mail address domain, by hand or by CSV import; sub-organisations (one level); own hours (before the team\'s), SLA through the « organisation » criterion, team and account manager (notified by the notifications), fields and notes; on the ticket view, list filter, rule condition' },
+    ],
+  },
+  {
     version: 'v5.2.0',
     date: 'à venir',
     title: 'Centre de services : règles et notifications',
