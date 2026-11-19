@@ -166,6 +166,18 @@ The reply and note area has a **formatting bar** (bold, italic, code, link, list
 
 In the list, **Columns** chooses what shows (type, team, organisation, last message…), kept for each person. A **saved view** can be **shared with a team** you belong to: its members see it (read only), each with their own rights on the tickets.
 
+### Costs
+
+**Costs** menu (founders and a grade's **See and manage costs** permission): what support costs, to invoice a client or a department.
+
+| | |
+|---|---|
+| **Time** | The time spent on a ticket (stopwatch and time added by hand), at the hourly rate of the **person**, else of the ticket's **team**, else of the **space** (rates set by the founders) |
+| **Fixed amount** | A fixed amount per ticket opened |
+| **Costs** | Costs added to a ticket from its view (travel, a part…), in the ticket's journal |
+
+The ticket view shows its cost; the report groups by **organisation**, **ticket**, **person** or **team** over a free period (time counts on its date, costs on theirs, the fixed amount on the opening day), and exports to **CSV**. It only counts the tickets the person can see.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

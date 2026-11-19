@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays, Coins,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useInstanceInfo } from '../hooks/useInstanceInfo';
@@ -36,6 +36,7 @@ const NAV_GROUPS = [
     { to: '/activite',    label: 'Mon activité', icon: Gauge,           roles: ['support','fondateur'] },
     { to: '/staff',       label: 'Mes stats',    icon: BarChart2,       roles: ['support'] },
     { to: '/analytics',   label: 'Analytiques',  icon: TrendingUp,      roles: ['support','fondateur'] },
+    { to: '/couts',       label: 'Coûts',        icon: Coins,           roles: ['fondateur'], perm: 'manage_costs' },
     { to: '/audit',       label: 'Journal',      icon: ClipboardList,   roles: ['fondateur'], perm: 'view_audit' },
     { to: '/login-logs',  label: 'Connexions',   icon: History,         roles: ['support','fondateur'] },
   ] },

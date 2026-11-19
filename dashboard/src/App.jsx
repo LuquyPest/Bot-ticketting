@@ -59,6 +59,7 @@ const Procedures  = lazy(() => import('./pages/Procedures'));
 const Profiles    = lazy(() => import('./pages/Profiles'));
 const Organizations = lazy(() => import('./pages/Organizations'));
 const Planning    = lazy(() => import('./pages/Planning'));
+const Costs       = lazy(() => import('./pages/Costs'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
 const Health      = lazy(() => import('./pages/Health'));
 const GuestView   = lazy(() => import('./pages/GuestView'));
@@ -266,6 +267,7 @@ export default function App() {
                         <Route path="profils/:memberId" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="organisations" element={<ErrorBoundary><Organizations /></ErrorBoundary>} />
                         <Route path="planning" element={<ErrorBoundary><Planning /></ErrorBoundary>} />
+                        <Route path="couts" element={<ErrorBoundary><Costs /></ErrorBoundary>} />
                         <Route path="procedures" element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Procedures /></ErrorBoundary></RequireRole>} />
                         <Route path="incidents"  element={<RequireRole role="fondateur" perm="manage_settings"><ErrorBoundary><Incidents /></ErrorBoundary></RequireRole>} />
                         <Route path="fields"     element={
