@@ -14,6 +14,8 @@ export const MOCK = {
       { key: 'model', label: 'Modèle souhaité', type: 'text', choices: [], required: true, default: '', showIf: { key: 'kind', equals: 'Portable' } }],
     template: { subject: 'Paiement', type: 'request', teamId: 1, priority: 'urgent' } }] },
   '/api/member/guilds/123456789012345678/catalog': { services: [{ id: 1, name: 'Demander du matériel', icon: '💻', category: 'Matériel', description: 'Un poste, un écran, un casque…', fields: [] }, { id: 2, name: 'Signaler une panne', icon: '🛠️', category: 'Incidents', description: 'Quelque chose ne marche plus', fields: [] }] },
+  '/api/recurring': { recurring: [{ id: 1, name: 'Contrôle des sauvegardes', subject: null, content: 'Vérifier les sauvegardes de la nuit.', frequency: 'weekly', time: '09:00', weekday: 1, monthday: 1,
+    timezone: 'Europe/Paris', serviceId: null, type: 'request', priority: 'normal', teamId: 1, skipIfOpen: true, active: true, nextRunAt: new Date(Date.now() + 86400000).toISOString(), lastRunAt: null, lastTicketId: null }] },
   '/api/organizations': [
     { id: 1, name: 'Acme', portalVisibility: 'manager', parentId: null, teamId: 1, managerId: '1', calendarId: 1, domains: ['acme.example'], fields: { Contrat: 'Support Or' }, notes: 'Client depuis 2024', contacts: 12, openTickets: 3 },
     { id: 2, name: 'Acme Lyon', parentId: 1, teamId: null, managerId: null, calendarId: null, domains: [], fields: {}, notes: '', contacts: 2, openTickets: 1 }],

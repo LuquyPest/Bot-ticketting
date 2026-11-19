@@ -5747,6 +5747,52 @@ async function main() {
     if (ct) await db('DELETE FROM tickets WHERE id = ?', [ct]);
   }
 
+  // ── Recurring tickets (utils/recurring.js, v5.3) ──
+  {
+    const RC = app('./utils/recurring');
+    const iso = d => d && new Date(d).toISOString();
+    r = await req('GET', '/api/recurring', { sid: sessions.S1 });
+    check('récurrents: réservés (fondateurs, Paramètres)', r.status === 403, r.status);
+    r = await req('POST', '/api/recurring', { sid: sessions.F, body: { name: 'x', content: 'y', frequency: 'monthly', monthday: 31, time: '09:00' } });
+    check('récurrents: jour du mois de 1 à 28', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/recurring', { sid: sessions.F, body: { name: 'x', content: 'y', frequency: 'daily', time: '25:00' } });
+    check('récurrents: heure vérifiée', r.status === 400, JSON.stringify(r.body));
+    const base = { timezone: 'Europe/Paris', time: '09:00' };
+    check('récurrents: chaque lundi à 9 h (Paris)', iso(RC.nextRun({ ...base, frequency: 'weekly', weekday: 1 }, Date.parse('2026-11-22T12:00:00Z'))) === '2026-11-23T08:00:00.000Z', '');
+    check('récurrents: le 15 de chaque mois', iso(RC.nextRun({ ...base, frequency: 'monthly', monthday: 15 }, Date.parse('2026-11-20T12:00:00Z'))) === '2026-12-15T08:00:00.000Z', '');
+    check('récurrents: jours ouvrés (vendredi après 9 h → lundi)', iso(RC.nextRun({ ...base, frequency: 'weekdays' }, Date.parse('2026-11-20T10:00:00Z'))) === '2026-11-23T08:00:00.000Z', '');
+    check('récurrents: heure d été respectée', iso(RC.nextRun({ ...base, frequency: 'daily' }, Date.parse('2027-03-27T09:00:00Z'))) === '2027-03-28T07:00:00.000Z', '');
+
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe système' } })).body.find(t => t.name === 'Équipe système');
+    r = await req('POST', '/api/recurring', { sid: sessions.F, body: { name: 'Contrôle des sauvegardes', content: 'Vérifier les sauvegardes de la nuit.', frequency: 'weekly', weekday: 1, time: '09:00', priority: 'urgent', teamId: team.id, type: 'request' } });
+    const rid = r.body.id;
+    const one = r.body.recurring?.find(x => x.id === rid);
+    check('récurrent créé, prochaine ouverture calculée', r.status === 200 && new Date(one.nextRunAt) > Date.now(), JSON.stringify(one));
+    await db('UPDATE recurring_tickets SET next_run_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [rid]);
+    const ctx = { db, guildId: G, client: fakeClient };
+    let n = await RC.runForGuild(ctx);
+    const row = async () => (await RC.list(db)).find(x => x.id === rid);
+    const t1 = (await row()).lastTicketId;
+    const [T1] = t1 ? await db('SELECT * FROM tickets WHERE id = ?', [t1]) : [];
+    check('récurrents: ouvert à l heure, avec son gabarit', n === 1 && T1 && T1.owner_id === RC.ownerOf(G, rid) && T1.subject === 'Contrôle des sauvegardes' && T1.priority === 'urgent' && T1.team_id === team.id && T1.ticket_type === 'request', JSON.stringify(T1 && { o: T1.owner_id, s: T1.subject, p: T1.priority }));
+    check('récurrents: au journal, prochaine ouverture repoussée', (await db("SELECT 1 FROM audit_log WHERE action = 'ticket_recurring' AND ticket_id = ?", [t1])).length === 1 && new Date((await row()).nextRunAt) > Date.now(), '');
+    check('récurrents: une seule fois par échéance', await RC.runForGuild(ctx) === 0, '');
+    await db('UPDATE recurring_tickets SET next_run_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [rid]);
+    n = await RC.runForGuild(ctx);
+    check('récurrents: attend que le précédent soit fermé', n === 0 && (await row()).lastTicketId === t1 && new Date((await row()).nextRunAt) > Date.now(), '');
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [t1]);
+    await db('UPDATE recurring_tickets SET next_run_at = NOW() - INTERVAL 1 MINUTE WHERE id = ?', [rid]);
+    n = await RC.runForGuild(ctx);
+    const t2 = (await row()).lastTicketId;
+    check('récurrents: le précédent fermé → le suivant s ouvre', n === 1 && t2 && t2 !== t1, '');
+    r = await req('POST', `/api/recurring/${rid}/run`, { sid: sessions.F });
+    check('récurrents: « Ouvrir maintenant » pour essayer', r.status === 200 && r.body.ticketId && r.body.ticketId !== t2, JSON.stringify(r.body));
+    const ids = [t1, t2, r.body.ticketId].filter(Boolean);
+    await req('DELETE', `/api/recurring/${rid}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+    await db('DELETE FROM tickets WHERE id IN (?)', [ids]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

@@ -39,6 +39,7 @@ const PAGES = [
   ['settings-slack-teams', '/settings?tab=integrations', 'Interactivity → Request URL'],
   ['organisations', '/organisations', 'Domaines d\'adresse e-mail'],
   ['settings-catalogue', '/settings?tab=catalogue', 'Afficher seulement si'],
+  ['settings-recurrents', '/settings?tab=catalogue', 'Attendre que le précédent soit fermé'],
   ['equipes-ola', '/equipe?tab=equipes', 'Objectif interne (OLA)'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],
   ['settings', '/settings', 'Paramètres'],

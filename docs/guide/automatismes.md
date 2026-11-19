@@ -48,6 +48,18 @@ Garde-fous : une modification faite par une règle ne relance pas les règles (p
 
 Les **règles par sujet et par mots-clés** d'avant (**Paramètres → Tickets**) sont devenues des règles de ce moteur, avec le même effet ; leur formulaire simple reste, et elles passent avant celles-ci à l'ouverture. Les règles font partie de l'[export de configuration](./integrations#sauvegarde-de-la-configuration) (tags, équipes, grades et statuts par leur nom ; les personnes choisies ne sont pas exportées).
 
+## Les tickets récurrents
+
+**Paramètres → Catalogue → Tickets récurrents** (fondateurs et permission **Paramètres**) : des tickets ouverts tout seuls selon une périodicité, comme « contrôle des sauvegardes, chaque lundi à 9 h ».
+
+| | |
+|---|---|
+| **Quand** | Chaque jour, les jours ouvrés (lundi à vendredi), chaque semaine (un jour), chaque mois (du 1er au 28) ; à une heure, dans un fuseau horaire (heure d'été comprise) |
+| **Quoi** | Le premier message du ticket, un sujet ; un **service du catalogue** (son gabarit : type, priorité, équipe) ou son propre type, priorité et équipe |
+| **Attendre le précédent** | Par défaut, rien de nouveau n'est ouvert tant que le ticket précédent de la même récurrence est encore ouvert |
+
+La vérification tourne chaque minute ; chaque échéance n'ouvre qu'un ticket. Ces tickets viennent de « Ticket récurrent · *nom* » : personne n'est prévenu par message, ils suivent les règles, le SLA et les notifications comme les autres, et chaque ouverture est au journal. **Ouvrir maintenant** en crée un pour essayer, sans changer la prochaine échéance.
+
 ## Les notifications
 
 **Paramètres → Notifications** (fondateurs) : qui est prévenu de quoi, et comment. Chaque notification associe un **événement**, des **destinataires** et des **canaux** :

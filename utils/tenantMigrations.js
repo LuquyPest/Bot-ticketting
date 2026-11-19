@@ -1067,6 +1067,34 @@ const MIGRATIONS = [
        FROM intake_forms f WHERE NOT EXISTS (SELECT 1 FROM catalog_services) ORDER BY f.id`,
     ],
   },
+  {
+    version: 66,
+    name: 'Tickets récurrents : ouverts tout seuls selon une périodicité (v5.3)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS recurring_tickets (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        name           VARCHAR(80) NOT NULL,
+        subject        VARCHAR(100) DEFAULT NULL,
+        content        TEXT NOT NULL,
+        frequency      VARCHAR(10) NOT NULL,
+        run_time       VARCHAR(5) NOT NULL,
+        weekday        TINYINT DEFAULT NULL,
+        monthday       TINYINT DEFAULT NULL,
+        timezone       VARCHAR(64) NOT NULL DEFAULT 'Europe/Paris',
+        service_id     INT DEFAULT NULL,
+        ticket_type    VARCHAR(10) DEFAULT NULL,
+        priority       VARCHAR(10) DEFAULT NULL,
+        team_id        INT DEFAULT NULL,
+        skip_if_open   TINYINT(1) NOT NULL DEFAULT 1,
+        active         TINYINT(1) NOT NULL DEFAULT 1,
+        next_run_at    DATETIME DEFAULT NULL,
+        last_run_at    DATETIME DEFAULT NULL,
+        last_ticket_id INT DEFAULT NULL,
+        created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_rt_next (active, next_run_at)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
