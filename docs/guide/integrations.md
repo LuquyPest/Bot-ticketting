@@ -189,3 +189,14 @@ Options : copier les 100 derniers messages du salon dans l'historique du ticket 
 
 Les anciens tickets **déjà fermés** ne sont pas importés : aucun de ces bots ne permet d'exporter ses données. Garde leurs transcripts là où l'autre bot les a mis.
 
+## Venir d'un autre outil d'assistance
+
+**Paramètres → Sauvegarde → Importer depuis un autre outil** (fondateurs) reprend un export de **Zendesk, Freshdesk, GLPI, osTicket, Zammad**, ou n'importe quel CSV / JSON aux colonnes courantes :
+
+1. exporte depuis l'autre outil (CSV, JSON, ou un objet JSON par ligne) ; découpe les exports de plus de 10 Mo ou 5 000 lignes ;
+2. choisis l'outil et ce que contient le fichier : **tickets**, **contacts**, **organisations** ou **articles** de la base ;
+3. **Essai à blanc** : rien n'est écrit, le dashboard compte les lignes et montre comment il a compris la première (sujet, demandeur, statut…) ;
+4. **Importer**.
+
+Les colonnes sont reconnues par leur nom, en anglais ou en français, majuscules et accents ignorés (`subject`, `Titre`, `requester.email`, `Demandeur`, `Statut`…). Le demandeur est retrouvé par son **adresse e-mail** : il retrouve ses tickets dans l'espace membre comme pour un ticket par e-mail. Les statuts résolus ou fermés (y compris les codes de GLPI et Freshdesk) donnent des tickets fermés, les autres des tickets ouverts ; la priorité, les dates et l'organisation sont reprises, l'organisation créée si besoin. Quand l'export contient la conversation (`comments`, `conversations`, `articles`), les messages publics deviennent l'historique du ticket et les notes privées des notes internes. Les articles arrivent **en brouillon**, sans HTML, à relire avant publication. Chaque ligne déjà importée est retenue par son identifiant d'origine : reprendre le même export ne crée pas de doublon. Chaque import est inscrit au journal d'audit.
+

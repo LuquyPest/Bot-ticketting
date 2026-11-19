@@ -6287,6 +6287,55 @@ async function main() {
     await db('DELETE FROM tickets WHERE id IN (?)', [[tk, tk2]]);
   }
 
+  // ── Imports from other helpdesk tools (utils/helpdeskImport.js, v5.7) ──
+  {
+    const imp = body => req('POST', '/api/imports', { sid: sessions.F, body });
+    r = await req('POST', '/api/imports', { sid: sessions.S1, body: { source: 'generic', kind: 'tickets', text: 'a' } });
+    check('imports: réservés aux fondateurs', r.status === 403, r.status);
+    // GLPI: CSV « ; », numeric statuses (5 solved, 6 closed), French headers
+    const glpi = 'ID;Titre;Statut;Priorité;Demandeur;Date d\'ouverture;Date de résolution;Entité;Description\n'
+      + '501;Imprimante du 2e;6;Haute;paul@glpi-test.fr;2026-02-01 09:00;2026-02-02 10:00;Entité A;"Plus de toner;\nrien ne sort"\n'
+      + '502;Accès VPN GLPI;2;Basse;zoe@glpi-test.fr;2026-02-03 11:00;;Entité A;Connexion refusée\n';
+    r = await imp({ source: 'glpi', kind: 'tickets', format: 'csv', text: glpi, dryRun: true });
+    check('imports: essai à blanc (colonnes comprises, rien écrit)', r.status === 200 && r.body.dryRun && r.body.created === 2 && r.body.preview.subject === 'Imprimante du 2e' && r.body.preview.email === 'paul@glpi-test.fr'
+      && !(await db("SELECT 1 FROM tickets WHERE subject = 'Imprimante du 2e'")).length, JSON.stringify(r.body));
+    r = await imp({ source: 'glpi', kind: 'tickets', format: 'csv', text: glpi });
+    const [g1] = await db("SELECT * FROM tickets WHERE subject = 'Imprimante du 2e'");
+    const [g2] = await db("SELECT * FROM tickets WHERE subject = 'Accès VPN GLPI'");
+    const [n1] = g1 ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user'", [g1.id]) : [];
+    check('imports: GLPI — statuts, priorités, dates, demandeur, organisation, description', r.body.created === 2 && g1?.status === 'closed' && g1.priority === 'urgent' && g2?.status === 'open' && g2.priority === 'low'
+      && new Date(g1.created_at).toISOString().startsWith('2026-02-01') && g1.owner_id === app('./utils/emailTickets').ownerIdFor('paul@glpi-test.fr') && !!g1.organization_id && /Plus de toner;\nrien ne sort/.test(n1?.content), JSON.stringify([g1 && { s: g1.status, p: g1.priority, c: g1.created_at, o: g1.owner_id, org: g1.organization_id }, n1, g2 && { s: g2.status, p: g2.priority }]));
+    r = await imp({ source: 'glpi', kind: 'tickets', format: 'csv', text: glpi });
+    check('imports: reprendre le même export ne crée pas de doublon', r.body.created === 0 && r.body.skipped === 2 && (await db("SELECT COUNT(*) AS n FROM tickets WHERE subject = 'Imprimante du 2e'"))[0].n == 1, JSON.stringify(r.body));
+    // Zendesk: NDJSON with comments (public and internal)
+    const zd = [JSON.stringify({ id: 9001, subject: 'Facture introuvable', status: 'solved', priority: 'normal', requester: { email: 'lea@zd-test.com', name: 'Léa' }, created_at: '2026-01-10T08:00:00Z',
+      comments: [{ body: 'Je ne trouve pas ma facture', public: true, author_role: 'end-user' }, { body: 'Elle est dans votre espace', public: true, author_role: 'agent', author_name: 'Max' }, { body: 'Vérifier le compte', public: false, author_role: 'agent' }] }),
+    JSON.stringify({ id: 9002, subject: 'Sans adresse', status: 'open' })].join('\n');
+    r = await imp({ source: 'zendesk', kind: 'tickets', format: 'json', text: zd });
+    const [z] = await db("SELECT * FROM tickets WHERE subject = 'Facture introuvable'");
+    const zn = z ? await db('SELECT source, author_tag, content FROM ticket_notes WHERE ticket_id = ? ORDER BY id', [z.id]) : [];
+    check('imports: Zendesk — conversation reprise (demandeur, staff, note interne)', r.body.created === 1 && z?.status === 'closed' && z.owner_tag === 'Léa' && zn.some(n => n.source === 'user' && /facture/.test(n.content))
+      && zn.some(n => n.source === 'reply' && n.author_tag === 'Max') && zn.some(n => n.source === 'system' && /Vérifier/.test(n.content)), JSON.stringify(zn));
+    check('imports: ligne sans demandeur signalée, pas importée', r.body.errors.length === 1 && /demandeur/.test(r.body.errors[0]), JSON.stringify(r.body.errors));
+    // Organisations, contacts, articles
+    r = await imp({ source: 'freshdesk', kind: 'organizations', format: 'csv', text: 'Company ID,Company Name,Domains\n77,Fresh Corp,fresh-test.io\n' });
+    check('imports: organisations avec leurs domaines', r.body.created === 1 && (await db("SELECT 1 FROM organization_domains WHERE domain = 'fresh-test.io'")).length === 1, JSON.stringify(r.body));
+    r = await imp({ source: 'freshdesk', kind: 'contacts', format: 'csv', text: 'Contact ID,Full Name,Email,Company\n1,Ana Fresh,ana@fresh-test.io,Fresh Corp\n2,Sans mail,,\n' });
+    const [ct] = await db("SELECT c.organization_id, c.display_name FROM contacts c JOIN contact_identities ci ON ci.contact_id = c.id WHERE ci.value = ?", [app('./utils/emailTickets').ownerIdFor('ana@fresh-test.io')]);
+    check('imports: contacts rattachés à leur organisation', r.body.created === 1 && r.body.errors.length === 1 && ct?.display_name === 'Ana Fresh' && !!ct.organization_id, JSON.stringify([r.body, ct]));
+    r = await imp({ source: 'zammad', kind: 'articles', format: 'json', text: JSON.stringify([{ id: 3, title: 'Réinitialiser son mot de passe', body: '<p>Va dans <b>Profil</b></p>', category: 'Compte' }]) });
+    const [ar] = await db("SELECT status, answer, category FROM faq_entries WHERE question = 'Réinitialiser son mot de passe'");
+    check('imports: articles en brouillon, sans HTML', r.body.created === 1 && ar?.status === 'draft' && ar.answer === 'Va dans Profil' && ar.category === 'Compte', JSON.stringify(ar));
+    r = await imp({ source: 'mantis', kind: 'tickets', format: 'csv', text: 'a,b\n1,2' });
+    check('imports: outil inconnu refusé', r.status === 400, r.status);
+    check('imports: au journal', (await db("SELECT 1 FROM audit_log WHERE action = 'helpdesk_import'")).length >= 5, '');
+    const ids = (await db("SELECT local_id FROM import_refs WHERE kind = 'tickets'")).map(x => x.local_id);
+    if (ids.length) await db('DELETE FROM tickets WHERE id IN (?)', [ids]);
+    await db("DELETE FROM faq_entries WHERE question = 'Réinitialiser son mot de passe'");
+    await db("DELETE FROM organizations WHERE name IN ('Fresh Corp', 'Entité A')"); await db("DELETE FROM organization_domains WHERE domain = 'fresh-test.io'");
+    await db('DELETE FROM import_refs');
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

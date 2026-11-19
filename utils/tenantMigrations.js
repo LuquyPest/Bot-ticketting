@@ -1386,6 +1386,20 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 77,
+    name: 'Imports depuis d\'autres outils : ce qui a déjà été repris (v5.7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS import_refs (
+        source      VARCHAR(12) NOT NULL,
+        kind        VARCHAR(16) NOT NULL,
+        external_id VARCHAR(64) NOT NULL,
+        local_id    INT NOT NULL,
+        imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (source, kind, external_id)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

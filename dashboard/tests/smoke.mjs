@@ -63,6 +63,7 @@ const PAGES = [
   ['equipes', '/equipe?tab=equipes', 'Reçoit les tickets des sujets'],
   ['file-equipe', '/queue', 'Équipe Paiements'],
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
+  ['settings-import-outil', '/settings?tab=sauvegarde', 'Importer depuis un autre outil'],
   ['settings-integrations', '/settings?tab=integrations', 'Tickets par e-mail'],
   ['settings-widget', '/settings?tab=integrations', 'Voir le formulaire'],
   ['settings-adresses', '/settings?tab=integrations', 'Autres adresses'],

@@ -188,3 +188,14 @@ The import merges by name and deletes nothing. A macro that changes the status f
 Options: copy the last 100 messages of the channel into the ticket history (the member's messages and the staff's replies; those of bots are ignored), tell each member by DM — in their language — that they can now reply to the bot, and move the channels into the « Open » category. Then remove the old bot from your server: new tickets go through this one.
 
 Old tickets **already closed** are not imported: none of these bots lets you export its data. Keep their transcripts where the other bot put them.
+
+## Coming from another helpdesk tool
+
+**Settings → Backup → Import from another tool** (founders) takes an export from **Zendesk, Freshdesk, GLPI, osTicket, Zammad**, or any CSV / JSON with the usual columns:
+
+1. export from the other tool (CSV, JSON, or one JSON object per line); split exports over 10 MB or 5,000 rows;
+2. pick the tool and what the file holds: **tickets**, **contacts**, **organisations** or knowledge base **articles**;
+3. **Dry run**: nothing is written, the dashboard counts the rows and shows how it understood the first one (subject, requester, status…);
+4. **Import**.
+
+Columns are recognised by name, in English or French, ignoring case and accents (`subject`, `Titre`, `requester.email`, `Demandeur`, `Status`…). The requester is matched by **e-mail address**: they find their tickets in the member space as for an e-mail ticket. Solved or closed statuses (including GLPI and Freshdesk codes) give closed tickets, the others open ones; priority, dates and organisation are kept, the organisation created if needed. When the export holds the conversation (`comments`, `conversations`, `articles`), public messages become the ticket history and private notes internal notes. Articles arrive **as drafts**, without HTML, to review before publishing. Each imported row is remembered by its original identifier: importing the same export again creates no duplicate. Each import is written to the audit log.

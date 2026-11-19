@@ -123,6 +123,7 @@ const ACTIONS = {
   problem_unlink:           ['Ticket détaché d\'un problème', 'tickets'],
   problem_resolve:          ['Problème résolu', 'tickets'],
   problems_toggle:          ['Problèmes activés ou coupés', 'config'],
+  helpdesk_import:          ['Import depuis un autre outil', 'config'],
   survey_settings:          ['Enquête de satisfaction modifiée', 'config'],
   report_schedule:          ['Rapport programmé enregistré', 'config'],
   cost_settings:            ['Taux et forfaits des coûts modifiés', 'config'],

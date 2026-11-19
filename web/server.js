@@ -108,6 +108,7 @@ app.use('/api/ical', require('./routes/ical')); // iCal feed of the planning, by
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
 app.use('/api/config/import', express.json({ limit: '2mb' }));
+app.use('/api/imports', express.json({ limit: '12mb' })); // exports of other helpdesks (v5.7)
 app.use('/api/config', express.json({ limit: '400kb' })); // member space logo (data URL)
 app.use(auditLog);
 app.use(httpErrorMiddleware);
@@ -302,6 +303,7 @@ app.use('/api/problems',      withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/changes',       withGuild(['support', 'fondateur']), require('./routes/changes')); // v5.5
 app.use('/api/dashboards',    withGuild(['support', 'fondateur']), require('./routes/dashboards')); // v5.6
 app.use('/api/surveys',       withGuild(['support', 'fondateur']), require('./routes/survey').staff); // v5.6
+app.use('/api/imports',       withGuild(['support', 'fondateur']), require('./routes/imports')); // v5.7
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/email',       withGuild(['fondateur']),            require('./routes/emailSettings')); // tickets by e-mail
