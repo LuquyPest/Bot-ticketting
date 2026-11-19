@@ -22,6 +22,8 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 
 **A space without Discord**: **Instance → Spaces → Create a space**. It is a support space without a Discord server: tickets by [e-mail](./integrations#tickets-by-e-mail), member space, dashboard, with its own settings, team and journal. Its tickets have no channel (« No channel » format), nothing is ever asked to Discord about it, and the dashboard hides the Discord features there (panels, roles, server health, newsletter, channels). You are its founder; it shows up in **My spaces** whatever the way you sign in.
 
+**Like another space**: at creation, pick « Like « *space* » » to take its configuration, that of the [configuration export](./integrations#backing-up-the-configuration): statuses, subjects, fields, grades, tags, forms, SLA objectives, rules, service catalogue, task and reply templates, knowledge base. The team, tickets, contacts and Discord channels are never taken; the new space stays without Discord.
+
 **Linking or unlinking Discord**: on the row of a space without Discord, the **Link to Discord** button asks for the Discord server ID then gives the bot's invite link, valid for one hour. When the bot arrives, the space becomes the server's: tickets, settings, team and journal are kept, no new space is created. Conversely, **Unlink from Discord** (confirmed by typing the name) keeps the space and all its content: its open tickets go on without a channel, the format switches to « No channel », and the bot leaves the server. Inviting the bot to that server again links it again.
 
 ## Pages

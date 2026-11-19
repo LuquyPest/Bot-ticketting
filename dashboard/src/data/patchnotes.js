@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Several spaces',
     changes: [
       { type: 'new',  text: 'Tous mes espaces : les tickets ouverts de chaque espace où l\'on fait partie du staff, chacun avec les droits qu\'on y a (grades, confidentiels, IP, double authentification) ; un clic ouvre le ticket dans son espace', en: 'All my spaces: the open tickets of every space where one is staff, each with the rights one has there (grades, confidential, IP, two-factor); a click opens the ticket in its space' },
+      { type: 'new',  text: 'Modèle d\'espace : un nouvel espace peut reprendre la configuration d\'un autre (statuts, sujets, champs, SLA, règles, catalogue, modèles, base de connaissances), sans son équipe ni ses tickets ; l\'export de configuration contient désormais les objectifs SLA, le catalogue et les modèles de tâches', en: 'Space template: a new space can take the configuration of another one (statuses, subjects, fields, SLA, rules, catalogue, templates, knowledge base), without its team or tickets; the configuration export now holds the SLA objectives, the catalogue and the task templates' },
     ],
   },
   {

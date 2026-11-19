@@ -4327,6 +4327,35 @@ async function main() {
     check('espaces: espace sans Discord créé (identifiant 9…, base prête, aucun salon, ouvert par e-mail, créateur fondateur)', r.status === 200 && spaces.SPACE_ID_RE.test(SP) && sRow.guild_name === 'Équipe e-mail' && Number(sRow.discord) === 0 && sRow.discord_guild_id === null && sRow.created_by === U.F && sRow.status === 'active' && sCfg.ticket_mode === 'database' && Number(sCfg.portal_email_open) === 1 && sFounder?.role === 'fondateur', JSON.stringify([r.body, sRow, sCfg, sFounder]));
     const [aud] = await globalQuery("SELECT COUNT(*) AS n FROM instance_audit_log WHERE action = 'space_create'");
     check('espaces: création inscrite au journal de l instance', Number(aud.n) >= 1, '');
+    // v6: a space created with the configuration of another one
+    {
+      const pM = (await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Modèle SLA MOD', ttoMinutes: 45, ttrMinutes: 300, businessHours: false } })).body.policies?.find(p => p.name === 'Modèle SLA MOD');
+      await app('./utils/catalog').saveService(db, null, { name: 'Service modèle MOD', fields: [{ label: 'Bureau', type: 'text' }], template: { priority: 'urgent' } });
+      await app('./utils/tasks').saveTemplate(db, null, { name: 'Arrivée MOD', tasks: [{ title: 'Créer le compte' }, { title: 'Remettre le badge' }] });
+      r = await req('POST', '/api/instance/guilds', { sid: sessions.OWN, body: { name: 'Copie mauvaise', templateId: '999999999999999991' } });
+      check('modèle d espace: modèle inconnu refusé', r.status === 400, JSON.stringify(r.body));
+      r = await req('POST', '/api/instance/guilds', { sid: sessions.OWN, body: { name: 'Filiale modèle MOD', templateId: G } });
+      const NS = r.body.id;
+      const ndb = getTenantDb(NS);
+      const [cfgG] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+      const [cfgN] = await ndb('SELECT ticket_subjects, ticket_mode FROM guild_config WHERE id = 1');
+      const nSla = await ndb("SELECT tto_minutes FROM sla_policies WHERE name = 'Modèle SLA MOD'");
+      const nSvc = await ndb("SELECT priority FROM catalog_services WHERE name = 'Service modèle MOD'");
+      const nTpl = await ndb("SELECT tasks FROM task_templates WHERE name = 'Arrivée MOD'");
+      const nPeople = await ndb('SELECT user_id FROM dashboard_users');
+      const nTickets = await ndb('SELECT COUNT(*) AS n FROM tickets');
+      const pjm = v => (v == null || v === '' ? [] : typeof v === 'string' ? JSON.parse(v) : v);
+      check('modèle d espace: configuration reprise (sujets, SLA, catalogue, modèles de tâches), sans personne ni ticket, sans Discord', r.status === 200 && r.body.template?.id === G
+        && JSON.stringify(pjm(cfgN.ticket_subjects)) === JSON.stringify(pjm(cfgG.ticket_subjects)) && cfgN.ticket_mode === 'database'
+        && nSla[0]?.tto_minutes === 45 && nSvc[0]?.priority === 'urgent' && pjm(nTpl[0]?.tasks).length === 2
+        && nPeople.length === 1 && nPeople[0].user_id === U.F && Number(nTickets[0].n) === 0, JSON.stringify([r.body.template?.report, cfgN.ticket_mode, nSla, nSvc, nPeople.length]));
+      const ex = await app('./utils/configTransfer').exportConfig(db);
+      check('export de configuration: objectifs SLA, catalogue et modèles de tâches inclus', ex.slaPolicies?.some(p => p.name === 'Modèle SLA MOD') && ex.services?.some(s => s.name === 'Service modèle MOD') && ex.taskTemplates?.some(t => t.name === 'Arrivée MOD'), '');
+      await db("DELETE FROM sla_policies WHERE name = 'Modèle SLA MOD'"); await db("DELETE FROM catalog_services WHERE name = 'Service modèle MOD'"); await db("DELETE FROM task_templates WHERE name = 'Arrivée MOD'");
+      await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [NS]);
+      await globalQuery(`DROP DATABASE IF EXISTS \`ticketbot_guild_${NS}\``).catch(() => null);
+      void pM;
+    }
     const { Client } = require('discord.js');
     const realC = new Client({ intents: [] });
     const errG = await realC.guilds.fetch(SP).then(() => null, e => e);
