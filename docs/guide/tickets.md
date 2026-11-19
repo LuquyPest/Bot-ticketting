@@ -190,6 +190,17 @@ Menu **Changements** (coupé par défaut ; un fondateur l'active) : une modifica
 
 Il suit un circuit : **brouillon** → **en attente de validation** → **validé** (toutes les validations) ou **refusé** (au premier refus, avec son motif) → **en cours** → **terminé** ou **en échec** ; **annulé** à tout moment. Les **validations** sont données par les membres du staff choisis, chacun pour soi, dans le dashboard ; il ne démarre qu'une fois validé, et ses plans et risques sont figés dès qu'il l'est (repasser en brouillon remet les validations à zéro). Tout est au journal.
 
+## L'enquête de satisfaction
+
+Quand un ticket est fermé, le demandeur reçoit l'**enquête de satisfaction** (**Paramètres → Tickets → Enquête de satisfaction**) :
+
+| | |
+|---|---|
+| **Quand** | À la fermeture (comme avant), ou 1 h, 4 h, 1 jour, 3 jours, 1 semaine après |
+| **Laquelle** | Celle de Datick : un lien à usage unique vers une page (`/enquete`) avec la note sur 5, un commentaire et jusqu'à **5 questions** (note sur 5, oui / non, texte), qui marche pour un demandeur Discord, e-mail ou web ; sur Discord, les boutons de note restent. Ou **un lien vers ton outil** (le numéro du ticket est ajouté au lien) |
+
+Le lien sert une fois et expire après 30 jours ; la page ne montre que le sujet du ticket et les questions. **Analytiques → Rapports** donne le **taux de réponse** et les réponses aux questions sur 30 jours.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

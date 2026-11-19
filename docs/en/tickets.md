@@ -190,6 +190,17 @@ Tickets are linked to it from the problem or from their view (**Reply** permissi
 
 It follows a flow: **draft** → **waiting for approval** → **approved** (all approvals) or **refused** (at the first refusal, with its reason) → **in progress** → **done** or **failed**; **cancelled** at any time. **Approvals** are given by the chosen staff members, each for themself, in the dashboard; it only starts once approved, and its plans and risks are frozen once it is (going back to draft resets the approvals). Everything is in the journal.
 
+## Satisfaction survey
+
+When a ticket is closed, the requester gets the **satisfaction survey** (**Settings → Tickets → Satisfaction survey**):
+
+| | |
+|---|---|
+| **When** | At the closing (as before), or 1 h, 4 h, 1 day, 3 days, 1 week after |
+| **Which one** | Datick's own: a single-use link to a page (`/enquete`) with the rating out of 5, a comment and up to **5 questions** (rating out of 5, yes / no, text), which works for a Discord, e-mail or web requester; on Discord, the rating buttons stay. Or **a link to your tool** (the ticket number is added to the link) |
+
+The link works once and expires after 30 days; the page only shows the ticket's subject and the questions. **Analytics → Reports** gives the **response rate** and the answers to the questions over 30 days.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

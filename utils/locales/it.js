@@ -39,6 +39,7 @@ module.exports = {
   'rating.body': 'La tua opinione ci aiuta a migliorare il supporto.',
   'rating.comment': '💬 Il tuo commento',
   'rating.already': 'Hai già valutato questo ticket.',
+  'survey.link': 'Il tuo parere in un minuto: {url}',
   'rating.ask': '**Com\'è andata la tua esperienza con il nostro team?**',
   'rating.addComment': '💬 Aggiungi un commento',
   'rating.modalTitle': 'La tua opinione sul supporto',

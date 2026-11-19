@@ -1350,6 +1350,42 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 76,
+    name: 'Enquête de satisfaction : délai, questions, lien externe, taux de réponse (v5.6)',
+    statements: [
+      // 0 minute, built-in: what was sent before (the rating at the closing)
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS survey_delay_minutes INT NOT NULL DEFAULT 0',
+      "ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS survey_mode VARCHAR(8) NOT NULL DEFAULT 'builtin'",
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS survey_external_url VARCHAR(500) DEFAULT NULL',
+      'ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS survey_questions JSON DEFAULT NULL',
+      `CREATE TABLE IF NOT EXISTS survey_requests (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id     INT NOT NULL,
+        owner_id      VARCHAR(32) NOT NULL,
+        token_hash    CHAR(64) NOT NULL,
+        pending_token VARCHAR(64) DEFAULT NULL,
+        send_at       DATETIME NOT NULL,
+        sent_at       DATETIME DEFAULT NULL,
+        answered_at   DATETIME DEFAULT NULL,
+        expires_at    DATETIME NOT NULL,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sq_token (token_hash),
+        INDEX idx_sq_due (sent_at, send_at),
+        INDEX idx_sq_ticket (ticket_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS survey_responses (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        request_id INT NOT NULL,
+        ticket_id  INT NOT NULL,
+        rating     TINYINT NOT NULL,
+        comment    TEXT DEFAULT NULL,
+        answers    JSON DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_srsp_date (created_at)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

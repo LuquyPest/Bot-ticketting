@@ -17,6 +17,7 @@ const JOBS = {
   'rule-timers':         { every: 5 * 60 * 1000,  run: client => require('./ruleTimers').runRuleTimers(client) },
   'recurring-tickets':   { every: 60 * 1000,      run: client => require('./recurring').runRecurring(client) },
   'scheduled-reports':   { every: 10 * 60 * 1000, run: () => require('./scheduledReports').runScheduledReports() },
+  'satisfaction-surveys': { every: 60 * 1000,     run: client => require('./surveys').runSurveys(client) },
   'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },
   'user-inactive-check': { every: 60 * 60 * 1000, run: client => require('./userInactiveChecker').runUserInactiveCheck(client) },
   'staff-reminder':      { every: 60 * 60 * 1000, run: client => require('./staffReminderChecker').runStaffReminderCheck(client) },

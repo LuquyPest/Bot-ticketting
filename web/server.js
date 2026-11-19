@@ -152,6 +152,7 @@ app.use(['/api/auth/discord', '/api/auth/totp-verify-login', '/api/auth/password
 app.use('/api/member/auth', authLimiter);
 app.use('/api/approvals', authLimiter); // approval links: token guessing is rate-limited
 app.use('/api/resolution', authLimiter); // « C'est résolu » links: same
+app.use('/api/survey', authLimiter); // satisfaction survey links: same
 app.use('/api/guest/session', authLimiter); // guest links: token guessing is rate-limited
 app.use('/api/demo', authLimiter);
 app.use('/api', apiLimiter);
@@ -187,6 +188,7 @@ app.use('/api/member',   require('./routes/memberPortal')); // member web space 
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 app.use('/api/approvals', require('./routes/approvalLink')); // approval by e-mail link (v4.2)
 app.use('/api/resolution', require('./routes/resolutionLink')); // « C'est résolu » by e-mail link (v5.1)
+app.use('/api/survey', require('./routes/survey').pub); // satisfaction survey by link (v5.6)
 
 // ── Updater service (docker-compose.updater.yml, utils/updates.js) ──
 // Reachable only from inside the Docker network (refused through the proxy) with UPDATER_TOKEN
@@ -299,6 +301,7 @@ app.use('/api/costs',         withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/problems',      withGuild(['support', 'fondateur']), require('./routes/problems')); // v5.5
 app.use('/api/changes',       withGuild(['support', 'fondateur']), require('./routes/changes')); // v5.5
 app.use('/api/dashboards',    withGuild(['support', 'fondateur']), require('./routes/dashboards')); // v5.6
+app.use('/api/surveys',       withGuild(['support', 'fondateur']), require('./routes/survey').staff); // v5.6
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/email',       withGuild(['fondateur']),            require('./routes/emailSettings')); // tickets by e-mail

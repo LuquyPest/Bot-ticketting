@@ -94,6 +94,8 @@ export const MOCK = {
   '/api/staff/me/signature': { signature: 'Daryu — support Sunset' },
   '/api/instance/mail-oauth': { google: { clientId: 'gid.apps', secretSet: true, configured: true, callbackUrl: 'https://ticket.example/api/email/oauth/google/callback' },
     microsoft: { clientId: '', tenant: 'common', secretSet: false, configured: false, callbackUrl: 'https://ticket.example/api/email/oauth/microsoft/callback' } },
+  '/api/surveys/settings': { delayMinutes: 1440, mode: 'builtin', externalUrl: '', questions: [{ id: 'q1', label: 'Le délai vous a-t-il convenu ?', type: 'yesno' }] },
+  '/api/surveys/stats': { days: 30, sent: 40, answered: 26, ratePct: 65, questions: [{ id: 'q1', label: 'Le délai vous a-t-il convenu ?', type: 'yesno', answers: 26, yesPct: 81 }] },
   '/api/analytics/scheduled': { reports: [{ id: 1, name: 'Hebdo direction', by: 'organization', days: 7, format: 'xlsx', frequency: 'weekly', weekday: 1, monthday: 1, time: '08:00', timezone: 'Europe/Paris', recipients: ['direction@example.com'], active: true, nextRunAt: iso(-1440), lastSentAt: null, ownerId: '1' }] },
   '/api/analytics/breakdown': { by: 'team', days: 30, total: 31, truncated: false, rows: [
     { key: '1', label: 'Facturation', opened: 18, closed: 15, stillOpen: 3, firstResponseMedianMin: 42, resolutionMedianHours: 6.5, avgRating: 4.6, ratings: 9, timeHours: 7.5 },

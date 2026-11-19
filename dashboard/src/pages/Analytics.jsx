@@ -679,6 +679,20 @@ function StatsCsvDownload() {
 
 // Reports by team, category, subject or channel (utils/breakdownReport.js), exportable as CSV
 const BREAKDOWN_BY = [['team', 'Par équipe'], ['category', 'Par catégorie'], ['subject', 'Par sujet'], ['channel', 'Par canal'], ['type', 'Par type'], ['organization', 'Par organisation'], ['assignee', 'Par personne'], ['priority', 'Par priorité']];
+// Response rate of the satisfaction survey and its extra questions (v5.6, utils/surveys.js)
+function SurveyStats() {
+  const [d, setD] = useState(null);
+  useEffect(() => { api.get('/surveys/stats', { params: { days: 30 } }).then(r => setD(Array.isArray(r.data?.questions) ? r.data : null)).catch(() => setD(null)); }, []);
+  if (!d) return null;
+  return (
+    <section className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-1.5">
+      <h2 className="text-sm font-semibold text-ink-2">Enquête de satisfaction (30 jours)</h2>
+      <p className="text-xs text-ink-2">{`${d.answered} réponse(s) sur ${d.sent} enquête(s) envoyée(s) · taux de réponse ${d.ratePct ?? '—'} %`}</p>
+      {d.questions.map(q => <p key={q.id} className="text-xs text-ink-3">{`${q.label} : ${q.type === 'rating' ? `${q.average ?? '—'} / 5` : q.type === 'yesno' ? `${q.yesPct ?? '—'} % de oui` : `${q.answers} réponse(s)`}`}</p>)}
+    </section>
+  );
+}
+
 // Reports sent by e-mail on a schedule (v5.6, utils/scheduledReports.js)
 function ScheduledReports() {
   const [list, setList] = useState(null);
@@ -826,7 +840,7 @@ export default function Analytics() {
       {tab === 'time'   && <TabTime />}
       {tab === 'compare' && <TabCompare />}
       {tab === 'reopens' && <TabReopens />}
-      {tab === 'reports' && <><TabReports /><ScheduledReports /></>}
+      {tab === 'reports' && <><TabReports /><SurveyStats /><ScheduledReports /></>}
     </div>
   );
 }
