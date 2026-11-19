@@ -8031,6 +8031,27 @@ async function main() {
     channels.delete(ALERT);
   }
 
+  // ── All my spaces (web/routes/mySpaces.js, v6): each space read with the rights one has there ──
+  {
+    const CONF = app('./utils/gradePermissions').CONFIDENTIAL;
+    const tPub = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, priority) VALUES ('200000000000000095', 'u95', 'ms-1', 'open', 'Multi-espaces visible MS', 'urgent')")).insertId;
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000095', 'u95', 'ms-2', 'open', 'Multi-espaces confidentiel MS', ?)", [CONF])).insertId;
+    r = await req('GET', '/api/my-spaces/tickets');
+    check('multi-espaces: connexion requise', r.status === 401, r.status);
+    r = await req('GET', '/api/my-spaces/tickets', { sid: sessions.F });
+    const sF = r.body.spaces?.find(x => x.guildId === G);
+    check('multi-espaces: fondateur → ses espaces, tickets ouverts (urgents d abord), confidentiel compris', r.status === 200 && !!sF && sF.tickets.some(t => t.id === tPub) && sF.tickets.some(t => t.id === tConf) && sF.tickets[0].priority === 'urgent', JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', '/api/my-spaces/tickets', { sid: sessions.S1 });
+    const sS = r.body.spaces?.find(x => x.guildId === G);
+    check('multi-espaces: support → les droits de l espace (pas le ticket confidentiel)', r.status === 200 && !!sS && sS.tickets.some(t => t.id === tPub) && !sS.tickets.some(t => t.id === tConf), JSON.stringify(sS?.tickets?.map(t => t.id)));
+    await db("UPDATE guild_config SET ip_allowlist = ? WHERE id = 1", [JSON.stringify(['203.0.113.0/24'])]);
+    r = await req('GET', '/api/my-spaces/tickets', { sid: sessions.S1 });
+    const rF = await req('GET', '/api/my-spaces/tickets', { sid: sessions.F });
+    check('multi-espaces: adresse IP non autorisée par l espace → espace écarté (le fondateur reste exempté)', !r.body.spaces.some(x => x.guildId === G) && r.body.skipped.some(x => x.guildId === G && x.reason === 'ip') && rF.body.spaces.some(x => x.guildId === G), JSON.stringify([r.body.skipped, rF.body.skipped]));
+    await db("UPDATE guild_config SET ip_allowlist = '[]' WHERE id = 1");
+    await db('DELETE FROM tickets WHERE id IN (?, ?)', [tPub, tConf]);
+  }
+
   // ── Images of the knowledge base articles (utils/kbImages.js, v6) ──
   {
     const fsx = require('fs'), os = require('os'), path = require('path');

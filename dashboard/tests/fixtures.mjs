@@ -227,6 +227,10 @@ export const MOCK = {
     perGuild: [{ guild_id: '1', guild_name: 'Sunset FA', status: 'active', maintenance_mode: false, openTickets: 9, staff: 5, opened30d: 50, avgRating: 4.5 }] },
   '/api/instance/guilds': [{ guild_id: '9123456789012345678', guild_name: 'Support e-mail', guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: null, discord: 0, created_at: iso(60) }, { guild_id: '1', guild_name: 'Sunset FA', discord: 1, guild_icon: null, owner_discord_id: '1', owner_discord_tag: 'Daryu', status: 'active', maintenance_mode: 0, member_count: 1200, created_at: iso(60 * 24 * 30) }],
   '/api/instance/blocked': { ips: [] },
+  '/api/my-spaces/tickets': { spaces: [{ guildId: '123456789012345678', name: 'Daryu', role: 'fondateur', open: 2, tickets: [
+    { id: 41, subject: 'Panne VPN siège', priority: 'urgent', stage: 'open', owner_tag: 'claire', created_at: new Date().toISOString(), last_message_at: new Date().toISOString(), resolved_at: null, mine: true },
+    { id: 39, subject: 'Accès imprimante', priority: 'normal', stage: 'waiting', owner_tag: 'paul', created_at: new Date().toISOString(), last_message_at: null, resolved_at: null, mine: false }] }],
+    skipped: [{ guildId: '223456789012345678', name: 'Filiale', reason: '2fa' }] },
   '/api/instance/discord-health': { checkedAt: new Date().toISOString(), discordConnected: true, guilds: [
     { guildId: '123456789012345678', name: 'Daryu', status: 'active', discord: true, botInGuild: true, problems: [{ id: 'perm:ManageRoles', text: 'Permission manquante : Gérer les rôles' }], panels: 1 },
     { guildId: '223456789012345678', name: 'Serveur en attente', status: 'pending', discord: true, problems: [] },

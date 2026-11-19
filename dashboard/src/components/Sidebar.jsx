@@ -5,8 +5,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays, Coins, Bug, GitPullRequestArrow,
-} from 'lucide-react';
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays, Coins, Bug, GitPullRequestArrow, Layers } from 'lucide-react';
 import { useAuth } from '../App';
 import { useInstanceInfo } from '../hooks/useInstanceInfo';
 import { useSSECtx } from '../context/SSEContext';
@@ -26,6 +25,7 @@ const NAV_GROUPS = [
     { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
     { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
     { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
+    { to: '/tous-mes-espaces', label: 'Tous mes espaces', icon: Layers, roles: ['support','fondateur'] },
     { to: '/planning',    label: 'Planning',     icon: CalendarDays,    roles: ['support','fondateur'] },
     { to: '/problemes',   label: 'Problèmes',    icon: Bug,             roles: ['support','fondateur'] },
     { to: '/changements', label: 'Changements',  icon: GitPullRequestArrow, roles: ['support','fondateur'] },

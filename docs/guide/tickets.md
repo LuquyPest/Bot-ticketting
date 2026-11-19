@@ -32,6 +32,10 @@ Une sous-catégorie **hérite** de ce qui est réglé sur sa catégorie : règle
 - **Salon vocal temporaire** (bouton **Vocal** ou `/vocal`), réservé au membre et au staff qui voit le ticket, supprimé à la fermeture.
 - **Fermer** depuis le salon ou le dashboard : le transcript est généré automatiquement.
 
+### Tous mes espaces
+
+**Tous mes espaces** (menu Support) réunit les **tickets ouverts de chaque espace** où tu fais partie du staff, urgents d'abord, 50 par espace, avec « Seulement ceux qui me sont attribués ». Chaque espace est lu avec **les droits que tu y as** : ses grades, tickets confidentiels, rôles par tag, sa liste d'adresses IP et sa double authentification obligatoire ; un espace que tu ne peux pas ouvrir est signalé avec la raison. Un clic ouvre le ticket dans son espace.
+
 ## La fiche ticket
 
 | | |
