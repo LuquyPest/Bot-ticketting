@@ -9,6 +9,7 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/chat': { slack: { configured: true, active: true, hasSecret: true, actionUrl: 'https://ticket.example.com/api/chat/slack/actions/1' }, teams: { configured: false, active: false, hasSecret: false } },
   '/api/notifications': { events: [], recipients: [], channels: [], rules: [
     { id: 1, event: 'member_reply', recipients: ['followers'], channels: ['dashboard'], emails: [], imposed: false, active: true },
     { id: 2, event: 'assigned', recipients: ['assignee'], channels: ['dashboard', 'discord'], emails: [], imposed: false, active: true },

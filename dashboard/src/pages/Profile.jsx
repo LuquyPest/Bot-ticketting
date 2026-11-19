@@ -132,6 +132,14 @@ export default function Profile() {
 
   // Push notifications
   const push = usePushNotifications();
+  // Slack « Prendre »: the one-time link sent in Slack (utils/chatIntegrations.js)
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('slack');
+    if (!token) return;
+    api.post('/chat/slack/link', { token }).then(() => toast.success('Compte Slack relié : le bouton « Prendre » agit maintenant pour toi'))
+      .catch(err => toast.error(err.response?.data?.error || 'Lien invalide ou expiré'))
+      .finally(() => window.history.replaceState(null, '', window.location.pathname));
+  }, []);
 
   // Sessions actives
   const [sessions, setSessions]           = useState([]);

@@ -18,6 +18,7 @@ import CalendarsEditor from '../components/CalendarsEditor';
 import SlaPoliciesEditor from '../components/SlaPoliciesEditor';
 import RulesEditor from '../components/RulesEditor';
 import NotificationsEditor from '../components/NotificationsEditor';
+import ChatIntegrations from '../components/ChatIntegrations';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -938,6 +939,9 @@ export default function Settings() {
 
       {tab === 'integrations' && (
         <div role="tabpanel" id="panel-integrations" aria-labelledby="tab-integrations" className="space-y-5">
+      <Section title="Slack et Microsoft Teams">
+        <ChatIntegrations />
+      </Section>
       {/* Integrations */}
       <Section title="Intégrations">
         <Field label="Webhook URL" hint="Facultatif — notifications externes sur les événements tickets">

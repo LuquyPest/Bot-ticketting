@@ -102,6 +102,7 @@ app.use(session({
 // E-mails pushed by a provider (v5.0): own parsers and size, own authentication (secret URL,
 // provider signature), before the CSRF guard — no browser and no cookie there
 app.use('/api/inbound', require('./routes/inboundEmail'));
+app.use('/api/chat', require('./routes/chatActions')); // Slack buttons, signed (v5.2)
 
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
@@ -283,6 +284,7 @@ app.use('/api/fields',      withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/subject-rules', withGuild(['support', 'fondateur']), require('./routes/subjectRules'));
 app.use('/api/rules',         withGuild(['support', 'fondateur']), require('./routes/rules')); // business rules (v5.2)
 app.use('/api/notifications', withGuild(['support', 'fondateur']), require('./routes/notifications')); // notifications (v5.2)
+app.use('/api/chat',          withGuild(['support', 'fondateur']), require('./routes/chat')); // Slack, Teams (v5.2)
 app.use('/api/reports',     withGuild(['support', 'fondateur']), require('./routes/reports'));
 app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./routes/incidents'));
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));

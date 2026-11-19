@@ -159,6 +159,18 @@ La personne donne son nom (facultatif), son **adresse e-mail**, le sujet si l'es
 
 **Anti-spam**, sans service tiers : un champ caché que seuls les robots remplissent, au moins 3 secondes entre l'ouverture du formulaire et l'envoi (heure signée, valable 2 heures), **5 envois par heure et par adresse IP**, **3 par adresse e-mail**, 60 nouveaux tickets web par heure pour l'espace, la limite de tickets par jour de l'espace et la blacklist. **Nouveau code** invalide le code déjà collé (en cas d'abus) ; chaque modification est au journal.
 
+## Slack et Microsoft Teams
+
+**Paramètres → Intégrations → Slack et Microsoft Teams** (fondateurs) relie un canal de chaque outil ; **Paramètres → Notifications** choisit ce qui y part (canal « Slack » ou « Teams » : un message par événement, quels que soient les destinataires). Un ticket confidentiel n'y donne que son numéro.
+
+| | Slack | Microsoft Teams |
+|---|---|---|
+| **Relier** | Une app Slack avec *Incoming Webhooks* : colle l'adresse `https://hooks.slack.com/services/…` | Dans le canal, *Workflows* → « publier dans un canal quand une requête webhook est reçue » : colle l'adresse donnée |
+| **Prendre** | Un vrai bouton : colle le *Signing secret* de l'app (*Basic Information → App Credentials*) et, dans *Interactivity*, l'adresse affichée (`…/api/chat/slack/actions/<espace>`). La première fois, la personne reçoit (visible d'elle seule) un lien pour relier son compte Slack à son compte ; ensuite « Prendre » lui attribue le ticket, avec ses droits | Ouvre le ticket dans le dashboard, qui propose de le prendre (Teams ne renvoie pas les clics d'un webhook) |
+| **Répondre** | Ouvre le ticket dans le dashboard | Ouvre le ticket dans le dashboard |
+
+Chaque appel de Slack est vérifié (signature HMAC de l'app, 5 minutes au plus) ; le bouton refuse une personne sans la permission **Prendre en charge** ou qui ne voit pas le ticket. Les adresses de webhook et le secret sont chiffrés et jamais réaffichés ; **Tester** envoie un message d'essai.
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.
