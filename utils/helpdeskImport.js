@@ -136,7 +136,8 @@ async function importRows(db, { source, kind, rows, dryRun = false }) {
   const { newVirtualChannelId } = require('./virtualChannel');
   for (const [i, row] of rows.entries()) {
     try {
-      const extId = text(pick(row, 'id'), 64) || null;
+      // Without an identifier column, the row is recognised by a fingerprint of its content (#76)
+      const extId = text(pick(row, 'id'), 64) || `h:${require('crypto').createHash('sha256').update(JSON.stringify(row)).digest('hex').slice(0, 40)}`;
       if (await seen(db, source, kind, extId)) { out.skipped++; continue; }
       if (kind === 'organizations') {
         const name = text(pick(row, 'organization') || pick(row, 'subject'), 100);

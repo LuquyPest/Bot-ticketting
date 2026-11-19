@@ -6332,6 +6332,12 @@ async function main() {
     check('imports: articles en brouillon, sans HTML', r.body.created === 1 && ar?.status === 'draft' && ar.answer === 'Va dans Profil' && ar.category === 'Compte', JSON.stringify(ar));
     r = await imp({ source: 'mantis', kind: 'tickets', format: 'csv', text: 'a,b\n1,2' });
     check('imports: outil inconnu refusé', r.status === 400, r.status);
+    // #76: an export without an identifier column, imported twice, must not duplicate its tickets
+    const noId = 'Subject,Requester\nSans identifiant RT76,noid@test-datick.fr\n';
+    await imp({ source: 'generic', kind: 'tickets', format: 'csv', text: noId });
+    r = await imp({ source: 'generic', kind: 'tickets', format: 'csv', text: noId });
+    check('imports: export sans colonne d identifiant réimporté → pas de doublon', r.body.created === 0 && r.body.skipped === 1 && (await db("SELECT COUNT(*) AS n FROM tickets WHERE subject = 'Sans identifiant RT76'"))[0].n == 1, JSON.stringify(r.body));
+    await db("DELETE FROM tickets WHERE subject = 'Sans identifiant RT76'");
     check('imports: au journal', (await db("SELECT 1 FROM audit_log WHERE action = 'helpdesk_import'")).length >= 5, '');
     const ids = (await db("SELECT local_id FROM import_refs WHERE kind = 'tickets'")).map(x => x.local_id);
     if (ids.length) await db('DELETE FROM tickets WHERE id IN (?)', [ids]);
