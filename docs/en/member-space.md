@@ -33,6 +33,17 @@ As soon as the **instance e-mail** is set up (Instance → Santé), the sign-in 
 
 Anti-abuse limits: 3 links per address per quarter of an hour (beyond that, the answer is the same but nothing is sent), attempts limited per IP address, 3 openings per minute and per person, the server's daily limit, 60 new tickets per hour and per space from e-mail sign-ins, and the blacklist (under any of their identities).
 
+## The service catalogue
+
+**Settings → Catalogue** (founders and the **Settings** permission): what requesters can ask for, by category (« Hardware », « Access »…), each **service** with its icon and description. In the member space, **New ticket** starts with this catalogue; **Something else** keeps the free form of before.
+
+| | |
+|---|---|
+| **Form** | Up to 20 fields: short or long text, number, list, checkbox, date; required or not. A field can **show only if** a field placed before has a value (« if *Hardware* = *Laptop*, ask for the model »): hidden, it is neither asked nor kept |
+| **The ticket becomes** | A subject (else the service name), a type, a priority, a team: applied at the opening, before the staff sees it |
+
+The answers arrive in the ticket's first message, under the service name. The server checks each answer (required field, list, date, number); a service removed from the catalogue no longer opens. The **opening forms** of before were carried over as services; they are still used on Discord.
+
 ## The tickets of one's organisation
 
 An [organisation](./tickets#organisations) chooses who, among its contacts, sees **its tickets** in the member space: **nobody** (by default: everyone sees only their own), **its managers** (the contacts ticked « Client-side manager » on their card, by a founder or the **Settings** permission), or **all its members**. A parent organisation also shows the tickets of its sub-organisations.

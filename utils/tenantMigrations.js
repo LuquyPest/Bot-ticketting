@@ -1036,6 +1036,37 @@ const MIGRATIONS = [
       'ALTER TABLE contacts ADD COLUMN IF NOT EXISTS org_portal_manager TINYINT(1) NOT NULL DEFAULT 0',
     ],
   },
+  {
+    version: 65,
+    name: 'Catalogue de services : services par catégorie, formulaires conditionnels, gabarits (v5.3)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS catalog_services (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(80) NOT NULL,
+        description VARCHAR(300) DEFAULT NULL,
+        icon        VARCHAR(16) DEFAULT NULL,
+        category    VARCHAR(60) DEFAULT NULL,
+        position    INT NOT NULL DEFAULT 0,
+        active      TINYINT(1) NOT NULL DEFAULT 1,
+        fields      JSON DEFAULT NULL,
+        subject     VARCHAR(100) DEFAULT NULL,
+        ticket_type VARCHAR(10) DEFAULT NULL,
+        team_id     INT DEFAULT NULL,
+        priority    VARCHAR(10) DEFAULT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS catalog_service_id INT DEFAULT NULL',
+      // The opening forms of before, copied as services (the forms themselves keep working in Discord)
+      `INSERT INTO catalog_services (name, category, position, active, fields, subject)
+       SELECT LEFT(f.name, 80), 'Demandes', f.id, f.active,
+              COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('key', CONCAT('f', ff.id), 'label', LEFT(ff.label, 100),
+                  'type', IF(ff.field_type = 'choice', 'select', ff.field_type), 'choices', JSON_EXTRACT(COALESCE(ff.choices, '[]'), '$'),
+                  'required', ff.required = 1, 'default', '', 'showIf', NULL) ORDER BY ff.position, ff.id)
+                FROM intake_form_fields ff WHERE ff.form_id = f.id), '[]'),
+              f.subject
+       FROM intake_forms f WHERE NOT EXISTS (SELECT 1 FROM catalog_services) ORDER BY f.id`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

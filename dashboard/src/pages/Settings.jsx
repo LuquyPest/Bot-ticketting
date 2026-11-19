@@ -1,6 +1,6 @@
 import React, { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock, Workflow, BellRing } from 'lucide-react';
+import { Save, RefreshCw, Plus, X, Check, Loader2, ToggleLeft, ToggleRight, Upload, Bot, Settings2, ShieldCheck, Ticket, Hash, Sparkles, Plug, Archive, CalendarClock, Workflow, BellRing, LayoutGrid } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
@@ -19,6 +19,7 @@ import SlaPoliciesEditor from '../components/SlaPoliciesEditor';
 import RulesEditor from '../components/RulesEditor';
 import NotificationsEditor from '../components/NotificationsEditor';
 import ChatIntegrations from '../components/ChatIntegrations';
+import CatalogEditor from '../components/CatalogEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -163,6 +164,7 @@ const TABS = [
   { id: 'acces',         label: 'Accès et sécurité',  icon: ShieldCheck },
   { id: 'tickets',       label: 'Tickets',            icon: Ticket },
   { id: 'horaires',      label: 'Horaires',           icon: CalendarClock },
+  { id: 'catalogue',     label: 'Catalogue',          icon: LayoutGrid },
   { id: 'regles',        label: 'Règles',             icon: Workflow },
   { id: 'notifications', label: 'Notifications',      icon: BellRing },
   { id: 'salons',        label: 'Salons',             icon: Hash, discord: true },
@@ -922,6 +924,12 @@ export default function Settings() {
           <CalendarsEditor />
           <h2 className="text-sm font-semibold text-ink-1 pt-2">Objectifs SLA</h2>
           <SlaPoliciesEditor />
+        </div>
+      )}
+
+      {tab === 'catalogue' && (
+        <div role="tabpanel" id="panel-catalogue" aria-labelledby="tab-catalogue" className="space-y-5">
+          <CatalogEditor />
         </div>
       )}
 

@@ -498,9 +498,59 @@ function HelpPage({ me }) {
   );
 }
 
+// Service catalogue (v5.3): is a field shown, given the answers (same rule as utils/catalog.js)
+function shownField(f, answers, fields) {
+  if (!f.showIf) return true;
+  const target = fields.find(x => x.key === f.showIf.key);
+  if (target && !shownField(target, answers, fields)) return false;
+  const v = answers[f.showIf.key];
+  return String(target?.type === 'checkbox' ? (v ? 'oui' : 'non') : v ?? '') === f.showIf.equals;
+}
+function ServiceFields({ service, answers, setAnswers }) {
+  return service.fields.filter(f => shownField(f, answers, service.fields)).map(f => {
+    const set = v => setAnswers(a => ({ ...a, [f.key]: v }));
+    const label = <span className="text-sm text-ink-2 font-medium block mb-1">{f.label}{!f.required && f.type !== 'checkbox' && <span className="text-ink-4 font-normal"> ({STR.optional})</span>}</span>;
+    if (f.type === 'checkbox') return (
+      <label key={f.key} className="flex items-start gap-2 text-sm text-ink-2"><input type="checkbox" checked={!!answers[f.key]} onChange={e => set(e.target.checked)} className="mt-1" />{f.label}</label>
+    );
+    return (
+      <label key={f.key} className="block">{label}
+        {f.type === 'select' ? <select value={answers[f.key] || ''} onChange={e => set(e.target.value)} className={INPUT}><option value="">—</option>{f.choices.map(c => <option key={c} value={c}>{c}</option>)}</select>
+          : f.type === 'textarea' ? <textarea value={answers[f.key] || ''} onChange={e => set(e.target.value)} rows={3} maxLength={2000} className={INPUT} />
+            : <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'} value={answers[f.key] || ''} onChange={e => set(e.target.value)} maxLength={300} className={INPUT} />}
+      </label>
+    );
+  });
+}
+function ServicePicker({ services, onPick }) {
+  const cats = [...new Set(services.map(s => s.category || ''))];
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-ink-2 font-medium">{STR.catalogTitle}</p>
+      {cats.map(c => (
+        <section key={c} className="space-y-2">
+          {c && <h2 className="text-xs font-semibold text-ink-3 uppercase tracking-wider">{c}</h2>}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {services.filter(s => (s.category || '') === c).map(s => (
+              <button key={s.id} type="button" onClick={() => onPick(s)} className="text-left bg-surface-card border border-overlay/6 rounded-2xl p-4 hover:border-primary/40 transition-colors">
+                <p className="text-sm font-semibold text-ink-1">{s.icon ? <span className="mr-1.5" aria-hidden="true">{s.icon}</span> : null}{s.name}</p>
+                {s.description && <p className="text-xs text-ink-3 mt-1">{s.description}</p>}
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+      <button type="button" onClick={() => onPick('other')} className="text-sm text-primary-light underline">{STR.otherRequest}</button>
+    </div>
+  );
+}
+
 function NewTicket({ me }) {
   const navigate = useNavigate();
   const { guilds, guildId, setGuildId } = useGuilds();
+  const [services, setServices] = useState([]);
+  const [service, setService] = useState(null); // a service of the catalogue, 'other', or null (to pick)
+  const [catalogAnswers, setCatalogAnswers] = useState({});
   const [subjects, setSubjects] = useState(null);
   const [subject, setSubject] = useState('');
   const [form, setForm] = useState({ fields: [], questions: [] });
@@ -519,6 +569,8 @@ function NewTicket({ me }) {
     setSubjects(null); setSubject('');
     api.get(`/member/guilds/${guildId}/form`).then(r => { setSubjects(r.data.subjects); setUploadRules(r.data.upload || null); }).catch(() => setSubjects([]));
     api.get(`/member/guilds/${guildId}/faq`).then(r => setFaq(r.data)).catch(() => setFaq([]));
+    setService(null); setCatalogAnswers({});
+    api.get(`/member/guilds/${guildId}/catalog`).then(r => setServices(r.data.services || [])).catch(() => setServices([]));
   }, [guildId]);
   useEffect(() => {
     if (!guildId || subjects === null || (subjects.length && !subject)) { setForm({ fields: [], questions: [] }); return; }
@@ -532,7 +584,10 @@ function NewTicket({ me }) {
   const submit = async () => {
     setBusy(true); setError('');
     try {
-      const { data } = await api.post(`/member/guilds/${guildId}/tickets`, { subject, fields, answers, content: content.trim(), confidential });
+      const body = service && service !== 'other'
+        ? { serviceId: service.id, catalog: Object.fromEntries(Object.entries(catalogAnswers).filter(([k]) => { const f = service.fields.find(x => x.key === k); return f && shownField(f, catalogAnswers, service.fields); })), content: content.trim(), confidential }
+        : { subject, fields, answers, content: content.trim(), confidential };
+      const { data } = await api.post(`/member/guilds/${guildId}/tickets`, body);
       // The files follow the opening, as a second message
       if (newFiles.length) await sendFiles(data.guildId, data.ticketId, '', newFiles).catch(() => null);
       navigate(`/espace/${data.guildId}/${data.ticketId}`);
@@ -542,14 +597,26 @@ function NewTicket({ me }) {
 
   if (!guilds) return <div className="flex justify-center py-16"><Loader2 className="animate-spin text-ink-4" /></div>;
   if (!guilds.length) return <p className="text-sm text-ink-3 py-10 text-center">{me?.email ? STR.noGuildWeb : STR.noGuild}</p>;
-  const ready = content.trim() && (!subjects?.length || subject) && form.questions.every((_, i) => answers[i]?.trim()) && form.fields.every(f => !f.required || String(fields[f.id] || '').trim());
+  const usingService = service && service !== 'other';
+  const serviceReady = usingService && service.fields.every(f => !f.required || !shownField(f, catalogAnswers, service.fields) || (f.type === 'checkbox' ? catalogAnswers[f.key] : String(catalogAnswers[f.key] || '').trim()));
+  const ready = content.trim() && (usingService ? serviceReady : (!subjects?.length || subject) && form.questions.every((_, i) => answers[i]?.trim()) && form.fields.every(f => !f.required || String(fields[f.id] || '').trim()));
+  const picking = services.length > 0 && !service;
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink-1">{STR.tabs.new}</h1>
       <GuildPicker guilds={guilds} guildId={guildId} setGuildId={setGuildId} />
       <GuildBanner guild={guilds.find(g => g.id === guildId)} />
-      {subjects === null ? <Loader2 className="animate-spin text-ink-4" /> : (
+      {picking && <ServicePicker services={services} onPick={s => { setService(s); setCatalogAnswers({}); }} />}
+      {!picking && <>
+      {service && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-semibold text-ink-1">{usingService ? `${service.icon ? `${service.icon} ` : ''}${service.name}` : STR.otherRequest}</span>
+          <button type="button" onClick={() => setService(null)} className="text-xs text-primary-light underline">{STR.changeService}</button>
+        </div>
+      )}
+      {usingService && <ServiceFields service={service} answers={catalogAnswers} setAnswers={setCatalogAnswers} />}
+      {!usingService && (subjects === null ? <Loader2 className="animate-spin text-ink-4" /> : (
         <label className="block">
           <span className="text-sm text-ink-2 font-medium block mb-1">{STR.subject}</span>
           {subjects.length ? (
@@ -559,8 +626,8 @@ function NewTicket({ me }) {
             </select>
           ) : <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={100} placeholder={STR.subjectPh} className={INPUT} />}
         </label>
-      )}
-      {form.fields.map(f => (
+      ))}
+      {!usingService && form.fields.map(f => (
         <label key={f.id} className="block">
           <span className="text-sm text-ink-2 font-medium block mb-1">{f.label}{!f.required && <span className="text-ink-4 font-normal"> ({STR.optional})</span>}</span>
           <input type={f.type === 'number' ? 'number' : 'text'} value={fields[f.id] || ''} onChange={e => setFields(v => ({ ...v, [f.id]: e.target.value }))} maxLength={200} className={INPUT} />
@@ -576,7 +643,7 @@ function NewTicket({ me }) {
           <FaqList entries={suggestions} query="" />
         </div>
       )}
-      {form.questions.length > 0 && (
+      {!usingService && form.questions.length > 0 && (
         <fieldset className="space-y-3">
           <legend className="text-sm font-semibold text-ink-2 mb-1">{STR.form}</legend>
           {form.questions.map((q, i) => (
@@ -597,6 +664,7 @@ function NewTicket({ me }) {
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {STR.open}
       </button>
+      </>}
     </div>
   );
 }

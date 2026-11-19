@@ -110,6 +110,8 @@ const ACTIONS = {
   chat_link:                ['Compte Slack relié', 'integrations'],
   contact_organization:     ['Organisation d\'un contact changée', 'tickets'],
   contact_portal_manager:   ['Responsable côté client (portail)', 'tickets'],
+  catalog_save:             ['Service du catalogue enregistré', 'config'],
+  catalog_delete:           ['Service du catalogue supprimé', 'config'],
   organization_save:        ['Organisation enregistrée', 'config'],
   organization_delete:      ['Organisation supprimée', 'config'],
   organization_import:      ['Organisations importées', 'config'],

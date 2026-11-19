@@ -35,6 +35,17 @@ Dès que l'**e-mail de l'instance** est configuré (Instance → Santé), la pag
 
 Limites anti-abus : 3 liens par adresse par quart d'heure (au-delà, la réponse est la même mais rien n'est envoyé), les tentatives limitées par adresse IP, 3 ouvertures par minute et par personne, la limite quotidienne du serveur, 60 nouveaux tickets par heure et par espace depuis des connexions e-mail, et la liste noire (sous n'importe laquelle de ses identités).
 
+## Le catalogue de services
+
+**Paramètres → Catalogue** (fondateurs et permission **Paramètres**) : ce que les demandeurs peuvent demander, rangé par catégorie (« Matériel », « Accès »…), chaque **service** avec son icône et sa description. Dans l'espace membre, **Nouveau ticket** commence par ce catalogue ; **Autre demande** garde le formulaire libre d'avant.
+
+| | |
+|---|---|
+| **Formulaire** | Jusqu'à 20 champs : texte court ou long, nombre, liste, case à cocher, date ; obligatoires ou non. Un champ peut ne s'**afficher que si** un champ placé avant a une valeur (« si *Matériel* = *Portable*, demander le modèle ») : caché, il n'est ni demandé ni gardé |
+| **Le ticket devient** | Un sujet (sinon le nom du service), un type, une priorité, une équipe : appliqués à l'ouverture, avant que le staff ne le voie |
+
+Les réponses arrivent dans le premier message du ticket, sous le nom du service. Le serveur vérifie chaque réponse (champ obligatoire, liste, date, nombre) ; un service retiré du catalogue ne s'ouvre plus. Les **formulaires d'ouverture** d'avant ont été repris comme services ; ils restent utilisés sur Discord.
+
 ## Les tickets de son organisation
 
 Une [organisation](./tickets#les-organisations) choisit qui, parmi ses contacts, voit **ses tickets** dans l'espace membre : **personne** (par défaut : chacun ne voit que les siens), **ses responsables** (les contacts cochés « Responsable côté client » sur leur fiche, par un fondateur ou la permission **Paramètres**), ou **tous ses membres**. Une organisation parente montre aussi les tickets de ses sous-organisations.
