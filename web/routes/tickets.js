@@ -1415,7 +1415,10 @@ const timerAction = action => async (req, res) => {
     const tt = require('../../utils/ticketTime');
     if (action === 'start') {
       if (ticket.status !== 'open') return res.status(400).json({ error: 'Ticket fermé' });
-      await tt.startTimer(req.guildDb, ticket.id, req.session.user);
+      // On one of its tasks (v5.4)
+      const taskId = req.body?.taskId ? parseInt(req.body.taskId) : null;
+      if (taskId && !(await req.guildDb('SELECT 1 FROM ticket_tasks WHERE id = ? AND ticket_id = ?', [taskId, ticket.id])).length) return res.status(400).json({ error: 'Tâche introuvable' });
+      await tt.startTimer(req.guildDb, ticket.id, req.session.user, taskId);
     } else {
       await req.guildDb(`UPDATE ticket_time SET ended_at = NOW(), seconds = LEAST(TIMESTAMPDIFF(SECOND, started_at, NOW()), ?) WHERE ticket_id = ? AND user_id = ? AND ended_at IS NULL`,
         [tt.MAX_SESSION_S, ticket.id, req.session.user.id]);
@@ -1434,10 +1437,53 @@ router.post('/:id/time', async (req, res) => {
     const minutes = parseInt(req.body?.minutes);
     if (!(minutes >= 1 && minutes <= 600)) return res.status(400).json({ error: 'Durée entre 1 et 600 minutes' });
     const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) || null : null;
-    await req.guildDb(`INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds, note)
-                       VALUES (?, ?, ?, 'manual', NOW() - INTERVAL ? MINUTE, NOW(), ?, ?)`,
-      [ticket.id, req.session.user.id, req.session.user.username, minutes, minutes * 60, note]);
+    const taskId = req.body?.taskId ? parseInt(req.body.taskId) : null;
+    if (taskId && !(await req.guildDb('SELECT 1 FROM ticket_tasks WHERE id = ? AND ticket_id = ?', [taskId, ticket.id])).length) return res.status(400).json({ error: 'Tâche introuvable' });
+    await req.guildDb(`INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds, note, task_id)
+                       VALUES (?, ?, ?, 'manual', NOW() - INTERVAL ? MINUTE, NOW(), ?, ?, ?)`,
+      [ticket.id, req.session.user.id, req.session.user.username, minutes, minutes * 60, note, taskId]);
     res.json(await require('../../utils/ticketTime').ticketTime(req.guildDb, ticket.id, req.session.user.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── Tasks of a ticket (utils/tasks.js, v5.4): read with the ticket, written with reply_ticket ──
+const tasksLib = () => require('../../utils/tasks');
+const tasksOut = async (req, ticketId) => { const tasks = await tasksLib().listTasks(req.guildDb, ticketId); return { tasks, progress: tasksLib().progress(tasks) }; };
+router.get('/:id/tasks', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json(await tasksOut(req, ticket.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.post('/:id/tasks', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const r = req.body?.templateId
+      ? await tasksLib().applyTemplate(req.guildDb, ticket.id, parseInt(req.body.templateId) || 0, dashboardActor(req), { guildId: req.guildId })
+      : await tasksLib().addTask(req.guildDb, ticket.id, req.body || {}, dashboardActor(req), { guildId: req.guildId });
+    if (r.error && !r.added) return res.status(r.status || 400).json({ error: r.error });
+    broadcast('ticket', { id: ticket.id, tasks: true }, req.guildId);
+    res.json(await tasksOut(req, ticket.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.patch('/:id/tasks/:taskId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const r = await tasksLib().updateTask(req.guildDb, ticket.id, parseInt(req.params.taskId) || 0, req.body || {}, dashboardActor(req), { guildId: req.guildId });
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(await tasksOut(req, ticket.id));
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.delete('/:id/tasks/:taskId', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const r = await tasksLib().deleteTask(req.guildDb, ticket.id, parseInt(req.params.taskId) || 0, dashboardActor(req));
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(await tasksOut(req, ticket.id));
   } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 

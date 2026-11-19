@@ -132,6 +132,8 @@ router.get('/tickets/:guildId/:ticketId', requireMember, async (req, res) => {
     // A ticket of their organisation (v5.3): read only, without its files
     const data = await loadOwn(req, res, { allowOrg: true });
     if (!data) return;
+    // The tasks the staff made visible (v5.4)
+    data.tasks = await require('../../utils/tasks').visibleTasks(getTenantDb(data.guild.id), data.ticket.id);
     if (data.access === 'org') return res.json({ ...data, files: [], upload: { enabled: false } });
     // The files of the conversation, and what may be sent (v5.0)
     const db = getTenantDb(data.guild.id);

@@ -146,6 +146,14 @@ One pending approval per ticket; the person who asked, or a founder, can **cance
 - **Rights**: reading needs `view_tickets`; editing, merging and detaching need `reply_ticket`. Every merge and every detach is written to the log.
 - **Erasing a member's data** (GDPR) also removes their identity from their card, and the card if it has no other one.
 
+## Tasks
+
+On the ticket view, **Tasks** splits a ticket's work into steps: a title, a description, a **person** (told in the dashboard) or a team, a **planned duration**, a **planned date**, a state (**to do**, **done**, **not needed**), and **visible to the requester** or not (**Reply** permission to change them). The progress (« 2/3 ») does not count the tasks not needed.
+
+The **time spent** goes to a task: the stopwatch of a task, or time added by hand choosing it; it also counts for the ticket. Deleting a task leaves its time on the ticket.
+
+**Task templates** (**Settings → Catalogue → Task templates**; « new employee » = 6 tasks) are applied from the ticket view or by an [automatic rule](./automations#automatic-rules) (**Task template** action); each task can have a « D+n » due date. In the [member space](./member-space), the requester sees the visible tasks and their state, never who handles them. Each addition, state and deletion is in the ticket's journal.
+
 ## Organisations
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).

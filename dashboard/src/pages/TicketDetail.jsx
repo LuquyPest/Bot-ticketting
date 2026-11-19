@@ -12,6 +12,7 @@ import ApprovalPanel from '../components/ApprovalPanel';
 import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
+import TasksPanel from '../components/TasksPanel';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS, LEVEL_CLS } from '../utils/priorityLevels';
 import Badge from '../components/Badge';
 import Select from '../components/Select';
@@ -2050,6 +2051,8 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
 
           {/* OBJECTIFS SLA (v5.1) */}
           <ObjectivesPanel objectives={ticket.objectives} panelCard={panelCard} />
+          {/* TÂCHES (v5.4) */}
+          <TasksPanel ticketId={ticket.id} staff={staff} canEdit={can('reply_ticket') && ticket.status === 'open'} panelCard={panelCard} />
           {ticket.organization && (
             <div className={panelCard}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>

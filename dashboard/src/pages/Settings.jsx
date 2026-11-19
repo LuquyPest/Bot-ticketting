@@ -21,6 +21,7 @@ import NotificationsEditor from '../components/NotificationsEditor';
 import ChatIntegrations from '../components/ChatIntegrations';
 import CatalogEditor from '../components/CatalogEditor';
 import RecurringEditor from '../components/RecurringEditor';
+import TaskTemplatesEditor from '../components/TaskTemplatesEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -933,6 +934,8 @@ export default function Settings() {
           <CatalogEditor />
           <h2 className="text-sm font-semibold text-ink-1 pt-2">Tickets récurrents</h2>
           <RecurringEditor />
+          <h2 className="text-sm font-semibold text-ink-1 pt-2">Modèles de tâches</h2>
+          <TaskTemplatesEditor />
         </div>
       )}
 

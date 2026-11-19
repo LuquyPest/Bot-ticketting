@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v5.4.0',
+    date: 'à venir',
+    title: 'Centre de services : le travail du staff',
+    titleEn: 'Service desk: the staff\'s work',
+    changes: [
+      { type: 'new',  text: 'Tâches de ticket : personne ou équipe, durée prévue et temps passé (chronomètre et ajout à la main par tâche), date planifiée, état (à faire, faite, sans objet), visibles ou non du demandeur ; modèles de tâches appliqués depuis la fiche ou par une règle', en: 'Ticket tasks: person or team, planned duration and time spent (stopwatch and time added by hand per task), planned date, state (to do, done, not needed), visible to the requester or not; task templates applied from the ticket view or by a rule' },
+    ],
+  },
+  {
     version: 'v5.3.0',
     date: 'à venir',
     title: 'Centre de services : organisations et libre-service',
