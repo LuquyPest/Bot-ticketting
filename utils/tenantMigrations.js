@@ -1095,6 +1095,41 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 67,
+    name: 'Tâches de ticket et modèles de tâches (v5.4)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ticket_tasks (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id       INT NOT NULL,
+        title           VARCHAR(200) NOT NULL,
+        description     TEXT DEFAULT NULL,
+        assignee_id     VARCHAR(32) DEFAULT NULL,
+        team_id         INT DEFAULT NULL,
+        planned_minutes INT DEFAULT NULL,
+        due_at          DATETIME DEFAULT NULL,
+        state           VARCHAR(4) NOT NULL DEFAULT 'todo',
+        visible         TINYINT(1) NOT NULL DEFAULT 0,
+        position        INT NOT NULL DEFAULT 0,
+        created_by      VARCHAR(32) DEFAULT NULL,
+        done_at         DATETIME DEFAULT NULL,
+        done_by_tag     VARCHAR(100) DEFAULT NULL,
+        created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_tk_ticket (ticket_id),
+        INDEX idx_tk_assignee (assignee_id, state),
+        INDEX idx_tk_due (due_at),
+        CONSTRAINT fk_tk_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS task_templates (
+        id    INT AUTO_INCREMENT PRIMARY KEY,
+        name  VARCHAR(80) NOT NULL,
+        tasks JSON NOT NULL
+      )`,
+      // The time spent goes to the ticket or to one of its tasks
+      'ALTER TABLE ticket_time ADD COLUMN IF NOT EXISTS task_id INT DEFAULT NULL',
+      'CREATE INDEX IF NOT EXISTS idx_tt_task ON ticket_time (task_id)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -12,9 +12,9 @@ async function stopRunning(db, where, params) {
 const stopUserTimer = (db, userId) => stopRunning(db, 'user_id = ?', [userId]);
 const stopTicketTimers = (db, ticketId) => stopRunning(db, 'ticket_id = ?', [ticketId]);
 
-async function startTimer(db, ticketId, user) {
+async function startTimer(db, ticketId, user, taskId = null) {
   await stopUserTimer(db, user.id);
-  await db('INSERT INTO ticket_time (ticket_id, user_id, user_tag) VALUES (?, ?, ?)', [ticketId, user.id, user.username]);
+  await db('INSERT INTO ticket_time (ticket_id, user_id, user_tag, task_id) VALUES (?, ?, ?, ?)', [ticketId, user.id, user.username, taskId]);
 }
 
 // The signed-in member's running stopwatch, on a ticket they may still see

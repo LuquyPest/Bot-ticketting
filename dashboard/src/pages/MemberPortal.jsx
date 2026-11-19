@@ -365,6 +365,20 @@ function TicketView({ guildId, ticketId, me }) {
         {readOnly && <p className="text-xs text-ink-3" role="note">{STR.orgReadOnly}</p>}
       </div>
 
+      {data.tasks?.length > 0 && (
+        <section className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-1.5" aria-label={STR.tasks}>
+          <h2 className="text-sm font-semibold text-ink-1">{STR.tasks}</h2>
+          <ul className="space-y-1">
+            {data.tasks.map((k, i) => (
+              <li key={i} className="text-sm flex items-center gap-2">
+                <span aria-hidden="true">{k.state === 'done' ? '✅' : k.state === 'na' ? '➖' : '⬜'}</span>
+                <span className={k.state === 'todo' ? 'text-ink-1' : 'text-ink-3 line-through'}>{k.title}</span>
+                {k.dueAt && k.state === 'todo' && <span className="text-[11px] text-ink-4">{fmt(k.dueAt)}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {!readOnly && t.status === 'open' && t.resolved_at && <ResolutionBanner guildId={guildId} ticketId={ticketId} solution={t.resolution} onDone={load} />}
       {data.files?.length > 0 && (
         <div className="bg-surface-card border border-overlay/6 rounded-2xl p-3">

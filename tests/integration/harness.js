@@ -5793,6 +5793,60 @@ async function main() {
     await db('DELETE FROM tickets WHERE id IN (?)', [ids]);
   }
 
+  // ── Tasks of a ticket and task templates (utils/tasks.js, v5.4) ──
+  {
+    const MWT = '200000000000000081';
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'member81', 'db-tasks', 'open', 'Arrivée de Léa')", [MWT])).insertId;
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Créer le compte', assigneeId: U.OUT } });
+    check('tâches: on n attribue qu au staff', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Créer le compte', assigneeId: U.S1, plannedMinutes: 30, dueAt: '2026-12-01T09:00:00Z', visible: true } });
+    const t1 = r.body.tasks?.[0];
+    check('tâches: ajoutée (personne, durée prévue, date, visible)', r.status === 200 && t1?.assigneeId === U.S1 && t1.plannedMinutes === 30 && t1.visible && t1.state === 'todo', JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Commander le badge', description: 'Au service sécurité' } });
+    const t2 = r.body.tasks.find(t => t.title === 'Commander le badge');
+    r = await req('PATCH', `/api/tickets/${tk}/tasks/${t1.id}`, { sid: sessions.F, body: { state: 'fini' } });
+    check('tâches: état vérifié', r.status === 400, JSON.stringify(r.body));
+    r = await req('PATCH', `/api/tickets/${tk}/tasks/${t1.id}`, { sid: sessions.F, body: { state: 'done' } });
+    const d1 = r.body.tasks.find(t => t.id === t1.id);
+    check('tâches: faite (qui, quand), avancement', d1.state === 'done' && d1.doneBy === 'F' && !!d1.doneAt && r.body.progress.done === 1 && r.body.progress.total === 2, JSON.stringify(r.body.progress));
+    r = await req('PATCH', `/api/tickets/${tk}/tasks/${t2.id}`, { sid: sessions.F, body: { state: 'na' } });
+    check('tâches: « sans objet » sort du compte', r.body.progress.total === 1 && r.body.progress.done === 1, JSON.stringify(r.body.progress));
+    // Time spent on a task: by hand and by the stopwatch
+    r = await req('POST', `/api/tickets/${tk}/time`, { sid: sessions.F, body: { minutes: 30, taskId: t1.id } });
+    r = await req('POST', `/api/tickets/${tk}/time/start`, { sid: sessions.F, body: { taskId: t1.id } });
+    await db('UPDATE ticket_time SET started_at = NOW() - INTERVAL 10 MINUTE WHERE task_id = ? AND ended_at IS NULL', [t1.id]);
+    await req('POST', `/api/tickets/${tk}/time/stop`, { sid: sessions.F });
+    r = await req('GET', `/api/tickets/${tk}/tasks`, { sid: sessions.F });
+    check('tâches: temps passé (à la main et chronomètre)', r.body.tasks.find(t => t.id === t1.id).spentSeconds >= 2390, JSON.stringify(r.body.tasks.map(t => t.spentSeconds)));
+    r = await req('POST', `/api/tickets/${tk}/time`, { sid: sessions.F, body: { minutes: 5, taskId: 999999 } });
+    check('tâches: temps sur une tâche d un autre ticket refusé', r.status === 400, r.status);
+    // The requester sees only the visible tasks
+    await mk('MTASK', { member: { id: MWT, username: 'member81', avatar: null } });
+    r = await req('GET', `/api/member/tickets/${G}/${tk}`, { sid: sessions.MTASK });
+    check('tâches: le demandeur ne voit que les tâches visibles', r.status === 200 && r.body.tasks?.length === 1 && r.body.tasks[0].title === 'Créer le compte' && r.body.tasks[0].state === 'done' && !JSON.stringify(r.body.tasks).includes('assignee'), JSON.stringify(r.body.tasks));
+
+    // Templates: by hand and by a rule
+    r = await req('POST', '/api/task-templates', { sid: sessions.S1, body: { name: 'x', tasks: [{ title: 'a' }] } });
+    check('tâches: modèles réservés (fondateurs, Paramètres)', r.status === 403, r.status);
+    r = await req('POST', '/api/task-templates', { sid: sessions.F, body: { name: 'Arrivée d un salarié', tasks: [{ title: 'Préparer le poste', plannedMinutes: 60, dueInDays: 2 }, { title: 'Ouvrir la messagerie' }, { title: 'Accueil le premier jour', visible: true, dueInDays: 7 }] } });
+    const tpl = r.body.id;
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { templateId: tpl } });
+    const fromTpl = r.body.tasks.filter(t => ['Préparer le poste', 'Ouvrir la messagerie', 'Accueil le premier jour'].includes(t.title));
+    check('tâches: modèle appliqué (3 tâches, échéances calculées)', r.status === 200 && fromTpl.length === 3 && fromTpl.find(t => t.title === 'Préparer le poste').dueAt && !fromTpl.find(t => t.title === 'Ouvrir la messagerie').dueAt, JSON.stringify(fromTpl));
+    const tk2 = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000067', 'regle', 'db-tasks2', 'open', 'Arrivée')")).insertId;
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Arrivées', triggers: ['created'], conditions: [{ field: 'subject', values: ['Arrivée'] }], actions: [{ type: 'tasks', value: tpl }] } });
+    const ruleId = r.body.id;
+    await app('./utils/ruleEngine').runRules({ db, client: fakeClient, guildId: G, ticketId: tk2, trigger: 'created' });
+    check('tâches: une règle applique un modèle', (await db('SELECT COUNT(*) AS n FROM ticket_tasks WHERE ticket_id = ?', [tk2]))[0].n == 3, '');
+    await req('DELETE', `/api/rules/${ruleId}`, { sid: sessions.F });
+    r = await req('DELETE', `/api/tickets/${tk}/tasks/${t1.id}`, { sid: sessions.F });
+    check('tâches: supprimée, son temps reste sur le ticket', r.status === 200 && !r.body.tasks.some(t => t.id === t1.id)
+      && (await db('SELECT COUNT(*) AS n FROM ticket_time WHERE ticket_id = ? AND task_id IS NULL', [tk]))[0].n >= 2, '');
+    check('tâches: au journal du ticket', (await db("SELECT 1 FROM audit_log WHERE ticket_id = ? AND action IN ('task_add', 'task_state', 'task_template_apply', 'task_delete')", [tk])).length >= 4, '');
+    await req('DELETE', `/api/task-templates/${tpl}`, { sid: sessions.F });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tk, tk2]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

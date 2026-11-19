@@ -146,6 +146,14 @@ Une seule validation en attente par ticket ; la personne qui l'a demandée, ou u
 - **Droits** : lire demande `view_tickets` ; modifier, fusionner et détacher demandent `reply_ticket`. Chaque fusion et chaque détachement sont inscrits au journal.
 - L'**effacement des données** d'un membre (RGPD) retire aussi son identité de sa fiche, et la fiche si elle n'en a plus d'autre.
 
+## Les tâches
+
+Sur la fiche, **Tâches** découpe le travail d'un ticket en étapes : un intitulé, une description, une **personne** (prévenue dans le dashboard) ou une équipe, une **durée prévue**, une **date planifiée**, un état (**à faire**, **faite**, **sans objet**), et **visible du demandeur** ou non (permission **Répondre** pour les modifier). L'avancement (« 2/3 ») ne compte pas les tâches sans objet.
+
+Le **temps passé** se rattache à une tâche : le chronomètre d'une tâche, ou le temps ajouté à la main en la choisissant ; il compte aussi pour le ticket. Supprimer une tâche laisse son temps sur le ticket.
+
+Les **modèles de tâches** (**Paramètres → Catalogue → Modèles de tâches** ; « arrivée d'un salarié » = 6 tâches) s'appliquent depuis la fiche ou par une [règle automatique](./automatismes#les-regles-automatiques) (action **Modèle de tâches**) ; chaque tâche peut avoir une échéance « J+n ». Dans l'[espace membre](./espace-membre), le demandeur voit les tâches visibles et leur état, jamais qui s'en occupe. Chaque ajout, état et suppression est au journal du ticket.
+
 ## Les organisations
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).

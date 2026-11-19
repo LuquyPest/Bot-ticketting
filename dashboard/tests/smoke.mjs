@@ -25,6 +25,7 @@ const PAGES = [
   ['dashboard', '/', 'Nouveautés depuis ta dernière visite'],
   ['tickets', '/tickets', 'Problème de paiement 1'],
   ['ticket', '/tickets/1', 'Voici la capture'],
+  ['ticket-taches', '/tickets/1', 'Rembourser la commande en double', false, true],
   // side panel of the ticket view: on a phone it is a drawer behind the « Infos du ticket » button
   ['ticket-validation', '/tickets/1', 'Rembourser 120 € hors délai', false, true],
   ['ticket-copies', '/tickets/8', 'adjoint@ext.test', false, true],
@@ -40,6 +41,8 @@ const PAGES = [
   ['organisations', '/organisations', 'Domaines d\'adresse e-mail'],
   ['settings-catalogue', '/settings?tab=catalogue', 'Afficher seulement si'],
   ['settings-recurrents', '/settings?tab=catalogue', 'Attendre que le précédent soit fermé'],
+  ['settings-modeles-taches', '/settings?tab=catalogue', 'Nouveau modèle de tâches'],
+  ['espace-taches', '/espace/123456789012345678/1', 'Rembourser la commande'],
   ['equipes-ola', '/equipe?tab=equipes', 'Objectif interne (OLA)'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],
   ['settings', '/settings', 'Paramètres'],

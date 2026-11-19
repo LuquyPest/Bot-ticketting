@@ -17,7 +17,7 @@ const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority',
 const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'tto_due', 'ttr_due'];
 const DUE_BASES = ['tto_due', 'ttr_due'];
 const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization'];
-const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close'];
+const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks'];
 const PRIORITIES = ['low', 'normal', 'urgent'];
 const CHANNELS = ['discord', 'email', 'web'];
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
@@ -93,6 +93,7 @@ async function cleanAction(db, a, { canGrade }) {
     case 'urgency': case 'impact': return Number.isInteger(id) && id >= 1 && id <= 5 ? { value: { type: a.type, value: id } } : { error: 'Urgence et impact : de 1 à 5' };
     case 'priority': return PRIORITIES.includes(v) ? { value: { type: a.type, value: v } } : { error: 'Priorité invalide' };
     case 'team': return one('SELECT id FROM teams WHERE id = ?', 'Équipe introuvable');
+    case 'tasks': return one('SELECT id FROM task_templates WHERE id = ?', 'Modèle de tâches introuvable');
     case 'tagAdd': case 'tagRemove': return one('SELECT id FROM ticket_tags WHERE id = ?', 'Tag introuvable');
     case 'grade':
       if (!canGrade) return { error: 'Restreindre à un grade demande la permission manage_grades', status: 403 };
@@ -324,6 +325,10 @@ async function apply(env, a, rule) {
     case 'note':
       await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, 'system', ?, ?, 'system')", [t.id, `Règle « ${rule.name} »`, a.value]);
       return 'note interne';
+    case 'tasks': {
+      const r = await require('./tasks').applyTemplate(db, t.id, a.value, RULE_ACTOR, { guildId });
+      return r.added ? `${r.added} tâche(s)` : null;
+    }
     case 'webhook':
       await require('./webhookEmitter').fireTicketWebhook(db, 'rule_applied', { ticketId: t.id, rule: rule.name, subject: t.subject || null });
       return 'webhook';
@@ -381,7 +386,7 @@ const DESCRIBE = {
   subject: v => `Sujet → ${v}`, type: v => `Type → ${v === 'incident' ? 'incident' : 'demande'}`, urgency: v => `Urgence → ${v}`, impact: v => `Impact → ${v}`,
   priority: v => `Priorité → ${PRIORITY_LABEL[v]}`, team: v => `Équipe #${v}`, assign: v => `Attribuer à ${v}`, tagAdd: v => `Ajouter le tag #${v}`, tagRemove: v => `Retirer le tag #${v}`,
   stage: v => `Statut → ${v}`, grade: v => `Restreindre au grade #${v}`, follower: v => `Observateurs : ${v.join(', ')}`, reply: v => `Répondre : « ${v.slice(0, 80)} »`,
-  note: v => `Note interne : « ${v.slice(0, 80)} »`, notify: v => `Prévenir : ${v.join(', ')}`, webhook: () => 'Webhook', close: () => 'Fermer le ticket',
+  note: v => `Note interne : « ${v.slice(0, 80)} »`, tasks: v => `Modèle de tâches #${v}`, notify: v => `Prévenir : ${v.join(', ')}`, webhook: () => 'Webhook', close: () => 'Fermer le ticket',
 };
 async function testRule(db, guildId, input, ticketId, { message = '' } = {}) {
   const r = await cleanRule(db, input, { canGrade: true });
