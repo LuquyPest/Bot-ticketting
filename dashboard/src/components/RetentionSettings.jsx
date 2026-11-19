@@ -19,6 +19,16 @@ export default function RetentionSettings() {
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
+  const applyNow = async () => {
+    if (!window.confirm(s.mode === 'delete' ? `Supprimer définitivement maintenant les ${s.due} ticket(s) concerné(s), avec leurs messages et pièces jointes ?` : `Anonymiser maintenant les ${s.due} ticket(s) concerné(s) ?`)) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post('/ticket-retention/apply', { confirm: true });
+      toast.success(`${data.anonymized + data.deleted} ticket(s) traité(s)${data.remaining ? `, ${data.remaining} restant(s) pour la nuit` : ''}`);
+      setS(x => ({ ...x, due: data.remaining }));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    setBusy(false);
+  };
   return (
     <div className="space-y-3 text-xs">
       <div className="flex flex-wrap items-center gap-2 text-ink-2">
@@ -32,7 +42,12 @@ export default function RetentionSettings() {
         </select>
       </div>
       <p className="text-ink-3">Anonymiser retire le demandeur, le sujet, les messages, les transcripts, les pièces jointes, les copies, les champs et les réponses à l'enquête ; les dates, statuts, types, équipes, personnes assignées, temps et coûts restent pour les statistiques. Appliqué chaque nuit.</p>
-      {s.mode !== 'off' && <p className="text-amber-400" role="status">{`${s.due} ticket(s) concerné(s) aujourd'hui.`}</p>}
+      {s.mode !== 'off' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-amber-400" role="status">{`${s.due} ticket(s) concerné(s) aujourd'hui.`}</p>
+          {s.due > 0 && <button type="button" onClick={applyNow} disabled={busy} className="px-2.5 py-1 rounded-lg border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Appliquer maintenant</button>}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 text-ink-2">
         <span>Archiver les tickets clos depuis plus de</span>
         <input type="number" min={0} max={240} value={s.archiveMonths} onChange={e => set('archiveMonths', e.target.value)} aria-label="Archives après combien de mois" className={`${INPUT} w-20`} />
