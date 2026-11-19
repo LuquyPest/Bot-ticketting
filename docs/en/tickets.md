@@ -32,6 +32,10 @@ A sub-category **inherits** what is set on its category: subject rules, custom f
 - **Temporary voice channel** (**Voice** button or `/vocal`), reserved to the member and the staff who can see the ticket, deleted when it closes.
 - **Close** from the channel or the dashboard: the transcript is generated automatically.
 
+### All my spaces
+
+**All my spaces** (Support menu) gathers the **open tickets of every space** where you are staff, urgent ones first, 50 per space, with « Only those assigned to me ». Each space is read with **the rights you have there**: its grades, confidential tickets, roles by tag, its IP allowlist and its mandatory two-factor authentication; a space you cannot open is listed with the reason. A click opens the ticket in its space.
+
 ## The ticket view
 
 | | |

@@ -94,6 +94,7 @@ const PAGES = [
   ['instance-blocages', '/instance/blocked', 'Aucune adresse bloquée'],
   ['instance-sante', '/instance/health', 'Mettre à jour'],
   ['instance-discord', '/instance/health', 'Serveurs Discord'],
+  ['tous-mes-espaces', '/tous-mes-espaces', 'Panne VPN siège'],
   ['instance-connexion', '/instance/login', 'Adresse de retour à déclarer'],
   ['instance-boites-email', '/instance/login', 'Enregistrer les applications e-mail'],
   ['instance-annuaire', '/instance/login', 'Annuaire LDAP / Active Directory'],

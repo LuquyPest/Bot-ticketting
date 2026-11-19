@@ -110,3 +110,5 @@ module.exports = async function guildMiddleware(req, res, next) {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 };
+module.exports.buildAllowlist = buildAllowlist;
+module.exports.isAllowed = isAllowed;

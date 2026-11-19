@@ -187,6 +187,7 @@ app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/push',     require('./routes/push'));
 app.use('/api/profile',  require('./routes/profile'));
 app.use('/api/member',   require('./routes/memberPortal')); // member web space (own tickets only)
+app.use('/api/my-spaces', require('./routes/mySpaces')); // open tickets of every space where one is staff (v6)
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 app.use('/api/approvals', require('./routes/approvalLink')); // approval by e-mail link (v4.2)
 app.use('/api/resolution', require('./routes/resolutionLink')); // « C'est résolu » by e-mail link (v5.1)
