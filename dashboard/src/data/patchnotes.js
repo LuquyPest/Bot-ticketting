@@ -19,7 +19,7 @@ export function localizedVersion(v, lang) {
 export const VERSIONS = [
   {
     version: 'v5.7.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : arriver avec ses données',
     titleEn: 'Service desk: bring your data',
     changes: [
@@ -35,7 +35,7 @@ export const VERSIONS = [
   },
   {
     version: 'v5.6.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : connaissances et pilotage',
     titleEn: 'Service desk: knowledge and steering',
     changes: [
@@ -48,7 +48,7 @@ export const VERSIONS = [
   },
   {
     version: 'v5.5.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : problèmes et changements',
     titleEn: 'Service desk: problems and changes',
     changes: [
@@ -58,7 +58,7 @@ export const VERSIONS = [
   },
   {
     version: 'v5.4.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : le travail du staff',
     titleEn: 'Service desk: the staff\'s work',
     changes: [
@@ -70,7 +70,7 @@ export const VERSIONS = [
   },
   {
     version: 'v5.3.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : organisations et libre-service',
     titleEn: 'Service desk: organisations and self-service',
     changes: [
@@ -82,7 +82,7 @@ export const VERSIONS = [
   },
   {
     version: 'v5.2.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : règles et notifications',
     titleEn: 'Service desk: rules and notifications',
     changes: [
@@ -93,7 +93,7 @@ export const VERSIONS = [
   },
   {
     version: 'v5.1.0',
-    date: 'à venir',
+    date: '19 novembre 2026',
     title: 'Centre de services : cycle de vie et délais',
     titleEn: 'Service desk: life cycle and deadlines',
     changes: [
