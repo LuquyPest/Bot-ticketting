@@ -29,6 +29,15 @@ const guide = [
     ],
   },
   {
+    text: 'Guides',
+    items: [
+      { text: 'Venir de GLPI', link: '/guide/venir-de-glpi' },
+      { text: 'Venir de Zendesk ou Freshdesk', link: '/guide/venir-de-zendesk' },
+      { text: 'Mettre en place un SLA', link: '/guide/mettre-en-place-un-sla' },
+      { text: 'Brancher son Active Directory', link: '/guide/active-directory' },
+    ],
+  },
+  {
     text: 'Administrer',
     items: [
       { text: 'Section Instance', link: '/guide/instance' },
@@ -71,6 +80,15 @@ const guideEn = [
       { text: 'Member space', link: '/en/member-space' },
       { text: 'Automations', link: '/en/automations' },
       { text: 'Integrations', link: '/en/integrations' },
+    ],
+  },
+  {
+    text: 'Guides',
+    items: [
+      { text: 'Coming from GLPI', link: '/en/from-glpi' },
+      { text: 'Coming from Zendesk or Freshdesk', link: '/en/from-zendesk' },
+      { text: 'Setting up an SLA', link: '/en/setting-up-sla' },
+      { text: 'Connecting your Active Directory', link: '/en/active-directory' },
     ],
   },
   {
