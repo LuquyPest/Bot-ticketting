@@ -20,6 +20,7 @@ import RulesEditor from '../components/RulesEditor';
 import NotificationsEditor from '../components/NotificationsEditor';
 import ChatIntegrations from '../components/ChatIntegrations';
 import CatalogEditor from '../components/CatalogEditor';
+import RecurringEditor from '../components/RecurringEditor';
 import { LEVEL_LABELS, URGENCY_LABELS, IMPACT_LABELS } from '../utils/priorityLevels';
 import { useAuth } from '../App';
 
@@ -930,6 +931,8 @@ export default function Settings() {
       {tab === 'catalogue' && (
         <div role="tabpanel" id="panel-catalogue" aria-labelledby="tab-catalogue" className="space-y-5">
           <CatalogEditor />
+          <h2 className="text-sm font-semibold text-ink-1 pt-2">Tickets récurrents</h2>
+          <RecurringEditor />
         </div>
       )}
 

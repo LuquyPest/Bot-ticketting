@@ -48,6 +48,18 @@ Guards: a change made by a rule does not start the rules again (no loop); 50 act
 
 The former **rules by subject and by keywords** (**Settings → Tickets**) are now rules of this engine, with the same effect; their simple form stays, and they run before these at the opening. Rules are part of the [configuration export](./integrations#backing-up-the-configuration) (tags, teams, grades and statuses by name; the people chosen are not exported).
 
+## Recurring tickets
+
+**Settings → Catalogue → Recurring tickets** (founders and the **Settings** permission): tickets opened on their own on a schedule, such as « backup check, every Monday at 9:00 ».
+
+| | |
+|---|---|
+| **When** | Every day, working days (Monday to Friday), every week (one day), every month (the 1st to the 28th); at a time, in a time zone (daylight saving included) |
+| **What** | The ticket's first message, a subject; a **catalogue service** (its template: type, priority, team) or its own type, priority and team |
+| **Wait for the previous one** | By default, nothing new opens while the previous ticket of the same recurrence is still open |
+
+The check runs every minute; each due time opens one ticket only. These tickets come from « Recurring ticket · *name* »: nobody is messaged, they follow the rules, the SLA and the notifications like the others, and each opening is in the journal. **Open now** creates one to try it, without moving the next due time.
+
 ## Notifications
 
 **Settings → Notifications** (founders): who is told of what, and how. Each notification ties an **event**, **recipients** and **channels**:

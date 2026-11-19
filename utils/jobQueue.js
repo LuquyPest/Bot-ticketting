@@ -15,6 +15,7 @@ const JOBS = {
   'escalation-check':    { every: 30 * 60 * 1000, run: client => require('./escalationChecker').runEscalationCheck(client) },
   'sla-escalation':      { every: 5 * 60 * 1000,  run: client => require('./slaEscalation').runSlaEscalation(client) },
   'rule-timers':         { every: 5 * 60 * 1000,  run: client => require('./ruleTimers').runRuleTimers(client) },
+  'recurring-tickets':   { every: 60 * 1000,      run: client => require('./recurring').runRecurring(client) },
   'inactive-check':      { every: 60 * 60 * 1000, run: client => require('./inactiveTicketChecker').runInactiveCheck(client) },
   'user-inactive-check': { every: 60 * 60 * 1000, run: client => require('./userInactiveChecker').runUserInactiveCheck(client) },
   'staff-reminder':      { every: 60 * 60 * 1000, run: client => require('./staffReminderChecker').runStaffReminderCheck(client) },
