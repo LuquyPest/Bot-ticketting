@@ -2050,6 +2050,12 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
 
           {/* OBJECTIFS SLA (v5.1) */}
           <ObjectivesPanel objectives={ticket.objectives} panelCard={panelCard} />
+          {ticket.organization && (
+            <div className={panelCard}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>
+              <a href={`/tickets?organization=${ticket.organization.id}`} className="text-sm text-ink-1 hover:underline">{ticket.organization.name}</a>
+            </div>
+          )}
 
           {/* VALIDATION (v4.2) */}
           <ApprovalPanel ticketId={ticket.id} open={ticket.status === 'open'} me={user?.id} canAsk={can('reply_ticket')} isFounder={user?.role === 'fondateur'}

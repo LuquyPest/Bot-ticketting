@@ -188,7 +188,13 @@ async function deleteCalendar(db, id) {
 }
 
 // The calendar that applies to a ticket: its team's, else the space's; null = always open
+// The organisation's hours (its contract) come first, then the team's, then the space's
 async function calendarForTicket(db, ticket) {
+  if (ticket?.organization_id) {
+    const [o] = await db('SELECT calendar_id FROM organizations WHERE id = ?', [ticket.organization_id]).catch(() => []);
+    const c = await calendarOf(db, o?.calendar_id);
+    if (c) return c;
+  }
   if (ticket?.team_id) {
     const [t] = await db('SELECT calendar_id FROM teams WHERE id = ?', [ticket.team_id]).catch(() => []);
     const c = await calendarOf(db, t?.calendar_id);

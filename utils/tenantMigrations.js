@@ -999,6 +999,34 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 63,
+    name: 'Organisations : contacts regroupés par domaine ou à la main, SLA et horaires propres (v5.3)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS organizations (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(100) NOT NULL,
+        parent_id   INT DEFAULT NULL,
+        team_id     INT DEFAULT NULL,
+        manager_id  VARCHAR(32) DEFAULT NULL,
+        calendar_id INT DEFAULT NULL,
+        fields      JSON DEFAULT NULL,
+        notes       TEXT DEFAULT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_org_name (name)
+      )`,
+      `CREATE TABLE IF NOT EXISTS organization_domains (
+        domain          VARCHAR(253) PRIMARY KEY,
+        organization_id INT NOT NULL,
+        INDEX idx_od_org (organization_id)
+      )`,
+      'ALTER TABLE contacts ADD COLUMN IF NOT EXISTS organization_id INT DEFAULT NULL',
+      'ALTER TABLE contacts ADD COLUMN IF NOT EXISTS org_manual TINYINT(1) NOT NULL DEFAULT 0',
+      'CREATE INDEX IF NOT EXISTS idx_contacts_org ON contacts (organization_id)',
+      'ALTER TABLE tickets ADD COLUMN IF NOT EXISTS organization_id INT DEFAULT NULL',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_org ON tickets (organization_id)',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

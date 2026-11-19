@@ -112,6 +112,7 @@ router.get('/', async (req, res) => {
     const following = str('following') === 'me';
     const tag = parseInt(str('tag')) || null;
     const team = str('team') === 'none' ? 'none' : parseInt(str('team')) || null;
+    const organization = str('organization') === 'none' ? 'none' : parseInt(str('organization')) || null;
     const ticketType = ['incident', 'request'].includes(str('type')) ? str('type') : null;
     const sla = str('sla');
     const fieldId = parseInt(str('field')) || null, fieldValue = str('fieldValue').slice(0, 100);
@@ -156,6 +157,9 @@ router.get('/', async (req, res) => {
     if (tag)      { where.push('EXISTS (SELECT 1 FROM ticket_tag_assignments ta WHERE ta.ticket_id = tickets.id AND ta.tag_id = ?)'); params.push(tag); }
     if (team === 'none') where.push('team_id IS NULL');
     else if (team) { where.push('team_id = ?'); params.push(team); }
+    // Organisation (utils/organizations.js): with its sub-organisations
+    if (organization === 'none') where.push('organization_id IS NULL');
+    else if (organization) { where.push('(organization_id = ? OR organization_id IN (SELECT id FROM organizations WHERE parent_id = ?))'); params.push(organization, organization); }
     const slaCfg = await require('../../utils/stages').withStageSla(req.guildDb, (await req.guildDb('SELECT sla_open_hours, sla_waiting_hours, sla_in_progress_hours FROM guild_config WHERE id = 1'))[0]);
     // Overdue: a stage deadline passed, or a missed SLA objective (time to first response or to resolution)
     if (sla === 'breached') { const b = breachedSql(slaCfg); where.push(`(${b.sql} OR ${require('../../utils/slaPolicies').OBJECTIVE_BREACHED_SQL})`); params.push(...b.params); }
@@ -168,7 +172,7 @@ router.get('/', async (req, res) => {
 
     const [tickets, [{ total }]] = await Promise.all([
       req.guildDb(
-        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, first_response_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at, team_since, ola_due_at, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        `SELECT id, owner_id, owner_tag, channel_id, claimed_by, status, stage, stage_changed_at, subject, priority, priority_level, visibility_grade_id, team_id, ticket_type, resolved_at, first_response_at, sla_policy_id, tto_due_at, ttr_due_at, sla_paused_at, team_since, ola_due_at, organization_id, last_message_at, created_at, closed_at, closed_by_tag FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       ),
       req.guildDb(`SELECT COUNT(*) as total FROM tickets ${whereClause}`, params)
@@ -406,6 +410,7 @@ router.get('/:id', async (req, res) => {
       sla: slaStatus(ticket, cfg),
       // SLA objectives: time to first response and to resolution (utils/slaPolicies.js)
       objectives: require('../../utils/slaPolicies').objectives(ticket),
+      organization: ticket.organization_id ? ((await req.guildDb('SELECT id, name FROM organizations WHERE id = ?', [ticket.organization_id]).catch(() => []))[0] || null) : null,
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
       fields: await fieldsForTicket(req.guildDb, ticket.id),

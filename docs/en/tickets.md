@@ -146,6 +146,21 @@ One pending approval per ticket; the person who asked, or a founder, can **cance
 - **Rights**: reading needs `view_tickets`; editing, merging and detaching need `reply_ticket`. Every merge and every detach is written to the log.
 - **Erasing a member's data** (GDPR) also removes their identity from their card, and the card if it has no other one.
 
+## Organisations
+
+**Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).
+
+| | |
+|---|---|
+| **Attachment** | By the organisation's e-mail address **domains** (`acme.com`: every `@acme.com` contact joins it); **by hand** from the contact's card (the domain no longer moves them; « By the domain » goes back to automatic); or by **import** (`name;domains`, one line per organisation). Public mailboxes (gmail.com, outlook.com…) are refused as domains |
+| **Sub-organisations** | One level (« Acme » → « Acme Lyon »): what targets an organisation covers its sub-organisations |
+| **Hours** | A calendar of its own (its contract), which comes before the team's and the space's for business-hour deadlines |
+| **SLA** | An objective with the **organisation** criterion (Settings → Hours → SLA objectives) |
+| **Team, manager** | Its tickets go to its team (if neither the subject nor a tag names one); its account manager can be notified (« the organisation's manager » recipient of notifications) |
+| **Fields and notes** | Contract, phone… (20 free fields) and internal notes |
+
+A ticket keeps its requester's organisation at the opening: it shows on the ticket view, filters the list (**All organisations**), is a condition of [automatic rules](./automations#automatic-rules). Moving a contact moves their open tickets.
+
 ## The ticket list
 
 - **Views**: Open, My tickets, Unassigned, Followed, Waiting, In progress, Urgent, Overdue, Closed, All — and your own saved views.

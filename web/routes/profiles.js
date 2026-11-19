@@ -41,9 +41,28 @@ router.get('/:memberId', async (req, res, next) => {
     res.json({
       ...p, ...(await avatarOf(req.app.locals.client, discordId)),
       contact: card.contact && { id: card.contact.id, displayName: card.contact.display_name, email: card.contact.email, notes: card.contact.notes, createdAt: card.contact.created_at },
+      // Organisation of the contact (utils/organizations.js): by domain, or placed by hand
+      organization: card.contact ? await orgOfContact(req.guildDb, card.contact.id) : null,
       identities: card.identities.map(({ value, kind, label, primary }) => ({ value, kind, label, primary: !!primary })),
       tag: card.contact?.display_name || p.tag,
     });
+  } catch (err) { next(err); }
+});
+
+async function orgOfContact(db, contactId) {
+  const [r] = await db('SELECT c.org_manual, o.id, o.name FROM contacts c LEFT JOIN organizations o ON o.id = c.organization_id WHERE c.id = ?', [contactId]).catch(() => []);
+  return r ? { id: r.id || null, name: r.name || null, manual: !!Number(r.org_manual) } : null;
+}
+// PUT /api/profiles/:memberId/organization { organizationId } (null = none) | { auto: true } (by the e-mail domain)
+router.put('/:memberId/organization', async (req, res, next) => {
+  try {
+    if (!has(req, 'reply_ticket')) return res.status(403).json({ error: 'Permission insuffisante' });
+    if (!req.card.contact) return res.status(404).json({ error: 'Contact introuvable' });
+    const orgs = require('../../utils/organizations');
+    const r = await orgs.setContactOrg(req.guildDb, req.card.contact.id, req.body?.organizationId ? Number(req.body.organizationId) : null, { auto: !!req.body?.auto });
+    if (r.error) return res.status(400).json({ error: r.error });
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'contact_organization', targetType: 'contact', targetId: req.card.contact.id, details: { organizationId: req.body?.organizationId || null, auto: !!req.body?.auto } });
+    res.json({ organization: await orgOfContact(req.guildDb, req.card.contact.id) });
   } catch (err) { next(err); }
 });
 
@@ -130,6 +149,11 @@ router.patch('/:memberId/contact', async (req, res, next) => {
     const { displayName, email, notes } = req.body || {};
     const r = await contacts.update(req.guildDb, req.card, { displayName, email, notes });
     if (r.error) return res.status(r.status).json({ error: r.error });
+    if (email !== undefined) { // a new address may belong to an organisation's domain
+      const orgs = require('../../utils/organizations');
+      await orgs.attachByDomain(req.guildDb);
+      await orgs.refreshOpenTickets(req.guildDb, { contactId: r.contact.id });
+    }
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'contact_update', targetType: 'contact', targetId: r.contact.id, details: { fields: Object.keys(req.body || {}).filter(k => ['displayName', 'email', 'notes'].includes(k)) } });
     res.json({ contact: { id: r.contact.id, displayName: r.contact.display_name, email: r.contact.email, notes: r.contact.notes } });
   } catch (err) { next(err); }

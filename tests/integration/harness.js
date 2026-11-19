@@ -5554,6 +5554,88 @@ async function main() {
     await db('DELETE FROM tickets WHERE id = ?', [tC]);
   }
 
+  // ── Organisations (utils/organizations.js, v5.3) ──
+  {
+    const O = app('./utils/organizations');
+    const SP = app('./utils/slaPolicies');
+    const mkContact = async (n, email) => {
+      const value = `mail:${String(n).padStart(24, 'a')}`;
+      const cid = (await db('INSERT INTO contacts (display_name, email, seed) VALUES (?, ?, ?)', [email, email, value])).insertId;
+      await db("INSERT INTO contact_identities (value, contact_id, kind, label) VALUES (?, ?, 'email', ?)", [value, cid, email]);
+      const tid = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, ?, ?, 'open', 'Org test')", [value, email, `db-org-${n}`])).insertId;
+      return { value, cid, tid };
+    };
+    const orgOfT = async id => (await db('SELECT organization_id FROM tickets WHERE id = ?', [id]))[0].organization_id;
+    r = await req('POST', '/api/organizations', { sid: sessions.S1, body: { name: 'Acme' } });
+    check('organisations: écriture réservée (fondateurs, Paramètres)', r.status === 403, r.status);
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Acme', domains: 'gmail.com' } });
+    check('organisations: une messagerie publique n est pas un domaine d organisation', r.status === 400 && /publique/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Acme', domains: 'pas un domaine' } });
+    check('organisations: domaine invalide refusé', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Acme', domains: '@acme.test, acme-corp.test', managerId: U.S2, fields: { Contrat: 'Or', Téléphone: '01 02 03 04 05' } } });
+    const acme = r.body.id;
+    check('organisations: créée avec domaines, responsable et champs', r.status === 200 && r.body.organizations.find(o => o.id === acme)?.domains.includes('acme.test') && r.body.organizations.find(o => o.id === acme).fields.Contrat === 'Or', JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Autre', domains: 'acme.test' } });
+    check('organisations: un domaine n appartient qu à une organisation', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Acme Lyon', parentId: acme } });
+    const lyon = r.body.id;
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Acme Lyon Est', parentId: lyon } });
+    check('organisations: un seul niveau de sous-organisations', r.status === 400, JSON.stringify(r.body));
+
+    const a = await mkContact(1, 'paul@acme.test');
+    const b = await mkContact(2, 'zoe@ailleurs.test');
+    await O.assignTicket(db, a.tid); await O.assignTicket(db, b.tid);
+    check('organisations: rattachement automatique par domaine (contact et ticket)', await orgOfT(a.tid) === acme && !(await orgOfT(b.tid))
+      && (await db('SELECT organization_id FROM contacts WHERE id = ?', [a.cid]))[0].organization_id === acme, '');
+    r = await req('GET', `/api/profiles/${a.value}`, { sid: sessions.F });
+    check('organisations: visible sur la fiche du contact', r.body.organization?.id === acme && r.body.organization.manual === false, JSON.stringify(r.body.organization));
+    r = await req('PUT', `/api/profiles/${a.value}/organization`, { sid: sessions.F, body: { organizationId: lyon } });
+    check('organisations: placé à la main → ses tickets ouverts suivent', r.status === 200 && r.body.organization.manual && await orgOfT(a.tid) === lyon, JSON.stringify(r.body));
+    await req('PUT', `/api/organizations/${acme}`, { sid: sessions.F, body: { name: 'Acme', domains: ['acme.test', 'acme-corp.test'], managerId: U.S2 } });
+    check('organisations: le domaine ne déplace plus un contact placé à la main', await orgOfT(a.tid) === lyon, '');
+
+    // Its SLA (an objective covering it and its sub-organisations), its rules, its filter
+    r = await req('POST', '/api/sla-policies', { sid: sessions.F, body: { name: 'Contrat Acme', ttoMinutes: 30, businessHours: false, conditions: { organizations: [acme] } } });
+    const pol = r.body.policies.find(x => x.name === 'Contrat Acme');
+    await SP.refreshSla(db, a.tid); await SP.refreshSla(db, b.tid);
+    check('organisations: SLA d organisation (sous-organisations comprises)', (await db('SELECT sla_policy_id FROM tickets WHERE id = ?', [a.tid]))[0].sla_policy_id === pol.id
+      && (await db('SELECT sla_policy_id FROM tickets WHERE id = ?', [b.tid]))[0].sla_policy_id !== pol.id, '');
+    await req('DELETE', `/api/sla-policies/${pol.id}`, { sid: sessions.F });
+    r = await req('POST', '/api/rules/test', { sid: sessions.F, body: { ticketId: a.tid, rule: { name: 't', triggers: ['created'], conditions: [{ field: 'organization', values: [acme] }], actions: [{ type: 'priority', value: 'urgent' }] } } });
+    check('organisations: condition de règle (sous-organisations comprises)', r.body.matched === true, JSON.stringify(r.body));
+    r = await req('GET', '/api/tickets', { sid: sessions.F, query: { organization: acme, status: 'open' } });
+    check('organisations: filtre de la liste (avec les sous-organisations)', r.body.tickets.some(t => t.id === a.tid) && !r.body.tickets.some(t => t.id === b.tid), JSON.stringify(r.body.tickets.map(t => t.id)));
+    r = await req('GET', `/api/tickets/${a.tid}`, { sid: sessions.F });
+    check('organisations: sur la fiche ticket', r.body.organization?.id === lyon, JSON.stringify(r.body.organization));
+
+    // Its hours come before the team's and the space's
+    r = await req('POST', '/api/calendars', { sid: sessions.F, body: { name: 'Contrat Acme', timezone: 'Europe/Paris', hours: app('./utils/calendars').DEFAULT_HOURS } });
+    const calO = r.body.id;
+    await req('PUT', `/api/organizations/${lyon}`, { sid: sessions.F, body: { name: 'Acme Lyon', parentId: acme, calendarId: calO } });
+    check('organisations: horaires propres', (await app('./utils/calendars').calendarForTicket(db, (await db('SELECT * FROM tickets WHERE id = ?', [a.tid]))[0]))?.id === calO, '');
+    // Its account manager can be notified
+    const N = app('./utils/notifications');
+    const baseN = (await N.listRules(db)).map(({ id, ...x }) => x);
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...baseN, { event: 'ticket_created', recipients: ['org_manager'], channels: ['dashboard'] }] } });
+    await db('UPDATE tickets SET organization_id = ? WHERE id = ?', [acme, b.tid]);
+    const told = await N.notify(db, G, 'ticket_created', (await db('SELECT * FROM tickets WHERE id = ?', [b.tid]))[0], {});
+    check('organisations: le responsable de compte peut être prévenu', told.includes(U.S2), JSON.stringify(told));
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: baseN } });
+    r = await req('PUT', `/api/profiles/${a.value}/organization`, { sid: sessions.F, body: { auto: true } });
+    check('organisations: retour au rattachement par domaine', r.body.organization?.id === acme && !r.body.organization.manual, JSON.stringify(r.body));
+
+    r = await req('POST', '/api/organizations/import', { sid: sessions.F, body: { csv: 'nom;domaines\nGlobex;globex.test, globex.example\nInitech;gmail.com' } });
+    check('organisations: import CSV (lignes en erreur signalées)', r.status === 200 && r.body.created === 1 && r.body.errors.length === 1 && r.body.organizations.some(o => o.name === 'Globex' && o.domains.length === 2), JSON.stringify(r.body).slice(0, 300));
+    r = await req('GET', '/api/organizations', { sid: sessions.S1 });
+    check('organisations: le staff voit les noms, pas les notes ni les champs', r.status === 200 && r.body.length >= 3 && r.body.every(o => o.fields === undefined && o.notes === undefined), JSON.stringify(r.body).slice(0, 200));
+
+    for (const o of (await O.listOrgs(db))) await req('DELETE', `/api/organizations/${o.id}`, { sid: sessions.F });
+    check('organisations: supprimées → contacts détachés', !(await db('SELECT 1 FROM contacts WHERE organization_id IS NOT NULL')).length && !(await db('SELECT 1 FROM organizations')).length, '');
+    await req('DELETE', `/api/calendars/${calO}`, { sid: sessions.F });
+    await db('DELETE FROM tickets WHERE id IN (?)', [[a.tid, b.tid]]);
+    await db('DELETE FROM contacts WHERE id IN (?)', [[a.cid, b.cid]]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

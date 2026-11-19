@@ -16,7 +16,7 @@ const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority',
 // « When time passes » (utils/ruleTimers.js): so long after (or before) a moment of the ticket
 const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'tto_due', 'ttr_due'];
 const DUE_BASES = ['tto_due', 'ttr_due'];
-const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language'];
+const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization'];
 const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close'];
 const PRIORITIES = ['low', 'normal', 'urgent'];
 const CHANNELS = ['discord', 'email', 'web'];
@@ -63,7 +63,7 @@ async function cleanCondition(db, c) {
     text: () => (values.every(v => v.length <= 300 && keywordList(v).every(w => w.length >= 3 && w.length <= 60)) ? null : { error: 'Mots-clés : de 3 à 60 caractères, séparés par des virgules' }),
     requester: () => (values.every(v => v.length >= 3 && v.length <= 100) ? null : { error: 'Demandeur : de 3 à 100 caractères (adresse, domaine, nom)' }),
     address: () => (values.every(v => /^[^\s@]+@[^\s@]+$/.test(v) && v.length <= 254) ? null : { error: 'Adresse de réception invalide' }),
-    tag: () => null,
+    tag: () => null, organization: () => null,
   }[c.field]();
   if (bad) return bad;
   let out = values;
@@ -72,6 +72,10 @@ async function cleanCondition(db, c) {
     if (out.length !== values.length || (await db('SELECT id FROM ticket_tags WHERE id IN (?)', [out])).length !== out.length) return { error: 'Tag introuvable' };
   }
   if (c.field === 'address') out = values.map(v => v.toLowerCase());
+  if (c.field === 'organization') {
+    out = values.map(Number).filter(Number.isInteger);
+    if (out.length !== values.length || (await db('SELECT id FROM organizations WHERE id IN (?)', [out])).length !== out.length) return { error: 'Organisation introuvable' };
+  }
   return { value: { field: c.field, not: !!c.not, values: out } };
 }
 
@@ -198,6 +202,12 @@ async function holds(db, c, ctx) {
     case 'priority': ok = c.values.includes(t.priority || 'normal'); break;
     case 'stage': ok = c.values.includes(t.stage || 'open'); break;
     case 'tag': ok = c.values.some(id => ctx.tags.has(Number(id))); break;
+    case 'organization': {
+      // An organisation covers its sub-organisations
+      const [o] = t.organization_id ? await db('SELECT parent_id FROM organizations WHERE id = ?', [t.organization_id]) : [];
+      ok = c.values.some(id => Number(id) === Number(t.organization_id) || (o?.parent_id && Number(id) === Number(o.parent_id)));
+      break;
+    }
     case 'hours': {
       const cal = require('./calendars');
       const k = await cal.calendarForTicket(db, t);

@@ -10,7 +10,7 @@ const TRIGGERS = [['created', 'Un ticket est ouvert'], ['member_reply', 'Le dema
 const BASES = [['created', 'l\'ouverture'], ['stage', 'le dernier changement de statut'], ['last_member', 'le dernier message du demandeur'], ['last_staff', 'la dernière réponse du staff'],
   ['last_activity', 'la dernière activité'], ['tto_due', 'l\'échéance de prise en charge'], ['ttr_due', 'l\'échéance de résolution']];
 const FIELDS = [['channel', 'Canal'], ['address', 'Adresse de réception'], ['type', 'Type'], ['subject', 'Sujet'], ['text', 'Mots dans le message'], ['requester', 'Demandeur'],
-  ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur']];
+  ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation']];
 const ACTIONS = [['priority', 'Priorité'], ['urgency', 'Urgence'], ['impact', 'Impact'], ['type', 'Type'], ['subject', 'Sujet'], ['team', 'Équipe'], ['assign', 'Attribuer à'],
   ['tagAdd', 'Ajouter le tag'], ['tagRemove', 'Retirer le tag'], ['stage', 'Statut'], ['grade', 'Restreindre au grade'], ['follower', 'Observateur'], ['notify', 'Prévenir'],
   ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
@@ -34,7 +34,7 @@ function Chips({ options, value, onChange, single = false, label }) {
 }
 
 function ConditionRow({ c, ctx, onChange, onRemove }) {
-  const opts = CHOICES[c.field] || (c.field === 'stage' ? ctx.stages.map(s => [s.key, s.label]) : c.field === 'tag' ? ctx.tags.map(t => [t.id, t.name]) : c.field === 'subject' ? ctx.subjects.map(s => [s, s]) : null);
+  const opts = CHOICES[c.field] || (c.field === 'stage' ? ctx.stages.map(s => [s.key, s.label]) : c.field === 'tag' ? ctx.tags.map(t => [t.id, t.name]) : c.field === 'organization' ? (ctx.orgs || []).map(o => [o.id, o.name]) : c.field === 'subject' ? ctx.subjects.map(s => [s, s]) : null);
   return (
     <div className="flex flex-wrap items-center gap-2 bg-overlay/2.5 rounded-lg px-2 py-1.5">
       <select value={c.field} onChange={e => onChange({ field: e.target.value, not: false, values: [] })} aria-label="Champ de la condition" className={INPUT}>
@@ -181,8 +181,8 @@ export default function RulesEditor() {
   const { stages } = useStages();
   useEffect(() => {
     api.get('/rules').then(r => setList(r.data)).catch(() => setList(false));
-    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/tickets/staff'), api.get('/grades')].map(p => p.catch(() => ({ data: null }))))
-      .then(([o, t, s, g]) => setCtx(c => ({ ...c, subjects: o.data?.subjects || [], tags: o.data?.tags || [], teams: t.data || [], staff: s.data || [], grades: Array.isArray(g.data) ? g.data : [] })));
+    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/tickets/staff'), api.get('/grades'), api.get('/organizations')].map(p => p.catch(() => ({ data: null }))))
+      .then(([o, t, s, g, org]) => setCtx(c => ({ ...c, subjects: o.data?.subjects || [], tags: o.data?.tags || [], teams: t.data || [], staff: s.data || [], grades: Array.isArray(g.data) ? g.data : [], orgs: Array.isArray(org.data) ? org.data : [] })));
   }, []);
   const full = { ...ctx, stages: stages || [] };
   if (list === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;

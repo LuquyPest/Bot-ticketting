@@ -11,7 +11,7 @@ const logger = require('./logger');
 const { CONFIDENTIAL } = require('./gradePermissions');
 
 const EVENTS = ['ticket_created', 'member_reply', 'staff_reply', 'note', 'assigned', 'stage', 'closed', 'sla_breached'];
-const RECIPIENTS = ['assignee', 'assignees', 'followers', 'team', 'founders', 'emails'];
+const RECIPIENTS = ['assignee', 'assignees', 'followers', 'team', 'org_manager', 'founders', 'emails'];
 const CHANNELS = ['dashboard', 'discord', 'email', 'slack', 'teams'];
 const TEAM_CHANNELS = ['slack', 'teams']; // a channel of the space: one post per event, whoever the recipients
 const MAX_RULES = 40;
@@ -100,6 +100,8 @@ async function recipientsOf(db, rule, ticket, extra) {
     if (who === 'followers') add(await db('SELECT user_id FROM ticket_followers WHERE ticket_id = ?', [ticket.id]));
     if (who === 'team' && ticket.team_id) add(await db('SELECT user_id FROM team_members WHERE team_id = ?', [ticket.team_id]));
     if (who === 'founders') add(await db("SELECT user_id FROM dashboard_users WHERE role = 'fondateur'"));
+    // The account manager of the requester's organisation (utils/organizations.js)
+    if (who === 'org_manager' && ticket.organization_id) add(await db('SELECT manager_id AS user_id FROM organizations WHERE id = ? AND manager_id IS NOT NULL', [ticket.organization_id]));
   }
   return [...ids];
 }
