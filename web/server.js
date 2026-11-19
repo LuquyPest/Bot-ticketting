@@ -341,6 +341,9 @@ app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
   res.set('Cache-Control', 'public, max-age=3600').redirect(302, url);
 });
 
+// The public knowledge base, rendered by the server (v5.6): before the dashboard's fallback
+app.use(require('./routes/kbPages'));
+
 const distPath = path.join(__dirname, '../dashboard/dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

@@ -6129,6 +6129,36 @@ async function main() {
     await db('UPDATE guild_config SET kb_public = ? WHERE id = 1', [kbBefore.kb_public]);
   }
 
+  // ── Public knowledge base rendered by the server (web/routes/kbPages.js, v5.6) ──
+  {
+    const [kb0] = await db('SELECT kb_public FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET kb_public = 1 WHERE id = 1');
+    const pub = (await db("INSERT INTO faq_entries (question, answer, keywords, visibility, status) VALUES ('Suivre mon colis <vite>', 'Le **lien de suivi** arrive par e-mail.\n- Ouvre-le\n- Suis le colis', 'colis', 'public', 'published')")).insertId;
+    const drft = (await db("INSERT INTO faq_entries (question, answer, keywords, visibility, status) VALUES ('Brouillon secret SSR', 'pas encore', 'x', 'public', 'draft')")).insertId;
+    const stf = (await db("INSERT INTO faq_entries (question, answer, keywords, visibility) VALUES ('Interne SSR', 'réservé', 'x', 'staff')")).insertId;
+    const tr = (await db("INSERT INTO faq_entries (question, answer, keywords, visibility, lang, translation_of) VALUES ('Track my parcel', 'The tracking link comes by e-mail.', 'parcel', 'public', 'en', ?)", [pub])).insertId;
+    r = await req('GET', `/aide/${G}`);
+    check('ssr: la base publique arrive en HTML, avec ses articles publics', r.status === 200 && /text\/html/.test(r.headers['content-type']) && r.body.includes(`/aide/${G}/${pub}`) && r.body.includes('Suivre mon colis &lt;vite&gt;'), String(r.body).slice(0, 200));
+    check('ssr: ni brouillon ni article du staff', !r.body.includes('Brouillon secret SSR') && !r.body.includes('Interne SSR'), '');
+    check('ssr: données structurées FAQPage', /application\/ld\+json/.test(r.body) && r.body.includes('"FAQPage"') && !/<\/script>[^]*Suivre mon colis <vite>/.test(r.body), '');
+    r = await req('GET', `/aide/${G}/${pub}`);
+    check('ssr: un article lisible sans JavaScript (titre, description, contenu échappé)', r.status === 200 && r.body.includes('<title>Suivre mon colis &lt;vite&gt;') && r.body.includes('<strong>lien de suivi</strong>') && r.body.includes('<li>Ouvre-le</li>')
+      && r.body.includes(`<link rel="canonical"`) && !r.body.includes('<vite>'), String(r.body).slice(0, 300));
+    check('ssr: ses traductions annoncées (hreflang)', r.body.includes(`hreflang="en" href="`) && r.body.includes(`/aide/${G}/${tr}`), '');
+    r = await req('GET', `/aide/${G}/${drft}`);
+    check('ssr: un brouillon donne « introuvable » (404)', r.status === 404 && !r.body.includes('pas encore'), r.status);
+    r = await req('GET', `/aide/${G}/${stf}`);
+    check('ssr: un article du staff donne « introuvable » (404)', r.status === 404 && !r.body.includes('réservé'), r.status);
+    r = await req('GET', `/aide/${G}/sitemap.xml`);
+    check('ssr: plan du site des articles publics', r.status === 200 && /xml/.test(r.headers['content-type']) && r.body.includes(`/aide/${G}/${pub}</loc>`) && !r.body.includes(`/aide/${G}/${drft}<`) && !r.body.includes(`/aide/${G}/${stf}<`), String(r.body).slice(0, 300));
+    await db('UPDATE guild_config SET kb_public = 0 WHERE id = 1');
+    r = await req('GET', `/aide/${G}/${pub}`);
+    check('ssr: page hors ligne → 404, rien du contenu', r.status === 404 && !r.body.includes('lien de suivi'), r.status);
+    check('ssr: plan du site hors ligne → 404', (await req('GET', `/aide/${G}/sitemap.xml`)).status === 404, '');
+    await db('DELETE FROM faq_entries WHERE id IN (?)', [[pub, drft, stf, tr]]);
+    await db('UPDATE guild_config SET kb_public = ? WHERE id = 1', [kb0.kb_public]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

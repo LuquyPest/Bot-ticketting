@@ -39,6 +39,10 @@ Each article has a **state** (draft or published: a draft is visible to the staf
 
 Each change of the text keeps the **previous version** (**Previous versions**, **Go back to this one**). An article can be the **translation** of another in one of the 6 languages: readers see the one in their language, and the others are offered. At the bottom of a public article, **Did this article help you?** (yes, or no with what is missing); the staff's FAQ page shows the **feedback**, the most useful articles, what is **to review**, and the public base's **searches without results** (what is missing). From a solved ticket, **Create an article from the solution** makes it a draft.
 
+### Search engines
+
+The pages of the public base (`/aide/<space>` and each article) are sent **ready-made by the server**: title, description, canonical address, languages (`hreflang`), structured data (FAQ, article) and the content itself. They read **without JavaScript** and search engines index them; the dashboard then takes over the page as before. The **sitemap** is at `/aide/<space>/sitemap.xml`. Only what is public and published shows there; a draft, a restricted article or an offline page answer « not found ».
+
 ## The service catalogue
 
 **Settings → Catalogue** (founders and the **Settings** permission): what requesters can ask for, by category (« Hardware », « Access »…), each **service** with its icon and description. In the member space, **New ticket** starts with this catalogue; **Something else** keeps the free form of before.
