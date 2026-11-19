@@ -42,6 +42,7 @@ const PAGES = [
   ['settings-catalogue', '/settings?tab=catalogue', 'Afficher seulement si'],
   ['settings-recurrents', '/settings?tab=catalogue', 'Attendre que le précédent soit fermé'],
   ['settings-modeles-taches', '/settings?tab=catalogue', 'Nouveau modèle de tâches'],
+  ['planning', '/planning', 'Préparer le poste de Léa'],
   ['espace-taches', '/espace/123456789012345678/1', 'Rembourser la commande'],
   ['equipes-ola', '/equipe?tab=equipes', 'Objectif interne (OLA)'],
   ['ticket-resolu', '/tickets/8', 'Accès rétabli sur le partage Compta', false, true],

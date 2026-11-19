@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Service desk: the staff\'s work',
     changes: [
       { type: 'new',  text: 'Tâches de ticket : personne ou équipe, durée prévue et temps passé (chronomètre et ajout à la main par tâche), date planifiée, état (à faire, faite, sans objet), visibles ou non du demandeur ; modèles de tâches appliqués depuis la fiche ou par une règle', en: 'Ticket tasks: person or team, planned duration and time spent (stopwatch and time added by hand per task), planned date, state (to do, done, not needed), visible to the requester or not; task templates applied from the ticket view or by a rule' },
+      { type: 'new',  text: 'Planning (menu Planning) : la semaine d\'une personne ou d\'une équipe (tâches planifiées, échéances de résolution, absences), tâches replanifiées par glisser-déposer, lien iCal personnel et secret pour son agenda', en: 'Planning (Planning menu): the week of a person or a team (planned tasks, resolution deadlines, absences), tasks rescheduled by drag and drop, personal secret iCal link for one\'s calendar' },
     ],
   },
   {

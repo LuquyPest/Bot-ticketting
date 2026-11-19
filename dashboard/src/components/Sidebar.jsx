@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2,
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { useInstanceInfo } from '../hooks/useInstanceInfo';
@@ -26,6 +26,7 @@ const NAV_GROUPS = [
     { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
     { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
     { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
+    { to: '/planning',    label: 'Planning',     icon: CalendarDays,    roles: ['support','fondateur'] },
     { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
     { to: '/profils',     label: 'Contacts',      icon: Contact,         roles: ['support','fondateur'] },
     { to: '/organisations', label: 'Organisations', icon: Building2,     roles: ['support','fondateur'] },

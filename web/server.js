@@ -103,6 +103,7 @@ app.use(session({
 // provider signature), before the CSRF guard — no browser and no cookie there
 app.use('/api/inbound', require('./routes/inboundEmail'));
 app.use('/api/chat', require('./routes/chatActions')); // Slack buttons, signed (v5.2)
+app.use('/api/ical', require('./routes/ical')); // iCal feed of the planning, by its secret (v5.4)
 
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
@@ -293,6 +294,7 @@ app.use('/api/organizations', withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/catalog',       withGuild(['support', 'fondateur']), require('./routes/catalog')); // service catalogue (v5.3)
 app.use('/api/recurring',     withGuild(['support', 'fondateur']), require('./routes/recurring')); // recurring tickets (v5.3)
 app.use('/api/task-templates', withGuild(['support', 'fondateur']), require('./routes/taskTemplates')); // v5.4
+app.use('/api/planning',      withGuild(['support', 'fondateur']), require('./routes/planning')); // v5.4
 app.use('/api/guest-invites', withGuild(['fondateur']),        require('./routes/guestInvites'));
 app.use('/api/bot-import',  withGuild(['fondateur']),            require('./routes/botImport'));
 app.use('/api/email',       withGuild(['fondateur']),            require('./routes/emailSettings')); // tickets by e-mail
