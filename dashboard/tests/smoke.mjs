@@ -94,6 +94,7 @@ const PAGES = [
   ['instance-sante', '/instance/health', 'Mettre à jour'],
   ['instance-connexion', '/instance/login', 'Adresse de retour à déclarer'],
   ['instance-boites-email', '/instance/login', 'Enregistrer les applications e-mail'],
+  ['instance-annuaire', '/instance/login', 'Annuaire LDAP / Active Directory'],
   ['email-oauth', '/settings?tab=integrations', 'Identifiant et mot de passe'],
   ['email-webhook', '/settings?tab=integrations', 'Adresse de réception, à coller chez'],
   ['email-apparence', '/settings?tab=integrations', 'Apparence des e-mails'],

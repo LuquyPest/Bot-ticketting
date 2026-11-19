@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Service desk: bring your data',
     changes: [
       { type: 'new',  text: 'Import depuis Zendesk, Freshdesk, GLPI, osTicket, Zammad ou un CSV / JSON : tickets avec leur conversation, contacts, organisations, articles en brouillon ; colonnes reconnues en anglais ou en français, essai à blanc, pas de doublon en réimportant', en: 'Import from Zendesk, Freshdesk, GLPI, osTicket, Zammad or a CSV / JSON: tickets with their conversation, contacts, organisations, articles as drafts; columns recognised in English or French, dry run, no duplicate when importing again' },
+      { type: 'new',  text: 'Annuaire LDAP / Active Directory (Instance → Connexion) : le staff se connecte avec son compte de l\'annuaire (LDAPS ou StartTLS, certificat vérifié, groupe autorisé facultatif), relié au compte de même adresse ; import des contacts et organisations de l\'annuaire', en: 'LDAP / Active Directory directory (Instance → Sign-in): the staff signs in with their directory account (LDAPS or StartTLS, certificate checked, optional allowed group), linked to the account with the same address; import of the directory\'s contacts and organisations' },
     ],
   },
   {

@@ -30,7 +30,7 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 |---|---|
 | **Vue d'ensemble** | Espaces, tickets ouverts, tickets par jour sur 30 jours, staff, erreurs des dernières 24 heures, tableau par espace |
 | **Espaces** | Créer, relier à Discord ou délier, suspendre, réactiver, mettre en maintenance, supprimer (sa base est effacée, le bot quitte le serveur Discord relié) ; nommer ou retirer des fondateurs |
-| **Connexion** | Les [moyens de connexion](#moyens-de-connexion) du dashboard : Discord, Google, Microsoft, OpenID Connect |
+| **Connexion** | Les [moyens de connexion](#moyens-de-connexion) du dashboard : Discord, Google, Microsoft, OpenID Connect, annuaire LDAP / AD |
 | **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base ; espace de démonstration, [métriques Prometheus](#supervision-prometheus) |
 | **Erreurs** | Journal centralisé des erreurs du bot, du dashboard et des navigateurs, avec filtres ; **alerte** par MP (au propriétaire par défaut) ou webhook au-delà d'un seuil, et en cas de déconnexion de Discord |
 | **Journal** | Chaque modification faite depuis la section, avec son auteur et l'espace concerné |
@@ -52,6 +52,24 @@ Chaque fournisseur affiche son **adresse de retour**, à déclarer telle quelle 
 **Qui peut se connecter ainsi** : personne ne reçoit de compte en se connectant ; les comptes viennent des [invitations](./equipe#les-comptes), de Discord ou de l'installation. À la première connexion Google, Microsoft ou OpenID Connect, l'identité est reliée au compte qui a **la même adresse e-mail confirmée**, et seulement si le fournisseur garantit cette adresse. Sinon, chacun la relie lui-même depuis **Profil → Connexion → Relier**, une fois connecté. Microsoft ne garantit pas les adresses de ses comptes : sauf si ton application renvoie la revendication facultative `xms_edov`, chacun relie Microsoft depuis son profil.
 
 **Discord** : couper la connexion Discord ne coupe pas l'intégration (bot, MP, salons, panels) ; l'espace membre garde aussi sa connexion Discord pour les demandeurs. Tu ne peux pas couper le dernier moyen de connexion de ton propre compte : définis d'abord un mot de passe ou relie un autre fournisseur dans **Profil → Connexion**.
+
+### Annuaire LDAP / Active Directory
+
+Sous les fournisseurs, **Annuaire LDAP / Active Directory** permet au staff de se connecter avec **son identifiant et son mot de passe de l'annuaire** (formulaire « Continuer avec… » sur la page de connexion). Les boutons **OpenLDAP** et **Active Directory** remplissent les valeurs habituelles.
+
+| Réglage | Exemple |
+|---|---|
+| **Adresse du serveur** | `ldaps://annuaire.example.com:636`, ou `ldap://annuaire.example.com:389` avec **StartTLS** coché : jamais en clair |
+| **Compte de service** | Un compte en lecture seule (`cn=datick,ou=services,dc=example,dc=com`) et son mot de passe, chiffré en base et jamais réaffiché |
+| **Base de recherche** | `ou=people,dc=example,dc=com` |
+| **Attribut de l'identifiant** | `uid` (OpenLDAP), `sAMAccountName` (Active Directory) |
+| **Filtre des personnes** | `(objectClass=person)` ; pour Active Directory, les comptes désactivés sont écartés |
+| **Groupe autorisé** | Facultatif : seuls ses membres se connectent (`member`, `uniqueMember` ou `memberUid`) |
+| **Certificat de l'autorité** | Si l'annuaire utilise une autorité interne. Le certificat du serveur est toujours vérifié, sauf si tu décoches la vérification (déconseillé) |
+
+**Tester** vérifie le compte de service et compte les personnes trouvées, avant d'enregistrer. À la connexion, la personne est cherchée avec le compte de service, puis son mot de passe est vérifié par l'annuaire lui-même : Datick ne le garde pas. Comme pour les autres fournisseurs, personne ne reçoit de compte : le compte de l'annuaire est relié au compte qui a **la même adresse e-mail confirmée**, puis reconnu par son identifiant stable (`entryUUID`, `objectGUID`). La double authentification du compte s'applique ; 10 échecs en un quart d'heure bloquent l'identifiant.
+
+Les fondateurs importent aussi les personnes de l'annuaire comme **contacts**, rattachés à leur organisation : **Paramètres → Sauvegarde → Importer depuis un autre outil → Annuaire LDAP / AD** (réservé au propriétaire de l'instance), avec la base et le filtre des contacts réglés ici.
 
 ### Boîtes e-mail (Gmail, Microsoft 365)
 

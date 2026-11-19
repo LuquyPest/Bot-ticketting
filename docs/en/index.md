@@ -42,7 +42,7 @@ features:
     link: /en/team
     linkText: Organise the team
   - title: Yours, no middleman
-    details: Free software (AGPL-3.0) on your server — your ways to sign in (Discord, Google, Microsoft, OpenID Connect, password), encrypted backups, one-click updates, accessible interface (WCAG 2.1 AA).
+    details: Free software (AGPL-3.0) on your server — your ways to sign in (Discord, Google, Microsoft, OpenID Connect, LDAP / Active Directory, password), encrypted backups, one-click updates, accessible interface (WCAG 2.1 AA).
     link: /en/instance
     linkText: The Instance section
   - title: Serious security
