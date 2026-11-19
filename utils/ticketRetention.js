@@ -62,7 +62,8 @@ async function anonymize(db, ids) {
   await db(`UPDATE ticket_notes SET content = ?, author_id = IF(source = 'user', ?, author_id), author_tag = IF(source = 'user', ?, author_tag) WHERE ticket_id IN (?)`, [ANON, ANON_ID, ANON, ids]);
   for (const t of ['transcript_snapshots', 'email_attachments', 'email_threads', 'ticket_cc', 'ticket_field_values', 'ticket_participants']) await opt(db(`DELETE FROM ${t} WHERE ticket_id IN (?)`, [ids]));
   await opt(db('UPDATE ticket_ratings SET owner_id = ?, comment = NULL WHERE ticket_id IN (?)', [ANON_ID, ids]));
-  await opt(db('UPDATE survey_requests SET owner_id = ? WHERE ticket_id IN (?)', [ANON_ID, ids]));
+  // Survey links of the ticket closed, a survey not sent yet never leaves (#76)
+  await opt(db('UPDATE survey_requests SET owner_id = ?, pending_token = NULL, expires_at = LEAST(expires_at, NOW()) WHERE ticket_id IN (?)', [ANON_ID, ids]));
   await opt(db('UPDATE survey_responses SET comment = NULL, answers = NULL WHERE ticket_id IN (?)', [ids]));
   await opt(db('UPDATE ticket_approvals SET approver_email = NULL WHERE ticket_id IN (?)', [ids]));
   await opt(db('UPDATE audit_log SET details = NULL WHERE ticket_id IN (?)', [ids]));

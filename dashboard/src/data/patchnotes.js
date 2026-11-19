@@ -28,6 +28,7 @@ export const VERSIONS = [
       { type: 'new',  text: 'Rétention des tickets clos, par espace : anonymisés ou supprimés après N mois, chaque nuit (les statistiques restent) ; archives : les vieux tickets clos sortent de la liste par défaut et restent trouvables par la recherche ou le filtre Archives', en: 'Retention of closed tickets, per space: anonymised or deleted after N months, every night (statistics stay); archives: old closed tickets leave the default list and stay findable by search or the Archives filter' },
       { type: 'impr', text: 'Données des membres : recherche par adresse e-mail (identités e-mail, web et Discord du demandeur), export couvrant toutes les identités de la fiche contact', en: 'Member data: search by e-mail address (the requester\'s e-mail, web and Discord identities), export covering every identity of the contact card' },
       { type: 'fix',  text: 'Import depuis un autre outil : un export sans colonne d\'identifiant réimporté ne crée plus de tickets en double (chaque ligne est reconnue par son contenu)', en: 'Import from another tool: an export without an identifier column imported again no longer creates duplicate tickets (each row is recognised by its content)' },
+      { type: 'fix',  text: 'Rétention : un ticket anonymisé ferme ses liens d\'enquête de satisfaction, et une enquête pas encore envoyée ne part plus', en: 'Retention: an anonymised ticket closes its satisfaction survey links, and a survey not sent yet no longer leaves' },
     ],
   },
   {
