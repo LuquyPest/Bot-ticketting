@@ -1400,6 +1400,17 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 78,
+    name: 'Rétention des tickets clos (anonymisation ou suppression) et archives (v5.7)',
+    statements: [
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_retention_mode VARCHAR(10) NOT NULL DEFAULT 'off'`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_retention_months SMALLINT NOT NULL DEFAULT 36`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS ticket_archive_months SMALLINT NOT NULL DEFAULT 0`,
+      `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS anonymized_at DATETIME DEFAULT NULL`,
+      `CREATE INDEX IF NOT EXISTS idx_tickets_closed_at ON tickets (status, closed_at)`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

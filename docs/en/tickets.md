@@ -146,6 +146,15 @@ One pending approval per ticket; the person who asked, or a founder, can **cance
 - **Rights**: reading needs `view_tickets`; editing, merging and detaching need `reply_ticket`. Every merge and every detach is written to the log.
 - **Erasing a member's data** (GDPR) also removes their identity from their card, and the card if it has no other one.
 
+## Retention, archives and personal data
+
+**Settings → Tickets → Retention and archives** (founders):
+
+- **Tickets closed for more than N months** (1 to 240): **kept** (default), **anonymised** or **deleted**, every night. Anonymising removes the requester, the subject, the content of the messages, the transcripts, the attachments, the copies, the custom fields, the rating comment and the survey answers; the dates, status, type, team, assignees, times and costs stay, so the statistics keep their meaning. Deleting erases the ticket and everything attached to it. The setting shows how many tickets are concerned today; each run is written to the log (at most 500 tickets per night).
+- **Archive the tickets closed for more than M months** (0: never): they leave the default ticket list, but a **search** always finds them, and the **Archives** filter (« With the archives », « Archives only ») shows them.
+
+**Member data** (founders) takes a **Discord ID** or an **e-mail address**: the address finds the requester's identities (e-mail, web, and Discord through their contact card). The JSON **export** covers every identity of the contact card; **erasure** is done identity by identity.
+
 ## Tasks
 
 On the ticket view, **Tasks** splits a ticket's work into steps: a title, a description, a **person** (told in the dashboard) or a team, a **planned duration**, a **planned date**, a state (**to do**, **done**, **not needed**), and **visible to the requester** or not (**Reply** permission to change them). The progress (« 2/3 ») does not count the tasks not needed.

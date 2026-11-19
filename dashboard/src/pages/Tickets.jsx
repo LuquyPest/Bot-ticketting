@@ -26,7 +26,7 @@ import MessageSearch from '../components/MessageSearch';
 import { useStages, STAGE_CLS as STAGE_COLOR_CLS } from '../hooks/useStages';
 
 /* ── Quick-filter pills config ────────────────────────────────── */
-const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '', team: '', type: '', organization: '' };
+const EMPTY_FILTERS = { status: '', priority: '', subject: '', stage: '', claimed: '', assignee: '', dateFrom: '', dateTo: '', tag: '', sla: '', field: '', fieldValue: '', following: '', team: '', type: '', organization: '', archived: '' };
 
 // Operators of the search box (parsed by utils/searchQuery.js on the server)
 const SEARCH_HELP = [
@@ -654,6 +654,14 @@ export default function Tickets() {
             options={[{ value: '', label: 'Toutes organisations' }, { value: 'none', label: 'Sans organisation' }, ...orgList.map(o => ({ value: String(o.id), label: `${o.parentId ? '— ' : ''}${o.name}` }))]}
           />
         )}
+        {/* Archives (Paramètres → Tickets → Rétention): out of the default list */}
+        <Select
+          className="w-40"
+          value={filters.archived}
+          onChange={v => { setFilter('archived', v); setActiveView(''); }}
+          placeholder="Sans les archives"
+          options={[{ value: '', label: 'Sans les archives' }, { value: 'all', label: 'Avec les archives' }, { value: 'only', label: 'Archives seules' }]}
+        />
         {/* Custom field filter */}
         {customFields.length > 0 && (
           <div className="flex items-center gap-1.5">

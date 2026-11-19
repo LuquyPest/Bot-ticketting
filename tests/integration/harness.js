@@ -6436,6 +6436,80 @@ async function main() {
     await db("DELETE FROM organizations WHERE name IN ('Org LDAP', 'Autre Org LDAP')"); await db("DELETE FROM import_refs WHERE source = 'ldap'");
   } else console.log('SKIP  ldap: LDAP_TEST_URL absent (tests/integration/ldap-server.sh)');
 
+  // ── Retention of closed tickets, archives, data of a contact (utils/ticketRetention.js, v5.7) ──
+  {
+    const RT = app('./utils/ticketRetention');
+    const owner = app('./utils/emailTickets').ownerIdFor('rgpd-retention@test-datick.fr');
+    const mkT = async (subject, monthsAgo, extra = {}) => (await db(`INSERT INTO tickets (channel_id, owner_id, owner_tag, subject, status, created_at, closed_at)
+      VALUES (?, ?, 'rgpd-retention@test-datick.fr', ?, ?, DATE_SUB(NOW(), INTERVAL ? MONTH), ${monthsAgo === null ? 'NULL' : 'DATE_SUB(NOW(), INTERVAL ? MONTH)'})`,
+      [`rt-${crypto.randomBytes(6).toString('hex')}`, extra.owner || owner, subject, monthsAgo === null ? 'open' : 'closed', (monthsAgo || 0) + 1, ...(monthsAgo === null ? [] : [monthsAgo])])).insertId;
+    r = await req('GET', '/api/ticket-retention', { sid: sessions.S1 });
+    check('rétention: réservée aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'anonymize', months: 0 } });
+    check('rétention: durée hors bornes refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'purge' } });
+    check('rétention: mode inconnu refusé', r.status === 400, JSON.stringify(r.body));
+    const old = await mkT('Facture de Jean Dupont', 40);
+    const recent = await mkT('Ticket récent RT', 2);
+    const open = await mkT('Ticket ouvert RT', null);
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'rgpd-retention@test-datick.fr', 'Mon adresse est 3 rue des Lilas', 'user'), (?, 'staff1', 'Agent', 'Bonjour Jean', 'reply')", [old, owner, old]);
+    await db("INSERT INTO transcript_snapshots (ticket_id, channel_id, created_by_id, created_by_tag, message_count, html, txt) VALUES (?, 'x', '1', 'x', 1, '<p>Jean</p>', 'Jean')", [old]);
+    await db("INSERT INTO ticket_ratings (ticket_id, owner_id, rating, comment) VALUES (?, ?, 4, 'Merci Paul')", [old, owner]);
+    r = await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'anonymize', months: 36, archiveMonths: 0 } });
+    check('rétention: réglée, tickets concernés comptés', r.status === 200 && r.body.mode === 'anonymize' && r.body.months === 36 && r.body.due >= 1, JSON.stringify(r.body));
+    let out = await RT.applyRetention(db);
+    const [ta] = await db('SELECT owner_id, owner_tag, subject, anonymized_at, status, closed_at FROM tickets WHERE id = ?', [old]);
+    const na = await db('SELECT content, author_id, author_tag, source FROM ticket_notes WHERE ticket_id = ? ORDER BY id', [old]);
+    const [ra] = await db('SELECT owner_id, comment, rating FROM ticket_ratings WHERE ticket_id = ?', [old]);
+    check('rétention: ticket clos depuis 40 mois anonymisé (demandeur, sujet, messages, note)', out.anonymized >= 1 && ta.owner_id === 'anonyme' && ta.owner_tag === '[anonymisé]' && ta.subject === '[anonymisé]' && !!ta.anonymized_at
+      && na.every(n => n.content === '[anonymisé]') && na.find(n => n.source === 'user')?.author_id === 'anonyme' && na.find(n => n.source === 'reply')?.author_tag === 'Agent' && ra?.comment === null && ra.owner_id === 'anonyme' && ra.rating === 4, JSON.stringify([ta, na, ra]));
+    check('rétention: transcripts du ticket anonymisé supprimés, statistiques gardées', !(await db('SELECT 1 FROM transcript_snapshots WHERE ticket_id = ?', [old])).length && ta.status === 'closed' && !!ta.closed_at, '');
+    const [tr] = await db('SELECT subject FROM tickets WHERE id = ?', [recent]);
+    const [to] = await db('SELECT subject FROM tickets WHERE id = ?', [open]);
+    check('rétention: ticket récent et ticket ouvert intacts', tr.subject === 'Ticket récent RT' && to.subject === 'Ticket ouvert RT', JSON.stringify([tr, to]));
+    out = await RT.applyRetention(db);
+    check('rétention: un ticket anonymisé ne l est qu une fois', !(await db("SELECT 1 FROM audit_log WHERE action = 'ticket_retention' AND JSON_EXTRACT(details, '$.count') > 0 AND created_at > NOW() - INTERVAL 1 MINUTE")).length || out.anonymized === 0, JSON.stringify(out));
+    const del = await mkT('À supprimer RT', 50);
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'x', 'à effacer', 'user')", [del, owner]);
+    await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'delete', months: 48 } });
+    const rep = await app('./utils/retention').runRetentionPurge();
+    check('rétention: mode suppression par la purge de nuit (ticket et messages supprimés, anonymisé de 40 mois gardé)', rep.tickets_deleted >= 1 && !(await db('SELECT 1 FROM tickets WHERE id = ?', [del])).length && !(await db('SELECT 1 FROM ticket_notes WHERE ticket_id = ?', [del])).length && (await db('SELECT 1 FROM tickets WHERE id = ?', [old])).length === 1, JSON.stringify(rep));
+    check('rétention: au journal', (await db("SELECT 1 FROM audit_log WHERE action = 'ticket_retention'")).length >= 1 && (await db("SELECT 1 FROM audit_log WHERE action = 'ticket_retention_update'")).length >= 1, '');
+
+    // Archives: out of the default list, found by a search
+    const arch = await mkT('Archive cherchable RT', 12);
+    await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'off', archiveMonths: 6 } });
+    const ids = async q => ((await req('GET', '/api/tickets', { sid: sessions.F, query: { status: 'closed', subject: 'de:rgpd-retention@test-datick.fr', ...q } })).body.tickets || []).map(t => t.id);
+    let l = await ids({});
+    check('archives: ticket clos depuis 12 mois absent de la liste par défaut, récent présent', !l.includes(arch) && l.includes(recent), JSON.stringify(l.slice(0, 20)));
+    l = await ids({ subject: 'de:rgpd-retention@test-datick.fr Archive cherchable' });
+    check('archives: toujours trouvé par une recherche', l.includes(arch), JSON.stringify(l));
+    l = await ids({ archived: 'only' });
+    const l2 = await ids({ archived: 'all' });
+    check('archives: filtre « archives seules » et « avec les archives »', l.includes(arch) && !l.includes(recent) && l2.includes(arch), JSON.stringify([l.slice(0, 10), l2.length]));
+    await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { archiveMonths: 0 } });
+    check('archives: coupées → de retour dans la liste', (await ids({})).includes(arch), '');
+
+    // Data of a requester by e-mail: identities of the contact card, export, erasure
+    const web = app('./utils/webRequesters').webOwnerIdFor('rgpd-retention@test-datick.fr');
+    const wt = await mkT('Demande web RT', null, { owner: web });
+    const cid = (await db("INSERT INTO contacts (display_name, email, seed) VALUES ('RGPD RT', 'rgpd-retention@test-datick.fr', ?)", [owner])).insertId;
+    await db("INSERT INTO contact_identities (value, contact_id, kind, label) VALUES (?, ?, 'email', 'rgpd-retention@test-datick.fr'), (?, ?, 'web', 'rgpd-retention@test-datick.fr')", [owner, cid, web, cid]);
+    r = await req('GET', '/api/members/resolve', { sid: sessions.F, query: { email: 'RGPD-retention@test-datick.fr' } });
+    check('RGPD contact: identités retrouvées par l adresse (e-mail et web)', r.status === 200 && r.body.ids.some(x => x.id === owner && x.kind === 'email') && r.body.ids.some(x => x.id === web && x.kind === 'web'), JSON.stringify(r.body));
+    r = await req('GET', '/api/members/resolve', { sid: sessions.S1, query: { email: 'rgpd-retention@test-datick.fr' } });
+    check('RGPD contact: réservé aux fondateurs', r.status === 403, r.status);
+    r = await req('GET', `/api/members/${owner}/export`, { sid: sessions.F });
+    check('RGPD contact: export avec les autres identités de la fiche', r.status === 200 && r.body.tickets.length >= 2 && r.body.otherIdentities?.[web]?.tickets.some(t => t.id === wt) && r.body.contact?.email === 'rgpd-retention@test-datick.fr', JSON.stringify(Object.keys(r.body || {})));
+    r = await req('GET', '/api/members/mail:zz/export', { sid: sessions.F });
+    check('RGPD contact: identifiant mal formé refusé', r.status === 400, r.status);
+    r = await req('DELETE', `/api/members/${web}`, { sid: sessions.F, body: { confirm: web } });
+    check('RGPD contact: effacement d une identité web', r.status === 200 && !(await db('SELECT 1 FROM tickets WHERE id = ?', [wt])).length, JSON.stringify(r.body));
+    await db('DELETE FROM tickets WHERE owner_id IN (?, ?) OR id IN (?, ?)', [owner, web, old, arch]);
+    await db('DELETE FROM contact_identities WHERE contact_id = ?', [cid]); await db('DELETE FROM contacts WHERE id = ?', [cid]);
+    await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'off', months: 36, archiveMonths: 0 } });
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

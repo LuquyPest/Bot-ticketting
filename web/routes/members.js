@@ -3,6 +3,8 @@
 // tags, scheduled messages), their messages and participation in other people's tickets, their
 // blacklist entry and their pending conversations; journal entries are kept but anonymised.
 // Other people's tickets are never deleted.
+// v5.7: also the requesters by e-mail and on the web (mail:… / web:… identities), found from their
+// address; the export covers every identity of the contact card.
 const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
@@ -10,12 +12,38 @@ const { recordEvent, dashboardActor } = require('../../utils/audit');
 const { broadcast } = require('../../utils/sse');
 
 const SNOWFLAKE_RE = /^\d{17,20}$/;
+const MEMBER_RE = /^(\d{17,20}|(mail|web):[0-9a-f]{24})$/;
 
 router.use((req, res, next) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé au fondateur' });
   next();
 });
-router.param('userId', (req, res, next, id) => (SNOWFLAKE_RE.test(id) ? next() : res.status(400).json({ error: 'ID Discord invalide' })));
+router.param('userId', (req, res, next, id) => (MEMBER_RE.test(id) ? next() : res.status(400).json({ error: 'Identifiant invalide (ID Discord ou adresse e-mail)' })));
+
+// The other identities of the same contact card (Discord, e-mail, web)
+async function siblings(db, userId) {
+  const rows = await db('SELECT ci2.value FROM contact_identities ci JOIN contact_identities ci2 ON ci2.contact_id = ci.contact_id WHERE ci.value = ? AND ci2.value <> ?', [userId, userId]).catch(() => []);
+  return rows.map(r => r.value).filter(v => MEMBER_RE.test(v));
+}
+
+// GET /api/members/resolve?email=… — the identities of a requester known by this address
+router.get('/resolve', async (req, res, next) => {
+  try {
+    const email = String(req.query.email || '').trim().toLowerCase();
+    if (!require('../../utils/emailTickets').EMAIL_RE.test(email) || email.length > 254) return res.status(400).json({ error: 'Adresse e-mail invalide' });
+    const db = req.guildDb;
+    const cand = new Set([require('../../utils/emailTickets').ownerIdFor(email), require('../../utils/webRequesters').webOwnerIdFor(email)]);
+    for (const c of await db('SELECT ci.value FROM contacts c JOIN contact_identities ci ON ci.contact_id = c.id WHERE c.email = ?', [email]).catch(() => [])) cand.add(c.value);
+    const ids = [];
+    for (const id of cand) {
+      if (!MEMBER_RE.test(id)) continue;
+      const [t] = await db('SELECT COUNT(*) AS n FROM tickets WHERE owner_id = ?', [id]);
+      const [ci] = await db('SELECT 1 AS x FROM contact_identities WHERE value = ?', [id]).catch(() => []);
+      if (Number(t.n) || ci) ids.push({ id, kind: id.startsWith('mail:') ? 'email' : id.startsWith('web:') ? 'web' : 'discord', tickets: Number(t.n) });
+    }
+    res.json({ ids });
+  } catch (err) { next(err); }
+});
 
 async function collect(db, userId) {
   const tickets = await db('SELECT * FROM tickets WHERE owner_id = ? ORDER BY id', [userId]);
@@ -54,9 +82,13 @@ router.get('/:userId', async (req, res) => {
 // GET /api/members/:userId/export — full JSON export (download)
 router.get('/:userId/export', async (req, res) => {
   const data = await collect(req.guildDb, req.params.userId);
+  // The other identities of the contact card, with what the space holds about each
+  const others = {};
+  for (const id of await siblings(req.guildDb, req.params.userId)) others[id] = await collect(req.guildDb, id);
+  data.otherIdentities = others;
   await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'member_data_export', targetType: 'user', targetId: req.params.userId });
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="donnees-${req.params.userId}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="donnees-${req.params.userId.replace(':', '-')}.json"`);
   res.send(JSON.stringify({ exportedAt: new Date().toISOString(), guildId: req.guildId, userId: req.params.userId, ...data }, null, 2));
 });
 

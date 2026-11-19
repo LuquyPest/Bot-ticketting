@@ -146,6 +146,15 @@ Une seule validation en attente par ticket ; la personne qui l'a demandée, ou u
 - **Droits** : lire demande `view_tickets` ; modifier, fusionner et détacher demandent `reply_ticket`. Chaque fusion et chaque détachement sont inscrits au journal.
 - L'**effacement des données** d'un membre (RGPD) retire aussi son identité de sa fiche, et la fiche si elle n'en a plus d'autre.
 
+## Rétention, archives et données personnelles
+
+**Paramètres → Tickets → Rétention et archives** (fondateurs) :
+
+- **Tickets clos depuis plus de N mois** (1 à 240) : **conservés** (par défaut), **anonymisés** ou **supprimés**, chaque nuit. Anonymiser retire le demandeur, le sujet, le contenu des messages, les transcripts, les pièces jointes, les copies, les champs personnalisés, le commentaire de la note et les réponses à l'enquête ; restent les dates, le statut, le type, l'équipe, les personnes assignées, les temps et les coûts, pour que les statistiques gardent leur sens. Supprimer efface le ticket et tout ce qui s'y rattache. Le réglage affiche combien de tickets sont concernés aujourd'hui ; chaque passage est inscrit au journal (500 tickets au plus par nuit).
+- **Archiver les tickets clos depuis plus de M mois** (0 : jamais) : ils sortent de la liste des tickets par défaut, mais une **recherche** les retrouve toujours, et le filtre **Archives** (« Avec les archives », « Archives seules ») les affiche.
+
+**Données des membres** (fondateurs) accepte un **ID Discord** ou une **adresse e-mail** : l'adresse retrouve les identités du demandeur (e-mail, web, et Discord par sa fiche contact). L'**export** JSON couvre toutes les identités de la fiche contact ; l'**effacement** se fait identité par identité.
+
 ## Les tâches
 
 Sur la fiche, **Tâches** découpe le travail d'un ticket en étapes : un intitulé, une description, une **personne** (prévenue dans le dashboard) ou une équipe, une **durée prévue**, une **date planifiée**, un état (**à faire**, **faite**, **sans objet**), et **visible du demandeur** ou non (permission **Répondre** pour les modifier). L'avancement (« 2/3 ») ne compte pas les tâches sans objet.

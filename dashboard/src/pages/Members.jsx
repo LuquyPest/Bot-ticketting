@@ -14,9 +14,20 @@ export default function Members() {
   const [loading, setLoading] = useState(false);
   const [confirm, setConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [choices, setChoices] = useState([]);
 
-  const lookup = async (userId = id.trim()) => {
-    if (!/^\d{17,20}$/.test(userId)) return toast.error('ID Discord invalide (17 à 20 chiffres)');
+  const lookup = async (raw = id.trim()) => {
+    let userId = raw;
+    // An e-mail address: the identities of that requester (e-mail, web, and Discord through the contact card)
+    if (/@/.test(raw)) {
+      try {
+        const { data } = await api.get('/members/resolve', { params: { email: raw } });
+        setChoices(data.ids);
+        if (!data.ids.length) return toast.error('Aucune donnée pour cette adresse');
+        userId = data.ids[0].id;
+      } catch (err) { return toast.error(err.response?.data?.error || 'Erreur'); }
+    } else setChoices([]);
+    if (!/^(\d{17,20}|(mail|web):[0-9a-f]{24})$/.test(userId)) return toast.error('ID Discord (17 à 20 chiffres) ou adresse e-mail attendu');
     setLoading(true); setSummary(null); setConfirm('');
     try { setSummary((await api.get(`/members/${userId}`)).data); setParams({ id: userId }); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -42,13 +53,23 @@ export default function Members() {
 
       <div className="flex gap-2">
         <input value={id} onChange={e => setId(e.target.value)} onKeyDown={e => e.key === 'Enter' && lookup()}
-          placeholder="ID Discord du membre" inputMode="numeric" className={`${input} font-mono`} />
+          placeholder="ID Discord ou adresse e-mail du demandeur" aria-label="ID Discord ou adresse e-mail du demandeur" className={`${input} font-mono`} />
         <button onClick={() => lookup()} disabled={loading}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-light disabled:opacity-60 shrink-0">
           {loading ? <Loader2 size={14} className="animate-spin" /> : <UserSearch size={14} />} Rechercher
         </button>
       </div>
 
+      {choices.length > 1 && (
+        <div className="flex flex-wrap gap-2 text-xs" role="group" aria-label="Identités de ce demandeur">
+          {choices.map(c => (
+            <button key={c.id} type="button" onClick={() => lookup(c.id)}
+              className={`px-2.5 py-1 rounded-lg border ${summary?.userId === c.id ? 'border-primary text-ink-1' : 'border-overlay/8 text-ink-3 hover:text-ink-1'}`}>
+              {`${{ email: 'E-mail', web: 'Web', discord: 'Discord' }[c.kind]} · ${c.tickets} ticket(s)`}
+            </button>
+          ))}
+        </div>
+      )}
       {summary && (
         <div className="space-y-4">
           <div className="bg-overlay/3 rounded-2xl border border-overlay/6 p-5">
