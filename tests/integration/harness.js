@@ -6525,6 +6525,16 @@ async function main() {
     check('RGPD contact: export avec les autres identités de la fiche', r.status === 200 && r.body.tickets.length >= 2 && r.body.otherIdentities?.[web]?.tickets.some(t => t.id === wt) && r.body.contact?.email === 'rgpd-retention@test-datick.fr', JSON.stringify(Object.keys(r.body || {})));
     r = await req('GET', '/api/members/mail:zz/export', { sid: sessions.F });
     check('RGPD contact: identifiant mal formé refusé', r.status === 400, r.status);
+    // #76: erasing a requester by e-mail removes their address everywhere it was kept
+    const other = await mkT('Ticket d un collègue RT', null, { owner: app('./utils/emailTickets').ownerIdFor('collegue-rt@test-datick.fr') });
+    await db("INSERT INTO email_contacts (owner_id, address, name) VALUES (?, 'rgpd-retention@test-datick.fr', 'Jean RT') ON DUPLICATE KEY UPDATE name = 'Jean RT'", [owner]);
+    await db("INSERT INTO ticket_cc (ticket_id, address, name, added_by) VALUES (?, 'rgpd-retention@test-datick.fr', 'Jean RT', 'x')", [other]);
+    await db("INSERT INTO email_quarantine (from_address, from_name, subject, reason) VALUES ('rgpd-retention@test-datick.fr', 'Jean RT', 'Pub', 'spam')");
+    r = await req('DELETE', `/api/members/${owner}`, { sid: sessions.F, body: { confirm: owner } });
+    const addrLeft = [...await db("SELECT 'contacts' AS t FROM email_contacts WHERE owner_id = ?", [owner]), ...await db("SELECT 'cc' AS t FROM ticket_cc WHERE address = 'rgpd-retention@test-datick.fr'"),
+      ...await db("SELECT 'quarantaine' AS t FROM email_quarantine WHERE from_address = 'rgpd-retention@test-datick.fr'")];
+    check('RGPD contact: effacement d un demandeur par e-mail → adresse retirée (carnet, copies, quarantaine), ticket du collègue gardé', r.status === 200 && !addrLeft.length && (await db('SELECT 1 FROM tickets WHERE id = ?', [other])).length === 1, JSON.stringify([r.status, addrLeft]));
+    await db('DELETE FROM tickets WHERE id = ?', [other]);
     r = await req('DELETE', `/api/members/${web}`, { sid: sessions.F, body: { confirm: web } });
     check('RGPD contact: effacement d une identité web', r.status === 200 && !(await db('SELECT 1 FROM tickets WHERE id = ?', [wt])).length, JSON.stringify(r.body));
     await db('DELETE FROM tickets WHERE owner_id IN (?, ?) OR id IN (?, ?)', [owner, web, old, arch]);

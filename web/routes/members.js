@@ -114,6 +114,21 @@ router.delete('/:userId', async (req, res) => {
   counts.messagesElsewhere = (await db("DELETE FROM ticket_notes WHERE author_id = ? AND source = 'user'", [userId])).affectedRows;
   counts.participations = (await db('DELETE FROM ticket_participants WHERE user_id = ?', [userId])).affectedRows;
   await db('DELETE FROM ticket_ratings WHERE owner_id = ?', [userId]);
+  // A requester by e-mail or on the web: their address, wherever the space kept it (#76) — address
+  // book, copies on other people's tickets, quarantined mails; their survey requests
+  if (!SNOWFLAKE_RE.test(userId)) {
+    const [ec] = await db('SELECT address FROM email_contacts WHERE owner_id = ?', [userId]).catch(() => []);
+    const [cc] = await db('SELECT c.email FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id WHERE ci.value = ?', [userId]).catch(() => []);
+    const address = String(ec?.address || cc?.email || '').toLowerCase();
+    // Only an address that is really this identity's (its hash gives back the identifier)
+    const owns = address && [require('../../utils/emailTickets').ownerIdFor(address), require('../../utils/webRequesters').webOwnerIdFor(address)].includes(userId);
+    await db('DELETE FROM email_contacts WHERE owner_id = ?', [userId]).catch(() => null);
+    if (owns) {
+      counts.copies = (await db('DELETE FROM ticket_cc WHERE address = ?', [address]).catch(() => ({ affectedRows: 0 }))).affectedRows;
+      counts.quarantined = (await db('DELETE FROM email_quarantine WHERE from_address = ?', [address]).catch(() => ({ affectedRows: 0 }))).affectedRows;
+    }
+  }
+  await db('DELETE FROM survey_requests WHERE owner_id = ?', [userId]).catch(() => null);
   await db('DELETE FROM blacklist WHERE user_id = ?', [userId]);
   // Staff notes and labels about the member (profile)
   counts.profileNotes = (await db('DELETE FROM member_notes WHERE member_id = ?', [userId]).catch(() => ({ affectedRows: 0 }))).affectedRows;

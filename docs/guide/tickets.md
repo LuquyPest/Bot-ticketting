@@ -153,7 +153,7 @@ Une seule validation en attente par ticket ; la personne qui l'a demandée, ou u
 - **Tickets clos depuis plus de N mois** (1 à 240) : **conservés** (par défaut), **anonymisés** ou **supprimés**, chaque nuit. Anonymiser retire le demandeur, le sujet, le contenu des messages, les transcripts, les pièces jointes, les copies, les champs personnalisés, le commentaire de la note et les réponses à l'enquête (ses liens sont fermés) ; restent les dates, le statut, le type, l'équipe, les personnes assignées, les temps et les coûts, pour que les statistiques gardent leur sens. Supprimer efface le ticket et tout ce qui s'y rattache. Le réglage affiche combien de tickets sont concernés aujourd'hui ; chaque passage est inscrit au journal (500 tickets au plus par nuit).
 - **Archiver les tickets clos depuis plus de M mois** (0 : jamais) : ils sortent de la liste des tickets par défaut, mais une **recherche** les retrouve toujours, et le filtre **Archives** (« Avec les archives », « Archives seules ») les affiche.
 
-**Données des membres** (fondateurs) accepte un **ID Discord** ou une **adresse e-mail** : l'adresse retrouve les identités du demandeur (e-mail, web, et Discord par sa fiche contact). L'**export** JSON couvre toutes les identités de la fiche contact ; l'**effacement** se fait identité par identité.
+**Données des membres** (fondateurs) accepte un **ID Discord** ou une **adresse e-mail** : l'adresse retrouve les identités du demandeur (e-mail, web, et Discord par sa fiche contact). L'**export** JSON couvre toutes les identités de la fiche contact ; l'**effacement** se fait identité par identité ; pour un demandeur par e-mail ou web, il retire aussi son adresse du carnet, des copies sur les tickets des autres et de la quarantaine.
 
 ## Les tâches
 

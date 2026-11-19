@@ -153,7 +153,7 @@ One pending approval per ticket; the person who asked, or a founder, can **cance
 - **Tickets closed for more than N months** (1 to 240): **kept** (default), **anonymised** or **deleted**, every night. Anonymising removes the requester, the subject, the content of the messages, the transcripts, the attachments, the copies, the custom fields, the rating comment and the survey answers (its links are closed); the dates, status, type, team, assignees, times and costs stay, so the statistics keep their meaning. Deleting erases the ticket and everything attached to it. The setting shows how many tickets are concerned today; each run is written to the log (at most 500 tickets per night).
 - **Archive the tickets closed for more than M months** (0: never): they leave the default ticket list, but a **search** always finds them, and the **Archives** filter (« With the archives », « Archives only ») shows them.
 
-**Member data** (founders) takes a **Discord ID** or an **e-mail address**: the address finds the requester's identities (e-mail, web, and Discord through their contact card). The JSON **export** covers every identity of the contact card; **erasure** is done identity by identity.
+**Member data** (founders) takes a **Discord ID** or an **e-mail address**: the address finds the requester's identities (e-mail, web, and Discord through their contact card). The JSON **export** covers every identity of the contact card; **erasure** is done identity by identity; for a requester by e-mail or on the web, it also removes their address from the address book, the copies on other people's tickets and the quarantine.
 
 ## Tasks
 
