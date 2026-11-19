@@ -550,7 +550,7 @@ router.get('/health', async (req, res) => {
   res.json({
     now: Date.now(),
     discord: client ? { ok: client.ws?.status === 0, status: WS_STATUS[client.ws?.status] ?? String(client.ws?.status), pingMs: client.ws?.ping ?? null, guilds: client.guilds?.cache?.size ?? 0, user: client.user?.tag || null } : { ok: false, status: 'client absent' },
-    database, redis, jobs,
+    database: { ...database, pools: require('../../utils/globalDb').poolStats() }, redis, jobs,
     process: { uptimeS: Math.round(process.uptime()), node: process.version, rssMb: Math.round(mem.rss / 1048576), heapMb: Math.round(mem.heapUsed / 1048576), pid: process.pid },
     schemas: { latest: LATEST_VERSION, guilds: schemas },
     backups: require('../../utils/backupStatus').backupStatus(),

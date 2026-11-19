@@ -64,6 +64,8 @@ Générés par `setup.sh` (`openssl rand -hex 32` à la main). **Garde une copie
 
 Par défaut `db`, `3306`, `botuser`, `ticketbot_global` : les noms du compose. À ne changer que pour une base externe : `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_NAME`.
 
+**Connexions** : `DB_POOL_SIZE` (base de l'instance, **20** par défaut) et `DB_TENANT_POOL_SIZE` (chaque espace, **10** par défaut), de 1 à 200. Le total, `DB_POOL_SIZE` + `DB_TENANT_POOL_SIZE` × nombre d'espaces, doit rester sous le `max_connections` de MariaDB (151 par défaut). **Instance → Santé** montre les connexions en cours et les requêtes qui attendent une connexion, aussi exposées dans les [métriques](./instance#supervision-prometheus) (`ticketbot_database_pool_*`) : des requêtes en attente de façon durable demandent de relever ces valeurs.
+
 ## Réglages rares : `config.json`
 
 Quelques réglages n'ont pas de variable. Mets-les dans un `config.json` (modèle : [`config.example.json`](https://github.com/LuquyPest/datick/blob/main/config.example.json)) et monte-le dans le conteneur (lignes commentées de `docker-compose.yml`). Les variables d'environnement l'emportent toujours sur lui.

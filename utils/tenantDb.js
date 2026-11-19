@@ -1,6 +1,19 @@
 const mysql = require('mysql2/promise');
 
 const _pools = new Map();
+// DB_TENANT_POOL_SIZE (v6): connections of each space; 10 by default (5 before v6)
+const tenantLimit = () => require('./globalDb').poolSize(require('./config').config.database.tenantConnectionLimit, 10);
+// All the spaces' pools together: how many, connections open, idle, waiting
+function poolsStats() {
+  const { statsOf } = require('./globalDb');
+  const out = { pools: _pools.size, limit: tenantLimit(), open: 0, idle: 0, waiting: 0, busiest: null };
+  for (const [guildId, pool] of _pools) {
+    const s = statsOf(pool, out.limit);
+    out.open += s.open; out.idle += s.idle; out.waiting += s.waiting;
+    if (!out.busiest || s.open - s.idle > out.busiest.inUse) out.busiest = { guildId, inUse: s.open - s.idle, waiting: s.waiting };
+  }
+  return out;
+}
 
 function getDbName(guildId) {
   if (!/^\d{17,20}$/.test(String(guildId))) throw new Error(`guildId invalide: ${guildId}`);
@@ -18,7 +31,7 @@ function _getPool(guildId) {
     database:         getDbName(guildId),
     waitForConnections: true,
     // Per server: busy servers queue behind it (see the load test); total = servers × limit
-    connectionLimit:  Number(cfg.tenantConnectionLimit) > 0 ? Number(cfg.tenantConnectionLimit) : 5,
+    connectionLimit:  tenantLimit(),
     maxIdle:          2,      // idle connections closed beyond 2, after idleTimeout
     idleTimeout:      60000,
     queueLimit:       0,
@@ -53,4 +66,4 @@ async function closeTenant(guildId) {
   if (pool) await pool.end().catch(() => {});
 }
 
-module.exports = { cleanParams, getTenantDb, getDbName, closeAll, closeTenant };
+module.exports = { cleanParams, getTenantDb, getDbName, closeAll, closeTenant, poolsStats };

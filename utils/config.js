@@ -27,6 +27,8 @@ const ENV_MAP = {
   DB_USER:               'database.user',
   DB_PASSWORD:           'database.password',
   DB_NAME:               'database.database',
+  DB_POOL_SIZE:          'database.poolSize',             // global database (v6)
+  DB_TENANT_POOL_SIZE:   'database.tenantConnectionLimit', // each space's database (v6)
   TRUST_PROXY_HOPS:      'trustProxyHops',
   TRUSTED_PROXY_HOST:    'trustedProxyHost',
   OWNER_IDS:             'ownerIds',
@@ -41,7 +43,7 @@ const ENV_MAP = {
   UPDATE_CHECK:          'updateCheck',
   TRANSCRIPT_RETENTION_DAYS: 'retention.transcriptDays',
 };
-const NUMBERS  = new Set(['webServerPort', 'database.port', 'trustProxyHops', 'retention.transcriptDays']);
+const NUMBERS  = new Set(['webServerPort', 'database.port', 'database.poolSize', 'database.tenantConnectionLimit', 'trustProxyHops', 'retention.transcriptDays']);
 // Comma or space separated lists of Discord IDs
 const LISTS    = new Set(['ownerIds', 'allowedGuilds']);
 // Values an environment variable may carry even when empty (an empty TRUSTED_PROXY_HOST disables the check)
