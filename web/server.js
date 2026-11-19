@@ -350,6 +350,25 @@ app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
   res.set('Cache-Control', 'public, max-age=3600').redirect(302, url);
 });
 
+// Installable dashboard (v6, PWA): the manifest, with the instance's name; icons in dashboard/public/icons
+app.get('/manifest.webmanifest', (req, res) => {
+  const name = require('../utils/instance').instanceName(app.locals.client) || 'Datick';
+  res.type('application/manifest+json').set('Cache-Control', 'public, max-age=3600').send(JSON.stringify({
+    name, short_name: name.slice(0, 12), description: 'Tickets de support', lang: 'fr', dir: 'ltr',
+    id: '/', start_url: '/', scope: '/', display: 'standalone', orientation: 'any', background_color: '#0f1117', theme_color: '#2f6feb',
+    icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+    shortcuts: [
+      { name: 'Ma file', url: '/queue', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Tickets', url: '/tickets', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Tous mes espaces', url: '/tous-mes-espaces', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+    ],
+  }));
+});
+
 // The public knowledge base, rendered by the server (v5.6): before the dashboard's fallback
 app.use(require('./routes/kbPages'));
 

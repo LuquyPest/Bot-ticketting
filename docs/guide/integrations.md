@@ -57,6 +57,10 @@ La clé s'envoie dans l'en-tête `Authorization: Bearer <clé>`. La description 
 
 Chaque membre du staff peut recevoir les nouveaux messages et réponses en notification du navigateur (**Profil → Notifications**), seulement pour les tickets qu'il peut voir. Il faut les clés `VAPID_*` du `.env`, générées par `setup.sh`.
 
+## Le dashboard sur téléphone
+
+Le dashboard **s'installe comme une application** (PWA), sur Android, iPhone et ordinateur : menu du navigateur → **Installer l'application** (Chrome, Edge) ou **Partager → Sur l'écran d'accueil** (Safari). Il s'ouvre alors en plein écran, sous le nom de l'instance, avec des raccourcis (appui long sur l'icône) vers **Ma file**, **Tickets** et **Tous mes espaces**, et reçoit les notifications push ci-dessus. Sans réseau, une page « Pas de connexion » s'affiche au lieu d'une erreur ; aucun ticket n'est gardé sur le téléphone. Rien à régler : il faut seulement que l'instance soit servie en HTTPS.
+
 ## Accès invités
 
 **Accès invités** (fondateurs) : un lien temporaire en lecture seule vers des tickets choisis, pour une personne extérieure sans compte Discord (modérateur d'un partenaire, conseil…). Durée d'une heure à 30 jours, notes internes incluses ou non, chaque consultation inscrite au journal, révocable à tout moment.

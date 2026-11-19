@@ -13,6 +13,11 @@ import { loadInstanceInfo } from './hooks/useInstanceInfo';
 applySkin(readSkin());
 loadInstanceInfo(); // bot name in the tab title as early as possible
 
+// Installable dashboard (v6): the service worker serves an offline page (and the push notifications)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+
 purgeOldDrafts();
 installErrorReporting();
 startTranslation();
