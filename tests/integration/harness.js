@@ -6463,6 +6463,13 @@ async function main() {
     await db("INSERT INTO ticket_ratings (ticket_id, owner_id, rating, comment) VALUES (?, ?, 4, 'Merci Paul')", [old, owner]);
     r = await req('PUT', '/api/ticket-retention', { sid: sessions.F, body: { mode: 'anonymize', months: 36, archiveMonths: 0 } });
     check('rétention: réglée, tickets concernés comptés', r.status === 200 && r.body.mode === 'anonymize' && r.body.months === 36 && r.body.due >= 1, JSON.stringify(r.body));
+    // #76: a survey link of the ticket, still valid (sent with a delay), and one not sent yet
+    const svTok = crypto.randomBytes(24).toString('base64url'), svTok2 = crypto.randomBytes(24).toString('base64url');
+    const sh = x => crypto.createHash('sha256').update(x).digest('hex');
+    await db('INSERT INTO survey_requests (ticket_id, owner_id, token_hash, send_at, sent_at, expires_at) VALUES (?, ?, ?, NOW(), NOW(), NOW() + INTERVAL 10 DAY)', [old, owner, sh(svTok)]);
+    await db('INSERT INTO survey_requests (ticket_id, owner_id, token_hash, pending_token, send_at, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL 1 DAY, NOW() + INTERVAL 40 DAY)', [old, owner, sh(svTok2), svTok2]);
+    r = await req('POST', '/api/survey/link', { body: { token: `${G}.${svTok}` }, headers: { 'X-Forwarded-For': '10.76.0.1' } });
+    check('rétention: lien d enquête valable avant anonymisation', r.status === 200, r.status);
     let out = await RT.applyRetention(db);
     const [ta] = await db('SELECT owner_id, owner_tag, subject, anonymized_at, status, closed_at FROM tickets WHERE id = ?', [old]);
     const na = await db('SELECT content, author_id, author_tag, source FROM ticket_notes WHERE ticket_id = ? ORDER BY id', [old]);
@@ -6470,6 +6477,10 @@ async function main() {
     check('rétention: ticket clos depuis 40 mois anonymisé (demandeur, sujet, messages, note)', out.anonymized >= 1 && ta.owner_id === 'anonyme' && ta.owner_tag === '[anonymisé]' && ta.subject === '[anonymisé]' && !!ta.anonymized_at
       && na.every(n => n.content === '[anonymisé]') && na.find(n => n.source === 'user')?.author_id === 'anonyme' && na.find(n => n.source === 'reply')?.author_tag === 'Agent' && ra?.comment === null && ra.owner_id === 'anonyme' && ra.rating === 4, JSON.stringify([ta, na, ra]));
     check('rétention: transcripts du ticket anonymisé supprimés, statistiques gardées', !(await db('SELECT 1 FROM transcript_snapshots WHERE ticket_id = ?', [old])).length && ta.status === 'closed' && !!ta.closed_at, '');
+    r = await req('POST', '/api/survey/link', { body: { token: `${G}.${svTok}` }, headers: { 'X-Forwarded-For': '10.76.0.2' } });
+    const [svP] = await db('SELECT pending_token FROM survey_requests WHERE token_hash = ?', [sh(svTok2)]);
+    check('rétention: après anonymisation, lien d enquête refusé et enquête en attente jamais envoyée', r.status === 410 && svP && svP.pending_token === null, JSON.stringify([r.status, svP]));
+    await db('DELETE FROM survey_requests WHERE ticket_id = ?', [old]);
     const [tr] = await db('SELECT subject FROM tickets WHERE id = ?', [recent]);
     const [to] = await db('SELECT subject FROM tickets WHERE id = ?', [open]);
     check('rétention: ticket récent et ticket ouvert intacts', tr.subject === 'Ticket récent RT' && to.subject === 'Ticket ouvert RT', JSON.stringify([tr, to]));
