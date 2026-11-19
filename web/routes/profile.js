@@ -232,6 +232,25 @@ router.patch('/', requireAuthWithGuild, async (req, res) => {
   }
 });
 
+// GET / PUT /api/profile/ui-prefs — my display preferences in this space (v5.4): the columns of
+// the ticket list
+const LIST_COLUMNS = ['user', 'status', 'priority', 'assignee', 'created', 'closedBy', 'team', 'organization', 'last', 'type'];
+router.get('/ui-prefs', requireAuthWithGuild, async (req, res) => {
+  try {
+    const [u] = await req.guildDb('SELECT ui_prefs FROM dashboard_users WHERE user_id = ?', [req.session.user.id]);
+    res.json(require('../../utils/jsonField').parseJsonField(u?.ui_prefs, {}) || {});
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.put('/ui-prefs', requireAuthWithGuild, async (req, res) => {
+  try {
+    const cols = req.body?.listColumns;
+    if (!Array.isArray(cols) || cols.some(c => !LIST_COLUMNS.includes(c))) return res.status(400).json({ error: 'Colonnes inconnues' });
+    const prefs = { listColumns: [...new Set(cols)] };
+    await req.guildDb('UPDATE dashboard_users SET ui_prefs = ? WHERE user_id = ?', [JSON.stringify(prefs), req.session.user.id]);
+    res.json(prefs);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ── 2FA routes ────────────────────────────────────────────────────────────────
 
 // GET /api/profile/login-methods — how this account signs in (Profil → Connexion)

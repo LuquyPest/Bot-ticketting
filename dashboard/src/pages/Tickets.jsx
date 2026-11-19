@@ -5,10 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Inbox, CheckSquare, Square, X, Lock,
   ChevronDown, Calendar, AlertTriangle,
-  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine, Eye, Megaphone,
-} from 'lucide-react';
+  FolderOpen, FileText, User, Star, BookmarkPlus, PenLine, Eye, Megaphone, Users, Columns3, Keyboard } from 'lucide-react';
 import { hasDraft } from '../hooks/useDraft';
 import api from '../api';
+import ShortcutsHelp from '../components/ShortcutsHelp';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
 import Select from '../components/Select';
@@ -215,6 +215,20 @@ export default function Tickets() {
   const [teamList, setTeamList] = useState([]);
   useEffect(() => { api.get('/teams').then(r => setTeamList(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
   const [orgList, setOrgList] = useState([]);
+  // Columns of the list (v5.4): chosen by each person, kept in their preferences
+  const DEFAULT_COLS = ['user', 'status', 'priority', 'assignee', 'created', 'closedBy'];
+  const [cols, setCols] = useState(DEFAULT_COLS);
+  useEffect(() => { api.get('/profile/ui-prefs').then(r => { if (Array.isArray(r.data?.listColumns)) setCols(r.data.listColumns); }).catch(() => {}); }, []);
+  const toggleCol = c => {
+    const next = cols.includes(c) ? cols.filter(x => x !== c) : [...cols, c];
+    setCols(next);
+    api.put('/profile/ui-prefs', { listColumns: next }).catch(() => {});
+  };
+  const on = c => cols.includes(c);
+  const [myTeams, setMyTeams] = useState([]);
+  useEffect(() => { api.get('/teams/mine').then(r => setMyTeams(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
+  const [shareFor, setShareFor] = useState(null);
+  const [showKeys, setShowKeys] = useState(false);
   useEffect(() => { api.get('/organizations').then(r => setOrgList(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
   const [activeView, setActiveView] = useState('open'); // built-in id or `saved:<id>`
   const [savedViews, setSavedViews] = useState([]);
@@ -417,6 +431,7 @@ export default function Tickets() {
         searchRef.current?.focus();
         return;
       }
+      if (e.key === '?') { e.preventDefault(); setShowKeys(true); return; }
       if (e.key === 'j' || e.key === 'ArrowDown') {
         e.preventDefault();
         setFocusedRow(r => Math.min(r + 1, data.tickets.length - 1));
@@ -444,12 +459,13 @@ export default function Tickets() {
     return () => window.removeEventListener('keydown', handler);
   }, [data.tickets, focusedRow, navigate, split]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const colCount = canBulk ? 10 : 9;
+  const colCount = (canBulk ? 1 : 0) + 3 + cols.length;
 
   const hasDateFilter = filters.dateFrom || filters.dateTo;
 
   return (
     <div className={split && openId ? 'flex items-start' : ''}>
+      {showKeys && <ShortcutsHelp which="list" onClose={() => setShowKeys(false)} />}
     <div className={`p-6 space-y-5 pb-24 min-w-0 ${split && openId ? 'w-[46%] shrink-0 overflow-x-auto' : ''}`}>
 
       {quickView && <QuickView ticket={quickView.ticket} x={quickView.x} y={quickView.y} messages={quickView.messages} />}
@@ -497,7 +513,18 @@ export default function Tickets() {
             <span key={v.id}
               className={`group flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-xl text-xs font-medium border transition-all
                           ${isActive ? 'bg-violet-500/15 text-violet-200 border-violet-400/40' : 'bg-surface border-overlay/[0.07] text-ink-3 hover:text-ink-1'}`}>
-              <button onClick={() => applyView(`saved:${v.id}`, v.filters)} className="py-0.5">{v.name}</button>
+              <button onClick={() => applyView(`saved:${v.id}`, v.filters)} className="py-0.5" title={v.shared ? `Partagée par ${v.author} avec ${v.team_name}` : undefined}>{v.name}</button>
+              {v.shared ? <Users size={11} className="text-ink-4" aria-label={`Vue partagée par ${v.author} (${v.team_name})`} /> : <>
+              {myTeams.length > 0 && (shareFor === v.id ? (
+                <select autoFocus value={v.team_id || ''} onBlur={() => setShareFor(null)} aria-label={`Partager la vue « ${v.name} »`}
+                  onChange={async e => { const team_id = e.target.value ? Number(e.target.value) : null; try { await api.patch(`/ticket-views/${v.id}`, { team_id }); setSavedViews(l => l.map(x => (x.id === v.id ? { ...x, team_id } : x))); toast.success(team_id ? 'Vue partagée avec l\'équipe' : 'Vue gardée pour toi'); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } setShareFor(null); }}
+                  className="bg-surface border border-overlay/8 rounded-md text-[11px] px-1 py-0.5">
+                  <option value="">Pour moi seul</option>{myTeams.map(t => <option key={t.id} value={t.id}>{`Avec ${t.name}`}</option>)}
+                </select>
+              ) : (
+                <button onClick={() => setShareFor(v.id)} title={v.team_id ? 'Partagée avec une équipe' : 'Partager avec une équipe'} aria-label={`Partager la vue « ${v.name} »`}
+                  className={`p-0.5 rounded-sm ${v.team_id ? 'text-sky-300' : 'text-ink-4 opacity-0 group-hover:opacity-100 hover:text-sky-300'}`}><Users size={11} /></button>
+              ))}
               <button onClick={() => toggleDefaultView(v)} title={v.is_default ? 'Vue par défaut' : 'Définir comme vue par défaut'}
                 className={`p-0.5 rounded-sm ${v.is_default ? 'text-amber-400' : 'text-ink-4 opacity-0 group-hover:opacity-100 hover:text-amber-400'}`}>
                 <Star size={11} fill={v.is_default ? 'currentColor' : 'none'} />
@@ -506,6 +533,7 @@ export default function Tickets() {
                 className="p-0.5 rounded-sm text-ink-4 opacity-0 group-hover:opacity-100 hover:text-red-400">
                 <X size={11} />
               </button>
+              </>}
             </span>
           );
         })}
@@ -514,6 +542,15 @@ export default function Tickets() {
                      text-ink-3 hover:text-ink-1 hover:border-overlay/20 transition-all">
           <BookmarkPlus size={12} /> Enregistrer la vue
         </button>
+        <details className="relative">
+          <summary className="list-none cursor-pointer flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium border border-overlay/[0.07] text-ink-3 hover:text-ink-1"><Columns3 size={12} aria-hidden="true" /> Colonnes</summary>
+          <div className="absolute z-30 mt-1 w-48 bg-surface-elevated border border-overlay/10 rounded-xl p-2 space-y-1 shadow-card" role="group" aria-label="Colonnes de la liste">
+            {[['user', 'Utilisateur'], ['type', 'Type'], ['status', 'Statut'], ['priority', 'Priorité'], ['assignee', 'Attribué à'], ['team', 'Équipe'], ['organization', 'Organisation'], ['created', 'Créé le'], ['last', 'Dernier message'], ['closedBy', 'Fermé par']].map(([k, l]) => (
+              <label key={k} className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={on(k)} onChange={() => toggleCol(k)} className="accent-primary" />{l}</label>
+            ))}
+          </div>
+        </details>
+        <button type="button" onClick={() => setShowKeys(true)} aria-label="Raccourcis clavier" title="Raccourcis clavier (?)" className="px-2 py-1.5 rounded-xl text-xs border border-overlay/[0.07] text-ink-3 hover:text-ink-1"><Keyboard size={12} /></button>
       </div>
 
       {incidents.map(inc => (
@@ -813,13 +850,17 @@ export default function Tickets() {
               )}
               <th className="px-3 py-3.5 w-5" />
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">ID</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Utilisateur</th>
+              {on('user') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Utilisateur</th>}
               <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Sujet</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Statut</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Priorité</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Attribué à</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Créé le</th>
-              <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermé par</th>
+              {on('type') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Type</th>}
+              {on('status') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Statut</th>}
+              {on('priority') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Priorité</th>}
+              {on('assignee') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Attribué à</th>}
+              {on('team') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Équipe</th>}
+              {on('organization') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Organisation</th>}
+              {on('created') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Créé le</th>}
+              {on('last') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Dernier message</th>}
+              {on('closedBy') && <th className="text-left px-4 py-3.5 text-[10px] font-semibold text-ink-4 uppercase tracking-wider">Fermé par</th>}
             </tr>
           </thead>
           <tbody>
@@ -897,7 +938,7 @@ export default function Tickets() {
                       {viewersMark(t.id)}
                     </span>
                   </td>
-                  <td translate="no" className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>
+                  {on('user') && <td translate="no" className="px-4 py-3.5 text-ink-1 font-medium">{t.owner_tag}</td>}
                   <td className="px-4 py-3.5 text-ink-2 max-w-xs">
                     <div translate="no" className="truncate">{t.subject || <span className="italic text-ink-4">—</span>}</div>
                     {/* Tags */}
@@ -927,7 +968,8 @@ export default function Tickets() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3.5">
+                  {on('type') && <td className="px-4 py-3.5 text-xs text-ink-2">{t.ticket_type === 'incident' ? (data?.types?.labels?.incident || 'Incident') : (data?.types?.labels?.request || 'Demande')}</td>}
+                  {on('status') && <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
                       <Badge label={t.status} variant={t.status} />
                       {t.status === 'open' && t.stage && t.stage !== 'open' && (
@@ -935,22 +977,25 @@ export default function Tickets() {
                       )}
                     </div>
                     <SlaBadge sla={t.sla} />
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </td>}
+                  {on('priority') && <td className="px-4 py-3.5">
                     <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-ink-4'}`} />
                       {PRIORITY_LABELS[t.priority] || t.priority}
                     </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-xs truncate max-w-[120px]">
+                  </td>}
+                  {on('assignee') && <td className="px-4 py-3.5 text-xs truncate max-w-[120px]">
                     {t.assignees?.length
                       ? <span className="text-emerald-400 font-medium" title={assigneeNames(t)}>{assigneeNames(t)}</span>
                       : <span className="text-ink-4 italic">—</span>}
-                  </td>
-                  <td className="px-4 py-3.5 text-ink-3 text-xs whitespace-nowrap tabular-nums">
+                  </td>}
+                  {on('team') && <td className="px-4 py-3.5 text-xs text-ink-2 truncate max-w-[120px]">{teamList.find(x => x.id === t.team_id)?.name || '—'}</td>}
+                  {on('organization') && <td className="px-4 py-3.5 text-xs text-ink-2 truncate max-w-[140px]">{orgList.find(x => x.id === t.organization_id)?.name || '—'}</td>}
+                  {on('created') && <td className="px-4 py-3.5 text-ink-3 text-xs whitespace-nowrap tabular-nums">
                     {fmtDate(t.created_at, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3.5 text-ink-3 text-xs truncate max-w-xs">{t.closed_by_tag || '—'}</td>
+                  </td>}
+                  {on('last') && <td className="px-4 py-3.5 text-ink-3 text-xs whitespace-nowrap tabular-nums">{t.last_message_at ? fmtDate(t.last_message_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>}
+                  {on('closedBy') && <td className="px-4 py-3.5 text-ink-3 text-xs truncate max-w-xs">{t.closed_by_tag || '—'}</td>}
                 </tr>
               );
             })}

@@ -151,6 +151,7 @@ export const MOCK = {
   '/api/tickets/1/tasks': { progress: { total: 2, done: 1 }, tasks: [
     { id: 1, ticketId: 1, title: 'Vérifier le paiement chez Stripe', description: '', assigneeId: '1', assigneeName: 'Daryu', teamId: null, plannedMinutes: 15, spentSeconds: 600, dueAt: null, state: 'done', visible: true, position: 1, doneAt: iso(30), doneBy: 'Daryu', createdAt: iso(100) },
     { id: 2, ticketId: 1, title: 'Rembourser la commande en double', description: '', assigneeId: null, assigneeName: null, teamId: null, plannedMinutes: 30, spentSeconds: 0, dueAt: new Date(Date.now() + 86400000).toISOString(), state: 'todo', visible: false, position: 2, doneAt: null, doneBy: null, createdAt: iso(90) }] },
+  '/api/profile/ui-prefs': { listColumns: ['user', 'status', 'priority', 'assignee', 'team', 'organization', 'created'] },
   '/api/planning': { tasks: [{ id: 1, ticketId: 1, title: 'Préparer le poste de Léa', subject: 'Arrivée', dueAt: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(), plannedMinutes: 60, state: 'todo', assigneeId: '1', assigneeName: 'Daryu' }],
     deadlines: [{ ticketId: 2, subject: 'Commande', dueAt: new Date(new Date().setHours(16, 0, 0, 0)).toISOString(), priority: 'urgent' }], absences: [] },
   '/api/task-templates': { templates: [{ id: 1, name: 'Arrivée d’un salarié', tasks: [{ title: 'Préparer le poste', plannedMinutes: 60, dueInDays: 2, visible: false, teamId: null, description: '' }, { title: 'Accueil le premier jour', plannedMinutes: null, dueInDays: 7, visible: true, teamId: null, description: '' }] }] },
