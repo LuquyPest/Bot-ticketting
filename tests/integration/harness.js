@@ -5685,6 +5685,68 @@ async function main() {
     await db('DELETE FROM contacts WHERE id IN (?)', [[cA, cB, cC]]);
   }
 
+  // ── Service catalogue (utils/catalog.js, v5.3) ──
+  {
+    const C = app('./utils/catalog');
+    // The opening forms of before become services (migration 65)
+    await db('DELETE FROM catalog_services');
+    const fId = (await db("INSERT INTO intake_forms (name, subject, active) VALUES ('Accès VPN', 'Compte', 1)")).insertId;
+    await db("INSERT INTO intake_form_fields (form_id, label, field_type, choices, required, position) VALUES (?, 'Système', 'choice', ?, 1, 0), (?, 'Motif', 'text', NULL, 0, 1)", [fId, JSON.stringify(['Windows', 'macOS']), fId]);
+    const m65 = app('./utils/tenantMigrations').MIGRATIONS.find(m => m.version === 65);
+    await db(m65.statements[m65.statements.length - 1]);
+    const conv = (await C.listServices(db)).find(x => x.name === 'Accès VPN');
+    check('catalogue: les formulaires d avant deviennent des services', !!conv && conv.template.subject === 'Compte' && conv.fields.length === 2
+      && conv.fields[0].type === 'select' && conv.fields[0].choices.includes('macOS') && conv.fields[0].required && !conv.fields[1].required, JSON.stringify(conv));
+    await db('DELETE FROM catalog_services'); await db('DELETE FROM intake_forms WHERE id = ?', [fId]);
+
+    r = await req('POST', '/api/catalog', { sid: sessions.S1, body: { name: 'x' } });
+    check('catalogue: écriture réservée (fondateurs, Paramètres)', r.status === 403, r.status);
+    r = await req('POST', '/api/catalog', { sid: sessions.F, body: { name: 'x', fields: [{ label: 'Choix', type: 'select', choices: ['Seul'] }] } });
+    check('catalogue: une liste a au moins deux choix', r.status === 400, JSON.stringify(r.body));
+    r = await req('POST', '/api/catalog', { sid: sessions.F, body: { name: 'x', fields: [{ key: 'a', label: 'A', showIf: { key: 'b', equals: 'x' } }, { key: 'b', label: 'B' }] } });
+    check('catalogue: une condition porte sur un champ placé avant', r.status === 400, JSON.stringify(r.body));
+    const team = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Équipe matériel' } })).body.find(t => t.name === 'Équipe matériel');
+    const [cfgB] = await db('SELECT ticket_subjects, max_tickets_per_day FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET ticket_subjects = ?, max_tickets_per_day = 50 WHERE id = 1', [JSON.stringify(['Matériel', 'Compte'])]);
+    const svc = { name: 'Demander du matériel', icon: '💻', category: 'Matériel', description: 'Un poste, un écran, un casque…',
+      fields: [{ key: 'kind', label: 'Matériel', type: 'select', choices: ['Portable', 'Écran'], required: true },
+        { key: 'model', label: 'Modèle souhaité', type: 'text', required: true, showIf: { key: 'kind', equals: 'Portable' } },
+        { key: 'date', label: 'Pour quand ?', type: 'date' }, { key: 'manager_ok', label: 'Validé par mon responsable', type: 'checkbox', required: true }],
+      template: { subject: 'Matériel', type: 'request', priority: 'urgent', teamId: team.id } };
+    r = await req('POST', '/api/catalog', { sid: sessions.F, body: svc });
+    const sid = r.body.id;
+    check('catalogue: service avec champs conditionnels et gabarit', r.status === 200 && r.body.services.find(x => x.id === sid)?.fields[1].showIf?.equals === 'Portable', JSON.stringify(r.body).slice(0, 300));
+    const s1 = await C.serviceOf(db, sid);
+    check('catalogue: champ conditionnel demandé seulement si la condition est remplie', C.checkAnswers(s1, { kind: 'Portable', manager_ok: true }).error?.label === 'Modèle souhaité'
+      && !C.checkAnswers(s1, { kind: 'Écran', manager_ok: true }).error, JSON.stringify(C.checkAnswers(s1, { kind: 'Écran', manager_ok: true })));
+    check('catalogue: valeurs vérifiées (liste, date, case obligatoire)', C.checkAnswers(s1, { kind: 'Tablette', manager_ok: true }).error?.reason === 'choice'
+      && C.checkAnswers(s1, { kind: 'Écran', manager_ok: true, date: 'demain' }).error?.reason === 'date' && C.checkAnswers(s1, { kind: 'Écran' }).error?.reason === 'required', '');
+
+    const MW = '200000000000000081';
+    await redis.del(`memberguilds:${MW}`);
+    await mk('MCAT', { member: { id: MW, username: 'member81', avatar: null } });
+    r = await req('GET', `/api/member/guilds/${G}/catalog`, { sid: sessions.MCAT });
+    check('catalogue: proposé dans l espace membre, sans le gabarit', r.status === 200 && r.body.services.some(x => x.id === sid && x.fields.length === 4) && !JSON.stringify(r.body).includes('teamId'), JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MCAT, body: { serviceId: sid, catalog: { kind: 'Portable', manager_ok: true }, content: 'Mon portable est trop lent' } });
+    check('catalogue: champ conditionnel manquant refusé à l ouverture', r.status === 400 && /Modèle souhaité/.test(r.body.error), JSON.stringify(r.body));
+    for (const k of await redis.keys('*burst:webopen:*')) await redis.del(k);
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MCAT, body: { serviceId: sid, catalog: { kind: 'Portable', model: 'ThinkPad X1', manager_ok: true, date: '2026-12-01' }, content: 'Mon portable est trop lent' } });
+    const ct = r.body.ticketId;
+    const [cT] = ct ? await db('SELECT * FROM tickets WHERE id = ?', [ct]) : [];
+    const [cN] = ct ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id LIMIT 1", [ct]) : [];
+    check('catalogue: ticket ouvert avec les réponses du formulaire', r.status === 200 && /Demander du matériel/.test(cN?.content) && /Modèle souhaité\*\* : ThinkPad X1/.test(cN?.content), JSON.stringify([r.body, cN]));
+    check('catalogue: gabarit appliqué (sujet, type, priorité, équipe)', cT?.subject === 'Matériel' && cT.ticket_type === 'request' && cT.priority === 'urgent' && cT.team_id === team.id && cT.catalog_service_id === sid, JSON.stringify(cT && { s: cT.subject, t: cT.ticket_type, p: cT.priority, team: cT.team_id }));
+    await req('PUT', `/api/catalog/${sid}`, { sid: sessions.F, body: { ...svc, active: false } });
+    r = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MCAT, body: { serviceId: sid, catalog: { kind: 'Écran', manager_ok: true }, content: 'Un écran' } });
+    check('catalogue: service retiré → refusé', r.status === 404, r.status);
+
+    await req('DELETE', `/api/catalog/${sid}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+    const subj = cfgB.ticket_subjects == null || typeof cfgB.ticket_subjects === 'string' ? cfgB.ticket_subjects : JSON.stringify(cfgB.ticket_subjects);
+    await db('UPDATE guild_config SET ticket_subjects = ?, max_tickets_per_day = ? WHERE id = 1', [subj, cfgB.max_tickets_per_day]);
+    if (ct) await db('DELETE FROM tickets WHERE id = ?', [ct]);
+  }
+
   // ── Dashboard leaderboard: week and month, staff only ──
   {
     const [lbCfg] = await db('SELECT leaderboard_enabled FROM guild_config WHERE id = 1');

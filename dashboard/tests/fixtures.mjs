@@ -9,6 +9,11 @@ export const days = n => Array.from({ length: n }, (_, i) => ({ date: new Date(n
 export const MOCK = {
   '/api/auth/me': { id: '1', username: 'Daryu', avatar: null, role: 'fondateur', guildId: '1', guildName: 'Sunset FA', permissions: [], isOwner: true, discord: true },
   '/api/instance/info': { name: 'Datick', avatar: null, demo: true, privacyUrl: null, contactEmail: 'contact@example.com', discordLogin: true, providers: [{ id: 'google', label: 'Google' }] },
+  '/api/catalog': { services: [{ id: 1, name: 'Demander du matériel', icon: '💻', category: 'Matériel', description: 'Un poste, un écran, un casque…', position: 1, active: true,
+    fields: [{ key: 'kind', label: 'Matériel', type: 'select', choices: ['Portable', 'Écran'], required: true, default: '', showIf: null },
+      { key: 'model', label: 'Modèle souhaité', type: 'text', choices: [], required: true, default: '', showIf: { key: 'kind', equals: 'Portable' } }],
+    template: { subject: 'Paiement', type: 'request', teamId: 1, priority: 'urgent' } }] },
+  '/api/member/guilds/123456789012345678/catalog': { services: [{ id: 1, name: 'Demander du matériel', icon: '💻', category: 'Matériel', description: 'Un poste, un écran, un casque…', fields: [] }, { id: 2, name: 'Signaler une panne', icon: '🛠️', category: 'Incidents', description: 'Quelque chose ne marche plus', fields: [] }] },
   '/api/organizations': [
     { id: 1, name: 'Acme', portalVisibility: 'manager', parentId: null, teamId: 1, managerId: '1', calendarId: 1, domains: ['acme.example'], fields: { Contrat: 'Support Or' }, notes: 'Client depuis 2024', contacts: 12, openTickets: 3 },
     { id: 2, name: 'Acme Lyon', parentId: 1, teamId: null, managerId: null, calendarId: null, domains: [], fields: {}, notes: '', contacts: 2, openTickets: 1 }],

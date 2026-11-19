@@ -185,6 +185,16 @@ router.get('/guilds/:guildId/form', requireMember, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
 });
 
+// GET /api/member/guilds/:guildId/catalog — the services the requester can ask for (v5.3)
+router.get('/guilds/:guildId/catalog', requireMember, async (req, res) => {
+  try {
+    if (!(await guildOf(req, res))) return;
+    const services = await require('../../utils/catalog').listServices(getTenantDb(req.params.guildId), { activeOnly: true });
+    // What the ticket becomes (team, priority…) stays on the staff side
+    res.json({ services: services.map(({ id, name, description, icon, category, fields }) => ({ id, name, description, icon, category, fields })) });
+  } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
 // Refusal reasons shared by opening and answering (same rules as in DMs)
 async function memberBlocked(db, member) {
   for (const id of memberIds(member)) if (await isBlacklistedIn(db, id)) return 'portal.blocked';
@@ -215,10 +225,20 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
     if (!content || content.length > 2000) return res.status(400).json({ error: tr(req, 'portal.describe') });
     const blocked = await memberBlocked(db, req.member);
     if (blocked) return res.status(403).json({ error: tr(req, blocked) });
+    // A service of the catalogue (v5.3): its form replaces the subject, the fields and the questions
+    const catalog = require('../../utils/catalog');
+    const service = req.body?.serviceId ? await catalog.serviceOf(db, req.body.serviceId, { activeOnly: true }) : null;
+    if (req.body?.serviceId && !service) return res.status(404).json({ error: tr(req, 'portal.serviceGone') });
+    let serviceRows = [];
+    if (service) {
+      const checked = catalog.checkAnswers(service, req.body?.catalog);
+      if (checked.error) return res.status(400).json({ error: tr(req, { required: 'portal.fieldRequired', number: 'portal.fieldNumber', date: 'portal.fieldDate', choice: 'portal.fieldChoice' }[checked.error.reason], { label: checked.error.label }) });
+      serviceRows = checked.value;
+    }
     const form = await openingForm(guildId);
-    const subject = typeof req.body?.subject === 'string' ? req.body.subject.trim().slice(0, 100) : '';
-    if (form.subjects.length && !form.subjects.includes(subject)) return res.status(400).json({ error: tr(req, 'portal.pickSubject') });
-    const { fields, questions } = await openingForm(guildId, subject);
+    const subject = service ? (service.template.subject || service.name).slice(0, 100) : typeof req.body?.subject === 'string' ? req.body.subject.trim().slice(0, 100) : '';
+    if (!service && form.subjects.length && !form.subjects.includes(subject)) return res.status(400).json({ error: tr(req, 'portal.pickSubject') });
+    const { fields, questions } = service ? { fields: [], questions: [] } : await openingForm(guildId, subject);
     const { parseFieldAnswer } = require('../../utils/ticketFields');
     const fieldValues = {};
     for (const f of fields) {
@@ -241,12 +261,14 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
     const user = await requesterFor(req, guildId);
     if (!user) return res.status(409).json({ error: tr(req, 'portal.noAccount') });
     const summary = questions.map((label, i) => `**${label}** : ${answers[i]}`).join('\n');
-    const enriched = questions.length ? `${content}\n\n📋 **Formulaire d'intake :**\n${summary}` : content;
+    let enriched = questions.length ? `${content}\n\n📋 **Formulaire d'intake :**\n${summary}` : content;
+    if (service) enriched = `${content}\n\n${catalog.summaryOf(service, serviceRows)}`;
     const startedAt = new Date(Date.now() - 1000);
     await require('../../events/messageCreate').openTicketInGuild(user, enriched, [], guildId, client, subject,
       { skipFaq: true, fieldsDone: true, intakeDone: true, fieldValues: Object.keys(fieldValues).length ? fieldValues : null, confidential: !!req.body?.confidential });
     const [ticket] = await db('SELECT id FROM tickets WHERE owner_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 1', [req.member.id, startedAt]);
     if (!ticket) return res.status(409).json({ error: tr(req, 'portal.openFailed') });
+    if (service) await catalog.applyTemplate({ db, client, guildId, ticketId: ticket.id, service }).catch(err => console.error('catalogue: gabarit', guildId, ticket.id, err.message));
     res.json({ ok: true, guildId, ticketId: ticket.id });
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
 });

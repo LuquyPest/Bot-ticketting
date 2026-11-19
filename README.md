@@ -9,7 +9,7 @@ Discord, e-mail, formulaire web, API : chaque demande devient un ticket, traité
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1631_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-1643_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
@@ -50,7 +50,7 @@ Côté équipe, tout se passe dans le **dashboard web temps réel** : files par 
 ## Fonctionnalités
 
 - **Canaux** : Discord (MP, panels, salons ou fils privés, ou aucun salon), e-mail (Gmail et Microsoft 365 par OAuth, IMAP/SMTP, ou réception par webhook Mailgun, Postmark, SendGrid, SES ; copies (Cc) gardées, réponses en HTML signées, anti-spam et quarantaine ; plusieurs adresses routées vers un sujet ou une équipe, pièces jointes gardées), espace membre web (connexion Discord ou par lien e-mail), widget à coller sur un site, API publique (v1, v2 et v3 en écriture) et webhooks ; une fiche contact par personne, quel que soit le canal.
-- **Tickets** : organisations (contacts regroupés par domaine, SLA et horaires propres, sous-organisations, leurs tickets visibles dans l'espace membre), types (incident ou demande), résolution confirmée par le demandeur et clôture automatique, priorité urgence × impact, sujets en catégories et sous-catégories, formulaires d'ouverture, FAQ proposée avant d'ouvrir et base de connaissances publique, priorités, étapes et statuts personnalisés, Kanban, tags, notes internes, validations (accord du staff ou d'un responsable par e-mail), modèles de réponse et macros, fusion, transcripts, notation en fin de ticket ; sur Discord en salons, en fils privés, ou sans aucun salon (tout dans le dashboard).
+- **Tickets** : catalogue de services (formulaires à champs conditionnels, gabarits), organisations (contacts regroupés par domaine, SLA et horaires propres, sous-organisations, leurs tickets visibles dans l'espace membre), types (incident ou demande), résolution confirmée par le demandeur et clôture automatique, priorité urgence × impact, sujets en catégories et sous-catégories, formulaires d'ouverture, FAQ proposée avant d'ouvrir et base de connaissances publique, priorités, étapes et statuts personnalisés, Kanban, tags, notes internes, validations (accord du staff ou d'un responsable par e-mail), modèles de réponse et macros, fusion, transcripts, notation en fin de ticket ; sur Discord en salons, en fils privés, ou sans aucun salon (tout dans le dashboard).
 - **Équipe** : grades et permissions fines, rôles rattachés à des tags (tickets visibles d'eux seuls), tickets confidentiels, équipes avec leur file et attribution automatique (tour à tour, selon la charge), file personnelle, absences, objectifs, statistiques, rapports par équipe, catégorie et canal (export CSV), rapports PDF et statistiques publiques dans un salon.
 - **Demandeurs** : réponses en MP, par e-mail ou sur l'espace web, dans leur langue — et le staff aussi dans la sienne (français, anglais, espagnol, allemand, italien, portugais) ; espace web pour suivre et ouvrir des tickets. [Aider à traduire](https://docs.bot.daryu.xyz/guide/traduire).
 - **Automatismes** : notifications configurables (événements, destinataires, canaux dont Slack et Microsoft Teams avec le bouton « Prendre », préférences de chacun, messages au demandeur par langue), règles automatiques (quand, si, alors, dans l'ordre, avec test et journal, y compris « quand le temps passe » en heures ouvrées), horaires d'ouverture et jours fériés (réponse hors horaires), rappels, escalade, inactivité, objectifs SLA en heures ouvrées (prise en charge, résolution, par priorité, type, sujet ou canal) avec escalade par niveaux, objectifs internes par équipe (OLA), délais par étape, messages programmés, rapport hebdomadaire et mensuel, incidents annoncés aux membres.
@@ -82,7 +82,7 @@ Ensuite, ouvre ton domaine : connecte-toi avec le compte Discord propriétaire d
 Node 22, discord.js 14, Express 5, MariaDB 11 (une base par espace), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
-npm run test:integration                                  # 1631 vérifications sur MariaDB + Redis jetables
+npm run test:integration                                  # 1643 vérifications sur MariaDB + Redis jetables
 cd dashboard && npx vite build && node tests/smoke.mjs    # pages du dashboard + accessibilité (axe-core)
 ```
 
