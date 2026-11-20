@@ -213,6 +213,19 @@ Tickets are linked to it from the problem or from their view (**Reply** permissi
 
 It follows a flow: **draft** → **waiting for approval** → **approved** (all approvals) or **refused** (at the first refusal, with its reason) → **in progress** → **done** or **failed**; **cancelled** at any time. **Approvals** are given by the chosen staff members, each for themself, in the dashboard; it only starts once approved, and its plans and risks are frozen once it is (going back to draft resets the approvals). Everything is in the journal.
 
+## Inventory
+
+**Inventory** menu: the space's inventory (CMDB) — computers, servers, software, licences, services… Off until a founder turns it on.
+
+| | |
+|---|---|
+| **Types** | Defined by the space (**Types**, founders and the **Settings** permission), each with its fields: text, number, date or a choice in a list. A type still in use cannot be deleted |
+| **Elements** | A type, a name, a **status** (in use, in stock, in maintenance, retired), a serial number, a location, an owner (organisation and/or contact card), the fields of its type and notes (**Reply** permission) |
+| **Relations** | *Depends on*, *installed on*, *part of*, seen from both sides (« hosts », « includes »); no loop of *installed on* or *part of* |
+| **History** | Each creation, change and relation, with who and when |
+
+The list is searched by name, serial number or location, and filtered by type, status and organisation (sub-organisations included). Deleting an organisation or a contact card leaves its elements, without an owner.
+
 ## Satisfaction survey
 
 When a ticket is closed, the requester gets the **satisfaction survey** (**Settings → Tickets → Satisfaction survey**):

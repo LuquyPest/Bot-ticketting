@@ -303,6 +303,7 @@ app.use('/api/task-templates', withGuild(['support', 'fondateur']), require('./r
 app.use('/api/planning',      withGuild(['support', 'fondateur']), require('./routes/planning')); // v5.4
 app.use('/api/costs',         withGuild(['support', 'fondateur']), require('./routes/costs')); // v5.4
 app.use('/api/problems',      withGuild(['support', 'fondateur']), require('./routes/problems')); // v5.5
+app.use('/api/assets',        withGuild(['support', 'fondateur']), require('./routes/assets'));   // inventory / CMDB (v7)
 app.use('/api/changes',       withGuild(['support', 'fondateur']), require('./routes/changes')); // v5.5
 app.use('/api/dashboards',    withGuild(['support', 'fondateur']), require('./routes/dashboards')); // v5.6
 app.use('/api/surveys',       withGuild(['support', 'fondateur']), require('./routes/survey').staff); // v5.6

@@ -8554,6 +8554,53 @@ async function main() {
     await db('DELETE FROM contacts WHERE id = ?', [ct]);
   }
 
+  // ── Inventory / CMDB: types, elements, relations, history (utils/assets.js, v7) ──
+  {
+    r = await req('GET', '/api/assets', { sid: sessions.S1 });
+    check('parc: coupé par défaut', r.status === 404, r.status);
+    r = await req('PUT', '/api/assets/settings', { sid: sessions.S1, body: { enabled: true } });
+    const rOn = await req('PUT', '/api/assets/settings', { sid: sessions.F, body: { enabled: true } });
+    check('parc: activé par un fondateur seulement', r.status === 403 && rOn.status === 200, `${r.status} ${rOn.status}`);
+    r = await req('POST', '/api/assets/types', { sid: sessions.S1, body: { name: 'Portable v7', fields: [] } });
+    check('parc: types réservés aux fondateurs et à « Paramètres »', r.status === 403, r.status);
+    r = await req('POST', '/api/assets/types', { sid: sessions.F, body: { name: 'Portable v7', icon: '💻', fields: [{ label: 'Système', type: 'choice', options: 'Windows, macOS, Linux' }, { label: 'Mémoire (Go)', type: 'number' }, { label: 'Fin de garantie', type: 'date' }] } });
+    const tPc = r.body.id;
+    const rBad = await req('POST', '/api/assets/types', { sid: sessions.F, body: { name: 'Mauvais v7', fields: [{ label: 'Choix', type: 'choice' }] } });
+    await req('POST', '/api/assets/types', { sid: sessions.F, body: { name: 'Serveur v7', fields: [] } });
+    const tSrv = (await req('GET', '/api/assets/types', { sid: sessions.S1 })).body.types.find(t => t.name === 'Serveur v7')?.id;
+    const ty = (await req('GET', '/api/assets/types', { sid: sessions.S1 })).body.types.find(t => t.id === tPc);
+    check('parc: type avec ses champs (choix, nombre, date) ; un choix sans options refusé', !!tPc && ty.fields.map(f => f.key).join() === 'systeme,memoire_go,fin_de_garantie' && rBad.status === 400, JSON.stringify([ty, rBad.body]));
+    const [org] = [(await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Parc v7 Org' } })).body.organizations.find(o => o.name === 'Parc v7 Org').id];
+    r = await req('POST', '/api/assets', { sid: sessions.S1, body: { typeId: tPc, name: 'PC-COMPTA-07', serial: 'SN-123', location: 'Bât. A', ownerOrgId: org, fields: { systeme: 'Windows', memoire_go: '16', fin_de_garantie: '2028-01-31' } } });
+    const pc = r.body.id;
+    check('parc: élément créé par le staff (permission Répondre), champs typés', r.status === 200 && r.body.fields.memoire_go === 16 && r.body.ownerOrgName === 'Parc v7 Org' && r.body.history.length === 1, JSON.stringify(r.body).slice(0, 300));
+    r = await req('POST', '/api/assets', { sid: sessions.S1, body: { typeId: tPc, name: 'X', fields: { systeme: 'Amiga' } } });
+    const r2 = await req('POST', '/api/assets', { sid: sessions.S1, body: { typeId: tPc, name: 'X', fields: { memoire_go: 'beaucoup' } } });
+    check('parc: valeur hors des choix ou non numérique refusée', r.status === 400 && r2.status === 400, `${r.status} ${r2.status}`);
+    const srv = (await req('POST', '/api/assets', { sid: sessions.S1, body: { typeId: tSrv, name: 'SRV-FICHIERS' } })).body.id;
+    const app1 = (await req('POST', '/api/assets', { sid: sessions.S1, body: { typeId: tSrv, name: 'APP-PAIE' } })).body.id;
+    r = await req('POST', `/api/assets/${app1}/relations`, { sid: sessions.S1, body: { to: srv, kind: 'installed_on' } });
+    await req('POST', `/api/assets/${pc}/relations`, { sid: sessions.S1, body: { to: app1, kind: 'depends_on' } });
+    const rSrv = await req('GET', `/api/assets/${srv}`, { sid: sessions.S1 });
+    check('parc: relations vues des deux côtés', r.status === 200 && r.body.relations.some(x => x.id === srv && x.kind === 'installed_on' && x.direction === 'out') && rSrv.body.relations.some(x => x.id === app1 && x.direction === 'in'), JSON.stringify(rSrv.body.relations));
+    r = await req('POST', `/api/assets/${srv}/relations`, { sid: sessions.S1, body: { to: app1, kind: 'installed_on' } });
+    const rSelf = await req('POST', `/api/assets/${srv}/relations`, { sid: sessions.S1, body: { to: srv, kind: 'depends_on' } });
+    check('parc: pas de boucle « installé sur », pas de relation avec soi-même', r.status === 400 && /boucle/.test(r.body.error) && rSelf.status === 400, JSON.stringify([r.body, rSelf.body]));
+    r = await req('PUT', `/api/assets/${pc}`, { sid: sessions.S1, body: { status: 'maintenance', location: 'Atelier' } });
+    check('parc: modification notée à l historique', r.status === 200 && r.body.status === 'maintenance' && r.body.history[0].changes.statut === 'maintenance' && r.body.history[0].changes.lieu === 'Atelier', JSON.stringify(r.body.history[0]));
+    r = await req('GET', '/api/assets', { sid: sessions.S1, query: { q: 'SN-123' } });
+    const rf = await req('GET', '/api/assets', { sid: sessions.S1, query: { organization: org, status: 'maintenance' } });
+    check('parc: recherche (n° de série) et filtres (organisation, statut)', r.body.total === 1 && r.body.assets[0].id === pc && rf.body.assets.some(a => a.id === pc), JSON.stringify([r.body.total, rf.body.total]));
+    r = await req('DELETE', `/api/assets/types/${tSrv}`, { sid: sessions.F });
+    check('parc: un type encore utilisé ne se supprime pas', r.status === 409, r.status);
+    r = await req('DELETE', `/api/assets/${srv}`, { sid: sessions.S1 });
+    const rApp = await req('GET', `/api/assets/${app1}`, { sid: sessions.S1 });
+    check('parc: supprimer un élément retire ses relations', r.status === 200 && !rApp.body.relations.some(x => x.id === srv), JSON.stringify(rApp.body.relations));
+    await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
+    const [kept] = await db('SELECT owner_org_id FROM assets WHERE id = ?', [pc]);
+    check('parc: organisation supprimée → l élément reste, sans propriétaire', kept && kept.owner_org_id === null, JSON.stringify(kept));
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

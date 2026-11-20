@@ -1585,6 +1585,57 @@ const MIGRATIONS = [
     name: 'CRM de l\'espace : HubSpot ou Salesforce (v7)',
     statements: [`ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS crm_provider VARCHAR(12) DEFAULT NULL, ADD COLUMN IF NOT EXISTS crm_config TEXT DEFAULT NULL`],
   },
+  {
+    version: 90,
+    name: 'Parc : types, éléments, relations et historique (v7)',
+    statements: [
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS assets_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `CREATE TABLE IF NOT EXISTS asset_types (
+        id       INT AUTO_INCREMENT PRIMARY KEY,
+        name     VARCHAR(60) NOT NULL,
+        icon     VARCHAR(16) DEFAULT NULL,
+        fields   JSON DEFAULT NULL,
+        position INT NOT NULL DEFAULT 0,
+        UNIQUE KEY uq_asset_type_name (name)
+      )`,
+      `CREATE TABLE IF NOT EXISTS assets (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        type_id          INT NOT NULL,
+        name             VARCHAR(150) NOT NULL,
+        status           VARCHAR(12) NOT NULL DEFAULT 'in_use',
+        serial           VARCHAR(100) DEFAULT NULL,
+        location         VARCHAR(200) DEFAULT NULL,
+        owner_contact_id INT DEFAULT NULL,
+        owner_org_id     INT DEFAULT NULL,
+        fields           JSON DEFAULT NULL,
+        notes            TEXT DEFAULT NULL,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_asset_type (type_id), INDEX idx_asset_org (owner_org_id), INDEX idx_asset_contact (owner_contact_id), INDEX idx_asset_name (name),
+        CONSTRAINT fk_asset_type FOREIGN KEY (type_id) REFERENCES asset_types(id),
+        CONSTRAINT fk_asset_contact FOREIGN KEY (owner_contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+        CONSTRAINT fk_asset_org FOREIGN KEY (owner_org_id) REFERENCES organizations(id) ON DELETE SET NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS asset_relations (
+        from_id INT NOT NULL,
+        to_id   INT NOT NULL,
+        kind    VARCHAR(12) NOT NULL,
+        PRIMARY KEY (from_id, to_id, kind),
+        INDEX idx_asset_rel_to (to_id),
+        CONSTRAINT fk_asset_rel_from FOREIGN KEY (from_id) REFERENCES assets(id) ON DELETE CASCADE,
+        CONSTRAINT fk_asset_rel_to FOREIGN KEY (to_id) REFERENCES assets(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS asset_history (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        asset_id   INT NOT NULL,
+        actor_tag  VARCHAR(100) NOT NULL,
+        changes    JSON DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_asset_hist (asset_id),
+        CONSTRAINT fk_asset_hist FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
