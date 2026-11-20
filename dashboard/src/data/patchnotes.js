@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.9.0',
+    date: 'à venir',
+    title: 'Intégrations',
+    titleEn: 'Integrations',
+    changes: [
+      { type: 'new',  text: 'Jira, GitHub et GitLab : créer ou lier une issue depuis un ticket, son état sur la fiche tenu à jour par webhook (signature vérifiée), note interne quand elle est fermée', en: 'Jira, GitHub and GitLab: create or link an issue from a ticket, its state on the ticket kept up to date by webhook (signature checked), internal note when it is closed' },
+    ],
+  },
+  {
     version: 'v7.8.0',
     date: 'à venir',
     title: 'Sécurité et exploitation',

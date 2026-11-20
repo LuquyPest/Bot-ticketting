@@ -1790,6 +1790,27 @@ const MIGRATIONS = [
     name: 'Arbre de questions du widget (v7)',
     statements: [`ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_bot TEXT DEFAULT NULL`],
   },
+  {
+    version: 98,
+    name: 'Jira, GitHub et GitLab : issues liées aux tickets (v7)',
+    statements: [
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS dev_integrations TEXT DEFAULT NULL`,
+      `CREATE TABLE IF NOT EXISTS ticket_issues (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        ticket_id   INT NOT NULL,
+        provider    VARCHAR(8) NOT NULL,
+        external_id VARCHAR(60) NOT NULL,
+        issue_key   VARCHAR(40) NOT NULL,
+        url         VARCHAR(500) DEFAULT NULL,
+        title       VARCHAR(300) DEFAULT NULL,
+        state       VARCHAR(8) NOT NULL DEFAULT 'open',
+        status_name VARCHAR(60) DEFAULT NULL,
+        updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_ticket_issue (ticket_id, provider, external_id), INDEX idx_issue_ext (provider, external_id),
+        CONSTRAINT fk_ticket_issue FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

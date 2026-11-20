@@ -9144,6 +9144,77 @@ async function main() {
     check('HA: verrou pris une fois, rendu à l arrêt', ok === true && again === false && (await L.current()) === null, `${ok} ${again}`);
   }
 
+  // ── Jira, GitHub and GitLab (utils/devIntegrations.js, v7) — the three trackers simulated locally ──
+  {
+    const crypto2 = require('crypto');
+    const seen = [];
+    const mock = http.createServer((q, s2) => {
+      let b = ''; q.on('data', d => { b += d; }); q.on('end', () => {
+        seen.push({ m: q.method, u: q.url, h: q.headers, b });
+        const json = (o, c = 200) => { s2.writeHead(c, { 'Content-Type': 'application/json' }); s2.end(JSON.stringify(o)); };
+        if (q.url === '/repos/acme/app/issues' && q.method === 'POST') return json({ number: 41, html_url: 'https://github.com/acme/app/issues/41', title: JSON.parse(b).title, state: 'open' }, 201);
+        if (q.url === '/repos/acme/app/issues/7') return json({ number: 7, html_url: 'https://github.com/acme/app/issues/7', title: 'Bug existant', state: 'open' });
+        if (q.url.startsWith('/api/v4/projects/groupe%2Fprojet/issues/12')) return json({ iid: 12, web_url: 'https://gitlab.example/groupe/projet/-/issues/12', title: 'Lenteur', state: 'opened' });
+        if (q.url.startsWith('/rest/api/2/issue/SUP-3')) return json({ key: 'SUP-3', fields: { summary: 'Facture', status: { name: 'En cours', statusCategory: { key: 'indeterminate' } } } });
+        json({ message: 'Not Found' }, 404);
+      });
+    });
+    await new Promise(res => mock.listen(0, '127.0.0.1', res));
+    const base = `http://127.0.0.1:${mock.address().port}`;
+    process.env.GITHUB_API_URL = base; process.env.DEV_ALLOW_PRIVATE_HOSTS = '1';
+    r = await req('PUT', '/api/dev-integrations/github', { sid: sessions.S1, body: { enabled: true, repo: 'acme/app', token: 'x' } });
+    check('dev: réglages réservés aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/dev-integrations/github', { sid: sessions.F, body: { enabled: true, repo: 'pas un dépôt', token: 'x' } });
+    check('dev: dépôt GitHub invalide refusé', r.status === 400, r.status);
+    r = await req('PUT', '/api/dev-integrations/github', { sid: sessions.F, body: { enabled: true, repo: 'acme/app', token: 'ghp-test-v7' } });
+    const ghHook = r.body.github?.webhookUrl;
+    await req('PUT', '/api/dev-integrations/gitlab', { sid: sessions.F, body: { enabled: true, baseUrl: base, project: 'groupe/projet', token: 'glpat-v7' } });
+    r = await req('PUT', '/api/dev-integrations/jira', { sid: sessions.F, body: { enabled: true, baseUrl: base, email: 'support@example.com', project: 'sup', token: 'jira-v7' } });
+    check('dev: trois outils branchés, jetons jamais renvoyés, adresse de webhook avec secret', r.status === 200 && r.body.github.hasToken && r.body.jira.project === 'SUP' && !JSON.stringify(r.body).includes('ghp-test-v7') && /\/api\/dev-hooks\/\d+\/github\/[0-9a-f]{40}$/.test(ghHook || ''), JSON.stringify(r.body).slice(0, 300));
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000069', 'dev', 'dev7-1', 'open', 'Export PDF cassé v7')")).insertId;
+    r = await req('POST', `/api/dev-integrations/tickets/${tk}`, { sid: sessions.S1, body: { provider: 'github', title: 'Export PDF cassé', body: 'Vu sur le ticket' } });
+    const post = seen.find(x => x.m === 'POST' && x.u === '/repos/acme/app/issues');
+    check('dev: issue GitHub créée depuis le ticket (jeton en Bearer), note interne', r.status === 200 && r.body.issues.some(i => i.key === '#41' && i.state === 'open') && post?.h.authorization === 'Bearer ghp-test-v7' && (await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%GitHub #41%'", [tk])).length === 1, JSON.stringify(r.body));
+    r = await req('POST', `/api/dev-integrations/tickets/${tk}`, { sid: sessions.S1, body: { provider: 'gitlab', ref: '#12' } });
+    const r2 = await req('POST', `/api/dev-integrations/tickets/${tk}`, { sid: sessions.S1, body: { provider: 'jira', ref: 'sup-3' } });
+    check('dev: issues GitLab et Jira liées', r.status === 200 && r2.status === 200 && r2.body.issues.length === 3 && r2.body.issues.some(i => i.key === 'SUP-3' && i.status === 'En cours') && seen.some(x => x.h['private-token'] === 'glpat-v7'), JSON.stringify(r2.body.issues));
+    r = await req('POST', `/api/dev-integrations/tickets/${tk}`, { sid: sessions.S1, body: { provider: 'github', ref: '#999' } });
+    check('dev: issue inconnue → 404', r.status === 404, r.status);
+    // Webhooks
+    const path0 = new URL(ghHook).pathname;
+    const payload = JSON.stringify({ action: 'closed', issue: { number: 41, title: 'Export PDF cassé', state: 'closed' } });
+    const secret = path0.split('/').pop();
+    const sig = `sha256=${crypto2.createHmac('sha256', secret).update(payload).digest('hex')}`;
+    const hook = (p, body, headers = {}) => new Promise((resolve, reject) => {
+      const x = http.request({ host: '127.0.0.1', port: config.webServerPort, method: 'POST', path: p, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), ...headers } }, res2 => { let d = ''; res2.on('data', c => { d += c; }); res2.on('end', () => resolve({ status: res2.statusCode, body: d })); });
+      x.on('error', reject); x.end(body);
+    });
+    r = await hook(path0, payload, { 'X-Hub-Signature-256': 'sha256=faux' });
+    check('dev: webhook GitHub mal signé → 401', r.status === 401, r.status);
+    r = await hook(path0, payload, { 'X-Hub-Signature-256': sig });
+    const [st] = await db("SELECT state FROM ticket_issues WHERE ticket_id = ? AND provider = 'github'", [tk]);
+    check('dev: webhook GitHub signé → issue fermée sur le ticket, note interne', r.status === 200 && st.state === 'closed' && (await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%GitHub #41 fermée%'", [tk])).length === 1, `${r.status} ${r.body}`);
+    r = await hook(path0.replace(/[0-9a-f]{40}$/, 'f'.repeat(40)), payload, { 'X-Hub-Signature-256': sig });
+    check('dev: secret inconnu → 404', r.status === 404, r.status);
+    const glPath = path0.replace('/github/', '/gitlab/').replace(/[0-9a-f]{40}$/, '');
+    const glSecret = new URL((await req('GET', '/api/dev-integrations', { sid: sessions.F })).body.gitlab.webhookUrl).pathname.split('/').pop();
+    r = await hook(`${glPath}${glSecret}`, JSON.stringify({ object_kind: 'issue', object_attributes: { iid: 12, title: 'Lenteur', state: 'closed' } }), { 'X-Gitlab-Token': 'mauvais' });
+    const rOk = await hook(`${glPath}${glSecret}`, JSON.stringify({ object_kind: 'issue', object_attributes: { iid: 12, title: 'Lenteur', state: 'closed' } }), { 'X-Gitlab-Token': glSecret });
+    check('dev: webhook GitLab (jeton exigé)', r.status === 401 && rOk.status === 200 && (await db("SELECT state FROM ticket_issues WHERE ticket_id = ? AND provider = 'gitlab'", [tk]))[0].state === 'closed', `${r.status} ${rOk.status}`);
+    const jiraSecret = new URL((await req('GET', '/api/dev-integrations', { sid: sessions.F })).body.jira.webhookUrl).pathname.split('/').pop();
+    r = await hook(`${glPath.replace('/gitlab/', '/jira/')}${jiraSecret}`, JSON.stringify({ issue: { key: 'SUP-3', fields: { summary: 'Facture', status: { name: 'Terminé', statusCategory: { key: 'done' } } } } }));
+    const [js] = await db("SELECT state, status_name FROM ticket_issues WHERE ticket_id = ? AND provider = 'jira'", [tk]);
+    check('dev: webhook Jira → statut et fermeture', r.status === 200 && js.state === 'closed' && js.status_name === 'Terminé', JSON.stringify(js));
+    r = await req('GET', `/api/dev-integrations/tickets/${tk}`, { sid: sessions.S1 });
+    const one = r.body.issues[0].id;
+    r = await req('DELETE', `/api/dev-integrations/tickets/${tk}/${one}`, { sid: sessions.S1 });
+    check('dev: lien retiré', r.status === 200 && r.body.issues.length === 2, JSON.stringify(r.body.issues));
+    for (const p of ['github', 'gitlab', 'jira']) await req('PUT', `/api/dev-integrations/${p}`, { sid: sessions.F, body: { enabled: false } });
+    delete process.env.GITHUB_API_URL; delete process.env.DEV_ALLOW_PRIVATE_HOSTS;
+    mock.close();
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tk]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
