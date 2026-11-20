@@ -14,6 +14,7 @@ import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
 import { contractBalance } from '../components/ContractsPanel';
 import CrmCard from '../components/CrmCard';
+import DevIssuesPanel from '../components/DevIssuesPanel';
 import AssetLinksPanel from '../components/AssetLinksPanel';
 import Recorder from '../components/Recorder';
 import TasksPanel from '../components/TasksPanel';
@@ -2210,6 +2211,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           {/* COÛT (v5.4) */}
           {(user?.role === 'fondateur' || user?.permissions?.includes('manage_costs')) && <CostPanel ticketId={ticket.id} panelCard={panelCard} />}
           <CrmCard ticketId={ticket.id} panelCard={panelCard} />
+          <DevIssuesPanel ticket={ticket} panelCard={panelCard} canEdit={can('reply_ticket')} />
           {ticket.organization && (
             <div className={panelCard}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>

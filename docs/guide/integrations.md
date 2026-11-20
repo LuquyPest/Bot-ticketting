@@ -201,6 +201,18 @@ Chaque appel de Slack est vérifié (signature HMAC de l'app, 5 minutes au plus)
 
 Le jeton et le secret sont **chiffrés** et jamais renvoyés au navigateur ; Datick n'appelle que `api.hubapi.com` ou l'instance Salesforce indiquée, et n'écrit jamais dans le CRM.
 
+## Jira, GitHub et GitLab
+
+**Paramètres → Intégrations → Jira, GitHub et GitLab** (fondateurs) : depuis la fiche d'un ticket, **Développement → Créer une issue** (titre et description repris du ticket, modifiables) ou **Lier une issue** existante (`#34`, `ABC-12`). L'issue s'affiche sur le ticket avec son état ; quand elle est **fermée** (ou rouverte), une note interne le dit.
+
+| Outil | Ce qu'il faut | Webhook (pour l'état) |
+|---|---|---|
+| **GitHub** | Le dépôt (`propriétaire/dépôt`) et un jeton à grain fin avec l'accès *Issues : lecture et écriture* | Événement **Issues**, type `application/json`, **secret** = la dernière partie de l'adresse affichée (la signature est vérifiée) |
+| **GitLab** | L'adresse (gitlab.com ou la tienne, https), le projet (`groupe/projet` ou son identifiant) et un jeton avec la portée `api` | **Issues events**, **jeton secret** = la dernière partie de l'adresse affichée |
+| **Jira** | L'adresse (`https://société.atlassian.net`), l'e-mail du compte, son **jeton d'API**, la clé du projet et le type de ticket (`Task`) | Événements « issue mis à jour », à l'adresse affichée |
+
+Les jetons sont chiffrés et jamais renvoyés au navigateur ; **Nouveau secret** change l'adresse du webhook. Créer ou lier demande la permission **Répondre** sur un ticket qu'on voit ; chaque lien est au journal du ticket.
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

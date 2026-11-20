@@ -201,6 +201,18 @@ Each Slack call is checked (the app's HMAC signature, 5 minutes at most); the bu
 
 The token and secret are **encrypted** and never sent back to the browser; Datick only calls `api.hubapi.com` or the Salesforce instance given, and never writes to the CRM.
 
+## Jira, GitHub and GitLab
+
+**Settings → Integrations → Jira, GitHub and GitLab** (founders): from a ticket's view, **Development → Create an issue** (title and description taken from the ticket, editable) or **Link an issue** that exists (`#34`, `ABC-12`). The issue shows on the ticket with its state; when it is **closed** (or reopened), an internal note says so.
+
+| Tool | What you need | Webhook (for the state) |
+|---|---|---|
+| **GitHub** | The repository (`owner/repo`) and a fine-grained token with *Issues: read and write* access | **Issues** event, type `application/json`, **secret** = the last part of the address shown (the signature is checked) |
+| **GitLab** | The address (gitlab.com or yours, https), the project (`group/project` or its ID) and a token with the `api` scope | **Issues events**, **secret token** = the last part of the address shown |
+| **Jira** | The address (`https://company.atlassian.net`), the account's e-mail, its **API token**, the project key and the issue type (`Task`) | « issue updated » events, at the address shown |
+
+Tokens are encrypted and never sent back to the browser; **New secret** changes the webhook address. Creating or linking needs the **Reply** permission on a ticket one sees; each link is in the ticket's log.
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ and articles, templates and macros, rules, checklists, custom statuses, teams) and import on this server or another. Secrets are never exported.
