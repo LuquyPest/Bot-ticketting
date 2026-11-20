@@ -295,6 +295,7 @@ app.use('/api/reports',     withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/incidents',   withGuild(['support', 'fondateur']), require('./routes/incidents'));
 app.use('/api/procedures',  withGuild(['support', 'fondateur']), require('./routes/procedures'));
 app.use('/api/profiles',    withGuild(['support', 'fondateur']), require('./routes/profiles'));
+app.use('/api/organizations/:orgId/contracts', withGuild(['support', 'fondateur']), require('./routes/contracts')); // v7
 app.use('/api/organizations', withGuild(['support', 'fondateur']), require('./routes/organizations')); // v5.3
 app.use('/api/catalog',       withGuild(['support', 'fondateur']), require('./routes/catalog')); // service catalogue (v5.3)
 app.use('/api/recurring',     withGuild(['support', 'fondateur']), require('./routes/recurring')); // recurring tickets (v5.3)

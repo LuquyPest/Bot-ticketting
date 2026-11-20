@@ -417,6 +417,8 @@ router.get('/:id', async (req, res) => {
       // SLA objectives: time to first response and to resolution (utils/slaPolicies.js)
       objectives: require('../../utils/slaPolicies').objectives(ticket),
       organization: ticket.organization_id ? ((await req.guildDb('SELECT id, name FROM organizations WHERE id = ?', [ticket.organization_id]).catch(() => []))[0] || null) : null,
+      // The organisation's contract in force (v7): its balance, next to the time spent
+      contract: await (async () => { const c = await require('../../utils/contracts').activeFor(req.guildDb, ticket.organization_id).catch(() => null); return c && { id: c.id, name: c.name, kind: c.kind, quota: c.quota, used: c.used, remaining: c.remaining, percent: c.percent, endsOn: c.endsOn }; })(),
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
       children: await TL.progress(req.guildDb, ticket.id),

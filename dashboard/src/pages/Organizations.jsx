@@ -4,6 +4,7 @@ import { Building2, Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
+import ContractsPanel from '../components/ContractsPanel';
 
 // Organisations (v5.3, utils/organizations.js): contacts grouped by e-mail domain or by hand,
 // with their own hours, SLA (Paramètres → Horaires → objectifs), team and account manager
@@ -58,6 +59,7 @@ function OrgForm({ initial, ctx, orgs, busy, onSave, onDelete }) {
         {o.fieldRows.length < 20 && <button type="button" onClick={() => set('fieldRows', [...o.fieldRows, ['', '']])} className="text-[11px] text-ink-3 hover:text-ink-1 inline-flex items-center gap-1"><Plus size={11} /> Ajouter un champ</button>}
       </div>
       <textarea value={o.notes} onChange={e => set('notes', e.target.value)} rows={2} maxLength={5000} placeholder="Notes internes" aria-label="Notes" className={INPUT} />
+      {initial.id && <ContractsPanel orgId={initial.id} />}
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => onSave(body())} disabled={busy || !o.name.trim()} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-1.5">
           {busy && <Loader2 size={12} className="animate-spin" />}{initial.id ? 'Enregistrer' : 'Créer l\'organisation'}

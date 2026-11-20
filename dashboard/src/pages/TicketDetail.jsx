@@ -12,6 +12,7 @@ import ApprovalPanel from '../components/ApprovalPanel';
 import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
+import { contractBalance } from '../components/ContractsPanel';
 import TasksPanel from '../components/TasksPanel';
 import CostPanel from '../components/CostPanel';
 import ProblemsPanel from '../components/ProblemsPanel';
@@ -2200,6 +2201,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
             <div className={panelCard}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>
               <a href={`/tickets?organization=${ticket.organization.id}`} className="text-sm text-ink-1 hover:underline">{ticket.organization.name}</a>
+              {ticket.contract && <p className={`text-[11px] mt-1 ${ticket.contract.percent >= 100 ? 'text-red-400' : 'text-ink-3'}`}>{`Contrat « ${ticket.contract.name} » · ${contractBalance(ticket.contract)}`}</p>}
             </div>
           )}
 

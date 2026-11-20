@@ -8400,6 +8400,70 @@ async function main() {
     for (const t of [n1, n2]) await req('DELETE', `/api/teams/${t.id}`, { sid: sessions.F });
   }
 
+  // ── Contracts of the organisations (utils/contracts.js, v7) ──
+  {
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Contrats v7', domains: 'contrats-v7.example' } });
+    const org = r.body.organizations.find(o => o.name === 'Contrats v7').id;
+    r = await req('POST', '/api/organizations', { sid: sessions.F, body: { name: 'Contrats v7 Lyon', parentId: org } });
+    const sub = r.body.organizations.find(o => o.name === 'Contrats v7 Lyon').id;
+    r = await req('POST', `/api/organizations/${org}/contracts`, { sid: sessions.S1, body: { name: 'x', kind: 'hours', quota: 60, startsOn: '2026-01-01' } });
+    check('contrats: écriture réservée aux fondateurs et à « Paramètres »', r.status === 403, r.status);
+    r = await req('POST', `/api/organizations/${org}/contracts`, { sid: sessions.F, body: { name: 'Mauvais', kind: 'hours', quota: -5, startsOn: '2026-01-01' } });
+    const r2 = await req('POST', `/api/organizations/${org}/contracts`, { sid: sessions.F, body: { name: 'Mauvais', kind: 'tickets', quota: 3, startsOn: '2026-05-01', endsOn: '2026-01-01' } });
+    const r3 = await req('POST', `/api/organizations/${org}/contracts`, { sid: sessions.F, body: { name: 'Mauvais', kind: 'unlimited', startsOn: '2026-01-01', autoRenew: true } });
+    check('contrats: forfait négatif, fin avant le début, renouvellement sans fin → refusés', r.status === 400 && r2.status === 400 && r3.status === 400, `${r.status} ${r2.status} ${r3.status}`);
+    const [pol] = await db("INSERT INTO sla_policies (name, tto_minutes, ttr_minutes, conditions, active, position) VALUES ('Contrat Or v7', 30, 240, ?, 1, 99)", [JSON.stringify({ channels: ['web'] })]).then(x => [x.insertId]);
+    const start = new Date(); start.setDate(start.getDate() - 10);
+    const end = new Date(); end.setDate(end.getDate() + 5);
+    const ymd = d => d.toISOString().slice(0, 10);
+    r = await req('POST', `/api/organizations/${org}/contracts`, { sid: sessions.F, body: { name: 'Forfait v7', kind: 'hours', quota: 120, startsOn: ymd(start), endsOn: ymd(end), slaPolicyId: pol, alertPercent: 50, alertDays: 7 } });
+    const cid = r.body.contracts?.[0]?.id;
+    check('contrats: forfait de 2 h en cours', r.status === 200 && r.body.active?.id === cid && r.body.active.state === 'active' && r.body.active.used === 0, JSON.stringify(r.body).slice(0, 300));
+    // Time spent on a ticket of the sub-organisation counts
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, organization_id) VALUES ('200000000000000094', 'u94', 'ct7-1', 'open', 'Contrat v7', ?)", [sub])).insertId;
+    await db("INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, started_at, ended_at, seconds) VALUES (?, ?, 'F', 'manual', NOW(), NOW(), 4500)", [tk, U.F]);
+    r = await req('GET', `/api/organizations/${org}/contracts`, { sid: sessions.S1 });
+    check('contrats: le temps passé sur les tickets de la sous-organisation est décompté (lecture par le staff)', r.status === 200 && r.body.active.used === 75 && r.body.active.remaining === 45 && r.body.active.percent === 63, JSON.stringify(r.body.active));
+    await app('./utils/slaPolicies').refreshSla(db, tk);
+    const [t1] = await db('SELECT sla_policy_id FROM tickets WHERE id = ?', [tk]);
+    check('contrats: les tickets de l organisation prennent l objectif SLA du contrat', Number(t1.sla_policy_id) === pol, JSON.stringify(t1));
+    r = await req('GET', `/api/tickets/${tk}`, { sid: sessions.F });
+    check('contrats: la fiche ticket montre le contrat en cours et son solde', r.body.contract?.id === cid && r.body.contract.remaining === 45, JSON.stringify(r.body.contract));
+    // Alerts: threshold (50 %) and the end (in 5 days, alert at 7)
+    const C = app('./utils/contracts');
+    let res = await C.checkContracts(db, G);
+    const res2 = await C.checkContracts(db, G);
+    const evs = await db("SELECT details FROM audit_log WHERE action = 'contract_alert' AND target_id = ?", [String(org)]);
+    check('contrats: alerte au seuil et avant la fin, une seule fois chacune', res.alerts === 2 && res2.alerts === 0 && evs.length === 2, JSON.stringify([res, res2, evs.length]));
+    // Renewal: an ended contract that renews itself is followed by the next one, once
+    const s2 = new Date(); s2.setDate(s2.getDate() - 40); const e2 = new Date(); e2.setDate(e2.getDate() - 12);
+    await req('POST', `/api/organizations/${org}/contracts`, { sid: sessions.F, body: { name: 'Mensuel v7', kind: 'tickets', quota: 5, startsOn: ymd(s2), endsOn: ymd(e2), autoRenew: true } });
+    res = await C.checkContracts(db, G);
+    const again = await C.checkContracts(db, G);
+    r = await req('GET', `/api/organizations/${org}/contracts`, { sid: sessions.F });
+    const renewed = r.body.contracts.filter(c => c.name === 'Mensuel v7');
+    check('contrats: renouvellement automatique, une seule fois, même durée', res.renewed === 1 && again.renewed === 0 && renewed.length === 2 && renewed.some(c => c.renewalOf), JSON.stringify(renewed.map(c => [c.startsOn, c.endsOn, c.renewalOf])));
+    // Member space: the organisation's balance for those who see its tickets
+    await db("UPDATE organizations SET portal_visibility = 'all' WHERE id = ?", [sub]);
+    const [ctc] = [await db("INSERT INTO contacts (display_name, organization_id) VALUES ('Contrats v7', ?)", [sub])];
+    await db("INSERT INTO contact_identities (contact_id, kind, value) VALUES (?, 'discord', '200000000000000081') ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)", [ctc.insertId]);
+    await redis.del('memberguilds:200000000000000081');
+    r = await req('GET', `/api/member/guilds/${G}/contract`, { sid: sessions.MW });
+    check('contrats: espace membre, le solde de son organisation (parente comprise)', r.status === 200 && r.body.contract?.name === 'Forfait v7' && r.body.contract.remaining === 45 && r.body.contract.notes === undefined, JSON.stringify(r.body));
+    await db("UPDATE organizations SET portal_visibility = 'none' WHERE id = ?", [sub]);
+    r = await req('GET', `/api/member/guilds/${G}/contract`, { sid: sessions.MW });
+    check('contrats: espace membre, rien si l organisation ne montre pas ses tickets', r.status === 200 && r.body.contract === null, JSON.stringify(r.body));
+    r = await req('DELETE', `/api/organizations/${org}/contracts/${cid}`, { sid: sessions.F });
+    await app('./utils/slaPolicies').refreshSla(db, tk);
+    const [t2] = await db('SELECT sla_policy_id FROM tickets WHERE id = ?', [tk]);
+    check('contrats: supprimé → l objectif du contrat n est plus imposé', r.status === 200 && Number(t2.sla_policy_id || 0) !== pol, JSON.stringify(t2));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tk]);
+    await db('DELETE FROM contacts WHERE id = ?', [ctc.insertId]);
+    await db('DELETE FROM sla_policies WHERE id = ?', [pol]);
+    await req('DELETE', `/api/organizations/${sub}`, { sid: sessions.F });
+    await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

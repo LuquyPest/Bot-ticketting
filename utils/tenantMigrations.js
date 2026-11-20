@@ -1554,6 +1554,32 @@ const MIGRATIONS = [
     name: 'Niveaux de support des équipes (v7)',
     statements: [`ALTER TABLE teams ADD COLUMN IF NOT EXISTS level TINYINT DEFAULT NULL`],
   },
+  {
+    version: 88,
+    name: 'Contrats des organisations (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS contracts (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        organization_id  INT NOT NULL,
+        name             VARCHAR(100) NOT NULL,
+        kind             VARCHAR(10) NOT NULL DEFAULT 'hours',
+        quota            INT DEFAULT NULL,
+        starts_on        DATE NOT NULL,
+        ends_on          DATE DEFAULT NULL,
+        sla_policy_id    INT DEFAULT NULL,
+        alert_percent    TINYINT NOT NULL DEFAULT 80,
+        alert_days       SMALLINT NOT NULL DEFAULT 30,
+        auto_renew       TINYINT(1) NOT NULL DEFAULT 0,
+        renewal_of       INT DEFAULT NULL,
+        notes            TEXT DEFAULT NULL,
+        quota_alerted_at DATETIME DEFAULT NULL,
+        end_alerted_at   DATETIME DEFAULT NULL,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_contract_org (organization_id, starts_on),
+        CONSTRAINT fk_contract_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

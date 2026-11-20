@@ -238,6 +238,19 @@ The link works once and expires after 30 days; the page only shows the ticket's 
 | **Fields and notes** | Contract, phone… (20 free fields) and internal notes |
 | **Portal** | Who sees the organisation's tickets in the [member space](./member-space#the-tickets-of-one-s-organisation): nobody, its managers or all its members |
 
+### Contracts
+
+Under each organisation, **Contracts**: a **block of hours**, a **number of tickets** or **unlimited** support, with a start date and, if needed, an end date.
+
+| | |
+|---|---|
+| **Consumption** | Computed: the time spent on the tickets of the organisation and its sub-organisations during the contract, or the tickets opened during the contract; a bar shows the balance |
+| **Contract SLA objective** | The organisation's tickets get this objective while the contract is in force (an objective chosen by a rule comes first) |
+| **Alerts** | At the consumption threshold (80 % by default) and N days before the end (30 by default): a notification to the founders and the account manager, once each, in the log |
+| **Renewal** | A contract **renewed at the end** is followed, the day after it ends, by a contract of the same length and the same block |
+
+The contract in force is the one started most recently (the organisation's, else its parent's). The ticket view shows its balance under the organisation; the [member space](./member-space) shows it to the people who see the organisation's tickets (name, block, balance, end date; never the notes).
+
 A ticket keeps its requester's organisation at the opening: it shows on the ticket view, filters the list (**All organisations**), is a condition of [automatic rules](./automations#automatic-rules). Moving a contact moves their open tickets.
 
 ## The ticket list
