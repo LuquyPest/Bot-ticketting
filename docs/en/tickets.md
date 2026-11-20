@@ -41,7 +41,7 @@ A sub-category **inherits** what is set on its category: subject rules, custom f
 | | |
 |---|---|
 | **Real time** | New messages without reloading; colleagues looking at the ticket or typing a reply shown live; confirmation if someone replied while you were typing |
-| **Replies** | *Reply* or *Internal note* mode, anonymous or signed, preview of the Discord rendering, drafts kept when you change page, edit or withdraw a reply already sent |
+| **Replies** | *Reply* or *Internal note* mode, anonymous or signed, preview of the Discord rendering, drafts kept when you change page, edit or withdraw a reply already sent; screenshot, screen video or voice message recorded from the browser and attached to the reply |
 | **Templates and macros** | Ready replies with variables (`{{username}}`, `{{ticket_id}}`, custom fields…), suggested by subject; for you, for the server's staff, or — owner of the instance — for **all your servers** at once; a macro also applies actions (assign yourself, priority, tag, stage, close) |
 | **Organisation** | Assignment to several people, priority, stage, tags, title (the Discord channel follows), participants, linked tickets, merging two tickets of the same member |
 | **Follow-up** | Follow a ticket without being in charge, personal reminders (« Remind me »), `@name` or `@grade` mentions in notes, pinned notes |

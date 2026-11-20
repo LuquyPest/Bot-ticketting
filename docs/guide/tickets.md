@@ -41,7 +41,7 @@ Une sous-catégorie **hérite** de ce qui est réglé sur sa catégorie : règle
 | | |
 |---|---|
 | **Temps réel** | Nouveaux messages sans recharger ; collègues qui regardent le ticket ou écrivent une réponse affichés en direct ; confirmation si quelqu'un a répondu pendant que tu écrivais |
-| **Réponses** | Mode *Répondre* ou *Note interne*, anonyme ou signé, aperçu du rendu Discord, brouillons gardés si tu changes de page, correction ou retrait d'une réponse déjà envoyée |
+| **Réponses** | Mode *Répondre* ou *Note interne*, anonyme ou signé, aperçu du rendu Discord, brouillons gardés si tu changes de page, correction ou retrait d'une réponse déjà envoyée ; capture d'écran, vidéo de l'écran ou message vocal enregistrés depuis le navigateur et joints à la réponse |
 | **Modèles et macros** | Réponses prêtes avec variables (`{{username}}`, `{{ticket_id}}`, champs personnalisés…), suggérées selon le sujet ; pour toi, pour le staff du serveur, ou — propriétaire de l'instance — pour **tous tes serveurs** à la fois ; une macro applique en plus des actions (s'attribuer, priorité, tag, étape, fermer) |
 | **Organisation** | Attribution à plusieurs personnes, priorité, étape, tags, titre (le salon Discord suit), participants, tickets liés, fusion de deux tickets du même membre |
 | **Suivi** | Suivre un ticket sans en être chargé, rappels personnels (« Me le rappeler »), mentions `@pseudo` ou `@grade` dans les notes, notes épinglées |

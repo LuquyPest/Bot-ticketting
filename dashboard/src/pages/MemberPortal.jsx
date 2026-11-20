@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail, BookOpen, Paperclip, X, FileText } from 'lucide-react';
+import Recorder from '../components/Recorder';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
 import { readableText } from '../utils/color';
@@ -278,6 +279,7 @@ function FilePicker({ files, setFiles, rules }) {
           <button type="button" aria-label={`${STR.attach} : ${f.name} ✕`} onClick={() => setFiles(x => x.filter((_, j) => j !== i))} className="text-ink-4 hover:text-red-400"><X size={11} /></button>
         </span>
       ))}
+      {files.length < max && <Recorder labels={STR.recorder} onFile={f => { if (f.size > rules.maxMb * 1048576) { window.alert(STR.recorder.tooBig.replace('{mb}', rules.maxMb)); return; } setFiles(x => [...x, f].slice(0, max)); }} onError={msg => window.alert(msg)} />}
       <span className="text-[11px] text-ink-4">{STR.fileHint.replace('{max}', max).replace('{mb}', rules.maxMb)}</span>
     </div>
   );
