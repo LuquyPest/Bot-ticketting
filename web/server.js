@@ -110,6 +110,8 @@ app.use('/api/ical', require('./routes/ical')); // iCal feed of the planning, by
 app.use(require('./routes/statusPublic'));
 // Jira, GitHub, GitLab webhooks (v7): secret in the URL, signature checked, raw body — before the CSRF guard
 app.use('/api/dev-hooks', require('./routes/devIntegrations').hooks);
+// Monitoring tools (v7): secret address per source, before the CSRF guard
+app.use('/api/monitoring', require('./routes/monitoring').hooks);
 // SAML (v7): the identity provider posts its signed response as a plain form, before the CSRF guard
 app.use('/api/auth', require('./routes/samlAuth'));
 
@@ -336,6 +338,7 @@ app.use('/api/teams',       withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/skills',      withGuild(['support', 'fondateur']), require('./routes/skills')); // skills and languages of the staff (v7)
 app.use('/api/crm',         withGuild(['support', 'fondateur']), require('./routes/crm'));    // HubSpot or Salesforce, read only (v7)
 app.use('/api/dev-integrations', withGuild(['support', 'fondateur']), require('./routes/devIntegrations').staff); // Jira, GitHub, GitLab (v7)
+app.use('/api/monitoring-sources', withGuild(['support', 'fondateur']), require('./routes/monitoring').staff); // monitoring alerts (v7)
 app.use('/api/calendars',   withGuild(['support', 'fondateur']), require('./routes/calendars')); // opening hours (v5.1)
 app.use('/api/sla-policies', withGuild(['support', 'fondateur']), require('./routes/slaPolicies')); // SLA objectives (v5.1)
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));

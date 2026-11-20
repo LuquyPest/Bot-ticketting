@@ -213,6 +213,20 @@ Le jeton et le secret sont **chiffrés** et jamais renvoyés au navigateur ; Dat
 
 Les jetons sont chiffrés et jamais renvoyés au navigateur ; **Nouveau secret** change l'adresse du webhook. Créer ou lier demande la permission **Répondre** sur un ticket qu'on voit ; chaque lien est au journal du ticket.
 
+## Alertes de supervision
+
+**Paramètres → Intégrations → Supervision** (fondateurs et permission **Paramètres**) : chaque **source** a une adresse secrète à coller comme webhook dans l'outil, un sujet, une équipe, une priorité (urgente par défaut) et le choix de **fermer le ticket à la fin de l'alerte**.
+
+| Outil | Réglage dans l'outil |
+|---|---|
+| **Prometheus Alertmanager** | Un `receiver` avec `webhook_configs: - url: <adresse>` et `send_resolved: true` |
+| **Grafana** | Point de contact **Webhook** vers l'adresse (alertes unifiées) |
+| **Uptime Kuma** | Notification **Webhook**, corps `application/json` |
+| **Zabbix** | Média **Webhook** qui envoie `event_id`, `status` (`PROBLEM` / `RESOLVED`), `subject`, `message`, `host` |
+| **Générique** | `POST` JSON `{ "key": "…", "status": "firing" | "resolved", "title": "…", "message": "…" }` (ou une liste) |
+
+Une alerte qui se déclenche **ouvre un ticket** (« Supervision · *source* »), qui suit les règles, le SLA et les notifications comme les autres ; la même alerte encore active ajoute au plus une note par heure au ticket ouvert ; sa **fin** ajoute une note et le **ferme** (ou le laisse ouvert si la source le demande) ; si elle revient après, un nouveau ticket s'ouvre. **Nouvelle adresse** remplace l'adresse secrète ; une source coupée ne reçoit plus rien.
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

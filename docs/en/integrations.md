@@ -213,6 +213,20 @@ The token and secret are **encrypted** and never sent back to the browser; Datic
 
 Tokens are encrypted and never sent back to the browser; **New secret** changes the webhook address. Creating or linking needs the **Reply** permission on a ticket one sees; each link is in the ticket's log.
 
+## Monitoring alerts
+
+**Settings → Integrations → Monitoring** (founders and the **Settings** permission): each **source** has a secret address to paste as a webhook in the tool, a subject, a team, a priority (urgent by default) and the choice to **close the ticket when the alert ends**.
+
+| Tool | Setting in the tool |
+|---|---|
+| **Prometheus Alertmanager** | A `receiver` with `webhook_configs: - url: <address>` and `send_resolved: true` |
+| **Grafana** | **Webhook** contact point to the address (unified alerting) |
+| **Uptime Kuma** | **Webhook** notification, `application/json` body |
+| **Zabbix** | **Webhook** media sending `event_id`, `status` (`PROBLEM` / `RESOLVED`), `subject`, `message`, `host` |
+| **Generic** | `POST` JSON `{ "key": "…", "status": "firing" | "resolved", "title": "…", "message": "…" }` (or a list) |
+
+An alert that fires **opens a ticket** (« Supervision · *source* »), which follows the rules, the SLA and the notifications like the others; the same alert still firing adds at most one note an hour to the open ticket; its **end** adds a note and **closes** it (or leaves it open if the source says so); if it comes back later, a new ticket opens. **New address** replaces the secret address; a turned-off source receives nothing.
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ and articles, templates and macros, rules, checklists, custom statuses, teams) and import on this server or another. Secrets are never exported.
