@@ -60,6 +60,8 @@ export const MOCK = {
   '/api/cab': { member: true, members: [{ userId: '1', username: 'Daryu' }], meetings: [{ id: 1, title: 'Comité du mardi', startsAt: '2026-11-24T14:00:00Z', status: 'planned', items: 1 }] },
   '/api/cab/meetings/1': { id: 1, title: 'Comité du mardi', startsAt: '2026-11-24T14:00:00Z', status: 'planned', notes: '', items: 1,
     agenda: [{ changeId: 3, title: 'Migration de la base', changeStatus: 'pending', risk: 'high', decision: null, decisionNote: '', votes: [{ userId: '2', username: 'Alice', vote: 'for', comment: 'Testé en préproduction' }] }] },
+  '/api/status-page': { enabled: true, title: '', url: '/statut/123456789012345678', states: ['operational', 'degraded', 'partial_outage', 'major_outage', 'maintenance'], subscribers: { total: 3, confirmed: 2 },
+    components: [{ id: 1, name: 'Site web', description: '', status: 'operational' }, { id: 2, name: 'Messagerie', description: '', status: 'degraded' }] },
   '/api/teams/mine': [{ id: 1, name: 'Paiements', color: 'amber' }],
   '/api/skills': { languages: ['fr', 'en', 'es', 'de', 'it', 'pt'], skills: [{ id: 1, name: 'Réseau', staff: 1 }, { id: 2, name: 'Comptabilité', staff: 0 }],
     staff: [{ userId: '1', username: 'Daryu', languages: ['fr', 'en'], skills: [1] }], subjects: { Paiement: [2] } },

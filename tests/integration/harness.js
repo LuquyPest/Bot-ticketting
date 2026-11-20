@@ -8745,6 +8745,60 @@ async function main() {
     check('CAB: décision au journal', !!ev, '');
   }
 
+  // ── Public status page: components, availability, published incidents, subscriptions (utils/statusPage.js, v7) ──
+  {
+    r = await req('GET', `/statut/${G}`);
+    check('statut: page absente tant qu elle n est pas publiée', r.status === 404, r.status);
+    r = await req('PUT', '/api/status-page', { sid: sessions.S1, body: { enabled: true } });
+    check('statut: réglage réservé aux fondateurs et à « Paramètres »', r.status === 403, r.status);
+    await req('PUT', '/api/status-page', { sid: sessions.F, body: { enabled: true, title: 'État des services Statut v7' } });
+    await req('POST', '/api/status-page/components', { sid: sessions.F, body: { name: 'Site web v7', description: 'www' } });
+    r = await req('POST', '/api/status-page/components', { sid: sessions.F, body: { name: 'Messagerie v7' } });
+    const web = r.body.components.find(c => c.name === 'Site web v7').id, mail = r.body.components.find(c => c.name === 'Messagerie v7').id;
+    // Ten hours of major outage yesterday on the mail
+    const y0 = new Date(Date.now() - 864e5); y0.setHours(0, 0, 0, 0);
+    await db('INSERT INTO status_component_events (component_id, status, at) VALUES (?, ?, ?), (?, ?, ?)', [mail, 'major_outage', new Date(y0.getTime() + 2 * 3600e3), mail, 'operational', new Date(y0.getTime() + 12 * 3600e3)]);
+    r = await req('PATCH', `/api/status-page/components/${web}/status`, { sid: sessions.F, body: { status: 'degraded' } });
+    const rBad = await req('PATCH', `/api/status-page/components/${web}/status`, { sid: sessions.F, body: { status: 'en feu' } });
+    check('statut: composants et états', r.status === 200 && r.body.components.find(c => c.id === web).status === 'degraded' && rBad.status === 400, JSON.stringify(rBad.body));
+    const av = await app('./utils/statusPage').availability(db, mail);
+    check('statut: disponibilité sur 90 jours (une panne de 10 h hier)', av.days.length === 90 && av.days.filter(d => d.down).length >= 1 && av.pct < 100 && av.pct > 99, JSON.stringify([av.pct, av.days.filter(d => d.down)]));
+    // A published incident; an internal one stays hidden
+    const sent = [];
+    const IM = app('./utils/instanceMail');
+    const realSend = IM.sendInstanceMail;
+    IM.sendInstanceMail = async m => { sent.push(m); return { ok: true }; };
+    r = await req('POST', `/statut/${G}/abonnement`, { body: { email: 'abonne@statut-v7.example' } });
+    const link = sent.find(m => m.template === 'statusConfirm')?.vars.link || '';
+    check('statut: abonnement par e-mail, lien de confirmation envoyé', r.status === 200 && /confirmation/.test(typeof r.body === 'string' ? r.body : '') && /\/statut\/\d+\/confirmer\?t=/.test(link), link);
+    r = await req('GET', link.replace(/^https?:\/\/[^/]+/, ''));
+    const [sub] = await db("SELECT confirmed_at FROM status_subscribers WHERE email = 'abonne@statut-v7.example'");
+    check('statut: abonnement confirmé', r.status === 200 && !!sub?.confirmed_at, JSON.stringify(sub));
+    const rBadLink = await req('GET', `/statut/${G}/confirmer?t=${'x'.repeat(32)}`);
+    check('statut: lien de confirmation inconnu refusé', /invalide/.test(typeof rBadLink.body === 'string' ? rBadLink.body : ''), '');
+    await req('POST', '/api/incidents', { sid: sessions.F, body: { title: 'Interne v7 caché', message: 'NE-PAS-PUBLIER' } });
+    r = await req('POST', '/api/incidents', { sid: sessions.F, body: { title: 'Lenteurs de la messagerie v7', message: 'Les e-mails arrivent avec du retard.', public: true } });
+    const incId = r.body.id;
+    await new Promise(res => setTimeout(res, 200));
+    check('statut: incident publié → abonnés prévenus', sent.some(m => m.template === 'statusIncident' && m.vars.title === 'Lenteurs de la messagerie v7' && /desabonner\?t=/.test(m.vars.unsubscribe)), JSON.stringify(sent.map(m => m.template)));
+    r = await req('GET', `/statut/${G}`);
+    const html = typeof r.body === 'string' ? r.body : '';
+    check('statut: la page montre composants, disponibilité et incident publié, pas l incident interne', r.status === 200 && /État des services Statut v7/.test(html) && /Site web v7/.test(html) && /Dégradé/.test(html) && /Lenteurs de la messagerie v7/.test(html) && !/NE-PAS-PUBLIER/.test(html) && /disponibilité/.test(html), html.slice(0, 200));
+    r = await req('GET', `/api/public/status/${G}`);
+    check('statut: même chose en JSON', r.status === 200 && r.body.status === 'degraded' && r.body.components.length >= 2 && r.body.incidents.some(i => i.id === incId) && !r.body.incidents.some(i => i.title === 'Interne v7 caché'), JSON.stringify(r.body).slice(0, 200));
+    await req('POST', `/api/incidents/${incId}/resolve`, { sid: sessions.F, body: { message: 'File d attente vidée.' } });
+    await new Promise(res => setTimeout(res, 200));
+    const resolved = sent.find(m => m.template === 'statusResolved');
+    check('statut: résolution annoncée aux abonnés', resolved?.vars.body === 'File d attente vidée.', JSON.stringify(resolved));
+    r = await req('GET', resolved.vars.unsubscribe.replace(/^https?:\/\/[^/]+/, ''));
+    const left = await db("SELECT 1 FROM status_subscribers WHERE email = 'abonne@statut-v7.example'");
+    check('statut: désabonnement par le lien de l e-mail', r.status === 200 && left.length === 0, '');
+    IM.sendInstanceMail = realSend;
+    await req('PUT', '/api/status-page', { sid: sessions.F, body: { enabled: false } });
+    r = await req('GET', `/statut/${G}`);
+    check('statut: retirée → 404', r.status === 404, r.status);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

@@ -104,6 +104,9 @@ app.use(session({
 app.use('/api/inbound', require('./routes/inboundEmail'));
 app.use('/api/chat', require('./routes/chatActions')); // Slack buttons, signed (v5.2)
 app.use('/api/ical', require('./routes/ical')); // iCal feed of the planning, by its secret (v5.4)
+// Public status page (v7): its subscription form is a plain HTML form (no JavaScript, no session),
+// confirmed by an e-mail link — before the CSRF guard
+app.use(require('./routes/statusPublic'));
 
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
@@ -306,6 +309,7 @@ app.use('/api/problems',      withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/assets',        withGuild(['support', 'fondateur']), require('./routes/assets'));   // inventory / CMDB (v7)
 app.use('/api/releases',      withGuild(['support', 'fondateur']), require('./routes/releases')); // releases (v7)
 app.use('/api/cab',           withGuild(['support', 'fondateur']), require('./routes/cab'));      // change advisory board (v7)
+app.use('/api/status-page',   withGuild(['support', 'fondateur']), require('./routes/statusPage')); // status page settings (v7)
 app.use('/api/changes',       withGuild(['support', 'fondateur']), require('./routes/changes')); // v5.5
 app.use('/api/dashboards',    withGuild(['support', 'fondateur']), require('./routes/dashboards')); // v5.6
 app.use('/api/surveys',       withGuild(['support', 'fondateur']), require('./routes/survey').staff); // v5.6

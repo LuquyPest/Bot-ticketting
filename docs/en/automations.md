@@ -98,6 +98,17 @@ Further down, **Messages sent to the requester**: the automatic messages (ticket
 
 The message only holds figures, never a name or a ticket subject, and follows the bot's language on the server. The same message is edited each time; **Publish now** updates it at once. A line without data (no rating yet, for example) is not shown.
 
+## Public status page
+
+**Incidents → Public status page** (founders and the **Settings** permission) publishes a page at `/statut/<space ID>`, readable without an account and without JavaScript:
+
+- the **components** (« Website », « E-mail »…) and their state — operational, degraded, partial outage, major outage, maintenance —, changed by hand;
+- their **availability over 90 days**, day by day (a partial or major outage counts as unavailable);
+- the **published incidents**: ticking **Publish on the status page** on an incident only shows its title, its message and, once resolved, the resolution message; the other incidents stay internal;
+- an **e-mail subscription**: the person confirms through a link (valid 7 days), then gets an e-mail when a published incident starts and when it is resolved, with a link to unsubscribe. The [instance e-mail](./instance) is needed.
+
+The same data exists in JSON: `/api/public/status/<space ID>`. No ticket, requester or note appears there.
+
 ## Announcing a known problem
 
 **Incidents** (`manage_settings`): for a known outage, an incident has a title, a message and possibly subjects. While it is open, each new ticket concerned gets this message by DM right after the welcome, and a banner reminds the staff. When it is resolved, the members affected can be told.

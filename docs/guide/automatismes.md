@@ -98,6 +98,17 @@ Plus bas, **Messages envoyés au demandeur** : les messages automatiques (ticket
 
 Le message ne contient que des chiffres, jamais de nom ni de sujet de ticket, et suit la langue du bot sur le serveur. Un même message est modifié à chaque fois ; **Publier maintenant** le met à jour tout de suite. Une ligne sans données (pas encore de note, par exemple) n'est pas affichée.
 
+## La page de statut publique
+
+**Incidents → Page de statut publique** (fondateurs et permission **Paramètres**) publie une page à l'adresse `/statut/<identifiant de l'espace>`, lisible sans compte et sans JavaScript :
+
+- les **composants** (« Site web », « Messagerie »…) et leur état — opérationnel, dégradé, panne partielle, panne majeure, maintenance —, changé à la main ;
+- leur **disponibilité sur 90 jours**, jour par jour (une panne partielle ou majeure compte comme indisponible) ;
+- les **incidents publiés** : cocher **Publier sur la page de statut** sur un incident n'y montre que son titre, son message et, une fois résolu, le message de résolution ; les autres incidents restent internes ;
+- un **abonnement par e-mail** : la personne confirme par un lien (valable 7 jours), puis reçoit un e-mail quand un incident publié commence et quand il est résolu, avec un lien pour se désabonner. Il faut l'[e-mail de l'instance](./instance).
+
+Les mêmes données existent en JSON : `/api/public/status/<identifiant de l'espace>`. Aucun ticket, demandeur ni note n'y apparaît.
+
 ## Annoncer un problème connu
 
 **Incidents** (`manage_settings`) : pour une panne connue, un incident a un titre, un message et éventuellement des sujets. Tant qu'il est ouvert, chaque nouveau ticket concerné reçoit ce message en MP juste après l'accueil, et un bandeau le rappelle au staff. À la résolution, les membres touchés peuvent être prévenus.

@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Megaphone, CheckCircle2, Users, Loader2, Pencil } from 'lucide-react';
+import { useAuth } from '../App';
+import StatusPageSettings from '../components/StatusPageSettings';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirmToast';
 import { fmtDate } from '../utils/format';
 
 const FIELD = 'w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:border-primary transition-colors';
-const EMPTY = { title: '', message: '', subjects: [], notifyOnResolve: true };
+const EMPTY = { title: '', message: '', subjects: [], notifyOnResolve: true, public: false };
 
 // Known issues: their message is sent to every new ticket while they are open
 export default function Incidents() {
+  const { user } = useAuth();
   const [list, setList] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [form, setForm] = useState(EMPTY);
@@ -44,7 +47,7 @@ export default function Incidents() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
-  const edit = inc => { setEditing(inc.id); setForm({ title: inc.title, message: inc.message, subjects: inc.subjects || [], notifyOnResolve: inc.notify_on_resolve }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const edit = inc => { setEditing(inc.id); setForm({ title: inc.title, message: inc.message, subjects: inc.subjects || [], notifyOnResolve: inc.notify_on_resolve, public: !!Number(inc.public) }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const toggleSubject = s => setForm(f => ({ ...f, subjects: f.subjects.includes(s) ? f.subjects.filter(x => x !== s) : [...f.subjects, s] }));
   const open = list?.filter(i => !i.resolved_at) || [];
   const past = list?.filter(i => i.resolved_at) || [];
@@ -54,6 +57,7 @@ export default function Incidents() {
       <div>
         <h1 className="text-xl font-bold text-ink-1">Incidents</h1>
       </div>
+      <StatusPageSettings canManage={user?.role === 'fondateur' || user?.permissions?.includes('manage_settings')} />
 
       <section className="bg-surface-card border border-overlay/6 rounded-2xl p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink-2">{editing ? 'Modifier l\'incident' : 'Nouvel incident'}</h2>
@@ -82,6 +86,10 @@ export default function Incidents() {
         <label className="flex items-center gap-2 text-sm text-ink-2">
           <input type="checkbox" checked={form.notifyOnResolve} onChange={e => setForm(f => ({ ...f, notifyOnResolve: e.target.checked }))} />
           Prévenir les membres touchés quand l'incident est résolu
+        </label>
+        <label className="flex items-center gap-2 text-sm text-ink-2">
+          <input type="checkbox" checked={!!form.public} onChange={e => setForm(f => ({ ...f, public: e.target.checked }))} />
+          Publier sur la page de statut (titre et message seulement ; ses abonnés sont prévenus)
         </label>
         <div className="flex gap-2">
           <button onClick={save} disabled={busy || !form.title.trim() || !form.message.trim()}

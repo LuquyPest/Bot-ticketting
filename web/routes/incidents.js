@@ -27,6 +27,8 @@ function parseBody(body, partial = false) {
     out.subjects = body.subjects?.length ? JSON.stringify(body.subjects) : null;
   }
   if (body.notifyOnResolve !== undefined) out.notify_on_resolve = body.notifyOnResolve ? 1 : 0;
+  // v7: shown on the public status page (utils/statusPage.js)
+  if (body.public !== undefined) out.public = body.public ? 1 : 0;
   return out;
 }
 
@@ -49,9 +51,10 @@ router.post('/', async (req, res) => {
     const [{ n }] = await req.guildDb('SELECT COUNT(*) AS n FROM incidents WHERE resolved_at IS NULL');
     if (Number(n) >= 10) return res.status(400).json({ error: '10 incidents ouverts au maximum' });
     const { insertId } = await req.guildDb(
-      'INSERT INTO incidents (title, message, subjects, notify_on_resolve, created_by_id, created_by_tag) VALUES (?, ?, ?, ?, ?, ?)',
-      [b.title, b.message, b.subjects ?? null, b.notify_on_resolve ?? 1, req.session.user.id, req.session.user.username]
+      'INSERT INTO incidents (title, message, subjects, notify_on_resolve, public, created_by_id, created_by_tag) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [b.title, b.message, b.subjects ?? null, b.notify_on_resolve ?? 1, b.public ?? 0, req.session.user.id, req.session.user.username]
     );
+    if (b.public) require('../../utils/statusPage').notify(req.guildDb, req.guildId, { title: b.title, message: b.message }, 'opened').catch(() => null);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'incident_open', targetType: 'incident', targetId: insertId, details: { title: b.title } });
     res.json((await listIncidents(req.guildDb)).find(i => i.id === insertId));
   } catch (err) {
@@ -70,6 +73,8 @@ router.patch('/:id', async (req, res) => {
     if (b.error) return res.status(400).json({ error: b.error });
     const cols = Object.keys(b);
     if (cols.length) await req.guildDb(`UPDATE incidents SET ${cols.map(c => `${c} = ?`).join(', ')} WHERE id = ?`, [...cols.map(c => b[c]), inc.id]);
+    // Published now: the subscribers learn it
+    if (b.public && !Number(inc.public)) require('../../utils/statusPage').notify(req.guildDb, req.guildId, { title: b.title || inc.title, message: b.message || inc.message }, 'opened').catch(() => null);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'incident_update', targetType: 'incident', targetId: inc.id, details: { fields: cols } });
     res.json((await listIncidents(req.guildDb)).find(i => i.id === inc.id));
   } catch (err) {
@@ -88,6 +93,7 @@ router.post('/:id/resolve', async (req, res) => {
     const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 1500) : '';
     const notified = await resolveIncident({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, incident: inc, message, actor: req.session.user });
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'incident_resolve', targetType: 'incident', targetId: inc.id, details: { title: inc.title, notified } });
+    if (Number(inc.public)) require('../../utils/statusPage').notify(req.guildDb, req.guildId, { title: inc.title, message: inc.message, resolved_message: message }, 'resolved').catch(() => null);
     res.json({ ok: true, notified });
   } catch (err) {
     console.error(err);
