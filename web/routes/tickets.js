@@ -420,6 +420,7 @@ router.get('/:id', async (req, res) => {
       lowRatingThreshold: Number(cfg?.low_rating_threshold ?? 2),
       links: await linkedTickets(req, ticket.id),
       children: await TL.progress(req.guildDb, ticket.id),
+      skills: await require('../../utils/skills').ofTicket(req.guildDb, ticket),
       closeChildrenWithParent: Number((await req.guildDb('SELECT close_children_with_parent FROM guild_config WHERE id = 1').catch(() => []))[0]?.close_children_with_parent) === 1,
       fields: await fieldsForTicket(req.guildDb, ticket.id),
       transcript: transcript[0] || null,
@@ -451,6 +452,21 @@ router.get('/:id/merge-candidates', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// PUT /api/tickets/:id/skills { skillIds } — skills the ticket asks for, besides those of its subject (v7)
+router.put('/:id/skills', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    const S = require('../../utils/skills');
+    const r = await S.setTicketSkills(req.guildDb, ticket.id, req.body?.skillIds);
+    if (r.error) return res.status(400).json({ error: r.error });
+    const skills = await S.ofTicket(req.guildDb, ticket);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'ticket_skills', ticketId: ticket.id, details: { skills: skills.filter(s => s.from === 'ticket').map(s => s.name) } });
+    broadcast('ticket', { id: ticket.id }, req.guildId);
+    res.json({ skills });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // GET /api/tickets/:id/duplicates — open tickets of the same requester about the same thing (v7)

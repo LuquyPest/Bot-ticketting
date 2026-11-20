@@ -59,6 +59,12 @@ Un grade peut avoir un **parent** : les membres du parent voient aussi ce que vo
 
 L'attribution automatique passe les membres **absents** ou **en vacances**, ceux qui **ne peuvent pas voir** le ticket (grade, rôles rattachés à des tags) et ceux au plafond ; si personne n'est disponible, le ticket reste dans la file de l'équipe. Les tickets **confidentiels** ne sont jamais routés. L'attribution est notée au journal du ticket et la personne est prévenue comme pour une attribution à la main.
 
+### Compétences et langues
+
+**Équipe → Compétences** : les fondateurs créent les compétences de l'espace (« Réseau », « Comptabilité »…) et disent qui a lesquelles ; chacun indique les **langues** dans lesquelles il répond. Un ticket **demande** des compétences : celles de son **sujet** (réglées plus bas sur la même page ; une catégorie couvre ses sous-catégories), celles qu'une [règle](./automatismes#les-regles-automatiques) ajoute (action **Compétence demandée**, à placer avant l'action **Équipe**) et celles ajoutées sur la fiche (permission **Répondre**).
+
+Une équipe qui attribue toute seule choisit d'abord parmi les membres qui ont **toutes** les compétences demandées, puis parmi eux ceux qui **parlent la langue du demandeur** (celle de ses messages, quand le bot répond dans la langue de chacun). Si personne ne convient, toute l'équipe reste possible, comme avant. Les compétences et les sujets font partie de l'[export de configuration](./integrations#sauvegarde-de-la-configuration) ; qui a quelle compétence reste propre à l'espace.
+
 Chaque membre retrouve les tickets de ses équipes dans **Ma file → Mes équipes**. La fiche ticket montre son équipe et permet de la changer (permission d'attribuer) : confier le ticket à une équipe qui attribue le donne aussitôt à un de ses membres s'il n'a personne. La liste des tickets se filtre par équipe ou « Sans équipe ». Supprimer une équipe laisse ses tickets, sans équipe.
 
 ## Double authentification

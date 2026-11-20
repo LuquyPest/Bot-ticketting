@@ -62,6 +62,12 @@ async function exportConfig(db) {
     // Business rules (v5.2): tags, teams, grades and statuses by name; the people chosen in a rule
     // are accounts of this space, left out
     rules: await exportRules(db, { tagName, gradeName, stageLabel }),
+    // v7: skills (by name) and those of the subjects; who has which skill stays local
+    skills: (await require('./skills').listSkills(db)).map(x => x.name),
+    subjectSkills: await (async () => {
+      const names = new Map((await require('./skills').listSkills(db)).map(x => [x.id, x.name]));
+      return Object.fromEntries(Object.entries(await require('./skills').subjectMap(db)).map(([k, v]) => [k, v.map(id => names.get(id)).filter(Boolean)]));
+    })(),
     // v6: SLA objectives (escalation levels name people of this space: left out), service catalogue
     // and task templates, teams by name
     ...await exportServiceDesk(db),
@@ -117,6 +123,7 @@ async function exportRules(db, { tagName, gradeName, stageLabel }) {
   const orgName = new Map((await db('SELECT id, name FROM organizations').catch(() => [])).map(o => [o.id, o.name]));
   const fieldLabel = new Map((await db('SELECT id, label FROM ticket_fields').catch(() => [])).map(f => [f.id, f.label]));
   const slaName = new Map((await db('SELECT id, name FROM sla_policies').catch(() => [])).map(p => [p.id, p.name]));
+  const skillName = new Map((await db('SELECT id, name FROM skills').catch(() => [])).map(x => [x.id, x.name]));
   const stage = v => stageLabel.get(v) ? { stageLabel: stageLabel.get(v) } : { value: v };
   return (await require('./ruleEngine').listRules(db)).filter(r => r.origin !== 'subject').map(r => ({
     name: r.name, active: r.active, triggers: r.triggers, timer: r.timer, match: r.match, stop: r.stop,
@@ -126,6 +133,7 @@ async function exportRules(db, { tagName, gradeName, stageLabel }) {
           : c.field === 'customField' ? { field: c.field, not: c.not, fieldLabel: fieldLabel.get(Number(c.fieldId)) || null, values: c.values } : c)).filter(c => c.field !== 'customField' || c.fieldLabel),
     actions: r.actions.filter(a => !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagName.get(a.value) || null }
       : a.type === 'sla' ? { type: a.type, value: slaName.get(a.value) || null }
+      : a.type === 'skill' ? { type: a.type, value: skillName.get(a.value) || null }
       : a.type === 'team' ? { type: a.type, value: teamName.get(a.value) || null } : a.type === 'grade' ? { type: a.type, value: gradeName.get(a.value) || null }
         : a.type === 'stage' ? { type: a.type, ...stage(a.value) } : a)).filter(a => a.value !== null),
   }));
@@ -310,6 +318,15 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
   const orgIdOf = new Map((await db('SELECT id, name FROM organizations').catch(() => [])).map(o => [o.name, o.id]));
   const fieldIdOf = new Map((await db('SELECT id, label FROM ticket_fields').catch(() => [])).map(f => [f.label, f.id]));
   const slaIdOf = new Map((await db('SELECT id, name FROM sla_policies').catch(() => [])).map(p => [p.name, p.id]));
+  // v7: skills by name, and those of the subjects (created when missing)
+  const S = require('./skills');
+  for (const n of Array.isArray(data.skills) ? data.skills.slice(0, S.MAX_SKILLS) : []) if (typeof n === 'string' && (await S.createSkill(db, n)).ok) count('skills', 'created');
+  const skillIdOf = new Map((await db('SELECT id, name FROM skills').catch(() => [])).map(x => [x.name, x.id]));
+  if (data.subjectSkills && typeof data.subjectSkills === 'object') {
+    const map = Object.fromEntries(Object.entries(data.subjectSkills).map(([subj, names]) => [subj, (Array.isArray(names) ? names : []).map(n => skillIdOf.get(n)).filter(Boolean)]));
+    const merged = { ...(await S.subjectMap(db)), ...map };
+    if ((await S.saveSubjectMap(db, merged)).ok) count('skills', 'updated');
+  }
   for (const r of Array.isArray(data.rules) ? data.rules.slice(0, engine.MAX_RULES || 100) : []) {
     if (!r || typeof r !== 'object' || !str(r.name, 80)) continue;
     const conditions = (Array.isArray(r.conditions) ? r.conditions : []).map(c => (c?.field === 'tag' ? { ...c, values: (c.values || []).map(n => tagId.get(n)).filter(Boolean) }
@@ -320,6 +337,7 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
     const actions = (Array.isArray(r.actions) ? r.actions : []).filter(a => a && !PERSONAL.includes(a.type)).map(a => (['tagAdd', 'tagRemove'].includes(a.type) ? { type: a.type, value: tagId.get(a.value) }
       : a.type === 'team' ? { type: a.type, value: teamIdOf.get(a.value) } : a.type === 'grade' ? { type: a.type, value: gradeId.get(a.value) }
         : a.type === 'sla' ? { type: a.type, value: slaIdOf.get(a.value) }
+        : a.type === 'skill' ? { type: a.type, value: skillIdOf.get(a.value) }
         : a.type === 'stage' ? { type: a.type, value: a.stageLabel ? stageKeyOf.get(String(a.stageLabel).toLowerCase()) : a.value } : a)).filter(a => a.value !== undefined && a.value !== null);
     const [row] = await db("SELECT id FROM ticket_rules WHERE name = ? AND (origin IS NULL OR origin <> 'subject')", [str(r.name, 80)]);
     const res = await engine.saveRule(db, row?.id || null, { ...r, conditions, actions }, { canGrade: true });

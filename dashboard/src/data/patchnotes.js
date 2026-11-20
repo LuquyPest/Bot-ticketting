@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.1.0',
+    date: 'à venir',
+    title: 'Routage',
+    titleEn: 'Routing',
+    changes: [
+      { type: 'new',  text: 'Compétences et langues du staff (Équipe → Compétences) : un ticket demande des compétences par son sujet, une règle ou à la main ; l\'attribution automatique d\'une équipe ne choisit que parmi ceux qui les ont et préfère la langue du demandeur, sinon toute l\'équipe reste possible', en: 'Skills and languages of the staff (Team → Skills): a ticket asks for skills through its subject, a rule or by hand; a team\'s automatic assignment only picks among those who have them and prefers the requester\'s language, otherwise the whole team stays possible' },
+    ],
+  },
+  {
     version: 'v7.0.0',
     date: 'à venir',
     title: 'Tickets liés',

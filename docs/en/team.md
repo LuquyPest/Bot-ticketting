@@ -59,6 +59,12 @@ A grade can have a **parent**: members of the parent also see what the child gra
 
 Automatic assignment skips members who are **away** or **on holiday**, those who **cannot see** the ticket (grade, roles tied to tags) and those at the cap; if nobody is available, the ticket stays in the team's queue. **Confidential** tickets are never routed. The assignment is noted in the ticket's journal and the person is told as for a manual assignment.
 
+### Skills and languages
+
+**Team → Skills**: the founders create the skills of the space (« Network », « Accounting »…) and say who has which; everyone gives the **languages** they answer in. A ticket **asks for** skills: those of its **subject** (set further down on the same page; a category covers its sub-categories), those a [rule](./automations#automatic-rules) adds (**Skill asked for** action, to put before the **Team** action) and those added on the ticket view (**Reply** permission).
+
+A team that assigns by itself first picks among the members who have **all** the skills asked for, then among them those who **speak the requester's language** (that of their messages, when the bot answers everyone in their own language). If nobody fits, the whole team stays possible, as before. Skills and subjects are part of the [configuration export](./integrations#backing-up-the-configuration); who has which skill stays specific to the space.
+
 Each member finds the tickets of their teams in **My queue → My teams**. The ticket view shows its team and lets you change it (assign permission): giving the ticket to a team that assigns hands it right away to one of its members if nobody has it. The ticket list filters by team or « No team ». Deleting a team leaves its tickets, without a team.
 
 ## Two-factor authentication

@@ -2,6 +2,7 @@
 // queue, and can assign them automatically — in turn (round_robin) or to the member with the
 // fewest open tickets (load). A member is skipped when away or on holiday, when they cannot see
 // the ticket (grade, roles tied to tags) or when they reached the team's cap of open tickets.
+// v7: among them, those with the ticket's skills, then its language (utils/skills.js).
 // Confidential tickets are never routed (founders only).
 const { recordEvent } = require('./audit');
 const { parseJsonField } = require('./jsonField');
@@ -144,7 +145,7 @@ async function pickAssignee(db, team, ticketId) {
             (SELECT MAX(a.assigned_at) FROM ticket_assignees a WHERE a.user_id = u.user_id) AS last_at
      FROM dashboard_users u WHERE u.user_id IN (?) AND u.role IN ('support', 'fondateur')`, [team.members.map(m => m.userId)]);
   const open = Object.fromEntries(team.members.map(m => [m.userId, m.open]));
-  const eligible = [];
+  let eligible = [];
   for (const r of rows.sort((a, b) => String(a.user_id).localeCompare(String(b.user_id)))) {
     if (r.availability === 'away' || Number(r.vacation_mode) === 1) continue;
     if (team.maxOpen && open[r.user_id] >= team.maxOpen) continue;
@@ -152,6 +153,9 @@ async function pickAssignee(db, team, ticketId) {
     eligible.push({ ...r, open: open[r.user_id] || 0 });
   }
   if (!eligible.length) return null;
+  // v7: the members with the skills the ticket asks for, then those who speak its language (utils/skills.js)
+  const [tk] = await db('SELECT id, subject, owner_id FROM tickets WHERE id = ?', [ticketId]).catch(() => []);
+  if (tk) eligible = (await require('./skills').narrow(db, tk, eligible).catch(() => ({ list: eligible }))).list;
   if (team.assignMode === 'load') {
     // Fewest open tickets; on a tie, the one who was given a ticket longest ago
     return eligible.sort((a, b) => a.open - b.open || (new Date(a.last_at || 0) - new Date(b.last_at || 0)))[0];
