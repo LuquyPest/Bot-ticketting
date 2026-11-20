@@ -66,12 +66,19 @@ const shape = a => ({
   id: a.id, typeId: a.type_id, typeName: a.type_name || null, typeIcon: a.type_icon || '', name: a.name, status: a.status, serial: a.serial || '', location: a.location || '',
   ownerContactId: a.owner_contact_id || null, ownerContactName: a.owner_contact_name || null, ownerOrgId: a.owner_org_id || null, ownerOrgName: a.owner_org_name || null,
   fields: parseJsonField(a.fields, {}) || {}, notes: a.notes || '', createdAt: a.created_at, updatedAt: a.updated_at,
+  // v8: warranty, vendor support, licence (seats, expiry, cost; the seats used come with the element)
+  warrantyEndsOn: ymdOf(a.warranty_ends_on), supportEndsOn: ymdOf(a.support_ends_on), licenceExpiresOn: ymdOf(a.licence_expires_on),
+  seats: a.seats == null ? null : Number(a.seats), cost: a.cost == null ? null : Number(a.cost), seatsUsed: a.seats_used == null ? null : Number(a.seats_used),
 });
-const SELECT = `SELECT a.*, t.name AS type_name, t.icon AS type_icon, c.display_name AS owner_contact_name, o.name AS owner_org_name
+function ymdOf(d) { return d instanceof Date ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : d ? String(d).slice(0, 10) : null; }
+const SELECT = `SELECT a.*, t.name AS type_name, t.icon AS type_icon, c.display_name AS owner_contact_name, o.name AS owner_org_name,
+    (SELECT COUNT(*) FROM asset_assignments x WHERE x.licence_id = a.id) AS seats_used
   FROM assets a JOIN asset_types t ON t.id = a.type_id LEFT JOIN contacts c ON c.id = a.owner_contact_id LEFT JOIN organizations o ON o.id = a.owner_org_id`;
 
-async function listAssets(db, { typeId = null, status = null, orgId = null, contactId = null, q = '', limit = 200, offset = 0 } = {}) {
+async function listAssets(db, { typeId = null, status = null, orgId = null, contactId = null, q = '', limit = 200, offset = 0, expiring = false } = {}) {
   const where = [], params = [];
+  // v8: « expire bientôt » — warranty, support or licence ending within 30 days (or over)
+  if (expiring) { const until = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10); where.push("a.status <> 'retired' AND (a.warranty_ends_on <= ? OR a.support_ends_on <= ? OR a.licence_expires_on <= ? OR a.seats < (SELECT COUNT(*) FROM asset_assignments x WHERE x.licence_id = a.id))"); params.push(until, until, until); }
   if (typeId) { where.push('a.type_id = ?'); params.push(Number(typeId)); }
   if (STATUSES.includes(status)) { where.push('a.status = ?'); params.push(status); }
   if (orgId) { where.push('(a.owner_org_id = ? OR a.owner_org_id IN (SELECT id FROM organizations WHERE parent_id = ?))'); params.push(Number(orgId), Number(orgId)); }
@@ -93,6 +100,7 @@ async function getAsset(db, id) {
     ...shape(a),
     relations: [...out.map(r => ({ ...r, direction: 'out' })), ...inc.map(r => ({ ...r, direction: 'in' }))].map(r => ({ id: r.id, name: r.name, typeName: r.type_name, status: r.status, kind: r.kind, direction: r.direction })),
     history: history.map(h => ({ by: h.actor_tag, changes: parseJsonField(h.changes, {}), at: h.created_at })),
+    assignments: a.seats == null ? [] : await require('./assetLifecycle').assignmentsOf(db, id), // v8: licence seats
   };
 }
 
@@ -115,6 +123,10 @@ async function clean(db, input, cur = null) {
     v.owner_org_id = input.ownerOrgId ? Number(input.ownerOrgId) : null;
     if (v.owner_org_id && !(await db('SELECT 1 FROM organizations WHERE id = ?', [v.owner_org_id])).length) return { error: 'Organisation introuvable' };
   }
+  // v8: warranty, support, licence
+  const lc = require('./assetLifecycle').clean(input);
+  if (lc.error) return lc;
+  Object.assign(v, lc.value);
   if (input.fields !== undefined || (cur && v.type_id !== cur.type_id)) {
     const defs = parseJsonField(type.fields, []) || [];
     const given = input.fields && typeof input.fields === 'object' && !Array.isArray(input.fields) ? input.fields : (parseJsonField(cur?.fields, {}) || {});
@@ -132,7 +144,8 @@ async function clean(db, input, cur = null) {
   }
   return { value: v };
 }
-const LABELS = { type_id: 'type', name: 'nom', status: 'statut', serial: 'n° de série', location: 'lieu', notes: 'notes', owner_contact_id: 'contact', owner_org_id: 'organisation', fields: 'champs' };
+const LABELS = { type_id: 'type', name: 'nom', status: 'statut', serial: 'n° de série', location: 'lieu', notes: 'notes', owner_contact_id: 'contact', owner_org_id: 'organisation', fields: 'champs',
+  warranty_ends_on: 'fin de garantie', support_ends_on: 'fin du support', seats: 'sièges', licence_expires_on: 'échéance de licence', cost: 'coût' };
 async function history(db, assetId, actor, changes) {
   await db('INSERT INTO asset_history (asset_id, actor_tag, changes) VALUES (?, ?, ?)', [assetId, String(actor?.username || actor?.tag || 'Système').slice(0, 100), JSON.stringify(changes)]);
 }

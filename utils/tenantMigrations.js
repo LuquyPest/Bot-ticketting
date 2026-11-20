@@ -1947,6 +1947,32 @@ const MIGRATIONS = [
       'ALTER TABLE catalog_services ADD COLUMN IF NOT EXISTS organization_ids JSON DEFAULT NULL',
     ],
   },
+  {
+    version: 104,
+    name: 'Licences et garanties du parc (v8)',
+    statements: [
+      `ALTER TABLE assets ADD COLUMN IF NOT EXISTS warranty_ends_on DATE DEFAULT NULL, ADD COLUMN IF NOT EXISTS support_ends_on DATE DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS seats INT DEFAULT NULL, ADD COLUMN IF NOT EXISTS licence_expires_on DATE DEFAULT NULL, ADD COLUMN IF NOT EXISTS cost DECIMAL(12,2) DEFAULT NULL`,
+      `CREATE TABLE IF NOT EXISTS asset_assignments (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        licence_id  INT NOT NULL,
+        kind        VARCHAR(8) NOT NULL,
+        ref         VARCHAR(32) NOT NULL,
+        assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_asset_assign (licence_id, kind, ref),
+        CONSTRAINT fk_asset_assign_licence FOREIGN KEY (licence_id) REFERENCES assets(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS asset_expiry_alerts (
+        asset_id  INT NOT NULL,
+        kind      VARCHAR(8) NOT NULL,
+        ends_on   DATE NOT NULL,
+        threshold SMALLINT NOT NULL,
+        sent_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (asset_id, kind, ends_on, threshold),
+        CONSTRAINT fk_asset_expiry_asset FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

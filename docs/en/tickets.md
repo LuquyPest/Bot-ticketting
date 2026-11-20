@@ -272,6 +272,12 @@ The list is searched by name, serial number or location, and filtered by type, s
 - **CSV import and export**: columns `type ; nom ; statut ; numero_de_serie ; lieu ; organisation ; contact` (e-mail address), the type's fields by their name, `notes`. An element with the same serial number, else the same type and name, is updated; each faulty line is reported.
 - **Automatic inventory**: no agent installed on the computers; an inventory tool feeds the inventory through the [API v3](./integrations#public-api) (`PUT /assets`, by serial number).
 
+### Licences and warranties
+
+Each element can have an **end of warranty**, an **end of vendor support** and a **cost**. An element with a **number of seats** is a **licence**: it also has an **expiry date**, and **seats are assigned** to it (a contact by their card number, a staff member by their ID, or another element, a computer for instance). The view shows the seats used and free, in red when there are more than the licence has; each assignment is in the history.
+
+The **Expiring soon** filter shows what ends within 30 days (or has already ended) and the exceeded licences. Every morning, a job warns the founders (dashboard notification, and e-mail when the instance e-mail is set) **30 days then 7 days** before a warranty, a support or a licence ends, once per date.
+
 ## Satisfaction survey
 
 When a ticket is closed, the requester gets the **satisfaction survey** (**Settings → Tickets → Satisfaction survey**):

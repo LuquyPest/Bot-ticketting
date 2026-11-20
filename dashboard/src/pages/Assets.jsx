@@ -10,6 +10,16 @@ import { uiLocale } from '../i18n';
 // services…), their types and fields, their relations and history
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden focus:border-primary';
 export const ASSET_STATUS = { in_use: 'En service', in_stock: 'En stock', maintenance: 'En maintenance', retired: 'Retiré' };
+// v8: what ends soon (30 days) or is over the seats
+const soon = d => d && (new Date(`${d}T00:00:00`) - Date.now()) / 864e5 <= 30;
+export function lifecycleBadges(a) {
+  const out = [];
+  if (soon(a.warrantyEndsOn)) out.push(`garantie ${a.warrantyEndsOn}`);
+  if (soon(a.supportEndsOn)) out.push(`support ${a.supportEndsOn}`);
+  if (soon(a.licenceExpiresOn)) out.push(`licence ${a.licenceExpiresOn}`);
+  if (a.seats != null && a.seatsUsed > a.seats) out.push(`${a.seatsUsed}/${a.seats} sièges`);
+  return out;
+}
 export const ASSET_RELATIONS = { depends_on: ['Dépend de', 'Nécessaire à'], installed_on: ['Installé sur', 'Héberge'], part_of: ['Fait partie de', 'Comprend'] };
 const FIELD_TYPES = { text: 'Texte', number: 'Nombre', date: 'Date', choice: 'Choix' };
 
@@ -65,12 +75,14 @@ function TypesEditor({ types, onChange }) {
 
 function AssetForm({ asset, types, ctx, onSaved, onDeleted }) {
   const [a, setA] = useState(() => ({ typeId: asset?.typeId || types[0]?.id || '', name: asset?.name || '', status: asset?.status || 'in_use', serial: asset?.serial || '', location: asset?.location || '',
-    ownerContactId: asset?.ownerContactId || '', ownerOrgId: asset?.ownerOrgId || '', fields: asset?.fields || {}, notes: asset?.notes || '' }));
+    ownerContactId: asset?.ownerContactId || '', ownerOrgId: asset?.ownerOrgId || '', fields: asset?.fields || {}, notes: asset?.notes || '',
+    warrantyEndsOn: asset?.warrantyEndsOn || '', supportEndsOn: asset?.supportEndsOn || '', seats: asset?.seats ?? '', licenceExpiresOn: asset?.licenceExpiresOn || '', cost: asset?.cost ?? '' }));
   const set = (k, v) => setA(x => ({ ...x, [k]: v }));
   const type = types.find(t => t.id === Number(a.typeId));
   const save = async () => {
     try {
-      const body = { ...a, typeId: Number(a.typeId), ownerContactId: a.ownerContactId || null, ownerOrgId: a.ownerOrgId || null };
+      const body = { ...a, typeId: Number(a.typeId), ownerContactId: a.ownerContactId || null, ownerOrgId: a.ownerOrgId || null,
+        warrantyEndsOn: a.warrantyEndsOn || null, supportEndsOn: a.supportEndsOn || null, licenceExpiresOn: a.licenceExpiresOn || null, seats: a.seats === '' ? null : Number(a.seats), cost: a.cost === '' ? null : Number(a.cost) };
       const r = asset ? await api.put(`/assets/${asset.id}`, body) : await api.post('/assets', body);
       toast.success('Élément enregistré'); onSaved(r.data);
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -99,6 +111,14 @@ function AssetForm({ asset, types, ctx, onSaved, onDeleted }) {
           ))}
         </div>
       )}
+      <fieldset className="grid gap-2 sm:grid-cols-3">
+        <legend className="text-[11px] font-semibold text-ink-3 mb-1">Garantie et licence</legend>
+        <label className="text-[11px] text-ink-3">Fin de garantie<input type="date" value={a.warrantyEndsOn} onChange={e => set('warrantyEndsOn', e.target.value)} className={`${INPUT} mt-0.5`} /></label>
+        <label className="text-[11px] text-ink-3">Fin du support éditeur<input type="date" value={a.supportEndsOn} onChange={e => set('supportEndsOn', e.target.value)} className={`${INPUT} mt-0.5`} /></label>
+        <label className="text-[11px] text-ink-3">Coût<input type="number" min="0" step="0.01" value={a.cost} onChange={e => set('cost', e.target.value)} className={`${INPUT} mt-0.5`} /></label>
+        <label className="text-[11px] text-ink-3">Sièges (licence)<input type="number" min="1" value={a.seats} onChange={e => set('seats', e.target.value)} placeholder="vide : pas une licence" className={`${INPUT} mt-0.5`} /></label>
+        <label className="text-[11px] text-ink-3">Échéance de licence<input type="date" value={a.licenceExpiresOn} onChange={e => set('licenceExpiresOn', e.target.value)} className={`${INPUT} mt-0.5`} /></label>
+      </fieldset>
       <textarea value={a.notes} onChange={e => set('notes', e.target.value)} rows={2} maxLength={5000} placeholder="Notes" aria-label="Notes de l'élément" className={INPUT} />
       <div className="flex gap-2">
         <button type="button" onClick={save} disabled={!a.name.trim() || !a.typeId} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50">{asset ? 'Enregistrer' : 'Créer l\'élément'}</button>
@@ -112,15 +132,40 @@ function Detail({ id, types, ctx, onChanged }) {
   const navigate = useNavigate();
   const [a, setA] = useState(null);
   const [rel, setRel] = useState({ to: '', kind: 'depends_on' });
+  const [seat, setSeat] = useState({ kind: 'contact', ref: '' });
   useEffect(() => { api.get(`/assets/${id}`).then(r => setA(r.data)).catch(() => setA(false)); }, [id]);
   if (a === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;
   if (!a) return <p className="text-sm text-ink-4">Élément introuvable.</p>;
   const relate = async () => { try { setA((await api.post(`/assets/${id}/relations`, { to: Number(rel.to), kind: rel.kind })).data); setRel(r => ({ ...r, to: '' })); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
   const unrelate = async r => { const [from, to] = r.direction === 'out' ? [id, r.id] : [r.id, id]; try { await api.delete(`/assets/${from}/relations/${to}/${r.kind}`); setA((await api.get(`/assets/${id}`)).data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
+  const assign = async () => {
+    try { const { data } = await api.post(`/assets/${id}/assignments`, seat); setA(data); setSeat(x => ({ ...x, ref: '' })); if (data.over) toast.error('Plus de sièges attribués que la licence n\'en compte'); else toast.success('Siège attribué'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const unassign = async x => { try { setA((await api.delete(`/assets/${id}/assignments/${x.id}`)).data); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
   const del = async () => { if (!window.confirm(`Supprimer « ${a.name} » ?`)) return; try { await api.delete(`/assets/${id}`); onChanged(); navigate('/parc'); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); } };
   return (
     <div className="space-y-4">
       <AssetForm key={a.updatedAt} asset={a} types={types} ctx={ctx} onSaved={d => { setA(d); onChanged(); }} onDeleted={del} />
+      {a.seats != null && (
+        <section className="space-y-1.5" aria-label="Sièges de la licence">
+          <p className={`text-[11px] font-semibold ${a.assignments.length > a.seats ? 'text-red-400' : 'text-ink-3'}`}>{`Sièges : ${a.assignments.length} utilisé(s) sur ${a.seats}${a.assignments.length > a.seats ? ' — dépassé' : ` · ${a.seats - a.assignments.length} libre(s)`}`}</p>
+          <ul className="space-y-0.5">
+            {a.assignments.map(x => (
+              <li key={x.id} className="flex items-center gap-1.5 text-xs">
+                <span className="text-ink-4 w-16 shrink-0">{{ contact: 'Contact', staff: 'Staff', asset: 'Élément' }[x.kind]}</span>
+                {x.kind === 'asset' ? <Link to={`/parc/${x.ref}`} className="text-ink-1 hover:underline">{x.label}</Link> : <span className="text-ink-1" translate="no">{x.label}</span>}
+                <button type="button" onClick={() => unassign(x)} aria-label={`Retirer le siège de « ${x.label} »`} className="ml-auto text-ink-4 hover:text-red-400"><X size={11} /></button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-1.5">
+            <select value={seat.kind} onChange={e => setSeat(x => ({ ...x, kind: e.target.value }))} aria-label="Attribuer à" className={`${INPUT} w-32!`}><option value="contact">Contact (n°)</option><option value="staff">Staff (identifiant)</option><option value="asset">Élément (n°)</option></select>
+            <input value={seat.ref} onChange={e => setSeat(x => ({ ...x, ref: e.target.value.trim() }))} placeholder="N° ou identifiant" aria-label="À qui attribuer le siège" className={`${INPUT} w-36!`} />
+            <button type="button" disabled={!seat.ref} onClick={assign} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Attribuer un siège</button>
+          </div>
+        </section>
+      )}
       <section className="space-y-1.5">
         <p className="text-[11px] font-semibold text-ink-3">Relations</p>
         {a.relations.length === 0 && <p className="text-xs text-ink-4">Aucune relation.</p>}
@@ -174,7 +219,7 @@ export default function Assets() {
   const [adding, setAdding] = useState(false);
   const [showTypes, setShowTypes] = useState(false);
   const [csv, setCsv] = useState('');
-  const load = (f = filters) => api.get('/assets', { params: { q: f.q || undefined, type: f.type || undefined, status: f.status || undefined } }).then(r => setList(r.data)).catch(() => setList({ total: 0, assets: [] }));
+  const load = (f = filters) => api.get('/assets', { params: { q: f.q || undefined, type: f.type || undefined, status: f.status || undefined, expiring: f.expiring ? '1' : undefined } }).then(r => setList(r.data)).catch(() => setList({ total: 0, assets: [] }));
   const loadTypes = () => api.get('/assets/types').then(r => setTypes(r.data.types || [])).catch(() => {});
   useEffect(() => {
     api.get('/assets/settings').then(r => { setEnabled(r.data.enabled); if (r.data.enabled) { load(); loadTypes(); } }).catch(() => setEnabled(false));
@@ -212,6 +257,7 @@ export default function Assets() {
           <select value={filters.type} onChange={e => setFilter('type', e.target.value)} aria-label="Filtrer par type" className={INPUT}><option value="">Tous les types</option>{types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
           <select value={filters.status} onChange={e => setFilter('status', e.target.value)} aria-label="Filtrer par statut" className={INPUT}><option value="">Tous les statuts</option>{Object.entries(ASSET_STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
         </div>
+        <label className="flex items-center gap-1.5 text-xs text-ink-2"><input type="checkbox" checked={!!filters.expiring} onChange={e => setFilter('expiring', e.target.checked)} className="accent-primary" />Expire bientôt (30 jours) ou sièges dépassés</label>
         {types.length > 0 && <button type="button" onClick={() => { setAdding(true); navigate('/parc'); }} className="px-3 py-2 rounded-lg text-xs font-semibold border border-overlay/8 text-ink-2 hover:text-ink-1 inline-flex items-center gap-1.5"><Plus size={13} /> Nouvel élément</button>}
         {!types.length && <p className="text-xs text-ink-4">Crée d'abord un type d'élément (Types).</p>}
         {!list ? <Loader2 size={16} className="animate-spin text-ink-4" /> : (
@@ -222,6 +268,7 @@ export default function Assets() {
                 <li key={a.id}><Link to={`/parc/${a.id}`} onClick={() => setAdding(false)} className={`block rounded-xl border px-3 py-2 ${String(a.id) === id ? 'border-primary/40 bg-primary/5' : 'border-overlay/6 bg-surface-card hover:border-overlay/12'}`}>
                   <p className="text-sm text-ink-1 truncate">{`${a.typeIcon ? `${a.typeIcon} ` : ''}${a.name}`} <span className="text-ink-4 text-[11px] font-mono">{`#${a.id}`}</span></p>
                   <p className="text-[11px] text-ink-4">{[a.typeName, ASSET_STATUS[a.status], a.ownerOrgName, a.location].filter(Boolean).join(' · ')}</p>
+                  {lifecycleBadges(a).length > 0 && <p className="text-[11px] text-amber-400">{lifecycleBadges(a).join(' · ')}</p>}
                 </Link></li>
               ))}
             </ul>

@@ -79,6 +79,7 @@ const ACTIONS = {
   signature_request:        ['Signature demandée', 'tickets'],
   signature_signed:         ['Document signé', 'tickets'],
   signature_declined:       ['Signature refusée', 'tickets'],
+  asset_expiry_alert:       ['Échéance proche dans le parc', 'config'],
   shared_planning:          ['Planning commun créé', 'config'],
   space_export:             ['Sauvegarde de l\'espace téléchargée', 'config'],
   space_restore:            ['Espace restauré depuis une sauvegarde', 'config'],
