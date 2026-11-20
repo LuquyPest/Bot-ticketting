@@ -109,6 +109,28 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
 });
 
 // GET/PUT /api/profile/whats-new — last patch notes version seen (« Nouveautés » card)
+// Mobile number for SMS notifications (v7, utils/sms.js): saved, then confirmed by a code
+router.get('/phone', requireAuth, async (req, res) => {
+  try { const sms = require('../../utils/sms'); res.json({ ...(await sms.phoneOf(req.session.user.id)), gateway: !!(await sms.settings()).provider }); } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.post('/phone', requireAuth, async (req, res) => {
+  try {
+    const r = await require('../../utils/sms').startVerification(req.session.user.id, req.body?.phone);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.post('/phone/confirm', requireAuth, async (req, res) => {
+  try {
+    const r = await require('../../utils/sms').confirmVerification(req.session.user.id, String(req.body?.code || ''));
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json(await require('../../utils/sms').phoneOf(req.session.user.id));
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.delete('/phone', requireAuth, async (req, res) => {
+  try { await require('../../utils/sms').removePhone(req.session.user.id); res.json({ phone: null, verified: false }); } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 router.get('/whats-new', requireAuth, async (req, res) => {
   const [row] = await globalQuery('SELECT seen_version FROM user_prefs WHERE user_id = ?', [req.session.user.id]);
   res.json({ seen: row?.seen_version || null });

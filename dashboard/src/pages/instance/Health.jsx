@@ -3,6 +3,7 @@ import { uiLocale } from '../../i18n';
 import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertTriangle, ArrowUpCircle, ExternalLink, HardDriveDownload } from 'lucide-react';
 import api from '../../api';
 import InstanceEmailCard from '../../components/InstanceEmailCard';
+import SmsGatewayCard from '../../components/SmsGatewayCard';
 import toast from 'react-hot-toast';
 
 const card = 'glass-dark rounded-2xl border border-overlay/8 p-5';
@@ -333,6 +334,7 @@ export default function Health() {
       <MetricsCard />
 
       <InstanceEmailCard />
+      <SmsGatewayCard />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div className={card}>

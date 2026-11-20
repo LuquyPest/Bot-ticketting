@@ -77,11 +77,13 @@ The check runs every minute; each due time opens one ticket only. These tickets 
 |---|---|
 | **Events** | New ticket · requester's message · staff reply · internal note · assignment · status change · closing · SLA objective breached |
 | **Recipients** | The assigned person (for an assignment) · the assigned people · the watchers · the ticket's team · the founders · fixed e-mail addresses (an on-call address, a list) |
-| **Channels** | Dashboard and browser (live notification and push) · Discord DM · e-mail (the account's verified address, through the instance e-mail) |
+| **Channels** | Dashboard and browser (live notification and push) · Discord DM · e-mail (the account's verified address, through the instance e-mail) · **SMS** (the person's confirmed number, see below) |
 
 By default it is what was sent before: watchers are told of messages, notes and closings in the dashboard; the assigned person in the dashboard and by Discord DM. Nobody is told of a ticket they cannot see, nor of their own action; a confidential ticket gives only its number outside the space. « SLA objective breached » goes out once per ticket and objective.
 
 Everyone sets in **Profile → What notifies me** what reaches them, channel by channel, except the notifications **imposed** by the space.
+
+**By SMS**: the owner of the instance sets the gateway in **Instance → Health → SMS** — **Twilio** (Account SID, token, sending number), **OVHcloud** (application keys, SMS account) or an **HTTP gateway** receiving `POST { "to": "+33…", "text": "…" }` as JSON (https, public address); a test SMS checks the setting. Each person then gives their number in international format in **Profile → What notifies me** and confirms it with the code received (10 minutes, 5 tries): only a confirmed number gets SMS. The SMS says the event and the ticket number, never the content of a confidential ticket. A space sends at most 200 SMS a day (adjustable). SMS are billed by the provider.
 
 ### Messages sent to the requester
 

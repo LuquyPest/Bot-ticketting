@@ -229,6 +229,8 @@ async function ensureGlobalTables(config) {
       `UPDATE guilds SET discord_guild_id = guild_id WHERE discord = 1 AND discord_guild_id IS NULL AND guild_id <> '999999999999999999'`,
       // Owner of the instance without Discord (v4 PR 6, /installation)
       `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS instance_owner TINYINT(1) NOT NULL DEFAULT 0`,
+      // Mobile number for SMS notifications (v7, utils/sms.js), confirmed by a code
+      `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS phone VARCHAR(16) DEFAULT NULL, ADD COLUMN IF NOT EXISTS phone_verified TINYINT(1) NOT NULL DEFAULT 0`,
       // Ways to sign in to an account: discord (subject = Discord ID), later oidc:<provider>
       `CREATE TABLE IF NOT EXISTS account_identities (
         provider     VARCHAR(40) NOT NULL,

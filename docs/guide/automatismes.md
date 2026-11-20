@@ -77,11 +77,13 @@ La vérification tourne chaque minute ; chaque échéance n'ouvre qu'un ticket. 
 |---|---|
 | **Événements** | Nouveau ticket · message du demandeur · réponse du staff · note interne · attribution · changement de statut · fermeture · objectif SLA dépassé |
 | **Destinataires** | La personne attribuée (pour une attribution) · les personnes attribuées · les observateurs · l'équipe du ticket · les fondateurs · des adresses e-mail fixes (une astreinte, une liste) |
-| **Canaux** | Dashboard et navigateur (notification en direct et push) · MP Discord · e-mail (l'adresse vérifiée du compte, par l'e-mail de l'instance) |
+| **Canaux** | Dashboard et navigateur (notification en direct et push) · MP Discord · e-mail (l'adresse vérifiée du compte, par l'e-mail de l'instance) · **SMS** (le numéro confirmé de la personne, voir ci-dessous) |
 
 Par défaut, c'est ce qui partait avant : les observateurs sont prévenus des messages, notes et fermetures dans le dashboard ; la personne attribuée dans le dashboard et par MP Discord. Personne n'est prévenu d'un ticket qu'il ne voit pas, ni de sa propre action ; un ticket confidentiel ne donne que son numéro hors de l'espace. « Objectif SLA dépassé » ne part qu'une fois par ticket et par objectif.
 
 Chacun règle dans **Profil → Ce qui me prévient** ce qui l'atteint, canal par canal, sauf les notifications **imposées** par l'espace.
+
+**Par SMS** : le propriétaire de l'instance règle la passerelle dans **Instance → Santé → SMS** — **Twilio** (Account SID, jeton, numéro d'envoi), **OVHcloud** (clés d'application, compte SMS) ou une **passerelle HTTP** qui reçoit `POST { "to": "+33…", "text": "…" }` en JSON (https, adresse publique) ; un SMS de test vérifie le réglage. Chacun indique ensuite son numéro au format international dans **Profil → Ce qui me prévient** et le confirme avec le code reçu (10 minutes, 5 essais) : seul un numéro confirmé reçoit des SMS. Le SMS dit l'événement et le numéro du ticket, jamais le contenu d'un ticket confidentiel. Un espace envoie au plus 200 SMS par jour (réglable). Les SMS sont facturés par le fournisseur.
 
 ### Les messages envoyés au demandeur
 

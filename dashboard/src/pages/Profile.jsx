@@ -11,6 +11,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import usePushNotifications from '../hooks/usePushNotifications';
 import NotificationPrefs from '../components/NotificationPrefs';
+import PhoneSettings from '../components/PhoneSettings';
 import RecoveryCodes from '../components/RecoveryCodes';
 import LoginMethods from '../components/LoginMethods';
 import EmailSignature from '../components/EmailSignature';
@@ -775,6 +776,7 @@ export default function Profile() {
       {/* ── What the space sends me (v5.2) ─────────────────────────────────── */}
       <Section title="Ce qui me prévient">
         <NotificationPrefs />
+        <div className="mt-4"><PhoneSettings /></div>
       </Section>
 
       {/* ── Sessions actives ──────────────────────────────────────────────── */}
