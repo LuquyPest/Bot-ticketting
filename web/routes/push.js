@@ -127,14 +127,4 @@ async function sendPushToGuild(guildId, payload, onlyUserId = null) {
 
 module.exports = router;
 module.exports.sendPushToGuild = sendPushToGuild;
-module.exports.sendPushToUser = async (guildId, userId, payload) => {
-  await sendPushToGuild(guildId, payload, userId);
-  // The mobile app too (v7, utils/mobilePush.js), when the person sees the ticket
-  try {
-    const db = getTenantDb(guildId);
-    const [t] = payload.ticketId ? await db('SELECT id, visibility_grade_id FROM tickets WHERE id = ?', [payload.ticketId]).catch(() => []) : [];
-    if (payload.ticketId && !(await canUserSeeTicket(db, userId, t || null).catch(() => false))) return;
-    const base = String(require('../../utils/config').config.webServerBaseUrl || '').replace(/\/$/, '');
-    await require('../../utils/mobilePush').sendToUser(userId, { title: payload.title || 'Datick', body: payload.body || '', url: payload.ticketId && base ? `${base}/tickets/${payload.ticketId}` : null });
-  } catch (err) { console.error('mobile push:', err.message); }
-};
+module.exports.sendPushToUser = (guildId, userId, payload) => sendPushToGuild(guildId, payload, userId);

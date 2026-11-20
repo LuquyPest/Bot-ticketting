@@ -229,16 +229,6 @@ async function ensureGlobalTables(config) {
       `UPDATE guilds SET discord_guild_id = guild_id WHERE discord = 1 AND discord_guild_id IS NULL AND guild_id <> '999999999999999999'`,
       // Owner of the instance without Discord (v4 PR 6, /installation)
       `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS instance_owner TINYINT(1) NOT NULL DEFAULT 0`,
-      // Devices of the mobile app (v7, utils/mobilePush.js): FCM token, sealed
-      `CREATE TABLE IF NOT EXISTS mobile_push_tokens (
-        token_hash   CHAR(64) PRIMARY KEY,
-        token        TEXT NOT NULL,
-        user_id      VARCHAR(32) NOT NULL,
-        platform     VARCHAR(8) NOT NULL,
-        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_mpt_user (user_id)
-      )`,
       // Origins of the extensions' panels, the only ones the dashboard frames (v7, utils/extensions.js)
       `CREATE TABLE IF NOT EXISTS extension_frames (
         guild_id VARCHAR(32) NOT NULL,
