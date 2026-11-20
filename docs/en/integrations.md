@@ -106,6 +106,8 @@ An e-mail received this way follows exactly the path of one read from the mailbo
 
 **Formatting and signatures**: replies leave in **HTML**, with a text version next to it: bold, italic, lists, quotes, code and links written as in a message (`**bold**`, `- item`, `[text](https://…)`). They are shown in the space's colours (name, logo and colour of the [member space](./member-space#in-the-server-s-colours)), unless **Format in the space's colours** is unticked. Under each staff reply come the **person's signature** (Profile → E-mail signature, per space, never under an anonymous reply), then the **space's signature** (set here). No HTML written by anyone is kept as is: only these marks become formatting, and only `https://` and `mailto:` links are clickable.
 
+**E-mail template** (under the same box, founders and the **Settings** permission): a **logo** (https address) and a **colour** of the e-mails' own, else those of the member space; a **header** above the message (hours, warning) and a **footer** (company name, legal notice, links), in markdown. The **preview** shows an example e-mail while typing. It applies to the staff's replies and to the automatic messages sent by e-mail. Emptying everything goes back to the member space's template.
+
 **Filtering** (*Filtering of received e-mails*) — before an e-mail becomes a ticket:
 
 | Rule | Effect |

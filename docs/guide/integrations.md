@@ -106,6 +106,8 @@ Un e-mail reçu ainsi suit exactement le même chemin qu'un e-mail relevé : fil
 
 **Mise en forme et signatures** : les réponses partent en **HTML**, avec une version texte à côté : gras, italique, listes, citations, code et liens écrits comme dans un message (`**gras**`, `- élément`, `[texte](https://…)`). Elles sont présentées aux couleurs de l'espace (nom, logo et couleur de l'[espace membre](./espace-membre#aux-couleurs-du-serveur)), sauf si **Mettre en forme aux couleurs de l'espace** est décoché. Sous chaque réponse du staff viennent la **signature de la personne** (Profil → Signature des e-mails, propre à chaque espace, jamais sous une réponse anonyme), puis la **signature de l'espace** (réglée ici). Aucun HTML écrit par quelqu'un n'est repris tel quel : seules ces marques deviennent de la mise en forme, et seuls les liens `https://` et `mailto:` sont cliquables.
 
+**Modèle des e-mails** (sous la même case, fondateurs et permission **Paramètres**) : un **logo** (adresse https) et une **couleur** propres aux e-mails, sinon ceux de l'espace membre ; un **en-tête** au-dessus du message (horaires, avertissement) et un **pied de page** (raison sociale, mentions, liens), en markdown. L'**aperçu** montre un e-mail d'exemple pendant qu'on écrit. Il s'applique aux réponses du staff et aux messages automatiques envoyés par e-mail. Tout vider revient au modèle de l'espace membre.
+
 **Filtrage** (*Filtrage des e-mails reçus*) — avant qu'un e-mail devienne un ticket :
 
 | Règle | Effet |

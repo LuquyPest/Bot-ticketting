@@ -77,7 +77,8 @@ function markdownToText(md) {
     .replace(/<t:(\d+)(?::\w)?>/g, (m, t) => dateOf(t));
 }
 
-// brand: { name, logo, color, footer } — logo only an https URL, colour only #rrggbb
+// brand: { name, logo, color, header, footer } — logo only an https URL, colour only #rrggbb;
+// header and footer in markdown (escaped, then bold and links)
 function wrapHtml(bodyHtml, brand = {}) {
   const color = COLOR_RE.test(brand.color || '') ? brand.color : '#5865f2';
   const logo = /^https:\/\/[^\s"'<>]+$/.test(brand.logo || '') ? brand.logo : null;
@@ -86,8 +87,9 @@ function wrapHtml(bodyHtml, brand = {}) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f8;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;border-top:4px solid ${color};overflow:hidden">
 <tr><td style="padding:18px 24px 6px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;font-weight:700;color:#1f2330">${logo ? `<img src="${escapeHtml(logo)}" alt="" height="28" style="height:28px;vertical-align:middle;border-radius:6px;margin-right:8px">` : ''}${name}</td></tr>
+${brand.header ? `<tr><td style="padding:8px 24px 0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:13px;line-height:1.5;color:#5d6478">${markdownToHtml(brand.header)}</td></tr>` : ''}
 <tr><td style="padding:10px 24px 18px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;line-height:1.55;color:#1f2330">${bodyHtml}</td></tr>
-${brand.footer ? `<tr><td style="padding:12px 24px 18px;border-top:1px solid #eceef3;font-family:system-ui,sans-serif;font-size:12px;color:#7a8194">${escapeHtml(brand.footer)}</td></tr>` : ''}
+${brand.footer ? `<tr><td style="padding:12px 24px 18px;border-top:1px solid #eceef3;font-family:system-ui,sans-serif;font-size:12px;color:#7a8194">${markdownToHtml(brand.footer)}</td></tr>` : ''}
 </table></td></tr></table></body></html>`;
 }
 

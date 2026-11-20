@@ -1762,6 +1762,11 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 95,
+    name: 'Modèle des e-mails de l\'espace (v7)',
+    statements: [`ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS email_template TEXT DEFAULT NULL`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

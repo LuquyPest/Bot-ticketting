@@ -172,6 +172,7 @@ const ACTIONS = {
   release_create:           ['Mise en production créée', 'config'],
   cab_members:              ['Membres du comité des changements', 'config'],
   status_page:              ['Page de statut réglée', 'config'],
+  email_template:           ['Modèle des e-mails modifié', 'config'],
   status_component:         ['État d\'un composant de la page de statut', 'config'],
   cab_meeting:              ['Réunion du comité des changements', 'config'],
   cab_decision:             ['Décision du comité des changements', 'tickets'],

@@ -281,7 +281,10 @@ async function emailLook(db, guildId, s, sender) {
   const [cfg] = await db('SELECT portal_color, portal_logo FROM guild_config WHERE id = 1').catch(() => []);
   const { globalQuery } = require('./globalDb');
   const [g] = await globalQuery('SELECT guild_name FROM guilds WHERE guild_id = ?', [guildId]).catch(() => []);
-  return { signatures, brand: { name: s.display_name || g?.guild_name || 'Support', logo: cfg?.portal_logo, color: cfg?.portal_color, footer: require('./i18n').t('email.replyFooter') } };
+  const brand = { name: s.display_name || g?.guild_name || 'Support', logo: cfg?.portal_logo, color: cfg?.portal_color, footer: require('./i18n').t('email.replyFooter') };
+  // v7: the space's e-mail template (logo, colour, header, footer)
+  const tpl = await require('./emailTemplate').getTemplate(db).catch(() => null);
+  return { signatures, brand: tpl ? require('./emailTemplate').apply(brand, tpl) : brand };
 }
 
 async function sendToEmailOwner(guildId, ownerId, build, ticketId = null, opts = {}) {
