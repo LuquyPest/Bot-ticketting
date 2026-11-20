@@ -95,9 +95,12 @@ async function receive({ db, client, guildId, sourceId, secret, payload }) {
   const a = Buffer.from(String(secret || '')), b = Buffer.from(String(src?.secret || ''));
   if (!src || !Number(src.active) || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { error: 'Inconnu', status: 404 };
   await db('UPDATE monitoring_sources SET last_at = NOW() WHERE id = ?', [src.id]);
-  const out = { opened: 0, updated: 0, resolved: 0 };
+  return processAlerts({ db, client, guildId, src, alerts: parse(src.kind, payload) });
+}
+async function processAlerts({ db, client, guildId, src, alerts }) {
+  const out = { opened: 0, updated: 0, resolved: 0, ticketIds: [] };
   const tag = `Supervision · ${src.name}`;
-  for (const alert of parse(src.kind, payload)) {
+  for (const alert of alerts) {
     const [st] = await db("SELECT a.*, t.status AS ticket_status FROM monitoring_alerts a LEFT JOIN tickets t ON t.id = a.ticket_id WHERE a.source_id = ? AND a.alert_key = ?", [src.id, alert.key]);
     const open = st && st.ticket_status === 'open';
     if (alert.firing) {
@@ -109,6 +112,7 @@ async function receive({ db, client, guildId, sourceId, secret, payload }) {
       }
       const ticketId = await openTicket({ db, client, guildId, src, alert });
       if (!ticketId) continue;
+      out.ticketIds.push(ticketId);
       await db(`INSERT INTO monitoring_alerts (source_id, alert_key, ticket_id, state, last_note_at) VALUES (?, ?, ?, 'firing', NOW())
         ON DUPLICATE KEY UPDATE ticket_id = VALUES(ticket_id), state = 'firing', last_at = NOW(), last_note_at = NOW()`, [src.id, alert.key, ticketId]);
       out.opened++;
@@ -125,4 +129,17 @@ async function receive({ db, client, guildId, sourceId, secret, payload }) {
   return out;
 }
 
-module.exports = { KINDS, KIND_LABELS, listSources, saveSource, deleteSource, parse, receive };
+// « Tester » (v8): a test alert that fires, then ends — the whole path, ticket included
+async function testSource({ db, client, guildId, id }) {
+  const [src] = await db('SELECT * FROM monitoring_sources WHERE id = ?', [id]);
+  if (!src) return { error: 'Source introuvable', status: 404 };
+  const key = `test:${Date.now()}`;
+  const alert = { key, title: 'Alerte de test', text: 'Envoyée par le bouton « Tester » du dashboard.', severity: 'test' };
+  const fired = await processAlerts({ db, client, guildId, src, alerts: [{ ...alert, firing: true }] });
+  const ended = await processAlerts({ db, client, guildId, src, alerts: [{ ...alert, firing: false }] });
+  await db('DELETE FROM monitoring_alerts WHERE source_id = ? AND alert_key = ?', [src.id, key]).catch(() => null);
+  if (!fired.opened) return { error: 'Le ticket de test n\'a pas pu être ouvert' };
+  return { ok: true, ticketId: fired.ticketIds[0], closed: !!Number(src.auto_close) && ended.resolved > 0 };
+}
+
+module.exports = { KINDS, KIND_LABELS, listSources, saveSource, deleteSource, parse, receive, testSource };

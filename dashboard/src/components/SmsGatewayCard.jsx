@@ -47,8 +47,8 @@ export default function SmsGatewayCard() {
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={save} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white">Enregistrer</button>
         {s.provider && <>
-          <input value={to} onChange={e => setTo(e.target.value)} placeholder="+33612345678" aria-label="Numéro pour le SMS de test" className={`${INPUT} w-40!`} />
-          <button type="button" disabled={!to} onClick={test} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Envoyer un SMS de test</button>
+          <input value={to} onChange={e => setTo(e.target.value)} placeholder="+33612345678 (vide : ton numéro)" aria-label="Numéro pour le SMS de test" className={`${INPUT} w-40!`} />
+          <button type="button" onClick={test} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Envoyer un SMS de test</button>
         </>}
       </div>
     </section>

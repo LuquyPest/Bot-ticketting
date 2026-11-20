@@ -44,6 +44,21 @@ This diagnostic does not replace a real try. After a major update or a change on
 5. **Closing** → transcript in the log channel, rating request to the member, channel deleted or archived.
 6. **Commands** `/ticket` and `/close` in a ticket.
 
+## Checking the connected services
+
+Each third-party service has a button that makes a **real call** with the saved keys and says plainly what is wrong (token refused, missing rights, project not found, service silent):
+
+| Service | Where | What the test does |
+|---|---|---|
+| HubSpot, Salesforce | Settings → Integrations → CRM → **Test** | Reads the contacts |
+| GitHub, GitLab, Jira | Settings → Integrations → Jira, GitHub and GitLab → **Test** | Reads the repository or project; for Jira, the account and the issue type |
+| Monitoring | Settings → Integrations → Monitoring → **Send a test alert** | Opens a « Alerte de test » ticket then closes it (or adds a note), like a real alert |
+| Extensions | Settings → Integrations → Extensions → **Test the webhook** | Sends a signed `ping` event and shows the answer |
+| SMS | Instance → Health → SMS → **Send a test SMS** | Number left empty: your own verified number |
+| SAML | Instance → Sign-in → SAML 2.0 → **Check the settings**, **Test sign-in** | Reads the certificate (validity) and reaches the provider's address; the test sign-in shows what the provider sends back, without opening a session |
+
+Ten tests at most per service every 10 minutes. After connecting a service with a real account, also try it for real: an issue created from a ticket and closed in the tracker (the note must appear), a CRM card on a ticket from a known customer, an alert from your monitoring tool, a SAML sign-in from an account of the allowed group.
+
 ## Dashboard
 
 **I see neither the Instance section nor « Invite the bot »**

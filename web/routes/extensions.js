@@ -35,4 +35,18 @@ router.delete('/:id', founders, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST …/test — « Tester » (v8): a real call with the saved keys, at most 10 every 10 minutes
+const testBurst = async (req, res, key) => {
+  if (await require('../../utils/rateLimit').allowBurst(`test:${key}:${req.guildId}`, 10, 10 * 60 * 1000)) return true;
+  res.status(429).json({ error: 'Dix essais au plus toutes les 10 minutes' });
+  return false;
+};
+router.post('/:id/test', founders, async (req, res, next) => {
+  try {
+    if (!(await testBurst(req, res, 'extension'))) return;
+    const r = await X.ping(req.guildDb, parseInt(req.params.id) || 0);
+    res.status(r.error ? r.status || 400 : 200).json(r);
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

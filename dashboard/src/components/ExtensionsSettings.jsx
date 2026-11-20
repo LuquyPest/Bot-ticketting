@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Puzzle, Trash2 } from 'lucide-react';
 import api from '../api';
+import TestButton from './TestButton';
 import toast from 'react-hot-toast';
 
 // Paramètres → Intégrations → Extensions (v7, utils/extensions.js): founders
@@ -30,6 +31,7 @@ export default function ExtensionsSettings() {
           <li key={e.id} className="rounded-xl border border-overlay/8 p-2.5 text-xs flex flex-wrap items-center gap-2">
             <span className="font-medium text-ink-1" translate="no">{`${e.name}${e.version ? ` ${e.version}` : ''}`}</span>
             <span className="text-ink-4">{[e.panel && 'panneau', e.webhook && `webhook (${e.webhook.events.join(', ')})`, e.permissions.length && `API : ${e.permissions.join(', ')}`].filter(Boolean).join(' · ')}</span>
+            {e.webhook && <TestButton url={`/extensions/${e.id}/test`} label="Tester le webhook" />}
             <button type="button" onClick={() => act(api.patch(`/extensions/${e.id}`, { active: !e.active }))} className="ml-auto text-ink-3 hover:text-ink-1 underline">{e.active ? 'Couper' : 'Activer'}</button>
             <button type="button" onClick={() => window.confirm(`Supprimer l'extension « ${e.name} » ? Sa clé API cesse aussitôt de marcher.`) && act(api.delete(`/extensions/${e.id}`))} aria-label={`Supprimer l'extension « ${e.name} »`} className="text-ink-4 hover:text-red-400"><Trash2 size={12} /></button>
           </li>

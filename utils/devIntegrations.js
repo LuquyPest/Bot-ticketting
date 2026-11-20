@@ -165,4 +165,28 @@ async function webhook(db, provider, secret, headers, rawBody) {
   return { updated: rows.length };
 }
 
-module.exports = { PROVIDERS, LABELS, settings, saveSettings, linksOf, create, link, unlink, webhook };
+// « Tester » (v8): reads the project with the saved token → { ok, detail } or { error }
+async function test(db, provider) {
+  if (!PROVIDERS.includes(provider)) return { error: 'Outil inconnu', status: 404 };
+  const s = (await raw(db))[provider];
+  if (!s?.token) return { error: 'Aucun jeton enregistré' };
+  const { explain } = require('./crm');
+  try {
+    if (provider === 'github') {
+      const r = await call(`${githubBase()}/repos/${s.repo}`, { headers: ghHeaders(s) });
+      if (r?.has_issues === false) return { error: `${r.full_name} : les issues sont désactivées sur ce dépôt` };
+      return { ok: true, detail: `GitHub : dépôt ${r?.full_name || s.repo} lisible${r?.permissions && !r.permissions.push && !r.permissions.triage ? ' (le jeton ne pourra peut-être pas créer d\'issue)' : ''}.` };
+    }
+    if (provider === 'gitlab') {
+      const r = await call(`${s.baseUrl}/api/v4/projects/${glProject(s)}`, { headers: glHeaders(s) });
+      return { ok: true, detail: `GitLab : projet ${r?.path_with_namespace || s.project} lisible.` };
+    }
+    const me = await call(`${s.baseUrl}/rest/api/2/myself`, { headers: jiraHeaders(s) });
+    const pr = await call(`${s.baseUrl}/rest/api/2/project/${encodeURIComponent(s.project)}`, { headers: jiraHeaders(s) });
+    const types = (pr?.issueTypes || []).map(t => t.name);
+    if (types.length && !types.includes(s.issueType || 'Task')) return { error: `Jira : le type « ${s.issueType || 'Task'} » n'existe pas dans ${s.project} (${types.slice(0, 8).join(', ')})` };
+    return { ok: true, detail: `Jira : connecté en tant que ${me?.displayName || s.email}, projet ${pr?.name || s.project}.` };
+  } catch (err) { return { error: explain(err) }; }
+}
+
+module.exports = { test, PROVIDERS, LABELS, settings, saveSettings, linksOf, create, link, unlink, webhook };

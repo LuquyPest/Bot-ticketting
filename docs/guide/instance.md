@@ -33,7 +33,7 @@ Dans le portail Discord, onglet *Bot*, décoche **Public Bot** : sinon n'importe
 | **Vue d'ensemble** | Espaces, tickets ouverts, tickets par jour sur 30 jours, staff, erreurs des dernières 24 heures, tableau par espace |
 | **Espaces** | Créer, relier à Discord ou délier, suspendre, réactiver, mettre en maintenance, supprimer (sa base est effacée, le bot quitte le serveur Discord relié) ; nommer ou retirer des fondateurs |
 | **Connexion** | Les [moyens de connexion](#moyens-de-connexion) du dashboard : Discord, Google, Microsoft, OpenID Connect, annuaire LDAP / AD |
-| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base, **serveurs Discord** (diagnostic de chacun, ci-dessous) ; espace de démonstration, [métriques Prometheus](#supervision-prometheus) |
+| **Santé** | Version en cours et [mise à jour](./mise-a-jour), état des [sauvegardes](./sauvegardes#suivi-et-alertes), connexion Discord, base, Redis, tâches planifiées, mémoire, version de schéma de chaque base, **serveurs Discord** (diagnostic de chacun, ci-dessous) ; espace de démonstration (tickets, équipes à niveaux, compétences, organisations et contrats, parc, changements, mise en production, comité et page de statut fictifs ; rien n'y part vers l'extérieur), [métriques Prometheus](#supervision-prometheus) |
 | **Erreurs** | Journal centralisé des erreurs du bot, du dashboard et des navigateurs, avec filtres ; **alerte** par MP (au propriétaire par défaut) ou webhook au-delà d'un seuil, et en cas de déconnexion de Discord |
 | **Journal** | Chaque modification faite depuis la section, avec son auteur et l'espace concerné |
 | **Blocages** | Adresses IP bloquées par les limites de connexion ou d'API, avec déblocage |
@@ -62,6 +62,7 @@ Chaque fournisseur affiche son **adresse de retour**, à déclarer telle quelle 
 - La **réponse et l'assertion doivent être signées** par ce certificat ; le destinataire, l'audience, la demande à laquelle elle répond (gardée 10 minutes, consommée une fois), la date (3 minutes d'écart au plus) sont vérifiés ; une réponse rejouée est refusée.
 - La personne est reconnue par son identifiant (NameID), sinon rattachée au compte qui a la même **adresse vérifiée** ; personne n'obtient de compte en se connectant ainsi. La double authentification du compte s'applique.
 - L'instance doit être servie en **https**. Le bouton « Continuer avec … » apparaît sur la page de connexion.
+- **Vérifier le réglage** lit le certificat (et sa date de fin) et joint l'adresse du fournisseur ; **Connexion d'essai** ouvre le fournisseur dans un nouvel onglet et affiche ce qu'il renvoie (identifiant, adresse, groupes, compte Datick trouvé), sans ouvrir de session.
 
 ### Annuaire LDAP / Active Directory
 

@@ -67,6 +67,8 @@ In **Analytics → Reports**, the **Escalated** column counts, by team, the tick
 
 ### Skills and languages
 
+![Skills of the space and of the staff](/images/competences.png)
+
 **Team → Skills**: the founders create the skills of the space (« Network », « Accounting »…) and say who has which; everyone gives the **languages** they answer in. A ticket **asks for** skills: those of its **subject** (set further down on the same page; a category covers its sub-categories), those a [rule](./automations#automatic-rules) adds (**Skill asked for** action, to put before the **Team** action) and those added on the ticket view (**Reply** permission).
 
 A team that assigns by itself first picks among the members who have **all** the skills asked for, then among them those who **speak the requester's language** (that of their messages, when the bot answers everyone in their own language). If nobody fits, the whole team stays possible, as before. Skills and subjects are part of the [configuration export](./integrations#backing-up-the-configuration); who has which skill stays specific to the space.
@@ -93,6 +95,8 @@ Each member finds the tickets of their teams in **My queue → My teams**. The t
 A board is **personal**, **shared with a team** you belong to, or (founders) **with all the staff**; only its author changes it. Figures are always computed for **whoever looks**, through what they are allowed to see: the same shared board does not show a confidential ticket to someone who cannot see it.
 
 ## Reports
+
+![Reports: volume, times, satisfaction by team](/images/rapports.png)
 
 **Analytics → Reports** groups the tickets opened over the period (7, 30, 90 or 365 days, or a **custom period** from … to …):
 

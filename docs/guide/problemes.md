@@ -44,6 +44,21 @@ Ce diagnostic ne remplace pas un essai réel. Après une mise à jour importante
 5. **Fermeture** → transcript dans le salon de logs, demande de note au membre, salon supprimé ou archivé.
 6. **Commandes** `/ticket` et `/close` dans un ticket.
 
+## Vérifier les services branchés
+
+Chaque service tiers a un bouton qui fait un **vrai appel** avec les clés enregistrées et dit en clair ce qui ne va pas (jeton refusé, droits insuffisants, projet introuvable, service muet) :
+
+| Service | Où | Ce que fait l'essai |
+|---|---|---|
+| HubSpot, Salesforce | Paramètres → Intégrations → CRM → **Tester** | Lit les contacts |
+| GitHub, GitLab, Jira | Paramètres → Intégrations → Jira, GitHub et GitLab → **Tester** | Lit le dépôt ou le projet ; pour Jira, le compte et le type de ticket |
+| Supervision | Paramètres → Intégrations → Supervision → **Envoyer une alerte de test** | Ouvre un ticket « Alerte de test » puis le ferme (ou y ajoute une note), comme une vraie alerte |
+| Extensions | Paramètres → Intégrations → Extensions → **Tester le webhook** | Envoie un événement `ping` signé et donne la réponse |
+| SMS | Instance → Santé → SMS → **Envoyer un SMS de test** | Numéro laissé vide : ton propre numéro vérifié |
+| SAML | Instance → Connexion → SAML 2.0 → **Vérifier le réglage**, **Connexion d'essai** | Lit le certificat (validité) et joint l'adresse du fournisseur ; la connexion d'essai affiche ce que le fournisseur renvoie, sans ouvrir de session |
+
+Dix essais au plus par service toutes les 10 minutes. Après avoir branché un service avec un vrai compte, fais aussi le tour en conditions réelles : une issue créée depuis un ticket et fermée dans l'outil (la note doit apparaître), une fiche CRM sur un ticket d'un client connu, une alerte de ton outil de supervision, une connexion SAML d'un compte du groupe autorisé.
+
 ## Dashboard
 
 **Je ne vois pas la section Instance, ni « Inviter le bot »**

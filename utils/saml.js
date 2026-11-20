@@ -85,7 +85,7 @@ const attr = (profile, name) => {
   return Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)];
 };
 // The SAMLResponse posted by the IdP → { subject, email, name, groups } or throws { reason }
-async function check(body) {
+async function check(body, { test = false } = {}) {
   const s = await load();
   if (!(await active())) throw Object.assign(new Error('SAML off'), { reason: 'saml_off' });
   let r;
@@ -96,8 +96,43 @@ async function check(body) {
   const email = (attr(p, s.emailAttribute)[0] || p.email || p.mail || (/@/.test(p.nameID) ? p.nameID : '')).trim().toLowerCase();
   const name = (attr(p, s.nameAttribute)[0] || p.displayName || email || p.nameID).slice(0, 100);
   const groups = attr(p, s.groupAttribute);
+  if (test) return { subject: String(p.nameID).slice(0, 255), email, name, groups, groupOk: !s.group || groups.includes(s.group), group: s.group || null };
   if (s.group && !groups.includes(s.group)) throw Object.assign(new Error('SAML : hors du groupe autorisé'), { reason: 'saml_group' });
   return { subject: String(p.nameID).slice(0, 255), email, name, groups };
 }
 
-module.exports = { KEY, DEFAULTS, load, active, publicSettings, prepare, save, loginUrl, metadata, check, spIssuer, acsUrl };
+// « Tester » (v8): what can be checked without signing in — the certificate, the provider's address
+async function diagnose() {
+  const s = await load();
+  const checks = [];
+  checks.push({ label: 'Instance servie en https', ok: base().startsWith('https://'), detail: base() || 'adresse publique non réglée' });
+  if (s.idpCert) {
+    try {
+      const pem = `-----BEGIN CERTIFICATE-----\n${s.idpCert.match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE-----`;
+      const c = new (require('crypto').X509Certificate)(pem);
+      const days = Math.floor((Date.parse(c.validTo) - Date.now()) / 86400000);
+      checks.push({ label: 'Certificat du fournisseur', ok: days > 0, detail: `${c.subject.replace(/\n/g, ', ')} — ${days > 0 ? `valable encore ${days} jour(s)` : 'expiré'} (${c.validTo})`, warn: days > 0 && days < 30 });
+    } catch (err) { checks.push({ label: 'Certificat du fournisseur', ok: false, detail: `illisible : ${err.message}` }); }
+  } else checks.push({ label: 'Certificat du fournisseur', ok: false, detail: 'non fourni' });
+  if (s.entryPoint) {
+    try {
+      const r = await fetch(s.entryPoint, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(8000) });
+      checks.push({ label: 'Adresse de connexion du fournisseur', ok: r.status < 500, detail: `répond ${r.status}` });
+    } catch (err) { checks.push({ label: 'Adresse de connexion du fournisseur', ok: false, detail: `injoignable : ${err.cause?.code || err.message}` }); }
+  } else checks.push({ label: 'Adresse de connexion du fournisseur', ok: false, detail: 'non fournie' });
+  return { checks, ok: checks.every(c => c.ok) };
+}
+// A sign-in that only shows what the provider sends back (no session): its RelayState is a
+// one-time nonce, kept 10 minutes
+async function testLoginUrl() {
+  if (!(await active())) return null;
+  const nonce = require('crypto').randomBytes(16).toString('hex');
+  await require('./redis').getRedis().set(`saml:test:${nonce}`, '1', 'EX', 600);
+  return loginUrl(`test:${nonce}`);
+}
+async function consumeTest(relayState) {
+  const m = /^test:([a-f0-9]{32})$/.exec(String(relayState || ''));
+  return !!m && !!(await require('./redis').getRedis().getdel(`saml:test:${m[1]}`));
+}
+
+module.exports = { diagnose, testLoginUrl, consumeTest, KEY, DEFAULTS, load, active, publicSettings, prepare, save, loginUrl, metadata, check, spIssuer, acsUrl };

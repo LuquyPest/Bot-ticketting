@@ -24,6 +24,20 @@ staff.delete('/:id', async (req, res, next) => {
   try { await out(req, res, await M.deleteSource(req.guildDb, parseInt(req.params.id) || 0)); } catch (err) { next(err); }
 });
 
+// POST …/test — « Tester » (v8): a real call with the saved keys, at most 10 every 10 minutes
+const testBurst = async (req, res, key) => {
+  if (await require('../../utils/rateLimit').allowBurst(`test:${key}:${req.guildId}`, 10, 10 * 60 * 1000)) return true;
+  res.status(429).json({ error: 'Dix essais au plus toutes les 10 minutes' });
+  return false;
+};
+staff.post('/:id/test', async (req, res, next) => {
+  try {
+    if (!(await testBurst(req, res, 'monitoring'))) return;
+    const r = await M.testSource({ db: req.guildDb, client: req.app.locals.client, guildId: req.guildId, id: parseInt(req.params.id) || 0 });
+    res.status(r.error ? r.status || 400 : 200).json(r);
+  } catch (err) { next(err); }
+});
+
 const hooks = express.Router();
 hooks.post('/:guildId/:sourceId/:secret', express.json({ limit: '1mb', type: '*/*' }), async (req, res) => {
   try {

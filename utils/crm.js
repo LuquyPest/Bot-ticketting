@@ -208,4 +208,27 @@ async function runCrmSync() {
   }
 }
 
-module.exports = { PROVIDERS, settings, saveSettings, lookup, requesterEmail, syncNow, runCrmSync, sfHostOk };
+// « Tester » (v8): a real call with the saved keys → { ok, detail } or { error }, said plainly
+async function test(db) {
+  const s = await rawSettings(db);
+  if (!s.provider) return { error: 'Aucun CRM n\'est branché' };
+  try {
+    if (s.provider === 'hubspot') {
+      const r = await call(`${hubspotBase()}/crm/v3/objects/contacts?limit=1&properties=email`, { headers: { Authorization: `Bearer ${s.token}` } });
+      return { ok: true, detail: `HubSpot répond : ${r?.results?.length ? 'les contacts sont lisibles' : 'aucun contact pour l\'instant'}.` };
+    }
+    const token = await sfToken(s);
+    const r = await soql(s, token, 'SELECT COUNT() FROM Contact');
+    return { ok: true, detail: `Salesforce répond : ${Number(r?.totalSize || 0)} contact(s) lisibles.` };
+  } catch (err) { return { error: explain(err) }; }
+}
+// An HTTP failure in words the administrator can act on
+function explain(err) {
+  if (err.status === 401) return `${err.message} — jeton refusé : il est faux, expiré ou révoqué`;
+  if (err.status === 403) return `${err.message} — jeton valide mais sans le droit de lire les contacts`;
+  if (err.status === 404) return `${err.message} — adresse ou projet introuvable`;
+  if (err.name === 'TimeoutError') return 'Le service ne répond pas (10 s)';
+  return err.message;
+}
+
+module.exports = { test, explain, PROVIDERS, settings, saveSettings, lookup, requesterEmail, syncNow, runCrmSync, sfHostOk };

@@ -38,6 +38,8 @@ Une sous-catégorie **hérite** de ce qui est réglé sur sa catégorie : règle
 
 ## La fiche ticket
 
+![La fiche ticket : conversation, réponse, informations à droite](/images/ticket.png)
+
 | | |
 |---|---|
 | **Temps réel** | Nouveaux messages sans recharger ; collègues qui regardent le ticket ou écrivent une réponse affichés en direct ; confirmation si quelqu'un a répondu pendant que tu écrivais |
@@ -179,6 +181,8 @@ Les **modèles de tâches** (**Paramètres → Catalogue → Modèles de tâches
 
 ### Le planning
 
+![Le planning de la semaine : tâches, échéances et absences](/images/planning.png)
+
 Menu **Planning** : la semaine d'une personne ou d'une équipe : les **tâches planifiées**, l'**échéance de résolution** des tickets attribués (en rouge), les **absences**. On voit son propre planning et ceux de ses équipes (un fondateur voit tout le monde), toujours à travers ce qu'on a le droit de voir. **Glisser une tâche** sur un autre jour la replanifie, à la même heure.
 
 **Dans mon agenda (iCal)** donne un lien secret à ajouter à Google Agenda, Outlook ou Calendrier : ses tâches planifiées, les échéances de ses tickets et ses absences (30 jours en arrière, 90 en avant). Le lien est gardé chiffré ; en créer un nouveau, ou le retirer, coupe l'ancien.
@@ -209,11 +213,15 @@ Les tickets s'y relient depuis le problème ou depuis leur fiche (permission **R
 
 ## Les changements
 
+![Un changement : plans, risques et validations](/images/changements.png)
+
 Menu **Changements** (coupé par défaut ; un fondateur l'active) : une modification planifiée (mise à jour, migration). Il a une description, un **plan de déploiement**, un **plan de retour arrière**, des **risques** et un niveau de risque, l'impact, un **créneau** (il apparaît dans le [planning](#le-planning) de qui le mène), des tâches, et les tickets et problèmes qu'il traite.
 
 Il suit un circuit : **brouillon** → **en attente de validation** → **validé** (toutes les validations) ou **refusé** (au premier refus, avec son motif) → **en cours** → **terminé** ou **en échec** ; **annulé** à tout moment. Les **validations** sont données par les membres du staff choisis, chacun pour soi, dans le dashboard ; il ne démarre qu'une fois validé, et ses plans et risques sont figés dès qu'il l'est (repasser en brouillon remet les validations à zéro). Tout est au journal.
 
 ### Le comité des changements
+
+![Une réunion du comité : ordre du jour, avis et décision](/images/comite.png)
 
 Menu **Comité des changements** (avec les changements) : le comité (CAB) examine les changements en réunion.
 
@@ -226,6 +234,8 @@ La fiche d'un changement montre les décisions du comité et le décompte des av
 
 ### Les mises en production
 
+![Une mise en production : changements, créneau et étapes](/images/mises-en-production.png)
+
 Menu **Mises en production** (avec les changements, permission **Répondre** pour écrire) : une mise en production regroupe des **changements** et les mène ensemble en production, étape par étape : **préparation → test → déploiement → vérification → terminée**.
 
 - Chaque étape a ses **points à vérifier** (« sauvegarde vérifiée », « recette utilisateur ») : on ne passe à la suivante qu'une fois ceux de l'étape cochés (qui et quand sont notés).
@@ -234,6 +244,8 @@ Menu **Mises en production** (avec les changements, permission **Répondre** pou
 - Un changement n'est que dans une mise en production en cours à la fois ; sa fiche montre laquelle. Chaque étape est au journal.
 
 ## Le parc
+
+![Un élément du parc : champs, relations et historique](/images/parc.png)
 
 Menu **Parc** : l'inventaire de l'espace (CMDB) — ordinateurs, serveurs, logiciels, licences, services… Coupé tant qu'un fondateur ne l'active pas.
 
@@ -264,6 +276,8 @@ Quand un ticket est fermé, le demandeur reçoit l'**enquête de satisfaction** 
 Le lien sert une fois et expire après 30 jours ; la page ne montre que le sujet du ticket et les questions. **Analytiques → Rapports** donne le **taux de réponse** et les réponses aux questions sur 30 jours. Le **NPS** (« recommanderiez-vous… ? », une question par enquête) donne la part de **promoteurs** (9 ou 10), de **détracteurs** (0 à 6) et le **score** (promoteurs moins détracteurs, de −100 à 100) ; le **CES** (« il a été facile de… », de 1 à 7) donne l'effort moyen. Leurs libellés standard sont proposés en choisissant le type.
 
 ## Les organisations
+
+![Les organisations : domaines, équipe, responsable](/images/organisations.png)
 
 Menu **Organisations** : les sociétés clientes, services ou sites de tes contacts (écriture : fondateurs et permission **Paramètres** ; le staff voit les noms).
 

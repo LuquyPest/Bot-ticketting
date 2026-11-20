@@ -123,6 +123,24 @@ async function deliver(db, event, payload) {
   }
 }
 
+// « Tester » (v8): a signed « ping » to the extension's webhook, waiting for its answer
+async function ping(db, id) {
+  const [e] = await db('SELECT * FROM extensions WHERE id = ?', [id]);
+  if (!e) return { error: 'Extension introuvable', status: 404 };
+  const m = JSON.parse(e.manifest || '{}');
+  if (!m.webhook?.url || !e.webhook_secret) return { error: 'Cette extension n\'a pas de webhook' };
+  const body = JSON.stringify({ event: 'ping', timestamp: new Date().toISOString() });
+  const sig = `sha256=${crypto.createHmac('sha256', e.webhook_secret).update(body).digest('hex')}`;
+  try {
+    const r = await require('./webhookEmitter').safePostJson(m.webhook.url, body, { 'X-Datick-Event': 'ping', 'X-Datick-Signature-256': sig, 'X-Datick-Extension': String(e.id) });
+    if (r?.blocked) return { error: 'Adresse du webhook refusée (https public seulement)' };
+    if (r?.timeout) return { error: 'Le webhook ne répond pas (5 s)' };
+    if (r?.error || !r?.status) return { error: 'Webhook injoignable' };
+    if (r.status < 200 || r.status >= 300) return { error: `Le webhook a répondu ${r.status}` };
+    return { ok: true, detail: `Le webhook a répondu ${r.status}.` };
+  } catch (err) { return { error: `Webhook injoignable : ${err.message}` }; }
+}
+
 // Origins the CSP lets the dashboard frame (cached 30 s; synchronous for helmet)
 const cache = { at: 0, origins: [], loading: false };
 function frameOrigins() {
@@ -135,4 +153,4 @@ function frameOrigins() {
 }
 async function warmFrames() { cache.at = 0; frameOrigins(); }
 
-module.exports = { PERMISSIONS, EVENTS, cleanManifest, fetchManifest, list, install, setActive, uninstall, deliver, frameOrigins, warmFrames };
+module.exports = { ping, PERMISSIONS, EVENTS, cleanManifest, fetchManifest, list, install, setActive, uninstall, deliver, frameOrigins, warmFrames };

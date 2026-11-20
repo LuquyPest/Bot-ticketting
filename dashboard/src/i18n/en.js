@@ -864,6 +864,10 @@ export const ENTRIES = [
   ['Le staff : compétences et langues', 'The staff: skills and languages'], ['Chacun règle ses propres langues ; les compétences sont réglées par les fondateurs.', 'Everyone sets their own languages; skills are set by the founders.'],
   ['Compétences demandées par sujet', 'Skills asked for by subject'], ['Une catégorie couvre ses sous-catégories.', 'A category covers its sub-categories.'], ['Compétences indisponibles.', 'Skills unavailable.'],
   ['Une équipe qui attribue toute seule ne choisit que parmi les personnes qui ont', 'A team that assigns by itself only picks among the people who have'], ['toutes', 'all'], ['les compétences demandées par le ticket (par son sujet, une règle ou à la main), puis préfère celles qui parlent la langue du demandeur. Si personne ne convient, toute l\'équipe reste possible.', 'the skills asked for by the ticket (through its subject, a rule or by hand), then prefers those who speak the requester\'s language. If nobody fits, the whole team stays possible.'], ['Doublon possible : le demandeur a d\'autres tickets ouverts sur le même sujet', 'Possible duplicate: the requester has other open tickets about the same thing'], ['même sujet', 'same subject'], ['Ce n\'est pas un doublon', 'Not a duplicate'], ['Ajouter la sous-tâche', 'Add the sub-task'], ['Sous-tâche', 'Sub-task'],
+  // ── v8.0: « Tester » buttons ──
+  ['Tester', 'Test'], ['Ça fonctionne.', 'It works.'], ['Échec de l\'essai', 'The test failed'], ['Envoyer une alerte de test', 'Send a test alert'], ['Tester le webhook', 'Test the webhook'],
+  ['+33612345678 (vide : ton numéro)', '+33612345678 (empty: your number)'], ['Vérifier le réglage', 'Check the settings'], ['Connexion d\'essai', 'Test sign-in'],
+  ['La connexion d\'essai ouvre le fournisseur dans un nouvel onglet et affiche ce qu\'il renvoie (identifiant, adresse, groupes, compte trouvé), sans ouvrir de session.', 'The test sign-in opens the provider in a new tab and shows what it sends back (identifier, address, groups, account found), without opening a session.'],
 ];
 
 export const TEMPLATES = [
@@ -1190,5 +1194,7 @@ export const TEMPLATES = [
   ['Aucun compte n\'utilise l\'adresse de ton compte de l\'annuaire. Demande une invitation, ou connecte-toi autrement puis confirme cette adresse dans Profil → Connexion.', 'No account uses the address of your directory account. Ask for an invitation, or sign in another way then confirm this address in Profile → Sign-in.'],
   ['L\'annuaire s\'importe directement, sans fichier', 'The directory is imported directly, without a file'], ['Annuaire non configuré (Instance → Connexion)', 'Directory not set up (Instance → Sign-in)'],
   ['Service du catalogue supprimé', 'Catalogue service deleted'],
-  ['Responsable côté client : voit les tickets de l\'organisation dans l\'espace membre', 'Client-side manager: sees the organisation\'s tickets in the member space'], ['Responsable côté client (portail)', 'Client-side manager (portal)'], ['Organisation d\'un contact changée', 'Contact\'s organisation changed'], ['Organisations importées', 'Organisations imported']
+  ['Responsable côté client : voit les tickets de l\'organisation dans l\'espace membre', 'Client-side manager: sees the organisation\'s tickets in the member space'], ['Responsable côté client (portail)', 'Client-side manager (portal)'], ['Organisation d\'un contact changée', 'Contact\'s organisation changed'], ['Organisations importées', 'Organisations imported'],
+  ['Ticket #{} ouvert puis fermé à la fin de l\'alerte.', 'Ticket #{1} opened, then closed when the alert ended.'], ['Ticket #{} ouvert, une note marque la fin de l\'alerte.', 'Ticket #{1} opened, a note marks the end of the alert.'],
+  ['✓ {} : {}', '✓ {1}: {2}'], ['✗ {} : {}', '✗ {1}: {2}'],
 ];
