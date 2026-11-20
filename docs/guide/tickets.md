@@ -170,6 +170,8 @@ Une seule validation en attente par ticket ; la personne qui l'a demandée, ou u
 
 Sur la fiche, **Tâches** découpe le travail d'un ticket en étapes : un intitulé, une description, une **personne** (prévenue dans le dashboard) ou une équipe, une **durée prévue**, une **date planifiée**, un état (**à faire**, **faite**, **sans objet**), et **visible du demandeur** ou non (permission **Répondre** pour les modifier). L'avancement (« 2/3 ») ne compte pas les tâches sans objet.
 
+Une tâche peut avoir des **sous-tâches** (bouton à côté d'elle ; un seul niveau) : elle n'est **faite** qu'une fois chacune faite ou sans objet, une sous-tâche rouverte la rouvre, et la mettre **sans objet** y met ses sous-tâches encore à faire. Supprimer une tâche supprime ses sous-tâches.
+
 Le **temps passé** se rattache à une tâche : le chronomètre d'une tâche, ou le temps ajouté à la main en la choisissant ; il compte aussi pour le ticket. Supprimer une tâche laisse son temps sur le ticket.
 
 Les **modèles de tâches** (**Paramètres → Catalogue → Modèles de tâches** ; « arrivée d'un salarié » = 6 tâches) s'appliquent depuis la fiche ou par une [règle automatique](./automatismes#les-regles-automatiques) (action **Modèle de tâches**) ; chaque tâche peut avoir une échéance « J+n ». Dans l'[espace membre](./espace-membre), le demandeur voit les tâches visibles et leur état, jamais qui s'en occupe. Chaque ajout, état et suppression est au journal du ticket.

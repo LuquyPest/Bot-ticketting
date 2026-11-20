@@ -805,9 +805,11 @@ export const ENTRIES = [
   ['Enfant', 'Child'], ['Parent', 'Parent'], ['Parent de', 'Parent of'], ['Enfant de', 'Child of'], ['Enfants fermés', 'Closed children'],
   ['Relation avec l\'autre ticket', 'Relation with the other ticket'],
   ['Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé', 'Close the child tickets still open when their parent ticket is closed'],
+  ['Nouvelle sous-tâche', 'New sub-task'], ['Ajouter la sous-tâche', 'Add the sub-task'], ['Sous-tâche', 'Sub-task'],
 ];
 
 export const TEMPLATES = [
+  ['{}/{} sous-tâches', '{1}/{2} sub-tasks'], ['Sous-tâches de « {} »', 'Sub-tasks of « {1} »'], ['Nouvelle sous-tâche de « {} »', 'New sub-task of « {1} »'], ['Ajouter une sous-tâche à « {} »', 'Add a sub-task to « {1} »'],
   ['Enfants fermés : {} / {}', 'Closed children: {1} / {2}'], ['Enfants fermés : {} / {} · fermés avec ce ticket', 'Closed children: {1} / {2} · closed with this ticket'],
   ['Fermé · réouverture {}', 'Closed · reopens {1}'], ['Jours fermés ({})', 'Closed days ({1})'], ['{}, début de la plage {}', '{1}, start of range {2}'], ['{}, fin de la plage {}', '{1}, end of range {2}'], ['Retirer la plage {} du {}', 'Remove range {1} of {2}'], ['Ajouter une plage le {}', 'Add a range on {1}'], ['Supprimer le calendrier « {} » ?', 'Delete the « {1} » calendar?'],
   ['Urgence {}, impact {}', 'Urgency {1}, impact {2}'],

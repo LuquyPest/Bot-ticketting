@@ -2,6 +2,8 @@
 // person and/or a team, a planned duration and the time spent (stopwatch and time added by hand,
 // ticket_time.task_id), a planned date, a state (to do, done, not needed), private or visible to
 // the requester. Task templates (« new employee » = 6 tasks) are applied by hand or by a rule.
+// v7: a task may have sub-tasks (one level: a sub-task has none); it is done only once each of
+// them is done or not needed, and « not needed » on it applies to its sub-tasks still to do.
 const { parseJsonField } = require('./jsonField');
 const { recordEvent } = require('./audit');
 
@@ -12,6 +14,7 @@ const shape = t => ({
   id: t.id, ticketId: t.ticket_id, title: t.title, description: t.description || '', assigneeId: t.assignee_id || null, assigneeName: t.assignee_name || null,
   teamId: t.team_id || null, plannedMinutes: t.planned_minutes || null, spentSeconds: Number(t.spent_seconds || 0), dueAt: t.due_at || null,
   state: t.state, visible: !!Number(t.visible), position: t.position, doneAt: t.done_at || null, doneBy: t.done_by_tag || null, createdAt: t.created_at,
+  parentId: t.parent_id || null,
 });
 async function listTasks(db, ticketId) {
   return (await db(`SELECT k.*, u.username AS assignee_name,
@@ -61,9 +64,18 @@ async function addTask(db, ticketId, input, actor, { guildId = null } = {}) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  const ins = await db('INSERT INTO ticket_tasks (ticket_id, title, description, assignee_id, team_id, planned_minutes, due_at, visible, position, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [ticketId, v.title, v.description || null, v.assigneeId || null, v.teamId || null, v.plannedMinutes || null, v.dueAt || null, v.visible ? 1 : 0, Number(n.pos) + 1, actor?.id || null]);
-  await recordEvent(db, { actor, action: 'task_add', ticketId, targetType: 'task', targetId: ins.insertId, details: { title: v.title } });
+  let parentId = null;
+  if (input.parentId !== undefined && input.parentId !== null && input.parentId !== '') {
+    parentId = Number(input.parentId);
+    const [p] = Number.isInteger(parentId) && parentId > 0 ? await db('SELECT parent_id, state FROM ticket_tasks WHERE id = ? AND ticket_id = ?', [parentId, ticketId]) : [];
+    if (!p) return { error: 'Tâche parente introuvable', status: 404 };
+    if (p.parent_id) return { error: 'Une sous-tâche ne peut pas avoir de sous-tâches' };
+  }
+  const ins = await db('INSERT INTO ticket_tasks (ticket_id, title, description, assignee_id, team_id, planned_minutes, due_at, visible, position, created_by, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [ticketId, v.title, v.description || null, v.assigneeId || null, v.teamId || null, v.plannedMinutes || null, v.dueAt || null, v.visible ? 1 : 0, Number(n.pos) + 1, actor?.id || null, parentId]);
+  // A new sub-task to do reopens its parent
+  if (parentId) await db("UPDATE ticket_tasks SET state = 'todo', done_at = NULL, done_by_tag = NULL WHERE id = ? AND state = 'done'", [parentId]);
+  await recordEvent(db, { actor, action: 'task_add', ticketId, targetType: 'task', targetId: ins.insertId, details: { title: v.title, ...(parentId ? { parent: parentId } : {}) } });
   if (v.assigneeId && v.assigneeId !== String(actor?.id)) notifyAssignee(db, guildId, ticketId, v.assigneeId, v.title, actor);
   return { ok: true, id: ins.insertId };
 }
@@ -76,12 +88,19 @@ async function updateTask(db, ticketId, taskId, input, actor, { guildId = null }
   const sets = [], params = [];
   const col = { title: 'title', description: 'description', assigneeId: 'assignee_id', teamId: 'team_id', plannedMinutes: 'planned_minutes', dueAt: 'due_at', visible: 'visible' };
   for (const [k, c] of Object.entries(col)) if (k in v) { sets.push(`${c} = ?`); params.push(k === 'visible' ? (v[k] ? 1 : 0) : v[k] ?? null); }
+  if ('state' in v && v.state === 'done' && v.state !== cur.state) {
+    const [{ n }] = await db("SELECT COUNT(*) AS n FROM ticket_tasks WHERE parent_id = ? AND state = 'todo'", [taskId]);
+    if (Number(n)) return { error: `Termine d'abord ses sous-tâches (${n} à faire)`, status: 409 };
+  }
   if ('state' in v && v.state !== cur.state) {
     sets.push('state = ?', 'done_at = ?', 'done_by_tag = ?');
     params.push(v.state, v.state === 'todo' ? null : new Date(), v.state === 'todo' ? null : (actor?.username || actor?.tag || null));
   }
   if (!sets.length) return { ok: true };
   await db(`UPDATE ticket_tasks SET ${sets.join(', ')} WHERE id = ?`, [...params, taskId]);
+  if (v.state === 'na' && cur.state !== 'na') await db("UPDATE ticket_tasks SET state = 'na', done_at = NOW(), done_by_tag = ? WHERE parent_id = ? AND state = 'todo'", [actor?.username || actor?.tag || null, taskId]);
+  // A sub-task back to do reopens its parent
+  if (v.state === 'todo' && cur.parent_id) await db("UPDATE ticket_tasks SET state = 'todo', done_at = NULL, done_by_tag = NULL WHERE id = ? AND state = 'done'", [cur.parent_id]);
   if ('state' in v && v.state !== cur.state) await recordEvent(db, { actor, action: 'task_state', ticketId, targetType: 'task', targetId: taskId, details: { title: cur.title, state: v.state } });
   if (v.assigneeId && v.assigneeId !== cur.assignee_id && v.assigneeId !== String(actor?.id)) notifyAssignee(db, guildId, ticketId, v.assigneeId, v.title || cur.title, actor);
   return { ok: true };
@@ -89,7 +108,8 @@ async function updateTask(db, ticketId, taskId, input, actor, { guildId = null }
 async function deleteTask(db, ticketId, taskId, actor) {
   const [cur] = await db('SELECT title FROM ticket_tasks WHERE id = ? AND ticket_id = ?', [taskId, ticketId]);
   if (!cur) return { error: 'Tâche introuvable', status: 404 };
-  await db('UPDATE ticket_time SET task_id = NULL WHERE task_id = ?', [taskId]); // the time stays on the ticket
+  // The time stays on the ticket (also that of its sub-tasks, deleted with it)
+  await db('UPDATE ticket_time SET task_id = NULL WHERE task_id = ? OR task_id IN (SELECT id FROM ticket_tasks WHERE parent_id = ?)', [taskId, taskId]);
   await db('DELETE FROM ticket_tasks WHERE id = ?', [taskId]);
   await recordEvent(db, { actor, action: 'task_delete', ticketId, targetType: 'task', targetId: taskId, details: { title: cur.title } });
   return { ok: true };

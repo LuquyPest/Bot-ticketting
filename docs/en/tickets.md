@@ -170,6 +170,8 @@ One pending approval per ticket; the person who asked, or a founder, can **cance
 
 On the ticket view, **Tasks** splits a ticket's work into steps: a title, a description, a **person** (told in the dashboard) or a team, a **planned duration**, a **planned date**, a state (**to do**, **done**, **not needed**), and **visible to the requester** or not (**Reply** permission to change them). The progress (« 2/3 ») does not count the tasks not needed.
 
+A task can have **sub-tasks** (button next to it; one level): it is **done** only once each of them is done or not needed, a sub-task reopened reopens it, and setting it **not needed** does so for its sub-tasks still to do. Deleting a task deletes its sub-tasks.
+
 The **time spent** goes to a task: the stopwatch of a task, or time added by hand choosing it; it also counts for the ticket. Deleting a task leaves its time on the ticket.
 
 **Task templates** (**Settings → Catalogue → Task templates**; « new employee » = 6 tasks) are applied from the ticket view or by an [automatic rule](./automations#automatic-rules) (**Task template** action); each task can have a « D+n » due date. In the [member space](./member-space), the requester sees the visible tasks and their state, never who handles them. Each addition, state and deletion is in the ticket's journal.
