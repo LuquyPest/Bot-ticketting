@@ -78,6 +78,7 @@ async function collect(client) {
   // Tickets, per active server
   const guilds = await globalQuery("SELECT guild_id, guild_name FROM guilds WHERE status = 'active'").catch(() => []);
   const open = [], unassigned = [], waiting = [], opened24 = [], closed24 = [], firstResponse = [];
+  const chatsActive = [], chatsWaiting = [], alertsFiring = [], alerts24 = [], sms = []; // v8
   for (const g of guilds) {
     const labels = { guild_id: g.guild_id, guild: g.guild_name || g.guild_id };
     const [row] = await getTenantDb(g.guild_id)(
@@ -101,12 +102,26 @@ async function collect(client) {
        WHERE t.status = 'open' AND NOT EXISTS (SELECT 1 FROM ticket_notes n WHERE n.ticket_id = t.id AND n.source = 'reply')`
     ).catch(() => [null]);
     firstResponse.push([labels, old?.s === null || old?.s === undefined ? 0 : Number(old.s)]);
+    // v8: live chat, monitoring alerts, SMS (tables absent on an older schema: skipped)
+    const [chat] = await getTenantDb(g.guild_id)(
+      `SELECT COUNT(*) AS active, SUM(NOT EXISTS (SELECT 1 FROM ticket_notes n WHERE n.ticket_id = c.ticket_id AND n.source = 'reply')) AS waiting
+       FROM chat_sessions c WHERE c.ended_at IS NULL AND c.last_seen_at >= NOW() - INTERVAL 2 MINUTE`).catch(() => [null]);
+    if (chat) { chatsActive.push([labels, Number(chat.active || 0)]); chatsWaiting.push([labels, Number(chat.waiting || 0)]); }
+    const [al] = await getTenantDb(g.guild_id)("SELECT SUM(state = 'firing') AS firing, SUM(last_at >= NOW() - INTERVAL 1 DAY) AS day FROM monitoring_alerts").catch(() => [null]);
+    if (al) { alertsFiring.push([labels, Number(al.firing || 0)]); alerts24.push([labels, Number(al.day || 0)]); }
+    const st = await require('./sms').todayStats(g.guild_id).catch(() => null);
+    if (st) { sms.push([{ ...labels, result: 'sent' }, st.sent], [{ ...labels, result: 'failed' }, st.failed]); }
   }
   families.push(['ticketbot_tickets_open', 'gauge', 'Open tickets', open]);
   families.push(['ticketbot_tickets_unassigned', 'gauge', 'Open tickets nobody is assigned to', unassigned]);
   families.push(['ticketbot_tickets_waiting', 'gauge', 'Open tickets in the « Waiting » stage', waiting]);
   families.push(['ticketbot_tickets_opened_24h', 'gauge', 'Tickets opened over the last 24 hours', opened24]);
   families.push(['ticketbot_tickets_closed_24h', 'gauge', 'Tickets closed over the last 24 hours', closed24]);
+  families.push(['ticketbot_live_chats', 'gauge', 'Live chats going on (visitor seen in the last 2 minutes)', chatsActive]);
+  families.push(['ticketbot_live_chats_waiting', 'gauge', 'Live chats without any staff answer yet', chatsWaiting]);
+  families.push(['ticketbot_monitoring_alerts_firing', 'gauge', 'Monitoring alerts still firing (their ticket is open)', alertsFiring]);
+  families.push(['ticketbot_monitoring_alerts_24h', 'gauge', 'Monitoring alerts received over the last 24 hours', alerts24]);
+  families.push(['ticketbot_sms_today', 'gauge', 'SMS sent and failed today (UTC)', sms]);
   families.push(['ticketbot_oldest_unanswered_ticket_seconds', 'gauge', 'Age of the oldest open ticket without a staff answer (0: none)', firstResponse]);
 
   // Scheduled jobs (BullMQ)

@@ -3731,6 +3731,7 @@ async function main() {
     check('métriques: format Prometheus, tickets par serveur, base, Redis, version', r.status === 200 && /# TYPE ticketbot_tickets_open gauge/.test(text) && new RegExp(`ticketbot_tickets_open\\{guild_id="${G}",guild="[^"]*"\\} \\d+`).test(text) && /ticketbot_database_up 1/.test(text) && /ticketbot_redis_up 1/.test(text) && /ticketbot_info\{version="v[\d.]+"\} 1/.test(text), text.slice(0, 500));
     check('métriques: connexions des pools MariaDB (instance et espaces)', /ticketbot_database_pool_limit\{pool="global"\} 20/.test(text) && /ticketbot_database_pool_limit\{pool="space"\} 10/.test(text) && /ticketbot_database_pool_connections\{pool="spaces"\} \d+/.test(text), (text.match(/ticketbot_database_pool[^\n]*/g) || []).join(' | '));
     check('métriques: aucun sujet ni nom de membre', !/owner_tag|subject/i.test(text), '');
+    check('métriques v8: chat en direct, alertes de supervision, SMS du jour par espace', ['ticketbot_live_chats', 'ticketbot_live_chats_waiting', 'ticketbot_monitoring_alerts_firing', 'ticketbot_monitoring_alerts_24h', 'ticketbot_sms_today'].every(n => new RegExp(`# TYPE ${n} gauge`).test(text)) && new RegExp(`ticketbot_sms_today\\{guild_id="${G}",guild="[^"]*",result="sent"\\} \\d+`).test(text), (text.match(/ticketbot_(live|monitoring|sms)[^\n]*/g) || []).join(' | '));
     check('métriques: échappement des étiquettes', metrics.render([['x', 'gauge', 'h', [[{ guild: 'a"b\\c\nd' }, 1]]]]).includes('x{guild="a\\"b\\\\c d"} 1'), metrics.render([['x', 'gauge', 'h', [[{ guild: 'a"b\\c\nd' }, 1]]]]));
     const again = await req('PUT', '/api/instance/metrics', { sid: sessions.OWN, body: { enabled: true } });
     metrics.clearMetricsCache();
@@ -9377,6 +9378,69 @@ async function main() {
 
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
+  // ── Backup and export of a space, restore (utils/spaceBackup.js, v8) ──
+  {
+    const fsx = require('fs'), zlib = require('zlib');
+    const B = app('./utils/spaceBackup');
+    const G3 = '323456789012345679';
+    r = await req('POST', '/api/space-backup/export', { sid: sessions.S1, body: { passphrase: 'une phrase de passe longue' } });
+    const rShort = await req('POST', '/api/space-backup/export', { sid: sessions.F, body: { passphrase: 'court' } });
+    check('sauvegarde espace: réservée aux fondateurs, phrase de passe de 12 caractères', r.status === 403 && rShort.status === 400, `${r.status} ${rShort.status}`);
+    const attDir = fsx.mkdtempSync(path.join(os.tmpdir(), 'tb-bk-'));
+    app('./utils/config').config.attachmentsDir = attDir;
+    fsx.mkdirSync(path.join(attDir, G), { recursive: true });
+    fsx.writeFileSync(path.join(attDir, G, 'piece-v8.bin'), Buffer.from([0, 1, 2, 250, 255]));
+    r = await req('POST', '/api/space-backup/export', { sid: sessions.F, body: { passphrase: 'une phrase de passe longue' } });
+    check('sauvegarde espace: archive téléchargée (en-tête Datick, nom de fichier, au journal)', r.status === 200 && String(r.body).startsWith('DATICKS1') && /attachment; filename="datick-espace-\d+-\d{4}-\d{2}-\d{2}\.datick"/.test(r.headers['content-disposition'] || '') && (await db("SELECT 1 FROM audit_log WHERE action = 'space_export'")).length >= 1, `${r.status} ${r.headers['content-disposition']}`);
+    const chunks = [];
+    for await (const c of await B.exportSpace(G, 'une phrase de passe longue', { guildId: G, guildName: 'Serveur Test' })) chunks.push(c);
+    const archive = Buffer.concat(chunks);
+    const { header, end } = await B.inspect(archive, 'une phrase de passe longue');
+    const [{ n: nTickets }] = await db('SELECT COUNT(*) AS n FROM tickets');
+    check('sauvegarde espace: toutes les tables et les fichiers, format documenté', header.format === 'datick-space' && header.version === 1 && header.tables.includes('tickets') && header.tables.includes('ticket_notes') && end.files >= 1 && end.rows > Number(nTickets), JSON.stringify({ ...header, tables: header.tables.length, end }));
+    // The standalone script reads it without Datick
+    const out = require('child_process').execFileSync(process.execPath, [path.join(__dirname, '../../scripts/decrypt-space-backup.js'), (() => { const f = path.join(attDir, 'a.datick'); fsx.writeFileSync(f, archive); return f; })()], { env: { ...process.env, DATICK_PASSPHRASE: 'une phrase de passe longue' } }).toString();
+    check('sauvegarde espace: lisible sans Datick par le script de déchiffrement', JSON.parse(out.split('\n')[0]).format === 'datick-space' && out.split('\n').some(l => l.startsWith('{"t":"tickets"')), out.slice(0, 120));
+    let wrong = null, tampered = null;
+    try { await B.inspect(archive, 'une autre phrase de passe'); } catch (e) { wrong = e.message; }
+    const bad = Buffer.from(archive); bad[bad.length - 40] ^= 1;
+    try { await B.inspect(bad, 'une phrase de passe longue'); } catch (e) { tampered = e.message; }
+    check('sauvegarde espace: mauvaise phrase de passe ou fichier modifié → refusé', /incorrecte/.test(wrong || '') && /incorrecte|modifié/.test(tampered || ''), `${wrong} | ${tampered}`);
+    // Restore into another space of the instance
+    await globalQuery(`INSERT INTO guilds (guild_id, guild_name, owner_discord_id, owner_discord_tag, status, db_name) VALUES (?, 'G3 restauration', '1', 'o', 'active', ?) ON DUPLICATE KEY UPDATE status = 'active'`, [G3, 'ticketbot_guild_' + G3]);
+    await ensureTenantSchema(G3);
+    const db3 = getTenantDb(G3);
+    await db3("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('1', 'x', 'g3-avant', 'open', 'Ticket d avant')");
+    const file = { field: 'file', name: 'a.datick', content: archive };
+    r = await reqMultipart(`/api/instance/guilds/${G3}/restore`, { sid: sessions.NOWN, fields: { passphrase: 'une phrase de passe longue' }, file });
+    const rWrong = await reqMultipart(`/api/instance/guilds/${G3}/restore`, { sid: sessions.OWN, fields: { passphrase: 'une autre phrase de passe' }, file });
+    check('restauration espace: propriétaire de l instance seulement, phrase de passe vérifiée avant tout', r.status >= 400 && r.status < 500 && rWrong.status === 400 && (await db3("SELECT 1 FROM tickets WHERE channel_id = 'g3-avant'")).length === 1, `${r.status} ${rWrong.status} ${JSON.stringify(rWrong.body)}`);
+    r = await reqMultipart(`/api/instance/guilds/${G3}/restore`, { sid: sessions.OWN, fields: { passphrase: 'une phrase de passe longue' }, file });
+    const [{ n: n3 }] = await db3('SELECT COUNT(*) AS n FROM tickets');
+    const [g3] = await globalQuery('SELECT maintenance_mode FROM guilds WHERE guild_id = ?', [G3]);
+    const restoredFile = path.join(attDir, G3, 'piece-v8.bin');
+    check('restauration espace: tables remplacées d un coup, fichiers recopiés, maintenance levée, au journal', r.status === 200 && Number(n3) === Number(nTickets) && (await db3("SELECT 1 FROM tickets WHERE channel_id = 'g3-avant'")).length === 0 && fsx.existsSync(restoredFile) && fsx.readFileSync(restoredFile).equals(Buffer.from([0, 1, 2, 250, 255])) && Number(g3.maintenance_mode) === 0 && (await db3("SELECT 1 FROM audit_log WHERE action = 'space_restore'")).length === 1, JSON.stringify([r.body, n3, nTickets, g3]));
+    const [cfgA] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+    const [cfgB] = await db3('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+    check('restauration espace: réglages et JSON identiques', JSON.stringify(cfgA.ticket_subjects) === JSON.stringify(cfgB.ticket_subjects), JSON.stringify([cfgA, cfgB]));
+    const newer = Buffer.from(archive);
+    let refusedNewer = null;
+    try {
+      // An archive of a newer schema is refused (built by hand with the same key derivation)
+      const { header: h } = await B.inspect(archive, 'une phrase de passe longue');
+      const lines2 = [JSON.stringify({ ...h, schemaVersion: 9999 }), JSON.stringify({ end: true, rows: 0, files: 0 })].join('\n') + '\n';
+      const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
+      const key = crypto.scryptSync('une phrase de passe longue', salt, 32, { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+      const c = crypto.createCipheriv('aes-256-gcm', key, iv);
+      const enc = Buffer.concat([c.update(zlib.gzipSync(Buffer.from(lines2))), c.final()]);
+      await B.restoreSpace(G3, Buffer.concat([B.MAGIC, salt, iv, enc, c.getAuthTag()]), 'une phrase de passe longue', { id: 'x' });
+    } catch (e) { refusedNewer = e.message; }
+    check('restauration espace: archive d une version plus récente refusée', /plus récente/.test(refusedNewer || '') && newer.length > 0, refusedNewer);
+    delete app('./utils/config').config.attachmentsDir;
+    await globalQuery('DELETE FROM guilds WHERE guild_id = ?', [G3]);
+    await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G3);
+  }
+
   {
     const pub = ['/api/kb/G/articles/1/feedback', '/api/kb/G/searches', '/api/auth/select-guild', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/password-reset/confirm',
       '/api/auth/ldap-login', '/api/auth/invitation/accept', '/api/installation/owner', '/api/member/auth/email', '/api/member/auth/email/verify', '/api/member/guilds/G/tickets', '/api/member/tickets/G/1/resolution', '/api/member/tickets/G/1/messages',

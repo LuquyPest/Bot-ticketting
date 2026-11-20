@@ -868,6 +868,14 @@ export const ENTRIES = [
   ['Tester', 'Test'], ['Ça fonctionne.', 'It works.'], ['Échec de l\'essai', 'The test failed'], ['Envoyer une alerte de test', 'Send a test alert'], ['Tester le webhook', 'Test the webhook'],
   ['+33612345678 (vide : ton numéro)', '+33612345678 (empty: your number)'], ['Vérifier le réglage', 'Check the settings'], ['Connexion d\'essai', 'Test sign-in'],
   ['La connexion d\'essai ouvre le fournisseur dans un nouvel onglet et affiche ce qu\'il renvoie (identifiant, adresse, groupes, compte trouvé), sans ouvrir de session.', 'The test sign-in opens the provider in a new tab and shows what it sends back (identifier, address, groups, account found), without opening a session.'],
+  // ── v8.1: space backup and restore ──
+  ['Sauvegarde complète de l\'espace', 'Full backup of the space'], ['Une archive chiffrée de toutes les données et fichiers de l\'espace, à garder hors du serveur.', 'An encrypted archive of all the space\'s data and files, to keep away from the server.'],
+  ['Toutes les données de l\'espace — tickets, messages, contacts, réglages, base de connaissances, parc… — et ses fichiers, dans une archive chiffrée par la phrase de passe choisie ici. Elle sert aussi d\'export complet : son format est décrit dans la documentation et se lit sans Datick. Rien n\'est gardé sur le serveur ; sans la phrase de passe, l\'archive est illisible.', 'All the space\'s data — tickets, messages, contacts, settings, knowledge base, inventory… — and its files, in an archive encrypted with the passphrase chosen here. It is also a complete export: its format is described in the documentation and can be read without Datick. Nothing is kept on the server; without the passphrase, the archive cannot be read.'],
+  ['Phrase de passe (12 caractères au moins)', 'Passphrase (12 characters at least)'], ['Phrase de passe de la sauvegarde', 'Passphrase of the backup'], ['La même, encore une fois', 'The same, once more'], ['Confirmer la phrase de passe', 'Confirm the passphrase'],
+  ['Les deux phrases de passe diffèrent.', 'The two passphrases differ.'], ['Télécharger la sauvegarde', 'Download the backup'], ['Sauvegarde téléchargée', 'Backup downloaded'],
+  ['La restauration se fait dans Instance → Serveurs (propriétaire de l\'instance), sur cet espace ou un autre.', 'Restoring is done in Instance → Servers (owner of the instance), on this space or another one.'],
+  ['Restaurer une sauvegarde', 'Restore a backup'], ['Fichier de sauvegarde', 'Backup file'], ['Restaurer', 'Restore'], ['Espace restauré', 'Space restored'],
+  ['Toutes les données de cet espace sont remplacées par celles de la sauvegarde, d\'un coup (l\'espace passe en maintenance le temps de l\'opération). Venue d\'un autre espace, elle en reprend aussi les réglages Discord, à revoir ensuite.', 'All the data of this space is replaced by the backup\'s, at once (the space is in maintenance meanwhile). From another space, it also brings its Discord settings, to review afterwards.'],
 ];
 
 export const TEMPLATES = [
@@ -1197,4 +1205,6 @@ export const TEMPLATES = [
   ['Responsable côté client : voit les tickets de l\'organisation dans l\'espace membre', 'Client-side manager: sees the organisation\'s tickets in the member space'], ['Responsable côté client (portail)', 'Client-side manager (portal)'], ['Organisation d\'un contact changée', 'Contact\'s organisation changed'], ['Organisations importées', 'Organisations imported'],
   ['Ticket #{} ouvert puis fermé à la fin de l\'alerte.', 'Ticket #{1} opened, then closed when the alert ended.'], ['Ticket #{} ouvert, une note marque la fin de l\'alerte.', 'Ticket #{1} opened, a note marks the end of the alert.'],
   ['✓ {} : {}', '✓ {1}: {2}'], ['✗ {} : {}', '✗ {1}: {2}'],
+  ['Restaurer une sauvegarde — {}', 'Restore a backup — {1}'], ['{} ligne(s) dans {} table(s) et {} fichier(s) restaurés.', '{1} row(s) in {2} table(s) and {3} file(s) restored.'],
+  ['Sauvegarde du {}, espace « {} », Datick {}.', 'Backup of {1}, space « {2} », Datick {3}.'], ['Sauvegarde du {}, espace « {} ».', 'Backup of {1}, space « {2} ».'], ['Sauvegarde du {}.', 'Backup of {1}.'], ['Sauvegarde du {}, Datick {}.', 'Backup of {1}, Datick {2}.'],
 ];

@@ -44,6 +44,30 @@ En ligne de commande : `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc -
 Le bot ne lit jamais les archives et n'a pas le mot de passe administrateur de la base : il dépose une demande dans `backups/requests`, et c'est le service `backup`, qui a déjà les deux, qui restaure. Le service recharge son script de lui-même quand une mise à jour le modifie (`git pull`) ; au besoin, `docker compose restart backup`.
 :::
 
+## Sauvegarde d'un espace, depuis le dashboard
+
+En plus des sauvegardes de nuit de toute l'instance, un **fondateur** télécharge à tout moment une sauvegarde complète de **son espace** : **Paramètres → Sauvegarde → Sauvegarde complète de l'espace**. Il choisit une **phrase de passe** (12 caractères au moins) ; l'archive (`.datick`) contient toutes les tables de l'espace (tickets, messages, contacts, organisations, réglages, base de connaissances, parc, changements…) et ses fichiers (pièces jointes, images de la base). Rien n'en est gardé sur le serveur. Cinq sauvegardes par heure au plus ; chacune est au journal de l'espace.
+
+**Restaurer** : **Instance → Serveurs → Restaurer une sauvegarde** (propriétaire de l'instance), sur le même espace ou un autre, avec la phrase de passe. Toutes les tables de l'espace visé sont remplacées **d'un coup** (une transaction : en cas d'erreur, rien ne change), l'espace est en maintenance le temps de l'opération, les fichiers sont recopiés. Une archive d'une version plus ancienne se restaure (l'espace garde le schéma de la version installée) ; celle d'une version plus récente est refusée. Venue d'un autre espace, elle en reprend aussi les réglages Discord (salons, rôles), à revoir. Les secrets de l'espace (jetons du CRM, des outils…) y restent chiffrés par la clé de l'instance : ils ne servent que sur la même instance.
+
+### Le format, pour la réversibilité
+
+L'archive est aussi l'**export complet** de l'espace, lisible sans Datick :
+
+| Partie | Contenu |
+|---|---|
+| En-tête | `DATICKS1` (8 octets), sel (16), vecteur d'initialisation (12) |
+| Corps | AES-256-GCM, clé = scrypt(phrase de passe, sel, 32 octets, N = 2¹⁵, r = 8, p = 1), du gzip de lignes JSON |
+| Fin | Étiquette d'authentification GCM (16 octets) |
+
+Les lignes JSON : d'abord `{ "format": "datick-space", "version": 1, "appVersion", "schemaVersion", "guildId", "guildName", "createdAt", "tables": […] }`, puis une ligne `{ "t": "<table>", "r": { …colonnes } }` par ligne de table (une valeur binaire s'écrit `{ "$b64": "…" }`, les dates telles qu'en base), puis `{ "f": "files/<nom>" | "kb/<nom>", "b64": "…" }` par fichier, et enfin `{ "end": true, "rows": …, "files": … }`.
+
+Pour la déchiffrer sans Datick (Node.js seul, aucune dépendance) :
+
+```bash
+DATICK_PASSPHRASE='ta phrase de passe' node scripts/decrypt-space-backup.js datick-espace-….datick > espace.jsonl
+```
+
 ## Vérification automatique
 
 Une sauvegarde qu'on n'a jamais relue peut être inutilisable le jour où on en a besoin. Avec `BACKUP_VERIFY` dans `.env`, le service relit la dernière archive juste après l'avoir faite : contrôle d'intégrité, déchiffrement, décompression et présence de la fin du dump SQL. Rien n'est écrit en clair pendant la vérification.
