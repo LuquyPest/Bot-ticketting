@@ -85,6 +85,7 @@ const FIELD_MAP = {
   subjectTypes:             'subject_types',
   // v5.1 — resolution and closing (utils/resolution.js)
   resolutionEnabled:        'resolution_enabled',
+  closeChildrenWithParent:  'close_children_with_parent',
   resolutionAutocloseDays:  'resolution_autoclose_days',
   // v5.1 — priority matrix (utils/priorityMatrix.js)
   priorityMatrixEnabled:    'priority_matrix_enabled',
@@ -105,6 +106,7 @@ const VALIDATORS = {
   maxTicketsPerDay:         v => Number.isInteger(v) && v >= 1 && v <= 100,
   ticketTypesEnabled:       v => v === 0 || v === 1 || v === true || v === false,
   resolutionEnabled:        v => v === 0 || v === 1 || v === true || v === false,
+  closeChildrenWithParent:  v => v === 0 || v === 1 || v === true || v === false,
   resolutionAutocloseDays:  v => Number.isInteger(v) && v >= 0 && v <= 90,
   priorityMatrixEnabled:    v => v === 0 || v === 1 || v === true || v === false,
   calendarId:               v => v === null || (Number.isInteger(v) && v > 0),

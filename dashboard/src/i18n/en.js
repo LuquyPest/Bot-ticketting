@@ -800,9 +800,15 @@ export const ENTRIES = [
   ['Fusionner avec un autre contact…', 'Merge with another contact…'], ['Rechercher un contact à fusionner', 'Search a contact to merge'],
   ['Nom du contact', 'Name of the contact'], ['Adresse e-mail du contact', 'E-mail address of the contact'], ['Notes sur le contact', 'Notes about the contact'],
   ['Notes (société, téléphone, contexte…)', 'Notes (company, phone, context…)'], ['Fiche enregistrée', 'Card saved'], ['Contacts fusionnés', 'Contacts merged'], ['Identité détachée', 'Identity detached'], ['Contact', 'Contact'],
+  // ── v7: links between tickets ──
+  ['Lié', 'Related'], ['Lié à', 'Related to'], ['Doublon de', 'Duplicate of'], ['A pour doublon', 'Has duplicate'], ['Bloque', 'Blocks'], ['Bloqué par', 'Blocked by'],
+  ['Enfant', 'Child'], ['Parent', 'Parent'], ['Parent de', 'Parent of'], ['Enfant de', 'Child of'], ['Enfants fermés', 'Closed children'],
+  ['Relation avec l\'autre ticket', 'Relation with the other ticket'],
+  ['Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé', 'Close the child tickets still open when their parent ticket is closed'],
 ];
 
 export const TEMPLATES = [
+  ['Enfants fermés : {} / {}', 'Closed children: {1} / {2}'], ['Enfants fermés : {} / {} · fermés avec ce ticket', 'Closed children: {1} / {2} · closed with this ticket'],
   ['Fermé · réouverture {}', 'Closed · reopens {1}'], ['Jours fermés ({})', 'Closed days ({1})'], ['{}, début de la plage {}', '{1}, start of range {2}'], ['{}, fin de la plage {}', '{1}, end of range {2}'], ['Retirer la plage {} du {}', 'Remove range {1} of {2}'], ['Ajouter une plage le {}', 'Add a range on {1}'], ['Supprimer le calendrier « {} » ?', 'Delete the « {1} » calendar?'],
   ['Urgence {}, impact {}', 'Urgency {1}, impact {2}'],
   ['Par {} le {}', 'By {1} on {2}'], ['Par {} le {} · fermeture automatique le {}', 'By {1} on {2} · automatic closing on {3}'], ['Le demandeur confirme (le ticket se ferme) ou répond (il reprend).', 'The requester confirms (the ticket closes) or replies (it goes on).'], ['Le demandeur confirme (le ticket se ferme) ou répond (il reprend) ; sans réponse, fermeture dans {} jour(s).', 'The requester confirms (the ticket closes) or replies (it goes on); without answer, closing in {1} day(s).'],

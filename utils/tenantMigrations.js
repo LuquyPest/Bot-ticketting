@@ -1493,6 +1493,17 @@ const MIGRATIONS = [
     name: 'Inactivité et escalade deviennent des règles temporelles, même effet (v6)',
     statements: timersAsRulesStatements(),
   },
+  {
+    version: 83,
+    name: 'Types de liens entre tickets : doublon, bloque, parent / enfant (v7)',
+    statements: [
+      // kind: related | duplicate | blocks | parent ; from_id: the ticket the asymmetric kind reads
+      // from (« from_id is a duplicate of / blocks / is the parent of » the other one)
+      `ALTER TABLE ticket_links ADD COLUMN IF NOT EXISTS kind VARCHAR(12) NOT NULL DEFAULT 'related',
+         ADD COLUMN IF NOT EXISTS from_id INT DEFAULT NULL`,
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS close_children_with_parent TINYINT(1) NOT NULL DEFAULT 0`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

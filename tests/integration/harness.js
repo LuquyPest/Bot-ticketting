@@ -1731,7 +1731,7 @@ async function main() {
       && ['get /tickets', 'get /contacts', 'post /tickets', 'post /tickets/{id}/reply', 'post /tickets/{id}/notes', 'patch /tickets/{id}', 'post /tickets/{id}/close'].every(x => doc3.includes(x))
       && !!r.body.paths['/tickets'].post.requestBody && r.body.paths['/tickets'].post['x-permission'] === 'create_tickets', doc3.join(', '));
     const routes3 = app('./web/routes/apiV3').ENDPOINTS.map(e => `${e.method} ${e.path}`);
-    check('API v3: chaque écriture documentée', routes3.length === 5 && routes3.every(x => doc3.includes(x)), routes3.join());
+    check('API v3: chaque écriture documentée', routes3.length === 7 && routes3.every(x => doc3.includes(x)), routes3.join());
     check('API v3: la v1 n a toujours pas de corps documenté', !JSON.stringify((await req('GET', '/api/v1/openapi.json')).body).includes('requestBody'), '');
 
     const tag = (await db("INSERT INTO ticket_tags (name, color) VALUES ('API-VIP', '#aa0000')")).insertId;
@@ -8142,6 +8142,65 @@ async function main() {
     check('images KB: supprimer l article supprime ses images (fichier et ligne)', r.status === 200 && existed && !fsx.existsSync(filePath) && !(await db('SELECT 1 FROM faq_images WHERE faq_id = ?', [fid])).length, JSON.stringify([r.status, existed]));
     fsx.rmSync(cfgK.attachmentsDir, { recursive: true, force: true });
     if (prevDir === undefined) delete cfgK.attachmentsDir; else cfgK.attachmentsDir = prevDir;
+  }
+
+  // ── Links between tickets: duplicate, blocks, parent / child (utils/ticketLinks.js, v7) ──
+  {
+    const mkT = async (n, extra = '') => (await db(`INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject${extra ? ', visibility_grade_id' : ''}) VALUES ('200000000000000071', 'u71', ?, 'open', ?${extra ? ', ?' : ''})`, extra ? [`tl7-${n}`, `Liens v7 ${n}`, extra] : [`tl7-${n}`, `Liens v7 ${n}`])).insertId;
+    const [pa, c1, c2, gc, dup, blk] = [await mkT('parent'), await mkT('enfant1'), await mkT('enfant2'), await mkT('petit-enfant'), await mkT('doublon'), await mkT('bloquant')];
+    r = await req('POST', `/api/tickets/${dup}/links`, { sid: sessions.FV, body: { ticketId: pa, relation: 'duplicate_of' } });
+    const rOther = await req('GET', `/api/tickets/${pa}`, { sid: sessions.FV });
+    check('liens v7: doublon de → « a pour doublon » vu de l autre ticket', r.status === 200 && r.body.links.find(l => l.id === pa)?.relation === 'duplicate_of' && rOther.body.links.find(l => l.id === dup)?.relation === 'has_duplicate', JSON.stringify([r.body.links, rOther.body.links]));
+    r = await req('POST', `/api/tickets/${dup}/links`, { sid: sessions.FV, body: { ticketId: pa, relation: 'related' } });
+    check('liens v7: une seule relation par paire (la nouvelle remplace)', r.body.links.filter(l => l.id === pa).length === 1 && r.body.links.find(l => l.id === pa).relation === 'related', JSON.stringify(r.body.links));
+    r = await req('POST', `/api/tickets/${pa}/links`, { sid: sessions.FV, body: { ticketId: blk, relation: 'blocked_by' } });
+    const rBlk = await req('GET', `/api/tickets/${blk}`, { sid: sessions.FV });
+    check('liens v7: bloqué par / bloque', r.body.links.find(l => l.id === blk)?.relation === 'blocked_by' && rBlk.body.links.find(l => l.id === pa)?.relation === 'blocks', JSON.stringify(rBlk.body.links));
+    r = await req('POST', `/api/tickets/${pa}/links`, { sid: sessions.FV, body: { ticketId: c1, relation: 'child' } });
+    await req('POST', `/api/tickets/${c2}/links`, { sid: sessions.FV, body: { ticketId: pa, relation: 'parent' } });
+    await req('POST', `/api/tickets/${c1}/links`, { sid: sessions.FV, body: { ticketId: gc, relation: 'child' } });
+    r = await req('GET', `/api/tickets/${pa}`, { sid: sessions.FV });
+    check('liens v7: parent de deux enfants, avancement 0 / 2', r.body.children?.total === 2 && r.body.children.closed === 0 && r.body.links.filter(l => l.relation === 'child').length === 2, JSON.stringify(r.body.children));
+    r = await req('POST', `/api/tickets/${dup}/links`, { sid: sessions.FV, body: { ticketId: c1, relation: 'child' } });
+    check('liens v7: un ticket n a qu un parent', r.status === 400 && /déjà un parent/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${gc}/links`, { sid: sessions.FV, body: { ticketId: pa, relation: 'child' } });
+    check('liens v7: pas de boucle de parents', r.status === 400 && /boucle/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${pa}/links`, { sid: sessions.FV, body: { ticketId: c1, relation: 'cousin' } });
+    check('liens v7: relation inconnue refusée', r.status === 400, r.status);
+    const [ev] = await db("SELECT details FROM audit_log WHERE action = 'ticket_link' AND ticket_id = ? ORDER BY id DESC LIMIT 1", [gc]);
+    check('liens v7: relation notée au journal', /"relation":"parent"/.test(JSON.stringify(ev?.details || '')), JSON.stringify(ev?.details));
+    // Closing the parent closes its children, then theirs, when the space asks for it
+    const R = app('./utils/resolution');
+    const by = { id: U.F, tag: 'F' };
+    const [tPa] = await db('SELECT * FROM tickets WHERE id = ?', [pa]);
+    await R.closeResolved({ db, client: null, guildId: G, ticket: tPa, by });
+    await new Promise(res => setTimeout(res, 400));
+    let [st] = await db('SELECT status FROM tickets WHERE id = ?', [c1]);
+    check('liens v7: option coupée → les enfants restent ouverts', st.status === 'open', st.status);
+    await db("UPDATE tickets SET status = 'open', closed_at = NULL WHERE id = ?", [pa]);
+    r = await req('PATCH', '/api/config', { sid: sessions.FV, body: { closeChildrenWithParent: true } });
+    check('liens v7: réglage « fermer les enfants avec le parent »', r.status === 200, JSON.stringify(r.body));
+    const [tPa2] = await db('SELECT * FROM tickets WHERE id = ?', [pa]);
+    await R.closeResolved({ db, client: null, guildId: G, ticket: tPa2, by });
+    for (let i = 0; i < 30; i++) { [st] = await db('SELECT status FROM tickets WHERE id = ?', [gc]); if (st.status === 'closed') break; await new Promise(res => setTimeout(res, 100)); }
+    const closed = await db('SELECT id, status, closed_by_tag FROM tickets WHERE id IN (?)', [[c1, c2, gc, blk]]);
+    const byId = Object.fromEntries(closed.map(x => [x.id, x]));
+    check('liens v7: fermer le parent ferme ses enfants et petits-enfants, pas les autres liens', byId[c1].status === 'closed' && byId[c2].status === 'closed' && byId[gc].status === 'closed' && byId[blk].status === 'open' && /#/.test(byId[c1].closed_by_tag), JSON.stringify(closed));
+    r = await req('GET', `/api/tickets/${pa}`, { sid: sessions.FV });
+    check('liens v7: avancement 2 / 2', r.body.children?.closed === 2 && r.body.closeChildrenWithParent === true, JSON.stringify(r.body.children));
+    await req('PATCH', '/api/config', { sid: sessions.FV, body: { closeChildrenWithParent: false } });
+    // API v3
+    const kr = await req('POST', '/api/api-keys', { sid: sessions.FK3, body: { name: 'liens', permissions: ['read_tickets', 'update_tickets'] } });
+    const kL = { Authorization: `Bearer ${kr.body.key}` };
+    const conf = await mkT('confidentiel', app('./utils/gradePermissions').CONFIDENTIAL);
+    r = await req('POST', `/api/v3/tickets/${blk}/links`, { headers: kL, body: { ticket_id: dup, relation: 'blocks' } });
+    check('liens v7: API v3, lier et lire les liens', r.status === 200 && r.body.links?.some(l => l.ticket_id === dup && l.relation === 'blocks'), JSON.stringify(r.body.links));
+    r = await req('POST', `/api/v3/tickets/${blk}/links`, { headers: kL, body: { ticket_id: conf, relation: 'related' } });
+    check('liens v7: API v3, ticket confidentiel inaccessible', r.status === 404, r.status);
+    await db('INSERT IGNORE INTO ticket_links (ticket_a, ticket_b, kind) VALUES (?, ?, ?)', [Math.min(blk, conf), Math.max(blk, conf), 'related']);
+    r = await req('DELETE', `/api/v3/tickets/${blk}/links/${dup}`, { headers: kL });
+    check('liens v7: API v3, retrait ; un lien vers un ticket confidentiel n est jamais montré', r.status === 200 && !r.body.links.some(l => l.ticket_id === dup) && !r.body.links.some(l => l.ticket_id === conf) && r.body.links.some(l => l.ticket_id === pa), JSON.stringify(r.body.links));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[pa, dup, blk, conf]]);
   }
 
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very

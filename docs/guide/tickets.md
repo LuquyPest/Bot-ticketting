@@ -48,6 +48,13 @@ Une sous-catégorie **hérite** de ce qui est réglé sur sa catégorie : règle
 | **Aide** | Tickets similaires déjà résolus avec leur réponse, procédures à cocher par sujet, [fiche contact](#les-contacts) du demandeur (étiquettes, historique, fil du staff) |
 | **Temps** | Chronomètre par ticket et temps ajouté à la main, délai par étape (SLA) avec temps restant et alerte « Hors délai » |
 
+## Les tickets liés
+
+Dans **Tickets liés** sur la fiche (permission **Répondre**), un ticket se lie à un autre ticket de l'espace avec une **relation** : *lié à*, *doublon de*, *bloque*, *bloqué par*, *parent de*, *enfant de*. Le lien se voit des deux côtés, dans le bon sens (« doublon de #12 » d'un côté, « a pour doublon #31 » de l'autre) ; une paire n'a qu'une relation, la nouvelle remplace l'ancienne. Un ticket encore ouvert qui en bloque un autre est marqué en rouge.
+
+- **Parent et enfants** : un ticket a un parent au plus, sans boucle. Le parent montre combien de ses enfants sont fermés. Avec **Paramètres → Général → Résolution et clôture → Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé**, fermer le parent (quel que soit le moyen : dashboard, Discord, règle, API, inactivité) ferme ses enfants, puis les leurs.
+- Seuls les tickets qu'on voit sont montrés ; chaque lien et retrait est au journal des deux tickets. L'[API v3](./integrations#api-publique) lit les liens d'un ticket et en crée.
+
 ## Les types : incident ou demande
 
 Dans **Paramètres → Général → Types de tickets**, un espace peut distinguer les **incidents** (quelque chose ne marche plus) des **demandes** (on demande quelque chose : un accès, un matériel, une information), et les renommer (« Panne », « Commande »…).

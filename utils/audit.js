@@ -233,6 +233,10 @@ async function recordEvent(db, { actor, action, ticketId = null, targetType = nu
   } catch (e) {
     console.error('recordEvent error:', e.message);
   }
+  // A closed ticket may close its children (v7, utils/ticketLinks.js), whatever closed it
+  if (action === 'ticket_close' && ticketId && db?.guildId) {
+    setImmediate(() => require('./ticketLinks').afterClose(db, ticketId).catch(err => console.error('afterClose:', err.message)));
+  }
 }
 
 // Acting user of a dashboard request.

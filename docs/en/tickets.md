@@ -48,6 +48,13 @@ A sub-category **inherits** what is set on its category: subject rules, custom f
 | **Help** | Similar tickets already solved with their answer, per-subject checklists, the requester's [contact card](#contacts) (labels, history, staff thread) |
 | **Time** | Per-ticket timer and time added by hand, per-stage deadline (SLA) with time left and an « Overdue » alert |
 
+## Linked tickets
+
+In **Linked tickets** on the ticket view (**Reply** permission), a ticket is linked to another ticket of the space with a **relation**: *related to*, *duplicate of*, *blocks*, *blocked by*, *parent of*, *child of*. The link shows on both sides, the right way round (« duplicate of #12 » on one side, « has duplicate #31 » on the other); a pair has one relation, a new one replaces the old one. A still open ticket that blocks another one is shown in red.
+
+- **Parent and children**: a ticket has one parent at most, with no loop. The parent shows how many of its children are closed. With **Settings → General → Resolution and closing → Close the child tickets still open when their parent ticket is closed**, closing the parent (by any means: dashboard, Discord, rule, API, inactivity) closes its children, then theirs.
+- Only the tickets one sees are shown; each link and removal is in the log of both tickets. The [API v3](./integrations#public-api) reads the links of a ticket and creates them.
+
 ## Types: incident or request
 
 In **Settings → General → Types of tickets**, a space can tell **incidents** (something no longer works) from **requests** (someone asks for something: an access, equipment, information), and rename them (« Outage », « Order »…).
