@@ -453,6 +453,25 @@ router.get('/:id/merge-candidates', async (req, res) => {
   }
 });
 
+// GET /api/tickets/:id/duplicates — open tickets of the same requester about the same thing (v7)
+router.get('/:id/duplicates', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res);
+    if (!ticket) return;
+    res.json({ duplicates: await require('../../utils/openDuplicates').forTicket(req.guildDb, ticket, await visibilityFilter(req, 't.visibility_grade_id')) });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+// POST /api/tickets/:id/duplicates/dismiss — « not a duplicate »: the banner goes away for this ticket
+router.post('/:id/duplicates/dismiss', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'reply_ticket');
+    if (!ticket) return;
+    await require('../../utils/openDuplicates').dismiss(req.guildDb, ticket.id);
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'duplicate_dismiss', ticketId: ticket.id });
+    res.json({ ok: true, duplicates: [] });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // POST /api/tickets/:id/merge { into } — merges this ticket into another one of the same member
 router.post('/:id/merge', async (req, res) => {
   try {

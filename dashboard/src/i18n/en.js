@@ -805,10 +805,12 @@ export const ENTRIES = [
   ['Enfant', 'Child'], ['Parent', 'Parent'], ['Parent de', 'Parent of'], ['Enfant de', 'Child of'], ['Enfants fermés', 'Closed children'],
   ['Relation avec l\'autre ticket', 'Relation with the other ticket'],
   ['Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé', 'Close the child tickets still open when their parent ticket is closed'],
-  ['Nouvelle sous-tâche', 'New sub-task'], ['Ajouter la sous-tâche', 'Add the sub-task'], ['Sous-tâche', 'Sub-task'],
+  ['Nouvelle sous-tâche', 'New sub-task'], ['Doublon possible : le demandeur a d\'autres tickets ouverts sur le même sujet', 'Possible duplicate: the requester has other open tickets about the same thing'], ['même sujet', 'same subject'], ['Ce n\'est pas un doublon', 'Not a duplicate'], ['Ajouter la sous-tâche', 'Add the sub-task'], ['Sous-tâche', 'Sub-task'],
 ];
 
 export const TEMPLATES = [
+  ['Fusionner ce ticket dans #{} ? L\'historique, les participants, les attributions et les tags y seront déplacés, puis ce ticket sera fermé.', 'Merge this ticket into #{1}? The history, participants, assignments and tags will be moved there, then this ticket will be closed.'],
+  ['mots communs : {}', 'words in common: {1}'], ['Fusionner dans #{}', 'Merge into #{1}'], ['Marquer doublon de #{}', 'Mark as duplicate of #{1}'], ['#{} — {}', '#{1} — {2}'],
   ['{}/{} sous-tâches', '{1}/{2} sub-tasks'], ['Sous-tâches de « {} »', 'Sub-tasks of « {1} »'], ['Nouvelle sous-tâche de « {} »', 'New sub-task of « {1} »'], ['Ajouter une sous-tâche à « {} »', 'Add a sub-task to « {1} »'],
   ['Enfants fermés : {} / {}', 'Closed children: {1} / {2}'], ['Enfants fermés : {} / {} · fermés avec ce ticket', 'Closed children: {1} / {2} · closed with this ticket'],
   ['Fermé · réouverture {}', 'Closed · reopens {1}'], ['Jours fermés ({})', 'Closed days ({1})'], ['{}, début de la plage {}', '{1}, start of range {2}'], ['{}, fin de la plage {}', '{1}, end of range {2}'], ['Retirer la plage {} du {}', 'Remove range {1} of {2}'], ['Ajouter une plage le {}', 'Add a range on {1}'], ['Supprimer le calendrier « {} » ?', 'Delete the « {1} » calendar?'],

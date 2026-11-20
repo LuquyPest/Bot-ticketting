@@ -8238,6 +8238,48 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tk, other]]);
   }
 
+  // ── Open duplicates: staff banner and member space warning (utils/openDuplicates.js, v7) ──
+  {
+    const OWN = '200000000000000081', OTH = '200000000000000083';
+    const mkT = async (owner, n, subject, text) => {
+      const id = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'u', ?, 'open', ?)", [owner, `dup7-${n}`, subject])).insertId;
+      if (text) await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'u', ?, 'user')", [id, owner, text]);
+      return id;
+    };
+    const d1 = await mkT(OWN, 1, 'Doublons v7 imprimante', 'L imprimante du troisième étage affiche bourrage papier permanent');
+    const d2 = await mkT(OWN, 2, null, 'Encore un bourrage papier sur imprimante troisième étage');
+    const d3 = await mkT(OWN, 3, 'Doublons v7 accès VPN', 'Impossible de joindre le VPN depuis la maison');
+    const d4 = await mkT(OTH, 4, 'Doublons v7 imprimante', 'Bourrage papier imprimante');
+    r = await req('GET', `/api/tickets/${d2}/duplicates`, { sid: sessions.FV });
+    check('doublons: même demandeur, mots communs → signalé (pas son autre ticket sans rapport, ni celui d un autre)', r.status === 200 && r.body.duplicates.length === 1 && r.body.duplicates[0].id === d1 && r.body.duplicates[0].reason === 'words' && r.body.duplicates[0].canMerge === true, JSON.stringify(r.body));
+    const d5 = await mkT(OWN, 5, 'Doublons v7 accès VPN', null);
+    r = await req('GET', `/api/tickets/${d5}/duplicates`, { sid: sessions.FV });
+    check('doublons: même sujet → signalé', r.body.duplicates.some(d => d.id === d3 && d.reason === 'subject'), JSON.stringify(r.body));
+    // Another identity of the same contact card: shown, but not mergeable (two different owners)
+    const [{ insertId: ct }] = [await db("INSERT INTO contacts (display_name) VALUES ('Doublons v7')")];
+    await db('INSERT INTO contact_identities (contact_id, kind, value) VALUES (?, ?, ?), (?, ?, ?) ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)', [ct, 'discord', OWN, ct, 'email', 'mail:dup7']);
+    const d6 = await mkT('mail:dup7', 6, 'Doublons v7 accès VPN', null);
+    r = await req('GET', `/api/tickets/${d6}/duplicates`, { sid: sessions.FV });
+    check('doublons: autre identité de la même fiche contact → signalé, sans fusion possible', r.body.duplicates.some(d => d.id === d3 && d.canMerge === false), JSON.stringify(r.body));
+    await req('POST', `/api/tickets/${d5}/links`, { sid: sessions.FV, body: { ticketId: d3, relation: 'duplicate_of' } });
+    r = await req('GET', `/api/tickets/${d5}/duplicates`, { sid: sessions.FV });
+    check('doublons: une paire déjà liée n est plus signalée', !r.body.duplicates.some(d => d.id === d3), JSON.stringify(r.body));
+    r = await req('POST', `/api/tickets/${d2}/duplicates/dismiss`, { sid: sessions.FV });
+    const r2 = await req('GET', `/api/tickets/${d2}/duplicates`, { sid: sessions.FV });
+    const [ev] = await db("SELECT 1 FROM audit_log WHERE action = 'duplicate_dismiss' AND ticket_id = ?", [d2]);
+    check('doublons: « ce n est pas un doublon » retire le bandeau, au journal', r.status === 200 && r2.body.duplicates.length === 0 && !!ev, JSON.stringify(r2.body));
+    // Member space: their own open tickets only
+    await redis.del(`memberguilds:${OWN}`);
+    r = await req('POST', `/api/member/guilds/${G}/duplicate-check`, { sid: sessions.MW, body: { subject: '', content: 'Mon imprimante fait un bourrage papier au troisième étage' } });
+    check('doublons: espace membre, ses tickets ouverts sur le même sujet', r.status === 200 && r.body.tickets.some(t => t.id === d1) && !r.body.tickets.some(t => t.id === d4), JSON.stringify(r.body));
+    r = await req('POST', `/api/member/guilds/${G}/duplicate-check`, { sid: sessions.MW, body: { subject: 'Rien à voir', content: 'Question sur la facturation annuelle' } });
+    check('doublons: espace membre, rien de proche → rien', r.status === 200 && r.body.tickets.length === 0, JSON.stringify(r.body));
+    r = await req('POST', `/api/member/guilds/${G}/duplicate-check`, { body: { content: 'x' } });
+    check('doublons: espace membre, connexion requise', r.status === 401, r.status);
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[d1, d2, d3, d4, d5, d6]]);
+    await db('DELETE FROM contacts WHERE id = ?', [ct]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
