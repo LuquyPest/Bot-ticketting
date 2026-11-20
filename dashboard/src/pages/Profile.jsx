@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import usePushNotifications from '../hooks/usePushNotifications';
 import NotificationPrefs from '../components/NotificationPrefs';
 import PhoneSettings from '../components/PhoneSettings';
+import MobileDevices from '../components/MobileDevices';
 import RecoveryCodes from '../components/RecoveryCodes';
 import LoginMethods from '../components/LoginMethods';
 import EmailSignature from '../components/EmailSignature';
@@ -777,6 +778,7 @@ export default function Profile() {
       <Section title="Ce qui me prévient">
         <NotificationPrefs />
         <div className="mt-4"><PhoneSettings /></div>
+        <div className="mt-4"><MobileDevices /></div>
       </Section>
 
       {/* ── Sessions actives ──────────────────────────────────────────────── */}

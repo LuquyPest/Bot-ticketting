@@ -6839,7 +6839,9 @@ async function main() {
     check('comptes: moyens de connexion réservés au compte connecté', r.status === 401, r.status);
     await globalQuery('UPDATE accounts SET disabled = 1 WHERE id = ?', [ACC]);
     r = await signIn();
-    const [logD] = await globalQuery("SELECT status FROM login_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1", [ACC]);
+    // The sign-in log is written without being awaited: give it a moment
+    let logD;
+    for (let i = 0; i < 20; i++) { [logD] = await globalQuery("SELECT status FROM login_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1", [ACC]); if (logD?.status === 'disabled') break; await new Promise(res => setTimeout(res, 50)); }
     check('comptes: compte désactivé → connexion refusée et notée au journal', r.status === 302 && r.headers.location === '/login?error=account_disabled' && logD?.status === 'disabled', JSON.stringify([r.headers.location, logD]));
     axios.post = realPost; axios.get = realGet;
     await globalQuery('DELETE FROM account_identities WHERE account_id = ?', [ACC]);
@@ -9303,6 +9305,67 @@ async function main() {
     const csp2 = await new Promise(res => http.get({ host: '127.0.0.1', port: config.webServerPort, path: '/' }, x => { x.resume(); res(String(x.headers['content-security-policy'] || '')); }));
     check('extensions: supprimée → clé effacée, plus aucun cadre autorisé', r.status === 200 && (await db('SELECT 1 FROM api_keys WHERE name = ?', ['Extension · Inventaire v7'])).length === 0 && /frame-src 'none'/.test(csp2), csp2.slice(0, 160));
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tE]);
+  }
+
+  // ── Mobile app notifications through Firebase (utils/mobilePush.js, v7) — Google simulated locally ──
+  {
+    const crypto4 = require('crypto');
+    const { privateKey, publicKey } = crypto4.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    const calls = [];
+    const mock = http.createServer((q, s2) => {
+      let b = ''; q.on('data', d => { b += d; }); q.on('end', () => {
+        calls.push({ u: q.url, h: q.headers, b });
+        const json = (o, c = 200) => { s2.writeHead(c, { 'Content-Type': 'application/json' }); s2.end(JSON.stringify(o)); };
+        if (q.url === '/token') {
+          const jwt = new URLSearchParams(b).get('assertion') || '';
+          const [h, c, sig] = jwt.split('.');
+          const ok = crypto4.createVerify('RSA-SHA256').update(`${h}.${c}`).verify(publicKey, Buffer.from(sig || '', 'base64url'));
+          const claims = JSON.parse(Buffer.from(c || '', 'base64url').toString() || '{}');
+          return ok && claims.iss === 'datick@projet-v7.iam.gserviceaccount.com' ? json({ access_token: 'ya29.test', expires_in: 3600 }) : json({ error: 'invalid_grant' }, 400);
+        }
+        if (q.url === '/v1/projects/projet-v7/messages:send') {
+          const m = JSON.parse(b).message;
+          return m.token === 'jeton-perime-v7-0123456789' ? json({ error: { status: 'NOT_FOUND', details: [{ errorCode: 'UNREGISTERED' }] } }, 404) : json({ name: 'projects/projet-v7/messages/1' });
+        }
+        json({}, 404);
+      });
+    });
+    await new Promise(res => mock.listen(0, '127.0.0.1', res));
+    process.env.FCM_TOKEN_URL = `http://127.0.0.1:${mock.address().port}/token`;
+    process.env.FCM_API_URL = `http://127.0.0.1:${mock.address().port}`;
+    const sa = { type: 'service_account', project_id: 'projet-v7', client_email: 'datick@projet-v7.iam.gserviceaccount.com', private_key: pem };
+    r = await req('PUT', '/api/instance/mobile-push', { sid: sessions.S1, body: { serviceAccount: JSON.stringify(sa) } });
+    const rBad = await req('PUT', '/api/instance/mobile-push', { sid: sessions.OWN, body: { serviceAccount: '{"type":"autre"}' } });
+    const rOk = await req('PUT', '/api/instance/mobile-push', { sid: sessions.OWN, body: { serviceAccount: JSON.stringify(sa) } });
+    check('mobile: compte de service Firebase réglé par le propriétaire, clé jamais renvoyée', [401, 403].includes(r.status) && rBad.status === 400 && rOk.status === 200 && rOk.body.configured && !JSON.stringify(rOk.body).includes('PRIVATE KEY'), `${r.status} ${rBad.status} ${JSON.stringify(rOk.body)}`);
+    await globalQuery("INSERT IGNORE INTO accounts (id, display_name) VALUES (?, 'S1')", [U.S1]);
+    r = await req('POST', '/api/profile/mobile-devices', { sid: sessions.S1, body: { token: 'fcm-jeton-v7-0123456789abcdef', platform: 'android' } });
+    const rp = await req('POST', '/api/profile/mobile-devices', { sid: sessions.S1, body: { token: 'x', platform: 'android' } });
+    const rl = await req('GET', '/api/profile/mobile-devices', { sid: sessions.S1 });
+    check('mobile: appareil rattaché au compte (jeton chiffré, jamais relu)', r.status === 200 && rp.status === 400 && rl.body.devices.length === 1 && rl.body.devices[0].platform === 'android' && !JSON.stringify(rl.body).includes('fcm-jeton') && !(await globalQuery('SELECT token FROM mobile_push_tokens WHERE user_id = ?', [U.S1]))[0].token.includes('fcm-jeton'), JSON.stringify(rl.body));
+    const tM = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000071', 'mob', 'mob7-1', 'open', 'Mobile v7')")).insertId;
+    await app('./web/routes/push').sendPushToUser(G, U.S1, { type: 'assigned', title: 'Ticket #1 attribué', body: 'Mobile v7', ticketId: tM });
+    const sendCall = calls.find(c => c.u === '/v1/projects/projet-v7/messages:send');
+    const msg = sendCall && JSON.parse(sendCall.b).message;
+    check('mobile: la notification part par FCM (jeton OAuth signé RS256), avec le lien du ticket', !!sendCall && sendCall.h.authorization === 'Bearer ya29.test' && msg.token === 'fcm-jeton-v7-0123456789abcdef' && msg.notification.title === 'Ticket #1 attribué' && /\/tickets\/\d+$/.test(msg.data.url || ''), JSON.stringify(msg));
+    await req('POST', '/api/profile/mobile-devices', { sid: sessions.S1, body: { token: 'jeton-perime-v7-0123456789', platform: 'ios' } });
+    await app('./utils/mobilePush').sendToUser(U.S1, { title: 'x' });
+    const left = await globalQuery('SELECT platform FROM mobile_push_tokens WHERE user_id = ?', [U.S1]);
+    check('mobile: un appareil que Firebase ne connaît plus est oublié', left.length === 1 && left[0].platform === 'android', JSON.stringify(left));
+    const conf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000071', 'mob', 'mob7-2', 'open', 'conf', ?)", [app('./utils/gradePermissions').CONFIDENTIAL])).insertId;
+    const n0 = calls.length;
+    await app('./web/routes/push').sendPushToUser(G, U.S1, { title: 'x', ticketId: conf });
+    check('mobile: rien pour un ticket que la personne ne voit pas', calls.length === n0, `${calls.length - n0}`);
+    r = await req('GET', '/mobile-link');
+    check('mobile: la page /mobile-link est servie', r.status === 200, r.status);
+    const id = rl.body.devices[0].id;
+    r = await req('DELETE', `/api/profile/mobile-devices/${id}`, { sid: sessions.S1 });
+    check('mobile: appareil retiré', r.status === 200 && r.body.devices.length === 0, JSON.stringify(r.body));
+    await req('PUT', '/api/instance/mobile-push', { sid: sessions.OWN, body: { serviceAccount: null } });
+    delete process.env.FCM_TOKEN_URL; delete process.env.FCM_API_URL;
+    mock.close();
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'mob7-%'");
   }
 
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very

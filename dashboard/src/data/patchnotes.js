@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.10.0',
+    date: 'à venir',
+    title: 'Application mobile',
+    titleEn: 'Mobile app',
+    changes: [
+      { type: 'new',  text: 'Application Android et iOS (Capacitor) qui ouvre l\'instance choisie, avec ses notifications par Firebase Cloud Messaging (compte de service dans Instance → Santé, appareils dans le profil) ; l\'APK Android est construit par la CI et joint à chaque release', en: 'Android and iOS app (Capacitor) opening the chosen instance, with its notifications through Firebase Cloud Messaging (service account in Instance → Health, devices in the profile); the Android APK is built by the CI and attached to each release' },
+    ],
+  },
+  {
     version: 'v7.9.0',
     date: 'à venir',
     title: 'Intégrations',
