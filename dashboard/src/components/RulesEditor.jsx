@@ -13,7 +13,7 @@ const FIELDS = [['channel', 'Canal'], ['address', 'Adresse de réception'], ['ty
   ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation'], ['customField', 'Champ personnalisé'], ['assigned', 'Attribué'], ['resolved', 'Résolu']];
 const ACTIONS = [['priority', 'Priorité'], ['urgency', 'Urgence'], ['impact', 'Impact'], ['type', 'Type'], ['subject', 'Sujet'], ['team', 'Équipe'], ['assign', 'Attribuer à'],
   ['tagAdd', 'Ajouter le tag'], ['tagRemove', 'Retirer le tag'], ['stage', 'Statut'], ['grade', 'Restreindre au grade'], ['follower', 'Observateur'], ['notify', 'Prévenir'],
-  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['skill', 'Compétence demandée'], ['channelPost', 'Message dans un salon Discord'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
+  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['skill', 'Compétence demandée'], ['escalate', 'Escalader au niveau supérieur'], ['channelPost', 'Message dans un salon Discord'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
 const CHOICES = {
   channel: [['discord', 'Discord'], ['email', 'E-mail'], ['web', 'Web']], type: [['incident', 'Incident'], ['request', 'Demande']],
   priority: [['low', 'Basse'], ['normal', 'Normale'], ['urgent', 'Urgente']], hours: [['open', 'Support ouvert'], ['closed', 'Support fermé']],
@@ -91,7 +91,7 @@ function ActionRow({ a, ctx, onChange, onRemove }) {
   }
   return (
     <div className="flex flex-wrap items-center gap-2 bg-overlay/2.5 rounded-lg px-2 py-1.5">
-      <select value={a.type} onChange={e => onChange({ type: e.target.value, value: ['webhook', 'close'].includes(e.target.value) ? true : ['follower', 'notify'].includes(e.target.value) ? [] : e.target.value === 'channelPost' ? { channelId: '', text: '' } : '' })} aria-label="Action" className={INPUT}>
+      <select value={a.type} onChange={e => onChange({ type: e.target.value, value: ['webhook', 'close'].includes(e.target.value) ? true : e.target.value === 'escalate' ? 1 : ['follower', 'notify'].includes(e.target.value) ? [] : e.target.value === 'channelPost' ? { channelId: '', text: '' } : '' })} aria-label="Action" className={INPUT}>
         {ACTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
       {input}

@@ -421,6 +421,7 @@ router.get('/:id', async (req, res) => {
       links: await linkedTickets(req, ticket.id),
       children: await TL.progress(req.guildDb, ticket.id),
       skills: await require('../../utils/skills').ofTicket(req.guildDb, ticket),
+      nextLevel: ticket.status === 'open' ? await require('../../utils/supportLevels').nextTeam(req.guildDb, ticket) : null,
       closeChildrenWithParent: Number((await req.guildDb('SELECT close_children_with_parent FROM guild_config WHERE id = 1').catch(() => []))[0]?.close_children_with_parent) === 1,
       fields: await fieldsForTicket(req.guildDb, ticket.id),
       transcript: transcript[0] || null,
@@ -1183,6 +1184,19 @@ router.patch('/:id/team', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// POST /api/tickets/:id/escalate { reason, keepAssignees } — to the team of the next level (v7)
+router.post('/:id/escalate', async (req, res) => {
+  try {
+    const ticket = await loadTicket(req, res, 'claim_ticket');
+    if (!ticket) return;
+    const r = await require('../../utils/supportLevels').escalate({ db: req.guildDb, tm: getManager(req), ticket, reason: req.body?.reason, keepAssignees: !!req.body?.keepAssignees, actor: dashboardActor(req) });
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    broadcast('ticket', { id: ticket.id, team_id: r.team.id }, req.guildId);
+    if (r.assignee) broadcast('assigned', { ticketId: ticket.id, userId: r.assignee }, req.guildId);
+    res.json(r);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // PATCH /api/tickets/:id/priority-matrix { urgency, impact, level } (v5.1) — level null = computed

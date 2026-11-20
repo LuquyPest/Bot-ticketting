@@ -52,12 +52,19 @@ async function breakdown(db, vis, { by, days, from = null, to = null }) {
     return key || 'Sans sujet';
   };
 
+  // Escalations to a higher support level (utils/supportLevels.js, v7): by team, those that left it
+  const esc = tickets.length ? await db("SELECT ticket_id, JSON_VALUE(details, '$.fromTeamId') AS from_team FROM audit_log WHERE action = 'level_escalate' AND ticket_id IN (?)", [tickets.map(t => t.id)]).catch(() => []) : [];
+  const escalatedIds = new Set(esc.map(e => e.ticket_id));
+  const outOf = new Map();
+  for (const e of esc) { const k = e.from_team ? String(e.from_team) : ''; if (!outOf.has(k)) outOf.set(k, new Set()); outOf.get(k).add(e.ticket_id); }
+
   const groups = new Map();
   for (const t of tickets) {
     const k = keyOf(by, t);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(t);
   }
+  if (by === 'team') for (const k of outOf.keys()) if (!groups.has(k)) groups.set(k, []);
   const minutes = (a, b) => (new Date(b) - new Date(a)) / 60000;
   const rows = [...groups.entries()].map(([key, list]) => {
     const responded = list.filter(t => t.first_response_at).map(t => minutes(t.created_at, t.first_response_at));
@@ -78,12 +85,17 @@ async function breakdown(db, vis, { by, days, from = null, to = null }) {
       ratings: ratings.length,
       timeHours: Math.round(list.reduce((n, t) => n + Number(t.seconds || 0), 0) / 360) / 10,
       ttoMetPct, ttrMetPct,
+      ...(() => {
+        const n = by === 'team' ? (outOf.get(key)?.size || 0) : list.filter(t => escalatedIds.has(t.id)).length;
+        const base = by === 'team' ? list.filter(t => !outOf.get(key)?.has(t.id)).length + n : list.length;
+        return { escalated: n, escalatedPct: base ? Math.round((100 * n) / base) : null };
+      })(),
     };
   }).sort((a, b) => b.opened - a.opened || a.label.localeCompare(b.label));
   return { by, days, from, to, total: tickets.length, truncated: tickets.length >= MAX_TICKETS, rows };
 }
 
-const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Prise en charge dans le délai (%)', 'Résolution dans le délai (%)'];
-const csvRows = report => report.rows.map(r => [r.label, r.opened, r.closed, r.stillOpen, r.firstResponseMedianMin ?? '', r.resolutionMedianHours ?? '', r.avgRating ?? '', r.ratings, r.timeHours, r.ttoMetPct ?? '', r.ttrMetPct ?? '']);
+const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Prise en charge dans le délai (%)', 'Résolution dans le délai (%)', 'Escaladés', 'Taux d\'escalade (%)'];
+const csvRows = report => report.rows.map(r => [r.label, r.opened, r.closed, r.stillOpen, r.firstResponseMedianMin ?? '', r.resolutionMedianHours ?? '', r.avgRating ?? '', r.ratings, r.timeHours, r.ttoMetPct ?? '', r.ttrMetPct ?? '', r.escalated, r.escalatedPct ?? '']);
 
 module.exports = { breakdown, DIMENSIONS, CSV_HEADER, csvRows, CHANNEL_SQL };

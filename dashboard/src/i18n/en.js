@@ -805,7 +805,9 @@ export const ENTRIES = [
   ['Enfant', 'Child'], ['Parent', 'Parent'], ['Parent de', 'Parent of'], ['Enfant de', 'Child of'], ['Enfants fermés', 'Closed children'],
   ['Relation avec l\'autre ticket', 'Relation with the other ticket'],
   ['Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé', 'Close the child tickets still open when their parent ticket is closed'],
-  ['Nouvelle sous-tâche', 'New sub-task'], ['Compétences', 'Skills'], ['Compétence demandée', 'Skill asked for'], ['Compétences demandées', 'Skills asked for'], ['Demander une compétence…', 'Ask for a skill…'], ['Demander une compétence', 'Ask for a skill'], ['Demandée par le sujet', 'Asked for by the subject'], ['· sujet', '· subject'],
+  ['Nouvelle sous-tâche', 'New sub-task'], ['Escalader au niveau supérieur', 'Escalate to the next level'], ['Niveau : aucun', 'Level: none'], ['Niveau de support', 'Support level'], ['Escaladés', 'Escalated'], ['Escalader', 'Escalate'],
+  ['Motif de l\'escalade (noté au journal)', 'Reason for the escalation (in the log)'], ['Motif de l\'escalade', 'Reason for the escalation'], ['Garder les personnes attribuées', 'Keep the assignees'],
+  ['« Escalader » sur un ticket le confie à l\'équipe du niveau suivant', '« Escalate » on a ticket hands it to the team of the next level'], ['Compétences', 'Skills'], ['Compétence demandée', 'Skill asked for'], ['Compétences demandées', 'Skills asked for'], ['Demander une compétence…', 'Ask for a skill…'], ['Demander une compétence', 'Ask for a skill'], ['Demandée par le sujet', 'Asked for by the subject'], ['· sujet', '· subject'],
   ['Compétences de l\'espace', 'Skills of the space'], ['Aucune compétence pour l\'instant.', 'No skill yet.'], ['Nouvelle compétence (Réseau, Comptabilité…)', 'New skill (Network, Accounting…)'], ['Nouvelle compétence', 'New skill'], ['Ajouter la compétence', 'Add the skill'],
   ['Le staff : compétences et langues', 'The staff: skills and languages'], ['Chacun règle ses propres langues ; les compétences sont réglées par les fondateurs.', 'Everyone sets their own languages; skills are set by the founders.'],
   ['Compétences demandées par sujet', 'Skills asked for by subject'], ['Une catégorie couvre ses sous-catégories.', 'A category covers its sub-categories.'], ['Compétences indisponibles.', 'Skills unavailable.'],
@@ -813,6 +815,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['Escalader au niveau {} ({})', 'Escalate to level {1} ({2})'], ['Escaladé au niveau {} : {}', 'Escalated to level {1}: {2}'], ['Niveau {}', 'Level {1}'], ['{} ({} %)', '{1} ({2} %)'],
   ['Supprimer la compétence « {} »', 'Delete the « {1} » skill'], ['Retirer la compétence « {} »', 'Remove the « {1} » skill'], ['Langues de {}', 'Languages of {1}'], ['Compétences de {}', 'Skills of {1}'], ['Compétences du sujet « {} »', 'Skills of the « {1} » subject'], ['· {}', '· {1}'],
   ['Fusionner ce ticket dans #{} ? L\'historique, les participants, les attributions et les tags y seront déplacés, puis ce ticket sera fermé.', 'Merge this ticket into #{1}? The history, participants, assignments and tags will be moved there, then this ticket will be closed.'],
   ['mots communs : {}', 'words in common: {1}'], ['Fusionner dans #{}', 'Merge into #{1}'], ['Marquer doublon de #{}', 'Mark as duplicate of #{1}'], ['#{} — {}', '#{1} — {2}'],

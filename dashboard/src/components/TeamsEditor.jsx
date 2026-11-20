@@ -7,7 +7,7 @@ import EscalationLevels from './EscalationLevels';
 
 const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden focus:border-primary';
 const MODES = [['none', 'Aucune (file seulement)'], ['round_robin', 'Tour à tour'], ['load', 'Selon la charge']];
-const EMPTY = { name: '', color: 'violet', assignMode: 'none', maxOpen: 0, subjects: [], tagIds: [], members: [], calendarId: null, olaMinutes: null, escalations: [] };
+const EMPTY = { name: '', color: 'violet', level: null, assignMode: 'none', maxOpen: 0, subjects: [], tagIds: [], members: [], calendarId: null, olaMinutes: null, escalations: [] };
 
 function Chips({ options, value, onChange, label }) {
   return (
@@ -29,7 +29,7 @@ function TeamForm({ initial, staff, subjects, tags, calendars = [], teams = [], 
   const set = (k, v) => setT(x => ({ ...x, [k]: v }));
   return (
     <div className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-3">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.5fr_0.8fr_1.2fr_0.6fr]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.5fr_0.8fr_1.2fr_0.6fr_0.8fr]">
         <input value={t.name} onChange={e => set('name', e.target.value)} maxLength={60} placeholder="Facturation" aria-label="Nom de l'équipe" className={INPUT} />
         <select value={t.color} onChange={e => set('color', e.target.value)} aria-label="Couleur de l'équipe" className={`${INPUT} ${(STAGE_CLS[t.color] || STAGE_CLS.slate).text}`}>
           {Object.entries(STAGE_COLOR_NAMES).map(([k, n]) => <option key={k} value={k}>{n}</option>)}
@@ -39,6 +39,9 @@ function TeamForm({ initial, staff, subjects, tags, calendars = [], teams = [], 
         </select>
         <input type="number" min={0} max={500} value={t.maxOpen} onChange={e => set('maxOpen', Math.max(0, Math.min(500, parseInt(e.target.value) || 0)))}
           aria-label="Plafond de tickets ouverts par personne" title="Tickets ouverts au plus par personne avant de passer au suivant (0 = sans plafond)" className={INPUT} />
+        <select value={t.level || ''} onChange={e => set('level', e.target.value ? Number(e.target.value) : null)} aria-label="Niveau de support" title="« Escalader » sur un ticket le confie à l'équipe du niveau suivant" className={INPUT}>
+          <option value="">Niveau : aucun</option>{[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <option key={n} value={n}>{`Niveau ${n}`}</option>)}
+        </select>
       </div>
       {calendars.length > 0 && (
         <label className="block text-[11px] font-semibold text-ink-3">Horaires de l'équipe
@@ -105,7 +108,7 @@ export default function TeamsEditor() {
     try { setTeams((await fn()).data); toast.success(ok); setKey(k => k + 1); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
-  const body = t => ({ name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members, calendarId: t.calendarId || null, olaMinutes: t.olaMinutes || null, escalations: t.olaMinutes ? (t.escalations || []) : [] });
+  const body = t => ({ name: t.name, color: t.color, level: t.level || null, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members, calendarId: t.calendarId || null, olaMinutes: t.olaMinutes || null, escalations: t.olaMinutes ? (t.escalations || []) : [] });
   return (
     <div className="space-y-4 max-w-4xl">
       <p className="text-sm text-ink-3 inline-flex items-start gap-2"><UsersRound size={16} className="shrink-0 mt-0.5 text-primary-light" aria-hidden="true" />
@@ -113,7 +116,7 @@ export default function TeamsEditor() {
       </p>
       {teams.map(t => (
         <TeamForm key={`${t.id}-${key}`} busy={busy} {...ctx} teams={teams}
-          initial={{ id: t.id, name: t.name, color: t.color, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members.map(m => m.userId), calendarId: t.calendarId || null, olaMinutes: t.olaMinutes || null, escalations: t.escalations || [] }}
+          initial={{ id: t.id, name: t.name, color: t.color, level: t.level || null, assignMode: t.assignMode, maxOpen: t.maxOpen, subjects: t.subjects, tagIds: t.tagIds, members: t.members.map(m => m.userId), calendarId: t.calendarId || null, olaMinutes: t.olaMinutes || null, escalations: t.escalations || [] }}
           onSave={v => run(() => api.put(`/teams/${t.id}`, body(v)), 'Équipe enregistrée')}
           onDelete={() => window.confirm(`Supprimer l'équipe « ${t.name} » ? Ses tickets restent, sans équipe.`) && run(() => api.delete(`/teams/${t.id}`), 'Équipe supprimée')} />
       ))}

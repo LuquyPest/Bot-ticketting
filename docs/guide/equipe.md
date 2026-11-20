@@ -59,6 +59,12 @@ Un grade peut avoir un **parent** : les membres du parent voient aussi ce que vo
 
 L'attribution automatique passe les membres **absents** ou **en vacances**, ceux qui **ne peuvent pas voir** le ticket (grade, rôles rattachés à des tags) et ceux au plafond ; si personne n'est disponible, le ticket reste dans la file de l'équipe. Les tickets **confidentiels** ne sont jamais routés. L'attribution est notée au journal du ticket et la personne est prévenue comme pour une attribution à la main.
 
+### Niveaux de support et escalade
+
+Une équipe peut avoir un **niveau** (1, 2, 3… : *Niveau* dans son réglage). Sur la fiche d'un ticket ouvert, **Escalader au niveau N** (permission d'attribuer) le confie à l'équipe du **niveau suivant** — le plus bas au-dessus de celui de son équipe ; un ticket sans équipe, ou dont l'équipe n'a pas de niveau, va au niveau le plus bas. Un **motif** est demandé : il est noté en note interne et au journal. Les personnes attribuées lâchent le ticket (sauf **Garder les personnes attribuées**), et la nouvelle équipe l'attribue comme elle le fait d'habitude. Une [règle](./automatismes#les-regles-automatiques) peut aussi escalader (action **Escalader au niveau supérieur**). Un ticket confidentiel ne change jamais d'équipe.
+
+Dans **Analytiques → Rapports**, la colonne **Escaladés** compte, par équipe, les tickets qu'elle a fait monter et leur part ; pour les autres regroupements, les tickets escaladés au moins une fois. Elle est dans les exports.
+
 ### Compétences et langues
 
 **Équipe → Compétences** : les fondateurs créent les compétences de l'espace (« Réseau », « Comptabilité »…) et disent qui a lesquelles ; chacun indique les **langues** dans lesquelles il répond. Un ticket **demande** des compétences : celles de son **sujet** (réglées plus bas sur la même page ; une catégorie couvre ses sous-catégories), celles qu'une [règle](./automatismes#les-regles-automatiques) ajoute (action **Compétence demandée**, à placer avant l'action **Équipe**) et celles ajoutées sur la fiche (permission **Répondre**).

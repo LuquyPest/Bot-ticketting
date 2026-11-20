@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Routing',
     changes: [
       { type: 'new',  text: 'Compétences et langues du staff (Équipe → Compétences) : un ticket demande des compétences par son sujet, une règle ou à la main ; l\'attribution automatique d\'une équipe ne choisit que parmi ceux qui les ont et préfère la langue du demandeur, sinon toute l\'équipe reste possible', en: 'Skills and languages of the staff (Team → Skills): a ticket asks for skills through its subject, a rule or by hand; a team\'s automatic assignment only picks among those who have them and prefers the requester\'s language, otherwise the whole team stays possible' },
+      { type: 'new',  text: 'Niveaux de support : une équipe a un niveau (1, 2, 3…) ; « Escalader » sur la fiche (ou une règle) confie le ticket à l\'équipe du niveau suivant avec un motif noté au journal ; colonne « Escaladés » dans les rapports', en: 'Support levels: a team has a level (1, 2, 3…); « Escalate » on the ticket view (or a rule) hands the ticket to the team of the next level with a reason in the log; « Escalated » column in the reports' },
     ],
   },
   {

@@ -12,6 +12,7 @@ const ACTIONS = {
   ticket_unlink:            ['Lien entre tickets retiré', 'tickets'],
   duplicate_dismiss:        ['Pas un doublon', 'tickets'],
   ticket_skills:            ['Compétences demandées', 'tickets'],
+  level_escalate:           ['Escalade au niveau supérieur', 'tickets'],
   ticket_reply:             ['Réponse envoyée', 'tickets'],
   ticket_note:              ['Note interne', 'tickets'],
   note_delete:              ['Note supprimée', 'tickets'],

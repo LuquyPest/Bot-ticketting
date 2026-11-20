@@ -59,6 +59,12 @@ A grade can have a **parent**: members of the parent also see what the child gra
 
 Automatic assignment skips members who are **away** or **on holiday**, those who **cannot see** the ticket (grade, roles tied to tags) and those at the cap; if nobody is available, the ticket stays in the team's queue. **Confidential** tickets are never routed. The assignment is noted in the ticket's journal and the person is told as for a manual assignment.
 
+### Support levels and escalation
+
+A team can have a **level** (1, 2, 3…: *Level* in its settings). On an open ticket, **Escalate to level N** (assign permission) hands it to the team of the **next level** — the lowest one above its team's; a ticket without a team, or whose team has no level, goes to the lowest level. A **reason** is asked for: it is written as an internal note and in the log. The assignees let go of the ticket (unless **Keep the assignees**), and the new team assigns it as it usually does. A [rule](./automations#automatic-rules) can escalate too (**Escalate to the next level** action). A confidential ticket never changes team.
+
+In **Analytics → Reports**, the **Escalated** column counts, by team, the tickets it sent up and their share; for the other groupings, the tickets escalated at least once. It is in the exports.
+
 ### Skills and languages
 
 **Team → Skills**: the founders create the skills of the space (« Network », « Accounting »…) and say who has which; everyone gives the **languages** they answer in. A ticket **asks for** skills: those of its **subject** (set further down on the same page; a category covers its sub-categories), those a [rule](./automations#automatic-rules) adds (**Skill asked for** action, to put before the **Team** action) and those added on the ticket view (**Reply** permission).
