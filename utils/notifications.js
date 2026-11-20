@@ -12,7 +12,7 @@ const { CONFIDENTIAL } = require('./gradePermissions');
 
 const EVENTS = ['ticket_created', 'member_reply', 'staff_reply', 'note', 'assigned', 'stage', 'closed', 'sla_breached'];
 const RECIPIENTS = ['assignee', 'assignees', 'followers', 'team', 'org_manager', 'founders', 'emails'];
-const CHANNELS = ['dashboard', 'discord', 'email', 'slack', 'teams'];
+const CHANNELS = ['dashboard', 'discord', 'email', 'sms', 'slack', 'teams'];
 const TEAM_CHANNELS = ['slack', 'teams']; // a channel of the space: one post per event, whoever the recipients
 const MAX_RULES = 40;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -154,6 +154,9 @@ async function notify(db, guildId, event, ticket, opts = {}) {
           } else if (channel === 'email') {
             const [acc] = await require('./globalDb').globalQuery('SELECT email FROM accounts WHERE id = ? AND email_verified = 1', [uid]).catch(() => []);
             if (acc?.email) { await sendEmail(guildId, acc.email, title, body, ticket).catch(() => null); told.add(uid); }
+          } else if (channel === 'sms') {
+            // v7 (utils/sms.js): a confirmed number; the title only (the number of a confidential ticket)
+            if (await require('./sms').notifyUser(guildId, uid, confidential ? `Datick : ticket #${ticket.id}` : `Datick : ${title}`).catch(() => false)) told.add(uid);
           }
         }
       }

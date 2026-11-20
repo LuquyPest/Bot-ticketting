@@ -8799,6 +8799,52 @@ async function main() {
     check('statut: retirée → 404', r.status === 404, r.status);
   }
 
+  // ── SMS notifications: gateway, confirmed number, quota (utils/sms.js, v7) — Twilio simulated locally ──
+  {
+    const http = require('http');
+    const got = [];
+    const mock = http.createServer((q, s) => { let b = ''; q.on('data', d => { b += d; }); q.on('end', () => { got.push({ url: q.url, auth: q.headers.authorization, body: new URLSearchParams(b) }); s.writeHead(q.url.includes('ACbad') ? 401 : 201, { 'Content-Type': 'application/json' }); s.end('{"sid":"SM1"}'); }); });
+    await new Promise(res => mock.listen(0, '127.0.0.1', res));
+    process.env.TWILIO_API_URL = `http://127.0.0.1:${mock.address().port}`;
+    const SID = 'AC' + '0'.repeat(32);
+    r = await req('PUT', '/api/instance/sms', { sid: sessions.S1, body: { provider: 'twilio', accountSid: SID, authToken: 'x', from: '+33100000000' } });
+    const rNo = r.status;
+    await globalQuery("INSERT IGNORE INTO accounts (id, display_name) VALUES (?, 'S1')", [U.S1]);
+    r = await req('PUT', '/api/instance/sms', { sid: sessions.OWN, body: { provider: 'twilio', accountSid: 'pas-un-sid', authToken: 'x', from: '+33100000000' } });
+    const rBad = r.status;
+    r = await req('PUT', '/api/instance/sms', { sid: sessions.OWN, body: { provider: 'twilio', accountSid: SID, authToken: 'jeton-twilio-v7', from: '+33100000000', dailyLimit: 3 } });
+    check('SMS: passerelle réglée par le propriétaire de l instance, jeton jamais renvoyé', [401, 403].includes(rNo) && rBad === 400 && r.status === 200 && r.body.authTokenSet === true && !JSON.stringify(r.body).includes('jeton-twilio-v7'), `${rNo} ${rBad} ${JSON.stringify(r.body)}`);
+    r = await req('POST', '/api/instance/sms/test', { sid: sessions.OWN, body: { to: '+33 6 12 34 56 78' } });
+    check('SMS: SMS de test (Twilio, authentification Basic, numéro normalisé)', r.status === 200 && got[0]?.body.get('To') === '+33612345678' && got[0].auth === `Basic ${Buffer.from(`${SID}:jeton-twilio-v7`).toString('base64')}`, JSON.stringify(got[0]?.body?.toString()));
+    // The staff member's number, confirmed by a code
+    r = await req('POST', '/api/profile/phone', { sid: sessions.S1, body: { phone: '0612345678' } });
+    check('SMS: numéro au format international exigé', r.status === 400, r.status);
+    r = await req('POST', '/api/profile/phone', { sid: sessions.S1, body: { phone: '+33611111111' } });
+    const code = /(\d{6})/.exec(got[got.length - 1].body.get('Body') || '')?.[1];
+    const rWrong = await req('POST', '/api/profile/phone/confirm', { sid: sessions.S1, body: { code: code === '000000' ? '111111' : '000000' } });
+    const rOk = await req('POST', '/api/profile/phone/confirm', { sid: sessions.S1, body: { code } });
+    check('SMS: code reçu par SMS, mauvais code refusé, bon code confirme le numéro', r.status === 200 && !!code && rWrong.status === 400 && rOk.status === 200 && rOk.body.verified === true && rOk.body.phone === '+33611111111', JSON.stringify([rWrong.body, rOk.body]));
+    // Notification channel
+    const N = app('./utils/notifications');
+    const prev = (await req('GET', '/api/notifications', { sid: sessions.F })).body.rules.map(({ id, ...x }) => x);
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: [...prev, { event: 'assigned', recipients: ['assignee'], channels: ['sms'] }] } });
+    const tS = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000066', 'sms', 'sms7-1', 'open', 'Imprimante SMS v7')")).insertId;
+    const before = got.length;
+    const told = await N.notify(db, G, 'assigned', (await db('SELECT * FROM tickets WHERE id = ?', [tS]))[0], { assigneeId: U.S1, by: 'F', byId: U.F });
+    check('SMS: notification envoyée par SMS au numéro confirmé', told.includes(U.S1) && got.length === before + 1 && got[got.length - 1].body.get('To') === '+33611111111' && /#\d+/.test(got[got.length - 1].body.get('Body')), JSON.stringify([told, got[got.length - 1]?.body?.toString()]));
+    // Daily limit of the space (3)
+    let refused = 0;
+    for (let i = 0; i < 4; i++) if ((await app('./utils/sms').send(G, '+33611111111', 'x')).error) refused++;
+    check('SMS: limite quotidienne par espace', refused >= 1, refused);
+    await req('PUT', '/api/notifications/rules', { sid: sessions.F, body: { rules: prev } });
+    r = await req('DELETE', '/api/profile/phone', { sid: sessions.S1 });
+    check('SMS: numéro retiré', r.status === 200 && r.body.phone === null, JSON.stringify(r.body));
+    await req('PUT', '/api/instance/sms', { sid: sessions.OWN, body: { provider: null } });
+    delete process.env.TWILIO_API_URL;
+    mock.close();
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id = 'sms7-1'");
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

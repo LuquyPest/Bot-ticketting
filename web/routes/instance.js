@@ -59,6 +59,25 @@ router.put('/login-providers', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET / PUT /api/instance/sms — the SMS gateway (v7, utils/sms.js; secrets never sent back);
+// POST /api/instance/sms/test { to } — sends a test SMS
+router.get('/sms', async (req, res, next) => { try { res.json(await require('../../utils/sms').settings()); } catch (err) { next(err); } });
+router.put('/sms', async (req, res, next) => {
+  try {
+    const sms = require('../../utils/sms');
+    const r = await sms.saveSettings(req.body || {});
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json(await sms.settings());
+  } catch (err) { next(err); }
+});
+router.post('/sms/test', async (req, res, next) => {
+  try {
+    const r = await require('../../utils/sms').send(null, String(req.body?.to || '').replace(/[\s.-]/g, ''), 'Datick : SMS de test, la passerelle fonctionne.');
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 // GET / PUT /api/instance/ldap — the LDAP / Active Directory directory (password never sent back);
 // POST /api/instance/ldap/test — the settings of the form, before they are saved
 router.get('/ldap', async (req, res, next) => {
