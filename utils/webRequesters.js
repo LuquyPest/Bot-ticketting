@@ -30,6 +30,10 @@ async function sendToWebOwner(guildId, ownerId, build, ticketId = null, opts = {
   const { text } = renderPayload(payload, { signatures: look.signatures });
   if (!text) return null;
   const ticket = await require('./emailTickets').requesterTicket(db, ownerId, ticketId);
+  // Live chat (v7, utils/liveChat.js): the visitor reads it in the widget, no e-mail while they are there
+  const chatting = await require('./redis').getRedis().get(`chatopen:${ownerId}`).catch(() => null)
+    || await require('./liveChat').visitorOnline(db, ticket?.id).catch(() => false);
+  if (chatting) return { id: `chat-${Date.now()}`, channelId: null, email: false, attachments: { first: () => null } };
   const { ticketWebUrl, portalUrl } = require('./memberPortal');
   const link = (ticket && await ticketWebUrl(guildId, ticket.id).catch(() => null)) || portalUrl() || '';
   const { globalQuery } = require('./globalDb');

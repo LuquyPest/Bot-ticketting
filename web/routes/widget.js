@@ -54,6 +54,10 @@ textarea{min-height:120px;resize:vertical}button{margin-top:14px;width:100%;padd
 button:disabled{opacity:.6}.note{font-size:12px;color:var(--muted);margin-top:10px}.msg{padding:10px 12px;border-radius:10px;margin-top:12px}
 .kb{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}.kb p{margin:0 0 6px;font-size:12px;color:var(--muted)}.kb ul{margin:0;padding-left:18px}.kb a{color:var(--fg)}
 .err{background:rgba(220,38,38,.12);color:#dc2626}.ok{background:rgba(22,163,74,.12)}.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.tabs{display:flex;gap:6px;margin:0 0 6px}.tabs button{margin:0;padding:8px;background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:500}.tabs button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.log{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;padding:4px 0;margin:8px 0}.b{max-width:85%;padding:8px 10px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+.b.v{align-self:flex-end;background:var(--accent);color:#fff}.b.s{align-self:flex-start;border:1px solid var(--line)}.who{display:block;font-size:11px;opacity:.75;margin-bottom:2px}
+.row{display:flex;gap:6px}.row textarea{min-height:44px;flex:1}.row button{width:auto;margin:0;padding:0 14px}.link{background:none;border:0;color:var(--muted);text-decoration:underline;width:auto;padding:0;margin-top:8px;font-weight:400;font-size:12px}
 </style></head><body><main>${body}</main></body></html>`;
 }
 
@@ -75,6 +79,11 @@ pages.get('/widget/:token', async (req, res, next) => {
     const { subjects } = await require('../../utils/memberPortal').openingForm(w.guildId);
     const rules = await require('../../utils/requesterFiles').uploadRules(w.db);
     const body = `<h1>${esc(L('widget.title'))}${space?.guild_name ? ` · ${esc(space.guild_name)}` : ''}</h1>
+<div id="tabs" class="tabs" hidden><button type="button" id="tc" aria-pressed="false">${esc(L('widget.chatStart'))}</button><button type="button" id="tf" aria-pressed="true">${esc(L('widget.chatForm'))}</button></div>
+<p id="ci" class="note" hidden>${esc(L('widget.chatIntro'))}</p>
+<section id="cv" hidden aria-label="${esc(L('widget.chatStart'))}"><div id="log" class="log" role="log" aria-live="polite"></div><p id="cw" class="note">${esc(L('widget.chatWaiting'))}</p>
+<div class="row"><textarea id="ct" maxlength="2000" aria-label="${esc(L('widget.chatPlaceholder'))}" placeholder="${esc(L('widget.chatPlaceholder'))}"></textarea><button type="button" id="cs">${esc(L('widget.chatSend'))}</button></div>
+<button type="button" id="ce" class="link">${esc(L('widget.chatEnd'))}</button><div id="cr" role="status" aria-live="polite"></div></section>
 <form id="f" novalidate>
 <label for="n">${esc(L('widget.name'))}</label><input id="n" name="name" maxlength="100" autocomplete="name">
 <label for="e">${esc(L('widget.email'))}</label><input id="e" name="email" type="email" maxlength="254" required autocomplete="email">
@@ -100,6 +109,25 @@ fetch(${JSON.stringify(`/api/widget/${req.params.token}/tickets`)},{method:'POST
 if(x.ok){f.innerHTML='';var p=document.createElement('p');p.className='msg ok';p.textContent=${JSON.stringify(L('widget.sent'))};f.appendChild(p);return;}
 r.className='msg err';r.textContent=(x.j&&x.j.error)||'Erreur';b.disabled=false;})
 .catch(function(){r.className='msg err';r.textContent=${JSON.stringify(L('portal.serverError'))};b.disabled=false;});});
+(function(){var API=${JSON.stringify(`/api/widget/${req.params.token}/chat`)},H={'X-Requested-With':'XMLHttpRequest','X-Member-Lang':${JSON.stringify(lang)},'Content-Type':'application/json'};
+var f=document.getElementById('f'),tabs=document.getElementById('tabs'),tc=document.getElementById('tc'),tf=document.getElementById('tf'),ci=document.getElementById('ci'),cv=document.getElementById('cv'),log=document.getElementById('log'),ct=document.getElementById('ct'),cr=document.getElementById('cr'),cw=document.getElementById('cw');
+var mode='form',sid=null,last=0,timer=null,fi=document.getElementById('fi'),fiL=fi?document.querySelector('label[for=fi]'):null;
+function setMode(m){mode=m;tc.setAttribute('aria-pressed',m==='chat');tf.setAttribute('aria-pressed',m!=='chat');ci.hidden=m!=='chat';if(fi){fi.hidden=m==='chat';fiL.hidden=m==='chat';}}
+fetch(API).then(function(x){return x.json();}).then(function(j){if(j&&j.available){tabs.hidden=false;setMode('chat');}}).catch(function(){});
+tc.addEventListener('click',function(){setMode('chat');});tf.addEventListener('click',function(){setMode('form');});
+function add(list){(list||[]).forEach(function(m){if(m.id<=last)return;last=m.id;var d=document.createElement('div');d.className='b '+(m.from==='visitor'?'v':'s');
+var w=document.createElement('span');w.className='who';w.textContent=m.from==='visitor'?${JSON.stringify(L('widget.chatYou'))}:(m.author||'Support');d.appendChild(w);d.appendChild(document.createTextNode(m.text));log.appendChild(d);if(m.from!=='visitor')cw.hidden=true;});log.scrollTop=log.scrollHeight;}
+function stop(text){clearInterval(timer);timer=null;cv.querySelector('.row').hidden=true;document.getElementById('ce').hidden=true;cr.className='msg ok';cr.textContent=text;}
+function poll(){fetch(API+'/'+sid+'?after='+last,{headers:H}).then(function(x){if(x.status===404){stop(${JSON.stringify(L('widget.chatEnded'))});return null;}return x.json();}).then(function(j){if(!j)return;add(j.messages);if(j.open===false)stop(${JSON.stringify(L('widget.chatClosed'))});}).catch(function(){});}
+f.addEventListener('submit',function(ev){if(mode!=='chat')return;ev.preventDefault();ev.stopImmediatePropagation();var fd=new FormData(f),body={},r=document.getElementById('r'),b=document.getElementById('b');fd.forEach(function(v,k){if(typeof v==='string')body[k]=v;});b.disabled=true;r.className='';r.textContent='';
+fetch(API,{method:'POST',headers:H,body:JSON.stringify(body)}).then(function(x){return x.json().then(function(j){return{ok:x.ok,j:j};});}).then(function(x){
+if(!x.ok){r.className='msg err';r.textContent=(x.j&&x.j.error)||'Erreur';b.disabled=false;if(x.j&&x.j.error===${JSON.stringify(L('widget.chatOff'))}){tabs.hidden=true;setMode('form');}return;}
+sid=x.j.session;f.hidden=true;tabs.hidden=true;ci.hidden=true;cv.hidden=false;add(x.j.messages);timer=setInterval(poll,3000);ct.focus();}).catch(function(){r.className='msg err';r.textContent=${JSON.stringify(L('portal.serverError'))};b.disabled=false;});},true);
+function send(){var t=ct.value.trim();if(!t||!sid)return;ct.value='';fetch(API+'/'+sid,{method:'POST',headers:H,body:JSON.stringify({text:t,after:last})}).then(function(x){return x.json().then(function(j){return{ok:x.ok,j:j};});}).then(function(x){
+if(!x.ok){cr.className='msg err';cr.textContent=(x.j&&x.j.error)||'Erreur';ct.value=t;return;}cr.textContent='';cr.className='';add(x.j.messages);}).catch(function(){ct.value=t;});}
+document.getElementById('cs').addEventListener('click',send);ct.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+document.getElementById('ce').addEventListener('click',function(){if(!sid)return;fetch(API+'/'+sid+'/end',{method:'POST',headers:H}).catch(function(){});stop(${JSON.stringify(L('widget.chatClosed'))});});
+})();
 </script>`;
     res.type('html').send(page({ lang, nonce, color, title: L('widget.title'), body }));
   } catch (err) { next(err); }
@@ -127,60 +155,131 @@ api.get('/:token/suggest', async (req, res) => {
 const widgetUpload = (req, res, next) => (req.is('multipart/form-data')
   ? require('../../utils/requesterFiles').upload(3)(req, res, err => (err ? res.status(413).json({ error: withLang(langOf(req), () => t('portal.fileTooBig')) }) : next()))
   : next());
+// Opens a ticket from the widget (form or chat): checks, limits, then like a DM → { ticketId, ownerId, user } or { status, error }
+async function openFromWidget(req, w, lang, b, files = []) {
+  const L = (k, v) => withLang(lang, () => t(k, v));
+  const { guildId, db } = w;
+  const stampErr = widget.stampProblem(guildId, b.t);
+  if (stampErr) return { status: 400, error: L(stampErr === 'tooFast' ? 'widget.tooFast' : 'widget.expired') };
+  const { EMAIL_RE } = require('../../utils/emailTickets');
+  const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+  if (!EMAIL_RE.test(email) || email.length > 254) return { status: 400, error: L('portal.badEmail') };
+  const message = typeof b.message === 'string' ? b.message.trim() : '';
+  if (!message || message.length > 2000) return { status: 400, error: L('portal.describe') };
+  const name = typeof b.name === 'string' ? b.name.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 100) : '';
+  const { subjects } = await require('../../utils/memberPortal').openingForm(guildId);
+  const subject = typeof b.subject === 'string' ? b.subject.trim().slice(0, 100) : '';
+  if (subjects.length && !subjects.includes(subject)) return { status: 400, error: L('portal.pickSubject') };
+
+  const web = require('../../utils/webRequesters');
+  const ownerId = web.webOwnerIdFor(email);
+  if (await require('../../utils/guildScan').isBlacklistedIn(db, ownerId)) return { status: 403, error: L('portal.blocked') };
+  // Per IP, per address, and for the whole space (shared with the member space sign-ins by e-mail)
+  const ipKey = crypto.createHash('sha256').update(String(req.ip)).digest('hex').slice(0, 24);
+  if (!(await allowBurst(`widgetip:${guildId}:${ipKey}`, 5, 3600 * 1000))
+    || !(await allowBurst(`widgetaddr:${ownerId}`, 3, 3600 * 1000))
+    || !(await allowBurst(`webnew:${guildId}`, 60, 3600 * 1000))) return { status: 429, error: L('widget.tooMany') };
+  const [cfg] = await db('SELECT max_tickets_per_day FROM guild_config WHERE id = 1');
+  const client = req.app.locals.client;
+  const maxPerDay = cfg?.max_tickets_per_day ?? 3;
+  const tm = require('../../utils/ticketManager').createManager(db, client, guildId);
+  if (await tm.getDailyTicketCount(ownerId) >= maxPerDay) return { status: 429, error: L('portal.dailyLimit', { max: maxPerDay }) };
+
+  await web.rememberAddress(db, ownerId, email);
+  await rememberLocale(ownerId, lang);
+  const user = web.webUserFor(ownerId, email, guildId, name);
+  const startedAt = new Date(Date.now() - 1000);
+  if (b.chat) await require('../../utils/redis').getRedis().set(`chatopen:${ownerId}`, '1', 'EX', 60).catch(() => null); // no « ticket created » e-mail for a chat
+  await withLang(lang, () => require('../../events/messageCreate').openTicketInGuild(user, message, [], guildId, client, subject, // '' = no subject (null would ask for one)
+    { skipFaq: true, fieldsDone: true, intakeDone: true }));
+  const [ticket] = await db('SELECT id FROM tickets WHERE owner_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 1', [ownerId, startedAt]);
+  if (!ticket) return { status: 409, error: L('portal.openFailed') };
+  if (files.length) {
+    const [full] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
+    await withLang(lang, () => require('../../utils/requesterFiles').addFiles({ db, guildId, tm, ticket: full, user, files })).catch(e => console.error('widget files:', e.message));
+  }
+  return { ticketId: ticket.id, ownerId, user, tm };
+}
+
 api.post('/:token/tickets', widgetUpload, async (req, res) => {
   const lang = langOf(req);
   const L = (k, v) => withLang(lang, () => t(k, v));
   try {
     const w = await widget.resolveToken(req.params.token);
     if (!w || !(await mailReady())) return res.status(404).json({ error: L('widget.unavailable') });
-    const { guildId, db } = w;
     const b = req.body || {};
     // Hidden field filled in: a robot, answered as if it worked
     if (typeof b.website === 'string' && b.website.trim()) return res.json({ ok: true });
-    const stampErr = widget.stampProblem(guildId, b.t);
-    if (stampErr) return res.status(400).json({ error: L(stampErr === 'tooFast' ? 'widget.tooFast' : 'widget.expired') });
-    const { EMAIL_RE } = require('../../utils/emailTickets');
-    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
-    if (!EMAIL_RE.test(email) || email.length > 254) return res.status(400).json({ error: L('portal.badEmail') });
-    const message = typeof b.message === 'string' ? b.message.trim() : '';
-    if (!message || message.length > 2000) return res.status(400).json({ error: L('portal.describe') });
-    const name = typeof b.name === 'string' ? b.name.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 100) : '';
-    const { subjects } = await require('../../utils/memberPortal').openingForm(guildId);
-    const subject = typeof b.subject === 'string' ? b.subject.trim().slice(0, 100) : '';
-    if (subjects.length && !subjects.includes(subject)) return res.status(400).json({ error: L('portal.pickSubject') });
-
-    const web = require('../../utils/webRequesters');
-    const ownerId = web.webOwnerIdFor(email);
-    if (await require('../../utils/guildScan').isBlacklistedIn(db, ownerId)) return res.status(403).json({ error: L('portal.blocked') });
-    // Per IP, per address, and for the whole space (shared with the member space sign-ins by e-mail)
-    const ipKey = crypto.createHash('sha256').update(String(req.ip)).digest('hex').slice(0, 24);
-    if (!(await allowBurst(`widgetip:${guildId}:${ipKey}`, 5, 3600 * 1000))
-      || !(await allowBurst(`widgetaddr:${ownerId}`, 3, 3600 * 1000))
-      || !(await allowBurst(`webnew:${guildId}`, 60, 3600 * 1000))) return res.status(429).json({ error: L('widget.tooMany') });
-    const [cfg] = await db('SELECT max_tickets_per_day FROM guild_config WHERE id = 1');
-    const client = req.app.locals.client;
-    const maxPerDay = cfg?.max_tickets_per_day ?? 3;
-    const tm = require('../../utils/ticketManager').createManager(db, client, guildId);
-    if (await tm.getDailyTicketCount(ownerId) >= maxPerDay) return res.status(429).json({ error: L('portal.dailyLimit', { max: maxPerDay }) });
-
-    await web.rememberAddress(db, ownerId, email);
-    await rememberLocale(ownerId, lang);
-    const user = web.webUserFor(ownerId, email, guildId, name);
-    const startedAt = new Date(Date.now() - 1000);
-    await withLang(lang, () => require('../../events/messageCreate').openTicketInGuild(user, message, [], guildId, client, subject, // '' = no subject (null would ask for one)
-      { skipFaq: true, fieldsDone: true, intakeDone: true }));
-    const [ticket] = await db('SELECT id FROM tickets WHERE owner_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 1', [ownerId, startedAt]);
-    if (!ticket) return res.status(409).json({ error: L('portal.openFailed') });
-    const files = Array.isArray(req.files) ? req.files : [];
-    if (files.length) {
-      const [full] = await db('SELECT * FROM tickets WHERE id = ?', [ticket.id]);
-      await withLang(lang, () => require('../../utils/requesterFiles').addFiles({ db, guildId, tm, ticket: full, user, files })).catch(e => console.error('widget files:', e.message));
-    }
+    const r = await openFromWidget(req, w, lang, { ...b, chat: false }, Array.isArray(req.files) ? req.files : []);
+    if (r.error) return res.status(r.status).json({ error: r.error });
     res.json({ ok: true });
   } catch (err) {
     console.error('widget ticket error:', err.message);
     res.status(500).json({ error: L('portal.serverError') });
   }
+});
+
+// ── Live chat (utils/liveChat.js, v7) ──
+const chat = require('../../utils/liveChat');
+api.get('/:token/chat', async (req, res) => {
+  try {
+    const w = await widget.resolveToken(req.params.token);
+    res.json({ available: !!w && w.settings.enabled && await mailReady() && await chat.available(w.db) });
+  } catch { res.json({ available: false }); }
+});
+api.post('/:token/chat', async (req, res) => {
+  const lang = langOf(req);
+  const L = (k, v) => withLang(lang, () => t(k, v));
+  try {
+    const w = await widget.resolveToken(req.params.token);
+    if (!w || !(await mailReady()) || !(await chat.available(w.db))) return res.status(409).json({ error: L('widget.chatOff') });
+    const b = req.body || {};
+    if (typeof b.website === 'string' && b.website.trim()) return res.status(409).json({ error: L('widget.chatOff') });
+    const r = await openFromWidget(req, w, lang, { ...b, chat: true });
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    const session = await chat.startSession(w.db, r.ticketId, r.ownerId);
+    await require('../../utils/redis').getRedis().del(`chatopen:${r.ownerId}`).catch(() => null); // the session takes over
+    res.json({ ok: true, session, messages: await chat.messages(w.db, r.ticketId) });
+  } catch (err) {
+    console.error('widget chat error:', err.message);
+    res.status(500).json({ error: L('portal.serverError') });
+  }
+});
+api.get('/:token/chat/:session', async (req, res) => {
+  try {
+    const w = await widget.resolveToken(req.params.token);
+    const s = w ? await chat.sessionOf(w.db, req.params.session) : null;
+    if (!s) return res.status(404).json({ error: 'Conversation terminée' });
+    res.json({ open: s.status === 'open', messages: await chat.messages(w.db, s.ticket_id, req.query.after) });
+  } catch { res.status(500).json({ error: 'Erreur' }); }
+});
+api.post('/:token/chat/:session', async (req, res) => {
+  const lang = langOf(req);
+  const L = (k, v) => withLang(lang, () => t(k, v));
+  try {
+    const w = await widget.resolveToken(req.params.token);
+    const s = w ? await chat.sessionOf(w.db, req.params.session) : null;
+    if (!s) return res.status(404).json({ error: L('widget.chatEnded') });
+    if (s.status !== 'open') return res.status(409).json({ error: L('portal.closed') });
+    const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+    if (!text || text.length > 2000) return res.status(400).json({ error: L('portal.messageLength') });
+    if (!(await allowBurst(`chatmsg:${s.owner_id}`, 20, 60 * 1000))) return res.status(429).json({ error: L('portal.tooManyMessages') });
+    const [ticket] = await w.db('SELECT * FROM tickets WHERE id = ?', [s.ticket_id]);
+    const [contact] = await w.db('SELECT address FROM email_contacts WHERE owner_id = ?', [s.owner_id]).catch(() => []);
+    const user = require('../../utils/webRequesters').webUserFor(s.owner_id, contact?.address || '', w.guildId);
+    const tm = require('../../utils/ticketManager').createManager(w.db, req.app.locals.client, w.guildId);
+    const sent = await tm.relayToTicket(ticket, user, text, []);
+    if (!sent) return res.status(409).json({ error: L('portal.notSent') });
+    res.json({ ok: true, messages: await chat.messages(w.db, s.ticket_id, req.body?.after) });
+  } catch (err) { console.error('widget chat message error:', err.message); res.status(500).json({ error: L('portal.serverError') }); }
+});
+api.post('/:token/chat/:session/end', async (req, res) => {
+  try {
+    const w = await widget.resolveToken(req.params.token);
+    const s = w ? await chat.sessionOf(w.db, req.params.session) : null;
+    if (s) await chat.endSession(w.db, s.id);
+    res.json({ ok: true });
+  } catch { res.json({ ok: true }); }
 });
 
 // ── Settings (founders) ──
@@ -189,7 +288,7 @@ const { recordEvent, dashboardActor } = require('../../utils/audit');
 
 const view = async (req) => {
   const s = await widget.settingsOf(req.guildDb);
-  return { enabled: s.enabled, token: s.token, origins: s.origins, snippet: s.token ? widget.snippet(base(), s.token) : null, url: s.token ? `${base()}/widget/${s.token}` : null, mailReady: await mailReady() };
+  return { enabled: s.enabled, token: s.token, origins: s.origins, chat: await chat.enabled(req.guildDb), snippet: s.token ? widget.snippet(base(), s.token) : null, url: s.token ? `${base()}/widget/${s.token}` : null, mailReady: await mailReady() };
 };
 
 settings.get('/', async (req, res, next) => {
@@ -200,6 +299,7 @@ settings.put('/', async (req, res, next) => {
   try {
     const r = await widget.saveSettings(req.guildDb, req.guildId, { enabled: req.body?.enabled === true, origins: req.body?.origins ?? '' });
     if (r.error) return res.status(400).json({ error: r.error });
+    if (req.body?.chat !== undefined) await req.guildDb('UPDATE guild_config SET widget_chat = ? WHERE id = 1', [req.body.chat ? 1 : 0]);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'widget_settings', details: { enabled: req.body?.enabled === true, origins: widget.parseOrigins(req.body?.origins ?? '').length } });
     res.json(await view(req));
   } catch (err) { next(err); }

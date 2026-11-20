@@ -8871,6 +8871,66 @@ async function main() {
     check('modèle e-mail: tout vider revient au modèle de l espace membre', r.status === 200 && c.email_template === null, JSON.stringify(c));
   }
 
+  // ── Live chat in the widget (utils/liveChat.js, v7) ──
+  {
+    let ip = 0;
+    const H = () => ({ 'X-Forwarded-For': `10.77.${Math.floor(ip / 200)}.${ip++ % 200}` });
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    const mails = [];
+    nodemailer.createTransport = () => ({ sendMail: async x => { mails.push(x); return {}; }, close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    const ww = app('./utils/webWidget');
+    const [cfgX] = await db('SELECT ticket_subjects, max_tickets_per_day FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_subjects = '[]', max_tickets_per_day = 10 WHERE id = 1");
+    r = await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: true, origins: '', chat: true } });
+    const TOK = r.body.token;
+    check('chat: activé dans les réglages du widget', r.status === 200 && r.body.chat === true && !!TOK, JSON.stringify(r.body).slice(0, 200));
+    await db("UPDATE dashboard_users SET availability = 'away'");
+    r = await req('GET', `/api/widget/${TOK}/chat`);
+    const rStart0 = await req('POST', `/api/widget/${TOK}/chat`, { headers: H(), body: { name: 'Léa', email: 'chat-v7@example.com', message: 'Bonjour', t: ww.stamp(G, Date.now() - 5000) } });
+    check('chat: personne de disponible → pas de chat (le formulaire reste)', r.body.available === false && rStart0.status === 409, JSON.stringify([r.body, rStart0.body]));
+    await db("UPDATE dashboard_users SET availability = 'available' WHERE user_id = ?", [U.S1]);
+    r = await req('GET', `/api/widget/${TOK}/chat`);
+    check('chat: disponible quand quelqu un de l équipe l est', r.body.available === true, JSON.stringify(r.body));
+    const before = mails.length;
+    r = await req('POST', `/api/widget/${TOK}/chat`, { headers: H(), body: { name: 'Léa', email: 'chat-v7@example.com', message: 'Mon colis est bloqué en douane', t: ww.stamp(G, Date.now() - 5000) } });
+    const sid = r.body.session;
+    const owner = app('./utils/webRequesters').webOwnerIdFor('chat-v7@example.com');
+    const [tk] = await db('SELECT * FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1', [owner]);
+    check('chat: conversation ouverte = un ticket, premier message visible, pas d e-mail de confirmation', r.status === 200 && !!sid && !!tk && r.body.messages.some(m => m.from === 'visitor' && /douane/.test(m.text)) && mails.length === before, JSON.stringify([r.body, mails.length - before]));
+    r = await req('POST', `/api/widget/${TOK}/chat/${sid}`, { headers: H(), body: { text: 'Le numéro de suivi est LX123', after: 0 } });
+    check('chat: message du visiteur ajouté au ticket', r.status === 200 && r.body.messages.some(m => /LX123/.test(m.text)), JSON.stringify(r.body));
+    // The staff answers from the ticket view: the visitor sees it, no e-mail while they are there
+    const n0 = mails.length;
+    r = await req('POST', `/api/tickets/${tk.id}/reply`, { sid: sessions.F, body: { content: 'Je regarde avec le transporteur.' } });
+    await new Promise(res => setTimeout(res, 200));
+    const rp = await req('GET', `/api/widget/${TOK}/chat/${sid}`, { query: { after: 0 } });
+    const rt = await req('GET', `/api/tickets/${tk.id}`, { sid: sessions.F });
+    check('chat: la réponse du staff arrive dans le widget, sans e-mail tant que le visiteur est là', r.status === 200 && rp.body.messages.some(m => m.from === 'staff' && /transporteur/.test(m.text)) && mails.length === n0 && rt.body.liveChat?.online === true, JSON.stringify([r.status, rp.body.messages?.map(m => m.from), mails.length - n0, rt.body.liveChat]));
+    const notes = await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND source = 'web'", [tk.id]);
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'F', 'NOTE-INTERNE-CHAT', 'web')", [tk.id, U.F]);
+    const rn = await req('GET', `/api/widget/${TOK}/chat/${sid}`, { query: { after: 0 } });
+    check('chat: jamais de note interne dans le widget', !JSON.stringify(rn.body).includes('NOTE-INTERNE-CHAT') && notes.length === 0, '');
+    r = await req('GET', `/api/widget/${TOK}/chat/${'x'.repeat(40)}`);
+    check('chat: session inconnue → 404', r.status === 404, r.status);
+    // Gone: the answers go by e-mail again
+    r = await req('POST', `/api/widget/${TOK}/chat/${sid}/end`, { headers: H() });
+    const n1 = mails.length;
+    await req('POST', `/api/tickets/${tk.id}/reply`, { sid: sessions.F, body: { content: 'Le colis est débloqué.' } });
+    await new Promise(res => setTimeout(res, 300));
+    const rEnd = await req('GET', `/api/widget/${TOK}/chat/${sid}`);
+    check('chat: conversation terminée → la suite part par e-mail, la session ne répond plus', mails.length === n1 + 1 && rEnd.status === 404, `${mails.length - n1} ${rEnd.status}`);
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await db("UPDATE dashboard_users SET availability = 'available'");
+    await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: false, origins: '', chat: false } });
+    await db('UPDATE guild_config SET ticket_subjects = ?, max_tickets_per_day = ? WHERE id = 1', [cfgX.ticket_subjects == null || typeof cfgX.ticket_subjects === 'string' ? cfgX.ticket_subjects : JSON.stringify(cfgX.ticket_subjects), cfgX.max_tickets_per_day]);
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tk.id]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

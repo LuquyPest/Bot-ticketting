@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.6.0',
+    date: 'à venir',
+    title: 'Canaux',
+    titleEn: 'Channels',
+    changes: [
+      { type: 'new',  text: 'Chat en direct dans le widget quand quelqu\'un de l\'équipe est disponible : chaque conversation est un ticket, le staff répond depuis la fiche, pas d\'e-mail tant que le visiteur est là', en: 'Live chat in the widget when someone of the team is available: each conversation is a ticket, the staff answers from the ticket view, no e-mail while the visitor is there' },
+    ],
+  },
+  {
     version: 'v7.5.0',
     date: 'à venir',
     title: 'Communication',

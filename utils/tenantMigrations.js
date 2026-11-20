@@ -1767,6 +1767,24 @@ const MIGRATIONS = [
     name: 'Modèle des e-mails de l\'espace (v7)',
     statements: [`ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS email_template TEXT DEFAULT NULL`],
   },
+  {
+    version: 96,
+    name: 'Chat en direct dans le widget (v7)',
+    statements: [
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_chat TINYINT(1) NOT NULL DEFAULT 0`,
+      `CREATE TABLE IF NOT EXISTS chat_sessions (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        token_hash   CHAR(64) NOT NULL,
+        ticket_id    INT NOT NULL,
+        owner_id     VARCHAR(32) NOT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        ended_at     DATETIME DEFAULT NULL,
+        UNIQUE KEY uq_chat_token (token_hash), INDEX idx_chat_ticket (ticket_id),
+        CONSTRAINT fk_chat_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

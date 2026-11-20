@@ -167,6 +167,10 @@ The person gives their name (optional), their **e-mail address**, the subject if
 
 **Anti-spam**, with no third party: a hidden field only robots fill in, at least 3 seconds between opening the form and sending it (signed time, valid 2 hours), **5 sends per hour per IP address**, **3 per e-mail address**, 60 new web tickets per hour for the space, the space's daily ticket limit and the blacklist. **New code** invalidates the code already pasted (in case of abuse); every change is in the journal.
 
+
+### Live chat
+
+With **Offer live chat** ticked, the widget offers **Chat now** as soon as at least one staff member has the availability **Available** (and is not on holiday); otherwise it keeps the form. The visitor gives their name, address and question: a ticket opens (web channel, like a widget ticket), and the conversation shows in the widget. The staff answers from the ticket view as usual; the view says whether the visitor is **there**. While they are (seen less than 45 seconds ago), the answers are not also e-mailed to them; when they close the chat or leave, what follows goes by e-mail with the follow link, as for any web ticket. The ticket keeps the whole conversation; internal notes never show in the widget. Same protections as the form, plus 20 messages a minute.
 ## Slack and Microsoft Teams
 
 **Settings → Integrations → Slack and Microsoft Teams** (founders) connects a channel of each tool; **Settings → Notifications** chooses what goes there (« Slack » or « Teams » channel: one message per event, whatever the recipients). A confidential ticket gives only its number there.
