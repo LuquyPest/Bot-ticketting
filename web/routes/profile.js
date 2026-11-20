@@ -109,6 +109,21 @@ router.get('/', requireAuthWithGuild, async (req, res) => {
 });
 
 // GET/PUT /api/profile/whats-new — last patch notes version seen (« Nouveautés » card)
+// Devices of the mobile app (v7, utils/mobilePush.js): attached by /mobile-link, listed, forgotten
+router.get('/mobile-devices', requireAuth, async (req, res) => {
+  try { const m = require('../../utils/mobilePush'); res.json({ devices: await m.devices(req.session.user.id), configured: (await m.publicSettings()).configured }); } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.post('/mobile-devices', requireAuth, async (req, res) => {
+  try {
+    const r = await require('../../utils/mobilePush').register(req.session.user.id, req.body?.token, req.body?.platform);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+router.delete('/mobile-devices/:id', requireAuth, async (req, res) => {
+  try { await require('../../utils/mobilePush').forget(req.session.user.id, req.params.id); res.json({ devices: await require('../../utils/mobilePush').devices(req.session.user.id) }); } catch { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // Mobile number for SMS notifications (v7, utils/sms.js): saved, then confirmed by a code
 router.get('/phone', requireAuth, async (req, res) => {
   try { const sms = require('../../utils/sms'); res.json({ ...(await sms.phoneOf(req.session.user.id)), gateway: !!(await sms.settings()).provider }); } catch { res.status(500).json({ error: 'Erreur serveur' }); }

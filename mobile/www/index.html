@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src https: http:; img-src 'self' data:">
+  <title>Datick</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <img src="icon.png" alt="" width="72" height="72">
+    <h1>Datick</h1>
+    <p id="intro">Adresse de ton instance Datick :</p>
+    <form id="f" novalidate>
+      <label for="url" class="sr">Adresse de l'instance</label>
+      <input id="url" type="url" inputmode="url" autocomplete="url" placeholder="https://support.exemple.fr" required>
+      <button id="go" type="submit">Ouvrir</button>
+    </form>
+    <p id="msg" role="status" aria-live="polite"></p>
+    <button id="change" type="button" class="link" hidden>Changer d'instance</button>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

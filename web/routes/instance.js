@@ -73,6 +73,17 @@ router.put('/saml', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET / PUT /api/instance/mobile-push — Firebase service account of the mobile app (v7, utils/mobilePush.js)
+router.get('/mobile-push', async (req, res, next) => { try { res.json(await require('../../utils/mobilePush').publicSettings()); } catch (err) { next(err); } });
+router.put('/mobile-push', async (req, res, next) => {
+  try {
+    const m = require('../../utils/mobilePush');
+    const r = await m.save(req.body?.serviceAccount ?? null);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json(await m.publicSettings());
+  } catch (err) { next(err); }
+});
+
 // GET / PUT /api/instance/sms — the SMS gateway (v7, utils/sms.js; secrets never sent back);
 // POST /api/instance/sms/test { to } — sends a test SMS
 router.get('/sms', async (req, res, next) => { try { res.json(await require('../../utils/sms').settings()); } catch (err) { next(err); } });

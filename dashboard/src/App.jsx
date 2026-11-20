@@ -139,6 +139,24 @@ function RequireDiscord({ children }) {
   );
 }
 
+// The mobile app opens /mobile-link#<platform>:<token> once it has a notification token (v7,
+// mobile/www/app.js): attached to the signed-in account, or kept until the sign-in
+async function linkMobileDevice(hash) {
+  const [platform, ...rest] = decodeURIComponent(String(hash).replace(/^#/, '')).split(':');
+  const token = rest.join(':');
+  if (!platform || !token) return;
+  await api.post('/profile/mobile-devices', { platform, token });
+}
+function MobileLink() {
+  useEffect(() => {
+    const hash = window.location.hash;
+    window.history.replaceState(null, '', '/mobile-link');
+    linkMobileDevice(hash).then(() => { window.location.replace('/select-guild'); })
+      .catch(err => { if (err.response?.status === 401) sessionStorage.setItem('datick.mobileLink', hash); window.location.replace(err.response?.status === 401 ? '/login' : '/select-guild'); });
+  }, []);
+  return <PageLoader />;
+}
+
 export default function App() {
   const [user,        setUser]        = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -148,6 +166,9 @@ export default function App() {
     api.get('/auth/me')
       .then(r => {
         setUser(r.data);
+        // A device of the mobile app waiting for the sign-in (v7, /mobile-link)
+        const pending = sessionStorage.getItem('datick.mobileLink');
+        if (pending) { sessionStorage.removeItem('datick.mobileLink'); linkMobileDevice(pending).catch(() => {}); }
         // Language chosen on another browser of the account
         api.get('/profile/language').then(l => adoptAccountLang(l.data.lang)).catch(() => {});
         api.get('/profile/prefs').then(p => adoptAccountSkin(p.data.uiSkin)).catch(() => {});
@@ -194,6 +215,7 @@ export default function App() {
             <Route path="/demo" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><DemoStart /></ErrorBoundary></Suspense>} />
             <Route path="/confidentialite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Privacy /></ErrorBoundary></Suspense>} />
             <Route path="/invite" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><GuestView /></ErrorBoundary></Suspense>} />
+            <Route path="/mobile-link" element={<MobileLink />} />
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>
                 <ErrorBoundary><Login /></ErrorBoundary>

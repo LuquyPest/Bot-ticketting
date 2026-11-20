@@ -1,0 +1,12 @@
+{
+  "appId": "xyz.datick.app",
+  "appName": "Datick",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["*"]
+  },
+  "plugins": {
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}
