@@ -1580,6 +1580,11 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 89,
+    name: 'CRM de l\'espace : HubSpot ou Salesforce (v7)',
+    statements: [`ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS crm_provider VARCHAR(12) DEFAULT NULL, ADD COLUMN IF NOT EXISTS crm_config TEXT DEFAULT NULL`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

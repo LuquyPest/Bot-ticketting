@@ -6,7 +6,7 @@
 // external ID) is skipped, never duplicated. A dry run counts without writing.
 const { parseJsonField } = require('./jsonField');
 
-const SOURCES = ['zendesk', 'freshdesk', 'glpi', 'osticket', 'zammad', 'generic', 'ldap'];
+const SOURCES = ['zendesk', 'freshdesk', 'glpi', 'osticket', 'zammad', 'generic', 'ldap', 'hubspot', 'salesforce'];
 const KINDS = ['tickets', 'contacts', 'organizations', 'articles'];
 const MAX_ROWS = 20000;
 

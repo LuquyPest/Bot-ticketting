@@ -13,6 +13,7 @@ import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
 import { contractBalance } from '../components/ContractsPanel';
+import CrmCard from '../components/CrmCard';
 import TasksPanel from '../components/TasksPanel';
 import CostPanel from '../components/CostPanel';
 import ProblemsPanel from '../components/ProblemsPanel';
@@ -2197,6 +2198,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           <ChangesPanel ticketId={ticket.id} panelCard={panelCard} />
           {/* COÛT (v5.4) */}
           {(user?.role === 'fondateur' || user?.permissions?.includes('manage_costs')) && <CostPanel ticketId={ticket.id} panelCard={panelCard} />}
+          <CrmCard ticketId={ticket.id} panelCard={panelCard} />
           {ticket.organization && (
             <div className={panelCard}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>

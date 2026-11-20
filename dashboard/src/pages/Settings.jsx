@@ -19,6 +19,7 @@ import SlaPoliciesEditor from '../components/SlaPoliciesEditor';
 import RulesEditor from '../components/RulesEditor';
 import NotificationsEditor from '../components/NotificationsEditor';
 import ChatIntegrations from '../components/ChatIntegrations';
+import CrmSettings from '../components/CrmSettings';
 import CatalogEditor from '../components/CatalogEditor';
 import RecurringEditor from '../components/RecurringEditor';
 import TaskTemplatesEditor from '../components/TaskTemplatesEditor';
@@ -977,6 +978,7 @@ export default function Settings() {
       <Section title="Slack et Microsoft Teams">
         <ChatIntegrations />
       </Section>
+      {user?.role === 'fondateur' && <Section title="CRM : HubSpot ou Salesforce"><CrmSettings /></Section>}
       {/* Integrations */}
       <Section title="Intégrations">
         <Field label="Webhook URL" hint="Facultatif — notifications externes sur les événements tickets">

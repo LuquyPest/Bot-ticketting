@@ -9,7 +9,7 @@ E-mail, formulaire web, widget, Discord, API : chaque demande devient un ticket,
 
 ![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue?style=flat-square)
 ![Docker](https://img.shields.io/badge/image-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1968_vérifications-2ea44f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-1981_vérifications-2ea44f?style=flat-square)
 ![Accessibilité](https://img.shields.io/badge/accessibilité-WCAG_2.1_AA-7c6ef3?style=flat-square)
 ![Langues](https://img.shields.io/badge/membres-6_langues-ec4899?style=flat-square)
 
@@ -63,7 +63,7 @@ Côté équipe, tout se passe dans le **dashboard web temps réel** : files par 
 - **Demandeurs** : réponses en MP, par e-mail ou sur l'espace web, dans leur langue — et le staff aussi dans la sienne (français, anglais, espagnol, allemand, italien, portugais) ; espace web pour suivre et ouvrir des tickets. [Aider à traduire](https://docs.bot.daryu.xyz/guide/traduire).
 - **Pilotage** : tableaux de bord personnels ou partagés (compteurs, courbes, listes, SLA, satisfaction, filtres) ; rapports sur période libre, par organisation, personne, priorité, en CSV, XLSX ou PDF, programmés par e-mail.
 - **Automatismes** : tickets récurrents (chaque jour, semaine ou mois), notifications configurables (événements, destinataires, canaux dont Slack et Microsoft Teams avec le bouton « Prendre », préférences de chacun, messages au demandeur par langue), règles automatiques (quand, si, alors, dans l'ordre, avec test et journal, y compris « quand le temps passe » en heures ouvrées), horaires d'ouverture et jours fériés (réponse hors horaires), rappels, escalade, inactivité, objectifs SLA en heures ouvrées (prise en charge, résolution, par priorité, type, sujet ou canal) avec escalade par niveaux, objectifs internes par équipe (OLA), délais par étape, messages programmés, rapport hebdomadaire et mensuel, incidents annoncés aux membres.
-- **Intégrations** : webhooks sortants, notifications push, export et import de configuration, reprise des tickets ouverts d'un autre bot Discord (Ticket Tool, Tickets…), import depuis Zendesk, Freshdesk, GLPI, osTicket, Zammad ou un CSV.
+- **Intégrations** : CRM HubSpot ou Salesforce (fiche du demandeur, synchronisation), webhooks sortants, notifications push, export et import de configuration, reprise des tickets ouverts d'un autre bot Discord (Ticket Tool, Tickets…), import depuis Zendesk, Freshdesk, GLPI, osTicket, Zammad ou un CSV.
 - **Sécurité** : 2FA (imposable par serveur), transcripts et secrets chiffrés, journal de toutes les actions, alerte de nouvel appareil, allowlist IP, déconnexion après inactivité ; dashboard installable sur téléphone (PWA) ; RGPD : tickets clos anonymisés ou supprimés après N mois, archives, export et effacement des données d'un demandeur.
 - **Instance** : réservée à son propriétaire — espaces (avec ou sans Discord), fondateurs, santé, erreurs et alertes, journal, sauvegardes vérifiées, mise à jour en un clic, métriques Prometheus, moyens de connexion (Discord, Google, Microsoft, OpenID Connect, annuaire LDAP / Active Directory, e-mail et mot de passe).
 
@@ -91,7 +91,7 @@ Ensuite, ouvre ton domaine : connecte-toi avec le compte Discord propriétaire d
 Node 22, discord.js 14, Express 5, MariaDB 11 (une base par espace), Redis 7, React 19, Vite, Tailwind 4.
 
 ```bash
-npm run test:integration                                  # 1968 vérifications sur MariaDB + Redis jetables
+npm run test:integration                                  # 1981 vérifications sur MariaDB + Redis jetables
 cd dashboard && npx vite build && node tests/smoke.mjs    # pages du dashboard + accessibilité (axe-core)
 ```
 
