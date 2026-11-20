@@ -46,7 +46,8 @@ app.use(helmet({
       mediaSrc:    ["'self'", 'https://cdn.discordapp.com', 'https://media.discordapp.net'],
       fontSrc:     ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
       connectSrc:  ["'self'"],
-      frameSrc:    ["'none'"],
+      // v7: only the panels of the installed extensions (utils/extensions.js), else nothing
+      frameSrc:    [() => { const o = require('../utils/extensions').frameOrigins(); return o.length ? o.join(' ') : "'none'"; }],
       objectSrc:   ["'none'"],
       baseUri:     ["'self'"],
       formAction:  ["'self'"],
@@ -339,6 +340,7 @@ app.use('/api/skills',      withGuild(['support', 'fondateur']), require('./rout
 app.use('/api/crm',         withGuild(['support', 'fondateur']), require('./routes/crm'));    // HubSpot or Salesforce, read only (v7)
 app.use('/api/dev-integrations', withGuild(['support', 'fondateur']), require('./routes/devIntegrations').staff); // Jira, GitHub, GitLab (v7)
 app.use('/api/monitoring-sources', withGuild(['support', 'fondateur']), require('./routes/monitoring').staff); // monitoring alerts (v7)
+app.use('/api/extensions',    withGuild(['support', 'fondateur']), require('./routes/extensions')); // extensions (v7)
 app.use('/api/calendars',   withGuild(['support', 'fondateur']), require('./routes/calendars')); // opening hours (v5.1)
 app.use('/api/sla-policies', withGuild(['support', 'fondateur']), require('./routes/slaPolicies')); // SLA objectives (v5.1)
 app.use('/api/server-health', withGuild(['support', 'fondateur']), require('./routes/health'));

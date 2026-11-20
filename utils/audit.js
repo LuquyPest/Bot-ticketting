@@ -169,6 +169,8 @@ const ACTIONS = {
   crm_settings:             ['CRM réglé', 'config'],
   dev_settings:             ['Jira, GitHub ou GitLab réglé', 'config'],
   monitoring_source:        ['Source de supervision réglée', 'config'],
+  extension_install:        ['Extension installée', 'config'],
+  extension_remove:         ['Extension supprimée', 'config'],
   assets_toggle:            ['Parc activé ou coupé', 'config'],
   asset_type_save:          ['Type d\'élément du parc enregistré', 'config'],
   asset_delete:             ['Élément du parc supprimé', 'config'],

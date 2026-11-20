@@ -227,6 +227,29 @@ Les jetons sont chiffrés et jamais renvoyés au navigateur ; **Nouveau secret**
 
 Une alerte qui se déclenche **ouvre un ticket** (« Supervision · *source* »), qui suit les règles, le SLA et les notifications comme les autres ; la même alerte encore active ajoute au plus une note par heure au ticket ouvert ; sa **fin** ajoute une note et le **ferme** (ou le laisse ouvert si la source le demande) ; si elle revient après, un nouveau ticket s'ouvre. **Nouvelle adresse** remplace l'adresse secrète ; une source coupée ne reçoit plus rien.
 
+## Extensions
+
+**Paramètres → Intégrations → Extensions** (fondateurs) installe une extension à partir de son **manifeste** (collé, ou son adresse https) :
+
+```json
+{
+  "name": "Inventaire",
+  "version": "1.0.0",
+  "description": "Le matériel du demandeur",
+  "panel": { "url": "https://extension.example.com/panneau", "height": 240 },
+  "permissions": ["read_tickets", "reply_tickets"],
+  "webhook": { "url": "https://extension.example.com/evenements", "events": ["ticket_open", "ticket_close"] }
+}
+```
+
+| | |
+|---|---|
+| **Panneau** | Affiché dans la fiche ticket, dans un **cadre isolé** (`sandbox` sans `allow-same-origin` : il n'accède ni à la session ni à la page). À son chargement, il reçoit par `postMessage` `{ type: "datick:context", ticket: { id, subject, status, priority, stage, requester } }` (sans demandeur pour un ticket confidentiel). Il peut envoyer `{ type: "datick:resize", height }` et `{ type: "datick:insertReply", text }` (texte ajouté à la réponse, si la personne peut répondre) — rien d'autre |
+| **Permissions** | Celles d'une [clé API v3](#api-publique) : `read_tickets`, `reply_tickets`, `update_tickets`, `create_tickets`, `read_contacts`, `read_assets`, `write_assets`. L'extension reçoit **sa propre clé**, limitée à ces permissions, affichée une seule fois à l'installation ; couper l'extension la suspend, la supprimer l'efface |
+| **Webhook** | Les événements choisis (`ticket_open`, `ticket_close`, `ticket_claim`, `rule_applied`), signés avec **son propre secret** : en-tête `X-Datick-Signature-256` = `sha256=` + HMAC-SHA256 du corps ; adresse https publique seulement |
+
+Seules les adresses des panneaux installés peuvent être affichées en cadre par le dashboard (politique de sécurité du contenu). Chaque installation et suppression est au journal.
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

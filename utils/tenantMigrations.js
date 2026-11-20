@@ -1842,6 +1842,21 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 100,
+    name: 'Extensions de l\'espace (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS extensions (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        name           VARCHAR(60) NOT NULL,
+        manifest       TEXT NOT NULL,
+        api_key_id     INT DEFAULT NULL,
+        webhook_secret VARCHAR(64) DEFAULT NULL,
+        active         TINYINT(1) NOT NULL DEFAULT 1,
+        installed_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

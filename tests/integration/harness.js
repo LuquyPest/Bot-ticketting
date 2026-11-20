@@ -9260,6 +9260,51 @@ async function main() {
     await req('DELETE', `/api/teams/${tmS.id}`, { sid: sessions.F });
   }
 
+  // ── Extensions (utils/extensions.js, v7): manifest, limited key, sandboxed panel, signed webhooks ──
+  {
+    const crypto3 = require('crypto');
+    r = await req('POST', '/api/extensions', { sid: sessions.S1, body: { manifest: { name: 'x', permissions: ['read_tickets'] } } });
+    check('extensions: installées par les fondateurs', r.status === 403, r.status);
+    r = await req('POST', '/api/extensions', { sid: sessions.F, body: { manifest: { name: 'Mauvaise', panel: { url: 'http://non-https.example/p' } } } });
+    const r2 = await req('POST', '/api/extensions', { sid: sessions.F, body: { manifest: { name: 'Mauvaise', permissions: ['admin'] } } });
+    const r3 = await req('POST', '/api/extensions', { sid: sessions.F, body: { manifestUrl: 'http://ext.example/manifest.json' } });
+    check('extensions: panneau en https, permissions connues, manifeste en https', r.status === 400 && r2.status === 400 && /admin/.test(r2.body.error) && r3.status === 400, JSON.stringify([r.body, r2.body, r3.body]));
+    r = await req('POST', '/api/extensions', { sid: sessions.F, body: { manifest: JSON.stringify({ name: 'Inventaire v7', version: '1.2.0', panel: { url: 'https://ext-v7.example.com/panneau?x=1', height: 300 }, permissions: ['read_tickets'], webhook: { url: 'https://ext-v7.example.com/hooks', events: ['ticket_open'] } }) } });
+    const ext = r.body.extension, key = r.body.apiKey, wsec = r.body.webhookSecret;
+    check('extensions: installée, clé API et secret donnés une fois', r.status === 200 && ext?.panel?.origin === 'https://ext-v7.example.com' && /^tb_\d+_[0-9a-f]{64}$/.test(key || '') && /^[0-9a-f]{48}$/.test(wsec || ''), JSON.stringify(r.body).slice(0, 300));
+    const rl = await req('GET', '/api/extensions', { sid: sessions.F });
+    check('extensions: la liste ne redonne jamais la clé ni le secret', !JSON.stringify(rl.body).includes(key) && !JSON.stringify(rl.body).includes(wsec), '');
+    const K = { Authorization: `Bearer ${key}` };
+    r = await req('GET', '/api/v3/tickets', { headers: K });
+    const rw = await req('POST', '/api/v3/tickets', { headers: K, body: { requester: { email: 'x@example.com' }, subject: 'x', message: 'x' } });
+    check('extensions: la clé ne fait que ce que le manifeste demande (lire, pas créer)', r.status === 200 && rw.status === 403, `${r.status} ${rw.status}`);
+    app('./utils/extensions').warmFrames();
+    await new Promise(res => setTimeout(res, 300));
+    const csp = await new Promise(res => http.get({ host: '127.0.0.1', port: config.webServerPort, path: '/' }, x => { x.resume(); res(String(x.headers['content-security-policy'] || '')); }));
+    check('extensions: la CSP n autorise que l origine des panneaux installés', /frame-src https:\/\/ext-v7\.example\.com/.test(csp), csp.slice(0, 200));
+    // Webhooks: signed with the extension's own secret (the outgoing call is captured)
+    const WE = app('./utils/webhookEmitter');
+    const realPost = WE.safePostJson;
+    const sent = [];
+    WE.safePostJson = async (url, body, headers) => { sent.push({ url, body, headers }); return { status: 200 }; };
+    const tE = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000070', 'ext', 'ext7-1', 'open', 'Extension v7')")).insertId;
+    await WE.fireTicketWebhook(db, 'ticket_open', { ticketId: tE, ownerTag: 'ext' });
+    await WE.fireTicketWebhook(db, 'ticket_close', { ticketId: tE });
+    const hit = sent.find(x => x.url === 'https://ext-v7.example.com/hooks');
+    const okSig = hit && hit.headers['X-Datick-Signature-256'] === `sha256=${crypto3.createHmac('sha256', wsec).update(hit.body).digest('hex')}`;
+    check('extensions: webhook signé, seulement pour les événements demandés', !!hit && okSig && sent.filter(x => x.url.includes('ext-v7')).length === 1 && JSON.parse(hit.body).ticketId === tE, JSON.stringify(sent.map(x => [x.url, JSON.parse(x.body).event])));
+    WE.safePostJson = realPost;
+    r = await req('PATCH', `/api/extensions/${ext.id}`, { sid: sessions.F, body: { active: false } });
+    const rOff = await req('GET', '/api/v3/tickets', { headers: K });
+    check('extensions: coupée → sa clé ne répond plus', r.status === 200 && rOff.status === 401, rOff.status);
+    r = await req('DELETE', `/api/extensions/${ext.id}`, { sid: sessions.F });
+    app('./utils/extensions').warmFrames();
+    await new Promise(res => setTimeout(res, 300));
+    const csp2 = await new Promise(res => http.get({ host: '127.0.0.1', port: config.webServerPort, path: '/' }, x => { x.resume(); res(String(x.headers['content-security-policy'] || '')); }));
+    check('extensions: supprimée → clé effacée, plus aucun cadre autorisé', r.status === 200 && (await db('SELECT 1 FROM api_keys WHERE name = ?', ['Extension · Inventaire v7'])).length === 0 && /frame-src 'none'/.test(csp2), csp2.slice(0, 160));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tE]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
