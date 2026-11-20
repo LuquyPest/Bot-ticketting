@@ -8705,6 +8705,46 @@ async function main() {
     check('MEP: liste et journal', r.status === 200 && r.body.releases.some(x => x.id === rel && x.changes === 2) && !!ev, JSON.stringify(r.body.releases.map(x => [x.id, x.status])));
   }
 
+  // ── Change advisory board: members, meetings, agenda, opinions, decisions (utils/cab.js, v7) ──
+  {
+    await db('UPDATE guild_config SET changes_enabled = 1 WHERE id = 1');
+    const ch1 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'CAB v7 pare-feu' } })).body.id;
+    const ch2 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'CAB v7 DNS' } })).body.id;
+    const ch3 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'CAB v7 messagerie' } })).body.id;
+    r = await req('PUT', '/api/cab/members', { sid: sessions.S1, body: { members: [U.S1] } });
+    const rM = await req('PUT', '/api/cab/members', { sid: sessions.F, body: { members: [U.S1, U.S2] } });
+    const rOut = await req('PUT', '/api/cab/members', { sid: sessions.F, body: { members: [U.OUT] } });
+    check('CAB: membres choisis par les fondateurs, parmi le staff', r.status === 403 && rM.status === 200 && rM.body.members.length === 2 && rOut.status === 400, `${r.status} ${rM.status} ${rOut.status}`);
+    const start = new Date(Date.now() + 86400000).toISOString();
+    r = await req('POST', '/api/cab/meetings', { sid: sessions.S3T || sessions.FV, body: { title: 'x', startsAt: start } });
+    const rNo = sessions.S3T ? r : { status: 403 };
+    r = await req('POST', '/api/cab/meetings', { sid: sessions.S1, body: { title: 'Comité du mardi v7', startsAt: start } });
+    const mid = r.body.id;
+    check('CAB: réunion planifiée par un membre (pas par un autre membre du staff)', rNo.status === 403 && r.status === 200 && r.body.status === 'planned', `${rNo.status} ${r.status}`);
+    for (const c of [ch1, ch2, ch3]) r = await req('POST', `/api/cab/meetings/${mid}/agenda`, { sid: sessions.S1, body: { changeId: c } });
+    check('CAB: ordre du jour', r.status === 200 && r.body.agenda.length === 3, JSON.stringify(r.body.agenda?.map(a => a.changeId)));
+    await req('POST', `/api/cab/meetings/${mid}/agenda/${ch1}/vote`, { sid: sessions.S1, body: { vote: 'for', comment: 'Testé en préproduction' } });
+    r = await req('POST', `/api/cab/meetings/${mid}/agenda/${ch1}/vote`, { sid: sessions.S2, body: { vote: 'reserve' } });
+    const rF = await req('POST', `/api/cab/meetings/${mid}/agenda/${ch1}/vote`, { sid: sessions.F, body: { vote: 'for' } });
+    check('CAB: avis des membres ; un non-membre (même fondateur) ne vote pas', r.status === 200 && r.body.agenda.find(a => a.changeId === ch1).votes.length === 2 && rF.status === 403, JSON.stringify([r.body.agenda?.[0]?.votes, rF.status]));
+    r = await req('POST', `/api/cab/meetings/${mid}/agenda/${ch1}/decide`, { sid: sessions.S1, body: { decision: 'approved', note: 'Créneau de dimanche' } });
+    await req('POST', `/api/cab/meetings/${mid}/agenda/${ch2}/decide`, { sid: sessions.F, body: { decision: 'refused' } });
+    await req('POST', `/api/cab/meetings/${mid}/agenda/${ch3}/decide`, { sid: sessions.S1, body: { decision: 'postponed' } });
+    const st = Object.fromEntries((await db('SELECT id, status FROM changes WHERE id IN (?)', [[ch1, ch2, ch3]])).map(x => [x.id, x.status]));
+    check('CAB: décisions appliquées aux changements (approuvé, refusé, reporté)', r.status === 200 && st[ch1] === 'approved' && st[ch2] === 'refused' && st[ch3] === 'draft', JSON.stringify(st));
+    r = await req('POST', `/api/cab/meetings/${mid}/agenda/${ch1}/decide`, { sid: sessions.S1, body: { decision: 'refused' } });
+    const rV = await req('POST', `/api/cab/meetings/${mid}/agenda/${ch1}/vote`, { sid: sessions.S2, body: { vote: 'against' } });
+    check('CAB: une décision prise ne change plus, les avis non plus', r.status === 409 && rV.status === 409, `${r.status} ${rV.status}`);
+    r = await req('GET', `/api/changes/${ch1}`, { sid: sessions.S1 });
+    check('CAB: la fiche du changement montre la décision et les avis', r.body.cab?.[0]?.decision === 'approved' && r.body.cab[0].votes.for === 1 && r.body.cab[0].votes.reserve === 1 && r.body.cab[0].note === 'Créneau de dimanche', JSON.stringify(r.body.cab));
+    r = await req('DELETE', `/api/cab/meetings/${mid}`, { sid: sessions.S1 });
+    const rHeld = await req('PUT', `/api/cab/meetings/${mid}`, { sid: sessions.S1, body: { title: 'Comité du mardi v7', startsAt: start, status: 'held', notes: 'Trois changements examinés.' } });
+    const rAdd = await req('POST', `/api/cab/meetings/${mid}/agenda`, { sid: sessions.S1, body: { changeId: ch3 } });
+    check('CAB: une réunion qui a décidé ne se supprime pas ; tenue, son ordre du jour est figé', r.status === 409 && rHeld.status === 200 && rHeld.body.status === 'held' && rAdd.status === 409, `${r.status} ${rHeld.status} ${rAdd.status}`);
+    const [ev] = await db("SELECT 1 FROM audit_log WHERE action = 'cab_decision' AND target_id = ?", [String(ch1)]);
+    check('CAB: décision au journal', !!ev, '');
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

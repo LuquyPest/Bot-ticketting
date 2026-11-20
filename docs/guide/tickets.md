@@ -213,6 +213,17 @@ Menu **Changements** (coupé par défaut ; un fondateur l'active) : une modifica
 
 Il suit un circuit : **brouillon** → **en attente de validation** → **validé** (toutes les validations) ou **refusé** (au premier refus, avec son motif) → **en cours** → **terminé** ou **en échec** ; **annulé** à tout moment. Les **validations** sont données par les membres du staff choisis, chacun pour soi, dans le dashboard ; il ne démarre qu'une fois validé, et ses plans et risques sont figés dès qu'il l'est (repasser en brouillon remet les validations à zéro). Tout est au journal.
 
+### Le comité des changements
+
+Menu **Comité des changements** (avec les changements) : le comité (CAB) examine les changements en réunion.
+
+- **Membres** : choisis parmi le staff par les fondateurs (et la permission **Paramètres**).
+- **Réunions** : planifiées par un membre ou un fondateur, avec un **ordre du jour** de changements (ni lancés, ni terminés, ni annulés), puis marquées **tenues** (l'ordre du jour est alors figé) ou annulées, avec un **compte rendu**.
+- **Avis** : chaque membre donne le sien sur chaque changement — **pour**, **contre** ou **réserve**, avec un commentaire —, jusqu'à la décision.
+- **Décision du comité** : **approuvé** (le changement passe *approuvé*, prêt pour une mise en production), **refusé** (*refusé*) ou **reporté** (il reste tel quel). Elle ne change plus ensuite.
+
+La fiche d'un changement montre les décisions du comité et le décompte des avis. Une réunion qui a pris des décisions ne se supprime pas ; chaque décision est au journal.
+
 ### Les mises en production
 
 Menu **Mises en production** (avec les changements, permission **Répondre** pour écrire) : une mise en production regroupe des **changements** et les mène ensemble en production, étape par étape : **préparation → test → déploiement → vérification → terminée**.

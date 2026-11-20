@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'ITIL',
     changes: [
       { type: 'new',  text: 'Mises en production : des changements menés ensemble par étapes (préparation, test, déploiement, vérification) avec leurs points à cocher, déploiement seulement si tout est approuvé, plan de retour arrière et bilan ; les changements suivent (en cours, fait, échoué)', en: 'Releases: changes taken to production together stage by stage (preparation, test, deployment, verification) with their checklists, deployment only when everything is approved, rollback plan and review; the changes follow (in progress, done, failed)' },
+      { type: 'new',  text: 'Comité des changements (CAB) : membres, réunions avec ordre du jour, avis de chaque membre (pour, contre, réserve), décision appliquée au changement (approuvé, refusé, reporté) et compte rendu', en: 'Change advisory board (CAB): members, meetings with an agenda, each member\'s opinion (for, against, reserve), decision applied to the change (approved, refused, postponed) and minutes' },
     ],
   },
   {

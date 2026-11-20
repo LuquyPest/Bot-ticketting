@@ -213,6 +213,17 @@ Tickets are linked to it from the problem or from their view (**Reply** permissi
 
 It follows a flow: **draft** → **waiting for approval** → **approved** (all approvals) or **refused** (at the first refusal, with its reason) → **in progress** → **done** or **failed**; **cancelled** at any time. **Approvals** are given by the chosen staff members, each for themself, in the dashboard; it only starts once approved, and its plans and risks are frozen once it is (going back to draft resets the approvals). Everything is in the journal.
 
+### Change advisory board
+
+**Change advisory board** menu (with the changes): the board (CAB) examines the changes in meetings.
+
+- **Members**: chosen among the staff by the founders (and the **Settings** permission).
+- **Meetings**: planned by a member or a founder, with an **agenda** of changes (not started, done or cancelled), then marked **held** (the agenda is then frozen) or cancelled, with **minutes**.
+- **Opinions**: each member gives theirs on each change — **for**, **against** or **reserve**, with a comment —, until the decision.
+- **Board decision**: **approved** (the change becomes *approved*, ready for a release), **refused** (*refused*) or **postponed** (it stays as it is). It no longer changes afterwards.
+
+A change's view shows the board's decisions and the count of opinions. A meeting that took decisions cannot be deleted; each decision is in the log.
+
 ### Releases
 
 **Releases** menu (with the changes, **Reply** permission to write): a release groups **changes** and takes them to production together, stage by stage: **preparation → test → deployment → verification → done**.

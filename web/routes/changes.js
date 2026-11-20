@@ -23,7 +23,7 @@ router.use(async (req, res, next) => {
   return (await canWrite(req)) ? next() : res.status(403).json({ error: 'Permission « Répondre » requise' });
 });
 
-const one = async (req, id) => { const c = await C.getChange(req.guildDb, id, await visibilityFilter(req, 't.visibility_grade_id')); return c && { ...c, release: await require('../../utils/releases').ofChange(req.guildDb, id) }; };
+const one = async (req, id) => { const c = await C.getChange(req.guildDb, id, await visibilityFilter(req, 't.visibility_grade_id')); return c && { ...c, release: await require('../../utils/releases').ofChange(req.guildDb, id), cab: await require('../../utils/cab').ofChange(req.guildDb, id) }; };
 const visibleTicket = async (req, id) => {
   const vis = await visibilityFilter(req, 'visibility_grade_id');
   const [t] = await req.guildDb(`SELECT id FROM tickets WHERE id = ? AND ${vis.sql}`, [id, ...vis.params]);
