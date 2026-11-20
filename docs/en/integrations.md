@@ -17,6 +17,7 @@ Turned on per space (**Settings → Integrations → Public API**), with **API k
 | `POST` | `/api/v3/tickets/:id/notes` — internal note | `reply_tickets` |
 | `PATCH` | `/api/v3/tickets/:id` — `priority`, `stage`, `team_id`, `assignees_add` / `_remove`, `tags_add` / `_remove`, `fields`, `cc_add` / `_remove` | `update_tickets` |
 | `POST` / `DELETE` | `/api/v3/tickets/:id/links` (`ticket_id`, `relation`: `related`, `duplicate_of`, `has_duplicate`, `blocks`, `blocked_by`, `child`, `parent`) and `/api/v3/tickets/:id/links/:other` — link, unlink; every ticket returns its `links` | `update_tickets` |
+| `GET` / `PUT` | `/api/v3/assets` (filters `type`, `status`, `serial`, `q`; `PUT` creates or updates the element with the same `serial`) and `/api/v3/assets/:id` — the [inventory](./tickets#inventory), when turned on | `read_assets` / `write_assets` |
 
 A key acts **under its own name** (« API · key name »): each action is in the log, source *API*, and never counts as a staff member in the statistics. A change is **fully checked before writing**: an error changes nothing. The `Idempotency-Key` header on `POST /tickets` gives back the same ticket if the request is replayed (24 h), handy for a tool that retries. Writes: 120 per minute and per key. Confidential tickets do not exist for a key.
 

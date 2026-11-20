@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Inventory',
     changes: [
       { type: 'new',  text: 'Parc (CMDB), à activer : types d\'éléments définis par l\'espace avec leurs champs, éléments (statut, n° de série, lieu, propriétaire), relations « dépend de », « installé sur », « fait partie de » et historique de chaque élément', en: 'Inventory (CMDB), to turn on: element types defined by the space with their fields, elements (status, serial number, location, owner), « depends on », « installed on », « part of » relations and the history of each element' },
+      { type: 'new',  text: 'Parc relié au reste : éléments liés aux tickets, problèmes et changements, choisis par le demandeur dans l\'espace membre, impact d\'un changement (éléments qui en dépendent et leurs tickets ouverts), import et export CSV, API v3 pour un outil d\'inventaire', en: 'Inventory tied to the rest: elements linked to tickets, problems and changes, picked by the requester on the member space, impact of a change (elements that depend on it and their open tickets), CSV import and export, API v3 for an inventory tool' },
     ],
   },
   {

@@ -14,6 +14,7 @@ import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
 import { contractBalance } from '../components/ContractsPanel';
 import CrmCard from '../components/CrmCard';
+import AssetLinksPanel from '../components/AssetLinksPanel';
 import TasksPanel from '../components/TasksPanel';
 import CostPanel from '../components/CostPanel';
 import ProblemsPanel from '../components/ProblemsPanel';
@@ -2196,6 +2197,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           <ProblemsPanel ticketId={ticket.id} panelCard={panelCard} canEdit={can('reply_ticket') && ticket.status === 'open'}
             onInsert={text => { setComposeMode('reply'); setReplyText(r => (r ? `${r}\n\n${text}` : text)); setTimeout(() => replyRef.current?.focus(), 30); }} />
           <ChangesPanel ticketId={ticket.id} panelCard={panelCard} />
+          <AssetLinksPanel type="ticket" targetId={ticket.id} panelCard={panelCard} canEdit={can('reply_ticket')} />
           {/* COÛT (v5.4) */}
           {(user?.role === 'fondateur' || user?.permissions?.includes('manage_costs')) && <CostPanel ticketId={ticket.id} panelCard={panelCard} />}
           <CrmCard ticketId={ticket.id} panelCard={panelCard} />

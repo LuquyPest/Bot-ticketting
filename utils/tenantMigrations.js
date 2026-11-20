@@ -1636,6 +1636,21 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 91,
+    name: 'Parc : éléments liés aux tickets, problèmes et changements (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS asset_links (
+        asset_id    INT NOT NULL,
+        target_type VARCHAR(8) NOT NULL,
+        target_id   INT NOT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (asset_id, target_type, target_id),
+        INDEX idx_asset_link_target (target_type, target_id),
+        CONSTRAINT fk_asset_link_asset FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

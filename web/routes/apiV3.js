@@ -348,6 +348,65 @@ endpoint({
   res.json(await ticketView(req, t.id));
 });
 
+// ── Inventory (v7): read it, and feed it from an inventory tool ──
+const ASSET_OUT = { id: 12, type: 'Portable', name: 'PC-COMPTA-07', status: 'in_use', serial: 'SN-123', location: 'Bât. A', organization: 'Acme', contact_id: 7, fields: { systeme: 'Windows' }, updated_at: '2026-11-20T10:00:00.000Z' };
+const assetOut = a => ({ id: a.id, type: a.typeName, name: a.name, status: a.status, serial: a.serial || null, location: a.location || null, organization: a.ownerOrgName || null, contact_id: a.ownerContactId || null, fields: a.fields, updated_at: a.updatedAt });
+const assetsOn = async (req, res) => {
+  if (await require('../../utils/assets').enabled(req.guildDb)) return true;
+  res.status(404).json({ error: 'Le parc n\'est pas activé sur cet espace' });
+  return false;
+};
+endpoint({
+  method: 'get', path: '/assets', perm: 'read_assets', summary: 'Lister les éléments du parc',
+  description: 'Les éléments du parc, 200 au plus par page : filtres `type` (identifiant), `status` (in_use, in_stock, maintenance, retired), `serial` (exact), `q` (nom, n° de série, lieu), `offset`.',
+  query: [{ name: 'type', type: 'integer', description: 'Type' }, { name: 'status', enum: ['in_use', 'in_stock', 'maintenance', 'retired'], description: 'Statut' }, { name: 'serial', type: 'string', description: 'Numéro de série exact' }, { name: 'q', type: 'string', description: 'Recherche' }, { name: 'offset', type: 'integer', description: 'Décalage' }],
+  example: { total: 1, assets: [ASSET_OUT] }, errors: [404],
+}, async (req, res) => {
+  if (!(await assetsOn(req, res))) return;
+  const A = require('../../utils/assets');
+  if (typeof req.query.serial === 'string' && req.query.serial) {
+    const [row] = await req.guildDb('SELECT id FROM assets WHERE serial = ? LIMIT 1', [req.query.serial.slice(0, 100)]);
+    const a = row ? await A.getAsset(req.guildDb, row.id) : null;
+    return res.json({ total: a ? 1 : 0, assets: a ? [assetOut(a)] : [] });
+  }
+  const r = await A.listAssets(req.guildDb, { typeId: req.query.type, status: req.query.status, q: typeof req.query.q === 'string' ? req.query.q : '', limit: 200, offset: req.query.offset });
+  res.json({ total: r.total, assets: r.assets.map(assetOut) });
+});
+endpoint({
+  method: 'get', path: '/assets/{id}', perm: 'read_assets', summary: 'Lire un élément du parc',
+  description: 'Un élément, avec ses relations (`depends_on`, `installed_on`, `part_of`, sens `out` ou `in`).',
+  params: [{ name: 'id', type: 'integer', description: 'Identifiant de l\'élément' }],
+  example: { ...ASSET_OUT, relations: [{ id: 3, name: 'APP-PAIE', kind: 'depends_on', direction: 'out' }] }, errors: [404],
+}, async (req, res) => {
+  if (!(await assetsOn(req, res))) return;
+  const a = await require('../../utils/assets').getAsset(req.guildDb, parseInt(req.params.id) || 0);
+  if (!a) return res.status(404).json({ error: 'Élément introuvable' });
+  res.json({ ...assetOut(a), relations: a.relations.map(r => ({ id: r.id, name: r.name, kind: r.kind, direction: r.direction })) });
+});
+endpoint({
+  method: 'put', path: '/assets', perm: 'write_assets', summary: 'Inventorier un élément',
+  description: 'Crée l\'élément, ou met à jour celui de même `serial` (sinon de même type et nom) : pour un outil d\'inventaire qui remonte les postes. `type` (nom d\'un type existant) et `name` sont requis ; `status`, `serial`, `location`, `organization` (nom), `fields` (`{ clé: valeur }`, clés des champs du type) facultatifs. Chaque modification est à l\'historique de l\'élément, au nom de la clé.',
+  body: { type: 'Portable', name: 'PC-COMPTA-07', serial: 'SN-123', status: 'in_use', location: 'Bât. A', organization: 'Acme', fields: { systeme: 'Windows' } },
+  example: { created: true, asset: ASSET_OUT }, errors: [400, 404],
+}, async (req, res) => {
+  if (!(await assetsOn(req, res))) return;
+  const A = require('../../utils/assets');
+  const b = req.body || {};
+  const [type] = typeof b.type === 'string' ? await req.guildDb('SELECT id FROM asset_types WHERE name = ?', [b.type.slice(0, 60)]) : [];
+  if (!type) return res.status(400).json({ error: 'type : le nom d\'un type du parc' });
+  const input = { typeId: type.id, name: b.name, status: b.status, serial: typeof b.serial === 'string' ? b.serial : undefined, location: typeof b.location === 'string' ? b.location : undefined, fields: b.fields && typeof b.fields === 'object' ? b.fields : undefined };
+  if (b.organization !== undefined) {
+    const [o] = b.organization ? await req.guildDb('SELECT id FROM organizations WHERE name = ?', [String(b.organization).slice(0, 100)]) : [null];
+    if (b.organization && !o) return res.status(400).json({ error: 'organization : organisation inconnue' });
+    input.ownerOrgId = o?.id || null;
+  }
+  const serial = typeof b.serial === 'string' && b.serial.trim() ? b.serial.trim().slice(0, 100) : null;
+  const [existing] = serial ? await req.guildDb('SELECT id FROM assets WHERE serial = ? LIMIT 1', [serial]) : await req.guildDb('SELECT id FROM assets WHERE type_id = ? AND name = ? LIMIT 1', [type.id, String(b.name || '').slice(0, 150)]);
+  const r = existing ? await A.updateAsset(req.guildDb, existing.id, input, actorOf(req)) : await A.createAsset(req.guildDb, input, actorOf(req));
+  if (r.error) return res.status(r.status || 400).json({ error: r.error });
+  res.json({ created: !existing, asset: assetOut(await A.getAsset(req.guildDb, existing ? existing.id : r.id)) });
+});
+
 function buildOpenApi(name = 'Datick') {
   return v1.makeOpenApi({
     endpoints: [...v2.ENDPOINTS, ...ENDPOINTS], version: 3, title: `${name} — API publique v3`,

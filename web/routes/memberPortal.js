@@ -214,6 +214,16 @@ async function requesterFor(req, guildId, ownerId = req.member.id) {
   return require('../../utils/emailTickets').userFor(ownerId, req.member.email, null, guildId);
 }
 
+// GET /api/member/guilds/:guildId/assets — their own elements of the inventory (v7), to say which
+// one a new ticket is about
+router.get('/guilds/:guildId/assets', requireMember, async (req, res) => {
+  try {
+    const guild = await guildOf(req, res);
+    if (!guild) return;
+    res.json({ assets: await require('../../utils/assetLinks').ofRequester(getTenantDb(guild.id), memberIds(req.member)) });
+  } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
 // GET /api/member/guilds/:guildId/contract — the contract in force of the organisation whose tickets
 // this member may read (v7): its name, kind and balance, nothing internal
 router.get('/guilds/:guildId/contract', requireMember, async (req, res) => {
@@ -300,6 +310,12 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
     const [ticket] = await db('SELECT id FROM tickets WHERE owner_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 1', [req.member.id, startedAt]);
     if (!ticket) return res.status(409).json({ error: tr(req, 'portal.openFailed') });
     if (service) await catalog.applyTemplate({ db, client, guildId, ticketId: ticket.id, service }).catch(err => console.error('catalogue: gabarit', guildId, ticket.id, err.message));
+    // The element of the inventory it is about (v7): only one of their own
+    const assetId = parseInt(req.body?.assetId) || 0;
+    if (assetId) {
+      const L = require('../../utils/assetLinks');
+      if ((await L.ofRequester(db, memberIds(req.member))).some(a => a.id === assetId)) await L.link(db, assetId, 'ticket', ticket.id).catch(() => null);
+    }
     res.json({ ok: true, guildId, ticketId: ticket.id });
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
 });

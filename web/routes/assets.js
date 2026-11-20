@@ -48,6 +48,64 @@ router.delete('/types/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Links to tickets, problems and changes (utils/assetLinks.js) ──
+const L = require('../../utils/assetLinks');
+const { visibilityFilter } = require('../../utils/gradePermissions');
+const targetOk = async (req, type, targetId) => {
+  if (!L.TARGETS.includes(type)) return false;
+  if (type !== 'ticket') return true;
+  const vis = await visibilityFilter(req, 't.visibility_grade_id');
+  return !!(await req.guildDb(`SELECT 1 FROM tickets t WHERE t.id = ? AND ${vis.sql}`, [targetId, ...vis.params])).length;
+};
+router.get('/links/:type/:targetId', async (req, res, next) => {
+  try {
+    const type = String(req.params.type), targetId = parseInt(req.params.targetId) || 0;
+    if (!(await targetOk(req, type, targetId))) return res.status(404).json({ error: 'Introuvable' });
+    res.json({ assets: await L.ofTarget(req.guildDb, type, targetId) });
+  } catch (err) { next(err); }
+});
+router.post('/links/:type/:targetId', async (req, res, next) => {
+  try {
+    if (!(await canWrite(req))) return res.status(403).json({ error: 'Permission « Répondre » requise' });
+    const type = String(req.params.type), targetId = parseInt(req.params.targetId) || 0;
+    if (!(await targetOk(req, type, targetId))) return res.status(404).json({ error: 'Introuvable' });
+    const r = await L.link(req.guildDb, parseInt(req.body?.assetId) || 0, type, targetId);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    if (r.changed) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'asset_link', ticketId: type === 'ticket' ? targetId : null, targetType: type, targetId, details: { asset: parseInt(req.body?.assetId) } });
+    res.json({ assets: await L.ofTarget(req.guildDb, type, targetId) });
+  } catch (err) { next(err); }
+});
+router.delete('/links/:type/:targetId/:assetId', async (req, res, next) => {
+  try {
+    if (!(await canWrite(req))) return res.status(403).json({ error: 'Permission « Répondre » requise' });
+    const type = String(req.params.type), targetId = parseInt(req.params.targetId) || 0;
+    if (!(await targetOk(req, type, targetId))) return res.status(404).json({ error: 'Introuvable' });
+    const r = await L.unlink(req.guildDb, parseInt(req.params.assetId) || 0, type, targetId);
+    if (r.changed) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'asset_unlink', ticketId: type === 'ticket' ? targetId : null, targetType: type, targetId, details: { asset: parseInt(req.params.assetId) } });
+    res.json({ assets: await L.ofTarget(req.guildDb, type, targetId) });
+  } catch (err) { next(err); }
+});
+// GET /api/assets/impact/:changeId — elements touched by a change and those that depend on them
+router.get('/impact/:changeId', async (req, res, next) => {
+  try { res.json(await L.impact(req.guildDb, parseInt(req.params.changeId) || 0, await visibilityFilter(req, 't.visibility_grade_id'))); } catch (err) { next(err); }
+});
+router.get('/export.csv', async (req, res, next) => {
+  try {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="parc.csv"');
+    res.send(`\ufeff${await L.exportCsv(req.guildDb)}`);
+  } catch (err) { next(err); }
+});
+router.post('/import', async (req, res, next) => {
+  try {
+    if (!(await canWrite(req))) return res.status(403).json({ error: 'Permission « Répondre » requise' });
+    const r = await L.importCsv(req.guildDb, typeof req.body?.csv === 'string' ? req.body.csv.slice(0, 5 * 1024 * 1024) : '', dashboardActor(req));
+    if (r.error) return res.status(400).json({ error: r.error });
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'asset_import', details: { created: r.created, updated: r.updated, errors: r.errors.length } });
+    res.json(r);
+  } catch (err) { next(err); }
+});
+
 router.get('/', async (req, res, next) => {
   try {
     const q = req.query;
@@ -58,7 +116,7 @@ router.get('/:id', async (req, res, next) => {
   try {
     const a = await A.getAsset(req.guildDb, id(req));
     if (!a) return res.status(404).json({ error: 'Élément introuvable' });
-    res.json(a);
+    res.json({ ...a, linked: await L.ofAsset(req.guildDb, a.id, await visibilityFilter(req, 't.visibility_grade_id')) });
   } catch (err) { next(err); }
 });
 // Writes: the reply_ticket permission

@@ -226,6 +226,12 @@ Menu **Parc** : l'inventaire de l'espace (CMDB) — ordinateurs, serveurs, logic
 
 La liste se cherche par nom, numéro de série ou lieu, et se filtre par type, statut et organisation (sous-organisations comprises). Supprimer une organisation ou une fiche contact laisse ses éléments, sans propriétaire.
 
+- **Liés aux tickets, problèmes et changements** : **Éléments du parc** sur leur fiche (permission **Répondre**) ; la fiche d'un élément montre ce qui le concerne. Chaque lien est au journal du ticket.
+- **Le demandeur choisit** l'un de ses éléments (ceux de sa fiche contact) en ouvrant un ticket dans l'[espace membre](./espace-membre) (« Concerne »).
+- **Impact d'un changement** : sur sa fiche, les éléments touchés, ceux qui en dépendent (en suivant *dépend de*, *installé sur*, *fait partie de* à rebours, six niveaux au plus) et leurs tickets ouverts.
+- **Import et export CSV** : colonnes `type ; nom ; statut ; numero_de_serie ; lieu ; organisation ; contact` (adresse e-mail), les champs du type par leur nom, `notes`. Un élément de même numéro de série, sinon de même type et nom, est mis à jour ; chaque ligne fautive est signalée.
+- **Inventaire automatique** : pas d'agent installé sur les postes ; un outil d'inventaire alimente le parc par l'[API v3](./integrations#api-publique) (`PUT /assets`, par numéro de série).
+
 ## L'enquête de satisfaction
 
 Quand un ticket est fermé, le demandeur reçoit l'**enquête de satisfaction** (**Paramètres → Tickets → Enquête de satisfaction**) :
