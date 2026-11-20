@@ -67,15 +67,27 @@ if (config.webEnabled !== false) {
   httpServer = startWebServer(client);
 }
 
-// Without DISCORD_TOKEN (v4): no bot, but the databases are migrated and the automations start
-// all the same (Discord-only jobs skip themselves, utils/jobQueue.js)
-if (config.token) {
-  client.login(config.token);
-} else {
-  logger.info('Démarrage sans Discord : pas de bot, dashboard et automatismes seulement');
-  require('./events/ready').migrateTenants().finally(() => client.emit('tenantsMigrated'));
-  require('./utils/installation').announceIfNeeded(client).catch(err => logger.error('Installation', { err: err.message }));
-}
+// High availability (v7, utils/leader.js): only the container holding the Redis lock connects to
+// Discord, migrates the databases and runs the jobs; the others wait as standbys and take over if it
+// stops. A single container takes the lock at once.
+const leader = require('./utils/leader');
+leader.start({
+  onLeader: () => {
+    logger.info('Conteneur actif', { id: leader.ID });
+    // Without DISCORD_TOKEN (v4): no bot, but the databases are migrated and the automations start
+    // all the same (Discord-only jobs skip themselves, utils/jobQueue.js)
+    if (config.token) {
+      client.login(config.token);
+    } else {
+      logger.info('Démarrage sans Discord : pas de bot, dashboard et automatismes seulement');
+      require('./events/ready').migrateTenants().finally(() => client.emit('tenantsMigrated'));
+      require('./utils/installation').announceIfNeeded(client).catch(err => logger.error('Installation', { err: err.message }));
+    }
+  },
+  // Lock lost while active: never two active containers — leave, Docker brings us back as a standby
+  onLost: err => { logger.error('Verrou du conteneur actif perdu : arrêt', { err: err?.message }); setTimeout(() => process.exit(1), 200); },
+}).catch(err => logger.error('Verrou du conteneur actif', { err: err.message }));
+if (!leader.isLeader()) setTimeout(() => { if (!leader.isLeader()) logger.info('Conteneur en attente : un autre conteneur est actif', { id: leader.ID }); }, 3000).unref();
 
 client.once(Events.ClientReady, () => logger.info('Bot connecté', { tag: client.user.tag }));
 // All recurring automations (inactivity, escalation, reminders, scheduled messages,
@@ -88,6 +100,8 @@ client.once('tenantsMigrated', () => {
 async function shutdown(signal) {
   logger.info('Arrêt en cours', { signal });
   httpServer?.close();
+  require('./utils/leader').stop();
+  await require('./utils/leader').release(); // a standby takes over at once
   await require('./utils/sse').stopBus();
   client.destroy();
   await require('./utils/globalDb').getPool().end().catch(() => {});

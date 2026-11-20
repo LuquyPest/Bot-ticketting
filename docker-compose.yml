@@ -75,6 +75,7 @@ services:
       EMAIL_ALLOW_PRIVATE_HOSTS: ${EMAIL_ALLOW_PRIVATE_HOSTS:-}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
       TRUSTED_PROXY_HOST: ${TRUSTED_PROXY_HOST:-}
+      HA_LOCK_TTL_MS: ${HA_LOCK_TTL_MS:-}
     # Optional config.json instead of (or on top of) the variables above:
     #   volumes: ["./config.json:/app/config.json:ro"]  and  user: "${BOT_UID:-1000}:${BOT_GID:-1000}"
     security_opt:
