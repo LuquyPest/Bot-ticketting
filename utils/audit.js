@@ -171,6 +171,8 @@ const ACTIONS = {
   asset_import:             ['Import du parc', 'config'],
   release_create:           ['Mise en production créée', 'config'],
   cab_members:              ['Membres du comité des changements', 'config'],
+  status_page:              ['Page de statut réglée', 'config'],
+  status_component:         ['État d\'un composant de la page de statut', 'config'],
   cab_meeting:              ['Réunion du comité des changements', 'config'],
   cab_decision:             ['Décision du comité des changements', 'tickets'],
   release_update:           ['Mise en production modifiée', 'config'],

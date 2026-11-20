@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.5.0',
+    date: 'à venir',
+    title: 'Communication',
+    titleEn: 'Communication',
+    changes: [
+      { type: 'new',  text: 'Page de statut publique (à publier) : composants et leur état, disponibilité sur 90 jours, incidents publiés, abonnement par e-mail confirmé par un lien ; lisible sans JavaScript et en JSON', en: 'Public status page (to publish): components and their state, availability over 90 days, published incidents, e-mail subscription confirmed by a link; readable without JavaScript and in JSON' },
+    ],
+  },
+  {
     version: 'v7.4.0',
     date: 'à venir',
     title: 'ITIL',

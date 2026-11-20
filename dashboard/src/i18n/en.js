@@ -805,7 +805,10 @@ export const ENTRIES = [
   ['Enfant', 'Child'], ['Parent', 'Parent'], ['Parent de', 'Parent of'], ['Enfant de', 'Child of'], ['Enfants fermés', 'Closed children'],
   ['Relation avec l\'autre ticket', 'Relation with the other ticket'],
   ['Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé', 'Close the child tickets still open when their parent ticket is closed'],
-  ['Nouvelle sous-tâche', 'New sub-task'], ['Comité des changements', 'Change advisory board'], ['Pour', 'For'], ['Contre', 'Against'], ['Réserve', 'Reserve'], ['Approuvé', 'Approved'], ['Refusé', 'Refused'], ['Reporté', 'Postponed'], ['Tenue', 'Held'],
+  ['Nouvelle sous-tâche', 'New sub-task'], ['Page de statut publique', 'Public status page'], ['Publier la page', 'Publish the page'], ['Page publiée', 'Page published'], ['Page retirée', 'Page withdrawn'], ['Opérationnel', 'Operational'], ['Dégradé', 'Degraded'], ['Panne partielle', 'Partial outage'], ['Panne majeure', 'Major outage'],
+  ['Une page publique montre l\'état de tes services, les incidents publiés et leur disponibilité sur 90 jours ; on peut s\'y abonner par e-mail.', 'A public page shows the state of your services, the published incidents and their availability over 90 days; people can subscribe to it by e-mail.'],
+  ['Titre de la page (par défaut : le nom de l\'espace)', 'Title of the page (default: the space\'s name)'], ['Titre de la page de statut', 'Title of the status page'], ['Nouveau composant (Site web, Messagerie…)', 'New component (Website, E-mail…)'], ['Nouveau composant', 'New component'], ['Ajouter le composant', 'Add the component'], ['État changé', 'State changed'],
+  ['Publier sur la page de statut (titre et message seulement ; ses abonnés sont prévenus)', 'Publish on the status page (title and message only; its subscribers are told)'], ['Comité des changements', 'Change advisory board'], ['Pour', 'For'], ['Contre', 'Against'], ['Réserve', 'Reserve'], ['Approuvé', 'Approved'], ['Refusé', 'Refused'], ['Reporté', 'Postponed'], ['Tenue', 'Held'],
   ['Marquer comme tenue', 'Mark as held'], ['Ordre du jour', 'Agenda'], ['Aucun changement à l\'ordre du jour.', 'No change on the agenda.'], ['Mon avis :', 'My opinion:'], ['Commentaire', 'Comment'], ['Décision du comité :', 'Board decision:'], ['Compte rendu', 'Minutes'], ['Supprimer la réunion', 'Delete the meeting'],
   ['Ajouter un changement à l\'ordre du jour', 'Add a change to the agenda'], ['Ajouté à l\'ordre du jour', 'Added to the agenda'], ['Avis enregistré', 'Opinion saved'], ['Membres du comité', 'Members of the board'], ['Comité du mardi', 'Tuesday board'], ['Titre de la nouvelle réunion', 'Title of the new meeting'],
   ['Date de la nouvelle réunion', 'Date of the new meeting'], ['Planifier la réunion', 'Plan the meeting'], ['Aucune réunion.', 'No meeting.'], ['Choisis une réunion.', 'Pick a meeting.'], ['Réunion introuvable.', 'Meeting not found.'],
@@ -842,6 +845,7 @@ export const ENTRIES = [
 ];
 
 export const TEMPLATES = [
+  ['{} abonné(s)', '{1} subscriber(s)'], ['État de « {} »', 'State of « {1} »'],
   ['Ordre du jour ({})', 'Agenda ({1})'], ['Commentaire sur le changement #{}', 'Comment on change #{1}'], ['Supprimer la réunion « {} » ?', 'Delete the « {1} » meeting?'], ['· risque élevé', '· high risk'], ['· risque moyen', '· medium risk'], ['· risque faible', '· low risk'],
   ['Changements ({})', 'Changes ({1})'], ['Retirer le changement #{}', 'Remove change #{1}'], ['Décocher « {} »', 'Untick « {1} »'], ['Cocher « {} »', 'Tick « {1} »'], ['{} · {} changement(s)', '{1} · {2} change(s)'],
   ['Retirer « {} »', 'Remove « {1} »'], ['Impact : {} élément(s), {} ticket(s) ouvert(s)', 'Impact: {1} element(s), {2} open ticket(s)'], ['dépend (niveau {})', 'depends (level {1})'], ['Ticket #{} {}', 'Ticket #{1} {2}'], ['Problème #{} {}', 'Problem #{1} {2}'], ['Changement #{} {}', 'Change #{1} {2}'], ['{} créé(s), {} mis à jour', '{1} created, {2} updated'],

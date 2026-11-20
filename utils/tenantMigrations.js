@@ -1728,6 +1728,40 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 94,
+    name: 'Page de statut publique (v7)',
+    statements: [
+      `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS status_page_enabled TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS status_page_title VARCHAR(120) DEFAULT NULL`,
+      `ALTER TABLE incidents ADD COLUMN IF NOT EXISTS public TINYINT(1) NOT NULL DEFAULT 0`,
+      `CREATE TABLE IF NOT EXISTS status_components (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(80) NOT NULL,
+        description VARCHAR(300) DEFAULT NULL,
+        status      VARCHAR(16) NOT NULL DEFAULT 'operational',
+        position    INT NOT NULL DEFAULT 0,
+        updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS status_component_events (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        component_id INT NOT NULL,
+        status       VARCHAR(16) NOT NULL,
+        at           DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_sce_comp (component_id, at),
+        CONSTRAINT fk_sce_comp FOREIGN KEY (component_id) REFERENCES status_components(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS status_subscribers (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        email        VARCHAR(254) NOT NULL,
+        token_hash   CHAR(64) NOT NULL,
+        unsub_token  VARCHAR(48) NOT NULL,
+        lang         VARCHAR(2) NOT NULL DEFAULT 'fr',
+        confirmed_at DATETIME DEFAULT NULL,
+        created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_status_sub (email), INDEX idx_status_sub_token (token_hash), INDEX idx_status_sub_unsub (unsub_token)
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
