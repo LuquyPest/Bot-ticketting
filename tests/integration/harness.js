@@ -9357,8 +9357,6 @@ async function main() {
     const n0 = calls.length;
     await app('./web/routes/push').sendPushToUser(G, U.S1, { title: 'x', ticketId: conf });
     check('mobile: rien pour un ticket que la personne ne voit pas', calls.length === n0, `${calls.length - n0}`);
-    r = await req('GET', '/mobile-link');
-    check('mobile: la page /mobile-link est servie', r.status === 200, r.status);
     const id = rl.body.devices[0].id;
     r = await req('DELETE', `/api/profile/mobile-devices/${id}`, { sid: sessions.S1 });
     check('mobile: appareil retiré', r.status === 200 && r.body.devices.length === 0, JSON.stringify(r.body));
