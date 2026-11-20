@@ -15,6 +15,7 @@ import ObjectivesPanel from '../components/ObjectivesPanel';
 import { contractBalance } from '../components/ContractsPanel';
 import CrmCard from '../components/CrmCard';
 import AssetLinksPanel from '../components/AssetLinksPanel';
+import Recorder from '../components/Recorder';
 import TasksPanel from '../components/TasksPanel';
 import CostPanel from '../components/CostPanel';
 import ProblemsPanel from '../components/ProblemsPanel';
@@ -1711,6 +1712,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                         <Paperclip size={11} /> Fichier
                       </button>
                     )}
+                    {!replyFile && <Recorder onFile={acceptFile} onError={msg => toast.error(msg)} />}
                   </>
                 )}
               </div>

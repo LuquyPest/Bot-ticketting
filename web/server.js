@@ -56,7 +56,8 @@ app.use(helmet({
 }));
 app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  // Microphone and screen capture from the app itself only (recordings, v7); never the camera
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()');
   next();
 });
 

@@ -4,7 +4,7 @@ Members sign in on **`/espace`** of your domain — with Discord, or **without a
 
 - **Follow**: a status written for them (« waiting for your answer », « being handled »…), the conversation with the staff, the rating they gave, a download of the exchange.
 - **Reply** from the web, exactly as by DM (same limits, same channel on the staff side).
-- **Files**: when opening a ticket or answering, the member attaches up to 5 files, with the same rules as the [e-mail attachments](./integrations#tickets-by-e-mail) (size, total space, refused types, retention, copy in the Discord channel). The ticket's files can be downloaded again from its page.
+- **Files**: when opening a ticket or answering, the member attaches up to 5 files, with the same rules as the [e-mail attachments](./integrations#tickets-by-e-mail) (size, total space, refused types, retention, copy in the Discord channel). The ticket's files can be downloaded again from its page. The member can also **record** from their browser a **screenshot**, a **video of their screen** (90 seconds at most) or a **voice message** (3 minutes at most): the recording joins the files and goes the same way; nothing leaves the browser before it is sent.
 - **Open a ticket**: server, subject, the subject's fields and form, with FAQ entries that look like the request suggested while typing.
 - **Help**: each server's FAQ, searchable, with a link to its [public knowledge base](#public-knowledge-base) if it is online.
 - **Direct link**: a « View on the web » button under each DM tied to a ticket.

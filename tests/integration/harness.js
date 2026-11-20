@@ -8977,6 +8977,17 @@ async function main() {
     await db('UPDATE guild_config SET kb_public = ? WHERE id = 1', [kb0]);
   }
 
+  // ── Recordings from the browser (dashboard/src/components/Recorder.jsx, v7): sent as attachments ──
+  {
+    r = await req('GET', '/api/auth/me');
+    const pp = String((await new Promise(res => http.get({ host: '127.0.0.1', port: config.webServerPort, path: '/' }, x => { x.resume(); res(x.headers['permissions-policy']); }))) || '');
+    check('enregistrements: micro et capture d écran permis à l application seule, jamais la caméra', /microphone=\(self\)/.test(pp) && /display-capture=\(self\)/.test(pp) && /camera=\(\)/.test(pp), pp);
+    const tRec = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000067', 'rec', ?, 'open', 'Enregistrement v7')", [`vc_rec7_${Date.now()}`])).insertId;
+    r = await reqMultipart(`/api/tickets/${tRec}/reply-file`, { sid: sessions.FV, fields: { content: 'Voici une vidéo', anonymous: 'false' }, file: { field: 'file', name: 'ecran-2026-11-20.webm', content: Buffer.from('1a45dfa3', 'hex') } });
+    check('enregistrements: une vidéo WebM part comme une pièce jointe', r.status === 200, JSON.stringify(r.body));
+    await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tRec]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
