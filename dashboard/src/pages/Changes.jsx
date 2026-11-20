@@ -4,6 +4,7 @@ import { GitPullRequestArrow, Loader2, Plus, Check, Circle, X } from 'lucide-rea
 import { CAB_DECISION } from './Cab';
 import AssetLinksPanel, { ChangeImpact } from '../components/AssetLinksPanel';
 import api from '../api';
+import SignaturesPanel from '../components/SignaturesPanel';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
 import { uiLocale } from '../i18n';
@@ -59,6 +60,7 @@ function Detail({ id, staff, onChanged }) {
       {text('rollbackPlan', 'Plan de retour arrière')}
       {text('risks', 'Risques')}
       {text('impact', 'Impact (services, utilisateurs touchés)')}
+      <SignaturesPanel type="change" id={Number(id)} compact />
       {c.cab?.length > 0 && (
         <section className="space-y-0.5">
           <p className="text-[11px] font-semibold text-ink-3">Comité des changements</p>

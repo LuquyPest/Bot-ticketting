@@ -60,6 +60,8 @@ Les pages de la base publique (`/aide/<espace>` et chaque article) sont envoyée
 | **Formulaire** | Jusqu'à 20 champs : texte court ou long, nombre, liste, case à cocher, date ; obligatoires ou non. Un champ peut ne s'**afficher que si** un champ placé avant a une valeur (« si *Matériel* = *Portable*, demander le modèle ») : caché, il n'est ni demandé ni gardé |
 | **Le ticket devient** | Un sujet (sinon le nom du service), un type, une priorité, une équipe : appliqués à l'ouverture, avant que le staff ne le voie |
 
+Un service peut être **réservé à des organisations** (cases « Réservé à ces organisations ») : seuls leurs contacts le voient dans le catalogue et peuvent l'ouvrir ; les services d'une organisation parente valent pour ses sous-organisations. Aucune case cochée : tout le monde le voit.
+
 Les réponses arrivent dans le premier message du ticket, sous le nom du service. Le serveur vérifie chaque réponse (champ obligatoire, liste, date, nombre) ; un service retiré du catalogue ne s'ouvre plus. Les **formulaires d'ouverture** d'avant ont été repris comme services ; ils restent utilisés sur Discord.
 
 ## Les tickets de son organisation
@@ -67,6 +69,10 @@ Les réponses arrivent dans le premier message du ticket, sous le nom du service
 Une [organisation](./tickets#les-organisations) choisit qui, parmi ses contacts, voit **ses tickets** dans l'espace membre : **personne** (par défaut : chacun ne voit que les siens), **ses responsables** (les contacts cochés « Responsable côté client » sur leur fiche, par un fondateur ou la permission **Paramètres**), ou **tous ses membres**. Une organisation parente montre aussi les tickets de ses sous-organisations.
 
 Ces tickets apparaissent sous **Tickets de mon organisation**, avec le nom de la personne qui les a ouverts. Ils se lisent sans s'écrire : pas de réponse, pas de confirmation de solution, pas de fichiers ni de transcript ; seule la personne qui a ouvert le ticket y répond. Un ticket **confidentiel** ou réservé à un grade n'y apparaît jamais.
+
+### Mon organisation
+
+Les mêmes personnes ont un onglet **Mon organisation** : ses **contrats** (en cours, à venir et terminés, avec leur consommation), son **parc** (les éléments dont l'organisation est propriétaire : type, nom, état, numéro de série, lieu, en lecture) et son **historique** (tous ses tickets, avec le nombre d'ouverts, de résolus sur 90 jours et le délai moyen). Rien d'interne n'y figure : ni notes, ni coûts, ni champs du parc, ni ticket confidentiel.
 
 ## Ce qui est montré, et ce qui ne l'est jamais
 

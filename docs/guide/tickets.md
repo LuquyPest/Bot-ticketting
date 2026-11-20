@@ -149,6 +149,10 @@ Un ticket peut demander **l'accord d'une personne** avant d'avancer (un rembours
 
 Une seule validation en attente par ticket ; la personne qui l'a demandée, ou un fondateur, peut l'**annuler**. Chaque étape est une note dans le ticket et une ligne de son journal. Un ticket **confidentiel** n'est validé que par un fondateur, jamais par e-mail. La validation par e-mail utilise l'[e-mail de l'instance](./instance#e-mail-de-l-instance), à raison de 10 envois (demandes et relances) par heure et par personne, 30 par espace.
 
+### La signature électronique
+
+Sur un **changement**, une **mise en production** ou un **ticket** (une livraison), **Signatures → Demander une signature** (permission **Répondre**) envoie à une personne, par e-mail, un lien valable 14 jours. Le **document est figé** à l'envoi : son texte (description et plans du changement, changements et retour arrière de la mise en production, dernière réponse du ticket, plus les précisions ajoutées) et son **empreinte SHA-256**. La personne le lit, tape son nom et coche « je valide » — ou refuse en disant pourquoi. Sont gardés le nom tapé, l'heure, l'adresse IP, le navigateur et l'empreinte ; une signature ne change plus. Un **certificat PDF** se télécharge pour chaque document signé ; sur un ticket, une note le dit. C'est une signature électronique **simple** au sens du règlement eIDAS, pas une signature qualifiée. Il faut l'e-mail de l'instance (Instance → Santé).
+
 ## Les contacts
 
 **Contacts** (menu Support) : une fiche par personne, quel que soit le canal. Chaque fiche regroupe ses **identités** : son compte Discord, son adresse pour les [tickets par e-mail](./integrations#tickets-par-e-mail), plus tard le portail web. Les fiches se créent d'elles-mêmes à partir des tickets, rien à saisir.

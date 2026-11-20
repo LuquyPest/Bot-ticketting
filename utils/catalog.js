@@ -14,6 +14,7 @@ const shape = r => ({
   id: r.id, name: r.name, description: r.description || '', icon: r.icon || '', category: r.category || '', position: r.position, active: !!Number(r.active),
   fields: parseJsonField(r.fields, []) || [],
   template: { subject: r.subject || null, type: r.ticket_type || null, teamId: r.team_id || null, priority: r.priority || null },
+  organizationIds: (parseJsonField(r.organization_ids, []) || []).map(Number).filter(Boolean), // v8: [] = everyone
 });
 async function listServices(db, { activeOnly = false } = {}) {
   return (await db(`SELECT * FROM catalog_services ${activeOnly ? 'WHERE active = 1' : ''} ORDER BY category, position, name`).catch(() => [])).map(shape);
@@ -59,10 +60,12 @@ async function clean(db, input = {}) {
   }
   const teamId = t.teamId ? Number(t.teamId) : null;
   if (teamId && !(await db('SELECT 1 FROM teams WHERE id = ?', [teamId])).length) return { error: 'Équipe introuvable' };
+  const organizationIds = [...new Set((Array.isArray(input.organizationIds) ? input.organizationIds : []).map(Number).filter(n => n > 0))].slice(0, 200);
+  if (organizationIds.length && Number((await db('SELECT COUNT(*) AS n FROM organizations WHERE id IN (?)', [organizationIds]))[0].n) < organizationIds.length) return { error: 'Organisation introuvable' };
   return { value: {
     name, description: typeof input.description === 'string' ? input.description.trim().slice(0, 300) : '',
     icon: typeof input.icon === 'string' ? [...input.icon.trim()].slice(0, 4).join('') : '', category: typeof input.category === 'string' ? input.category.replace(/\s+/g, ' ').trim().slice(0, 60) : '',
-    active: input.active !== false, fields: fields.value,
+    active: input.active !== false, fields: fields.value, organizationIds,
     subject, type: ['incident', 'request'].includes(t.type) ? t.type : null, teamId, priority: ['low', 'normal', 'urgent'].includes(t.priority) ? t.priority : null,
   } };
 }
@@ -70,15 +73,15 @@ async function saveService(db, id, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  const vals = [v.name, v.description || null, v.icon || null, v.category || null, v.active ? 1 : 0, JSON.stringify(v.fields), v.subject, v.type, v.teamId, v.priority];
+  const vals = [v.name, v.description || null, v.icon || null, v.category || null, v.active ? 1 : 0, JSON.stringify(v.fields), v.subject, v.type, v.teamId, v.priority, v.organizationIds.length ? JSON.stringify(v.organizationIds) : null];
   if (id) {
-    const res = await db('UPDATE catalog_services SET name = ?, description = ?, icon = ?, category = ?, active = ?, fields = ?, subject = ?, ticket_type = ?, team_id = ?, priority = ? WHERE id = ?', [...vals, id]);
+    const res = await db('UPDATE catalog_services SET name = ?, description = ?, icon = ?, category = ?, active = ?, fields = ?, subject = ?, ticket_type = ?, team_id = ?, priority = ?, organization_ids = ? WHERE id = ?', [...vals, id]);
     if (!res.affectedRows) return { error: 'Service introuvable', status: 404 };
     return { ok: true, id };
   }
   const [n] = await db('SELECT COUNT(*) AS n, COALESCE(MAX(position), 0) AS pos FROM catalog_services');
   if (Number(n.n) >= MAX_SERVICES) return { error: `${MAX_SERVICES} services au plus` };
-  const ins = await db('INSERT INTO catalog_services (name, description, icon, category, active, fields, subject, ticket_type, team_id, priority, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...vals, Number(n.pos) + 1]);
+  const ins = await db('INSERT INTO catalog_services (name, description, icon, category, active, fields, subject, ticket_type, team_id, priority, organization_ids, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [...vals, Number(n.pos) + 1]);
   return { ok: true, id: ins.insertId };
 }
 async function deleteService(db, id) {
@@ -135,4 +138,12 @@ async function applyTemplate({ db, client, guildId, ticketId, service }) {
   await db('UPDATE tickets SET catalog_service_id = ? WHERE id = ?', [service.id, ticketId]);
 }
 
-module.exports = { TYPES, listServices, serviceOf, cleanFields, saveService, deleteService, shown, checkAnswers, summaryOf, applyTemplate };
+// v8: the services a requester sees — those for everyone, and those of their organisations
+// (a parent organisation's services count for its sub-organisations)
+async function memberOrgs(db, ids) {
+  const rows = await db('SELECT c.organization_id, o.parent_id FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id LEFT JOIN organizations o ON o.id = c.organization_id WHERE ci.value IN (?) AND c.organization_id IS NOT NULL', [ids.length ? ids : ['-']]).catch(() => []);
+  return [...new Set(rows.flatMap(r => [r.organization_id, r.parent_id]).filter(Boolean).map(Number))];
+}
+const visibleTo = (service, orgs) => !service.organizationIds.length || service.organizationIds.some(id => orgs.includes(id));
+
+module.exports = { memberOrgs, visibleTo, TYPES, listServices, serviceOf, cleanFields, saveService, deleteService, shown, checkAnswers, summaryOf, applyTemplate };

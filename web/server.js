@@ -207,6 +207,7 @@ app.use('/api/member',   require('./routes/memberPortal')); // member web space 
 app.use('/api/my-spaces', require('./routes/mySpaces')); // open tickets of every space where one is staff (v6)
 app.use('/api/guest',    require('./routes/guest'));        // temporary guest access (read-only)
 app.use('/api/approvals', require('./routes/approvalLink')); // approval by e-mail link (v4.2)
+app.use('/api/signature', require('./routes/signatures').pub); // signing by e-mail link (v8)
 app.use('/api/resolution', require('./routes/resolutionLink')); // « C'est résolu » by e-mail link (v5.1)
 app.use('/api/survey', require('./routes/survey').pub); // satisfaction survey by link (v5.6)
 
@@ -327,6 +328,7 @@ app.use('/api/cab',           withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/status-page',   withGuild(['support', 'fondateur']), require('./routes/statusPage')); // status page settings (v7)
 app.use('/api/email-template', withGuild(['support', 'fondateur']), require('./routes/emailTemplate')); // e-mail template (v7)
 app.use('/api/changes',       withGuild(['support', 'fondateur']), require('./routes/changes')); // v5.5
+app.use('/api/signatures',    withGuild(['support', 'fondateur']), require('./routes/signatures').staff); // e-signatures (v8)
 app.use('/api/dashboards',    withGuild(['support', 'fondateur']), require('./routes/dashboards')); // v5.6
 app.use('/api/surveys',       withGuild(['support', 'fondateur']), require('./routes/survey').staff); // v5.6
 app.use('/api/imports',       withGuild(['support', 'fondateur']), require('./routes/imports')); // v5.7

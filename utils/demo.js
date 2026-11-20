@@ -17,7 +17,7 @@ const BLOCKED = [
   // v4: an e-mail to any address (invitations), a public page on this domain (knowledge base), a public form (widget)
   ['*', '/api/invitations'], ['*', '/api/faq/public'], ['*', '/api/widget-settings'],
   // v5.2 and v7: Slack/Teams, CRM, trackers, extensions (manifest and webhooks), monitoring addresses, backups (v8)
-  ['*', '/api/chat'], ['*', '/api/crm'], ['*', '/api/dev-integrations'], ['*', '/api/extensions'], ['*', '/api/monitoring-sources'], ['*', '/api/space-backup'],
+  ['*', '/api/chat'], ['*', '/api/crm'], ['*', '/api/dev-integrations'], ['*', '/api/extensions'], ['*', '/api/monitoring-sources'], ['*', '/api/space-backup'], ['*', '/api/signatures'],
 ];
 // Adding a participant or contacting a member takes any Discord ID: never from the demo (see
 // sendToMember); the voice channel would be created on Discord
