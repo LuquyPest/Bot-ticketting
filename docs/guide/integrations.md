@@ -171,6 +171,10 @@ La personne donne son nom (facultatif), son **adresse e-mail**, le sujet si l'es
 
 Avec **Proposer le chat en direct** coché, le widget propose **Discuter maintenant** dès qu'au moins un membre du staff a la disponibilité **Disponible** (et n'est pas en vacances) ; sinon il garde le formulaire. Le visiteur donne son nom, son adresse et sa question : un ticket s'ouvre (canal web, comme un ticket du widget), et la conversation s'affiche dans le widget. Le staff répond depuis la fiche du ticket, comme d'habitude ; la fiche indique si le visiteur est **là**. Tant qu'il l'est (vu il y a moins de 45 secondes), les réponses ne lui sont pas aussi envoyées par e-mail ; quand il ferme le chat ou s'en va, la suite part par e-mail avec le lien de suivi, comme pour tout ticket web. Le ticket garde toute la conversation ; les notes internes n'apparaissent jamais dans le widget. Mêmes protections que le formulaire, plus 20 messages par minute.
 
+### L'arbre de questions
+
+Sous les réglages du widget, **Arbre de questions** (sans IA) : des **étapes** écrites par l'équipe, chacune avec un message et jusqu'à six **boutons**. Un bouton mène à une autre étape, ouvre un **article public** de la base de connaissances (dans un nouvel onglet), ou passe la main : **Parler à quelqu'un** (le chat en direct si quelqu'un est disponible, sinon le formulaire) ou **Écrire un message** (le formulaire). **Parler à quelqu'un** reste proposé à chaque étape. Le **parcours** suivi (« Une livraison › Colis en retard ») est joint au premier message du ticket, pour que le staff sache ce qui a déjà été vu. 50 étapes au plus ; un article doit être public et publié.
+
 ## Slack et Microsoft Teams
 
 **Paramètres → Intégrations → Slack et Microsoft Teams** (fondateurs) relie un canal de chaque outil ; **Paramètres → Notifications** choisit ce qui y part (canal « Slack » ou « Teams » : un message par événement, quels que soient les destinataires). Un ticket confidentiel n'y donne que son numéro.

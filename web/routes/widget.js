@@ -57,6 +57,7 @@ button:disabled{opacity:.6}.note{font-size:12px;color:var(--muted);margin-top:10
 .tabs{display:flex;gap:6px;margin:0 0 6px}.tabs button{margin:0;padding:8px;background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:500}.tabs button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
 .log{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;padding:4px 0;margin:8px 0}.b{max-width:85%;padding:8px 10px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
 .b.v{align-self:flex-end;background:var(--accent);color:#fff}.b.s{align-self:flex-start;border:1px solid var(--line)}.who{display:block;font-size:11px;opacity:.75;margin-bottom:2px}
+.bbtn{display:flex;flex-wrap:wrap;gap:6px}.bbtn button,.bbtn a{margin:0;width:auto;padding:7px 11px;border:1px solid var(--accent);background:transparent;color:var(--fg);border-radius:999px;font-weight:500;font-size:13px;text-decoration:none}
 .row{display:flex;gap:6px}.row textarea{min-height:44px;flex:1}.row button{width:auto;margin:0;padding:0 14px}.link{background:none;border:0;color:var(--muted);text-decoration:underline;width:auto;padding:0;margin-top:8px;font-weight:400;font-size:12px}
 </style></head><body><main>${body}</main></body></html>`;
 }
@@ -78,7 +79,10 @@ pages.get('/widget/:token', async (req, res, next) => {
     const [space] = await require('../../utils/globalDb').globalQuery('SELECT guild_name FROM guilds WHERE guild_id = ?', [w.guildId]);
     const { subjects } = await require('../../utils/memberPortal').openingForm(w.guildId);
     const rules = await require('../../utils/requesterFiles').uploadRules(w.db);
+    const tree = await require('../../utils/widgetBot').publicTree(w.db, w.guildId).catch(() => null);
     const body = `<h1>${esc(L('widget.title'))}${space?.guild_name ? ` · ${esc(space.guild_name)}` : ''}</h1>
+${tree ? `<section id="bot" aria-live="polite"><div id="bl" class="log"></div><div id="bb" class="bbtn"></div><button type="button" id="bh" class="link">${esc(L('widget.botTalk'))}</button></section>
+<script type="application/json" id="bt">${JSON.stringify(tree).replace(/</g, '\\u003c')}</script>` : ''}
 <div id="tabs" class="tabs" hidden><button type="button" id="tc" aria-pressed="false">${esc(L('widget.chatStart'))}</button><button type="button" id="tf" aria-pressed="true">${esc(L('widget.chatForm'))}</button></div>
 <p id="ci" class="note" hidden>${esc(L('widget.chatIntro'))}</p>
 <section id="cv" hidden aria-label="${esc(L('widget.chatStart'))}"><div id="log" class="log" role="log" aria-live="polite"></div><p id="cw" class="note">${esc(L('widget.chatWaiting'))}</p>
@@ -92,7 +96,7 @@ ${subjects.length ? `<label for="s">${esc(L('widget.subject'))}</label><select i
 ${rules.enabled ? `<label for="fi">${esc(L('widget.files', { max: 3, mb: rules.maxMb }))}</label><input id="fi" name="files" type="file" multiple>` : ''}
 <div id="k" class="kb" hidden><p>${esc(L('widget.maybe'))}</p><ul id="kl"></ul></div>
 <div class="hp" aria-hidden="true"><label for="w">Website</label><input id="w" name="website" tabindex="-1" autocomplete="off"></div>
-<input type="hidden" name="t" value="${esc(widget.stamp(w.guildId))}">
+<input type="hidden" name="t" value="${esc(widget.stamp(w.guildId))}"><input type="hidden" name="path" id="bp">
 <button id="b" type="submit">${esc(L('widget.send'))}</button>
 <p class="note">${esc(L('widget.privacy'))}</p><div id="r" role="status" aria-live="polite"></div>
 </form>
@@ -109,11 +113,20 @@ fetch(${JSON.stringify(`/api/widget/${req.params.token}/tickets`)},{method:'POST
 if(x.ok){f.innerHTML='';var p=document.createElement('p');p.className='msg ok';p.textContent=${JSON.stringify(L('widget.sent'))};f.appendChild(p);return;}
 r.className='msg err';r.textContent=(x.j&&x.j.error)||'Erreur';b.disabled=false;})
 .catch(function(){r.className='msg err';r.textContent=${JSON.stringify(L('portal.serverError'))};b.disabled=false;});});
+(function(){var bt=document.getElementById('bt');if(!bt)return;var tree;try{tree=JSON.parse(bt.textContent);}catch(e){return;}
+var f=document.getElementById('f'),tabs=document.getElementById('tabs'),bot=document.getElementById('bot'),bl=document.getElementById('bl'),bb=document.getElementById('bb'),bp=document.getElementById('bp'),path=[];
+window.__bot=true;f.hidden=true;
+function bubble(t,c){var d=document.createElement('div');d.className='b '+c;d.textContent=t;bl.appendChild(d);bl.scrollTop=bl.scrollHeight;}
+function leave(kind){window.__bot=false;bot.hidden=true;f.hidden=false;bp.value=path.join(' › ');if(window.__chatOk){tabs.hidden=false;window.__setMode&&window.__setMode(kind==='form'?'form':'chat');}var m=document.getElementById('m');if(m)m.focus();}
+function show(id){var n=tree.nodes.find(function(x){return x.id===id;});if(!n){leave('human');return;}bubble(n.text,'s');bb.textContent='';
+n.buttons.forEach(function(b){var el;if(b.kind==='article'){el=document.createElement('a');el.href=b.url;el.target='_blank';el.rel='noopener';el.textContent=b.label;el.addEventListener('click',function(){path.push(b.label);});}
+else{el=document.createElement('button');el.type='button';el.textContent=b.label;el.addEventListener('click',function(){path.push(b.label);bubble(b.label,'v');if(b.kind==='step')show(b.next);else leave(b.kind);});}bb.appendChild(el);});}
+document.getElementById('bh').addEventListener('click',function(){leave('human');});show(tree.start);})();
 (function(){var API=${JSON.stringify(`/api/widget/${req.params.token}/chat`)},H={'X-Requested-With':'XMLHttpRequest','X-Member-Lang':${JSON.stringify(lang)},'Content-Type':'application/json'};
 var f=document.getElementById('f'),tabs=document.getElementById('tabs'),tc=document.getElementById('tc'),tf=document.getElementById('tf'),ci=document.getElementById('ci'),cv=document.getElementById('cv'),log=document.getElementById('log'),ct=document.getElementById('ct'),cr=document.getElementById('cr'),cw=document.getElementById('cw');
 var mode='form',sid=null,last=0,timer=null,fi=document.getElementById('fi'),fiL=fi?document.querySelector('label[for=fi]'):null;
 function setMode(m){mode=m;tc.setAttribute('aria-pressed',m==='chat');tf.setAttribute('aria-pressed',m!=='chat');ci.hidden=m!=='chat';if(fi){fi.hidden=m==='chat';fiL.hidden=m==='chat';}}
-fetch(API).then(function(x){return x.json();}).then(function(j){if(j&&j.available){tabs.hidden=false;setMode('chat');}}).catch(function(){});
+window.__setMode=setMode;fetch(API).then(function(x){return x.json();}).then(function(j){if(j&&j.available){window.__chatOk=true;if(!window.__bot)tabs.hidden=false;setMode('chat');}}).catch(function(){});
 tc.addEventListener('click',function(){setMode('chat');});tf.addEventListener('click',function(){setMode('form');});
 function add(list){(list||[]).forEach(function(m){if(m.id<=last)return;last=m.id;var d=document.createElement('div');d.className='b '+(m.from==='visitor'?'v':'s');
 var w=document.createElement('span');w.className='who';w.textContent=m.from==='visitor'?${JSON.stringify(L('widget.chatYou'))}:(m.author||'Support');d.appendChild(w);d.appendChild(document.createTextNode(m.text));log.appendChild(d);if(m.from!=='visitor')cw.hidden=true;});log.scrollTop=log.scrollHeight;}
@@ -164,8 +177,11 @@ async function openFromWidget(req, w, lang, b, files = []) {
   const { EMAIL_RE } = require('../../utils/emailTickets');
   const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
   if (!EMAIL_RE.test(email) || email.length > 254) return { status: 400, error: L('portal.badEmail') };
-  const message = typeof b.message === 'string' ? b.message.trim() : '';
-  if (!message || message.length > 2000) return { status: 400, error: L('portal.describe') };
+  const typed = typeof b.message === 'string' ? b.message.trim() : '';
+  if (!typed || typed.length > 2000) return { status: 400, error: L('portal.describe') };
+  // The steps of the question tree the visitor went through (v7, utils/widgetBot.js)
+  const path = require('../../utils/widgetBot').cleanPath(b.path);
+  const message = path ? `${typed}\n\n🧭 ${L('widget.botPath')} : ${path}` : typed;
   const name = typeof b.name === 'string' ? b.name.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 100) : '';
   const { subjects } = await require('../../utils/memberPortal').openingForm(guildId);
   const subject = typeof b.subject === 'string' ? b.subject.trim().slice(0, 100) : '';
@@ -302,6 +318,18 @@ settings.put('/', async (req, res, next) => {
     if (req.body?.chat !== undefined) await req.guildDb('UPDATE guild_config SET widget_chat = ? WHERE id = 1', [req.body.chat ? 1 : 0]);
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'widget_settings', details: { enabled: req.body?.enabled === true, origins: widget.parseOrigins(req.body?.origins ?? '').length } });
     res.json(await view(req));
+  } catch (err) { next(err); }
+});
+
+// GET / PUT /api/widget-settings/bot — the question tree (utils/widgetBot.js, v7)
+settings.get('/bot', async (req, res, next) => { try { res.json(await require('../../utils/widgetBot').getBot(req.guildDb)); } catch (err) { next(err); } });
+settings.put('/bot', async (req, res, next) => {
+  try {
+    const B = require('../../utils/widgetBot');
+    const r = await B.saveBot(req.guildDb, req.body || {});
+    if (r.error) return res.status(400).json({ error: r.error });
+    await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'widget_bot', details: { enabled: !!req.body?.enabled, steps: (req.body?.nodes || []).length } });
+    res.json(await B.getBot(req.guildDb));
   } catch (err) { next(err); }
 });
 

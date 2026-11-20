@@ -8931,6 +8931,52 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tk.id]);
   }
 
+  // ── Question tree in front of the widget (utils/widgetBot.js, v7) ──
+  {
+    const nodemailer = require('nodemailer');
+    const realCreate = nodemailer.createTransport;
+    nodemailer.createTransport = () => ({ sendMail: async () => ({}), close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    const [cfgX] = await db('SELECT ticket_subjects, max_tickets_per_day FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET ticket_subjects = '[]', max_tickets_per_day = 10 WHERE id = 1");
+    const TOK = (await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: true, origins: '' } })).body.token;
+    r = await req('PUT', '/api/widget-settings/bot', { sid: sessions.S1, body: { enabled: true, nodes: [] } });
+    check('arbre: réservé aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/widget-settings/bot', { sid: sessions.F, body: { enabled: true, nodes: [{ id: 'debut', text: 'Bonjour', buttons: [{ label: 'Livraison', kind: 'step', next: 'nulle-part' }] }] } });
+    check('arbre: bouton vers une étape inconnue refusé', r.status === 400 && /introuvable/.test(r.body.error), JSON.stringify(r.body));
+    const art = (await db("INSERT INTO faq_entries (question, answer, keywords, visibility) VALUES ('Arbre v7 : suivre un colis', 'Avec le numéro de suivi.', 'colis', 'members')")).insertId;
+    r = await req('PUT', '/api/widget-settings/bot', { sid: sessions.F, body: { enabled: true, nodes: [{ id: 'debut', text: 'Bonjour', buttons: [{ label: 'Article', kind: 'article', articleId: art }] }] } });
+    check('arbre: un article non public refusé', r.status === 400 && /public/.test(r.body.error), JSON.stringify(r.body));
+    await db("UPDATE faq_entries SET visibility = 'public' WHERE id = ?", [art]);
+    const tree = { enabled: true, start: 'debut', nodes: [
+      { id: 'debut', text: 'Bonjour ! Votre question porte sur…', buttons: [{ label: 'Une livraison', kind: 'step', next: 'livraison' }, { label: 'Autre chose', kind: 'human' }] },
+      { id: 'livraison', text: 'Avez-vous votre numéro de suivi ?', buttons: [{ label: 'Suivre mon colis', kind: 'article', articleId: art }, { label: 'Colis en retard', kind: 'form' }] }] };
+    const [{ kb_public: kb0 }] = await db('SELECT kb_public FROM guild_config WHERE id = 1');
+    await db('UPDATE guild_config SET kb_public = 1 WHERE id = 1');
+    r = await req('PUT', '/api/widget-settings/bot', { sid: sessions.F, body: tree });
+    check('arbre: enregistré', r.status === 200 && r.body.enabled === true && r.body.nodes.length === 2, JSON.stringify(r.body).slice(0, 200));
+    r = await req('GET', `/widget/${TOK}`);
+    const page = typeof r.body === 'string' ? r.body : '';
+    check('arbre: le widget reçoit l arbre (sans script exécutable), avec « Parler à quelqu un »', r.status === 200 && /id="bt"/.test(page) && /Avez-vous votre num/.test(page) && /\/aide\//.test(page) && /Parler à quelqu/.test(page), page.slice(0, 120));
+    const ww = app('./utils/webWidget');
+    r = await req('POST', `/api/widget/${TOK}/tickets`, { headers: { 'X-Forwarded-For': '10.88.0.1' }, body: { name: 'Noé', email: 'arbre-v7@example.com', message: 'Mon colis a 10 jours de retard', path: 'Une livraison › Colis en retard\n<script>', t: ww.stamp(G, Date.now() - 5000) } });
+    const [tk] = await db("SELECT id FROM tickets WHERE owner_id = ? ORDER BY id DESC LIMIT 1", [app('./utils/webRequesters').webOwnerIdFor('arbre-v7@example.com')]);
+    const [first] = tk ? await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'user' ORDER BY id LIMIT 1", [tk.id]) : [];
+    check('arbre: le parcours suivi est joint au ticket', r.status === 200 && /Parcours dans le widget : Une livraison › Colis en retard/.test(first?.content || '') && !/\n<script>/.test(first?.content || ''), first?.content);
+    await req('PUT', '/api/widget-settings/bot', { sid: sessions.F, body: { ...tree, enabled: false } });
+    r = await req('GET', `/widget/${TOK}`);
+    check('arbre: coupé → plus d arbre dans le widget', !/id="bt"/.test(typeof r.body === 'string' ? r.body : ''), '');
+    nodemailer.createTransport = realCreate;
+    delete process.env.EMAIL_ALLOW_PRIVATE_HOSTS;
+    await app('./utils/instanceMail').saveMailSettings({ enabled: false });
+    await req('PUT', '/api/widget-settings', { sid: sessions.F, body: { enabled: false, origins: '' } });
+    await db('UPDATE guild_config SET ticket_subjects = ?, max_tickets_per_day = ? WHERE id = 1', [cfgX.ticket_subjects == null || typeof cfgX.ticket_subjects === 'string' ? cfgX.ticket_subjects : JSON.stringify(cfgX.ticket_subjects), cfgX.max_tickets_per_day]);
+    if (tk) await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tk.id]);
+    await db('DELETE FROM faq_entries WHERE id = ?', [art]);
+    await db('UPDATE guild_config SET kb_public = ? WHERE id = 1', [kb0]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

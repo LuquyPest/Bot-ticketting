@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Channels',
     changes: [
       { type: 'new',  text: 'Chat en direct dans le widget quand quelqu\'un de l\'équipe est disponible : chaque conversation est un ticket, le staff répond depuis la fiche, pas d\'e-mail tant que le visiteur est là', en: 'Live chat in the widget when someone of the team is available: each conversation is a ticket, the staff answers from the ticket view, no e-mail while the visitor is there' },
+      { type: 'new',  text: 'Arbre de questions devant le widget, sans IA : étapes à boutons écrites par l\'équipe, articles publics proposés, « Parler à quelqu\'un » toujours possible, parcours joint au ticket', en: 'Question tree in front of the widget, no AI: button steps written by the team, public articles offered, « Talk to someone » always possible, path added to the ticket' },
     ],
   },
   {
