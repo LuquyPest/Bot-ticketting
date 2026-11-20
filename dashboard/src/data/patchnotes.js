@@ -19,7 +19,7 @@ export function localizedVersion(v, lang) {
 export const VERSIONS = [
   {
     version: 'v6.5.0',
-    date: 'à venir',
+    date: '20 novembre 2026',
     title: 'Faire connaître',
     titleEn: 'Getting known',
     changes: [
@@ -29,7 +29,7 @@ export const VERSIONS = [
   },
   {
     version: 'v6.4.0',
-    date: 'à venir',
+    date: '20 novembre 2026',
     title: 'Mobile',
     titleEn: 'Mobile',
     changes: [
@@ -38,7 +38,7 @@ export const VERSIONS = [
   },
   {
     version: 'v6.3.0',
-    date: 'à venir',
+    date: '20 novembre 2026',
     title: 'Plusieurs espaces',
     titleEn: 'Several spaces',
     changes: [
@@ -48,7 +48,7 @@ export const VERSIONS = [
   },
   {
     version: 'v6.2.0',
-    date: 'à venir',
+    date: '20 novembre 2026',
     title: 'Annuaire',
     titleEn: 'Directory',
     changes: [
@@ -57,7 +57,7 @@ export const VERSIONS = [
   },
   {
     version: 'v6.1.0',
-    date: 'à venir',
+    date: '20 novembre 2026',
     title: 'Compléments',
     titleEn: 'Finishing touches',
     changes: [
@@ -71,7 +71,7 @@ export const VERSIONS = [
   },
   {
     version: 'v6.0.0',
-    date: 'à venir',
+    date: '20 novembre 2026',
     title: 'Fiabilité',
     titleEn: 'Reliability',
     changes: [
