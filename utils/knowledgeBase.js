@@ -33,7 +33,7 @@ const PUBLIC = `${LIVE} AND visibility = 'public'`;
 // The originals (a translation shows instead of its original when the reader asks for its language)
 async function publicArticles(db, { lang = null } = {}) {
   const rows = await db(`SELECT id, question, answer, category, updated_at, created_at, lang, translation_of FROM faq_entries WHERE ${PUBLIC}
-    ORDER BY category = '', category, solved_count DESC, id ASC LIMIT ${MAX_ARTICLES}`);
+    ORDER BY ${require('./kbTree').ORDER}, solved_count DESC, id ASC LIMIT ${MAX_ARTICLES}`);
   const originals = rows.filter(r => !r.translation_of);
   if (!lang) return originals.map(({ translation_of, ...a }) => a);
   return originals.map(o => rows.find(r => r.translation_of === o.id && r.lang === lang) || o).map(({ translation_of, ...a }) => a);

@@ -60,6 +60,7 @@ const Procedures  = lazy(() => import('./pages/Procedures'));
 const Profiles    = lazy(() => import('./pages/Profiles'));
 const Organizations = lazy(() => import('./pages/Organizations'));
 const Planning    = lazy(() => import('./pages/Planning'));
+const Inbox       = lazy(() => import('./pages/Inbox'));
 const AllSpaces   = lazy(() => import('./pages/AllSpaces'));
 const Costs       = lazy(() => import('./pages/Costs'));
 const Problems    = lazy(() => import('./pages/Problems'));
@@ -276,6 +277,7 @@ export default function App() {
                         <Route path="profils/:memberId" element={<ErrorBoundary><Profiles /></ErrorBoundary>} />
                         <Route path="organisations" element={<ErrorBoundary><Organizations /></ErrorBoundary>} />
                         <Route path="planning" element={<ErrorBoundary><Planning /></ErrorBoundary>} />
+                        <Route path="boite" element={<ErrorBoundary><Inbox /></ErrorBoundary>} />
                         <Route path="tous-mes-espaces" element={<ErrorBoundary><AllSpaces /></ErrorBoundary>} />
                         <Route path="couts" element={<ErrorBoundary><Costs /></ErrorBoundary>} />
                         <Route path="problemes" element={<ErrorBoundary><Problems /></ErrorBoundary>} />

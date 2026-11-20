@@ -193,7 +193,7 @@ Menu **Planning** : la semaine d'une personne ou d'une équipe : les **tâches p
 
 ### Écrire, aller vite
 
-La zone de réponse et de note a une **barre de mise en forme** (gras, italique, code, lien, listes, citation ; **Ctrl+B**, **Ctrl+I**, **Ctrl+K**, **Ctrl+E**) : le texte reste du Markdown, que Discord, les e-mails et l'espace membre affichent sans risque. **?** ouvre la liste des **raccourcis** : sur la fiche, **r** répondre, **n** note, **a** me l'attribuer, **s** changer le statut, **.** et **,** ticket ouvert suivant ou précédent ; dans la liste, **j**/**k** et **Entrée**.
+La zone de réponse et de note a une **barre de mise en forme** (gras, italique, code, lien, listes, citation ; **Ctrl+B**, **Ctrl+I**, **Ctrl+K**, **Ctrl+E**) : le texte reste du Markdown, que Discord, les e-mails et l'espace membre affichent sans risque. **?** ouvre la liste des **raccourcis** : sur la fiche, **r** répondre, **n** note, **a** me l'attribuer, **s** changer le statut, **.** et **,** ticket ouvert suivant ou précédent ; dans la liste, **j**/**k** et **Entrée**. Partout dans le dashboard, **g** puis une lettre change de page : **d** dashboard, **q** ma file, **t** tickets, **b** boîte d'équipe, **p** planning, **k** base de connaissances, **c** contacts, **a** analytiques, **s** paramètres.
 
 Dans la liste, **Colonnes** choisit ce qui s'affiche (type, équipe, organisation, dernier message…), gardé pour chacun. Une **vue enregistrée** peut être **partagée avec une équipe** dont on fait partie : ses membres la voient (lecture seule), chacun avec ses propres droits sur les tickets.
 
@@ -317,3 +317,4 @@ Un ticket garde l'organisation de son demandeur à l'ouverture : elle apparaît 
 - **Actions en masse** : priorité, étape, tags, attribution, modèle, fermeture — chacune selon tes permissions.
 - **Vue fractionnée** (Profil → Affichage) : la liste à gauche, le ticket à droite, sur un écran d'au moins 1 280 px.
 - **Ma file** : tes tickets du plus urgent au moins urgent, avec la raison ; **Kanban** : les tickets en colonnes par étape.
+- **Boîte d'équipe** : les tickets ouverts d'une ou plusieurs équipes (les tiennes ; un fondateur choisit parmi toutes) en quatre colonnes — non pris, à moi, en attente, en retard sur le SLA — avec le ticket affiché à droite. Au clavier : **h**/**l** change de colonne, **j**/**k** de ticket, **Entrée** l'affiche, **a** te l'attribue, **o** ouvre la fiche entière.

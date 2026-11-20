@@ -21,7 +21,7 @@ function clean(body, partial = false) {
     out[k] = body[k].trim();
     return null;
   };
-  const err = str('question', 200, true) || str('answer', ANSWER_MAX, true) || str('keywords', 500, false) || str('category', 80, false);
+  const err = str('question', 200, true) || str('answer', ANSWER_MAX, true) || str('keywords', 500, false) || str('category', 255, false);
   if (err) return { error: err };
   if (out.category !== undefined) out.category = out.category.replace(/\s+/g, ' ');
   if (body.visibility !== undefined) {
@@ -88,6 +88,29 @@ router.get('/', async (req, res) => {
   });
 });
 
+// ── The tree of categories (utils/kbTree.js, v8): read by the staff, changed with « Paramètres » ──
+const T = () => require('../../utils/kbTree');
+const treeOut = async (req, res, r) => (r?.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(await T().tree(req.guildDb, await teamFilter(req))));
+router.get('/tree', async (req, res, next) => { try { await treeOut(req, res); } catch (err) { next(err); } });
+router.post('/categories', async (req, res, next) => {
+  try { if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' }); await treeOut(req, res, await T().createCategory(req.guildDb, req.body || {})); } catch (err) { next(err); }
+});
+router.patch('/categories/:id', async (req, res, next) => {
+  try { if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' }); await treeOut(req, res, await T().renameCategory(req.guildDb, parseInt(req.params.id) || 0, req.body?.name)); } catch (err) { next(err); }
+});
+router.delete('/categories/:id', async (req, res, next) => {
+  try { if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' }); await treeOut(req, res, await T().deleteCategory(req.guildDb, parseInt(req.params.id) || 0)); } catch (err) { next(err); }
+});
+// POST /api/faq/move { kind: category | article, id, parentId, index }
+router.post('/move', async (req, res, next) => {
+  try {
+    if (!canManage(req)) return res.status(403).json({ error: 'Permission insuffisante' });
+    const r = await T().move(req.guildDb, req.body || {});
+    if (r.ok) await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'faq_update', targetType: req.body.kind === 'article' ? 'faq' : 'kb_category', targetId: Number(req.body.id) || null, details: { moved: true } });
+    await treeOut(req, res, r);
+  } catch (err) { next(err); }
+});
+
 // PUT /api/faq/public { enabled } — the public page /aide/<space> (founders: it is visible to anyone)
 router.put('/public', async (req, res) => {
   if (!req.userIsFondateur) return res.status(403).json({ error: 'Réservé aux fondateurs' });
@@ -124,6 +147,7 @@ router.post('/', async (req, res) => {
     [fields.question, fields.answer, fields.keywords || '', fields.category || '', fields.visibility || 'members', fields.active ?? 1, req.session.user.username,
       fields.status || 'published', fields.organization_id ?? null, fields.team_id ?? null, fields.review_at ?? null, fields.expires_at ?? null, fields.lang ?? null, fields.translation_of ?? null]
   );
+  if (fields.category) await require('../../utils/kbTree').syncArticle(req.guildDb, r.insertId).catch(() => null); // v8: the tree
   await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'faq_create', targetType: 'faq', targetId: r.insertId, details: { question: fields.question, visibility: fields.visibility || 'members' } });
   const [row] = await req.guildDb('SELECT * FROM faq_entries WHERE id = ?', [r.insertId]);
   res.json({ ...row, active: !!row.active });
@@ -145,6 +169,7 @@ router.patch('/:id', async (req, res) => {
   }
   if (keys.length) {
     await req.guildDb(`UPDATE faq_entries SET ${keys.map(k => `${k} = ?`).join(', ')}, updated_at = NOW() WHERE id = ?`, [...keys.map(k => fields[k]), entry.id]);
+    if (fields.category !== undefined && fields.category !== entry.category) await require('../../utils/kbTree').syncArticle(req.guildDb, entry.id).catch(() => null); // v8: the tree
     await recordEvent(req.guildDb, { actor: dashboardActor(req), action: 'faq_update', targetType: 'faq', targetId: entry.id, details: { fields: keys, ...(fields.visibility ? { visibility: fields.visibility } : {}) } });
   }
   const [row] = await req.guildDb('SELECT * FROM faq_entries WHERE id = ?', [entry.id]);

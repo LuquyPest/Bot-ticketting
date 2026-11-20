@@ -2,8 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 // « ? »: the keyboard shortcuts (v5.4), in a dialog closed by Escape
+const NAV = [['g puis d / q / t / b', 'Dashboard, Ma file, Tickets, Boîte d\'équipe'], ['g puis p / k / c / a / s', 'Planning, Base, Contacts, Analytiques, Paramètres']];
 export const SHORTCUTS = {
-  list: [['j / ↓', 'Ticket suivant'], ['k / ↑', 'Ticket précédent'], ['Entrée', 'Ouvrir le ticket'], ['Échap', 'Désélectionner'], ['?', 'Cette aide']],
+  global: [...NAV, ['⌘K / Ctrl+K', 'Palette de commandes'], ['?', 'Cette aide']],
+  inbox: [['h / l', 'Colonne précédente, suivante'], ['j / k', 'Ticket suivant, précédent'], ['Entrée', 'Afficher le ticket à droite'], ['a', 'Me l\'attribuer'], ['o', 'Ouvrir la fiche entière'], ['Échap', 'Fermer l\'aperçu'], ...NAV, ['?', 'Cette aide']],
+  list: [['j / ↓', 'Ticket suivant'], ['k / ↑', 'Ticket précédent'], ['Entrée', 'Ouvrir le ticket'], ['Échap', 'Désélectionner'], ...NAV, ['?', 'Cette aide']],
   ticket: [['r', 'Répondre'], ['n', 'Note interne'], ['a', 'Me l\'attribuer'], ['s', 'Changer le statut'], ['.', 'Ticket ouvert suivant'], [',', 'Ticket ouvert précédent'], ['Ctrl+Entrée', 'Envoyer'],
     ['Ctrl+B / I / K / E', 'Gras, italique, lien, code'], ['Échap', 'Revenir à la liste'], ['?', 'Cette aide']],
 };
