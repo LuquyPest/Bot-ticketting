@@ -1504,6 +1504,14 @@ const MIGRATIONS = [
       `ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS close_children_with_parent TINYINT(1) NOT NULL DEFAULT 0`,
     ],
   },
+  {
+    version: 84,
+    name: 'Sous-tâches des tickets (v7)',
+    statements: [
+      `ALTER TABLE ticket_tasks ADD COLUMN IF NOT EXISTS parent_id INT DEFAULT NULL, ADD INDEX IF NOT EXISTS idx_tk_parent (parent_id)`,
+      `ALTER TABLE ticket_tasks ADD CONSTRAINT fk_tk_parent FOREIGN KEY IF NOT EXISTS (parent_id) REFERENCES ticket_tasks(id) ON DELETE CASCADE`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

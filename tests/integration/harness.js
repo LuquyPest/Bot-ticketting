@@ -8203,6 +8203,41 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[pa, dup, blk, conf]]);
   }
 
+  // ── Sub-tasks (utils/tasks.js, v7) ──
+  {
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000072', 'u72', 'st7-1', 'open', 'Sous-tâches v7')")).insertId;
+    const tasks = async () => (await req('GET', `/api/tickets/${tk}/tasks`, { sid: sessions.F })).body.tasks;
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Préparer le poste' } });
+    const parent = r.body.tasks.find(t => t.title === 'Préparer le poste').id;
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Installer le système', parentId: parent } });
+    await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Installer la messagerie', parentId: parent } });
+    let list = await tasks();
+    const [s1, s2] = list.filter(t => t.parentId === parent).map(t => t.id);
+    check('sous-tâches: deux filles rattachées à leur tâche', !!s1 && !!s2 && list.find(t => t.id === parent).parentId === null, JSON.stringify(list.map(t => [t.id, t.parentId])));
+    r = await req('POST', `/api/tickets/${tk}/tasks`, { sid: sessions.F, body: { title: 'Trop profond', parentId: s1 } });
+    check('sous-tâches: un seul niveau', r.status === 400, r.status);
+    const other = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000072', 'u72', 'st7-2', 'open', 'Sous-tâches v7 autre')")).insertId;
+    r = await req('POST', `/api/tickets/${other}/tasks`, { sid: sessions.F, body: { title: 'Ailleurs', parentId: parent } });
+    check('sous-tâches: parent d un autre ticket refusé', r.status === 404, r.status);
+    r = await req('PATCH', `/api/tickets/${tk}/tasks/${parent}`, { sid: sessions.F, body: { state: 'done' } });
+    check('sous-tâches: une tâche n est faite qu avec ses filles', r.status === 409 && /2 à faire/.test(r.body.error), JSON.stringify(r.body));
+    await req('PATCH', `/api/tickets/${tk}/tasks/${s1}`, { sid: sessions.F, body: { state: 'done' } });
+    await req('PATCH', `/api/tickets/${tk}/tasks/${s2}`, { sid: sessions.F, body: { state: 'na' } });
+    r = await req('PATCH', `/api/tickets/${tk}/tasks/${parent}`, { sid: sessions.F, body: { state: 'done' } });
+    check('sous-tâches: filles faites ou sans objet → la tâche se termine', r.status === 200 && r.body.tasks.find(t => t.id === parent).state === 'done', JSON.stringify(r.body));
+    await req('PATCH', `/api/tickets/${tk}/tasks/${s1}`, { sid: sessions.F, body: { state: 'todo' } });
+    list = await tasks();
+    check('sous-tâches: une fille rouverte rouvre sa tâche', list.find(t => t.id === parent).state === 'todo', JSON.stringify(list));
+    await req('PATCH', `/api/tickets/${tk}/tasks/${parent}`, { sid: sessions.F, body: { state: 'na' } });
+    list = await tasks();
+    check('sous-tâches: « sans objet » s applique aux filles encore à faire', list.find(t => t.id === s1).state === 'na', JSON.stringify(list));
+    await db("INSERT INTO ticket_time (ticket_id, user_id, user_tag, source, ended_at, seconds, task_id) VALUES (?, ?, 'F', 'manual', NOW(), 600, ?)", [tk, U.F, s1]);
+    r = await req('DELETE', `/api/tickets/${tk}/tasks/${parent}`, { sid: sessions.F });
+    const [{ n: kept }] = await db('SELECT COUNT(*) AS n FROM ticket_time WHERE ticket_id = ? AND task_id IS NULL AND seconds = 600', [tk]);
+    check('sous-tâches: supprimer la tâche supprime ses filles, le temps reste sur le ticket', r.status === 200 && r.body.tasks.length === 0 && Number(kept) === 1, JSON.stringify([r.body.tasks, kept]));
+    await db("UPDATE tickets SET status = 'closed' WHERE id IN (?)", [[tk, other]]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
