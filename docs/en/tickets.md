@@ -213,6 +213,15 @@ Tickets are linked to it from the problem or from their view (**Reply** permissi
 
 It follows a flow: **draft** → **waiting for approval** → **approved** (all approvals) or **refused** (at the first refusal, with its reason) → **in progress** → **done** or **failed**; **cancelled** at any time. **Approvals** are given by the chosen staff members, each for themself, in the dashboard; it only starts once approved, and its plans and risks are frozen once it is (going back to draft resets the approvals). Everything is in the journal.
 
+### Releases
+
+**Releases** menu (with the changes, **Reply** permission to write): a release groups **changes** and takes them to production together, stage by stage: **preparation → test → deployment → verification → done**.
+
+- Each stage has its **checklist** (« backup checked », « user acceptance »): the next stage only comes once the stage's points are ticked (who and when are noted).
+- **Deployment** needs all its changes **approved**; they then go *in progress*. **Finish** makes them *done*; **roll back** (during deployment or verification) makes them *failed*. Before deployment, it can be **cancelled**.
+- A **rollback plan**, a window, a person, and a **review**, required to finish or roll back.
+- A change is in one ongoing release at a time; its view shows which. Each stage is in the log.
+
 ## Inventory
 
 **Inventory** menu: the space's inventory (CMDB) — computers, servers, software, licences, services… Off until a founder turns it on.

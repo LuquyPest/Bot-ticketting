@@ -58,6 +58,7 @@ function Detail({ id, staff, onChanged }) {
       {text('rollbackPlan', 'Plan de retour arrière')}
       {text('risks', 'Risques')}
       {text('impact', 'Impact (services, utilisateurs touchés)')}
+      {c.release && <p className="text-xs text-ink-3">Mise en production : <Link to={`/mises-en-production/${c.release.id}`} className="text-primary-light hover:underline">{`#${c.release.id} ${c.release.title}`}</Link></p>}
       <AssetLinksPanel type="change" targetId={c.id} panelCard="space-y-1" />
       <ChangeImpact key={`impact-${c.id}`} changeId={c.id} />
       <section className="space-y-1">

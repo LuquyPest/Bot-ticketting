@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.4.0',
+    date: 'à venir',
+    title: 'ITIL',
+    titleEn: 'ITIL',
+    changes: [
+      { type: 'new',  text: 'Mises en production : des changements menés ensemble par étapes (préparation, test, déploiement, vérification) avec leurs points à cocher, déploiement seulement si tout est approuvé, plan de retour arrière et bilan ; les changements suivent (en cours, fait, échoué)', en: 'Releases: changes taken to production together stage by stage (preparation, test, deployment, verification) with their checklists, deployment only when everything is approved, rollback plan and review; the changes follow (in progress, done, failed)' },
+    ],
+  },
+  {
     version: 'v7.3.0',
     date: 'à venir',
     title: 'Parc',

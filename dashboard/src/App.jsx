@@ -64,6 +64,7 @@ const AllSpaces   = lazy(() => import('./pages/AllSpaces'));
 const Costs       = lazy(() => import('./pages/Costs'));
 const Problems    = lazy(() => import('./pages/Problems'));
 const Assets      = lazy(() => import('./pages/Assets'));
+const Releases    = lazy(() => import('./pages/Releases'));
 const Changes     = lazy(() => import('./pages/Changes'));
 const Boards      = lazy(() => import('./pages/Boards'));
 const GuestInvites = lazy(() => import('./pages/GuestInvites'));
@@ -278,6 +279,8 @@ export default function App() {
                         <Route path="couts" element={<ErrorBoundary><Costs /></ErrorBoundary>} />
                         <Route path="problemes" element={<ErrorBoundary><Problems /></ErrorBoundary>} />
                         <Route path="problemes/:id" element={<ErrorBoundary><Problems /></ErrorBoundary>} />
+                        <Route path="mises-en-production" element={<ErrorBoundary><Releases /></ErrorBoundary>} />
+                        <Route path="mises-en-production/:id" element={<ErrorBoundary><Releases /></ErrorBoundary>} />
                         <Route path="parc" element={<ErrorBoundary><Assets /></ErrorBoundary>} />
                         <Route path="parc/:id" element={<ErrorBoundary><Assets /></ErrorBoundary>} />
                         <Route path="changements" element={<ErrorBoundary><Changes /></ErrorBoundary>} />
