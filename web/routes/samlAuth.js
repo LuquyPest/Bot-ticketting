@@ -24,6 +24,22 @@ router.get('/saml/login', async (req, res) => {
 router.get('/saml/metadata', async (req, res) => {
   try { res.type('application/samlmetadata+xml').send(await saml.metadata()); } catch (err) { console.error('saml metadata:', err.message); res.status(500).end(); }
 });
+// GET /api/auth/saml/slo — single logout (v8, Redirect binding): the provider's signed request
+// (every session of the person closes, the answer goes back to it) or its answer to ours
+router.get('/saml/slo', async (req, res) => {
+  try {
+    if (!(await allowBurst(`samlslo:${req.ip}`, 30, 10 * 60 * 1000))) return res.status(429).end();
+    const original = req.originalUrl.split('?')[1] || '';
+    const r = await saml.handleSlo(req.query || {}, original);
+    if (r.kind === 'request') {
+      return res.redirect(r.responseUrl);
+    }
+    res.redirect('/login?logged_out=1');
+  } catch (err) {
+    console.error('saml slo:', err.message);
+    res.redirect(`/login?error=${err.reason || 'saml_invalid'}`);
+  }
+});
 router.post('/saml/acs', express.urlencoded({ extended: false, limit: '512kb' }), async (req, res) => {
   const fail = reason => res.redirect(`/login?error=${reason}`);
   const { logLogin, trackSession, checkNewDeviceAlert } = helpers();
@@ -60,6 +76,7 @@ router.post('/saml/acs', express.urlencoded({ extended: false, limit: '512kb' })
       if (err) return fail('saml_invalid');
       req.session.user = { ...user, role: null };
       req.session.authMethod = 'saml';
+      req.session.saml = who.slo; // v8: for the single logout
       req.session.lastActivityAt = Date.now();
       req.session.save(() => trackSession(req, account.id));
       res.redirect('/select-guild');

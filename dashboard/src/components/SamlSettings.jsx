@@ -9,6 +9,8 @@ const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg p
 export default function SamlSettings() {
   const [s, setS] = useState(null);
   const [cert, setCert] = useState('');
+  const [spKey, setSpKey] = useState('');
+  const [spCert, setSpCert] = useState('');
   const [diag, setDiag] = useState(null);
   const diagnose = () => api.get('/instance/saml/diagnose').then(r => setDiag(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur'));
   // Sign-in test (v8): opens the provider in a new tab; what it sends back is shown there, no session
@@ -20,7 +22,7 @@ export default function SamlSettings() {
   if (!s) return null;
   const set = (k, v) => setS(x => ({ ...x, [k]: v }));
   const save = async () => {
-    try { const r = await api.put('/instance/saml', { ...s, idpCert: cert }); setS(r.data); setCert(''); toast.success('SAML enregistré'); }
+    try { const r = await api.put('/instance/saml', { ...s, idpCert: cert, spKey, spCert }); setS(r.data); setCert(''); setSpKey(''); setSpCert(''); toast.success('SAML enregistré'); }
     catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
   const copy = v => navigator.clipboard?.writeText(v).then(() => toast.success('Copié')).catch(() => {});
@@ -42,9 +44,22 @@ export default function SamlSettings() {
       <label className="block text-[11px] text-ink-3">{s.idpCertSet ? 'Certificat de signature du fournisseur (enregistré ; coller un nouveau pour le remplacer)' : 'Certificat de signature du fournisseur (PEM)'}
         <textarea value={cert} onChange={e => setCert(e.target.value)} rows={3} placeholder="-----BEGIN CERTIFICATE-----" className={`${INPUT} mt-0.5 font-mono`} />
       </label>
+      <details className="text-[11px] text-ink-3">
+        <summary className="cursor-pointer hover:text-ink-1">Déconnexion unique (SLO, facultatif)</summary>
+        <div className="mt-2 space-y-2">
+          <p>Se déconnecter de Datick déconnecte aussi du fournisseur, et une déconnexion demandée par le fournisseur (signée) ferme les sessions Datick de la personne. Si le fournisseur exige des demandes signées, donne une clé et un certificat propres à Datick (ils figurent ensuite dans les métadonnées).</p>
+          {field('logoutUrl', 'Adresse de déconnexion du fournisseur (SLO, HTTP-Redirect)', 'https://login.example.com/saml2/logout')}
+          <label className="block">{s.spKeySet ? 'Clé privée de Datick (enregistrée ; coller une nouvelle pour la remplacer)' : 'Clé privée de Datick (PEM, facultatif)'}
+            <textarea value={spKey} onChange={e => setSpKey(e.target.value)} rows={2} autoComplete="off" placeholder="-----BEGIN PRIVATE KEY-----" className={`${INPUT} mt-0.5 font-mono`} />
+          </label>
+          <label className="block">{s.spCertSet ? 'Certificat de Datick (enregistré)' : 'Certificat de Datick (PEM, facultatif)'}
+            <textarea value={spCert} onChange={e => setSpCert(e.target.value)} rows={2} placeholder="-----BEGIN CERTIFICATE-----" className={`${INPUT} mt-0.5 font-mono`} />
+          </label>
+        </div>
+      </details>
       <div className="space-y-1 text-[11px] text-ink-3">
         <p>À déclarer chez le fournisseur :</p>
-        {[['Identifiant (entity ID) et métadonnées', s.spEntityId], ['Adresse de retour (ACS, HTTP-POST)', s.acsUrl]].map(([l, v]) => (
+        {[['Identifiant (entity ID) et métadonnées', s.spEntityId], ['Adresse de retour (ACS, HTTP-POST)', s.acsUrl], ...(s.logoutUrl ? [['Déconnexion unique (SLO, HTTP-Redirect)', s.sloUrl]] : [])].map(([l, v]) => (
           <p key={l} className="flex flex-wrap items-center gap-2"><span>{l} :</span><code className="px-1 rounded bg-overlay/6 text-ink-2" translate="no">{v}</code><button type="button" onClick={() => copy(v)} className="underline hover:text-ink-1">Copier</button></p>
         ))}
       </div>

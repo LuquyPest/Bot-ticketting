@@ -445,14 +445,16 @@ router.post('/totp-verify-login', async (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   const sid    = req.session.id;
   const userId = req.session.user?.id;
+  // v8: signed in through SAML with single logout set → the provider's logout comes next
+  const redirect = req.session.authMethod === 'saml' && req.session.saml ? await require('../../utils/saml').logoutUrlFor(req.session.saml).catch(() => null) : null;
   req.session.destroy(() => {
     if (userId) {
       globalQuery('DELETE FROM user_sessions WHERE session_id = ?', [sid]).catch(() => null);
     }
-    res.json({ ok: true });
+    res.json({ ok: true, ...(redirect ? { redirect } : {}) });
   });
 });
 

@@ -906,6 +906,13 @@ export const ENTRIES = [
   ['vide : pas une licence', 'empty: not a licence'], ['Échéance de licence', 'Licence expiry'], ['Attribuer à', 'Assign to'], ['Contact (n°)', 'Contact (no.)'], ['Staff (identifiant)', 'Staff (ID)'], ['Élément (n°)', 'Element (no.)'],
   ['N° ou identifiant', 'No. or ID'], ['À qui attribuer le siège', 'Who gets the seat'], ['Attribuer un siège', 'Assign a seat'], ['Siège attribué', 'Seat assigned'], ['Plus de sièges attribués que la licence n\'en compte', 'More seats assigned than the licence has'],
   ['Sièges de la licence', 'Seats of the licence'], ['Élément', 'Element'], ['Expire bientôt (30 jours) ou sièges dépassés', 'Expiring soon (30 days) or seats exceeded'],
+  // ── v8.6: GDPR register, SAML single logout ──
+  ['Registre des traitements (RGPD)', 'Record of processing activities (GDPR)'], ['Responsable du traitement (organisme)', 'Controller (organisation)'], ['Délégué à la protection des données (facultatif)', 'Data protection officer (optional)'],
+  ['Contact pour l\'exercice des droits', 'Contact for data subject requests'], ['Notes ajoutées au registre', 'Notes added to the record'], ['Registre enregistré', 'Record saved'], ['Markdown', 'Markdown'], ['PDF', 'PDF'],
+  ['Généré d\'après ce que l\'espace utilise vraiment — canaux, services branchés, durées de conservation — et tenu à jour à chaque téléchargement. Complète le responsable et le contact, puis télécharge-le. Il décrit ce que fait l\'outil : à relire avec le reste des traitements de l\'organisme.', 'Generated from what the space really uses — channels, connected services, retention periods — and up to date at each download. Fill in the controller and the contact, then download it. It describes what the tool does: to review with the rest of the organisation\'s processing.'],
+  ['Déconnexion unique (SLO, facultatif)', 'Single logout (SLO, optional)'], ['Adresse de déconnexion du fournisseur (SLO, HTTP-Redirect)', 'Logout address of the provider (SLO, HTTP-Redirect)'], ['Déconnexion unique (SLO, HTTP-Redirect)', 'Single logout (SLO, HTTP-Redirect)'],
+  ['Clé privée de Datick (enregistrée ; coller une nouvelle pour la remplacer)', 'Datick\'s private key (saved; paste a new one to replace it)'], ['Clé privée de Datick (PEM, facultatif)', 'Datick\'s private key (PEM, optional)'], ['Certificat de Datick (enregistré)', 'Datick\'s certificate (saved)'], ['Certificat de Datick (PEM, facultatif)', 'Datick\'s certificate (PEM, optional)'],
+  ['Se déconnecter de Datick déconnecte aussi du fournisseur, et une déconnexion demandée par le fournisseur (signée) ferme les sessions Datick de la personne. Si le fournisseur exige des demandes signées, donne une clé et un certificat propres à Datick (ils figurent ensuite dans les métadonnées).', 'Signing out of Datick also signs out of the provider, and a logout asked by the provider (signed) closes the person\'s Datick sessions. If the provider requires signed requests, give a key and a certificate of Datick\'s own (they then appear in the metadata).'],
 ];
 
 export const TEMPLATES = [
@@ -1245,4 +1252,5 @@ export const TEMPLATES = [
   ['Certificat de signature de {}', 'Signature certificate of {1}'],
   ['Sièges : {} utilisé(s) sur {} — dépassé', 'Seats: {1} used of {2} — exceeded'], ['Sièges : {} utilisé(s) sur {} · {} libre(s)', 'Seats: {1} used of {2} · {3} free'], ['Retirer le siège de « {} »', 'Remove the seat of « {1} »'],
   ['garantie {}', 'warranty {1}'], ['support {}', 'support {1}'], ['licence {}', 'licence {1}'], ['{}/{} sièges', '{1}/{2} seats'],
+  ['{} activité(s) de traitement, {} destinataire(s) ou service(s) tiers d\'après les réglages de l\'espace.', '{1} processing activit(ies), {2} recipient(s) or third-party service(s) according to the space\'s settings.'],
 ];

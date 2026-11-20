@@ -173,6 +173,10 @@ Sur un **changement**, une **mise en production** ou un **ticket** (une livraiso
 
 **Données des membres** (fondateurs) accepte un **ID Discord** ou une **adresse e-mail** : l'adresse retrouve les identités du demandeur (e-mail, web, et Discord par sa fiche contact). L'**export** JSON couvre toutes les identités de la fiche contact ; l'**effacement** se fait identité par identité ; pour un demandeur par e-mail ou web, il retire aussi son adresse du carnet, des copies sur les tickets des autres et de la quarantaine.
 
+### Le registre des traitements
+
+**Données membres → Registre des traitements (RGPD)** (fondateurs) génère le registre de l'article 30 pour l'espace, d'après ses réglages réels : les traitements (tickets, contacts et organisations, comptes du staff, parc et page de statut quand ils servent), les données de chacun, les canaux utilisés, les **destinataires** (Discord, boîte e-mail, passerelle SMS, CRM, Jira/GitHub/GitLab, Slack/Teams, webhooks, extensions, selon ce qui est branché), les **durées de conservation** (la règle de rétention des tickets et celles des journaux de l'instance) et les mesures de sécurité. Le fondateur complète le responsable, l'adresse, le délégué et le contact, ajoute ses notes, puis le télécharge en **PDF** ou en **Markdown**. Il décrit ce que fait l'outil : il se relit avec le reste des traitements de l'organisme.
+
 ## Les tâches
 
 Sur la fiche, **Tâches** découpe le travail d'un ticket en étapes : un intitulé, une description, une **personne** (prévenue dans le dashboard) ou une équipe, une **durée prévue**, une **date planifiée**, un état (**à faire**, **faite**, **sans objet**), et **visible du demandeur** ou non (permission **Répondre** pour les modifier). L'avancement (« 2/3 ») ne compte pas les tâches sans objet.
