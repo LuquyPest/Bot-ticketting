@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Steering',
     changes: [
       { type: 'new',  text: 'Résolution au premier contact : part des tickets fermés avec une seule réponse du staff et jamais rouverts, dans les rapports (et leurs exports) et en widget des tableaux de bord', en: 'First contact resolution: share of the tickets closed with a single staff answer and never reopened, in the reports (and their exports) and as a dashboard widget' },
+      { type: 'new',  text: 'NPS et CES dans l\'enquête de satisfaction : questions standard (0 à 10, 1 à 7), score NPS (promoteurs − détracteurs) et effort moyen dans les rapports', en: 'NPS and CES in the satisfaction survey: standard questions (0 to 10, 1 to 7), NPS score (promoters − detractors) and average effort in the reports' },
     ],
   },
   {

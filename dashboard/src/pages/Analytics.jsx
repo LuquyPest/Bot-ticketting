@@ -688,7 +688,7 @@ function SurveyStats() {
     <section className="bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-1.5">
       <h2 className="text-sm font-semibold text-ink-2">Enquête de satisfaction (30 jours)</h2>
       <p className="text-xs text-ink-2">{`${d.answered} réponse(s) sur ${d.sent} enquête(s) envoyée(s) · taux de réponse ${d.ratePct ?? '—'} %`}</p>
-      {d.questions.map(q => <p key={q.id} className="text-xs text-ink-3">{`${q.label} : ${q.type === 'rating' ? `${q.average ?? '—'} / 5` : q.type === 'yesno' ? `${q.yesPct ?? '—'} % de oui` : `${q.answers} réponse(s)`}`}</p>)}
+      {d.questions.map(q => <p key={q.id} className="text-xs text-ink-3">{`${q.label} : ${q.type === 'rating' ? `${q.average ?? '—'} / 5` : q.type === 'yesno' ? `${q.yesPct ?? '—'} % de oui` : q.type === 'nps' ? `NPS ${q.score ?? '—'} (${q.promotersPct ?? '—'} % de promoteurs, ${q.detractorsPct ?? '—'} % de détracteurs, ${q.answers} réponse(s))` : q.type === 'ces' ? `CES ${q.average ?? '—'} / 7 (${q.answers} réponse(s))` : `${q.answers} réponse(s)`}`}</p>)}
     </section>
   );
 }

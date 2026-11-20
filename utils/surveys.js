@@ -2,11 +2,13 @@
 // requester gets the survey: the built-in one (rating, comment, up to 5 more questions, on a page
 // /enquete#<space>.<token> that works for Discord, e-mail and web requesters; Discord keeps its
 // rating buttons) or a link to an external survey. Response rate in the reports.
+// v7: standard questions NPS (0 to 10, « would you recommend us? », score = % promoters 9–10 −
+// % detractors 0–6) and CES (1 to 7, « it was easy to get my request solved », average).
 const crypto = require('crypto');
 const { parseJsonField } = require('./jsonField');
 
 const MODES = ['builtin', 'external'];
-const QTYPES = ['rating', 'yesno', 'text'];
+const QTYPES = ['rating', 'yesno', 'text', 'nps', 'ces'];
 const LINK_DAYS = 30;
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 const base = () => String(require('./config').config.webServerBaseUrl || '').replace(/\/$/, '');
@@ -30,7 +32,9 @@ function cleanSettings(input = {}) {
   for (const [i, q] of raw.entries()) {
     const label = typeof q?.label === 'string' ? q.label.replace(/\s+/g, ' ').trim().slice(0, 150) : '';
     if (!label) return { error: `Question ${i + 1} : libellé requis` };
-    questions.push({ id: `q${i + 1}`, label, type: QTYPES.includes(q.type) ? q.type : 'text' });
+    const type = QTYPES.includes(q.type) ? q.type : 'text';
+    if ((type === 'nps' || type === 'ces') && questions.some(x => x.type === type)) return { error: `Une seule question ${type.toUpperCase()} par enquête` };
+    questions.push({ id: `q${i + 1}`, label, type });
   }
   return { value: { delayMinutes: delay, mode, externalUrl: url, questions } };
 }
@@ -109,6 +113,8 @@ async function submit(found, input = {}) {
     if (v === undefined || v === null || v === '') continue;
     if (q.type === 'rating') { const n = Number(v); if (Number.isInteger(n) && n >= 1 && n <= 5) answers[q.id] = n; }
     else if (q.type === 'yesno') answers[q.id] = v === true || v === 'yes' || v === 'oui';
+    else if (q.type === 'nps') { const n = Number(v); if (Number.isInteger(n) && n >= 0 && n <= 10) answers[q.id] = n; }
+    else if (q.type === 'ces') { const n = Number(v); if (Number.isInteger(n) && n >= 1 && n <= 7) answers[q.id] = n; }
     else answers[q.id] = String(v).trim().slice(0, 500);
   }
   const claim = await db('UPDATE survey_requests SET answered_at = NOW() WHERE id = ? AND answered_at IS NULL', [request.id]);
@@ -134,6 +140,12 @@ async function stats(db, { days = 30, vis }) {
     const vals = rows.map(x => parseJsonField(x.answers, {})?.answers?.[q.id]).filter(v => v !== undefined);
     if (q.type === 'rating') return { ...q, answers: vals.length, average: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null };
     if (q.type === 'yesno') return { ...q, answers: vals.length, yesPct: vals.length ? Math.round(vals.filter(Boolean).length / vals.length * 100) : null };
+    if (q.type === 'nps') {
+      const n = vals.filter(v => Number.isInteger(v));
+      const pro = n.filter(v => v >= 9).length, det = n.filter(v => v <= 6).length;
+      return { ...q, answers: n.length, promotersPct: n.length ? Math.round(100 * pro / n.length) : null, detractorsPct: n.length ? Math.round(100 * det / n.length) : null, score: n.length ? Math.round(100 * (pro - det) / n.length) : null };
+    }
+    if (q.type === 'ces') { const n = vals.filter(v => Number.isInteger(v)); return { ...q, answers: n.length, average: n.length ? Math.round(n.reduce((a, b) => a + b, 0) / n.length * 10) / 10 : null }; }
     return { ...q, answers: vals.length, last: vals.slice(-10).reverse() };
   });
   const sent = Number(r.sent || 0), answered = Number(r.answered || 0);

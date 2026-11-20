@@ -259,9 +259,9 @@ Quand un ticket est fermé, le demandeur reçoit l'**enquête de satisfaction** 
 | | |
 |---|---|
 | **Quand** | À la fermeture (comme avant), ou 1 h, 4 h, 1 jour, 3 jours, 1 semaine après |
-| **Laquelle** | Celle de Datick : un lien à usage unique vers une page (`/enquete`) avec la note sur 5, un commentaire et jusqu'à **5 questions** (note sur 5, oui / non, texte), qui marche pour un demandeur Discord, e-mail ou web ; sur Discord, les boutons de note restent. Ou **un lien vers ton outil** (le numéro du ticket est ajouté au lien) |
+| **Laquelle** | Celle de Datick : un lien à usage unique vers une page (`/enquete`) avec la note sur 5, un commentaire et jusqu'à **5 questions** (note sur 5, oui / non, texte, **NPS** de 0 à 10, **CES** de 1 à 7), qui marche pour un demandeur Discord, e-mail ou web ; sur Discord, les boutons de note restent. Ou **un lien vers ton outil** (le numéro du ticket est ajouté au lien) |
 
-Le lien sert une fois et expire après 30 jours ; la page ne montre que le sujet du ticket et les questions. **Analytiques → Rapports** donne le **taux de réponse** et les réponses aux questions sur 30 jours.
+Le lien sert une fois et expire après 30 jours ; la page ne montre que le sujet du ticket et les questions. **Analytiques → Rapports** donne le **taux de réponse** et les réponses aux questions sur 30 jours. Le **NPS** (« recommanderiez-vous… ? », une question par enquête) donne la part de **promoteurs** (9 ou 10), de **détracteurs** (0 à 6) et le **score** (promoteurs moins détracteurs, de −100 à 100) ; le **CES** (« il a été facile de… », de 1 à 7) donne l'effort moyen. Leurs libellés standard sont proposés en choisissant le type.
 
 ## Les organisations
 

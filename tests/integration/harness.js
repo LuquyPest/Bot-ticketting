@@ -9012,6 +9012,30 @@ async function main() {
     await req('DELETE', `/api/teams/${tm7.id}`, { sid: sessions.F });
   }
 
+  // ── NPS and CES in the satisfaction survey (utils/surveys.js, v7) ──
+  {
+    r = await req('PUT', '/api/surveys/settings', { sid: sessions.F, body: { delayMinutes: 0, mode: 'builtin', questions: [{ label: 'Recommanderiez-vous ?', type: 'nps' }, { label: 'Encore ?', type: 'nps' }] } });
+    check('NPS: une seule question NPS par enquête', r.status === 400 && /NPS/.test(r.body.error), JSON.stringify(r.body));
+    r = await req('PUT', '/api/surveys/settings', { sid: sessions.F, body: { delayMinutes: 0, mode: 'builtin', questions: [{ label: 'Quelle est la probabilité que vous nous recommandiez ?', type: 'nps' }, { label: 'Il a été facile de faire traiter ma demande.', type: 'ces' }] } });
+    check('NPS: questions NPS et CES enregistrées', r.status === 200, JSON.stringify(r.body));
+    const SV = app('./utils/surveys');
+    const answer = async (n, nps, ces) => {
+      const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, closed_at) VALUES (?, 'nps', ?, 'closed', 'NPS v7', NOW())", [`20000000000000090${n}`, `nps7-${n}`])).insertId;
+      const ins = await db('INSERT INTO survey_requests (ticket_id, owner_id, token_hash, send_at, sent_at, expires_at) VALUES (?, ?, ?, NOW(), NOW(), NOW() + INTERVAL 30 DAY)', [tk, `20000000000000090${n}`, 'f'.repeat(63) + n]);
+      const [request] = await db('SELECT * FROM survey_requests WHERE id = ?', [ins.insertId]);
+      const [ticket] = await db('SELECT * FROM tickets WHERE id = ?', [tk]);
+      return SV.submit({ db, request, ticket }, { rating: 4, answers: { q1: nps, q2: ces } });
+    };
+    const res = [await answer(1, 10, 7), await answer(2, 9, 6), await answer(3, 7, 4), await answer(4, 3, 2), await answer(5, 11, 9)];
+    check('NPS: réponses enregistrées (hors bornes ignorées)', res.every(x => x.ok), JSON.stringify(res));
+    r = await req('GET', '/api/surveys/stats', { sid: sessions.F, query: { days: 1 } });
+    const nps = r.body.questions?.find(q => q.type === 'nps'), ces = r.body.questions?.find(q => q.type === 'ces');
+    check('NPS: score = promoteurs − détracteurs (2 sur 4 promoteurs, 1 détracteur → 25)', nps?.answers === 4 && nps.promotersPct === 50 && nps.detractorsPct === 25 && nps.score === 25, JSON.stringify(nps));
+    check('NPS: CES moyen sur 7', ces?.answers === 4 && ces.average === 4.8, JSON.stringify(ces));
+    await req('PUT', '/api/surveys/settings', { sid: sessions.F, body: { delayMinutes: 0, mode: 'builtin', questions: [] } });
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'nps7-%'");
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
