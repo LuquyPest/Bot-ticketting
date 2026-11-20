@@ -65,6 +65,8 @@ async function breakdown(db, vis, { by, days, from = null, to = null }) {
     groups.get(k).push(t);
   }
   if (by === 'team') for (const k of outOf.keys()) if (!groups.has(k)) groups.set(k, []);
+  // First contact resolution (utils/fcr.js, v7): a single staff answer, never reopened
+  const fcrOf = await require('./fcr').perTicket(db, tickets.filter(t => t.status === 'closed').map(t => t.id));
   const minutes = (a, b) => (new Date(b) - new Date(a)) / 60000;
   const rows = [...groups.entries()].map(([key, list]) => {
     const responded = list.filter(t => t.first_response_at).map(t => minutes(t.created_at, t.first_response_at));
@@ -86,6 +88,11 @@ async function breakdown(db, vis, { by, days, from = null, to = null }) {
       timeHours: Math.round(list.reduce((n, t) => n + Number(t.seconds || 0), 0) / 360) / 10,
       ttoMetPct, ttrMetPct,
       ...(() => {
+        const answered = list.filter(t => (fcrOf.get(t.id)?.replies || 0) >= 1);
+        const first = answered.filter(t => fcrOf.get(t.id).replies === 1 && !fcrOf.get(t.id).reopened).length;
+        return { firstContactPct: answered.length ? Math.round((100 * first) / answered.length) : null };
+      })(),
+      ...(() => {
         const n = by === 'team' ? (outOf.get(key)?.size || 0) : list.filter(t => escalatedIds.has(t.id)).length;
         const base = by === 'team' ? list.filter(t => !outOf.get(key)?.has(t.id)).length + n : list.length;
         return { escalated: n, escalatedPct: base ? Math.round((100 * n) / base) : null };
@@ -95,7 +102,7 @@ async function breakdown(db, vis, { by, days, from = null, to = null }) {
   return { by, days, from, to, total: tickets.length, truncated: tickets.length >= MAX_TICKETS, rows };
 }
 
-const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Prise en charge dans le délai (%)', 'Résolution dans le délai (%)', 'Escaladés', 'Taux d\'escalade (%)'];
-const csvRows = report => report.rows.map(r => [r.label, r.opened, r.closed, r.stillOpen, r.firstResponseMedianMin ?? '', r.resolutionMedianHours ?? '', r.avgRating ?? '', r.ratings, r.timeHours, r.ttoMetPct ?? '', r.ttrMetPct ?? '', r.escalated, r.escalatedPct ?? '']);
+const CSV_HEADER = ['Groupe', 'Tickets ouverts', 'Fermés', 'Encore ouverts', '1re réponse médiane (min)', 'Résolution médiane (h)', 'Note moyenne', 'Notes reçues', 'Temps passé (h)', 'Prise en charge dans le délai (%)', 'Résolution dans le délai (%)', 'Escaladés', 'Taux d\'escalade (%)', 'Résolus au premier contact (%)'];
+const csvRows = report => report.rows.map(r => [r.label, r.opened, r.closed, r.stillOpen, r.firstResponseMedianMin ?? '', r.resolutionMedianHours ?? '', r.avgRating ?? '', r.ratings, r.timeHours, r.ttoMetPct ?? '', r.ttrMetPct ?? '', r.escalated, r.escalatedPct ?? '', r.firstContactPct ?? '']);
 
 module.exports = { breakdown, DIMENSIONS, CSV_HEADER, csvRows, CHANNEL_SQL };

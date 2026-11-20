@@ -8,7 +8,7 @@ import { useAuth } from '../App';
 
 // Tableaux de bord (v5.6, utils/dashboards.js): boards of widgets, personal or shared
 const INPUT = 'bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary';
-const KINDS = { count: 'Compteur', chart: 'Courbe créés / fermés', list: 'Liste de tickets', sla: 'Objectifs SLA tenus', satisfaction: 'Satisfaction' };
+const KINDS = { count: 'Compteur', chart: 'Courbe créés / fermés', list: 'Liste de tickets', sla: 'Objectifs SLA tenus', satisfaction: 'Satisfaction', fcr: 'Résolution au premier contact' };
 const METRICS = { open: 'Tickets ouverts', unassigned: 'Ouverts sans attribution', mine: 'Mes tickets ouverts', created: 'Tickets créés', closed: 'Tickets fermés', breached: 'Objectifs SLA dépassés', waiting: 'En attente du demandeur' };
 const titleOf = w => w.title || (w.kind === 'count' ? METRICS[w.metric] : KINDS[w.kind]);
 
@@ -25,6 +25,7 @@ function WidgetView({ w, d }) {
   if (d.kind === 'list') return d.tickets.length ? (
     <ul className="text-xs space-y-1">{d.tickets.map(t => <li key={t.id}><Link to={`/tickets/${t.id}`} className="text-ink-1 hover:underline">{`#${t.id} ${t.subject || ''}`}</Link>{t.priority === 'urgent' && <span className="text-red-300"> · urgent</span>}</li>)}</ul>
   ) : <p className="text-xs text-ink-4">Aucun ticket.</p>;
+  if (d.kind === 'fcr') return <p className="text-sm text-ink-2"><span className="block text-3xl font-bold text-ink-1 tabular-nums">{d.pct == null ? '—' : `${d.pct} %`}</span><span className="block text-[11px] text-ink-4">{`${d.first} sur ${d.answered} ticket(s) fermé(s) avec une seule réponse`}</span></p>;
   if (d.kind === 'sla') return <p className="text-sm text-ink-2">{`Prise en charge : ${d.ttoPct ?? '—'} % · Résolution : ${d.ttrPct ?? '—'} %`}<span className="block text-[11px] text-ink-4">{`${d.tickets} ticket(s) avec un objectif`}</span></p>;
   return (
     <div className="text-xs text-ink-2 space-y-1">
