@@ -18,6 +18,7 @@ const Login       = lazy(() => import('./pages/Login'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Invitation = lazy(() => import('./pages/Invitation'));
 const Approval = lazy(() => import('./pages/Approval'));
+const Signature = lazy(() => import('./pages/Signature'));
 const KnowledgeBase = lazy(() => import('./pages/KnowledgeBase'));
 const Solution = lazy(() => import('./pages/Solution'));
 const Survey = lazy(() => import('./pages/Survey'));
@@ -184,7 +185,7 @@ export default function App() {
               </Suspense>
             } />
             {/* Member web space: own tickets, outside the staff dashboard */}
-            {[['/espace'], ['/espace/nouveau', 'nouveau'], ['/espace/aide', 'aide'], ['/espace/connexion', 'connexion'], ['/espace/:guildId/:ticketId']].map(([p, page]) => (
+            {[['/espace'], ['/espace/nouveau', 'nouveau'], ['/espace/aide', 'aide'], ['/espace/organisation', 'organisation'], ['/espace/connexion', 'connexion'], ['/espace/:guildId/:ticketId']].map(([p, page]) => (
               <Route key={p} path={p} element={
                 <Suspense fallback={<PageLoader />}>
                   <ErrorBoundary><MemberPortal page={page} /></ErrorBoundary>
@@ -204,6 +205,7 @@ export default function App() {
             <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><ResetPassword /></ErrorBoundary></Suspense>} />
             <Route path="/invitation" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Invitation /></ErrorBoundary></Suspense>} />
             <Route path="/validation" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Approval /></ErrorBoundary></Suspense>} />
+            <Route path="/signature" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Signature /></ErrorBoundary></Suspense>} />
             <Route path="/solution" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Solution /></ErrorBoundary></Suspense>} />
             <Route path="/enquete" element={<Suspense fallback={<PageLoader />}><ErrorBoundary><Survey /></ErrorBoundary></Suspense>} />
             {['/aide/:guildId', '/aide/:guildId/:articleId'].map(p => (

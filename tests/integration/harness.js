@@ -9530,6 +9530,81 @@ async function main() {
     await req('DELETE', `/api/teams/${tm.id}`, { sid: sessions.F });
   }
 
+  // ── Clients (v8): « Mon organisation », catalogue per organisation, electronic signatures ──
+  {
+    const orgA = (await db("INSERT INTO organizations (name, portal_visibility) VALUES ('Acme v8', 'all')")).insertId;
+    const orgB = (await db("INSERT INTO organizations (name, portal_visibility) VALUES ('Globex v8', 'none')")).insertId;
+    const MA = '200000000000000091', MB = '200000000000000092';
+    memberRoles.set(MA, new Map()); memberRoles.set(MB, new Map()); // members of the Discord server
+    for (const [m, o] of [[MA, orgA], [MB, orgB]]) {
+      const c = (await db('INSERT INTO contacts (display_name, organization_id, org_manual) VALUES (?, ?, 1)', [`membre ${m}`, o])).insertId;
+      await db("INSERT INTO contact_identities (value, contact_id, kind, label) VALUES (?, ?, 'discord', ?) ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)", [m, c, `m${m}`]);
+      await redis.del(`memberguilds:${m}`);
+    }
+    await mk('MORGA', { member: { id: MA, username: 'mA', avatar: null } });
+    await mk('MORGB', { member: { id: MB, username: 'mB', avatar: null } });
+    const tA = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, organization_id, created_at, closed_at) VALUES ('200000000000000093', 'collègue', 'org8-1', 'closed', 'Imprimante v8', ?, NOW() - INTERVAL 3 HOUR, NOW())", [orgA])).insertId;
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, organization_id, visibility_grade_id) VALUES ('200000000000000093', 'x', 'org8-2', 'open', 'Secret v8', ?, -1)", [orgA])).insertId;
+    await app('./utils/contracts').saveContract(db, orgA, null, { name: 'Forfait v8', kind: 'tickets', quota: 10, startsOn: new Date(Date.now() - 864e5).toISOString().slice(0, 10), endsOn: null, notes: 'Note interne v8' }, { id: U.F });
+    await db('UPDATE guild_config SET assets_enabled = 1 WHERE id = 1');
+    const typeId = (await app('./utils/assets').saveType(db, null, { name: 'Imprimante v8' })).id;
+    await app('./utils/assets').createAsset(db, { typeId, name: 'IMP-2E-v8', serial: 'SN8', ownerOrgId: orgA, notes: 'Note du parc v8' }, { id: U.F });
+    r = await req('GET', `/api/member/guilds/${G}/organization`, { sid: sessions.MORGA });
+    const o = r.body.organizations?.find(x => x.id === orgA);
+    const rB = await req('GET', `/api/member/guilds/${G}/organization`, { sid: sessions.MORGB });
+    check('mon organisation: contrats, parc et historique pour qui peut suivre l organisation', r.status === 200 && o?.contracts[0]?.name === 'Forfait v8' && o.assets.some(a => a.name === 'IMP-2E-v8' && a.type === 'Imprimante v8') && o.tickets.some(t => t.id === tA) && o.stats.closed90 >= 1, JSON.stringify(r.body).slice(0, 400));
+    check('mon organisation: rien d interne (notes, ticket confidentiel), rien pour une organisation non partagée', !JSON.stringify(r.body).includes('Note interne v8') && !JSON.stringify(r.body).includes('Note du parc v8') && !o?.tickets.some(t => t.id === tConf) && rB.body.organizations?.length === 0, JSON.stringify(rB.body));
+    // Catalogue reserved to an organisation
+    r = await req('POST', '/api/catalog', { sid: sessions.F, body: { name: 'Service Acme v8', organizationIds: [orgA] } });
+    const svcId = r.body.id;
+    const cA = await req('GET', `/api/member/guilds/${G}/catalog`, { sid: sessions.MORGA });
+    const cB = await req('GET', `/api/member/guilds/${G}/catalog`, { sid: sessions.MORGB });
+    for (const k of await redis.keys('*burst:webopen:*')) await redis.del(k);
+    const oB = await req('POST', `/api/member/guilds/${G}/tickets`, { sid: sessions.MORGB, body: { serviceId: svcId, content: 'Je veux ce service' } });
+    check('catalogue par organisation: proposé à ses membres seulement, refusé aux autres à l ouverture', r.status === 200 && cA.body.services.some(x => x.id === svcId) && !cB.body.services.some(x => x.id === svcId) && oB.status === 404, JSON.stringify([cA.body.services?.length, cB.body.services?.length, oB.status]));
+    await req('DELETE', `/api/catalog/${svcId}`, { sid: sessions.F });
+    // Electronic signature of a ticket (delivery)
+    const nodemailer = require('nodemailer');
+    const sent = [];
+    const realCreate = nodemailer.createTransport;
+    nodemailer.createTransport = () => ({ sendMail: async m => { sent.push(m); return { messageId: 'x' }; }, verify: async () => true, close: () => {} });
+    process.env.EMAIL_ALLOW_PRIVATE_HOSTS = 'true';
+    const mailBefore = await app('./utils/instanceMail').mailSettings({ withSecret: true });
+    await app('./utils/instanceMail').saveMailSettings({ enabled: true, host: 'smtp.example.com', port: 587, from: 'datick@example.com' });
+    const S = app('./utils/signatures');
+    const tD = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000094', 'client', 'sig8', 'open', 'Livraison serveur v8')")).insertId;
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'F', 'Serveur installé et testé.', 'reply')", [tD, U.F]);
+    r = await req('POST', '/api/signatures', { sid: sessions.F, body: { type: 'ticket', id: tD, email: 'client@acme.example', name: 'Claire Client', message: 'Bon de livraison n° 42' } });
+    const mailSettingsOk = r.status === 200;
+    const mail = sent.find(m => String(m.to).includes('client@acme.example'));
+    const token = /\/signature#([A-Za-z0-9_-]{40,60})/.exec(String(mail?.text || ''))?.[1];
+    check('signature: demandée par e-mail, document figé avec son empreinte', mailSettingsOk && !!token && r.body.signatures[0]?.status === 'pending' && /^[0-9a-f]{64}$/.test(r.body.signatures[0].hash), JSON.stringify([r.status, r.body, mail?.text?.slice(0, 200)]));
+    if (token) {
+      const v = await req('POST', '/api/signature/link', { body: { token } });
+      check('signature: la personne lit le document (texte, empreinte), rien d autre', v.status === 200 && /Serveur installé et testé/.test(v.body.document) && /Bon de livraison n° 42/.test(v.body.document) && v.body.hash === r.body.signatures[0].hash && !('targetId' in v.body), JSON.stringify(v.body).slice(0, 300));
+      const noName = await req('POST', '/api/signature/answer', { body: { token, accept: true, name: ' ' } });
+      const ok = await req('POST', '/api/signature/answer', { body: { token, accept: true, name: 'Claire Client' } });
+      const again = await req('POST', '/api/signature/answer', { body: { token, accept: false, reason: 'x' } });
+      const [row] = await db('SELECT status, signed_name, signed_ip, token_hash FROM signatures WHERE target_id = ? AND target_type = ?', [tD, 'ticket']);
+      check('signature: nom exigé, signée une seule fois (le lien ne sert plus), IP et nom gardés, note au ticket', noName.status === 400 && ok.status === 200 && again.status === 410 && row.status === 'signed' && row.signed_name === 'Claire Client' && !!row.signed_ip && row.token_hash === null && (await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%signée par Claire Client%'", [tD])).length === 1, JSON.stringify([noName.status, ok.status, again.status, row]));
+      const list = await req('GET', '/api/signatures', { sid: sessions.F, query: { type: 'ticket', id: tD } });
+      const cert = await req('GET', `/api/signatures/${list.body.signatures[0].id}/certificate`, { sid: sessions.F });
+      check('signature: certificat PDF du document signé', cert.status === 200 && /application\/pdf/.test(cert.headers['content-type']) && String(cert.body).startsWith('%PDF'), `${cert.status} ${cert.headers['content-type']}`);
+    }
+    const conf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000095', 'x', 'sig8c', 'open', 'conf', -1)")).insertId;
+    const rConf = await req('POST', '/api/signatures', { sid: sessions.S1, body: { type: 'ticket', id: conf, email: 'x@example.com', name: 'X' } });
+    const rBad = await req('POST', '/api/signatures', { sid: sessions.F, body: { type: 'ticket', id: tD, email: 'pas une adresse', name: 'X' } });
+    check('signature: jamais sur un ticket qu on ne voit pas ; adresse vérifiée', rConf.status === 404 && rBad.status === 400, `${rConf.status} ${rBad.status}`);
+    let demoRefused = null;
+    try { await S.request({ db: getTenantDb(app('./utils/demo').DEMO_GUILD_ID), guildId: app('./utils/demo').DEMO_GUILD_ID, type: 'ticket', id: 1, input: { email: 'x@example.com', name: 'x' }, actor: { id: 'd' } }); } catch (e) { demoRefused = e.status; }
+    check('signature: jamais depuis la démonstration', demoRefused === 403 || demoRefused === 404, String(demoRefused));
+    nodemailer.createTransport = realCreate;
+    await app('./utils/instanceSettings').setSetting('instance_email', mailBefore);
+    await db('DELETE FROM tickets WHERE id IN (?)', [[tA, tConf, tD, conf]]);
+    await db('DELETE FROM assets WHERE type_id = ?', [typeId]); await db('DELETE FROM asset_types WHERE id = ?', [typeId]);
+    await db('DELETE FROM organizations WHERE id IN (?)', [[orgA, orgB]]);
+  }
+
   {
     const pub = ['/api/kb/G/articles/1/feedback', '/api/kb/G/searches', '/api/auth/select-guild', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/password-reset/confirm',
       '/api/auth/ldap-login', '/api/auth/invitation/accept', '/api/installation/owner', '/api/member/auth/email', '/api/member/auth/email/verify', '/api/member/guilds/G/tickets', '/api/member/tickets/G/1/resolution', '/api/member/tickets/G/1/messages',

@@ -121,6 +121,8 @@ const PAGES = [
   ['espace-fichiers', '/espace/123456789012345678/1', 'facture-1287.pdf'],
   ['espace-solution', '/espace/123456789012345678/1', 'Paiement validé de notre côté'],
   ['espace-aide', '/espace/aide', 'Comment changer mon mot de passe'],
+  ['espace-mon-organisation', '/espace/organisation', 'Forfait annuel 40 h'],
+  ['signature', '/signature#abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG', 'Serveur installé, sauvegardes vérifiées', true],
   ['espace-nouveau', '/espace/nouveau', 'Signaler une panne'],
   ['aide-publique', '/aide/123456789012345678', 'Comment suivre ma livraison', true],
   ['aide-article', '/aide/123456789012345678/3', 'dès l\'envoi du colis', true],

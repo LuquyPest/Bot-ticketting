@@ -191,7 +191,9 @@ router.get('/guilds/:guildId/form', requireMember, async (req, res) => {
 router.get('/guilds/:guildId/catalog', requireMember, async (req, res) => {
   try {
     if (!(await guildOf(req, res))) return;
-    const services = await require('../../utils/catalog').listServices(getTenantDb(req.params.guildId), { activeOnly: true });
+    const catalog = require('../../utils/catalog'), db = getTenantDb(req.params.guildId);
+    const orgs = await catalog.memberOrgs(db, memberIds(req.member));
+    const services = (await catalog.listServices(db, { activeOnly: true })).filter(s => catalog.visibleTo(s, orgs));
     // What the ticket becomes (team, priority…) stays on the staff side
     res.json({ services: services.map(({ id, name, description, icon, category, fields }) => ({ id, name, description, icon, category, fields })) });
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
@@ -240,6 +242,34 @@ router.get('/guilds/:guildId/contract', requireMember, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
 });
 
+// GET /api/member/guilds/:guildId/organization — « Mon organisation » (v8): for the people who may
+// read their organisation's tickets, its contracts, its inventory (read only) and its history.
+// Nothing internal: no notes, no costs, no custom fields of the inventory, no confidential ticket.
+router.get('/guilds/:guildId/organization', requireMember, async (req, res) => {
+  try {
+    const guild = await guildOf(req, res);
+    if (!guild) return;
+    const db = getTenantDb(guild.id);
+    const ids = await require('../../utils/memberPortal').orgScope(db, memberIds(req.member));
+    const out = [];
+    for (const orgId of ids.slice(0, 20)) {
+      const [o] = await db('SELECT id, name, parent_id FROM organizations WHERE id = ?', [orgId]);
+      if (!o) continue;
+      const contracts = (await require('../../utils/contracts').listContracts(db, orgId)).map(c => ({ name: c.name, kind: c.kind, quota: c.quota, used: c.used, remaining: c.remaining, percent: c.percent, startsOn: c.startsOn, endsOn: c.endsOn, state: c.state }));
+      const assets = (await db(`SELECT a.id, a.name, a.status, a.serial, a.location, t.name AS type FROM assets a JOIN asset_types t ON t.id = a.type_id
+        WHERE a.owner_org_id = ? AND (SELECT assets_enabled FROM guild_config WHERE id = 1) = 1 ORDER BY t.name, a.name LIMIT 500`, [orgId]).catch(() => []))
+        .map(a => ({ id: a.id, name: a.name, type: a.type, status: a.status, serial: a.serial || null, location: a.location || null }));
+      const tickets = (await db(`SELECT id, subject, status, created_at, closed_at, owner_tag FROM tickets WHERE organization_id = ? AND visibility_grade_id IS NULL ORDER BY id DESC LIMIT 200`, [orgId]))
+        .map(t => ({ id: t.id, subject: t.subject || null, status: t.status, createdAt: t.created_at, closedAt: t.closed_at, by: t.owner_tag || null }));
+      const [st] = await db(`SELECT SUM(status = 'open') AS open, SUM(status = 'closed' AND closed_at >= NOW() - INTERVAL 90 DAY) AS closed90,
+          AVG(CASE WHEN status = 'closed' AND closed_at >= NOW() - INTERVAL 90 DAY THEN TIMESTAMPDIFF(MINUTE, created_at, closed_at) END) AS avgMin
+        FROM tickets WHERE organization_id = ? AND visibility_grade_id IS NULL`, [orgId]);
+      out.push({ id: o.id, name: o.name, contracts, assets, tickets, stats: { open: Number(st?.open || 0), closed90: Number(st?.closed90 || 0), avgHours: st?.avgMin == null ? null : Math.round(Number(st.avgMin) / 6) / 10 } });
+    }
+    res.json({ organizations: out });
+  } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
 // POST /api/member/guilds/:guildId/duplicate-check { subject, content } — their own open tickets
 // about the same thing, shown before they open another one (v7, utils/openDuplicates.js)
 router.post('/guilds/:guildId/duplicate-check', requireMember, async (req, res) => {
@@ -268,7 +298,8 @@ router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {
     if (blocked) return res.status(403).json({ error: tr(req, blocked) });
     // A service of the catalogue (v5.3): its form replaces the subject, the fields and the questions
     const catalog = require('../../utils/catalog');
-    const service = req.body?.serviceId ? await catalog.serviceOf(db, req.body.serviceId, { activeOnly: true }) : null;
+    const found = req.body?.serviceId ? await catalog.serviceOf(db, req.body.serviceId, { activeOnly: true }) : null;
+    const service = found && catalog.visibleTo(found, await catalog.memberOrgs(db, memberIds(req.member))) ? found : null; // v8: reserved to organisations
     if (req.body?.serviceId && !service) return res.status(404).json({ error: tr(req, 'portal.serviceGone') });
     let serviceRows = [];
     if (service) {

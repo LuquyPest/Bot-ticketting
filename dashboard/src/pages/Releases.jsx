@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Rocket, Loader2, Plus, Check, Circle, X } from 'lucide-react';
 import api from '../api';
+import SignaturesPanel from '../components/SignaturesPanel';
 import toast from 'react-hot-toast';
 
 // Mises en production (v7, utils/releases.js): changes taken to production together, stage by stage
@@ -52,6 +53,7 @@ function Detail({ id, staff, onChanged }) {
       </div>
       {text('description', 'Description')}
       {text('rollbackPlan', 'Plan de retour arrière')}
+      <SignaturesPanel type="release" id={Number(id)} compact />
       <section className="space-y-1">
         <p className="text-[11px] font-semibold text-ink-3">{`Changements (${r.changes.length})`}</p>
         {r.changes.map(c => (

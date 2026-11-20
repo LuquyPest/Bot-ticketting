@@ -64,6 +64,17 @@ function ServiceForm({ initial, ctx, busy, onSave, onDelete }) {
           <select value={s.template.teamId || ''} onChange={e => setT('teamId', e.target.value ? Number(e.target.value) : null)} aria-label="Équipe du ticket" className={INPUT}><option value="">Équipe : selon les règles</option>{ctx.teams.map(t => <option key={t.id} value={t.id}>{`Équipe : ${t.name}`}</option>)}</select>
         </div>
       </div>
+      {ctx.orgs?.length > 0 && (
+        <fieldset className="text-xs text-ink-2">
+          <legend className="text-[11px] text-ink-3 mb-1">Réservé à ces organisations (aucune cochée : tout le monde)</legend>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 max-h-28 overflow-y-auto">
+            {ctx.orgs.map(o => (
+              <label key={o.id} className="inline-flex items-center gap-1"><input type="checkbox" checked={(s.organizationIds || []).includes(o.id)}
+                onChange={e => set('organizationIds', e.target.checked ? [...(s.organizationIds || []), o.id] : (s.organizationIds || []).filter(x => x !== o.id))} className="accent-primary" /><span translate="no">{o.name}</span></label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <label className="inline-flex items-center gap-1 text-xs text-ink-2"><input type="checkbox" checked={s.active} onChange={e => set('active', e.target.checked)} className="accent-primary" />Proposé</label>
         <button onClick={() => onSave({ ...s, fields: s.fields.map(f => ({ ...f, choices: (f.choices || []).map(c => c.trim()).filter(Boolean) })) })} disabled={busy || !s.name.trim()} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50 inline-flex items-center gap-1.5">
@@ -75,17 +86,18 @@ function ServiceForm({ initial, ctx, busy, onSave, onDelete }) {
   );
 }
 
-const NEW = { name: '', icon: '', category: '', description: '', active: true, fields: [], template: { subject: null, type: null, priority: null, teamId: null } };
+const NEW = { name: '', icon: '', category: '', description: '', active: true, fields: [], organizationIds: [], template: { subject: null, type: null, priority: null, teamId: null } };
 
 export default function CatalogEditor() {
   const [list, setList] = useState(null);
-  const [ctx, setCtx] = useState({ subjects: [], teams: [] });
+  const [ctx, setCtx] = useState({ subjects: [], teams: [], orgs: [] });
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const [key, setKey] = useState(0);
   useEffect(() => {
     api.get('/catalog').then(r => setList(r.data.services)).catch(() => setList(false));
-    Promise.all([api.get('/teams/options'), api.get('/teams')].map(p => p.catch(() => ({ data: null })))).then(([o, t]) => setCtx({ subjects: o.data?.subjects || [], teams: t.data || [] }));
+    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/organizations')].map(p => p.catch(() => ({ data: null }))))
+      .then(([o, t, g]) => setCtx({ subjects: o.data?.subjects || [], teams: Array.isArray(t.data) ? t.data : [], orgs: Array.isArray(g.data) ? g.data : Array.isArray(g.data?.organizations) ? g.data.organizations : [] }));
   }, []);
   if (list === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;
   if (list === false) return <p className="text-xs text-ink-4">Indisponible.</p>;

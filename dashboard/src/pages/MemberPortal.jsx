@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail, BookOpen, Paperclip, X, FileText } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, Inbox, Loader2, Star, Users, Ticket, Send, Search, HelpCircle, Plus, Languages, Mail, BookOpen, Paperclip, X, FileText, Building2 } from 'lucide-react';
 import Recorder from '../components/Recorder';
 import api from '../api';
 import MessageContent from '../components/MessageContent';
@@ -58,7 +58,7 @@ function GuildBanner({ guild }) {
   );
 }
 
-function Shell({ me, onLogout, children }) {
+function Shell({ me, onLogout, children, hasOrg = false }) {
   const info = useInstanceInfo();
   return (
     <div data-no-translate lang={MEMBER_LANG} className="min-h-screen bg-base">
@@ -78,8 +78,8 @@ function Shell({ me, onLogout, children }) {
       </header>
       {me && (
         <nav className="max-w-3xl mx-auto px-4 pt-4 flex gap-1" aria-label={STR.title}>
-          {[['/espace', STR.tabs.tickets, Inbox], ['/espace/nouveau', STR.tabs.new, Plus], ['/espace/aide', STR.tabs.help, HelpCircle]].map(([to, label, Icon]) => {
-            const active = to === '/espace' ? !/^\/espace\/(nouveau|aide)/.test(window.location.pathname) : window.location.pathname.startsWith(to);
+          {[['/espace', STR.tabs.tickets, Inbox], ['/espace/nouveau', STR.tabs.new, Plus], ['/espace/aide', STR.tabs.help, HelpCircle], ...(hasOrg ? [['/espace/organisation', STR.tabs.org, Building2]] : [])].map(([to, label, Icon]) => {
+            const active = to === '/espace' ? !/^\/espace\/(nouveau|aide|organisation)/.test(window.location.pathname) : window.location.pathname.startsWith(to);
             return (
               <Link key={to} to={to} aria-current={active ? 'page' : undefined}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${active ? 'bg-primary/15 text-primary-light' : 'text-ink-3 hover:text-ink-1'}`}>
@@ -739,6 +739,70 @@ function NewTicket({ me }) {
   );
 }
 
+// « Mon organisation » (v8): contracts, inventory and history of the organisations whose tickets the
+// member may read — one block per organisation of each space
+function OrgPage({ orgs }) {
+  const O = STR.orgPage;
+  if (!orgs) return <Loader2 className="animate-spin text-ink-4" />;
+  const day = d => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString(memberLocale) : '—');
+  const box = 'bg-surface-card border border-overlay/6 rounded-2xl p-4 space-y-2';
+  return (
+    <div className="space-y-6">
+      {orgs.map(({ guild, org }) => (
+        <section key={`${guild.id}-${org.id}`} className="space-y-3" aria-label={org.name}>
+          <h1 className="text-lg font-bold text-ink-1 flex items-center gap-2"><Building2 size={18} className="text-primary-light" aria-hidden="true" /><span translate="no">{org.name}</span><span className="text-xs font-normal text-ink-4" translate="no">{guild.name}</span></h1>
+          <p className="text-xs text-ink-3">{`${org.stats.open} ${O.open} · ${org.stats.closed90} ${O.closed90}${org.stats.avgHours != null ? ` · ${O.avg.replace('{h}', org.stats.avgHours)}` : ''}`}</p>
+          <div className={box}>
+            <h2 className="text-sm font-semibold text-ink-2">{O.contracts}</h2>
+            {org.contracts.length === 0 ? <p className="text-xs text-ink-4">{O.noContract}</p> : (
+              <ul className="space-y-1.5">
+                {org.contracts.map((c, i) => (
+                  <li key={i} className="text-xs flex flex-wrap items-center gap-2">
+                    <span className="text-ink-1 font-medium" translate="no">{c.name}</span>
+                    <span className={c.state === 'active' ? 'text-emerald-400' : 'text-ink-4'}>{c.state === 'active' ? O.current : c.state === 'upcoming' ? O.upcoming : O.ended}</span>
+                    <span className="text-ink-3">{`${day(c.startsOn)} → ${day(c.endsOn)}`}</span>
+                    {c.kind === 'unlimited' ? <span className="text-ink-3">{STR.contractUnlimited}</span> : (
+                      <span className="flex items-center gap-1.5 text-ink-3">{O.used.replace('{used}', c.kind === 'hours' ? `${Math.round(c.used * 10) / 10} h` : c.used).replace('{quota}', c.kind === 'hours' ? `${c.quota} h` : c.quota)}
+                        <span className="inline-block w-20 h-1.5 rounded bg-overlay/8 overflow-hidden" aria-hidden="true"><span className={`block h-full ${c.percent >= 100 ? 'bg-red-400' : c.percent >= 80 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${Math.min(100, c.percent || 0)}%` }} /></span>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className={box}>
+            <h2 className="text-sm font-semibold text-ink-2">{O.assets}</h2>
+            {org.assets.length === 0 ? <p className="text-xs text-ink-4">{O.noAsset}</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead><tr className="text-left text-ink-4"><th className="py-1 pr-3 font-medium">{O.type}</th><th className="py-1 pr-3 font-medium"><span className="sr-only">{O.assets}</span></th><th className="py-1 pr-3 font-medium">{O.status}</th><th className="py-1 pr-3 font-medium">{O.serial}</th><th className="py-1 font-medium">{O.location}</th></tr></thead>
+                  <tbody>{org.assets.map(a => <tr key={a.id} className="border-t border-overlay/6"><td className="py-1 pr-3 text-ink-3" translate="no">{a.type}</td><td className="py-1 pr-3 text-ink-1" translate="no">{a.name}</td><td className="py-1 pr-3 text-ink-2">{O.assetStatus[a.status] || a.status}</td><td className="py-1 pr-3 text-ink-3" translate="no">{a.serial || '—'}</td><td className="py-1 text-ink-3" translate="no">{a.location || '—'}</td></tr>)}</tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <div className={box}>
+            <h2 className="text-sm font-semibold text-ink-2">{O.history}</h2>
+            {org.tickets.length === 0 ? <p className="text-xs text-ink-4">{O.noTicket}</p> : (
+              <ul className="divide-y divide-overlay/6">
+                {org.tickets.map(t => (
+                  <li key={t.id} className="py-1.5 text-xs flex flex-wrap items-center gap-2">
+                    <Link to={`/espace/${guild.id}/${t.id}`} className="text-ink-1 hover:underline">{`#${t.id} ${t.subject || ''}`}</Link>
+                    <span className="text-ink-4">{STR.orgBy.replace('{name}', t.by || '—')}</span>
+                    <span className="ml-auto text-ink-4">{`${fmt(t.createdAt)}${t.closedAt ? ` → ${fmt(t.closedAt)}` : ''}`}</span>
+                    <span className={t.status === 'open' ? 'text-sky-400' : 'text-ink-3'}>{t.status === 'open' ? STR.status.received : STR.status.closed}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export default function MemberPortal({ page }) {
   const { guildId, ticketId } = useParams();
   const [params] = useSearchParams();
@@ -748,12 +812,27 @@ export default function MemberPortal({ page }) {
     api.get('/member/me').then(r => setMe(r.data)).catch(() => setMe(null));
   }, []);
   const logout = async () => { await api.post('/member/logout').catch(() => {}); window.location.href = '/espace'; };
+  // v8: the organisations this member may follow, in every space (the tab shows only when there is one)
+  const [orgs, setOrgs] = useState(null);
+  useEffect(() => {
+    if (!me) return;
+    (async () => {
+      const guilds = await api.get('/member/guilds').then(r => (Array.isArray(r.data) ? r.data : r.data?.guilds || [])).catch(() => []);
+      const out = [];
+      for (const g of guilds.slice(0, 20)) {
+        const list = await api.get(`/member/guilds/${g.id}/organization`).then(r => (Array.isArray(r.data?.organizations) ? r.data.organizations : [])).catch(() => []);
+        for (const org of list) out.push({ guild: { id: g.id, name: g.name }, org });
+      }
+      setOrgs(out);
+    })();
+  }, [me]);
 
   if (page === 'connexion') return <Shell me={null} onLogout={logout}><EmailLinkLanding /></Shell>;
   if (me === undefined) return <div data-no-translate className="min-h-screen bg-base flex items-center justify-center"><Loader2 className="animate-spin text-ink-4" /></div>;
   return (
-    <Shell me={me} onLogout={logout}>
+    <Shell me={me} onLogout={logout} hasOrg={!!orgs?.length}>
       {!me ? <LoginCard error={params.get('error')} />
+        : page === 'organisation' ? <OrgPage orgs={orgs} />
         : page === 'nouveau' ? <NewTicket me={me} />
         : page === 'aide' ? <HelpPage me={me} />
         : guildId && ticketId ? <TicketView guildId={guildId} ticketId={ticketId} me={me} />

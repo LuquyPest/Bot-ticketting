@@ -1916,6 +1916,37 @@ const MIGRATIONS = [
       'UPDATE faq_entries f JOIN kb_categories k ON k.parent_id IS NULL AND k.name = LEFT(f.category, 80) SET f.category_id = k.id WHERE f.category <> \'\' AND f.category_id IS NULL',
     ],
   },
+  {
+    version: 103,
+    name: 'Signatures électroniques, catalogue par organisation (v8)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS signatures (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        target_type      VARCHAR(8) NOT NULL,
+        target_id        INT NOT NULL,
+        title            VARCHAR(200) NOT NULL,
+        document         MEDIUMTEXT NOT NULL,
+        content_hash     CHAR(64) NOT NULL,
+        signer_name      VARCHAR(100) NOT NULL,
+        signer_email     VARCHAR(254) DEFAULT NULL,
+        signer_user_id   VARCHAR(32) DEFAULT NULL,
+        status           VARCHAR(8) NOT NULL DEFAULT 'pending',
+        token_hash       CHAR(64) DEFAULT NULL,
+        expires_at       DATETIME NOT NULL,
+        requested_by_id  VARCHAR(32) DEFAULT NULL,
+        requested_by_tag VARCHAR(100) DEFAULT NULL,
+        signed_name      VARCHAR(100) DEFAULT NULL,
+        signed_at        DATETIME DEFAULT NULL,
+        signed_ip        VARCHAR(45) DEFAULT NULL,
+        signed_ua        VARCHAR(300) DEFAULT NULL,
+        decline_reason   TEXT DEFAULT NULL,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sig_target (target_type, target_id), INDEX idx_sig_token (token_hash)
+      )`,
+      // A service of the catalogue only for some organisations (NULL: everyone)
+      'ALTER TABLE catalog_services ADD COLUMN IF NOT EXISTS organization_ids JSON DEFAULT NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

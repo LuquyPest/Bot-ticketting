@@ -895,6 +895,12 @@ export const ENTRIES = [
   ['g puis d / q / t / b', 'g then d / q / t / b'], ['Dashboard, Ma file, Tickets, Boîte d\'équipe', 'Dashboard, My queue, Tickets, Team inbox'], ['g puis p / k / c / a / s', 'g then p / k / c / a / s'],
   ['Planning, Base, Contacts, Analytiques, Paramètres', 'Planning, Knowledge base, Contacts, Analytics, Settings'], ['Colonne précédente, suivante', 'Previous, next column'], ['Ticket suivant, précédent', 'Next, previous ticket'],
   ['Afficher le ticket à droite', 'Show the ticket on the right'], ['Ouvrir la fiche entière', 'Open the full ticket view'], ['Fermer l\'aperçu', 'Close the preview'], ['Ticket suivant', 'Next ticket'], ['Ticket précédent', 'Previous ticket'],
+  // ── v8.4: catalogue per organisation, signatures ──
+  ['Réservé à ces organisations (aucune cochée : tout le monde)', 'Reserved to these organisations (none ticked: everyone)'],
+  ['Envoyer la demande', 'Send the request'], ['Nom de la personne', 'Name of the person'], ['Signatures', 'Signatures'], ['Demander une signature', 'Ask for a signature'], ['Aucune signature demandée.', 'No signature asked for.'], ['Signé', 'Signed'],
+  ['Nom de la personne qui signe', 'Name of the person signing'], ['Son adresse e-mail', 'Their e-mail address'], ['Adresse e-mail de la personne qui signe', 'E-mail address of the person signing'],
+  ['Précisions ajoutées au document (facultatif)', 'Details added to the document (optional)'], ['Précisions ajoutées au document', 'Details added to the document'], ['Demande de signature envoyée', 'Signature request sent'], ['Certificat indisponible', 'Certificate unavailable'],
+  ['Le document est figé à l\'envoi (texte et empreinte SHA-256) ; la personne reçoit un lien valable 14 jours.', 'The document is frozen when sent (text and SHA-256 fingerprint); the person gets a link valid for 14 days.'],
 ];
 
 export const TEMPLATES = [
@@ -1231,4 +1237,5 @@ export const TEMPLATES = [
   ['Ajouter un créneau le {}', 'Add a slot on {1}'], ['{}–{} · {} · à pourvoir', '{1}–{2} · {3} · unfilled'], ['{}–{} · {} · à pourvoir ({})', '{1}–{2} · {3} · unfilled ({4})'],
   ['Monter « {} »', 'Move « {1} » up'], ['Descendre « {} »', 'Move « {1} » down'], ['Déplacer « {} » vers', 'Move « {1} » to'], ['Replier « {} »', 'Collapse « {1} »'], ['Déplier « {} »', 'Expand « {1} »'],
   ['Sous-catégorie dans « {} »', 'Sub-category in « {1} »'], ['Renommer « {} »', 'Rename « {1} »'], ['Supprimer la catégorie « {} » ? Ses articles et sous-catégories remontent d\'un niveau.', 'Delete the category « {1} »? Its articles and sub-categories go up one level.'],
+  ['Certificat de signature de {}', 'Signature certificate of {1}'],
 ];

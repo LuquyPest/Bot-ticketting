@@ -149,6 +149,10 @@ A ticket can ask for **a person's approval** before it moves on (a refund, an ex
 
 One pending approval per ticket; the person who asked, or a founder, can **cancel** it. Every step is a note in the ticket and a line of its journal. A **confidential** ticket is approved only by a founder, never by e-mail. Approval by e-mail uses the [e-mail of the instance](./instance#e-mail-of-the-instance), up to 10 sends (requests and reminders) per hour per person, 30 per space.
 
+### Electronic signature
+
+On a **change**, a **release** or a **ticket** (a delivery), **Signatures → Ask for a signature** (**Reply** permission) sends a person, by e-mail, a link valid for 14 days. The **document is frozen** when sent: its text (description and plans of the change, changes and rollback of the release, last reply of the ticket, plus the details added) and its **SHA-256 fingerprint**. The person reads it, types their name and ticks « I approve » — or refuses, saying why. Kept: the name typed, the time, the IP address, the browser and the fingerprint; a signature never changes again. A **PDF certificate** can be downloaded for each signed document; on a ticket, a note says so. It is a **simple** electronic signature in the sense of the eIDAS regulation, not a qualified one. The instance e-mail is needed (Instance → Health).
+
 ## Contacts
 
 **Contacts** (Support menu): one card per person, whatever the channel. Each card gathers their **identities**: their Discord account, their address for [tickets by e-mail](./integrations#tickets-by-e-mail), later the web portal. Cards are created on their own from the tickets, nothing to type in.

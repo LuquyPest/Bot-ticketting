@@ -58,6 +58,8 @@ The pages of the public base (`/aide/<space>` and each article) are sent **ready
 | **Form** | Up to 20 fields: short or long text, number, list, checkbox, date; required or not. A field can **show only if** a field placed before has a value (« if *Hardware* = *Laptop*, ask for the model »): hidden, it is neither asked nor kept |
 | **The ticket becomes** | A subject (else the service name), a type, a priority, a team: applied at the opening, before the staff sees it |
 
+A service can be **reserved to organisations** (« Reserved to these organisations » boxes): only their contacts see it in the catalogue and can open it; a parent organisation's services count for its sub-organisations. No box ticked: everyone sees it.
+
 The answers arrive in the ticket's first message, under the service name. The server checks each answer (required field, list, date, number); a service removed from the catalogue no longer opens. The **opening forms** of before were carried over as services; they are still used on Discord.
 
 ## The tickets of one's organisation
@@ -65,6 +67,10 @@ The answers arrive in the ticket's first message, under the service name. The se
 An [organisation](./tickets#organisations) chooses who, among its contacts, sees **its tickets** in the member space: **nobody** (by default: everyone sees only their own), **its managers** (the contacts ticked « Client-side manager » on their card, by a founder or the **Settings** permission), or **all its members**. A parent organisation also shows the tickets of its sub-organisations.
 
 These tickets show under **My organisation's tickets**, with the name of the person who opened them. They can be read, not written: no reply, no confirming a solution, no files nor transcript; only the person who opened the ticket replies. A **confidential** ticket, or one restricted to a grade, never shows there.
+
+### My organisation
+
+The same people have a **My organisation** tab: its **contracts** (current, upcoming and ended, with their consumption), its **inventory** (the elements the organisation owns: type, name, state, serial number, location, read only) and its **history** (all its tickets, with the number open, resolved over 90 days and the average time). Nothing internal is shown: no notes, no costs, no inventory fields, no confidential ticket.
 
 ## What is shown, and what never is
 

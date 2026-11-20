@@ -9,6 +9,7 @@ import {
 import api from '../api';
 import { useStages, STAGE_CLS } from '../hooks/useStages';
 import ApprovalPanel from '../components/ApprovalPanel';
+import SignaturesPanel from '../components/SignaturesPanel';
 import CcPanel from '../components/CcPanel';
 import ResolutionPanel from '../components/ResolutionPanel';
 import ObjectivesPanel from '../components/ObjectivesPanel';
@@ -2227,6 +2228,9 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           {/* VALIDATION (v4.2) */}
           <ApprovalPanel ticketId={ticket.id} open={ticket.status === 'open'} me={user?.id} canAsk={can('reply_ticket')} isFounder={user?.role === 'fondateur'}
             stages={stageList} panelCard={panelCard} onChange={loadTicket} />
+
+          {/* SIGNATURE (v8) */}
+          {can('reply_ticket') && <div className={panelCard}><SignaturesPanel type="ticket" id={ticket.id} compact /></div>}
 
           {/* ÉQUIPE (v4.2) */}
           {ticket.status === 'open' && teamList.length > 0 && (
