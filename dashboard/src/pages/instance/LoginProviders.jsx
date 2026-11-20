@@ -3,6 +3,7 @@ import { KeyRound, Loader2, Copy } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import LdapDirectory from '../../components/LdapDirectory';
+import SamlSettings from '../../components/SamlSettings';
 
 const INPUT = 'w-full bg-surface border border-overlay/8 rounded-lg px-2.5 py-1.5 text-xs text-ink-1';
 
@@ -166,6 +167,8 @@ export default function LoginProviders() {
       </button>
 
       <LdapDirectory />
+
+      <SamlSettings />
 
       <MailboxApps />
     </div>

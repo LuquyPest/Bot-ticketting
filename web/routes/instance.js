@@ -28,7 +28,9 @@ router.get('/info', async (req, res) => {
     ...await (async () => {
       const active = await require('../../utils/loginProviders').activeProviders().catch(() => []);
       const ldap = await require('../../utils/ldapDirectory').active().catch(() => null);
-      return { discordLogin: active.some(p => p.id === 'discord'), providers: active.filter(p => p.id !== 'discord'), ldap };
+      const samlOn = await require('../../utils/saml').active().catch(() => false);
+      const saml = samlOn ? { label: (await require('../../utils/saml').load()).name || 'SSO' } : null;
+      return { discordLogin: active.some(p => p.id === 'discord'), providers: active.filter(p => p.id !== 'discord'), ldap, saml };
     })(),
     setupNeeded: await require('../../utils/installation').setupNeeded(client).catch(() => false),
   });
@@ -56,6 +58,18 @@ router.put('/login-providers', async (req, res, next) => {
     if (!left.length) return res.status(400).json({ error: 'Tu n\'aurais plus aucun moyen de te connecter : définis d\'abord un mot de passe ou relie un autre fournisseur dans Profil → Connexion' });
     await lp.save(r.settings);
     res.json(await lp.publicSettings());
+  } catch (err) { next(err); }
+});
+
+// GET / PUT /api/instance/saml — the SAML 2.0 identity provider (v7, utils/saml.js)
+router.get('/saml', async (req, res, next) => { try { res.json(await require('../../utils/saml').publicSettings()); } catch (err) { next(err); } });
+router.put('/saml', async (req, res, next) => {
+  try {
+    const saml = require('../../utils/saml');
+    const r = saml.prepare(req.body || {}, await saml.load());
+    if (r.error) return res.status(400).json({ error: r.error });
+    await saml.save(r.value);
+    res.json(await saml.publicSettings());
   } catch (err) { next(err); }
 });
 

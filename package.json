@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@node-saml/node-saml": "^5.2.0",
     "axios": "^1.21.1",
     "bullmq": "^6.7.6",
     "discord.js": "^14.28.1",

@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.8.0',
+    date: 'à venir',
+    title: 'Sécurité et exploitation',
+    titleEn: 'Security and operations',
+    changes: [
+      { type: 'new',  text: 'Connexion SAML 2.0 (Entra ID, Okta, ADFS, Keycloak…) : réponse et assertion signées exigées, audience, destination et demande vérifiées, rejeu refusé, groupe autorisé facultatif ; métadonnées du fournisseur de service fournies', en: 'SAML 2.0 sign-in (Entra ID, Okta, ADFS, Keycloak…): signed response and assertion required, audience, destination and request checked, replay refused, optional allowed group; service provider metadata provided' },
+    ],
+  },
+  {
     version: 'v7.7.0',
     date: 'à venir',
     title: 'Pilotage',

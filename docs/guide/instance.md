@@ -55,6 +55,14 @@ Chaque fournisseur affiche son **adresse de retour**, à déclarer telle quelle 
 
 **Discord** : couper la connexion Discord ne coupe pas l'intégration (bot, MP, salons, panels) ; l'espace membre garde aussi sa connexion Discord pour les demandeurs. Tu ne peux pas couper le dernier moyen de connexion de ton propre compte : définis d'abord un mot de passe ou relie un autre fournisseur dans **Profil → Connexion**.
 
+### SAML 2.0
+
+**Instance → Connexion → SAML 2.0** branche le fournisseur d'identité de l'organisation (Entra ID, Okta, ADFS, Keycloak, Authentik…). Datick y est déclaré comme fournisseur de service avec deux adresses affichées dans le formulaire : l'**identifiant (entity ID) et les métadonnées** `https://<ton domaine>/api/auth/saml/metadata`, et l'**adresse de retour (ACS)** `…/api/auth/saml/acs` (liaison HTTP-POST). Il faut l'adresse de connexion du fournisseur (SSO, liaison HTTP-Redirect), son **certificat de signature** (PEM) et, au besoin, son identifiant, les noms des attributs (adresse, nom, groupes) et un **groupe autorisé**.
+
+- La **réponse et l'assertion doivent être signées** par ce certificat ; le destinataire, l'audience, la demande à laquelle elle répond (gardée 10 minutes, consommée une fois), la date (3 minutes d'écart au plus) sont vérifiés ; une réponse rejouée est refusée.
+- La personne est reconnue par son identifiant (NameID), sinon rattachée au compte qui a la même **adresse vérifiée** ; personne n'obtient de compte en se connectant ainsi. La double authentification du compte s'applique.
+- L'instance doit être servie en **https**. Le bouton « Continuer avec … » apparaît sur la page de connexion.
+
 ### Annuaire LDAP / Active Directory
 
 Sous les fournisseurs, **Annuaire LDAP / Active Directory** permet au staff de se connecter avec **son identifiant et son mot de passe de l'annuaire** (formulaire « Continuer avec… » sur la page de connexion). Les boutons **OpenLDAP** et **Active Directory** remplissent les valeurs habituelles.
