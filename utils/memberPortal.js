@@ -252,4 +252,4 @@ async function openingForm(guildId, subject) {
   return { subjects, fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type, required: !!f.required })), questions };
 }
 
-module.exports = { memberIds, emailOpen, ticketWebUrl, listMemberTickets, memberTicket, memberTranscriptHtml, portalUrl, memberGuilds, isMemberGuild, guildFaq, openingForm };
+module.exports = { orgScope, memberIds, emailOpen, ticketWebUrl, listMemberTickets, memberTicket, memberTranscriptHtml, portalUrl, memberGuilds, isMemberGuild, guildFaq, openingForm };

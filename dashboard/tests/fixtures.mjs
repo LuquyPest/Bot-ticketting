@@ -19,6 +19,7 @@ export const MOCK = {
   '/api/organizations': [
     { id: 1, name: 'Acme', portalVisibility: 'manager', parentId: null, teamId: 1, managerId: '1', calendarId: 1, domains: ['acme.example'], fields: { Contrat: 'Support Or' }, notes: 'Client depuis 2024', contacts: 12, openTickets: 3 },
     { id: 2, name: 'Acme Lyon', parentId: 1, teamId: null, managerId: null, calendarId: null, domains: [], fields: {}, notes: '', contacts: 2, openTickets: 1 }],
+  '/api/organizations/1/contracts': { contracts: [{ id: 1, organizationId: 1, name: 'Support Or 2027', kind: 'hours', quota: 1200, startsOn: '2026-01-01', endsOn: '2026-12-31', slaPolicyId: null, alertPercent: 80, alertDays: 30, autoRenew: true, renewalOf: null, notes: '', state: 'active', used: 450, remaining: 750, percent: 38 }], active: null },
   '/api/organizations/1/contacts': [{ id: 1, display_name: 'Paul Martin', email: 'paul@acme.example', org_manual: 0, identity: 'mail:000000000000000000000001' }],
   '/api/chat': { slack: { configured: true, active: true, hasSecret: true, actionUrl: 'https://ticket.example.com/api/chat/slack/actions/1' }, teams: { configured: false, active: false, hasSecret: false } },
   '/api/notifications': { events: [], recipients: [], channels: [], rules: [

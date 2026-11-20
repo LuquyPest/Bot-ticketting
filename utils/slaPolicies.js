@@ -100,7 +100,9 @@ async function refreshSla(db, ticketId, { policies = null } = {}) {
   const all = policies || await listPolicies(db);
   // An objective chosen by a rule (v6) stays, as long as it exists and is active
   const forced = t.sla_forced ? all.find(x => x.id === Number(t.sla_policy_id) && x.active) : null;
-  const p = forced || pickPolicy(all, t);
+  // v7: else the objective of the organisation's contract in force (utils/contracts.js)
+  const byContract = forced ? null : await require('./contracts').policyForTicket(db, t).then(id => (id ? all.find(x => x.id === Number(id) && x.active) : null)).catch(() => null);
+  const p = forced || byContract || pickPolicy(all, t);
   if (!p) {
     if (t.sla_policy_id || t.tto_due_at || t.ttr_due_at) await db('UPDATE tickets SET sla_policy_id = NULL, tto_due_at = NULL, ttr_due_at = NULL WHERE id = ?', [t.id]);
     return null;

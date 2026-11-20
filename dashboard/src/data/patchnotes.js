@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.2.0',
+    date: 'à venir',
+    title: 'Clients',
+    titleEn: 'Customers',
+    changes: [
+      { type: 'new',  text: 'Contrats des organisations : forfait d\'heures, nombre de tickets ou illimité, avec dates, objectif SLA du contrat, consommation calculée, alertes au seuil et avant la fin, renouvellement automatique ; solde sur la fiche ticket et dans l\'espace membre', en: 'Contracts of the organisations: block of hours, number of tickets or unlimited, with dates, contract SLA objective, computed consumption, alerts at the threshold and before the end, automatic renewal; balance on the ticket view and in the member space' },
+    ],
+  },
+  {
     version: 'v7.1.0',
     date: 'à venir',
     title: 'Routage',

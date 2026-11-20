@@ -175,6 +175,23 @@ function EmailLinkLanding() {
   );
 }
 
+// The contract of their organisation (v7): its balance, when the organisation shares its tickets
+function GuildContract({ guildId }) {
+  const [c, setC] = useState(null);
+  useEffect(() => { api.get(`/member/guilds/${guildId}/contract`).then(r => setC(r.data?.contract || null)).catch(() => setC(null)); }, [guildId]);
+  if (!c) return null;
+  const h = m => Math.round(m / 6) / 10;
+  const text = c.kind === 'unlimited' ? STR.contractUnlimited
+    : c.kind === 'hours' ? STR.contractHours.replace('{left}', h(c.remaining)).replace('{total}', h(c.quota))
+      : STR.contractTickets.replace('{left}', c.remaining).replace('{total}', c.quota);
+  return (
+    <div className="rounded-xl border border-overlay/6 bg-surface-card px-3 py-2 text-xs text-ink-2">
+      <span className="font-semibold text-ink-1">{STR.contractTitle}</span>{` · ${c.name} · ${text}`}{c.endsOn ? ` · ${STR.contractUntil.replace('{date}', new Date(`${c.endsOn}T12:00:00`).toLocaleDateString(memberLocale))}` : ''}
+      {c.quota ? <div className="h-1.5 rounded-full bg-overlay/6 overflow-hidden mt-1.5" aria-hidden="true"><div className="h-full bg-primary" style={{ width: `${Math.min(100, c.percent || 0)}%` }} /></div> : null}
+    </div>
+  );
+}
+
 function TicketList({ me }) {
   const [groups, setGroups] = useState(null);
   useEffect(() => { api.get('/member/tickets').then(r => setGroups(r.data)).catch(() => setGroups([])); }, []);
@@ -196,6 +213,7 @@ function TicketList({ me }) {
       {groups.map(({ guild, tickets, orgTickets = [] }) => (
         <section key={guild.id} className="space-y-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-1 border-l-4 pl-2" style={{ borderColor: guild.color || 'transparent' }}><GuildIcon guild={guild} />{guild.name}</h2>
+          {orgTickets.length > 0 && <GuildContract guildId={guild.id} />}
           <ul className="space-y-2">
             {tickets.map(t => (
               <li key={t.id}>

@@ -214,6 +214,22 @@ async function requesterFor(req, guildId, ownerId = req.member.id) {
   return require('../../utils/emailTickets').userFor(ownerId, req.member.email, null, guildId);
 }
 
+// GET /api/member/guilds/:guildId/contract — the contract in force of the organisation whose tickets
+// this member may read (v7): its name, kind and balance, nothing internal
+router.get('/guilds/:guildId/contract', requireMember, async (req, res) => {
+  try {
+    const guild = await guildOf(req, res);
+    if (!guild) return;
+    const db = getTenantDb(guild.id);
+    let contract = null;
+    for (const orgId of await require('../../utils/memberPortal').orgScope(db, memberIds(req.member))) {
+      const c = await require('../../utils/contracts').activeFor(db, orgId);
+      if (c) { contract = { name: c.name, kind: c.kind, quota: c.quota, used: c.used, remaining: c.remaining, percent: c.percent, startsOn: c.startsOn, endsOn: c.endsOn }; break; }
+    }
+    res.json({ contract });
+  } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
 // POST /api/member/guilds/:guildId/duplicate-check { subject, content } — their own open tickets
 // about the same thing, shown before they open another one (v7, utils/openDuplicates.js)
 router.post('/guilds/:guildId/duplicate-check', requireMember, async (req, res) => {

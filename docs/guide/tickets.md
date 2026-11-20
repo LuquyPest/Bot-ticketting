@@ -238,6 +238,19 @@ Menu **Organisations** : les sociétés clientes, services ou sites de tes conta
 | **Champs et notes** | Contrat, téléphone… (20 champs libres) et des notes internes |
 | **Portail** | Qui voit les tickets de l'organisation dans l'[espace membre](./espace-membre#les-tickets-de-son-organisation) : personne, ses responsables ou tous ses membres |
 
+### Les contrats
+
+Sous chaque organisation, **Contrats** : un **forfait d'heures**, un **nombre de tickets** ou un support **illimité**, avec une date de début et, au besoin, de fin.
+
+| | |
+|---|---|
+| **Consommation** | Calculée : le temps passé sur les tickets de l'organisation et de ses sous-organisations pendant le contrat, ou les tickets ouverts pendant le contrat ; une barre montre le solde |
+| **Objectif SLA du contrat** | Les tickets de l'organisation prennent cet objectif tant que le contrat est en cours (un objectif choisi par une règle passe avant) |
+| **Alertes** | Au seuil de consommation (80 % par défaut) et N jours avant la fin (30 par défaut) : une notification aux fondateurs et au responsable de compte, une seule fois chacune, au journal |
+| **Renouvellement** | Un contrat **renouvelé à la fin** est suivi, le lendemain de sa fin, d'un contrat de même durée et de même forfait |
+
+Le contrat en cours est celui commencé le plus récemment (celui de l'organisation, sinon de sa parente). La fiche ticket montre son solde sous l'organisation ; l'[espace membre](./espace-membre#les-tickets-de-son-organisation) le montre aux personnes qui voient les tickets de l'organisation (nom, forfait, solde, date de fin ; jamais les notes).
+
 Un ticket garde l'organisation de son demandeur à l'ouverture : elle apparaît sur la fiche, filtre la liste (**Toutes organisations**), sert de condition aux [règles automatiques](./automatismes#les-regles-automatiques). Déplacer un contact déplace ses tickets ouverts.
 
 ## La liste des tickets
