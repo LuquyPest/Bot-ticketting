@@ -13,6 +13,8 @@ const PERM_LABELS = {
   create_tickets: 'Créer des tickets (API v3)',
   reply_tickets: 'Répondre et noter (API v3)',
   update_tickets: 'Modifier les tickets (API v3)',
+  read_assets: 'Lire le parc (API v3)',
+  write_assets: 'Inventorier le parc (API v3)',
 };
 
 function CopyButton({ text }) {

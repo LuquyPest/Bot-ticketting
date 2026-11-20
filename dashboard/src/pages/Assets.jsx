@@ -140,6 +140,16 @@ function Detail({ id, types, ctx, onChanged }) {
           <button type="button" disabled={!rel.to} onClick={relate} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 disabled:opacity-50">Relier</button>
         </div>
       </section>
+      {a.linked && (a.linked.tickets.length + a.linked.problems.length + a.linked.changes.length) > 0 && (
+        <section className="space-y-1">
+          <p className="text-[11px] font-semibold text-ink-3">Lié à</p>
+          <ul className="space-y-0.5 text-xs">
+            {a.linked.tickets.map(t => <li key={`t${t.id}`}><Link to={`/tickets/${t.id}`} className="text-ink-1 hover:underline">{`Ticket #${t.id} ${t.subject || ''}`}</Link> <span className="text-ink-4">{t.status === 'open' ? '· ouvert' : '· fermé'}</span></li>)}
+            {a.linked.problems.map(p => <li key={`p${p.id}`}><Link to={`/problemes/${p.id}`} className="text-ink-1 hover:underline">{`Problème #${p.id} ${p.title}`}</Link></li>)}
+            {a.linked.changes.map(c => <li key={`c${c.id}`}><Link to={`/changements/${c.id}`} className="text-ink-1 hover:underline">{`Changement #${c.id} ${c.title}`}</Link></li>)}
+          </ul>
+        </section>
+      )}
       <section className="space-y-1">
         <p className="text-[11px] font-semibold text-ink-3">Historique</p>
         <div className="max-h-48 overflow-y-auto" tabIndex={0} role="region" aria-label="Historique de l'élément">
@@ -163,6 +173,7 @@ export default function Assets() {
   const [ctx, setCtx] = useState({ orgs: [] });
   const [adding, setAdding] = useState(false);
   const [showTypes, setShowTypes] = useState(false);
+  const [csv, setCsv] = useState('');
   const load = (f = filters) => api.get('/assets', { params: { q: f.q || undefined, type: f.type || undefined, status: f.status || undefined } }).then(r => setList(r.data)).catch(() => setList({ total: 0, assets: [] }));
   const loadTypes = () => api.get('/assets/types').then(r => setTypes(r.data.types || [])).catch(() => {});
   useEffect(() => {
@@ -180,6 +191,14 @@ export default function Assets() {
     </div>
   );
   const setFilter = (k, v) => { const f = { ...filters, [k]: v }; setFilters(f); load(f); };
+  const importCsv = async () => {
+    try {
+      const { data } = await api.post('/assets/import', { csv });
+      setCsv(''); load(); loadTypes();
+      toast.success(`${data.created} créé(s), ${data.updated} mis à jour`);
+      if (data.errors.length) toast.error(data.errors.slice(0, 10).join('\n'), { duration: 8000 });
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
   return (
     <div className="p-4 sm:p-6 grid gap-4 lg:grid-cols-[24rem_1fr]">
       <div className="space-y-3">
@@ -208,6 +227,15 @@ export default function Assets() {
             </ul>
           </>
         )}
+        <details className="text-xs">
+          <summary className="cursor-pointer text-ink-3 hover:text-ink-1">Importer ou exporter (CSV)</summary>
+          <div className="mt-2 space-y-1.5">
+            <a href="/api/assets/export.csv" className="inline-block text-primary-light hover:underline">Exporter le parc (CSV)</a>
+            <p className="text-ink-4">Colonnes : type ; nom ; statut ; numero_de_serie ; lieu ; organisation ; contact (adresse) ; les champs du type par leur nom ; notes. Un élément de même numéro de série (sinon de même type et nom) est mis à jour.</p>
+            <textarea value={csv} onChange={e => setCsv(e.target.value)} rows={4} placeholder={'type;nom;numero_de_serie;lieu\nPortable;PC-COMPTA-07;SN-123;Bât. A'} aria-label="Éléments à importer (CSV)" className={INPUT} />
+            <button type="button" disabled={!csv.trim()} onClick={importCsv} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50">Importer</button>
+          </div>
+        </details>
         {user?.role === 'fondateur' && <button type="button" onClick={() => toggle(false)} className="text-[11px] text-ink-4 hover:text-ink-2 underline">Couper le parc</button>}
       </div>
       <div className="bg-surface-card border border-overlay/6 rounded-2xl p-4">

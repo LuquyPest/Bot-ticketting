@@ -1731,7 +1731,7 @@ async function main() {
       && ['get /tickets', 'get /contacts', 'post /tickets', 'post /tickets/{id}/reply', 'post /tickets/{id}/notes', 'patch /tickets/{id}', 'post /tickets/{id}/close'].every(x => doc3.includes(x))
       && !!r.body.paths['/tickets'].post.requestBody && r.body.paths['/tickets'].post['x-permission'] === 'create_tickets', doc3.join(', '));
     const routes3 = app('./web/routes/apiV3').ENDPOINTS.map(e => `${e.method} ${e.path}`);
-    check('API v3: chaque écriture documentée', routes3.length === 7 && routes3.every(x => doc3.includes(x)), routes3.join());
+    check('API v3: chaque écriture documentée', routes3.length === 10 && routes3.every(x => doc3.includes(x)), routes3.join());
     check('API v3: la v1 n a toujours pas de corps documenté', !JSON.stringify((await req('GET', '/api/v1/openapi.json')).body).includes('requestBody'), '');
 
     const tag = (await db("INSERT INTO ticket_tags (name, color) VALUES ('API-VIP', '#aa0000')")).insertId;
@@ -8599,6 +8599,57 @@ async function main() {
     await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
     const [kept] = await db('SELECT owner_org_id FROM assets WHERE id = ?', [pc]);
     check('parc: organisation supprimée → l élément reste, sans propriétaire', kept && kept.owner_org_id === null, JSON.stringify(kept));
+  }
+
+  // ── Inventory linked to tickets, problems and changes; requester's choice; impact; CSV; API v3 (utils/assetLinks.js, v7) ──
+  {
+    const tType = (await req('POST', '/api/assets/types', { sid: sessions.F, body: { name: 'Poste v7b', fields: [{ label: 'Système', type: 'text' }] } })).body.id;
+    const mk = async (name, extra = {}) => (await req('POST', '/api/assets', { sid: sessions.S1, body: { typeId: tType, name, ...extra } })).body.id;
+    const sw = await mk('SWITCH-ETAGE-2'), srv = await mk('SRV-MAIL'), pcA = await mk('PC-ACCUEIL'), pcB = await mk('PC-RH');
+    await req('POST', `/api/assets/${srv}/relations`, { sid: sessions.S1, body: { to: sw, kind: 'depends_on' } });
+    await req('POST', `/api/assets/${pcA}/relations`, { sid: sessions.S1, body: { to: srv, kind: 'depends_on' } });
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000081', 'member81', 'al7-1', 'open', 'Messagerie en panne v7')")).insertId;
+    r = await req('POST', `/api/assets/links/ticket/${tk}`, { sid: sessions.S1, body: { assetId: pcA } });
+    const rA = await req('GET', `/api/assets/${pcA}`, { sid: sessions.S1 });
+    check('parc: élément lié à un ticket, vu des deux côtés', r.status === 200 && r.body.assets.some(a => a.id === pcA) && rA.body.linked.tickets.some(t => t.id === tk), JSON.stringify([r.body, rA.body.linked]));
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000081', 'x', 'al7-c', 'open', 'conf', ?)", [app('./utils/gradePermissions').CONFIDENTIAL])).insertId;
+    r = await req('POST', `/api/assets/links/ticket/${tConf}`, { sid: sessions.S1, body: { assetId: pcA } });
+    check('parc: ticket invisible du lecteur → 404', r.status === 404, r.status);
+    await db('UPDATE guild_config SET changes_enabled = 1, problems_enabled = 1 WHERE id = 1');
+    const ch = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'Remplacement du switch v7' } })).body.id;
+    r = await req('POST', `/api/assets/links/change/${ch}`, { sid: sessions.S1, body: { assetId: sw } });
+    const imp = await req('GET', `/api/assets/impact/${ch}`, { sid: sessions.S1 });
+    const lv = Object.fromEntries((imp.body.assets || []).map(a => [a.id, a.depth]));
+    check('parc: impact d un changement (élément touché, ceux qui en dépendent, leurs tickets ouverts)', r.status === 200 && lv[sw] === 0 && lv[srv] === 1 && lv[pcA] === 2 && lv[pcB] === undefined && imp.body.tickets.some(t => t.id === tk), JSON.stringify(imp.body));
+    const pb = (await req('POST', '/api/problems', { sid: sessions.F, body: { title: 'Coupures du switch v7' } })).body.id;
+    r = await req('POST', `/api/assets/links/problem/${pb}`, { sid: sessions.S1, body: { assetId: sw } });
+    check('parc: élément lié à un problème', r.status === 200 && r.body.assets.some(a => a.id === sw), JSON.stringify(r.body));
+    r = await req('DELETE', `/api/assets/links/ticket/${tk}/${pcA}`, { sid: sessions.S1 });
+    check('parc: lien retiré', r.status === 200 && r.body.assets.length === 0, JSON.stringify(r.body));
+    // Member space: their own elements only
+    const [ci] = await db("SELECT contact_id FROM contact_identities WHERE value = '200000000000000081'");
+    let cid = ci?.contact_id;
+    if (!cid) { cid = (await db("INSERT INTO contacts (display_name) VALUES ('member81')")).insertId; await db("INSERT INTO contact_identities (value, contact_id, kind) VALUES ('200000000000000081', ?, 'discord')", [cid]); }
+    await req('PUT', `/api/assets/${pcB}`, { sid: sessions.S1, body: { ownerContactId: cid } });
+    r = await req('GET', `/api/member/guilds/${G}/assets`, { sid: sessions.MW });
+    check('parc: espace membre, ses propres éléments seulement', r.status === 200 && r.body.assets.length === 1 && r.body.assets[0].id === pcB, JSON.stringify(r.body));
+    // CSV
+    r = await req('POST', '/api/assets/import', { sid: sessions.S1, body: { csv: 'type;nom;statut;numero_de_serie;lieu;systeme\nPoste v7b;PC-COMPTA-12;en stock;SN-CSV-1;Bât. B;Linux\nInconnu;X;;;;\nPoste v7b;PC-RH;retiré;;;' } });
+    const [imported] = await db("SELECT status, fields FROM assets WHERE serial = 'SN-CSV-1'");
+    check('parc: import CSV (créé, mis à jour par type et nom, ligne fautive signalée)', r.status === 200 && r.body.created === 1 && r.body.updated === 1 && r.body.errors.length === 1 && imported?.status === 'in_stock' && /Linux/.test(JSON.stringify(imported.fields)), JSON.stringify([r.body, imported]));
+    r = await req('GET', '/api/assets/export.csv', { sid: sessions.S1 });
+    check('parc: export CSV', r.status === 200 && /PC-COMPTA-12/.test(typeof r.body === 'string' ? r.body : JSON.stringify(r.body)), String(r.body).slice(0, 120));
+    // API v3
+    const ka = await req('POST', '/api/api-keys', { sid: sessions.FK3, body: { name: 'inventaire', permissions: ['read_assets', 'write_assets'] } });
+    const kA = { Authorization: `Bearer ${ka.body.key}` };
+    r = await req('PUT', '/api/v3/assets', { headers: kA, body: { type: 'Poste v7b', name: 'PC-AGENT-1', serial: 'SN-AGENT-1', fields: { systeme: 'Windows 11' } } });
+    const r2 = await req('PUT', '/api/v3/assets', { headers: kA, body: { type: 'Poste v7b', name: 'PC-AGENT-1 renommé', serial: 'SN-AGENT-1', status: 'maintenance' } });
+    check('parc: API v3, inventaire par numéro de série (création puis mise à jour)', ka.body.permissions?.includes('write_assets') && r.status === 200 && r.body.created === true && r2.body.created === false && r2.body.asset.name === 'PC-AGENT-1 renommé' && r2.body.asset.status === 'maintenance', JSON.stringify([r.body, r2.body]));
+    r = await req('GET', '/api/v3/assets', { headers: kA, query: { serial: 'SN-AGENT-1' } });
+    const kt = await req('POST', '/api/api-keys', { sid: sessions.FK3, body: { name: 'tickets seuls', permissions: ['read_tickets'] } });
+    const rk = await req('GET', '/api/v3/assets', { headers: { Authorization: `Bearer ${kt.body.key}` } });
+    check('parc: API v3, lecture ; une clé sans read_assets refusée', r.status === 200 && r.body.total === 1 && rk.status === 403, `${r.status} ${rk.status}`);
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'al7-%'");
   }
 
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very

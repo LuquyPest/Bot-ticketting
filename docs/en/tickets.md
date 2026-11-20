@@ -226,6 +226,12 @@ It follows a flow: **draft** → **waiting for approval** → **approved** (all 
 
 The list is searched by name, serial number or location, and filtered by type, status and organisation (sub-organisations included). Deleting an organisation or a contact card leaves its elements, without an owner.
 
+- **Linked to tickets, problems and changes**: **Inventory elements** on their view (**Reply** permission); an element's view shows what concerns it. Each link is in the ticket's log.
+- **The requester picks** one of their elements (those of their contact card) when opening a ticket on the [member space](./member-space) (« About »).
+- **Impact of a change**: on its view, the elements touched, those that depend on them (following *depends on*, *installed on*, *part of* backwards, six levels at most) and their open tickets.
+- **CSV import and export**: columns `type ; nom ; statut ; numero_de_serie ; lieu ; organisation ; contact` (e-mail address), the type's fields by their name, `notes`. An element with the same serial number, else the same type and name, is updated; each faulty line is reported.
+- **Automatic inventory**: no agent installed on the computers; an inventory tool feeds the inventory through the [API v3](./integrations#public-api) (`PUT /assets`, by serial number).
+
 ## Satisfaction survey
 
 When a ticket is closed, the requester gets the **satisfaction survey** (**Settings → Tickets → Satisfaction survey**):

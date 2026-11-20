@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { GitPullRequestArrow, Loader2, Plus, Check, Circle, X } from 'lucide-react';
+import AssetLinksPanel, { ChangeImpact } from '../components/AssetLinksPanel';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -57,6 +58,8 @@ function Detail({ id, staff, onChanged }) {
       {text('rollbackPlan', 'Plan de retour arrière')}
       {text('risks', 'Risques')}
       {text('impact', 'Impact (services, utilisateurs touchés)')}
+      <AssetLinksPanel type="change" targetId={c.id} panelCard="space-y-1" />
+      <ChangeImpact key={`impact-${c.id}`} changeId={c.id} />
       <section className="space-y-1">
         <p className="text-[11px] font-semibold text-ink-3">Validations</p>
         {c.approvals.map(a => (

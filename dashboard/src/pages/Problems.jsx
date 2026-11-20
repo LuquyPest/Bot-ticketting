@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Bug, Loader2, Plus, Check, Circle } from 'lucide-react';
+import AssetLinksPanel from '../components/AssetLinksPanel';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../App';
@@ -54,6 +55,7 @@ function Detail({ id, staff, onChanged }) {
         <div className="flex gap-1.5"><input value={ticketId} onChange={e => setTicketId(e.target.value)} inputMode="numeric" placeholder="N° de ticket" aria-label="Relier un ticket" className={`${INPUT} w-28!`} />
           <button type="button" disabled={!ticketId} onClick={() => act(api.post(`/problems/${id}/tickets`, { ticketId: Number(ticketId) }), 'Ticket relié').then(() => setTicketId(''))} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">Relier</button></div>
       </section>
+      <AssetLinksPanel type="problem" targetId={p.id} panelCard="space-y-1" />
       {p.status !== 'resolved' && p.status !== 'closed' && (
         <section className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3 space-y-2">
           <p className="text-xs font-semibold text-emerald-300">Résoudre le problème</p>

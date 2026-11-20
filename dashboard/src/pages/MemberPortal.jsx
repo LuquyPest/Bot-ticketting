@@ -593,6 +593,8 @@ function NewTicket({ me }) {
   const [answers, setAnswers] = useState([]);
   const [content, setContent] = useState('');
   const [confidential, setConfidential] = useState(false);
+  const [myAssets, setMyAssets] = useState([]);
+  const [assetId, setAssetId] = useState('');
   const [newFiles, setNewFiles] = useState([]);
   const [uploadRules, setUploadRules] = useState(null);
   const [faq, setFaq] = useState([]);
@@ -606,6 +608,7 @@ function NewTicket({ me }) {
     api.get(`/member/guilds/${guildId}/faq`).then(r => setFaq(r.data)).catch(() => setFaq([]));
     setService(null); setCatalogAnswers({});
     api.get(`/member/guilds/${guildId}/catalog`).then(r => setServices(r.data.services || [])).catch(() => setServices([]));
+    setAssetId(''); api.get(`/member/guilds/${guildId}/assets`).then(r => setMyAssets(Array.isArray(r.data?.assets) ? r.data.assets : [])).catch(() => setMyAssets([]));
   }, [guildId]);
   useEffect(() => {
     if (!guildId || subjects === null || (subjects.length && !subject)) { setForm({ fields: [], questions: [] }); return; }
@@ -632,8 +635,8 @@ function NewTicket({ me }) {
     setBusy(true); setError('');
     try {
       const body = service && service !== 'other'
-        ? { serviceId: service.id, catalog: Object.fromEntries(Object.entries(catalogAnswers).filter(([k]) => { const f = service.fields.find(x => x.key === k); return f && shownField(f, catalogAnswers, service.fields); })), content: content.trim(), confidential }
-        : { subject, fields, answers, content: content.trim(), confidential };
+        ? { serviceId: service.id, catalog: Object.fromEntries(Object.entries(catalogAnswers).filter(([k]) => { const f = service.fields.find(x => x.key === k); return f && shownField(f, catalogAnswers, service.fields); })), content: content.trim(), confidential, assetId: assetId || undefined }
+        : { subject, fields, answers, content: content.trim(), confidential, assetId: assetId || undefined };
       const { data } = await api.post(`/member/guilds/${guildId}/tickets`, body);
       // The files follow the opening, as a second message
       if (newFiles.length) await sendFiles(data.guildId, data.ticketId, '', newFiles).catch(() => null);
@@ -680,6 +683,15 @@ function NewTicket({ me }) {
           <input type={f.type === 'number' ? 'number' : 'text'} value={fields[f.id] || ''} onChange={e => setFields(v => ({ ...v, [f.id]: e.target.value }))} maxLength={200} className={INPUT} />
         </label>
       ))}
+      {myAssets.length > 0 && (
+        <label className="block">
+          <span className="text-sm text-ink-2 font-medium block mb-1">{STR.assetLabel}</span>
+          <select value={assetId} onChange={e => setAssetId(e.target.value)} className={INPUT}>
+            <option value="">{STR.assetNone}</option>
+            {myAssets.map(a => <option key={a.id} value={a.id}>{`${a.typeIcon ? `${a.typeIcon} ` : ''}${a.name} · ${a.typeName}`}</option>)}
+          </select>
+        </label>
+      )}
       <label className="block">
         <span className="text-sm text-ink-2 font-medium block mb-1">{STR.message}</span>
         <textarea value={content} onChange={e => setContent(e.target.value)} rows={5} maxLength={2000} placeholder={STR.messagePh} className={INPUT} />

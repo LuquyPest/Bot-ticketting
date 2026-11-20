@@ -17,6 +17,7 @@ Activable par espace (**Paramètres → Intégrations → API publique**), avec 
 | `POST` | `/api/v3/tickets/:id/notes` — note interne | `reply_tickets` |
 | `PATCH` | `/api/v3/tickets/:id` — `priority`, `stage`, `team_id`, `assignees_add` / `_remove`, `tags_add` / `_remove`, `fields`, `cc_add` / `_remove` | `update_tickets` |
 | `POST` / `DELETE` | `/api/v3/tickets/:id/links` (`ticket_id`, `relation` : `related`, `duplicate_of`, `has_duplicate`, `blocks`, `blocked_by`, `child`, `parent`) et `/api/v3/tickets/:id/links/:other` — lier, délier ; chaque ticket renvoie ses `links` | `update_tickets` |
+| `GET` / `PUT` | `/api/v3/assets` (filtres `type`, `status`, `serial`, `q` ; `PUT` crée ou met à jour l'élément de même `serial`) et `/api/v3/assets/:id` — le [parc](./tickets#le-parc), s'il est activé | `read_assets` / `write_assets` |
 
 Une clé agit **à son nom** (« API · nom de la clé ») : chaque action est au journal, source *API*, et ne compte jamais comme un membre du staff dans les statistiques. Une modification est **vérifiée en entier avant d'écrire** : une erreur ne change rien. L'en-tête `Idempotency-Key` sur `POST /tickets` renvoie le même ticket si la requête est rejouée (24 h), pratique pour un outil qui réessaie. Écritures : 120 par minute et par clé. Les tickets confidentiels n'existent pas pour une clé.
 
