@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { GitBranch } from 'lucide-react';
 import api from '../api';
+import TestButton from './TestButton';
 import toast from 'react-hot-toast';
 
 // Paramètres → Intégrations → Jira, GitHub, GitLab (v7, utils/devIntegrations.js)
@@ -38,7 +39,10 @@ function Provider({ k, s, onSaved }) {
             <button type="button" onClick={() => save({ newSecret: true })} className="ml-2 underline hover:text-ink-1">Nouveau secret</button></p>
         )}
       </>}
-      <button type="button" onClick={() => save()} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white">Enregistrer</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => save()} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white">Enregistrer</button>
+        {s.hasToken && <TestButton url={`/dev-integrations/${k}/test`} />}
+      </div>
     </div>
   );
 }

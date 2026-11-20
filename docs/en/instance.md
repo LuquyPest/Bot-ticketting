@@ -33,7 +33,7 @@ In the Discord portal, *Bot* tab, untick **Public Bot**: otherwise anyone can ad
 | **Overview** | Spaces, open tickets, tickets per day over 30 days, staff, errors of the last 24 hours, table per space |
 | **Spaces** | Create, link to Discord or unlink, suspend, reactivate, put in maintenance, delete (its database is erased, the bot leaves the linked Discord server); name or remove founders |
 | **Sign-in** | The [ways to sign in](#ways-to-sign-in) to the dashboard: Discord, Google, Microsoft, OpenID Connect, LDAP / AD directory |
-| **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database, **Discord servers** (diagnostic of each, below); demonstration space, [Prometheus metrics](#monitoring-prometheus) |
+| **Health** | Running version and [update](./updates), state of the [backups](./backups#monitoring-and-alerts), Discord connection, database, Redis, scheduled jobs, memory, schema version of each database, **Discord servers** (diagnostic of each, below); demonstration space (fictitious tickets, teams with levels, skills, organisations and contracts, inventory, changes, release, advisory board and status page; nothing leaves it), [Prometheus metrics](#monitoring-prometheus) |
 | **Errors** | Central log of the errors of the bot, the dashboard and browsers, with filters; **alert** by DM (to the owner by default) or webhook beyond a threshold, and when the bot is disconnected from Discord |
 | **Log** | Every change made from the section, with its author and the space concerned |
 | **Blocks** | IP addresses blocked by the sign-in or API limits, with unblocking |
@@ -62,6 +62,7 @@ Each provider shows its **redirect address**, to declare as is on its side (`htt
 - The **response and the assertion must be signed** by this certificate; the recipient, the audience, the request it answers (kept 10 minutes, consumed once) and the date (3 minutes of skew at most) are checked; a replayed response is refused.
 - The person is recognised by their identifier (NameID), else attached to the account with the same **verified address**; nobody gets an account by signing in this way. The account's two-factor authentication applies.
 - The instance must be served over **https**. The « Continue with … » button shows on the sign-in page.
+- **Check the settings** reads the certificate (and its end date) and reaches the provider's address; **Test sign-in** opens the provider in a new tab and shows what it sends back (identifier, address, groups, Datick account found), without opening a session.
 
 ### LDAP / Active Directory directory
 

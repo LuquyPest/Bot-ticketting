@@ -67,6 +67,8 @@ Dans **Analytiques → Rapports**, la colonne **Escaladés** compte, par équipe
 
 ### Compétences et langues
 
+![Compétences de l'espace et du staff](/images/competences.png)
+
 **Équipe → Compétences** : les fondateurs créent les compétences de l'espace (« Réseau », « Comptabilité »…) et disent qui a lesquelles ; chacun indique les **langues** dans lesquelles il répond. Un ticket **demande** des compétences : celles de son **sujet** (réglées plus bas sur la même page ; une catégorie couvre ses sous-catégories), celles qu'une [règle](./automatismes#les-regles-automatiques) ajoute (action **Compétence demandée**, à placer avant l'action **Équipe**) et celles ajoutées sur la fiche (permission **Répondre**).
 
 Une équipe qui attribue toute seule choisit d'abord parmi les membres qui ont **toutes** les compétences demandées, puis parmi eux ceux qui **parlent la langue du demandeur** (celle de ses messages, quand le bot répond dans la langue de chacun). Si personne ne convient, toute l'équipe reste possible, comme avant. Les compétences et les sujets font partie de l'[export de configuration](./integrations#sauvegarde-de-la-configuration) ; qui a quelle compétence reste propre à l'espace.
@@ -93,6 +95,8 @@ Menu **Tableaux** : chacun compose ses **tableaux de bord** de **widgets** — u
 Un tableau est **personnel**, **partagé avec une équipe** dont on fait partie, ou (fondateurs) **avec tout le staff** ; seul son auteur le modifie. Les chiffres sont toujours calculés pour **qui regarde**, à travers ce qu'il a le droit de voir : un même tableau partagé ne montre pas un ticket confidentiel à qui ne le voit pas.
 
 ## Les rapports
+
+![Les rapports : volume, délais, satisfaction par équipe](/images/rapports.png)
 
 **Analytiques → Rapports** regroupe les tickets ouverts sur la période (7, 30, 90 ou 365 jours, ou une **période libre** du … au …) :
 

@@ -16,6 +16,8 @@ const BLOCKED = [
   ['*', '/api/auth/select-guild'], ['*', '/api/tickets/open'], ['*', '/api/config/public-stats/publish'], ['*', '/api/bot-import'], ['*', '/api/email'],
   // v4: an e-mail to any address (invitations), a public page on this domain (knowledge base), a public form (widget)
   ['*', '/api/invitations'], ['*', '/api/faq/public'], ['*', '/api/widget-settings'],
+  // v5.2 and v7: Slack/Teams, CRM, trackers, extensions (manifest and webhooks), monitoring addresses, backups (v8)
+  ['*', '/api/chat'], ['*', '/api/crm'], ['*', '/api/dev-integrations'], ['*', '/api/extensions'], ['*', '/api/monitoring-sources'], ['*', '/api/space-backup'],
 ];
 // Adding a participant or contacting a member takes any Discord ID: never from the demo (see
 // sendToMember); the voice channel would be created on Discord
@@ -49,7 +51,8 @@ async function seedDemo() {
     for (const t of ['ticket_notes', 'ticket_assignees', 'ticket_participants', 'ticket_ratings', 'ticket_tag_assignments', 'ticket_tags', 'tickets',
       'dashboard_users', 'grades', 'grade_permissions', 'user_grades', 'reply_templates', 'faq_entries', 'ticket_fields', 'ticket_field_values',
       'procedures', 'ticket_procedure_checks', 'ticket_time', 'member_notes', 'member_profiles', 'contact_identities', 'contacts', 'incidents', 'incident_tickets', 'audit_log',
-      'subject_rules', 'ticket_rules', 'ticket_links', 'ticket_reminders', 'scheduled_messages', 'config_history', 'admin_stats', 'blacklist', 'transcript_snapshots']) {
+      'subject_rules', 'ticket_rules', 'ticket_links', 'ticket_reminders', 'scheduled_messages', 'config_history', 'admin_stats', 'blacklist', 'transcript_snapshots',
+      ...require('./demoExtras').TABLES]) {
       await db(`DELETE FROM ${t}`).catch(() => null); // some tables may not exist on an older schema
     }
   } finally {
@@ -136,6 +139,8 @@ async function seedDemo() {
   const vip = tickets[0];
   await db('INSERT INTO member_profiles (member_id, labels) VALUES (?, ?)', [vip.memberId, JSON.stringify(['VIP'])]).catch(() => null);
   await db('INSERT INTO member_notes (member_id, author_id, author_tag, content, pinned) VALUES (?, ?, ?, ?, 1)', [vip.memberId, '999999999999999901', 'Léa', 'Client fidèle depuis 2 ans, déjà remboursé une fois en mars.']).catch(() => null);
+  // v7: teams and levels, skills, organisations and contracts, inventory, changes, release, CAB, status page
+  await require('./demoExtras').seedExtras(db, { staff, tickets, founderId: DEMO_USER_ID });
   return { tickets: tickets.length };
 }
 

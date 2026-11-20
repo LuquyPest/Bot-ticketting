@@ -38,6 +38,8 @@ A sub-category **inherits** what is set on its category: subject rules, custom f
 
 ## The ticket view
 
+![The ticket view: conversation, reply, information on the right](/images/ticket.png)
+
 | | |
 |---|---|
 | **Real time** | New messages without reloading; colleagues looking at the ticket or typing a reply shown live; confirmation if someone replied while you were typing |
@@ -179,6 +181,8 @@ The **time spent** goes to a task: the stopwatch of a task, or time added by han
 
 ### Planning
 
+![The week's planning: tasks, deadlines and absences](/images/planning.png)
+
 **Planning** menu: the week of a person or a team: the **planned tasks**, the **resolution deadline** of assigned tickets (in red), the **absences**. You see your own planning and your teams' (a founder sees everyone), always through what you are allowed to see. **Dragging a task** onto another day reschedules it, at the same time.
 
 **In my calendar (iCal)** gives a secret link to add to Google Calendar, Outlook or Calendar: your planned tasks, your tickets' deadlines and your absences (30 days back, 90 ahead). The link is kept hashed; creating a new one, or removing it, cuts the old one.
@@ -209,11 +213,15 @@ Tickets are linked to it from the problem or from their view (**Reply** permissi
 
 ## Changes
 
+![A change: plans, risks and approvals](/images/changements.png)
+
 **Changes** menu (off by default; a founder turns it on): a planned modification (an update, a migration). It has a description, a **deployment plan**, a **rollback plan**, **risks** and a risk level, the impact, a **window** (it shows in the [planning](#planning) of whoever leads it), tasks, and the tickets and problems it deals with.
 
 It follows a flow: **draft** → **waiting for approval** → **approved** (all approvals) or **refused** (at the first refusal, with its reason) → **in progress** → **done** or **failed**; **cancelled** at any time. **Approvals** are given by the chosen staff members, each for themself, in the dashboard; it only starts once approved, and its plans and risks are frozen once it is (going back to draft resets the approvals). Everything is in the journal.
 
 ### Change advisory board
+
+![A board meeting: agenda, votes and decision](/images/comite.png)
 
 **Change advisory board** menu (with the changes): the board (CAB) examines the changes in meetings.
 
@@ -226,6 +234,8 @@ A change's view shows the board's decisions and the count of opinions. A meeting
 
 ### Releases
 
+![A release: changes, time slot and steps](/images/mises-en-production.png)
+
 **Releases** menu (with the changes, **Reply** permission to write): a release groups **changes** and takes them to production together, stage by stage: **preparation → test → deployment → verification → done**.
 
 - Each stage has its **checklist** (« backup checked », « user acceptance »): the next stage only comes once the stage's points are ticked (who and when are noted).
@@ -234,6 +244,8 @@ A change's view shows the board's decisions and the count of opinions. A meeting
 - A change is in one ongoing release at a time; its view shows which. Each stage is in the log.
 
 ## Inventory
+
+![An inventory element: fields, relations and history](/images/parc.png)
 
 **Inventory** menu: the space's inventory (CMDB) — computers, servers, software, licences, services… Off until a founder turns it on.
 
@@ -264,6 +276,8 @@ When a ticket is closed, the requester gets the **satisfaction survey** (**Setti
 The link works once and expires after 30 days; the page only shows the ticket's subject and the questions. **Analytics → Reports** gives the **response rate** and the answers to the questions over 30 days. The **NPS** (« would you recommend…? », one question per survey) gives the share of **promoters** (9 or 10), of **detractors** (0 to 6) and the **score** (promoters minus detractors, from −100 to 100); the **CES** (« it was easy to… », from 1 to 7) gives the average effort. Their standard wording is offered when the type is picked.
 
 ## Organisations
+
+![Organisations: domains, team, account manager](/images/organisations.png)
 
 **Organisations** menu: the client companies, departments or sites of your contacts (writing: founders and the **Settings** permission; the staff sees the names).
 

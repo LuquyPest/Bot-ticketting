@@ -9,6 +9,13 @@ const INPUT = 'w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg p
 export default function SamlSettings() {
   const [s, setS] = useState(null);
   const [cert, setCert] = useState('');
+  const [diag, setDiag] = useState(null);
+  const diagnose = () => api.get('/instance/saml/diagnose').then(r => setDiag(r.data)).catch(err => toast.error(err.response?.data?.error || 'Erreur'));
+  // Sign-in test (v8): opens the provider in a new tab; what it sends back is shown there, no session
+  const testLogin = async () => {
+    try { const { data } = await api.post('/instance/saml/test-login'); window.open(data.url, '_blank', 'noopener'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
   useEffect(() => { api.get('/instance/saml').then(r => setS(r.data)).catch(() => setS(false)); }, []);
   if (!s) return null;
   const set = (k, v) => setS(x => ({ ...x, [k]: v }));
@@ -41,7 +48,17 @@ export default function SamlSettings() {
           <p key={l} className="flex flex-wrap items-center gap-2"><span>{l} :</span><code className="px-1 rounded bg-overlay/6 text-ink-2" translate="no">{v}</code><button type="button" onClick={() => copy(v)} className="underline hover:text-ink-1">Copier</button></p>
         ))}
       </div>
-      <button type="button" onClick={save} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white">Enregistrer</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={save} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white">Enregistrer</button>
+        <button type="button" onClick={diagnose} className="px-3 py-2 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">Vérifier le réglage</button>
+        {s.enabled && s.idpCertSet && <button type="button" onClick={testLogin} className="px-3 py-2 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1">Connexion d'essai</button>}
+      </div>
+      {s.enabled && s.idpCertSet && <p className="text-[11px] text-ink-4">La connexion d'essai ouvre le fournisseur dans un nouvel onglet et affiche ce qu'il renvoie (identifiant, adresse, groupes, compte trouvé), sans ouvrir de session.</p>}
+      {diag && (
+        <ul role="status" className="text-[11px] space-y-0.5">
+          {diag.checks.map(c => <li key={c.label} className={c.ok ? (c.warn ? 'text-amber-400' : 'text-emerald-400') : 'text-red-400'}>{`${c.ok ? '✓' : '✗'} ${c.label} : ${c.detail}`}</li>)}
+        </ul>
+      )}
     </section>
   );
 }

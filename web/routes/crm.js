@@ -25,6 +25,19 @@ router.post('/sync', founders, async (req, res, next) => {
     res.json(r);
   } catch (err) { next(err); }
 });
+// POST …/test — « Tester » (v8): a real call with the saved keys, at most 10 every 10 minutes
+const testBurst = async (req, res, key) => {
+  if (await require('../../utils/rateLimit').allowBurst(`test:${key}:${req.guildId}`, 10, 10 * 60 * 1000)) return true;
+  res.status(429).json({ error: 'Dix essais au plus toutes les 10 minutes' });
+  return false;
+};
+router.post('/test', founders, async (req, res, next) => {
+  try {
+    if (!(await testBurst(req, res, 'crm'))) return;
+    const r = await crm.test(req.guildDb);
+    res.status(r.error ? 400 : 200).json(r);
+  } catch (err) { next(err); }
+});
 // GET /api/crm/tickets/:id — the CRM card of the requester of a ticket the reader sees
 router.get('/tickets/:id', async (req, res, next) => {
   try {

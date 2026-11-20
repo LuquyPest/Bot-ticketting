@@ -43,6 +43,20 @@ staff.delete('/tickets/:id/:linkId', async (req, res, next) => {
   try { const t = await ticketOf(req, res, true); if (!t) return; await D.unlink(req.guildDb, t.id, parseInt(req.params.linkId) || 0); res.json({ issues: await D.linksOf(req.guildDb, t.id), providers: await enabledList(req) }); } catch (err) { next(err); }
 });
 
+// POST …/test — « Tester » (v8): a real call with the saved keys, at most 10 every 10 minutes
+const testBurst = async (req, res, key) => {
+  if (await require('../../utils/rateLimit').allowBurst(`test:${key}:${req.guildId}`, 10, 10 * 60 * 1000)) return true;
+  res.status(429).json({ error: 'Dix essais au plus toutes les 10 minutes' });
+  return false;
+};
+staff.post('/:provider/test', founders, async (req, res, next) => {
+  try {
+    if (!(await testBurst(req, res, 'dev'))) return;
+    const r = await D.test(req.guildDb, req.params.provider);
+    res.status(r.error ? r.status || 400 : 200).json(r);
+  } catch (err) { next(err); }
+});
+
 const hooks = express.Router();
 hooks.post('/:guildId/:provider/:secret', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
   try {

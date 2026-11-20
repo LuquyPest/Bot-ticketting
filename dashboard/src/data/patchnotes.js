@@ -18,6 +18,18 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v8.0.0',
+    date: 'à venir',
+    title: 'Faire vivre, exploiter, aller plus loin',
+    titleEn: 'Bring it to life, run it, go further',
+    changes: [
+      { type: 'new',  text: 'Bouton « Tester » sur chaque service branché : HubSpot et Salesforce, Jira, GitHub et GitLab, sources de supervision (une alerte de test ouvre puis ferme un ticket), webhooks des extensions (ping signé), SMS (vers son propre numéro vérifié) ; il fait un vrai appel avec les clés enregistrées et dit en clair ce qui ne va pas', en: '« Test » button on every connected service: HubSpot and Salesforce, Jira, GitHub and GitLab, monitoring sources (a test alert opens then closes a ticket), extension webhooks (signed ping), SMS (to your own verified number); it makes a real call with the saved keys and says plainly what is wrong' },
+      { type: 'new',  text: 'SAML : « Vérifier le réglage » (certificat, date de fin, adresse du fournisseur) et « Connexion d\'essai », qui affiche ce que le fournisseur renvoie (identifiant, adresse, groupes, compte trouvé) sans ouvrir de session', en: 'SAML: « Check the settings » (certificate, end date, provider address) and « Test sign-in », which shows what the provider sends back (identifier, address, groups, account found) without opening a session' },
+      { type: 'impr', text: 'La démonstration montre aussi les fonctions de la v7 : équipes à niveaux, compétences, organisations et contrats, parc et relations, changements, mise en production, comité des changements et page de statut ; les réglages qui appellent l\'extérieur (CRM, Jira/GitHub/GitLab, extensions, supervision, Slack et Teams) y sont refusés', en: 'The demonstration also shows the v7 functions: teams with levels, skills, organisations and contracts, inventory and relations, changes, release, change advisory board and status page; the settings that call the outside (CRM, Jira/GitHub/GitLab, extensions, monitoring, Slack and Teams) are refused there' },
+      { type: 'impr', text: 'Captures d\'écran de la documentation refaites, et ajoutées aux guides du planning, des changements, du comité, des mises en production, du parc, des organisations, des compétences et des rapports', en: 'Documentation screenshots redone, and added to the guides of planning, changes, the board, releases, inventory, organisations, skills and reports' },
+    ],
+  },
+  {
     version: 'v7.0.0',
     date: '20 novembre 2026',
     title: 'Ce qui manquait encore à un centre de services',

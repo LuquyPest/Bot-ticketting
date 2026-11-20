@@ -86,9 +86,22 @@ router.put('/sms', async (req, res, next) => {
 });
 router.post('/sms/test', async (req, res, next) => {
   try {
-    const r = await require('../../utils/sms').send(null, String(req.body?.to || '').replace(/[\s.-]/g, ''), 'Datick : SMS de test, la passerelle fonctionne.');
+    // No number given: the owner's own verified number (v8)
+    let to = String(req.body?.to || '').replace(/[\s.-]/g, '');
+    if (!to) { const me = await require('../../utils/sms').phoneOf(req.session.user.id); if (!me?.verified) return res.status(400).json({ error: 'Donne un numéro, ou vérifie le tien dans ton profil' }); to = me.phone; }
+    const r = await require('../../utils/sms').send(null, to, 'Datick : SMS de test, la passerelle fonctionne.');
     if (r.error) return res.status(400).json({ error: r.error });
     res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// SAML « Tester » (v8): checks without signing in, and the address of a sign-in test (no session)
+router.get('/saml/diagnose', async (req, res, next) => { try { res.json(await require('../../utils/saml').diagnose()); } catch (err) { next(err); } });
+router.post('/saml/test-login', async (req, res, next) => {
+  try {
+    const url = await require('../../utils/saml').testLoginUrl();
+    if (!url) return res.status(400).json({ error: 'SAML n\'est pas activé' });
+    res.json({ url });
   } catch (err) { next(err); }
 });
 

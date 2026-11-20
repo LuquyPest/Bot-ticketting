@@ -95,6 +95,15 @@ const SHOTS = [
   ['member-portal', '/espace/123456789012345678/1', PRO],
   ['dashboard-light', '/', { ...PRO, theme: 'light' }],
   ['ticket-mobile', `/tickets/${T.id}`, { ...PRO, viewport: { width: 390, height: 844 }, mobile: true }],
+  // Guides of the v7 functions (v8): data of the smoke test's fixtures
+  ['planning', '/planning', PRO],
+  ['organisations', '/organisations', PRO],
+  ['competences', '/equipe?tab=competences', PRO],
+  ['parc', '/parc/1', PRO],
+  ['changements', '/changements/1', PRO],
+  ['mises-en-production', '/mises-en-production/1', PRO],
+  ['comite', '/comite/1', PRO],
+  ['rapports', '/analytics?tab=reports', PRO],
   // Installation guide
   ['install-login', '/login', { ...PRO, anonymous: true, viewport: { width: 1100, height: 720 }, crop: 'div.max-w-sm' }],
   ['install-servers', '/select-guild', { ...PRO, me: { guildId: null, role: null }, viewport: { width: 1100, height: 720 }, crop: 'div.max-w-lg' }],

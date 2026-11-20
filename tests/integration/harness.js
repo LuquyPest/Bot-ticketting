@@ -2570,6 +2570,23 @@ async function main() {
     const broken = [];
     for (const p of pages) { const x = await req('GET', p, { headers: dCookie }); if (x.status >= 500 || x.status === 401) broken.push(`${p} → ${x.status}`); }
     check('démo: toutes les pages répondent sans erreur', broken.length === 0, broken.join(', '));
+    // v8: the v7 functions are shown too, and the routes that reach the outside are refused
+    const dq = getTenantDb(DEMO);
+    const counts = {};
+    for (const t of ['teams', 'skills', 'organizations', 'contracts', 'assets', 'asset_relations', 'changes', 'releases', 'release_steps', 'cab_meetings', 'cab_votes', 'status_components']) counts[t] = Number((await dq(`SELECT COUNT(*) AS n FROM ${t}`))[0].n);
+    check('démo: parc, contrats, changements, mise en production, comité et page de statut remplis', Object.values(counts).every(n => n > 0), JSON.stringify(counts));
+    const v7Broken = [];
+    for (const p of ['/api/assets', '/api/assets/types', '/api/releases', '/api/cab', '/api/organizations', '/api/status-page', '/api/teams', '/api/skills', '/api/changes']) { const x = await req('GET', p, { headers: dCookie }); if (x.status !== 200) v7Broken.push(`${p} → ${x.status}`); }
+    check('démo: pages v7 lisibles', v7Broken.length === 0, v7Broken.join(', '));
+    const v7Blocked = [];
+    for (const [m, p, body] of [['PUT', '/api/crm/settings', { provider: 'hubspot', token: 'x' }], ['PUT', '/api/dev-integrations/github', { enabled: true, repo: 'a/b', token: 'x' }],
+      ['POST', '/api/extensions', { manifestUrl: 'https://evil.example/m.json' }], ['POST', '/api/monitoring-sources', { name: 'x', kind: 'generic' }], ['POST', '/api/chat', { kind: 'slack', url: 'https://hooks.slack.com/x' }]]) {
+      const x = await req(m, p, { headers: dCookie, body });
+      if (!(x.status === 403 && x.body.demo === true)) v7Blocked.push(`${m} ${p} → ${x.status}`);
+    }
+    check('démo: CRM, Jira/GitHub/GitLab, extensions, supervision et Slack/Teams refusés', v7Blocked.length === 0, v7Blocked.join(', '));
+    await dq('UPDATE guild_config SET status_page_enabled = 1 WHERE id = 1');
+    check('démo: page de statut jamais publique, même forcée en base', (await req('GET', `/statut/${DEMO}`)).status === 404, '');
     r = await req('POST', '/api/api-keys', { headers: dCookie, body: { name: 'x', permissions: ['read_stats'] } });
     check('démo: clés API bloquées', r.status === 403 && r.body.demo === true, JSON.stringify(r.body));
     r = await req('POST', '/api/newsletter/send', { headers: dCookie, body: { message: 'Message depuis la démo' } });
@@ -8512,6 +8529,10 @@ async function main() {
     r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: 'hubspot', token: 'pat-test-v7', portalId: '4242' } });
     const [raw] = await db('SELECT crm_config FROM guild_config WHERE id = 1');
     check('CRM: jeton HubSpot chiffré, jamais renvoyé', r.status === 200 && r.body.hasToken === true && r.body.token === undefined && !/pat-test-v7/.test(raw.crm_config) && !JSON.stringify(r.body).includes('pat-test'), JSON.stringify(r.body));
+    // v8: « Tester »
+    r = await req('POST', '/api/crm/test', { sid: sessions.S1 });
+    const rT = await req('POST', '/api/crm/test', { sid: sessions.F });
+    check('CRM: « Tester » réservé aux fondateurs, vrai appel avec le jeton enregistré', r.status === 403 && rT.status === 200 && rT.body.ok && /HubSpot répond/.test(rT.body.detail), JSON.stringify(rT.body));
     const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('mail:crm7', 'paul@crm-v7.example', 'crm7-1', 'open', 'CRM v7')")).insertId;
     const ct = (await db("INSERT INTO contacts (display_name, email) VALUES ('Paul', 'paul@crm-v7.example')")).insertId;
     await db("INSERT INTO contact_identities (value, contact_id, kind, label) VALUES ('mail:crm7', ?, 'email', 'paul@crm-v7.example') ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)", [ct]);
@@ -8544,6 +8565,8 @@ async function main() {
     check('CRM: synchronisation Salesforce (site web → domaine)', r.status === 200 && dom.some(d => d.domain === 'sf-v7.example'), JSON.stringify([r.body, dom]));
     r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: 'salesforce', instanceUrl: base, clientId: 'sf-client', clientSecret: 'faux' } });
     const rs = await app('./utils/crm').syncNow(db);
+    const rTf = await req('POST', '/api/crm/test', { sid: sessions.F });
+    check('CRM: « Tester » dit ce qui ne va pas (secret refusé)', rTf.status === 400 && /400/.test(rTf.body.error || ''), JSON.stringify(rTf.body));
     const rl = await req('POST', '/api/crm/sync', { sid: sessions.F });
     check('CRM: erreur du CRM remontée sans planter ; synchronisations limitées', /CRM/.test(rs.error || '') && rl.status === 429, JSON.stringify([rs, rl.status]));
     r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: null } });
@@ -9115,6 +9138,28 @@ async function main() {
     const unsigned = Buffer.from(Buffer.from(build({ inResponseTo: reqId4 }), 'base64').toString().replace(/<ds:Signature[\s\S]*?<\/ds:Signature>/g, '').replace(/<Signature[\s\S]*?<\/Signature>/g, '')).toString('base64');
     r = await post(unsigned);
     check('SAML: réponse sans signature → refusée', /error=saml_invalid/.test(r.location), r.location);
+    // v8: « Tester » — checks, then a sign-in test that only shows what came back
+    {
+      const d = await req('GET', '/api/instance/saml/diagnose', { sid: sessions.OWN });
+      const dNo = await req('GET', '/api/instance/saml/diagnose', { sid: sessions.F });
+      const cert = d.body.checks?.find(c => /Certificat/.test(c.label));
+      check('SAML: vérification du réglage (certificat lu, propriétaire seulement)', d.status === 200 && cert?.ok && /valable encore/.test(cert.detail) && dNo.status >= 400, JSON.stringify([d.body, dNo.status]));
+      const t = await req('POST', '/api/instance/saml/test-login', { sid: sessions.OWN });
+      const tu = new URL(t.body.url);
+      const relay = tu.searchParams.get('RelayState');
+      const tId = /ID="([^"]+)"/.exec(zlib.inflateRawSync(Buffer.from(tu.searchParams.get('SAMLRequest'), 'base64')).toString())[1];
+      const postRelay = (b64, rs) => new Promise((resolve, reject) => {
+        const body = `SAMLResponse=${encodeURIComponent(b64)}&RelayState=${encodeURIComponent(rs)}`;
+        const x = http.request({ host: '127.0.0.1', port: config.webServerPort, method: 'POST', path: '/api/auth/saml/acs', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), 'X-Forwarded-For': '10.99.0.2' } },
+          res2 => { let h = ''; res2.on('data', c => { h += c; }); res2.on('end', () => resolve({ status: res2.statusCode, html: h, location: res2.headers.location || '' })); });
+        x.on('error', reject); x.end(body);
+      });
+      const rt = await postRelay(build({ inResponseTo: tId, groups: ['compta'] }), relay);
+      check('SAML: connexion d essai → page des attributs reçus (groupe absent signalé), aucune session', /^test:[a-f0-9]{32}$/.test(relay || '') && rt.status === 200 && /Essai de connexion SAML/.test(rt.html) && /alice-saml@corp\.example/.test(rt.html) && /ABSENT/.test(rt.html) && !rt.location, rt.html.slice(0, 300));
+      const tId2 = /ID="([^"]+)"/.exec(zlib.inflateRawSync(Buffer.from(new URL(await S.loginUrl()).searchParams.get('SAMLRequest'), 'base64')).toString())[1];
+      const rt2 = await postRelay(build({ inResponseTo: tId2 }), relay);
+      check('SAML: le jeton d essai ne sert qu une fois (sinon connexion normale)', rt2.status === 302 && /select-guild/.test(rt2.location), `${rt2.status} ${rt2.location}`);
+    }
     await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { enabled: false } });
     C.webServerBaseUrl = base0;
     await globalQuery("DELETE FROM account_identities WHERE provider = 'saml'");
@@ -9155,6 +9200,9 @@ async function main() {
         seen.push({ m: q.method, u: q.url, h: q.headers, b });
         const json = (o, c = 200) => { s2.writeHead(c, { 'Content-Type': 'application/json' }); s2.end(JSON.stringify(o)); };
         if (q.url === '/repos/acme/app/issues' && q.method === 'POST') return json({ number: 41, html_url: 'https://github.com/acme/app/issues/41', title: JSON.parse(b).title, state: 'open' }, 201);
+        if (q.url === '/repos/acme/app') return json({ full_name: 'acme/app', has_issues: true, permissions: { push: true } });
+        if (q.url === '/rest/api/2/myself') return json({ displayName: 'Robot Support' });
+        if (q.url === '/rest/api/2/project/SUP') return json({ name: 'Support', issueTypes: [{ name: 'Task' }, { name: 'Bug' }] });
         if (q.url === '/repos/acme/app/issues/7') return json({ number: 7, html_url: 'https://github.com/acme/app/issues/7', title: 'Bug existant', state: 'open' });
         if (q.url.startsWith('/api/v4/projects/groupe%2Fprojet/issues/12')) return json({ iid: 12, web_url: 'https://gitlab.example/groupe/projet/-/issues/12', title: 'Lenteur', state: 'opened' });
         if (q.url.startsWith('/rest/api/2/issue/SUP-3')) return json({ key: 'SUP-3', fields: { summary: 'Facture', status: { name: 'En cours', statusCategory: { key: 'indeterminate' } } } });
@@ -9173,6 +9221,13 @@ async function main() {
     await req('PUT', '/api/dev-integrations/gitlab', { sid: sessions.F, body: { enabled: true, baseUrl: base, project: 'groupe/projet', token: 'glpat-v7' } });
     r = await req('PUT', '/api/dev-integrations/jira', { sid: sessions.F, body: { enabled: true, baseUrl: base, email: 'support@example.com', project: 'sup', token: 'jira-v7' } });
     check('dev: trois outils branchés, jetons jamais renvoyés, adresse de webhook avec secret', r.status === 200 && r.body.github.hasToken && r.body.jira.project === 'SUP' && !JSON.stringify(r.body).includes('ghp-test-v7') && /\/api\/dev-hooks\/\d+\/github\/[0-9a-f]{40}$/.test(ghHook || ''), JSON.stringify(r.body).slice(0, 300));
+    {
+      const g = await req('POST', '/api/dev-integrations/github/test', { sid: sessions.F });
+      const j = await req('POST', '/api/dev-integrations/jira/test', { sid: sessions.F });
+      const gl = await req('POST', '/api/dev-integrations/gitlab/test', { sid: sessions.F });
+      const no = await req('POST', '/api/dev-integrations/github/test', { sid: sessions.S1 });
+      check('dev: « Tester » GitHub et Jira (projet et type lus), GitLab introuvable expliqué, réservé aux fondateurs', g.body.ok && /acme\/app/.test(g.body.detail) && j.body.ok && /Robot Support/.test(j.body.detail) && gl.status === 400 && /introuvable/.test(gl.body.error) && no.status === 403, JSON.stringify([g.body, j.body, gl.body, no.status]));
+    }
     const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000069', 'dev', 'dev7-1', 'open', 'Export PDF cassé v7')")).insertId;
     r = await req('POST', `/api/dev-integrations/tickets/${tk}`, { sid: sessions.S1, body: { provider: 'github', title: 'Export PDF cassé', body: 'Vu sur le ticket' } });
     const post = seen.find(x => x.m === 'POST' && x.u === '/repos/acme/app/issues');
@@ -9253,6 +9308,12 @@ async function main() {
     const zOk = M.parse('zabbix', { event_id: 77, status: 'RESOLVED' });
     const gen = M.parse('generic', [{ key: 'cert', status: 'firing', title: 'Certificat expire', message: 'Dans 3 jours' }, { key: 'x' }]);
     check('supervision: formats Zabbix et générique', z[0].firing === true && z[0].key === 'zbx:77' && /srv-02/.test(z[0].text) && zOk[0].firing === false && gen.length === 1 && gen[0].firing, JSON.stringify([z, zOk, gen]));
+    {
+      const tt = await req('POST', `/api/monitoring-sources/${am.id}/test`, { sid: sessions.F });
+      const [tt1] = tt.body.ticketId ? await db('SELECT status FROM tickets WHERE id = ?', [tt.body.ticketId]) : [];
+      const left = await db("SELECT 1 FROM monitoring_alerts WHERE alert_key LIKE 'test:%'");
+      check('supervision: « Tester » ouvre un ticket puis le ferme, sans laisser d alerte', tt.status === 200 && tt.body.closed === true && tt1?.status === 'closed' && left.length === 0, JSON.stringify([tt.body, tt1]));
+    }
     r = await hook(am.url.replace(/[0-9a-f]{40}$/, '0'.repeat(40)), firing);
     await req('PUT', `/api/monitoring-sources/${kuma.id}`, { sid: sessions.F, body: { ...kuma, active: false } });
     const rOff = await hook(kuma.url, { heartbeat: { status: 0 }, monitor: { id: 9, name: 'Site public' } });
@@ -9295,6 +9356,13 @@ async function main() {
     const hit = sent.find(x => x.url === 'https://ext-v7.example.com/hooks');
     const okSig = hit && hit.headers['X-Datick-Signature-256'] === `sha256=${crypto3.createHmac('sha256', wsec).update(hit.body).digest('hex')}`;
     check('extensions: webhook signé, seulement pour les événements demandés', !!hit && okSig && sent.filter(x => x.url.includes('ext-v7')).length === 1 && JSON.parse(hit.body).ticketId === tE, JSON.stringify(sent.map(x => [x.url, JSON.parse(x.body).event])));
+    {
+      const rp = await req('POST', `/api/extensions/${ext.id}/test`, { sid: sessions.F });
+      const ping = sent.find(x => JSON.parse(x.body).event === 'ping');
+      WE.safePostJson = async () => ({ status: 500 });
+      const rp2 = await req('POST', `/api/extensions/${ext.id}/test`, { sid: sessions.F });
+      check('extensions: « Tester le webhook » envoie un ping signé et dit la réponse', rp.status === 200 && /200/.test(rp.body.detail) && ping?.headers['X-Datick-Signature-256'] === `sha256=${crypto3.createHmac('sha256', wsec).update(ping.body).digest('hex')}` && rp2.status === 400 && /500/.test(rp2.body.error), JSON.stringify([rp.body, rp2.body]));
+    }
     WE.safePostJson = realPost;
     r = await req('PATCH', `/api/extensions/${ext.id}`, { sid: sessions.F, body: { active: false } });
     const rOff = await req('GET', '/api/v3/tickets', { headers: K });

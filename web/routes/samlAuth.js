@@ -29,6 +29,8 @@ router.post('/saml/acs', express.urlencoded({ extended: false, limit: '512kb' })
   const { logLogin, trackSession, checkNewDeviceAlert } = helpers();
   try {
     if (!(await allowBurst(`samlacs:${req.ip}`, 30, 10 * 60 * 1000))) return fail('saml_invalid');
+    // Sign-in test of the owner (v8): show what came back, never open a session
+    if (await saml.consumeTest(req.body?.RelayState)) return res.type('html').send(await testPage(req.body || {}));
     const who = await saml.check(req.body || {});
     let account = await accounts.accountByIdentity(PROVIDER, who.subject);
     if (!account && who.email) {
@@ -67,5 +69,21 @@ router.post('/saml/acs', express.urlencoded({ extended: false, limit: '512kb' })
     fail(err.reason || 'saml_invalid');
   }
 });
+
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function testPage(body) {
+  let rows, verdict;
+  try {
+    const who = await saml.check(body, { test: true });
+    const account = (await accounts.accountByIdentity(PROVIDER, who.subject)) || (who.email ? await accounts.findByVerifiedEmail(who.email) : null);
+    rows = [['NameID', who.subject], ['Adresse e-mail', who.email || '— (attribut absent)'], ['Nom', who.name], ['Groupes', who.groups.join(', ') || '—'],
+      ['Groupe exigé', who.group ? `${who.group} : ${who.groupOk ? 'présent' : 'ABSENT'}` : 'aucun'], ['Compte Datick', account ? `trouvé (${account.display_name})` : 'aucun : la connexion serait refusée']];
+    verdict = who.groupOk && account ? 'La réponse est valide : cette personne pourrait se connecter.' : 'La réponse est valide, mais la connexion serait refusée.';
+  } catch (err) {
+    rows = [['Erreur', err.message]];
+    verdict = 'La réponse du fournisseur a été refusée.';
+  }
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Essai SAML</title></head><body><h1>Essai de connexion SAML</h1><p>${esc(verdict)}</p><table>${rows.map(([k, v]) => `<tr><th align="left">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table><p>Aucune session n'a été ouverte. <a href="/instance">Retour</a></p></body></html>`;
+}
 
 module.exports = router;

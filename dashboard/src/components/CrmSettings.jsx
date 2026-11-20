@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Contact, Loader2, RefreshCw } from 'lucide-react';
 import api from '../api';
+import TestButton from './TestButton';
 import toast from 'react-hot-toast';
 import { uiLocale } from '../i18n';
 
@@ -56,6 +57,7 @@ export default function CrmSettings() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={save} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white disabled:opacity-50">Enregistrer</button>
         {s.provider && <button type="button" onClick={sync} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs border border-overlay/8 text-ink-2 hover:text-ink-1 inline-flex items-center gap-1.5"><RefreshCw size={12} aria-hidden="true" />Synchroniser maintenant</button>}
+        {s.provider && <TestButton url="/crm/test" />}
         {s.lastSync?.at && <span className="text-[11px] text-ink-4">{`Dernière synchronisation : ${new Date(s.lastSync.at).toLocaleString(uiLocale())}`}</span>}
       </div>
     </div>

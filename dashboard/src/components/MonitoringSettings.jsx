@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Plus, Trash2 } from 'lucide-react';
 import api from '../api';
+import TestButton from './TestButton';
 import toast from 'react-hot-toast';
 
 // Paramètres → Intégrations → Supervision (v7, utils/monitoringAlerts.js)
@@ -31,6 +32,7 @@ export default function MonitoringSettings() {
             </div>
             <p className="flex flex-wrap items-center gap-2 text-ink-3 break-all"><code className="px-1 rounded bg-overlay/6" translate="no">{s.url}</code><button type="button" onClick={() => copy(s.url)} className="underline hover:text-ink-1">Copier</button>
               <button type="button" onClick={() => act(api.put(`/monitoring-sources/${s.id}`, { ...s, newSecret: true }), 'Nouvelle adresse')} className="underline hover:text-ink-1">Nouvelle adresse</button></p>
+            <TestButton url={`/monitoring-sources/${s.id}/test`} label="Envoyer une alerte de test" describe={d => `Ticket #${d.ticketId} ouvert${d.closed ? ' puis fermé à la fin de l\'alerte' : ', une note marque la fin de l\'alerte'}.`} />
           </li>
         ))}
       </ul>
