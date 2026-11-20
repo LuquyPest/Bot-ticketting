@@ -1811,6 +1811,37 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 99,
+    name: 'Alertes de supervision entrantes (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS monitoring_sources (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        name       VARCHAR(60) NOT NULL,
+        kind       VARCHAR(14) NOT NULL,
+        subject    VARCHAR(100) DEFAULT NULL,
+        team_id    INT DEFAULT NULL,
+        priority   VARCHAR(8) NOT NULL DEFAULT 'urgent',
+        auto_close TINYINT(1) NOT NULL DEFAULT 1,
+        active     TINYINT(1) NOT NULL DEFAULT 1,
+        secret     CHAR(40) NOT NULL,
+        last_at    DATETIME DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS monitoring_alerts (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        source_id    INT NOT NULL,
+        alert_key    VARCHAR(80) NOT NULL,
+        ticket_id    INT DEFAULT NULL,
+        state        VARCHAR(8) NOT NULL DEFAULT 'firing',
+        last_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_note_at DATETIME DEFAULT NULL,
+        UNIQUE KEY uq_mon_alert (source_id, alert_key),
+        CONSTRAINT fk_mon_alert_source FOREIGN KEY (source_id) REFERENCES monitoring_sources(id) ON DELETE CASCADE,
+        CONSTRAINT fk_mon_alert_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

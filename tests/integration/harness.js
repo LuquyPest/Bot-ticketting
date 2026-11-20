@@ -9215,6 +9215,51 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tk]);
   }
 
+  // ── Monitoring alerts coming in (utils/monitoringAlerts.js, v7) ──
+  {
+    r = await req('POST', '/api/monitoring-sources', { sid: sessions.S1, body: { name: 'x', kind: 'generic' } });
+    check('supervision: sources réservées aux fondateurs et à « Paramètres »', r.status === 403, r.status);
+    const tmS = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Astreinte v7', members: [U.S1] } })).body.find(t => t.name === 'Astreinte v7');
+    r = await req('POST', '/api/monitoring-sources', { sid: sessions.F, body: { name: 'Prometheus v7', kind: 'alertmanager', priority: 'urgent', teamId: tmS.id } });
+    const am = r.body.sources.find(x => x.name === 'Prometheus v7');
+    r = await req('POST', '/api/monitoring-sources', { sid: sessions.F, body: { name: 'Kuma v7', kind: 'uptimekuma', priority: 'normal', autoClose: false } });
+    const kuma = r.body.sources.find(x => x.name === 'Kuma v7');
+    check('supervision: sources créées, chacune son adresse secrète', /\/api\/monitoring\/\d+\/\d+\/[0-9a-f]{40}$/.test(am?.url || '') && am.url !== kuma.url, JSON.stringify(r.body.sources));
+    const hook = (url, body) => new Promise((resolve, reject) => {
+      const p = new URL(url).pathname, data = JSON.stringify(body);
+      const x = http.request({ host: '127.0.0.1', port: config.webServerPort, method: 'POST', path: p, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, res2 => { let d = ''; res2.on('data', c => { d += c; }); res2.on('end', () => { let b = d; try { b = JSON.parse(d); } catch { /* text */ } resolve({ status: res2.statusCode, body: b }); }); });
+      x.on('error', reject); x.end(data);
+    });
+    const firing = { alerts: [{ status: 'firing', fingerprint: 'fp-disk-v7', labels: { alertname: 'DiskFull', instance: 'srv-01', severity: 'critical' }, annotations: { summary: 'Disque plein sur srv-01 v7', description: 'Plus que 2 % libres' } }] };
+    r = await hook(am.url, firing);
+    const [t1] = await db("SELECT * FROM tickets WHERE owner_tag = 'Supervision · Prometheus v7' ORDER BY id DESC LIMIT 1");
+    check('supervision: une alerte ouvre un ticket (équipe, priorité de la source, venant de « Supervision »)', r.status === 200 && r.body.opened === 1 && t1 && t1.priority === 'urgent' && t1.team_id === tmS.id && /Disque plein/.test(t1.subject), JSON.stringify([r.body, t1 && { p: t1.priority, team: t1.team_id, s: t1.subject }]));
+    r = await hook(am.url, firing);
+    const n1 = (await db("SELECT COUNT(*) AS n FROM tickets WHERE owner_tag = 'Supervision · Prometheus v7'"))[0].n;
+    check('supervision: la même alerte ne rouvre pas un second ticket', r.body.opened === 0 && Number(n1) === 1, JSON.stringify([r.body, n1]));
+    r = await hook(am.url, { alerts: [{ ...firing.alerts[0], status: 'resolved' }] });
+    const [t1b] = await db('SELECT status FROM tickets WHERE id = ?', [t1.id]);
+    check('supervision: la fin de l alerte ferme le ticket, avec une note', r.body.resolved === 1 && t1b.status === 'closed' && (await db("SELECT 1 FROM ticket_notes WHERE ticket_id = ? AND content LIKE '%Alerte terminée%'", [t1.id])).length === 1, JSON.stringify([r.body, t1b]));
+    r = await hook(am.url, firing);
+    check('supervision: l alerte qui revient ouvre un nouveau ticket', r.body.opened === 1, JSON.stringify(r.body));
+    r = await hook(kuma.url, { heartbeat: { status: 0, msg: 'timeout' }, monitor: { id: 9, name: 'Site public', url: 'https://example.com' }, msg: 'Site public est hors ligne' });
+    const r2 = await hook(kuma.url, { heartbeat: { status: 1, msg: 'OK' }, monitor: { id: 9, name: 'Site public' } });
+    const [tk] = await db("SELECT status, priority FROM tickets WHERE owner_tag = 'Supervision · Kuma v7' ORDER BY id DESC LIMIT 1");
+    check('supervision: Uptime Kuma (hors ligne → ticket ; de retour → note, reste ouvert si demandé)', r.body.opened === 1 && r2.body.resolved === 1 && tk.status === 'open' && tk.priority === 'normal', JSON.stringify([r.body, r2.body, tk]));
+    const M = app('./utils/monitoringAlerts');
+    const z = M.parse('zabbix', { event_id: 77, status: 'PROBLEM', subject: 'CPU élevé', message: 'Charge 98 %', host: 'srv-02' });
+    const zOk = M.parse('zabbix', { event_id: 77, status: 'RESOLVED' });
+    const gen = M.parse('generic', [{ key: 'cert', status: 'firing', title: 'Certificat expire', message: 'Dans 3 jours' }, { key: 'x' }]);
+    check('supervision: formats Zabbix et générique', z[0].firing === true && z[0].key === 'zbx:77' && /srv-02/.test(z[0].text) && zOk[0].firing === false && gen.length === 1 && gen[0].firing, JSON.stringify([z, zOk, gen]));
+    r = await hook(am.url.replace(/[0-9a-f]{40}$/, '0'.repeat(40)), firing);
+    await req('PUT', `/api/monitoring-sources/${kuma.id}`, { sid: sessions.F, body: { ...kuma, active: false } });
+    const rOff = await hook(kuma.url, { heartbeat: { status: 0 }, monitor: { id: 9, name: 'Site public' } });
+    check('supervision: mauvaise adresse ou source coupée → 404', r.status === 404 && rOff.status === 404, `${r.status} ${rOff.status}`);
+    await db("UPDATE tickets SET status = 'closed' WHERE owner_tag LIKE 'Supervision · %'");
+    for (const s2 of [am, kuma]) await req('DELETE', `/api/monitoring-sources/${s2.id}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${tmS.id}`, { sid: sessions.F });
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

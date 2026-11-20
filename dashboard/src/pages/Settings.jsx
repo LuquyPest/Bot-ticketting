@@ -21,6 +21,7 @@ import NotificationsEditor from '../components/NotificationsEditor';
 import ChatIntegrations from '../components/ChatIntegrations';
 import CrmSettings from '../components/CrmSettings';
 import DevIntegrationsSettings from '../components/DevIntegrationsSettings';
+import MonitoringSettings from '../components/MonitoringSettings';
 import CatalogEditor from '../components/CatalogEditor';
 import RecurringEditor from '../components/RecurringEditor';
 import TaskTemplatesEditor from '../components/TaskTemplatesEditor';
@@ -981,6 +982,7 @@ export default function Settings() {
       </Section>
       {user?.role === 'fondateur' && <Section title="CRM : HubSpot ou Salesforce"><CrmSettings /></Section>}
       {user?.role === 'fondateur' && <Section title="Jira, GitHub et GitLab"><DevIntegrationsSettings /></Section>}
+      <Section title="Supervision : alertes entrantes"><MonitoringSettings /></Section>
       {/* Integrations */}
       <Section title="Intégrations">
         <Field label="Webhook URL" hint="Facultatif — notifications externes sur les événements tickets">
