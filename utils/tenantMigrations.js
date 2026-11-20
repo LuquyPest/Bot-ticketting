@@ -1512,6 +1512,11 @@ const MIGRATIONS = [
       `ALTER TABLE ticket_tasks ADD CONSTRAINT fk_tk_parent FOREIGN KEY IF NOT EXISTS (parent_id) REFERENCES ticket_tasks(id) ON DELETE CASCADE`,
     ],
   },
+  {
+    version: 85,
+    name: 'Doublons ouverts : « ce n\'est pas un doublon » (v7)',
+    statements: [`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS duplicate_dismissed_at DATETIME DEFAULT NULL`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

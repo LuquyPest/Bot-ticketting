@@ -49,7 +49,7 @@ const fr = {
   kbTitle: 'Base de connaissances', kbLink: 'Voir la base de connaissances publique', kbBack: 'Tous les articles', kbNotFound: 'Cette page d\'aide n\'existe pas ou n\'est pas publique.', kbArticleNotFound: 'Cet article n\'existe pas ou n\'est plus public.', kbContact: 'Ma question n\'y est pas : contacter le support', kbUpdated: 'Mis à jour le', kbGeneral: 'Général', kbCount: '{n} article(s)',
   solTitle: 'Solution proposée', solAccept: 'C\'est résolu', solThanks: 'Merci ! Le ticket est fermé.', solNotYet: 'Pas encore résolu ? Réponds simplement à l\'e-mail : le ticket reprend.', solGone: 'Ce lien a expiré ou a déjà servi.', resolvedHint: 'Si c\'est bon, confirme ; sinon dis ce qui ne va pas encore.', resolvedRefuse: 'Pas encore', resolvedRefusePh: 'Ce qui ne va pas encore…', resolvedSend: 'Envoyer', resolvedStatus: 'Résolu : en attente de ta confirmation',
   attach: 'Joindre des fichiers', files: 'Fichiers du ticket', fileHint: '{max} fichiers au plus, {mb} Mo chacun', filesSent: 'Fichiers envoyés',
-  stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.', privacy: 'Confidentialité', language: 'Langue',
+  alreadyOpen: 'Tu as déjà un ticket ouvert à ce sujet :', alreadyOpenHint: 'Tu peux y répondre plutôt que d\'en ouvrir un nouveau.', stillStuck: 'Toujours bloqué ?', maybe: 'Ces réponses peuvent t\'aider :', error2: 'Erreur, réessaie.', privacy: 'Confidentialité', language: 'Langue',
 };
 
 const en = {
@@ -77,7 +77,7 @@ const en = {
   kbTitle: 'Knowledge base', kbLink: 'See the public knowledge base', kbBack: 'All articles', kbNotFound: 'This help page does not exist or is not public.', kbArticleNotFound: 'This article does not exist or is no longer public.', kbContact: 'My question isn\'t here: contact support', kbUpdated: 'Updated on', kbGeneral: 'General', kbCount: '{n} article(s)',
   solTitle: 'Solution proposed', solAccept: 'It\'s solved', solThanks: 'Thanks! The ticket is closed.', solNotYet: 'Not solved yet? Just reply to the e-mail: the ticket goes on.', solGone: 'This link has expired or was already used.', resolvedHint: 'If it\'s fine, confirm; otherwise say what is still wrong.', resolvedRefuse: 'Not yet', resolvedRefusePh: 'What is still wrong…', resolvedSend: 'Send', resolvedStatus: 'Solved: waiting for your confirmation',
   attach: 'Attach files', files: 'Files of the ticket', fileHint: '{max} files at most, {mb} MB each', filesSent: 'Files sent',
-  stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.', privacy: 'Privacy', language: 'Language',
+  alreadyOpen: 'You already have an open ticket about this:', alreadyOpenHint: 'You can answer it instead of opening a new one.', stillStuck: 'Still stuck?', maybe: 'These answers may help:', error2: 'Error, please try again.', privacy: 'Privacy', language: 'Language',
 };
 
 const es = {
@@ -105,7 +105,7 @@ const es = {
   kbTitle: 'Base de conocimientos', kbLink: 'Ver la base de conocimientos pública', kbBack: 'Todos los artículos', kbNotFound: 'Esta página de ayuda no existe o no es pública.', kbArticleNotFound: 'Este artículo no existe o ya no es público.', kbContact: 'Mi pregunta no está: contactar con el soporte', kbUpdated: 'Actualizado el', kbGeneral: 'General', kbCount: '{n} artículo(s)',
   solTitle: 'Solución propuesta', solAccept: 'Está resuelto', solThanks: '¡Gracias! El ticket está cerrado.', solNotYet: '¿Aún no está resuelto? Responde al correo: el ticket continúa.', solGone: 'Este enlace ha caducado o ya se usó.', resolvedHint: 'Si está bien, confírmalo; si no, di lo que aún falla.', resolvedRefuse: 'Todavía no', resolvedRefusePh: 'Lo que aún falla…', resolvedSend: 'Enviar', resolvedStatus: 'Resuelto: esperando tu confirmación',
   attach: 'Adjuntar archivos', files: 'Archivos del ticket', fileHint: '{max} archivos como máximo, {mb} MB cada uno', filesSent: 'Archivos enviados',
-  stillStuck: '¿Sigues bloqueado?', maybe: 'Estas respuestas pueden ayudarte:', error2: 'Error, inténtalo de nuevo.', privacy: 'Privacidad', language: 'Idioma',
+  alreadyOpen: 'Ya tienes un ticket abierto sobre esto:', alreadyOpenHint: 'Puedes responder en él en lugar de abrir uno nuevo.', stillStuck: '¿Sigues bloqueado?', maybe: 'Estas respuestas pueden ayudarte:', error2: 'Error, inténtalo de nuevo.', privacy: 'Privacidad', language: 'Idioma',
 };
 
 const de = {
@@ -133,7 +133,7 @@ const de = {
   kbTitle: 'Wissensdatenbank', kbLink: 'Öffentliche Wissensdatenbank ansehen', kbBack: 'Alle Artikel', kbNotFound: 'Diese Hilfeseite existiert nicht oder ist nicht öffentlich.', kbArticleNotFound: 'Dieser Artikel existiert nicht oder ist nicht mehr öffentlich.', kbContact: 'Meine Frage ist nicht dabei: Support kontaktieren', kbUpdated: 'Aktualisiert am', kbGeneral: 'Allgemein', kbCount: '{n} Artikel',
   solTitle: 'Lösung vorgeschlagen', solAccept: 'Es ist gelöst', solThanks: 'Danke! Das Ticket ist geschlossen.', solNotYet: 'Noch nicht gelöst? Antworte einfach auf die E-Mail: das Ticket geht weiter.', solGone: 'Dieser Link ist abgelaufen oder wurde schon benutzt.', resolvedHint: 'Wenn es passt, bestätige; sonst schreib, was noch nicht passt.', resolvedRefuse: 'Noch nicht', resolvedRefusePh: 'Was noch nicht passt…', resolvedSend: 'Senden', resolvedStatus: 'Gelöst: wartet auf deine Bestätigung',
   attach: 'Dateien anhängen', files: 'Dateien des Tickets', fileHint: 'Höchstens {max} Dateien, je {mb} MB', filesSent: 'Dateien gesendet',
-  stillStuck: 'Immer noch nicht gelöst?', maybe: 'Diese Antworten könnten helfen:', error2: 'Fehler, versuche es erneut.', privacy: 'Datenschutz', language: 'Sprache',
+  alreadyOpen: 'Du hast bereits ein offenes Ticket zu diesem Thema:', alreadyOpenHint: 'Du kannst dort antworten, statt ein neues zu eröffnen.', stillStuck: 'Immer noch nicht gelöst?', maybe: 'Diese Antworten könnten helfen:', error2: 'Fehler, versuche es erneut.', privacy: 'Datenschutz', language: 'Sprache',
 };
 
 const it = {
@@ -161,7 +161,7 @@ const it = {
   kbTitle: 'Base di conoscenza', kbLink: 'Vedi la base di conoscenza pubblica', kbBack: 'Tutti gli articoli', kbNotFound: 'Questa pagina di aiuto non esiste o non è pubblica.', kbArticleNotFound: 'Questo articolo non esiste o non è più pubblico.', kbContact: 'La mia domanda non c\'è: contatta il supporto', kbUpdated: 'Aggiornato il', kbGeneral: 'Generale', kbCount: '{n} articolo/i',
   solTitle: 'Soluzione proposta', solAccept: 'È risolto', solThanks: 'Grazie! Il ticket è chiuso.', solNotYet: 'Non ancora risolto? Rispondi all\'e-mail: il ticket continua.', solGone: 'Questo link è scaduto o è già stato usato.', resolvedHint: 'Se va bene, conferma; altrimenti di\' cosa non va ancora.', resolvedRefuse: 'Non ancora', resolvedRefusePh: 'Cosa non va ancora…', resolvedSend: 'Invia', resolvedStatus: 'Risolto: in attesa della tua conferma',
   attach: 'Allega file', files: 'File del ticket', fileHint: 'Al massimo {max} file, {mb} MB ciascuno', filesSent: 'File inviati',
-  stillStuck: 'Ancora bloccato?', maybe: 'Queste risposte possono aiutarti:', error2: 'Errore, riprova.', privacy: 'Privacy', language: 'Lingua',
+  alreadyOpen: 'Hai già un ticket aperto su questo argomento:', alreadyOpenHint: 'Puoi rispondere lì invece di aprirne uno nuovo.', stillStuck: 'Ancora bloccato?', maybe: 'Queste risposte possono aiutarti:', error2: 'Errore, riprova.', privacy: 'Privacy', language: 'Lingua',
 };
 
 const pt = {
@@ -189,7 +189,7 @@ const pt = {
   kbTitle: 'Base de conhecimento', kbLink: 'Ver a base de conhecimento pública', kbBack: 'Todos os artigos', kbNotFound: 'Esta página de ajuda não existe ou não é pública.', kbArticleNotFound: 'Este artigo não existe ou não é mais público.', kbContact: 'Minha pergunta não está aqui: contatar o suporte', kbUpdated: 'Atualizado em', kbGeneral: 'Geral', kbCount: '{n} artigo(s)',
   solTitle: 'Solução proposta', solAccept: 'Está resolvido', solThanks: 'Obrigado! O ticket está fechado.', solNotYet: 'Ainda não resolvido? Responda ao e-mail: o ticket continua.', solGone: 'Este link expirou ou já foi usado.', resolvedHint: 'Se estiver tudo certo, confirme; senão diga o que ainda não está certo.', resolvedRefuse: 'Ainda não', resolvedRefusePh: 'O que ainda não está certo…', resolvedSend: 'Enviar', resolvedStatus: 'Resolvido: aguardando sua confirmação',
   attach: 'Anexar arquivos', files: 'Arquivos do ticket', fileHint: 'No máximo {max} arquivos, {mb} MB cada', filesSent: 'Arquivos enviados',
-  stillStuck: 'Ainda com dúvidas?', maybe: 'Estas respostas podem ajudar:', error2: 'Erro, tente de novo.', privacy: 'Privacidade', language: 'Idioma',
+  alreadyOpen: 'Você já tem um ticket aberto sobre isso:', alreadyOpenHint: 'Você pode responder nele em vez de abrir um novo.', stillStuck: 'Ainda com dúvidas?', maybe: 'Estas respostas podem ajudar:', error2: 'Erro, tente de novo.', privacy: 'Privacidade', language: 'Idioma',
 };
 
 export const MEMBER_STRINGS = { fr, en, es, de, it, pt };

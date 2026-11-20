@@ -559,6 +559,9 @@ function ServicePicker({ services, onPick }) {
   );
 }
 
+// The subject a service of the catalogue gives its tickets (what the duplicate check compares)
+const usingServiceName = service => (service && service !== 'other' ? service.name : '');
+
 function NewTicket({ me }) {
   const navigate = useNavigate();
   const { guilds, guildId, setGuildId } = useGuilds();
@@ -594,6 +597,18 @@ function NewTicket({ me }) {
   // FAQ entries sharing distinctive words with the request: maybe no ticket is needed
   const words = normTxt(`${subject} ${content}`).split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 4);
   const suggestions = words.length ? faq.filter(e => words.filter(w => normTxt(`${e.question} ${e.answer}`).includes(w)).length >= Math.min(2, words.length)).slice(0, 3) : [];
+
+  // Their own open tickets about the same thing (v7): answer there rather than open another one
+  const [already, setAlready] = useState([]);
+  const dupSubject = usingServiceName(service) || subject;
+  useEffect(() => {
+    if (!guildId || (!dupSubject && content.trim().length < 12)) { setAlready([]); return undefined; }
+    const timer = setTimeout(() => {
+      api.post(`/member/guilds/${guildId}/duplicate-check`, { subject: dupSubject, content: content.trim() })
+        .then(r => setAlready(Array.isArray(r.data?.tickets) ? r.data.tickets : [])).catch(() => setAlready([]));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [guildId, dupSubject, content]);
 
   const submit = async () => {
     setBusy(true); setError('');
@@ -655,6 +670,15 @@ function NewTicket({ me }) {
         <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 space-y-2">
           <p className="text-xs font-semibold text-primary-light">{STR.maybe}</p>
           <FaqList entries={suggestions} query="" />
+        </div>
+      )}
+      {already.length > 0 && (
+        <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/8 p-3 space-y-1.5">
+          <p className="text-xs font-semibold text-ink-1">{STR.alreadyOpen}</p>
+          <ul className="space-y-1">
+            {already.map(t => <li key={t.id}><Link to={`/espace/${guildId}/${t.id}`} className="text-sm text-primary-light underline">{`#${t.id} — ${t.subject || '…'}`}</Link></li>)}
+          </ul>
+          <p className="text-xs text-ink-3">{STR.alreadyOpenHint}</p>
         </div>
       )}
       {!usingService && form.questions.length > 0 && (

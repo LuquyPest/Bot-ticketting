@@ -214,6 +214,19 @@ async function requesterFor(req, guildId, ownerId = req.member.id) {
   return require('../../utils/emailTickets').userFor(ownerId, req.member.email, null, guildId);
 }
 
+// POST /api/member/guilds/:guildId/duplicate-check { subject, content } — their own open tickets
+// about the same thing, shown before they open another one (v7, utils/openDuplicates.js)
+router.post('/guilds/:guildId/duplicate-check', requireMember, async (req, res) => {
+  try {
+    const guild = await guildOf(req, res);
+    if (!guild) return;
+    if (!(await allowBurst(`webdup:${req.member.id}`, 30, 60 * 1000))) return res.json({ tickets: [] });
+    const subject = typeof req.body?.subject === 'string' ? req.body.subject : '';
+    const content = typeof req.body?.content === 'string' ? req.body.content : '';
+    res.json({ tickets: await require('../../utils/openDuplicates').forRequester(getTenantDb(guild.id), memberIds(req.member), { subject, content }) });
+  } catch (err) { console.error(err); res.status(500).json({ error: tr(req, 'portal.serverError') }); }
+});
+
 // POST /api/member/guilds/:guildId/tickets { subject, fields: { id: value }, answers: [], content }
 // Opens the ticket exactly like the DM flow (welcome DM, channel, rules, incidents…)
 router.post('/guilds/:guildId/tickets', requireMember, async (req, res) => {

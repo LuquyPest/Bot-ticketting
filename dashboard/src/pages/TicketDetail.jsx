@@ -685,6 +685,26 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     finally { setSendingFollowup(false); }
   };
 
+  // Possible open duplicates (v7)
+  const [duplicates, setDuplicates] = useState([]);
+  useEffect(() => { api.get(`/tickets/${id}/duplicates`).then(r => setDuplicates(Array.isArray(r.data?.duplicates) ? r.data.duplicates : [])).catch(() => setDuplicates([])); }, [id]);
+  const markDuplicate = async d => {
+    try {
+      const { data } = await api.post(`/tickets/${id}/links`, { ticketId: d.id, relation: 'duplicate_of' });
+      setTicket(t => ({ ...t, links: data.links, children: data.children }));
+      setDuplicates(list => list.filter(x => x.id !== d.id));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const mergeDuplicate = async d => {
+    if (!await confirmToast(`Fusionner ce ticket dans #${d.id}${d.subject ? ` « ${d.subject} »` : ''} ? L'historique, les participants, les attributions et les tags y seront déplacés, puis ce ticket sera fermé.`)) return;
+    try {
+      await api.post(`/tickets/${id}/merge`, { into: d.id });
+      toast.success(`Ticket fusionné dans #${d.id}`);
+      navigate(`/tickets/${d.id}`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+  const dismissDuplicates = () => api.post(`/tickets/${id}/duplicates/dismiss`).then(() => setDuplicates([])).catch(err => toast.error(err.response?.data?.error || 'Erreur'));
+
   // Merge: other open tickets of the same member
   const [mergeCandidates, setMergeCandidates] = useState(null);
   const [mergeTarget, setMergeTarget] = useState('');
@@ -1191,6 +1211,22 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
             <div role="status" className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/8 px-4 py-2.5 text-xs text-ink-1">
               <Lock size={13} className="text-red-400 mt-0.5 shrink-0" />
               <span><strong>Ticket confidentiel</strong> — fondateurs uniquement</span>
+            </div>
+          )}
+
+          {/* Possible open duplicates of the same requester (v7, utils/openDuplicates.js) */}
+          {duplicates.length > 0 && ticket.status === 'open' && (
+            <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-xs text-ink-1 space-y-1.5">
+              <p className="flex items-center gap-1.5 font-semibold"><Layers size={13} className="text-amber-400" aria-hidden="true" />Doublon possible : le demandeur a d'autres tickets ouverts sur le même sujet</p>
+              {duplicates.map(d => (
+                <div key={d.id} className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => navigate(`/tickets/${d.id}`)} className="text-primary-light hover:underline">{`#${d.id} — ${d.subject || 'Sans sujet'}`}</button>
+                  <span className="text-ink-4">{d.reason === 'subject' ? 'même sujet' : `mots communs : ${d.common.join(', ')}`}</span>
+                  {can('close_ticket') && can('reply_ticket') && d.canMerge && <button onClick={() => mergeDuplicate(d)} className="px-2 py-0.5 rounded-lg border border-overlay/10 hover:bg-overlay/5">{`Fusionner dans #${d.id}`}</button>}
+                  {can('reply_ticket') && <button onClick={() => markDuplicate(d)} className="px-2 py-0.5 rounded-lg border border-overlay/10 hover:bg-overlay/5">{`Marquer doublon de #${d.id}`}</button>}
+                </div>
+              ))}
+              {can('reply_ticket') && <button onClick={dismissDuplicates} className="text-ink-3 hover:text-ink-1 underline">Ce n'est pas un doublon</button>}
             </div>
           )}
 

@@ -25,6 +25,7 @@ export const VERSIONS = [
     changes: [
       { type: 'new',  text: 'Liens entre tickets avec une relation : lié à, doublon de, bloque, bloqué par, parent de, enfant de ; vus des deux côtés, au journal et dans l\'API v3 ; un parent montre combien de ses enfants sont fermés, et peut les fermer avec lui (réglage)', en: 'Links between tickets with a relation: related to, duplicate of, blocks, blocked by, parent of, child of; seen from both sides, in the log and in the API v3; a parent shows how many of its children are closed, and can close them with it (setting)' },
       { type: 'new',  text: 'Sous-tâches : une tâche du ticket peut avoir des sous-tâches, elle n\'est faite qu\'avec elles', en: 'Sub-tasks: a ticket task can have sub-tasks, it is done only with them' },
+      { type: 'new',  text: 'Doublons ouverts : la fiche signale les autres tickets ouverts du même demandeur sur le même sujet (fusionner, marquer doublon, ou « ce n\'est pas un doublon ») ; l\'espace membre montre ses tickets ouverts avant d\'en ouvrir un nouveau', en: 'Open duplicates: the ticket view points out the other open tickets of the same requester about the same thing (merge, mark as duplicate, or « not a duplicate »); the member space shows their open tickets before they open a new one' },
     ],
   },
   {
