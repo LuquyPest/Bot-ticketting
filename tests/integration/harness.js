@@ -8355,6 +8355,51 @@ async function main() {
     await db("UPDATE dashboard_users SET languages = NULL WHERE user_id IN (?)", [[U.S1, U.S2]]);
   }
 
+  // ── Support levels and escalation (utils/supportLevels.js, v7) ──
+  {
+    let r1 = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Niveau 1 v7', level: 1, assignMode: 'round_robin', members: [U.S1] } });
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Niveau 2 v7', level: 2, assignMode: 'round_robin', members: [U.S2] } });
+    const n1 = r.body.find(t => t.name === 'Niveau 1 v7'), n2 = r.body.find(t => t.name === 'Niveau 2 v7');
+    const bad = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Niveau faux v7', level: 12 } });
+    check('niveaux: niveau des équipes (1 à 9)', r1.status === 200 && n1?.level === 1 && n2?.level === 2 && bad.status === 400, JSON.stringify([n1, bad.body]));
+    const tm = app('./utils/ticketManager').createManager(db, null, G);
+    const mkT = async n => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('200000000000000093', 'u93', ?, 'open', ?)", [`lv7-${n}`, `Niveaux v7 ${n}`])).insertId;
+    const tk = await mkT(1);
+    await req('PATCH', `/api/tickets/${tk}/team`, { sid: sessions.F, body: { teamId: n1.id } });
+    r = await req('GET', `/api/tickets/${tk}`, { sid: sessions.F });
+    check('niveaux: le ticket connaît le niveau suivant', r.body.team_id === n1.id && r.body.nextLevel?.id === n2.id && r.body.nextLevel.level === 2, JSON.stringify([r.body.team_id, r.body.nextLevel]));
+    r = await req('POST', `/api/tickets/${tk}/escalate`, { sid: sessions.F, body: { reason: '  ' } });
+    check('niveaux: motif requis', r.status === 400, r.status);
+    r = await req('POST', `/api/tickets/${tk}/escalate`, { sid: sessions.F, body: { reason: 'Besoin d un accès administrateur' } });
+    const as = (await db('SELECT user_id FROM ticket_assignees WHERE ticket_id = ?', [tk])).map(x => x.user_id);
+    const [note] = await db("SELECT content FROM ticket_notes WHERE ticket_id = ? AND source = 'system' ORDER BY id DESC LIMIT 1", [tk]);
+    const [ev] = await db("SELECT details FROM audit_log WHERE action = 'level_escalate' AND ticket_id = ?", [tk]);
+    const d = typeof ev?.details === 'string' ? JSON.parse(ev.details) : ev?.details;
+    check('niveaux: escalade → équipe du niveau 2, attribuée à son membre, l ancienne personne lâche le ticket', r.status === 200 && r.body.team.id === n2.id && as.length === 1 && as[0] === U.S2, JSON.stringify([r.body, as]));
+    check('niveaux: note interne et journal avec le motif', /niveau 2/.test(note?.content || '') && /accès administrateur/.test(note.content) && d?.fromTeamId === n1.id && d.toLevel === 2, JSON.stringify([note, d]));
+    r = await req('POST', `/api/tickets/${tk}/escalate`, { sid: sessions.F, body: { reason: 'encore' } });
+    check('niveaux: pas de niveau au-dessus → refusé', r.status === 409, r.status);
+    const tNo = await mkT(2);
+    const rNo = await app('./utils/supportLevels').escalate({ db, tm, ticket: (await db('SELECT * FROM tickets WHERE id = ?', [tNo]))[0], reason: 'x', actor: { id: U.F, tag: 'F' } });
+    check('niveaux: un ticket sans équipe va au niveau le plus bas', rNo.ok && rNo.team.id === n1.id, JSON.stringify(rNo));
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('200000000000000093', 'u93', 'lv7-c', 'open', 'conf', ?)", [app('./utils/gradePermissions').CONFIDENTIAL])).insertId;
+    r = await req('POST', `/api/tickets/${tConf}/escalate`, { sid: sessions.F, body: { reason: 'x' } });
+    check('niveaux: un ticket confidentiel ne change pas d équipe', r.status === 400, r.status);
+    // Rule action, then the report by team
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Escalade v7', triggers: ['created'], conditions: [{ field: 'text', values: ['serveur en feu v7'] }], actions: [{ type: 'escalate', value: 1 }] } });
+    const tR = await mkT(3);
+    await req('PATCH', `/api/tickets/${tR}/team`, { sid: sessions.F, body: { teamId: n1.id } });
+    await app('./utils/ruleEngine').runRules({ db, client: null, guildId: G, ticketId: tR, trigger: 'created', message: 'le serveur en feu v7' });
+    const [after] = await db('SELECT team_id FROM tickets WHERE id = ?', [tR]);
+    check('niveaux: action de règle « Escalader au niveau supérieur »', r.status === 200 && after.team_id === n2.id, JSON.stringify([r.body, after]));
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'team', days: 1 } });
+    const row1 = r.body.rows?.find(x => x.key === String(n1.id));
+    check('niveaux: rapport par équipe → escaladés depuis le niveau 1', r.status === 200 && row1?.escalated === 2 && row1.escalatedPct > 0, JSON.stringify(row1));
+    await db("DELETE FROM ticket_rules WHERE name = 'Escalade v7'");
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'lv7-%'");
+    for (const t of [n1, n2]) await req('DELETE', `/api/teams/${t.id}`, { sid: sessions.F });
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

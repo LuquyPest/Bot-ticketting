@@ -71,7 +71,7 @@ async function exportConfig(db) {
     // v6: SLA objectives (escalation levels name people of this space: left out), service catalogue
     // and task templates, teams by name
     ...await exportServiceDesk(db),
-    teams: teams.map(t => ({ name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0, subjects: parseJsonField(t.subjects, []),
+    teams: teams.map(t => ({ name: t.name, color: t.color, level: t.level ? Number(t.level) : null, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0, subjects: parseJsonField(t.subjects, []),
       tags: parseJsonField(t.tag_ids, []).map(id => tagName.get(Number(id))).filter(Boolean) })),
   };
 }
@@ -301,7 +301,7 @@ async function importConfig(db, data, { includeDiscordIds = false, actor = null,
     const name = str(t.name, 60)?.trim(); if (!name) continue;
     const [row] = await db('SELECT id FROM teams WHERE name = ?', [name]);
     const members = row ? (await db('SELECT user_id FROM team_members WHERE team_id = ?', [row.id])).map(m => m.user_id) : [];
-    const input = { name, color: t.color, assignMode: t.assignMode, maxOpen: Number.isInteger(t.maxOpen) ? t.maxOpen : 0, members,
+    const input = { name, color: t.color, level: Number.isInteger(t.level) ? t.level : null, assignMode: t.assignMode, maxOpen: Number.isInteger(t.maxOpen) ? t.maxOpen : 0, members,
       subjects: (Array.isArray(t.subjects) ? t.subjects : []).map(String).filter(x => known.has(x)),
       tagIds: (Array.isArray(t.tags) ? t.tags : []).map(n => tagId.get(n)).filter(Boolean) };
     const r = row ? await teamsLib.updateTeam(db, row.id, input) : await teamsLib.createTeam(db, input);

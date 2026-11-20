@@ -1549,6 +1549,11 @@ const MIGRATIONS = [
       `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS languages VARCHAR(40) DEFAULT NULL`,
     ],
   },
+  {
+    version: 87,
+    name: 'Niveaux de support des équipes (v7)',
+    statements: [`ALTER TABLE teams ADD COLUMN IF NOT EXISTS level TINYINT DEFAULT NULL`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

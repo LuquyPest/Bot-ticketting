@@ -745,6 +745,17 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     finally { setMovingTicket(false); }
   };
 
+  const [escalating, setEscalating] = useState(null); // null: closed; string: the reason being written
+  const [keepOnEscalate, setKeepOnEscalate] = useState(false);
+  const escalate = async () => {
+    try {
+      const { data } = await api.post(`/tickets/${id}/escalate`, { reason: escalating, keepAssignees: keepOnEscalate });
+      setEscalating(null); setKeepOnEscalate(false);
+      loadTicket();
+      toast.success(`Escaladé au niveau ${data.team.level} : ${data.team.name}`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
   const changeTeam = async teamId => {
     try {
       const { data } = await api.patch(`/tickets/${id}/team`, { teamId: teamId ? Number(teamId) : null });
@@ -2203,8 +2214,24 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
               <select value={ticket.team_id || ''} onChange={e => changeTeam(e.target.value)} disabled={!can('claim_ticket')} aria-label="Équipe du ticket"
                 className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs disabled:opacity-60">
                 <option value="">Aucune équipe</option>
-                {teamList.map(t => <option key={t.id} value={t.id}>{t.name}{t.assignMode !== 'none' ? ' · attribution auto' : ''}</option>)}
+                {teamList.map(t => <option key={t.id} value={t.id}>{t.name}{t.level ? ` · niveau ${t.level}` : ''}{t.assignMode !== 'none' ? ' · attribution auto' : ''}</option>)}
               </select>
+              {/* Support levels (v7): to the team of the next level, with a reason */}
+              {ticket.nextLevel && can('claim_ticket') && (escalating === null ? (
+                <button onClick={() => setEscalating('')} className="mt-2 w-full py-1.5 px-3 text-xs rounded-lg font-medium border border-overlay/8 text-ink-2 hover:text-ink-1 hover:bg-overlay/4">
+                  {`Escalader au niveau ${ticket.nextLevel.level} (${ticket.nextLevel.name})`}
+                </button>
+              ) : (
+                <div className="mt-2 space-y-1.5">
+                  <textarea value={escalating} onChange={e => setEscalating(e.target.value)} rows={2} maxLength={500} placeholder="Motif de l'escalade (noté au journal)" aria-label="Motif de l'escalade"
+                    className="w-full bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2.5 py-1.5 text-xs" />
+                  <label className="flex items-center gap-1.5 text-[11px] text-ink-3"><input type="checkbox" checked={keepOnEscalate} onChange={e => setKeepOnEscalate(e.target.checked)} className="accent-primary" />Garder les personnes attribuées</label>
+                  <div className="flex gap-1.5">
+                    <button onClick={escalate} disabled={!escalating.trim()} className="flex-1 py-1.5 text-xs rounded-lg bg-primary text-white disabled:opacity-50">Escalader</button>
+                    <button onClick={() => setEscalating(null)} className="px-3 py-1.5 text-xs rounded-lg border border-overlay/8 text-ink-3">Annuler</button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

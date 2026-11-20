@@ -18,7 +18,7 @@ const TRIGGERS = ['created', 'member_reply', 'staff_reply', 'stage', 'priority',
 const TIMER_BASES = ['created', 'stage', 'last_member', 'last_staff', 'last_activity', 'last_message', 'tto_due', 'ttr_due'];
 const DUE_BASES = ['tto_due', 'ttr_due'];
 const FIELDS = ['channel', 'address', 'type', 'subject', 'text', 'requester', 'priority', 'stage', 'tag', 'hours', 'language', 'organization', 'customField', 'assigned', 'resolved'];
-const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks', 'sla', 'channelPost', 'skill'];
+const ACTIONS = ['subject', 'type', 'urgency', 'impact', 'priority', 'team', 'assign', 'tagAdd', 'tagRemove', 'stage', 'grade', 'follower', 'reply', 'note', 'notify', 'webhook', 'close', 'tasks', 'sla', 'channelPost', 'skill', 'escalate'];
 const PRIORITIES = ['low', 'normal', 'urgent'];
 const CHANNELS = ['discord', 'email', 'web'];
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt'];
@@ -106,6 +106,7 @@ async function cleanAction(db, a, { canGrade }) {
     case 'tasks': return one('SELECT id FROM task_templates WHERE id = ?', 'Modèle de tâches introuvable');
     case 'sla': return one('SELECT id FROM sla_policies WHERE id = ?', 'Objectif SLA introuvable');
     case 'skill': return one('SELECT id FROM skills WHERE id = ?', 'Compétence introuvable');
+    case 'escalate': return { value: { type: a.type, value: 1 } };
     case 'tagAdd': case 'tagRemove': return one('SELECT id FROM ticket_tags WHERE id = ?', 'Tag introuvable');
     case 'grade':
       if (!canGrade) return { error: 'Restreindre à un grade demande la permission manage_grades', status: 403 };
@@ -357,6 +358,11 @@ async function apply(env, a, rule) {
     case 'note':
       await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, 'system', ?, ?, 'system')", [t.id, `Règle « ${rule.name} »`, a.value]);
       return 'note interne';
+    case 'escalate': {
+      if (confidential) return null;
+      const r = await require('./supportLevels').escalate({ db, tm, ticket: t, reason: `Règle « ${rule.name} »`, actor: RULE_ACTOR });
+      return r.ok ? `escalade au niveau ${r.team.level}` : null;
+    }
     case 'skill': {
       // Asked for before the team assigns (at the opening, the team routes after the rules)
       if (!(await require('./skills').addTicketSkill(db, t.id, a.value))) return null;

@@ -15,6 +15,7 @@ const TEAM_ACTOR = { id: 'system', tag: 'Attribution automatique', source: 'syst
 
 const shape = (t, members) => ({
   id: t.id, name: t.name, color: t.color, assignMode: t.assign_mode, maxOpen: Number(t.max_open) || 0,
+  level: t.level ? Number(t.level) : null,
   subjects: parseJsonField(t.subjects, []), tagIds: parseJsonField(t.tag_ids, []).map(Number), calendarId: t.calendar_id || null, olaMinutes: t.ola_minutes || null,
   members: members.filter(m => m.team_id === t.id).map(m => ({ userId: m.user_id, username: m.username || m.user_id, open: Number(m.open || 0) })),
 });
@@ -53,6 +54,8 @@ async function clean(db, input = {}) {
     const staff = await db("SELECT user_id FROM dashboard_users WHERE user_id IN (?) AND role IN ('support', 'fondateur')", [memberIds]);
     if (staff.length !== memberIds.length) return { error: 'Seul le staff de l\'espace peut faire partie d\'une équipe' };
   }
+  const level = input.level === undefined || input.level === null || input.level === '' ? null : Number(input.level);
+  if (level !== null && !(Number.isInteger(level) && level >= 1 && level <= 9)) return { error: 'Niveau : de 1 à 9 (vide : sans niveau)' };
   const calendarId = input.calendarId ? Number(input.calendarId) : null;
   if (calendarId && !(await require('./calendars').calendarOf(db, calendarId))) return { error: 'Calendrier introuvable' };
   const E = require('./slaEscalation');
@@ -60,7 +63,7 @@ async function clean(db, input = {}) {
   if (ola.error) return ola;
   const escalations = await E.cleanLevels(db, input.escalations, ['ola']);
   if (escalations.error) return escalations;
-  return { value: { name, color: COLORS.includes(input.color) ? input.color : 'violet', assignMode, maxOpen, subjects, tagIds, memberIds, calendarId, olaMinutes: ola.value, escalations: escalations.value } };
+  return { value: { level, name, color: COLORS.includes(input.color) ? input.color : 'violet', assignMode, maxOpen, subjects, tagIds, memberIds, calendarId, olaMinutes: ola.value, escalations: escalations.value } };
 }
 
 async function saveMembers(db, teamId, memberIds) {
@@ -74,8 +77,8 @@ async function createTeam(db, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  const { insertId } = await db('INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids, calendar_id, ola_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, v.olaMinutes]);
+  const { insertId } = await db('INSERT INTO teams (name, color, assign_mode, max_open, subjects, tag_ids, calendar_id, ola_minutes, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, v.olaMinutes, v.level]);
   await saveMembers(db, insertId, v.memberIds);
   await require('./slaEscalation').saveLevels(db, { teamId: insertId }, v.escalations);
   return { ok: true, id: insertId };
@@ -87,8 +90,8 @@ async function updateTeam(db, id, input) {
   const r = await clean(db, input);
   if (r.error) return r;
   const v = r.value;
-  await db('UPDATE teams SET name = ?, color = ?, assign_mode = ?, max_open = ?, subjects = ?, tag_ids = ?, calendar_id = ?, ola_minutes = ? WHERE id = ?',
-    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, v.olaMinutes, id]);
+  await db('UPDATE teams SET name = ?, color = ?, assign_mode = ?, max_open = ?, subjects = ?, tag_ids = ?, calendar_id = ?, ola_minutes = ?, level = ? WHERE id = ?',
+    [v.name, v.color, v.assignMode, v.maxOpen, JSON.stringify(v.subjects), JSON.stringify(v.tagIds), v.calendarId, v.olaMinutes, v.level, id]);
   await saveMembers(db, id, v.memberIds);
   const E = require('./slaEscalation');
   await E.saveLevels(db, { teamId: id }, v.escalations);
