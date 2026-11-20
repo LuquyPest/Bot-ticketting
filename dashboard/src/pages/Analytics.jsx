@@ -766,7 +766,7 @@ function TabReports() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-left text-ink-3 border-b border-overlay/6">
-                    {['Groupe', 'Ouverts', 'Fermés', 'Encore ouverts', '1re réponse (médiane)', 'Résolution (médiane)', 'Note', 'Temps passé', 'Escaladés'].map(h => <th key={h} scope="col" className="py-2 pr-3 font-medium whitespace-nowrap">{h}</th>)}
+                    {['Groupe', 'Ouverts', 'Fermés', 'Encore ouverts', '1re réponse (médiane)', 'Résolution (médiane)', 'Note', 'Temps passé', 'Escaladés', '1er contact'].map(h => <th key={h} scope="col" className="py-2 pr-3 font-medium whitespace-nowrap">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -781,6 +781,7 @@ function TabReports() {
                       <td className="py-2 pr-3 tabular-nums">{r.avgRating == null ? '—' : `${num(r.avgRating)} / 5 (${r.ratings})`}</td>
                       <td className="py-2 pr-3 tabular-nums">{r.timeHours} h</td>
                       <td className="py-2 pr-3 tabular-nums">{r.escalated ? `${r.escalated} (${r.escalatedPct ?? 0} %)` : '—'}</td>
+                      <td className="py-2 pr-3 tabular-nums">{r.firstContactPct == null ? '—' : `${r.firstContactPct} %`}</td>
                     </tr>
                   ))}
                 </tbody>

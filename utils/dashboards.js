@@ -4,7 +4,7 @@
 // for whoever looks at it, through their visibility of the tickets.
 const { parseJsonField } = require('./jsonField');
 
-const KINDS = ['count', 'chart', 'list', 'sla', 'satisfaction'];
+const KINDS = ['count', 'chart', 'list', 'sla', 'satisfaction', 'fcr'];
 const METRICS = ['open', 'unassigned', 'mine', 'created', 'closed', 'breached', 'waiting'];
 const SHARING = ['private', 'team', 'space'];
 const MAX_WIDGETS = 24, MAX_BOARDS = 20;
@@ -109,6 +109,12 @@ async function widgetData(db, w, { userId, vis }) {
       FROM tickets t WHERE ${wh.sql} AND t.created_at >= ? AND t.sla_policy_id IS NOT NULL`, [...wh.params, since]);
     const pct = (ok, n) => (Number(n) ? Math.round(Number(ok) / Number(n) * 100) : null);
     return { value: { kind: 'sla', ttoPct: pct(r.tto_ok, r.tto_n), ttrPct: pct(r.ttr_ok, r.ttr_n), tickets: Number(r.tto_n || 0) } };
+  }
+  if (x.kind === 'fcr') {
+    // First contact resolution of the tickets closed over the period (utils/fcr.js, v7)
+    const rows = await db(`SELECT t.id, t.status FROM tickets t WHERE ${wh.sql} AND t.status = 'closed' AND t.closed_at >= ? AND t.merged_into IS NULL LIMIT 20000`, [...wh.params, since]);
+    const r = await require('./fcr').rate(db, rows);
+    return { value: { kind: 'fcr', pct: r.pct, first: r.first, answered: r.answered } };
   }
   const [s] = await db(`SELECT COUNT(*) AS n, AVG(r.rating) AS avg, SUM(r.rating >= 4) AS good FROM ticket_ratings r JOIN tickets t ON t.id = r.ticket_id WHERE ${wh.sql} AND r.rated_at >= ?`, [...wh.params, since]);
   const dist = await db(`SELECT r.rating, COUNT(*) AS n FROM ticket_ratings r JOIN tickets t ON t.id = r.ticket_id WHERE ${wh.sql} AND r.rated_at >= ? GROUP BY r.rating`, [...wh.params, since]);

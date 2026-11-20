@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.7.0',
+    date: 'à venir',
+    title: 'Pilotage',
+    titleEn: 'Steering',
+    changes: [
+      { type: 'new',  text: 'Résolution au premier contact : part des tickets fermés avec une seule réponse du staff et jamais rouverts, dans les rapports (et leurs exports) et en widget des tableaux de bord', en: 'First contact resolution: share of the tickets closed with a single staff answer and never reopened, in the reports (and their exports) and as a dashboard widget' },
+    ],
+  },
+  {
     version: 'v7.6.0',
     date: 'à venir',
     title: 'Canaux',

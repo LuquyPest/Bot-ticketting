@@ -8988,6 +8988,30 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE id = ?", [tRec]);
   }
 
+  // ── First contact resolution (utils/fcr.js, v7): reports and dashboards ──
+  {
+    const tm7 = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Premier contact v7', members: [U.S1] } })).body.find(t => t.name === 'Premier contact v7');
+    const mk = async (n, replies, reopened = false, notes = 0) => {
+      const id = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, team_id, closed_at) VALUES ('200000000000000068', 'fcr', ?, 'closed', ?, ?, NOW())", [`fcr7-${n}`, `FCR v7 ${n}`, tm7.id])).insertId;
+      for (let i = 0; i < replies; i++) await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'S1', 'réponse', 'reply')", [id, U.S1]);
+      for (let i = 0; i < notes; i++) await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, ?, 'S1', 'note', 'web')", [id, U.S1]);
+      if (reopened) await db("INSERT INTO audit_log (actor_id, actor_tag, action, source, ticket_id) VALUES (?, 'S1', 'ticket_reopen', 'dashboard', ?)", [U.S1, id]);
+      return id;
+    };
+    await mk('a', 1, false, 3); await mk('b', 1); await mk('c', 2); await mk('d', 1, true); await mk('e', 0);
+    r = await req('GET', '/api/analytics/breakdown', { sid: sessions.F, query: { by: 'team', days: 1 } });
+    const row = r.body.rows?.find(x => x.key === String(tm7.id));
+    check('premier contact: rapport par équipe (2 sur 4 répondus : une réponse et jamais rouverts ; les notes ne comptent pas)', r.status === 200 && row?.firstContactPct === 50, JSON.stringify(row));
+    r = await req('GET', '/api/analytics/export/breakdown.csv', { sid: sessions.F, query: { by: 'team', days: 1 } });
+    check('premier contact: dans l export CSV', r.status === 200 && /premier contact/.test(typeof r.body === 'string' ? r.body : ''), String(r.body).slice(0, 120));
+    const D = app('./utils/dashboards');
+    const { visibilityFilter } = app('./utils/gradePermissions');
+    const vis = await visibilityFilter({ userIsFondateur: true, session: { user: { id: U.F } }, guildDb: db }, 't.visibility_grade_id');
+    const w = await D.widgetData(db, { kind: 'fcr', filters: { days: 1, team: tm7.id } }, { userId: U.F, vis });
+    check('premier contact: widget des tableaux de bord', w.value?.kind === 'fcr' && w.value.pct === 50 && w.value.answered === 4, JSON.stringify(w));
+    await req('DELETE', `/api/teams/${tm7.id}`, { sid: sessions.F });
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
