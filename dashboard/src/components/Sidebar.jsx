@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LanguageToggle from './LanguageToggle';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Rocket,
+import { Rocket, Gavel,
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
@@ -29,6 +29,7 @@ const NAV_GROUPS = [
     { to: '/planning',    label: 'Planning',     icon: CalendarDays,    roles: ['support','fondateur'] },
     { to: '/problemes',   label: 'Problèmes',    icon: Bug,             roles: ['support','fondateur'] },
     { to: '/changements', label: 'Changements',  icon: GitPullRequestArrow, roles: ['support','fondateur'] },
+    { to: '/comite',      label: 'Comité des changements', icon: Gavel, roles: ['support','fondateur'] },
     { to: '/mises-en-production', label: 'Mises en production', icon: Rocket, roles: ['support','fondateur'] },
     { to: '/parc',        label: 'Parc',         icon: Server,          roles: ['support','fondateur'] },
     { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },

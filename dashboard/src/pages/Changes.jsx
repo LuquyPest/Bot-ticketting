@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { GitPullRequestArrow, Loader2, Plus, Check, Circle, X } from 'lucide-react';
+import { CAB_DECISION } from './Cab';
 import AssetLinksPanel, { ChangeImpact } from '../components/AssetLinksPanel';
 import api from '../api';
 import toast from 'react-hot-toast';
@@ -58,6 +59,12 @@ function Detail({ id, staff, onChanged }) {
       {text('rollbackPlan', 'Plan de retour arrière')}
       {text('risks', 'Risques')}
       {text('impact', 'Impact (services, utilisateurs touchés)')}
+      {c.cab?.length > 0 && (
+        <section className="space-y-0.5">
+          <p className="text-[11px] font-semibold text-ink-3">Comité des changements</p>
+          {c.cab.map(d => <p key={d.meetingId} className="text-xs text-ink-2"><Link to={`/comite/${d.meetingId}`} className="text-primary-light hover:underline">{d.title}</Link>{` · ${d.decision ? CAB_DECISION[d.decision] : 'à l\'ordre du jour'} · ${d.votes.for} pour, ${d.votes.against} contre, ${d.votes.reserve} réserve${d.note ? ` · ${d.note}` : ''}`}</p>)}
+        </section>
+      )}
       {c.release && <p className="text-xs text-ink-3">Mise en production : <Link to={`/mises-en-production/${c.release.id}`} className="text-primary-light hover:underline">{`#${c.release.id} ${c.release.title}`}</Link></p>}
       <AssetLinksPanel type="change" targetId={c.id} panelCard="space-y-1" />
       <ChangeImpact key={`impact-${c.id}`} changeId={c.id} />

@@ -1690,6 +1690,44 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 93,
+    name: 'Comité des changements (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS cab_members (user_id VARCHAR(32) PRIMARY KEY)`,
+      `CREATE TABLE IF NOT EXISTS cab_meetings (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        title      VARCHAR(150) NOT NULL,
+        starts_at  DATETIME NOT NULL,
+        status     VARCHAR(10) NOT NULL DEFAULT 'planned',
+        notes      TEXT DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS cab_agenda (
+        meeting_id     INT NOT NULL,
+        change_id      INT NOT NULL,
+        position       INT NOT NULL DEFAULT 0,
+        decision       VARCHAR(10) DEFAULT NULL,
+        decision_note  TEXT DEFAULT NULL,
+        decided_at     DATETIME DEFAULT NULL,
+        decided_by_tag VARCHAR(100) DEFAULT NULL,
+        PRIMARY KEY (meeting_id, change_id),
+        INDEX idx_cab_agenda_change (change_id),
+        CONSTRAINT fk_cab_agenda_meeting FOREIGN KEY (meeting_id) REFERENCES cab_meetings(id) ON DELETE CASCADE,
+        CONSTRAINT fk_cab_agenda_change FOREIGN KEY (change_id) REFERENCES changes(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS cab_votes (
+        meeting_id INT NOT NULL,
+        change_id  INT NOT NULL,
+        user_id    VARCHAR(32) NOT NULL,
+        vote       VARCHAR(8) NOT NULL,
+        comment    TEXT DEFAULT NULL,
+        voted_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (meeting_id, change_id, user_id),
+        CONSTRAINT fk_cab_votes_item FOREIGN KEY (meeting_id, change_id) REFERENCES cab_agenda(meeting_id, change_id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
