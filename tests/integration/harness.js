@@ -9120,6 +9120,30 @@ async function main() {
     fsm.rmSync(dir, { recursive: true, force: true });
   }
 
+  // ── High availability, active–passive (utils/leader.js, v7) ──
+  {
+    const L = app('./utils/leader');
+    r = await req('GET', '/api/health/ready');
+    const h0 = await req('GET', '/api/health');
+    check('HA: tant qu il ne tient pas le verrou, le conteneur est en attente (prêt : 503, vivant : 200)', r.status === 503 && r.body.role === 'standby' && h0.status === 200 && h0.body.role === 'standby', JSON.stringify([r.body, h0.body]));
+    await redis.set(L.KEY, 'autre-conteneur:1', 'PX', 60000);
+    let became = 0, lost = 0;
+    await L.start({ onLeader: () => { became++; }, onLost: () => { lost++; } });
+    check('HA: un autre conteneur actif → celui-ci reste en attente', became === 0 && !L.isLeader(), `${became}`);
+    await redis.del(L.KEY);
+    for (let i = 0; i < 80 && !L.isLeader(); i++) await new Promise(res => setTimeout(res, 100));
+    r = await req('GET', '/api/health/ready');
+    check('HA: l actif disparu, celui-ci prend le relais (une seule fois) et reçoit le trafic', L.isLeader() && became === 1 && r.status === 200 && (await L.current()) === L.ID, `${became} ${r.status}`);
+    await redis.set(L.KEY, 'voleur:2', 'PX', 60000);
+    for (let i = 0; i < 80 && !lost; i++) await new Promise(res => setTimeout(res, 100));
+    check('HA: verrou perdu pendant qu il est actif → il s arrête (jamais deux actifs)', lost === 1 && !L.isLeader(), `${lost}`);
+    L.stop();
+    await redis.del(L.KEY);
+    const ok = await L.tryAcquire(), again = await L.tryAcquire();
+    await L.release();
+    check('HA: verrou pris une fois, rendu à l arrêt', ok === true && again === false && (await L.current()) === null, `${ok} ${again}`);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

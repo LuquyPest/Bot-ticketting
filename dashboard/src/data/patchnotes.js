@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Security and operations',
     changes: [
       { type: 'new',  text: 'Connexion SAML 2.0 (Entra ID, Okta, ADFS, Keycloak…) : réponse et assertion signées exigées, audience, destination et demande vérifiées, rejeu refusé, groupe autorisé facultatif ; métadonnées du fournisseur de service fournies', en: 'SAML 2.0 sign-in (Entra ID, Okta, ADFS, Keycloak…): signed response and assertion required, audience, destination and request checked, replay refused, optional allowed group; service provider metadata provided' },
+      { type: 'new',  text: 'Haute disponibilité active-passive : plusieurs conteneurs du bot sur la même base et le même Redis, un seul actif (verrou Redis), relais automatique en une vingtaine de secondes, /api/health/ready pour le proxy ; docker-compose.ha.yml et guide', en: 'Active–passive high availability: several bot containers on the same database and Redis, only one active (Redis lock), automatic takeover in about twenty seconds, /api/health/ready for the proxy; docker-compose.ha.yml and guide' },
     ],
   },
   {

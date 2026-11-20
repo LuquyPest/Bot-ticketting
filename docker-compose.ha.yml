@@ -1,0 +1,20 @@
+# High availability, active–passive (v7, guide « Haute disponibilité »): a second bot container on
+# the same database and Redis. One holds the lock and is active (Discord, jobs, dashboard); the
+# other waits and takes over in about 20 s if the first stops. With Caddy:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml:docker-compose.ha.yml
+services:
+  bot-standby:
+    extends:
+      file: docker-compose.yml
+      service: bot
+    ports: !reset []
+    environment:
+      TRUSTED_PROXY_HOST: caddy
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+
+  caddy:
+    volumes:
+      - ./docker/Caddyfile.ha:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - bot
+      - bot-standby

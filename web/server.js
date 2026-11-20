@@ -142,10 +142,16 @@ app.use((req, res, next) => {
 // Demo sessions: mutations that could leave the sandbox are refused (before every route)
 app.use(require('../utils/demo').demoGuard);
 
+// Ready to receive traffic (v7, utils/leader.js): the active container only — a reverse proxy with
+// several containers sends to the one answering 200 here; a standby answers 503
+app.get('/api/health/ready', (req, res) => {
+  const s = require('../utils/leader').status();
+  res.status(s.role === 'leader' ? 200 : 503).json({ ready: s.role === 'leader', role: s.role });
+});
 app.get('/api/health', async (req, res) => {
   try {
     await globalQuery('SELECT 1');
-    res.json({ status: 'ok', uptime: Math.floor(process.uptime()) });
+    res.json({ status: 'ok', uptime: Math.floor(process.uptime()), role: require('../utils/leader').status().role });
   } catch {
     res.status(503).json({ status: 'error', db: 'unreachable' });
   }

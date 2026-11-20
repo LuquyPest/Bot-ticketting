@@ -42,6 +42,7 @@ const guide = [
     items: [
       { text: 'Section Instance', link: '/guide/instance' },
       { text: 'Sauvegardes', link: '/guide/sauvegardes' },
+      { text: 'Haute disponibilité', link: '/guide/haute-disponibilite' },
       { text: 'Mises à jour', link: '/guide/mise-a-jour' },
       { text: 'Passer à la v4', link: '/guide/passer-a-la-v4' },
       { text: 'Sécurité', link: '/guide/securite' },
@@ -96,6 +97,7 @@ const guideEn = [
     items: [
       { text: 'Instance section', link: '/en/instance' },
       { text: 'Backups', link: '/en/backups' },
+      { text: 'High availability', link: '/en/high-availability' },
       { text: 'Updates', link: '/en/updates' },
       { text: 'Upgrading to v4', link: '/en/upgrade-to-v4' },
       { text: 'Security', link: '/en/security' },
