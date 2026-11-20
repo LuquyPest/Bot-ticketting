@@ -11,18 +11,12 @@ const BUGS = {
 };
 
 export default [
-  { ignores: ['**/node_modules/**', 'mobile/android/**', 'mobile/ios/**', 'backups/**', 'data/**', 'logs/**', 'uploads/**', 'dashboard/dist/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**', 'coverage/**'] },
+  { ignores: ['**/node_modules/**', 'backups/**', 'data/**', 'logs/**', 'uploads/**', 'dashboard/dist/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**', 'coverage/**'] },
   { linterOptions: { reportUnusedDisableDirectives: 'off' } },
   {
     files: ['**/*.js'],
-    ignores: ['dashboard/**', 'docs/**', 'mobile/**'],
+    ignores: ['dashboard/**', 'docs/**'],
     languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { ...globals.node } },
-    rules: BUGS,
-  },
-  {
-    // The mobile app's local page (v7, mobile/www): a browser script
-    files: ['mobile/www/**/*.js'],
-    languageOptions: { ecmaVersion: 2023, sourceType: 'script', globals: { ...globals.browser } },
     rules: BUGS,
   },
   {
