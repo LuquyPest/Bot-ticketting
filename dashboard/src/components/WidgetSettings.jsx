@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Copy, RefreshCw, ExternalLink } from 'lucide-react';
+import WidgetBotEditor from './WidgetBotEditor';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -39,6 +40,7 @@ export default function WidgetSettings() {
         <input type="checkbox" checked={!!s.chat} onChange={e => setS(x => ({ ...x, chat: e.target.checked }))} className="accent-primary" />
         Proposer le chat en direct quand quelqu'un de l'équipe est « Disponible » (sinon, le formulaire)
       </label>
+      {s.enabled && s.token && <div className="border-t border-overlay/6 pt-3"><WidgetBotEditor /></div>}
       <label className="block text-xs text-ink-3">Sites autorisés à afficher le formulaire (un par ligne ; vide = tous)
         <textarea value={origins} onChange={e => setOrigins(e.target.value)} rows={3} placeholder="https://exemple.com" className={`${INPUT} mt-1 font-mono text-xs`} />
       </label>

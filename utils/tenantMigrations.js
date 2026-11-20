@@ -1785,6 +1785,11 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 97,
+    name: 'Arbre de questions du widget (v7)',
+    statements: [`ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS widget_bot TEXT DEFAULT NULL`],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

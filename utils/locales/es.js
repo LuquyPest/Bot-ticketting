@@ -182,6 +182,8 @@ module.exports = {
   'widget.message': 'Tu mensaje',
   'widget.send': 'Enviar',
   'widget.sent': '¡Mensaje enviado! Recibirás un correo de confirmación con el enlace para seguir tu solicitud; las respuestas también llegarán por correo.',
+  'widget.botTalk': 'Hablar con alguien',
+  'widget.botPath': 'Recorrido en el widget',
   'widget.chatStart': 'Chatear ahora',
   'widget.chatForm': 'Dejar un mensaje',
   'widget.chatOff': 'No hay nadie disponible para chatear: déjanos un mensaje.',
