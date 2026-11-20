@@ -323,6 +323,23 @@ router.delete('/guilds/:guildId', async (req, res) => {
 });
 
 // PATCH /api/instance/guilds/:guildId/maintenance — toggle maintenance mode
+// POST /api/instance/guilds/:guildId/restore (multipart: file, passphrase) — restores a space
+// backup (utils/spaceBackup.js, v8) into this space: every table replaced, in one transaction
+const restoreUpload = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 500 * 1024 * 1024, files: 1, fields: 3 } }).single('file');
+router.post('/guilds/:guildId/restore', (req, res, next) => restoreUpload(req, res, err => (err ? res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'Fichier trop gros (500 Mo au plus)' : 'Envoi invalide' }) : next())), async (req, res) => {
+  try {
+    if (!/^\d{17,20}$/.test(req.params.guildId)) return res.status(404).json({ error: 'Espace introuvable' });
+    if (!req.file?.buffer) return res.status(400).json({ error: 'Fichier de sauvegarde requis' });
+    if (!(await require('../../utils/rateLimit').allowBurst(`spacerestore:${req.session.user.id}`, 5, 60 * 60 * 1000))) return res.status(429).json({ error: 'Cinq restaurations au plus par heure' });
+    const r = await require('../../utils/spaceBackup').restoreSpace(req.params.guildId, req.file.buffer, String(req.body?.passphrase || ''), { id: req.session.user.id, tag: req.session.user.username, username: req.session.user.username });
+    res.json(r);
+  } catch (err) {
+    if (err.status && err.status < 500) return res.status(err.status).json({ error: err.message });
+    console.error('restauration espace:', err.message);
+    res.status(500).json({ error: err.message || 'Erreur serveur' });
+  }
+});
+
 router.patch('/guilds/:guildId/maintenance', async (req, res) => {
   const { enabled } = req.body;
   if (typeof enabled !== 'boolean') return res.status(400).json({ error: '`enabled` boolean requis' });

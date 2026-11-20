@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import SpaceRestoreModal from '../../components/SpaceRestoreModal';
 import { uiLocale } from '../../i18n';
 import {
   Building2, CheckCircle, XCircle, RefreshCw,
-  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X, Link2, Unlink
+  Trash2, Play, Pause, Search, Loader2, AlertTriangle, WrenchIcon, Crown, UserPlus, X, Link2, Unlink, ArchiveRestore
 } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -256,6 +257,7 @@ export default function Guilds() {
   const [confirm, setConfirm]     = useState(null); // { action, guild }
   const [actioning, setActioning] = useState(null);
   const [foundersOf, setFoundersOf] = useState(null); // guild whose founders modal is open
+  const [restoreOf, setRestoreOf] = useState(null); // v8: restore a space backup
   const [discordOf, setDiscordOf] = useState(null);   // space to link to / unlink from Discord
 
   const load = () => {
@@ -310,6 +312,9 @@ export default function Guilds() {
     <div className="p-6 space-y-5 max-w-6xl">
       {foundersOf && (
         <FoundersModal guild={foundersOf} onClose={() => setFoundersOf(null)} />
+      )}
+      {restoreOf && (
+        <SpaceRestoreModal guild={restoreOf} onClose={() => setRestoreOf(null)} onDone={load} />
       )}
       {discordOf && (
         <DiscordModal guild={discordOf} onClose={() => setDiscordOf(null)} onDone={() => { setDiscordOf(null); load(); }} />
@@ -473,6 +478,11 @@ export default function Guilds() {
                                   label={Number(guild.discord) === 0 ? 'Relier à Discord' : 'Délier de Discord'}
                                   cls="text-ink-3 hover:bg-primary/10 hover:text-primary-light"
                                   onClick={() => setDiscordOf(guild)}
+                                />
+                                <ActionBtn
+                                  icon={ArchiveRestore} label="Restaurer une sauvegarde"
+                                  cls="text-ink-3 hover:bg-primary/10 hover:text-primary-light"
+                                  onClick={() => setRestoreOf(guild)}
                                 />
                                 <ActionBtn
                                   icon={Trash2} label="Supprimer"

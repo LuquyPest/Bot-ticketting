@@ -44,6 +44,30 @@ From the command line: `scripts/restore.sh backups/ticketbot-<date>.sql.gz.enc -
 The bot never reads the archives and does not have the database administrator password: it drops a request into `backups/requests`, and the `backup` service, which already has both, does the restore. The service reloads its script by itself when an update changes it (`git pull`); if needed, `docker compose restart backup`.
 :::
 
+## Backup of a space, from the dashboard
+
+On top of the nightly backups of the whole instance, a **founder** downloads at any time a full backup of **their space**: **Settings → Backup → Full backup of the space**. They choose a **passphrase** (12 characters at least); the archive (`.datick`) holds every table of the space (tickets, messages, contacts, organisations, settings, knowledge base, inventory, changes…) and its files (attachments, knowledge base images). Nothing of it is kept on the server. Five backups an hour at most; each is in the space's log.
+
+**Restore**: **Instance → Servers → Restore a backup** (owner of the instance), on the same space or another, with the passphrase. Every table of the target space is replaced **at once** (one transaction: on an error, nothing changes), the space is in maintenance meanwhile, the files are copied back. An archive of an older version restores (the space keeps the schema of the installed version); one of a newer version is refused. From another space, it also brings its Discord settings (channels, roles), to review. The space's secrets (CRM, tracker tokens…) stay encrypted by the instance key: they only work on the same instance.
+
+### The format, for reversibility
+
+The archive is also the space's **complete export**, readable without Datick:
+
+| Part | Content |
+|---|---|
+| Header | `DATICKS1` (8 bytes), salt (16), initialisation vector (12) |
+| Body | AES-256-GCM, key = scrypt(passphrase, salt, 32 bytes, N = 2¹⁵, r = 8, p = 1), of the gzip of JSON lines |
+| End | GCM authentication tag (16 bytes) |
+
+The JSON lines: first `{ "format": "datick-space", "version": 1, "appVersion", "schemaVersion", "guildId", "guildName", "createdAt", "tables": […] }`, then one line `{ "t": "<table>", "r": { …columns } }` per table row (a binary value is written `{ "$b64": "…" }`, dates as in the database), then `{ "f": "files/<name>" | "kb/<name>", "b64": "…" }` per file, and finally `{ "end": true, "rows": …, "files": … }`.
+
+To decrypt it without Datick (Node.js alone, no dependency):
+
+```bash
+DATICK_PASSPHRASE='your passphrase' node scripts/decrypt-space-backup.js datick-espace-….datick > space.jsonl
+```
+
 ## Automatic check
 
 A backup nobody ever read back may be unusable the day you need it. With `BACKUP_VERIFY` in `.env`, the service reads the latest archive back right after making it: integrity check, decryption, decompression and presence of the end of the SQL dump. Nothing is written in clear during the check.

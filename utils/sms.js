@@ -92,7 +92,22 @@ async function send(guildId, to, text) {
   if (!s.provider) return { error: 'Aucune passerelle SMS' };
   if (!PHONE_RE.test(String(to || ''))) return { error: 'Numéro invalide (format international, +33…)' };
   if (!(await underLimit(guildId, Number(s.dailyLimit) || 200))) return { error: 'Limite de SMS du jour atteinte' };
-  try { return await sendRaw(s, to, text); } catch (err) { return { error: `SMS : ${err.message}` }; }
+  let r;
+  try { r = await sendRaw(s, to, text); } catch (err) { r = { error: `SMS : ${err.message}` }; }
+  await count(guildId, r.ok ? 'sent' : 'failed');
+  return r;
+}
+// Sent and failed today, per space (Prometheus, v8)
+const statKey = (guildId, result, day = new Date().toISOString().slice(0, 10)) => `smsstat:${guildId || 'instance'}:${day}:${result}`;
+async function count(guildId, result) {
+  const redis = require('./redis').getRedis();
+  const key = statKey(guildId, result);
+  if ((await redis.incr(key).catch(() => 0)) === 1) await redis.expire(key, 2 * 86400).catch(() => null);
+}
+async function todayStats(guildId) {
+  const redis = require('./redis').getRedis();
+  const [sent, failed] = await Promise.all(['sent', 'failed'].map(r => redis.get(statKey(guildId, r)).catch(() => null)));
+  return { sent: Number(sent) || 0, failed: Number(failed) || 0 };
 }
 
 // ── Staff numbers (global accounts) ──
@@ -142,4 +157,4 @@ async function notifyUser(guildId, userId, text) {
   return !(await send(guildId, phone, text)).error;
 }
 
-module.exports = { PROVIDERS, PHONE_RE, settings, saveSettings, send, phoneOf, startVerification, confirmVerification, removePhone, notifyUser };
+module.exports = { todayStats, PROVIDERS, PHONE_RE, settings, saveSettings, send, phoneOf, startVerification, confirmVerification, removePhone, notifyUser };

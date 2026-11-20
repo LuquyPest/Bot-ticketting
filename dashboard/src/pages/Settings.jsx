@@ -5,6 +5,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import SubjectRules from '../components/SubjectRules';
 import ConfigTransfer from '../components/ConfigTransfer';
+import SpaceBackupCard from '../components/SpaceBackupCard';
 import ConfigHistory from '../components/ConfigHistory';
 import PortalBranding from '../components/PortalBranding';
 import BackupKey from '../components/BackupKey';
@@ -1038,6 +1039,11 @@ export default function Settings() {
       {user?.role === 'fondateur' && (
         <Section title="Importer depuis un autre outil" description="Zendesk, Freshdesk, GLPI, osTicket, Zammad, ou un CSV / JSON aux mêmes colonnes.">
           <HelpdeskImport />
+        </Section>
+      )}
+      {user?.role === 'fondateur' && (
+        <Section title="Sauvegarde complète de l'espace" description="Une archive chiffrée de toutes les données et fichiers de l'espace, à garder hors du serveur.">
+          <SpaceBackupCard />
         </Section>
       )}
       <Section title="Sauvegarde et transfert">

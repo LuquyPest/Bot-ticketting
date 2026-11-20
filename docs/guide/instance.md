@@ -129,6 +129,9 @@ scrape_configs:
 | `ticketbot_discord_connected`, `_discord_ping_seconds` | Connexion à Discord |
 | `ticketbot_database_up`, `ticketbot_redis_up` (et `_latency_seconds`) | Base et Redis |
 | `ticketbot_jobs{state}` | Tâches planifiées en attente, en cours, en échec |
+| `ticketbot_live_chats`, `ticketbot_live_chats_waiting` | Chats en direct en cours, et ceux sans réponse du staff (par serveur) |
+| `ticketbot_monitoring_alerts_firing`, `ticketbot_monitoring_alerts_24h` | Alertes de supervision encore actives, et reçues sur 24 h (par serveur) |
+| `ticketbot_sms_today{result}` | SMS envoyés (`sent`) et en échec (`failed`) aujourd'hui (UTC, par serveur) |
 | `ticketbot_backup_last_success_timestamp_seconds{kind}`, `ticketbot_backup_problems` | [Sauvegardes](./sauvegardes) : dernière réussite, vérification, copie hors du serveur |
 | `ticketbot_update_available`, `ticketbot_info{version}` | Version |
 
