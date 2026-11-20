@@ -8280,6 +8280,81 @@ async function main() {
     await db('DELETE FROM contacts WHERE id = ?', [ct]);
   }
 
+  // ── Skills and languages of the staff, automatic assignment (utils/skills.js, v7) ──
+  {
+    r = await req('POST', '/api/skills', { sid: sessions.S1, body: { name: 'Réseau v7' } });
+    check('compétences: création réservée aux fondateurs', r.status === 403, r.status);
+    r = await req('POST', '/api/skills', { sid: sessions.F, body: { name: 'Réseau v7' } });
+    const net = r.body.skills?.find(x => x.name === 'Réseau v7')?.id;
+    r = await req('POST', '/api/skills', { sid: sessions.F, body: { name: 'Compta v7' } });
+    const acc = r.body.skills?.find(x => x.name === 'Compta v7')?.id;
+    r = await req('POST', '/api/skills', { sid: sessions.F, body: { name: 'Réseau v7' } });
+    check('compétences: créées, pas de doublon de nom', !!net && !!acc && r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', `/api/skills/staff/${U.S2}`, { sid: sessions.F, body: { skills: [net], languages: ['en', 'xx'] } });
+    const s2 = r.body.staff?.find(x => x.userId === U.S2);
+    check('compétences: un fondateur règle compétences et langues (langue inconnue ignorée)', r.status === 200 && s2.skills.includes(net) && s2.languages.join() === 'en', JSON.stringify(s2));
+    r = await req('PUT', `/api/skills/staff/${U.S1}`, { sid: sessions.S1, body: { languages: ['fr'] } });
+    const rSk = await req('PUT', `/api/skills/staff/${U.S1}`, { sid: sessions.S1, body: { skills: [net] } });
+    const rOther = await req('PUT', `/api/skills/staff/${U.S2}`, { sid: sessions.S1, body: { languages: ['fr'] } });
+    check('compétences: chacun règle ses langues, pas ses compétences ni celles des autres', r.status === 200 && r.body.staff.find(x => x.userId === U.S1).languages.join() === 'fr' && rSk.status === 403 && rOther.status === 403, `${r.status} ${rSk.status} ${rOther.status}`);
+    r = await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Compétences v7', assignMode: 'load', members: [U.S1, U.S2] } });
+    const team = await app('./utils/teams').teamOf(db, r.body.find(t => t.name === 'Compétences v7').id);
+    const T = app('./utils/teams');
+    const mkT = async (n, owner, subject = null) => (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES (?, 'u', ?, 'open', ?)", [owner, `sk7-${n}`, subject])).insertId;
+    // Load: S1 has fewer open tickets than S2, so without skills S1 is picked
+    for (let i = 0; i < 3; i++) await db('INSERT INTO ticket_assignees (ticket_id, user_id) VALUES (?, ?)', [await mkT(`charge${i}`, '200000000000000090'), U.S2]);
+    const t0 = await mkT('sans', '200000000000000091');
+    const p0 = await T.pickAssignee(db, await T.teamOf(db, team.id), t0);
+    const t1 = await mkT('reseau', '200000000000000091');
+    r = await req('PUT', `/api/tickets/${t1}/skills`, { sid: sessions.F, body: { skillIds: [net] } });
+    const p1 = await T.pickAssignee(db, await T.teamOf(db, team.id), t1);
+    check('compétences: le ticket demande « Réseau » → seule la personne qui l a, même plus chargée', r.status === 200 && r.body.skills[0]?.from === 'ticket' && p0?.user_id === U.S1 && p1?.user_id === U.S2, `${p0?.user_id} ${p1?.user_id} ${JSON.stringify(r.body)}`);
+    const t2 = await mkT('compta', '200000000000000091');
+    await req('PUT', `/api/tickets/${t2}/skills`, { sid: sessions.F, body: { skillIds: [acc] } });
+    const p2 = await T.pickAssignee(db, await T.teamOf(db, team.id), t2);
+    check('compétences: personne ne l a → toute l équipe reste possible', p2?.user_id === U.S1, p2?.user_id);
+    // Language of the requester
+    const [{ bot_language: lang0 }] = await db('SELECT bot_language FROM guild_config WHERE id = 1');
+    await db("UPDATE guild_config SET bot_language = 'auto' WHERE id = 1");
+    app('./utils/i18n').clearGuildLanguageCache(G);
+    await redis.set('locale:200000000000000092', 'en-US');
+    const t3 = await mkT('anglais', '200000000000000092');
+    const p3 = await T.pickAssignee(db, await T.teamOf(db, team.id), t3);
+    check('compétences: le demandeur écrit en anglais → la personne qui le parle', p3?.user_id === U.S2, p3?.user_id);
+    await db('UPDATE guild_config SET bot_language = ? WHERE id = 1', [lang0]);
+    app('./utils/i18n').clearGuildLanguageCache(G);
+    // By subject (a category covers its sub-categories), and by a rule
+    const [{ ticket_subjects: subj0 }] = await db('SELECT ticket_subjects FROM guild_config WHERE id = 1');
+    const SUBJ = 'Matériel v7';
+    await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [JSON.stringify([SUBJ])]);
+    r = await req('PUT', '/api/skills/subjects', { sid: sessions.F, body: { subjects: { [SUBJ]: [acc] } } });
+    check('compétences: compétences d un sujet enregistrées', r.status === 200 && !!SUBJ, `${SUBJ} ${JSON.stringify(r.body).slice(0, 200)}`);
+    const t4 = await mkT('sujet', '200000000000000091', SUBJ);
+    r = await req('GET', `/api/tickets/${t4}`, { sid: sessions.F });
+    check('compétences: celles du sujet sont demandées par le ticket', r.body.skills?.some(x => x.id === acc && x.from === 'subject'), JSON.stringify(r.body.skills));
+    r = await req('PUT', '/api/skills/subjects', { sid: sessions.F, body: { subjects: { 'Sujet inconnu v7': [acc] } } });
+    check('compétences: sujet inconnu refusé', r.status === 400, r.status);
+    r = await req('POST', '/api/rules', { sid: sessions.F, body: { name: 'Compétence v7', triggers: ['created'], conditions: [{ field: 'text', values: ['routeur wifi v7'] }], actions: [{ type: 'skill', value: net }] } });
+    const ruleId = r.body.id || r.body.rules?.find(x => x.name === 'Compétence v7')?.id;
+    const t5 = await mkT('regle', '200000000000000091');
+    await db("INSERT INTO ticket_notes (ticket_id, author_id, author_tag, content, source) VALUES (?, '200000000000000091', 'u', 'Mon routeur wifi v7 ne marche plus', 'user')", [t5]);
+    await app('./utils/ruleEngine').runRules({ db, client: null, guildId: G, ticketId: t5, trigger: 'created', message: 'Mon routeur wifi v7 ne marche plus' });
+    const [has] = await db('SELECT 1 AS ok FROM ticket_skills WHERE ticket_id = ? AND skill_id = ?', [t5, net]);
+    check('compétences: action de règle « Compétence demandée »', r.status === 200 && !!has, JSON.stringify(r.body).slice(0, 200));
+    const exp = await app('./utils/configTransfer').exportConfig(db);
+    check('compétences: export de configuration (noms, sujets, règle par nom)', exp.skills.includes('Réseau v7') && exp.subjectSkills[SUBJ]?.includes('Compta v7') && exp.rules.find(x => x.name === 'Compétence v7')?.actions[0]?.value === 'Réseau v7', JSON.stringify([exp.skills, exp.subjectSkills]));
+    if (ruleId) await req('DELETE', `/api/rules/${ruleId}`, { sid: sessions.F });
+    await db("DELETE FROM ticket_rules WHERE name = 'Compétence v7'");
+    await req('PUT', '/api/skills/subjects', { sid: sessions.F, body: { subjects: {} } });
+    await db('UPDATE guild_config SET ticket_subjects = ? WHERE id = 1', [typeof subj0 === 'string' ? subj0 : JSON.stringify(subj0 ?? [])]);
+    r = await req('DELETE', `/api/skills/${net}`, { sid: sessions.F });
+    check('compétences: supprimer une compétence la retire partout', r.status === 200 && !(await db('SELECT 1 FROM ticket_skills WHERE skill_id = ?', [net])).length && !(await db('SELECT 1 FROM staff_skills WHERE skill_id = ?', [net])).length, r.status);
+    await req('DELETE', `/api/skills/${acc}`, { sid: sessions.F });
+    await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'sk7-%'");
+    await db("UPDATE dashboard_users SET languages = NULL WHERE user_id IN (?)", [[U.S1, U.S2]]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

@@ -1517,6 +1517,38 @@ const MIGRATIONS = [
     name: 'Doublons ouverts : « ce n\'est pas un doublon » (v7)',
     statements: [`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS duplicate_dismissed_at DATETIME DEFAULT NULL`],
   },
+  {
+    version: 86,
+    name: 'Compétences et langues du staff pour l\'attribution (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS skills (
+        id   INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(40) NOT NULL,
+        UNIQUE KEY uq_skill_name (name)
+      )`,
+      `CREATE TABLE IF NOT EXISTS staff_skills (
+        user_id  VARCHAR(32) NOT NULL,
+        skill_id INT NOT NULL,
+        PRIMARY KEY (user_id, skill_id),
+        CONSTRAINT fk_staffskill_skill FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS subject_skills (
+        subject  VARCHAR(100) NOT NULL,
+        skill_id INT NOT NULL,
+        PRIMARY KEY (subject, skill_id),
+        CONSTRAINT fk_subjskill_skill FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_skills (
+        ticket_id INT NOT NULL,
+        skill_id  INT NOT NULL,
+        PRIMARY KEY (ticket_id, skill_id),
+        CONSTRAINT fk_tskill_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+        CONSTRAINT fk_tskill_skill FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+      )`,
+      // Languages the person answers in (fr,en,…); empty: not said
+      `ALTER TABLE dashboard_users ADD COLUMN IF NOT EXISTS languages VARCHAR(40) DEFAULT NULL`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

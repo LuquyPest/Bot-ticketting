@@ -685,6 +685,14 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
     finally { setSendingFollowup(false); }
   };
 
+  // Skills the ticket asks for (v7)
+  const [allSkills, setAllSkills] = useState([]);
+  useEffect(() => { api.get('/skills').then(r => setAllSkills(Array.isArray(r.data?.skills) ? r.data.skills : [])).catch(() => {}); }, []);
+  const saveSkills = async skillIds => {
+    try { const { data } = await api.put(`/tickets/${id}/skills`, { skillIds }); setTicket(t => ({ ...t, skills: data.skills })); }
+    catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
   // Possible open duplicates (v7)
   const [duplicates, setDuplicates] = useState([]);
   useEffect(() => { api.get(`/tickets/${id}/duplicates`).then(r => setDuplicates(Array.isArray(r.data?.duplicates) ? r.data.duplicates : [])).catch(() => setDuplicates([])); }, [id]);
@@ -1930,6 +1938,29 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* COMPÉTENCES DEMANDÉES (v7): read by the automatic assignment of the teams */}
+          {(ticket.skills?.length > 0 || (can('reply_ticket') && allSkills.length > 0)) && (
+            <div className={panelCard}>
+              <SectionTitle>Compétences demandées</SectionTitle>
+              <div className="flex flex-wrap gap-1">
+                {(ticket.skills || []).map(s => (
+                  <span key={s.id} className="inline-flex items-center gap-1 rounded-md bg-overlay/5 px-1.5 py-0.5 text-[11px] text-ink-2" title={s.from === 'subject' ? 'Demandée par le sujet' : undefined}>
+                    {s.name}{s.from === 'subject' ? <span className="text-ink-4">{' · sujet'}</span> : can('reply_ticket') && (
+                      <button onClick={() => saveSkills((ticket.skills || []).filter(x => x.from === 'ticket' && x.id !== s.id).map(x => x.id))} aria-label={`Retirer la compétence « ${s.name} »`} className="text-ink-4 hover:text-red-400"><X size={10} /></button>
+                    )}
+                  </span>
+                ))}
+              </div>
+              {can('reply_ticket') && allSkills.some(k => !(ticket.skills || []).some(s => s.id === k.id)) && (
+                <select value="" onChange={e => e.target.value && saveSkills([...(ticket.skills || []).filter(x => x.from === 'ticket').map(x => x.id), Number(e.target.value)])} aria-label="Demander une compétence"
+                  className="mt-2 w-full bg-surface border border-overlay/[0.07] text-ink-1 rounded-xl px-2 py-1.5 text-xs">
+                  <option value="">Demander une compétence…</option>
+                  {allSkills.filter(k => !(ticket.skills || []).some(s => s.id === k.id)).map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+                </select>
+              )}
             </div>
           )}
 

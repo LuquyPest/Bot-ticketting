@@ -13,7 +13,7 @@ const FIELDS = [['channel', 'Canal'], ['address', 'Adresse de réception'], ['ty
   ['priority', 'Priorité'], ['stage', 'Statut'], ['tag', 'Tag'], ['hours', 'Horaires'], ['language', 'Langue du demandeur'], ['organization', 'Organisation'], ['customField', 'Champ personnalisé'], ['assigned', 'Attribué'], ['resolved', 'Résolu']];
 const ACTIONS = [['priority', 'Priorité'], ['urgency', 'Urgence'], ['impact', 'Impact'], ['type', 'Type'], ['subject', 'Sujet'], ['team', 'Équipe'], ['assign', 'Attribuer à'],
   ['tagAdd', 'Ajouter le tag'], ['tagRemove', 'Retirer le tag'], ['stage', 'Statut'], ['grade', 'Restreindre au grade'], ['follower', 'Observateur'], ['notify', 'Prévenir'],
-  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['channelPost', 'Message dans un salon Discord'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
+  ['reply', 'Réponse automatique'], ['note', 'Note interne'], ['tasks', 'Modèle de tâches'], ['sla', 'Objectif SLA'], ['skill', 'Compétence demandée'], ['channelPost', 'Message dans un salon Discord'], ['webhook', 'Webhook'], ['close', 'Fermer le ticket']];
 const CHOICES = {
   channel: [['discord', 'Discord'], ['email', 'E-mail'], ['web', 'Web']], type: [['incident', 'Incident'], ['request', 'Demande']],
   priority: [['low', 'Basse'], ['normal', 'Normale'], ['urgent', 'Urgente']], hours: [['open', 'Support ouvert'], ['closed', 'Support fermé']],
@@ -76,6 +76,7 @@ function ActionRow({ a, ctx, onChange, onRemove }) {
     case 'grade': input = sel(ctx.grades.map(g => [g.id, g.name]), 'Grade'); break;
     case 'tasks': input = sel((ctx.taskTemplates || []).map(t => [t.id, t.name]), 'Modèle de tâches'); break;
     case 'sla': input = sel((ctx.slaPolicies || []).map(p => [p.id, p.name]), 'Objectif SLA'); break;
+    case 'skill': input = sel((ctx.skills || []).map(x => [x.id, x.name]), 'Compétence demandée'); break;
     case 'channelPost': {
       const v = a.value && typeof a.value === 'object' ? a.value : { channelId: '', text: '' };
       input = (<>
@@ -122,7 +123,7 @@ function TimerFields({ timer, onChange }) {
 }
 
 // Numbers stay numbers for the server (ids, levels)
-const NUMERIC = ['urgency', 'impact', 'team', 'tagAdd', 'tagRemove', 'grade', 'tasks', 'sla'];
+const NUMERIC = ['urgency', 'impact', 'team', 'tagAdd', 'tagRemove', 'grade', 'tasks', 'sla', 'skill'];
 const bodyOf = r => ({
   name: r.name, triggers: r.triggers, match: r.match, stop: r.stop, active: r.active, conditions: r.conditions, timer: r.triggers.includes('time') ? r.timer : null,
   actions: r.actions.map(a => (NUMERIC.includes(a.type) && a.value !== '' ? { ...a, value: Number(a.value) } : a)),
@@ -197,8 +198,8 @@ export default function RulesEditor() {
   const { stages } = useStages();
   useEffect(() => {
     api.get('/rules').then(r => setList(r.data)).catch(() => setList(false));
-    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/tickets/staff'), api.get('/grades'), api.get('/organizations'), api.get('/task-templates'), api.get('/fields'), api.get('/sla-policies')].map(p => p.catch(() => ({ data: null }))))
-      .then(([o, t, s, g, org, tt, fl, sp]) => setCtx(c => ({ ...c, taskTemplates: tt.data?.templates || [], fields: Array.isArray(fl.data) ? fl.data : [], slaPolicies: sp.data?.policies || [], subjects: o.data?.subjects || [], tags: o.data?.tags || [], teams: t.data || [], staff: s.data || [], grades: Array.isArray(g.data) ? g.data : [], orgs: Array.isArray(org.data) ? org.data : [] })));
+    Promise.all([api.get('/teams/options'), api.get('/teams'), api.get('/tickets/staff'), api.get('/grades'), api.get('/organizations'), api.get('/task-templates'), api.get('/fields'), api.get('/sla-policies'), api.get('/skills')].map(p => p.catch(() => ({ data: null }))))
+      .then(([o, t, s, g, org, tt, fl, sp, sk]) => setCtx(c => ({ ...c, skills: sk.data?.skills || [], taskTemplates: tt.data?.templates || [], fields: Array.isArray(fl.data) ? fl.data : [], slaPolicies: sp.data?.policies || [], subjects: o.data?.subjects || [], tags: o.data?.tags || [], teams: t.data || [], staff: s.data || [], grades: Array.isArray(g.data) ? g.data : [], orgs: Array.isArray(org.data) ? org.data : [] })));
   }, []);
   const full = { ...ctx, stages: stages || [] };
   if (list === null) return <Loader2 size={16} className="animate-spin text-ink-4" />;

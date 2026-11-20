@@ -49,6 +49,8 @@ export const MOCK = {
   '/api/tickets/staff': [{ user_id: '1', username: 'Daryu', avatar: null, role: 'fondateur', availability: 'available', vacation_mode: 0 }, { user_id: '2', username: 'Lina', avatar: null, role: 'support', availability: 'available', vacation_mode: 0 }],
   '/api/teams': [{ id: 1, name: 'Paiements', color: 'amber', assignMode: 'round_robin', maxOpen: 5, subjects: ['Paiement'], tagIds: [1], members: [{ userId: '1', username: 'Daryu', open: 2 }], olaMinutes: 240, escalations: [{ id: 3, objective: 'ola', percent: 100, notify: true, raisePriority: false, alertChannel: false, teamId: null, followerIds: [] }] }],
   '/api/teams/mine': [{ id: 1, name: 'Paiements', color: 'amber' }],
+  '/api/skills': { languages: ['fr', 'en', 'es', 'de', 'it', 'pt'], skills: [{ id: 1, name: 'Réseau', staff: 1 }, { id: 2, name: 'Comptabilité', staff: 0 }],
+    staff: [{ userId: '1', username: 'Daryu', languages: ['fr', 'en'], skills: [1] }], subjects: { Paiement: [2] } },
   '/api/teams/options': { subjects: ['Paiement', 'Bug en jeu'], tags: [{ id: 1, name: 'Litige' }] },
   '/api/stages': [
     { key: 'open', label: 'Ouvert', color: 'sky', kind: 'open', builtin: true, categoryId: '1', slaHours: 4 },
