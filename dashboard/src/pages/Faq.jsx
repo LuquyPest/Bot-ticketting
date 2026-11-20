@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { confirmToast } from '../utils/confirmToast';
 import { useAuth } from '../App';
 import FormatBar from '../components/FormatBar';
+import KbTree from '../components/KbTree';
 
 const input = 'w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary/50';
 
@@ -222,6 +223,11 @@ export default function Faq() {
           </div>
         ))}
       </div>
+
+      <details className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4" open>
+        <summary className="text-sm font-semibold text-ink-1 cursor-pointer">Arborescence</summary>
+        <div className="mt-3"><KbTree canEdit={canManage} onChange={load} onOpenArticle={id => { const e = data.entries.find(x => x.id === id); if (e && canManage) setEditing(e); }} /></div>
+      </details>
 
       <div className="bg-overlay/3 rounded-2xl border border-overlay/6 p-4 flex items-center gap-3 flex-wrap">
         <Globe size={16} className="text-primary-light shrink-0" aria-hidden="true" />

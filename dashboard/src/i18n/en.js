@@ -881,11 +881,20 @@ export const ENTRIES = [
   ['Description (facultatif)', 'Description (optional)'], ['Description du planning commun', 'Description of the shared planning'], ['Créer le planning', 'Create the planning'], ['Enregistrer le planning', 'Save the planning'],
   ['Planning commun enregistré', 'Shared planning saved'], ['Planning commun supprimé', 'Shared planning deleted'], ['Couverture', 'Coverage'], ['Créneau', 'Slot'], ['Modifier le créneau', 'Edit the slot'], ['Nouveau créneau', 'New slot'],
   ['Intitulé (Astreinte, Accueil…)', 'Title (On call, Front desk…)'], ['Intitulé du créneau', 'Title of the slot'], ['Personne', 'Person'], ['À pourvoir', 'Unfilled'], ['Compétence demandée', 'Skill asked for'], ['Aucune compétence demandée', 'No skill asked for'],
-  ['Début du créneau', 'Start of the slot'], ['Fin du créneau', 'End of the slot'], ['Chaque semaine', 'Every week'], ['Répéter jusqu\'au', 'Repeat until'], ['Enregistrer le créneau', 'Save the slot'], ['Supprimer le créneau', 'Delete the slot'],
+  ['Chaque semaine', 'Every week'], ['Répéter jusqu\'au', 'Repeat until'], ['Enregistrer le créneau', 'Save the slot'], ['Supprimer le créneau', 'Delete the slot'],
   ['Créneau enregistré', 'Slot saved'], ['Créneau supprimé', 'Slot deleted'], ['+ créneau', '+ slot'],
   ['français', 'French'], ['anglais', 'English'], ['espagnol', 'Spanish'], ['allemand', 'German'], ['italien', 'Italian'], ['portugais', 'Portuguese'],
   ['Un planning partagé par des personnes et des équipes — astreinte, permanence, accueil… Ses membres y posent des créneaux, répétables chaque semaine ; chacun retrouve les siens dans son planning et son agenda iCal.', 'A planning shared by people and teams — on call, desk duty, front desk… Its members put slots in it, repeatable every week; everyone finds theirs in their planning and their iCal calendar.'],
   ['Glisse une tâche sur un autre jour pour la replanifier (même heure). En rouge : l\'échéance de résolution d\'un ticket attribué ; en violet : les créneaux des plannings communs.', 'Drag a task to another day to replan it (same time). In red: the resolution deadline of an assigned ticket; in purple: the slots of shared plannings.'],
+  // ── v8.3: tree of the knowledge base, team inbox, shortcuts ──
+  ['Arborescence', 'Tree'], ['Arborescence de la base', 'Tree of the knowledge base'], ['Sans catégorie', 'No category'], ['Nom de la sous-catégorie', 'Name of the sub-category'], ['Nouveau nom', 'New name'],
+  ['brouillon', 'draft'], ['Déplacer vers…', 'Move to…'],
+  ['Glisse une catégorie ou un article : sur une catégorie pour l\'y mettre, sur un élément pour le placer avant lui. Les flèches et « Déplacer vers » font de même au clavier. Trois niveaux au plus.', 'Drag a category or an article: onto a category to put it inside, onto an item to place it before. The arrows and « Move to » do the same from the keyboard. Three levels at most.'],
+  ['Boîte d\'équipe', 'Team inbox'], ['Non pris', 'Not taken'], ['À moi', 'Mine'], ['En retard', 'Late'], ['Raccourcis', 'Shortcuts'], ['Rien ici.', 'Nothing here.'], ['Raccourcis clavier', 'Keyboard shortcuts'],
+  ['Un ticket peut être dans plusieurs colonnes (à moi et en retard, par exemple).', 'A ticket can be in several columns (mine and late, for instance).'], ['montre les raccourcis ;', 'shows the shortcuts;'], ['trie les tickets par urgence.', 'sorts the tickets by urgency.'],
+  ['g puis d / q / t / b', 'g then d / q / t / b'], ['Dashboard, Ma file, Tickets, Boîte d\'équipe', 'Dashboard, My queue, Tickets, Team inbox'], ['g puis p / k / c / a / s', 'g then p / k / c / a / s'],
+  ['Planning, Base, Contacts, Analytiques, Paramètres', 'Planning, Knowledge base, Contacts, Analytics, Settings'], ['Colonne précédente, suivante', 'Previous, next column'], ['Ticket suivant, précédent', 'Next, previous ticket'],
+  ['Afficher le ticket à droite', 'Show the ticket on the right'], ['Ouvrir la fiche entière', 'Open the full ticket view'], ['Fermer l\'aperçu', 'Close the preview'], ['Ticket suivant', 'Next ticket'], ['Ticket précédent', 'Previous ticket'],
 ];
 
 export const TEMPLATES = [
@@ -1220,4 +1229,6 @@ export const TEMPLATES = [
   ['Planning commun : {}', 'Shared planning: {1}'], ['Compétence : {}', 'Skill: {1}'], ['Langue : {}', 'Language: {1}'], ['{} personne(s) · {} équipe(s)', '{1} person(s) · {2} team(s)'],
   ['Supprimer le planning « {} »', 'Delete the planning « {1} »'], ['Supprimer le planning « {} » et ses créneaux ?', 'Delete the planning « {1} » and its slots?'], ['{} · {}/{} présent(s)', '{1} · {2}/{3} present'], ['Absents : {}', 'Away: {1}'],
   ['Ajouter un créneau le {}', 'Add a slot on {1}'], ['{}–{} · {} · à pourvoir', '{1}–{2} · {3} · unfilled'], ['{}–{} · {} · à pourvoir ({})', '{1}–{2} · {3} · unfilled ({4})'],
+  ['Monter « {} »', 'Move « {1} » up'], ['Descendre « {} »', 'Move « {1} » down'], ['Déplacer « {} » vers', 'Move « {1} » to'], ['Replier « {} »', 'Collapse « {1} »'], ['Déplier « {} »', 'Expand « {1} »'],
+  ['Sous-catégorie dans « {} »', 'Sub-category in « {1} »'], ['Renommer « {} »', 'Rename « {1} »'], ['Supprimer la catégorie « {} » ? Ses articles et sous-catégories remontent d\'un niveau.', 'Delete the category « {1} »? Its articles and sub-categories go up one level.'],
 ];

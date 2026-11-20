@@ -9479,6 +9479,57 @@ async function main() {
     await globalQuery('DROP DATABASE IF EXISTS ticketbot_guild_' + G3);
   }
 
+  // ── Knowledge base as a tree (utils/kbTree.js) and team inbox (v8) ──
+  {
+    const T = app('./utils/kbTree');
+    const cat = async (name, parentId) => (await req('POST', '/api/faq/categories', { sid: sessions.F, body: { name, parentId } })).body;
+    r = await req('POST', '/api/faq/categories', { sid: sessions.S1F, body: { name: 'x' } });
+    check('base en arbre: catégories réservées à « Paramètres »', r.status === 403, r.status);
+    await cat('Livraison v8');
+    const flat = tree => { const out = []; const walk = l => l.forEach(n => { out.push(n); walk(n.children); }); walk(tree.categories); return out; };
+    const byName = async n => flat((await req('GET', '/api/faq/tree', { sid: sessions.F })).body).find(c => c.name === n);
+    const liv = await byName('Livraison v8');
+    await cat('Suivi v8', liv.id);
+    const suivi = await byName('Suivi v8');
+    await cat('Colis v8', suivi.id);
+    const colis = await byName('Colis v8');
+    const deep = await req('POST', '/api/faq/categories', { sid: sessions.F, body: { name: 'Trop profond', parentId: colis.id } });
+    check('base en arbre: trois niveaux au plus', !!liv && !!suivi && !!colis && deep.status === 400, JSON.stringify(deep.body));
+    r = await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Où est mon colis v8 ?', answer: 'Suivi en ligne.', category: 'Livraison v8 › Suivi v8', visibility: 'public' } });
+    const artId = r.body.id;
+    let [art] = await db('SELECT category, category_id FROM faq_entries WHERE id = ?', [artId]);
+    check('base en arbre: la catégorie écrite dans l éditeur rejoint l arbre', art.category_id === suivi.id, JSON.stringify(art));
+    r = await req('POST', '/api/faq/move', { sid: sessions.F, body: { kind: 'article', id: artId, parentId: colis.id, index: 0 } });
+    [art] = await db('SELECT category, category_id FROM faq_entries WHERE id = ?', [artId]);
+    check('base en arbre: glisser un article dans une catégorie (chemin complet gardé pour les lecteurs)', r.status === 200 && art.category_id === colis.id && art.category === 'Livraison v8 › Suivi v8 › Colis v8', JSON.stringify(art));
+    await req('PATCH', `/api/faq/categories/${liv.id}`, { sid: sessions.F, body: { name: 'Expédition v8' } });
+    [art] = await db('SELECT category FROM faq_entries WHERE id = ?', [artId]);
+    const cycle = await req('POST', '/api/faq/move', { sid: sessions.F, body: { kind: 'category', id: liv.id, parentId: colis.id } });
+    check('base en arbre: renommer met à jour les chemins ; une catégorie ne va pas dans l une des siennes', art.category === 'Expédition v8 › Suivi v8 › Colis v8' && cycle.status === 400, JSON.stringify([art, cycle.body]));
+    await cat('Zèbre v8');
+    const zebre = await byName('Zèbre v8');
+    const a2 = (await req('POST', '/api/faq', { sid: sessions.F, body: { question: 'Article du zèbre v8', answer: 'x', category: 'Zèbre v8', visibility: 'public' } })).body.id;
+    r = await req('POST', '/api/faq/move', { sid: sessions.F, body: { kind: 'category', id: zebre.id, parentId: null, index: 0 } });
+    const roots = r.body.categories.map(c => c.name);
+    const pubOrder = (await app('./utils/knowledgeBase').publicArticles(db)).map(a => a.id).filter(id => [artId, a2].includes(id));
+    check('base en arbre: l ordre choisi vaut aussi pour la page publique et l espace membre', roots[0] === 'Zèbre v8' && pubOrder[0] === a2 && pubOrder[1] === artId, JSON.stringify([roots, pubOrder]));
+    r = await req('DELETE', `/api/faq/categories/${suivi.id}`, { sid: sessions.F });
+    [art] = await db('SELECT category FROM faq_entries WHERE id = ?', [artId]);
+    const colis2 = await byName('Colis v8');
+    check('base en arbre: une catégorie supprimée laisse ses sous-catégories et articles au niveau du dessus', r.status === 200 && colis2?.parentId === liv.id && art.category === 'Expédition v8 › Colis v8', JSON.stringify([colis2, art]));
+    for (const c of [colis.id, liv.id, zebre.id]) await T.deleteCategory(db, c);
+    await db('DELETE FROM faq_entries WHERE id IN (?)', [[artId, a2]]);
+    // Team inbox: several teams, founders choose any of them
+    const tm = (await req('POST', '/api/teams', { sid: sessions.F, body: { name: 'Boîte v8', members: [U.S1] } })).body.find(t => t.name === 'Boîte v8');
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, team_id) VALUES ('200000000000000071', 'boite', 'boite-v8', 'open', 'Boîte v8', ?)", [tm.id])).insertId;
+    const qF = await req('GET', '/api/tickets/queue', { sid: sessions.F, query: { scope: 'team', teams: String(tm.id) } });
+    const qS1 = await req('GET', '/api/tickets/queue', { sid: sessions.S1, query: { scope: 'team', teams: String(tm.id) } });
+    const qS2 = await req('GET', '/api/tickets/queue', { sid: sessions.S2, query: { scope: 'team', teams: String(tm.id) } });
+    check('boîte d équipe: les tickets des équipes choisies (fondateurs : toutes, les autres : les leurs)', qF.body.tickets.some(t => t.id === tk) && qS1.body.tickets.some(t => t.id === tk) && !qS2.body.tickets?.some(t => t.id === tk), JSON.stringify([qF.status, qS1.status, qS2.status]));
+    await db('DELETE FROM tickets WHERE id = ?', [tk]);
+    await req('DELETE', `/api/teams/${tm.id}`, { sid: sessions.F });
+  }
+
   {
     const pub = ['/api/kb/G/articles/1/feedback', '/api/kb/G/searches', '/api/auth/select-guild', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/password-reset/confirm',
       '/api/auth/ldap-login', '/api/auth/invitation/accept', '/api/installation/owner', '/api/member/auth/email', '/api/member/auth/email/verify', '/api/member/guilds/G/tickets', '/api/member/tickets/G/1/resolution', '/api/member/tickets/G/1/messages',

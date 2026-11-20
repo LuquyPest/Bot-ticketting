@@ -43,6 +43,10 @@ Chaque changement du texte garde la **version d'avant** (**Versions précédente
 
 **Images** : une fois l'article enregistré, **Ajouter une image** sous la réponse envoie une image (PNG, JPEG, GIF ou WebP, 5 Mo au plus, 30 par article) et l'insère là où se trouve le curseur, sous la forme `![texte](/api/kb/…/images/…)`. Elle suit la visibilité de l'article : tout le monde pour un article public publié, les membres connectés pour un article réservé aux membres, sinon le staff seulement. Dans les e-mails et les pages publiques elle s'affiche ; dans les MP Discord elle devient un lien. Les images d'ailleurs (`![…](https://…)`) ne s'affichent jamais, pour que personne ne suive les lecteurs. Supprimer l'article supprime ses images.
 
+### L'arborescence
+
+**FAQ → Arborescence** range la base en **catégories sur trois niveaux** (« Livraison › Suivi du colis »). Avec la permission **Paramètres**, on crée, renomme et supprime une catégorie (ses articles et sous-catégories remontent d'un niveau), et on règle l'ordre par **glisser-déposer** : une catégorie ou un article lâché sur une catégorie y va, lâché sur un élément se place avant lui ; les flèches et « Déplacer vers » font de même au clavier. La page publique, l'onglet Aide de l'espace membre et les suggestions suivent cet ordre. La catégorie tapée dans l'éditeur d'un article (un chemin existant, ou un nouveau nom) rejoint l'arbre ; les catégories d'avant la v8 en deviennent les catégories racines.
+
 ### Référencement
 
 Les pages de la base publique (`/aide/<espace>` et chaque article) sont envoyées **toutes faites par le serveur** : titre, description, adresse canonique, langues (`hreflang`), données structurées (FAQ, article) et le contenu lui-même. Elles se lisent **sans JavaScript** et les moteurs de recherche les indexent ; le dashboard reprend ensuite la page comme avant. Le **plan du site** est à `/aide/<espace>/sitemap.xml`. Seul ce qui est public et publié y apparaît ; un brouillon, un article réservé ou une page hors ligne répondent « introuvable ».

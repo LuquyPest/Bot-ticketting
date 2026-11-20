@@ -241,7 +241,10 @@ router.get('/queue', async (req, res) => {
     // team: the tickets of my teams (v4.2), or of one of them (?team=id)
     const myTeams = scope === 'team' ? await require('../../utils/teams').teamIdsOf(req.guildDb, req.session.user.id) : [];
     const oneTeam = parseInt(req.query.team) || null;
-    const teamIds = oneTeam ? myTeams.filter(id => id === oneTeam) : myTeams;
+    // v8 (team inbox): several teams at once (?teams=1,2); founders may choose any team
+    const asked = String(req.query.teams || '').split(',').map(Number).filter(n => n > 0).slice(0, 20);
+    const allowed = id => req.userIsFondateur || myTeams.includes(id);
+    const teamIds = asked.length ? asked.filter(allowed) : oneTeam ? (allowed(oneTeam) ? [oneTeam] : []) : myTeams;
     const where = scope === 'mine'
       ? 'EXISTS (SELECT 1 FROM ticket_assignees a WHERE a.ticket_id = tickets.id AND a.user_id = ?)'
       : scope === 'team' ? (teamIds.length ? 'team_id IN (?)' : '0 = 1')

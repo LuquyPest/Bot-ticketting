@@ -41,6 +41,10 @@ Each change of the text keeps the **previous version** (**Previous versions**, *
 
 **Images**: once the article is saved, **Add an image** under the answer uploads an image (PNG, JPEG, GIF or WebP, 5 MB at most, 30 per article) and inserts it where the cursor is, as `![text](/api/kb/…/images/…)`. It follows the article's visibility: everyone for a published public article, signed-in members for a members-only article, otherwise the staff only. It is shown in e-mails and public pages; in Discord DMs it becomes a link. Images from elsewhere (`![…](https://…)`) are never shown, so nobody tracks the readers. Deleting the article deletes its images.
 
+### The tree
+
+**FAQ → Tree** sorts the knowledge base into **categories on three levels** (« Delivery › Parcel tracking »). With the **Settings** permission, you create, rename and delete a category (its articles and sub-categories go up one level), and set the order by **drag and drop**: a category or an article dropped onto a category goes inside, dropped onto an item is placed before it; the arrows and « Move to » do the same from the keyboard. The public page, the member space's Help tab and the suggestions follow that order. The category typed in an article's editor (an existing path, or a new name) joins the tree; the categories from before v8 become its root categories.
+
 ### Search engines
 
 The pages of the public base (`/aide/<space>` and each article) are sent **ready-made by the server**: title, description, canonical address, languages (`hreflang`), structured data (FAQ, article) and the content itself. They read **without JavaScript** and search engines index them; the dashboard then takes over the page as before. The **sitemap** is at `/aide/<space>/sitemap.xml`. Only what is public and published shows there; a draft, a restricted article or an offline page answer « not found ».

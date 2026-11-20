@@ -193,7 +193,7 @@ The **time spent** goes to a task: the stopwatch of a task, or time added by han
 
 ### Writing, going fast
 
-The reply and note area has a **formatting bar** (bold, italic, code, link, lists, quote; **Ctrl+B**, **Ctrl+I**, **Ctrl+K**, **Ctrl+E**): the text stays Markdown, which Discord, e-mails and the member space show safely. **?** opens the list of **shortcuts**: on the ticket view, **r** reply, **n** note, **a** assign it to me, **s** change the status, **.** and **,** next or previous open ticket; in the list, **j**/**k** and **Enter**.
+The reply and note area has a **formatting bar** (bold, italic, code, link, lists, quote; **Ctrl+B**, **Ctrl+I**, **Ctrl+K**, **Ctrl+E**): the text stays Markdown, which Discord, e-mails and the member space show safely. **?** opens the list of **shortcuts**: on the ticket view, **r** reply, **n** note, **a** assign it to me, **s** change the status, **.** and **,** next or previous open ticket; in the list, **j**/**k** and **Enter**. Everywhere in the dashboard, **g** then a letter changes page: **d** dashboard, **q** my queue, **t** tickets, **b** team inbox, **p** planning, **k** knowledge base, **c** contacts, **a** analytics, **s** settings.
 
 In the list, **Columns** chooses what shows (type, team, organisation, last message…), kept for each person. A **saved view** can be **shared with a team** you belong to: its members see it (read only), each with their own rights on the tickets.
 
@@ -317,3 +317,4 @@ A ticket keeps its requester's organisation at the opening: it shows on the tick
 - **Bulk actions**: priority, stage, tags, assignment, template, closing — each according to your permissions.
 - **Split view** (Profile → Display): the list on the left, the ticket on the right, on a screen at least 1,280 px wide.
 - **My queue**: your tickets from most to least urgent, with the reason; **Kanban**: tickets in columns by stage.
+- **Team inbox**: the open tickets of one or more teams (yours; a founder picks among all) in four columns — not taken, mine, waiting, late on the SLA — with the ticket shown on the right. From the keyboard: **h**/**l** changes column, **j**/**k** ticket, **Enter** shows it, **a** assigns it to you, **o** opens the full view.

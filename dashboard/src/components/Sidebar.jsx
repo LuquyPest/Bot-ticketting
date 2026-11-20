@@ -5,7 +5,7 @@ import { Rocket, Gavel,
   LayoutDashboard, Ticket, Users, ShieldBan,
   FileText, Settings, LogOut, Bot, ScrollText, Shield, ClipboardList,
   Kanban, Tag, BarChart2, Menu, X, Command, Sun, Moon,
-  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays, Coins, Bug, GitPullRequestArrow, Layers } from 'lucide-react';
+  Search, TrendingUp, Key, Mail, History, LayoutTemplate, ClipboardCheck, Clock, HelpCircle, UserSearch, ListTodo, ListPlus, Gauge, Megaphone, ListChecks, Contact, KeyRound, HeartPulse, UserCog, ChevronRight, Server, Building2, CalendarDays, Coins, Bug, GitPullRequestArrow, Layers, Inbox } from 'lucide-react';
 import { useAuth } from '../App';
 import { useInstanceInfo } from '../hooks/useInstanceInfo';
 import { useSSECtx } from '../context/SSEContext';
@@ -15,6 +15,7 @@ import NotificationBell from './NotificationBell';
 import RunningTimer from './RunningTimer';
 import { AVAILABILITY } from '../utils/availability';
 import CommandPalette from './CommandPalette';
+import GlobalShortcuts from './GlobalShortcuts';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,7 @@ const NAV_GROUPS = [
   { id: 'support', label: 'Support', items: [
     { to: '/queue',       label: 'Ma file',      icon: ListTodo,        roles: ['support','fondateur'] },
     { to: '/tickets',     label: 'Tickets',      icon: Ticket,          roles: ['support','fondateur'] },
+    { to: '/boite',       label: 'Boîte d\'équipe', icon: Inbox,        roles: ['support','fondateur'] },
     { to: '/kanban',      label: 'Kanban',       icon: Kanban,          roles: ['support','fondateur'] },
     { to: '/tous-mes-espaces', label: 'Tous mes espaces', icon: Layers, roles: ['support','fondateur'] },
     { to: '/planning',    label: 'Planning',     icon: CalendarDays,    roles: ['support','fondateur'] },
@@ -378,6 +380,7 @@ export default function Sidebar() {
       </aside>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <GlobalShortcuts />
     </>
   );
 }

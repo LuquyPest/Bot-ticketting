@@ -232,7 +232,7 @@ async function guildFaq(guildId, member = null) {
   }
   return db(`SELECT id, question, answer, category, visibility FROM faq_entries WHERE ${LIVE} AND translation_of IS NULL
     AND (visibility IN ('public', 'members')${orgs.length ? " OR (visibility = 'organization' AND organization_id IN (?))" : ''})
-    ORDER BY category = '', category, solved_count DESC, id ASC LIMIT 200`, orgs.length ? [orgs] : []);
+    ORDER BY ${require('./kbTree').ORDER}, solved_count DESC, id ASC LIMIT 200`, orgs.length ? [orgs] : []);
 }
 
 // What the web form asks before opening a ticket: subjects, then (for a subject) custom fields

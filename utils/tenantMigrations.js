@@ -1892,6 +1892,30 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 102,
+    name: 'Catégories en arbre de la base de connaissances (v8)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS kb_categories (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        name      VARCHAR(80) NOT NULL,
+        parent_id INT DEFAULT NULL,
+        position  INT NOT NULL DEFAULT 0,
+        sort_key  VARCHAR(40) NOT NULL DEFAULT '',
+        INDEX idx_kbcat_parent (parent_id, position)
+      )`,
+      'ALTER TABLE faq_entries ADD COLUMN IF NOT EXISTS category_id INT DEFAULT NULL, ADD COLUMN IF NOT EXISTS position INT NOT NULL DEFAULT 0',
+      // The full path « Parent › Child » stays in `category`, read by the public page, the member space and the API
+      "ALTER TABLE faq_entries MODIFY COLUMN category VARCHAR(255) NOT NULL DEFAULT ''",
+      "ALTER TABLE faq_revisions MODIFY COLUMN category VARCHAR(255) NOT NULL DEFAULT ''",
+      // The categories of before (free text) become root categories, in alphabetical order
+      `INSERT INTO kb_categories (name, position, sort_key)
+       SELECT c, ROW_NUMBER() OVER (ORDER BY c) - 1, LPAD(ROW_NUMBER() OVER (ORDER BY c) - 1, 4, '0')
+       FROM (SELECT DISTINCT LEFT(category, 80) AS c FROM faq_entries WHERE category <> '') x
+       WHERE NOT EXISTS (SELECT 1 FROM kb_categories)`,
+      'UPDATE faq_entries f JOIN kb_categories k ON k.parent_id IS NULL AND k.name = LEFT(f.category, 80) SET f.category_id = k.id WHERE f.category <> \'\' AND f.category_id IS NULL',
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
