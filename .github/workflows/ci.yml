@@ -1,9 +1,10 @@
 name: CI
 
+# CI policy (see CONTRIBUTING.md): pull requests only (what is merged was tested there, identical);
+# each job runs only when its files change; the full smoke matrix on demand (workflow_dispatch).
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 # Least privilege: the CI only reads the repository
 permissions:
@@ -15,8 +16,35 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # What the pull request touches → which jobs run (a manual run runs everything)
+  changes:
+    name: Fichiers modifiés
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.f.outputs.server }}
+      dashboard: ${{ steps.f.outputs.dashboard }}
+      docs: ${{ steps.f.outputs.docs }}
+      image: ${{ steps.f.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: f
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            for k in server dashboard docs image; do echo "$k=true" >> "$GITHUB_OUTPUT"; done; exit 0
+          fi
+          files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          has() { echo "$files" | grep -qE "$1" && echo true || echo false; }
+          echo "server=$(has '^(utils|web|events|commands|tests/integration|bootstrap\.js|index\.js|deploy-commands\.js|package(-lock)?\.json|\.github/workflows/ci\.yml)')" >> "$GITHUB_OUTPUT"
+          echo "dashboard=$(has '^(dashboard/|\.github/workflows/ci\.yml)')" >> "$GITHUB_OUTPUT"
+          echo "docs=$(has '^(docs/|dashboard/src/data/patchnotes\.js|\.github/workflows/ci\.yml)')" >> "$GITHUB_OUTPUT"
+          echo "image=$(has '^(Dockerfile|\.dockerignore|docker/|package(-lock)?\.json|\.github/workflows/ci\.yml)')" >> "$GITHUB_OUTPUT"
+
   integration:
     name: Tests d'intégration
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     services:
       mariadb:
@@ -73,11 +101,14 @@ jobs:
   dashboard:
     # One machine per pass of the smoke test, in parallel (≈ 3 min instead of 14)
     name: Test de fumée du dashboard (${{ matrix.run }})
+    needs: changes
+    if: needs.changes.outputs.dashboard == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        run: [dark, light, mobile, en, pro, pro-light]
+        # Pull requests: dark (pages, accessibility) and en (translations); all six by hand before a release
+        run: ${{ github.event_name == 'pull_request' && fromJSON('["dark","en"]') || fromJSON('["dark","light","mobile","en","pro","pro-light"]') }}
     defaults:
       run:
         working-directory: dashboard
@@ -108,6 +139,8 @@ jobs:
 
   docs:
     name: Build du site de documentation
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -124,6 +157,8 @@ jobs:
 
   image:
     name: Build de l'image Docker
+    needs: changes
+    if: needs.changes.outputs.image == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

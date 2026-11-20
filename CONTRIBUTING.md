@@ -28,7 +28,7 @@ npm run test:integration                           # suite d'intégration (Maria
 cd dashboard && npx vite build && node tests/smoke.mjs   # pages du dashboard, accessibilité (axe-core)
 ```
 
-La CI rejoue les trois à chaque push, plus `npm audit`. La suite envoie aussi des corps malformés à toutes les routes publiques et du staff : aucune ne doit répondre 500. Une PR est fusionnée quand elle passe la CI et qu'elle est relue.
+La CI ne tourne que sur les pull requests (pas au push sur `main` : ce qui est fusionné a été testé à l'identique) et seulement pour ce qu'elles touchent : intégration et `npm audit` si le serveur change, test de fumée (thèmes sombre et anglais) si le dashboard change, site si la documentation change, image Docker si `Dockerfile`, `docker/` ou les dépendances changent ; l'analyse statique toujours. Les six passes du test de fumée se lancent à la main (*Actions → CI → Run workflow*) avant une release. Lance la suite en local avant de pousser, et regroupe les petites modifications dans une même PR. La suite envoie aussi des corps malformés à toutes les routes publiques et du staff : aucune ne doit répondre 500. Une PR est fusionnée quand elle passe la CI et qu'elle est relue.
 
 Règles du dépôt :
 
