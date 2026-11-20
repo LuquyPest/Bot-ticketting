@@ -18,6 +18,8 @@ const ERROR_MESSAGES = {
   provider_off:  "Ce moyen de connexion n'est pas activé sur cette instance.",
   oidc_no_account: "Aucun compte n'utilise cette adresse. Demande une invitation, ou connecte-toi autrement puis relie ce fournisseur dans Profil → Connexion.",
   oidc_unverified: "Le fournisseur ne garantit pas ton adresse e-mail : connecte-toi autrement, puis relie-le dans Profil → Connexion.",
+  saml_off: 'La connexion SAML n\'est pas activée.', saml_invalid: 'La réponse du fournisseur d\'identité a été refusée (signature, destinataire, délai ou réponse déjà utilisée).',
+  saml_no_account: 'Aucun compte n\'utilise cette adresse. Demande une invitation au propriétaire de l\'instance.', saml_group: 'Ton compte du fournisseur d\'identité n\'est pas dans le groupe autorisé.',
   oidc_invalid:  "Réponse du fournisseur refusée. Réessaie, ou préviens le propriétaire de l'instance.",
 };
 const EXPIRED_MESSAGES = { idle: 'Tu as été déconnecté après une période d\'inactivité. Reconnecte-toi pour continuer.' };
@@ -184,9 +186,14 @@ export default function Login() {
           </div>
           </>)}
 
-          {(info?.providers?.length > 0 || info?.ldap) && (<>
+          {(info?.providers?.length > 0 || info?.ldap || info?.saml) && (<>
             <div className={`space-y-2 ${info?.discordLogin !== false ? 'mt-5' : ''}`}>
               {info.ldap && <LdapForm label={info.ldap.label} onError={setError} />}
+              {info.saml && (
+                <a href="/api/auth/saml/login" className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5">
+                  <KeyRound size={15} aria-hidden="true" /> Continuer avec <span translate="no">{info.saml.label}</span>
+                </a>
+              )}
               {(info.providers || []).map(p => (
                 <a key={p.id} href={`/api/auth/oidc/${p.id}`}
                   className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-overlay/10 text-sm font-semibold text-ink-1 hover:bg-overlay/5">

@@ -55,6 +55,14 @@ Each provider shows its **redirect address**, to declare as is on its side (`htt
 
 **Discord**: turning off the Discord sign-in does not turn off the integration (bot, DMs, channels, panels); the member space also keeps its Discord sign-in for requesters. You cannot turn off the last way to sign in of your own account: first set a password or link another provider in **Profile → Sign-in**.
 
+### SAML 2.0
+
+**Instance → Sign-in → SAML 2.0** connects the organisation's identity provider (Entra ID, Okta, ADFS, Keycloak, Authentik…). Datick is declared there as a service provider with two addresses shown in the form: the **identifier (entity ID) and metadata** `https://<your domain>/api/auth/saml/metadata`, and the **return address (ACS)** `…/api/auth/saml/acs` (HTTP-POST binding). You need the provider's sign-in address (SSO, HTTP-Redirect binding), its **signing certificate** (PEM) and, if needed, its identifier, the attribute names (address, name, groups) and an **allowed group**.
+
+- The **response and the assertion must be signed** by this certificate; the recipient, the audience, the request it answers (kept 10 minutes, consumed once) and the date (3 minutes of skew at most) are checked; a replayed response is refused.
+- The person is recognised by their identifier (NameID), else attached to the account with the same **verified address**; nobody gets an account by signing in this way. The account's two-factor authentication applies.
+- The instance must be served over **https**. The « Continue with … » button shows on the sign-in page.
+
 ### LDAP / Active Directory directory
 
 Under the providers, **LDAP / Active Directory directory** lets the staff sign in with **their directory login and password** (a « Continue with… » form on the sign-in page). The **OpenLDAP** and **Active Directory** buttons fill in the usual values.

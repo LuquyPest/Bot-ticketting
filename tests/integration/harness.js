@@ -9036,6 +9036,90 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'nps7-%'");
   }
 
+  // ── SAML 2.0 sign-in (utils/saml.js, routes/samlAuth.js, v7): a signed response built here ──
+  {
+    const { execFileSync } = require('child_process');
+    const os = require('os'), fsm = require('fs'), zlib = require('zlib');
+    const dir = fsm.mkdtempSync(path.join(os.tmpdir(), 'saml-'));
+    const mkCert = name => {
+      execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', path.join(dir, `${name}.key`), '-out', path.join(dir, `${name}.pem`), '-days', '2', '-subj', `/CN=${name}`], { stdio: 'ignore' });
+      return { key: fsm.readFileSync(path.join(dir, `${name}.key`), 'utf8'), cert: fsm.readFileSync(path.join(dir, `${name}.pem`), 'utf8') };
+    };
+    const idp = mkCert('idp'), other = mkCert('autre');
+    const C = app('./utils/config').config;
+    const base0 = C.webServerBaseUrl;
+    C.webServerBaseUrl = 'https://ticket.example.com';
+    const S = app('./utils/saml');
+    r = await req('PUT', '/api/instance/saml', { sid: sessions.S1, body: { enabled: true } });
+    const rNo = r.status;
+    r = await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { enabled: true, name: 'Entra v7', entryPoint: 'http://idp.example/sso', idpCert: idp.cert } });
+    const rHttp = r.status;
+    r = await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { enabled: true, name: 'Entra v7', entryPoint: 'https://idp.example/sso', idpIssuer: 'https://idp.example', idpCert: idp.cert, group: 'support-datick' } });
+    check('SAML: réglé par le propriétaire (https exigé), certificat jamais renvoyé en entier', [401, 403].includes(rNo) && rHttp === 400 && r.status === 200 && r.body.idpCertSet && r.body.acsUrl === 'https://ticket.example.com/api/auth/saml/acs', `${rNo} ${rHttp} ${JSON.stringify(r.body).slice(0, 200)}`);
+    r = await req('GET', '/api/auth/saml/metadata');
+    check('SAML: métadonnées du fournisseur de service', r.status === 200 && /EntityDescriptor/.test(String(r.body)) && /ticket\.example\.com\/api\/auth\/saml\/acs/.test(String(r.body)), String(r.body).slice(0, 120));
+    const loginUrl = await S.loginUrl();
+    const reqXml = zlib.inflateRawSync(Buffer.from(new URL(loginUrl).searchParams.get('SAMLRequest'), 'base64')).toString();
+    const reqId = /ID="([^"]+)"/.exec(reqXml)[1];
+    check('SAML: demande d authentification vers le fournisseur', /^https:\/\/idp\.example\/sso\?SAMLRequest=/.test(loginUrl) && !!reqId, loginUrl.slice(0, 80));
+    const { SignedXml } = require('xml-crypto');
+    const iso = ms => new Date(Date.now() + ms).toISOString();
+    const build = ({ inResponseTo = reqId, email = 'alice-saml@corp.example', groups = ['support-datick'], key = idp.key, id = `_a${Date.now()}${Math.random().toString(16).slice(2)}` } = {}) => {
+      const acs = 'https://ticket.example.com/api/auth/saml/acs', aud = 'https://ticket.example.com/api/auth/saml/metadata';
+      let xml = `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_r${id}" Version="2.0" IssueInstant="${iso(0)}" Destination="${acs}" InResponseTo="${inResponseTo}">`
+        + '<saml:Issuer>https://idp.example</saml:Issuer><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>'
+        + `<saml:Assertion ID="${id}" Version="2.0" IssueInstant="${iso(0)}"><saml:Issuer>https://idp.example</saml:Issuer>`
+        + `<saml:Subject><saml:NameID>${email}</saml:NameID><saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"><saml:SubjectConfirmationData NotOnOrAfter="${iso(300000)}" Recipient="${acs}" InResponseTo="${inResponseTo}"/></saml:SubjectConfirmation></saml:Subject>`
+        + `<saml:Conditions NotBefore="${iso(-60000)}" NotOnOrAfter="${iso(300000)}"><saml:AudienceRestriction><saml:Audience>${aud}</saml:Audience></saml:AudienceRestriction></saml:Conditions>`
+        + `<saml:AuthnStatement AuthnInstant="${iso(0)}" SessionIndex="_s1"><saml:AuthnContext><saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:Password</saml:AuthnContextClassRef></saml:AuthnContext></saml:AuthnStatement>`
+        + `<saml:AttributeStatement><saml:Attribute Name="email"><saml:AttributeValue>${email}</saml:AttributeValue></saml:Attribute><saml:Attribute Name="displayName"><saml:AttributeValue>Alice SAML</saml:AttributeValue></saml:Attribute>`
+        + `<saml:Attribute Name="groups">${groups.map(g => `<saml:AttributeValue>${g}</saml:AttributeValue>`).join('')}</saml:Attribute></saml:AttributeStatement></saml:Assertion></samlp:Response>`;
+      const sign = (doc, xpath, loc) => {
+        const sig = new SignedXml({ privateKey: key, signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256', canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#' });
+        sig.addReference({ xpath, digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256', transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#'] });
+        sig.computeSignature(doc, { location: { reference: loc, action: 'after' } });
+        return sig.getSignedXml();
+      };
+      xml = sign(xml, "//*[local-name(.)='Assertion']", "//*[local-name(.)='Assertion']/*[local-name(.)='Issuer']");
+      xml = sign(xml, "/*[local-name(.)='Response']", "/*[local-name(.)='Response']/*[local-name(.)='Issuer']");
+      return Buffer.from(xml).toString('base64');
+    };
+    const post = b64 => new Promise((resolve, reject) => {
+      const body = `SAMLResponse=${encodeURIComponent(b64)}`;
+      const x = http.request({ host: '127.0.0.1', port: config.webServerPort, method: 'POST', path: '/api/auth/saml/acs', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), 'X-Forwarded-For': '10.99.0.1' } },
+        res2 => { res2.resume(); resolve({ status: res2.statusCode, location: res2.headers.location || '', cookie: res2.headers['set-cookie'] || [] }); });
+      x.on('error', reject); x.end(body);
+    });
+    // No account with this address yet
+    r = await post(build());
+    check('SAML: réponse valide mais aucun compte → refus, sans créer de compte', r.status === 302 && /error=saml_no_account/.test(r.location), r.location);
+    await globalQuery("INSERT INTO accounts (id, email, email_verified, display_name) VALUES ('u_saml_v7', 'alice-saml@corp.example', 1, 'Alice') ON DUPLICATE KEY UPDATE email = VALUES(email)");
+    const req2 = zlib.inflateRawSync(Buffer.from(new URL(await S.loginUrl()).searchParams.get('SAMLRequest'), 'base64')).toString();
+    const reqId2 = /ID="([^"]+)"/.exec(req2)[1];
+    const good = build({ inResponseTo: reqId2 });
+    r = await post(good);
+    const [ident] = await globalQuery("SELECT account_id FROM account_identities WHERE provider = 'saml' AND subject = 'alice-saml@corp.example'");
+    check('SAML: réponse signée valide → connecté au compte de la même adresse vérifiée', r.status === 302 && /\/select-guild/.test(r.location) && r.cookie.length > 0 && ident?.account_id === 'u_saml_v7', `${r.location} ${JSON.stringify(ident)}`);
+    r = await post(good);
+    check('SAML: une réponse rejouée est refusée', /error=saml_invalid/.test(r.location), r.location);
+    const reqId3 = /ID="([^"]+)"/.exec(zlib.inflateRawSync(Buffer.from(new URL(await S.loginUrl()).searchParams.get('SAMLRequest'), 'base64')).toString())[1];
+    r = await post(build({ inResponseTo: reqId3, key: other.key }));
+    check('SAML: signée par une autre clé → refusée', /error=saml_invalid/.test(r.location), r.location);
+    r = await post(build({ inResponseTo: '_inconnu123' }));
+    check('SAML: réponse à une demande inconnue → refusée', /error=saml_invalid/.test(r.location), r.location);
+    const reqId4 = /ID="([^"]+)"/.exec(zlib.inflateRawSync(Buffer.from(new URL(await S.loginUrl()).searchParams.get('SAMLRequest'), 'base64')).toString())[1];
+    r = await post(build({ inResponseTo: reqId4, groups: ['compta'] }));
+    check('SAML: hors du groupe autorisé → refusée', /error=saml_group/.test(r.location), r.location);
+    const unsigned = Buffer.from(Buffer.from(build({ inResponseTo: reqId4 }), 'base64').toString().replace(/<ds:Signature[\s\S]*?<\/ds:Signature>/g, '').replace(/<Signature[\s\S]*?<\/Signature>/g, '')).toString('base64');
+    r = await post(unsigned);
+    check('SAML: réponse sans signature → refusée', /error=saml_invalid/.test(r.location), r.location);
+    await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { enabled: false } });
+    C.webServerBaseUrl = base0;
+    await globalQuery("DELETE FROM account_identities WHERE provider = 'saml'");
+    await globalQuery("DELETE FROM accounts WHERE id = 'u_saml_v7'");
+    fsm.rmSync(dir, { recursive: true, force: true });
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

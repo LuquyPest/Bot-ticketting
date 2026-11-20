@@ -108,6 +108,8 @@ app.use('/api/ical', require('./routes/ical')); // iCal feed of the planning, by
 // Public status page (v7): its subscription form is a plain HTML form (no JavaScript, no session),
 // confirmed by an e-mail link — before the CSRF guard
 app.use(require('./routes/statusPublic'));
+// SAML (v7): the identity provider posts its signed response as a plain form, before the CSRF guard
+app.use('/api/auth', require('./routes/samlAuth'));
 
 // Bot avatar upload sends a base64 image (up to ~2 MB); everything else keeps the 100 kB default
 app.use('/api/config/bot-identity', express.json({ limit: '3mb' }));
