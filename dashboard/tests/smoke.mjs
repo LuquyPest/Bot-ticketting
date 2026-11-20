@@ -63,6 +63,7 @@ const PAGES = [
   ['kanban-statuts', '/kanban', 'Attente fournisseur'],
   ['equipes', '/equipe?tab=equipes', 'Reçoit les tickets des sujets'],
   ['competences', '/equipe?tab=competences', "Compétences de l'espace"],
+  ['parc', '/parc/1', 'Historique'],
   ['file-equipe', '/queue', 'Équipe Paiements'],
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
   ['settings-import-outil', '/settings?tab=sauvegarde', 'Importer depuis un autre outil'],

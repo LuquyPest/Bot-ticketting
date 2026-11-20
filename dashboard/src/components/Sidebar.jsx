@@ -29,6 +29,7 @@ const NAV_GROUPS = [
     { to: '/planning',    label: 'Planning',     icon: CalendarDays,    roles: ['support','fondateur'] },
     { to: '/problemes',   label: 'Problèmes',    icon: Bug,             roles: ['support','fondateur'] },
     { to: '/changements', label: 'Changements',  icon: GitPullRequestArrow, roles: ['support','fondateur'] },
+    { to: '/parc',        label: 'Parc',         icon: Server,          roles: ['support','fondateur'] },
     { to: '/search',      label: 'Recherche',    icon: Search,          roles: ['support','fondateur'] },
     { to: '/profils',     label: 'Contacts',      icon: Contact,         roles: ['support','fondateur'] },
     { to: '/organisations', label: 'Organisations', icon: Building2,     roles: ['support','fondateur'] },

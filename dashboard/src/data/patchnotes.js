@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.3.0',
+    date: 'à venir',
+    title: 'Parc',
+    titleEn: 'Inventory',
+    changes: [
+      { type: 'new',  text: 'Parc (CMDB), à activer : types d\'éléments définis par l\'espace avec leurs champs, éléments (statut, n° de série, lieu, propriétaire), relations « dépend de », « installé sur », « fait partie de » et historique de chaque élément', en: 'Inventory (CMDB), to turn on: element types defined by the space with their fields, elements (status, serial number, location, owner), « depends on », « installed on », « part of » relations and the history of each element' },
+    ],
+  },
+  {
     version: 'v7.2.0',
     date: 'à venir',
     title: 'Clients',

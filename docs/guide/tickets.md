@@ -213,6 +213,19 @@ Menu **Changements** (coupé par défaut ; un fondateur l'active) : une modifica
 
 Il suit un circuit : **brouillon** → **en attente de validation** → **validé** (toutes les validations) ou **refusé** (au premier refus, avec son motif) → **en cours** → **terminé** ou **en échec** ; **annulé** à tout moment. Les **validations** sont données par les membres du staff choisis, chacun pour soi, dans le dashboard ; il ne démarre qu'une fois validé, et ses plans et risques sont figés dès qu'il l'est (repasser en brouillon remet les validations à zéro). Tout est au journal.
 
+## Le parc
+
+Menu **Parc** : l'inventaire de l'espace (CMDB) — ordinateurs, serveurs, logiciels, licences, services… Coupé tant qu'un fondateur ne l'active pas.
+
+| | |
+|---|---|
+| **Types** | Définis par l'espace (**Types**, fondateurs et permission **Paramètres**), chacun avec ses champs : texte, nombre, date ou choix dans une liste. Un type encore utilisé ne se supprime pas |
+| **Éléments** | Un type, un nom, un **statut** (en service, en stock, en maintenance, retiré), un numéro de série, un lieu, un propriétaire (organisation et/ou fiche contact), les champs de son type et des notes (permission **Répondre**) |
+| **Relations** | *Dépend de*, *installé sur*, *fait partie de*, vues des deux côtés (« héberge », « comprend ») ; pas de boucle d'*installé sur* ni de *fait partie de* |
+| **Historique** | Chaque création, modification et relation, avec qui et quand |
+
+La liste se cherche par nom, numéro de série ou lieu, et se filtre par type, statut et organisation (sous-organisations comprises). Supprimer une organisation ou une fiche contact laisse ses éléments, sans propriétaire.
+
 ## L'enquête de satisfaction
 
 Quand un ticket est fermé, le demandeur reçoit l'**enquête de satisfaction** (**Paramètres → Tickets → Enquête de satisfaction**) :
