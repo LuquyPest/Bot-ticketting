@@ -424,6 +424,7 @@ router.get('/:id', async (req, res) => {
       children: await TL.progress(req.guildDb, ticket.id),
       skills: await require('../../utils/skills').ofTicket(req.guildDb, ticket),
       nextLevel: ticket.status === 'open' ? await require('../../utils/supportLevels').nextTeam(req.guildDb, ticket) : null,
+      liveChat: await require('../../utils/liveChat').stateOf(req.guildDb, ticket.id),
       closeChildrenWithParent: Number((await req.guildDb('SELECT close_children_with_parent FROM guild_config WHERE id = 1').catch(() => []))[0]?.close_children_with_parent) === 1,
       fields: await fieldsForTicket(req.guildDb, ticket.id),
       transcript: transcript[0] || null,

@@ -20,7 +20,7 @@ export default function WidgetSettings() {
     try { apply((await fn()).data); toast.success(ok); } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     setBusy(false);
   };
-  const save = () => run(() => api.put('/widget-settings', { enabled: !!s.enabled, origins }), s.enabled ? 'Widget activé' : 'Widget désactivé');
+  const save = () => run(() => api.put('/widget-settings', { enabled: !!s.enabled, origins, chat: !!s.chat }), s.enabled ? 'Widget activé' : 'Widget désactivé');
   const regenerate = () => {
     if (!window.confirm('Créer un nouveau code ? Le code déjà collé sur tes sites cessera de fonctionner.')) return;
     run(() => api.post('/widget-settings/token'), 'Nouveau code créé');
@@ -34,6 +34,10 @@ export default function WidgetSettings() {
       <label className="flex items-center gap-2 text-sm text-ink-1">
         <input type="checkbox" checked={!!s.enabled} onChange={e => setS(x => ({ ...x, enabled: e.target.checked }))} className="accent-primary" />
         Activer le widget
+      </label>
+      <label className="flex items-center gap-2 text-sm text-ink-1">
+        <input type="checkbox" checked={!!s.chat} onChange={e => setS(x => ({ ...x, chat: e.target.checked }))} className="accent-primary" />
+        Proposer le chat en direct quand quelqu'un de l'équipe est « Disponible » (sinon, le formulaire)
       </label>
       <label className="block text-xs text-ink-3">Sites autorisés à afficher le formulaire (un par ligne ; vide = tous)
         <textarea value={origins} onChange={e => setOrigins(e.target.value)} rows={3} placeholder="https://exemple.com" className={`${INPUT} mt-1 font-mono text-xs`} />

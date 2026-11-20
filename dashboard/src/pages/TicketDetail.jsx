@@ -1229,6 +1229,13 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
             </div>
           )}
 
+          {ticket.liveChat && ticket.status === 'open' && (
+            <div role="status" className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs ${ticket.liveChat.online ? 'border-emerald-500/30 bg-emerald-500/8 text-ink-1' : 'border-overlay/8 text-ink-3'}`}>
+              <span className={`w-2 h-2 rounded-full ${ticket.liveChat.online ? 'bg-emerald-400' : 'bg-ink-4'}`} aria-hidden="true" />
+              {ticket.liveChat.online ? 'Chat en direct : le visiteur est là, il lit tes réponses dans le widget' : 'Chat en direct terminé : tes réponses partent par e-mail'}
+            </div>
+          )}
+
           {ticket.visibility_grade_id === -1 && (
             <div role="status" className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/8 px-4 py-2.5 text-xs text-ink-1">
               <Lock size={13} className="text-red-400 mt-0.5 shrink-0" />
