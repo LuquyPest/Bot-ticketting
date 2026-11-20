@@ -8652,6 +8652,59 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'al7-%'");
   }
 
+  // ── Releases: changes taken to production stage by stage (utils/releases.js, v7) ──
+  {
+    await db('UPDATE guild_config SET changes_enabled = 1 WHERE id = 1');
+    const c1 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'MEP v7 base' } })).body.id;
+    const c2 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'MEP v7 appli' } })).body.id;
+    r = await req('POST', '/api/releases', { sid: sessions.S1, body: { title: 'Version 4.2 v7', rollbackPlan: 'Restaurer la sauvegarde' } });
+    const rel = r.body.id;
+    check('MEP: créée en préparation', r.status === 200 && r.body.status === 'preparation' && r.body.rollbackPlan === 'Restaurer la sauvegarde', JSON.stringify(r.body).slice(0, 200));
+    await req('POST', `/api/releases/${rel}/changes`, { sid: sessions.S1, body: { changeId: c1 } });
+    r = await req('POST', `/api/releases/${rel}/changes`, { sid: sessions.S1, body: { changeId: c2 } });
+    const other = (await req('POST', '/api/releases', { sid: sessions.S1, body: { title: 'Autre v7' } })).body.id;
+    const rDup = await req('POST', `/api/releases/${other}/changes`, { sid: sessions.S1, body: { changeId: c1 } });
+    check('MEP: deux changements ; un changement n est que dans une mise en production en cours', r.body.changes.length === 2 && rDup.status === 400 && /déjà dans/.test(rDup.body.error), JSON.stringify(rDup.body));
+    r = await req('POST', `/api/releases/${rel}/steps`, { sid: sessions.S1, body: { stage: 'preparation', title: 'Sauvegarde vérifiée' } });
+    const stepId = r.body.steps[0].id;
+    await req('POST', `/api/releases/${rel}/steps`, { sid: sessions.S1, body: { stage: 'verification', title: 'Recette utilisateur' } });
+    r = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'test' } });
+    check('MEP: on ne quitte pas une étape avec des points non cochés', r.status === 409 && /1 point/.test(r.body.error), JSON.stringify(r.body));
+    await req('PATCH', `/api/releases/${rel}/steps/${stepId}`, { sid: sessions.S1, body: { done: true } });
+    r = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'test' } });
+    const rSkip = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'done' } });
+    check('MEP: passe au test ; pas de saut d étape', r.status === 200 && r.body.status === 'test' && r.body.steps[0].doneBy === 'S1' && rSkip.status === 409, JSON.stringify([r.body.status, rSkip.body]));
+    r = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'deployment' } });
+    check('MEP: déploiement refusé tant que les changements ne sont pas approuvés', r.status === 409 && /approuvés/.test(r.body.error), JSON.stringify(r.body));
+    await db("UPDATE changes SET status = 'approved' WHERE id IN (?)", [[c1, c2]]);
+    r = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'deployment' } });
+    check('MEP: déploiement → les changements passent en cours', r.status === 200 && r.body.changes.every(c => c.status === 'in_progress'), JSON.stringify(r.body.changes));
+    r = await req('POST', `/api/releases/${rel}/changes`, { sid: sessions.S1, body: { changeId: c1 } });
+    const rDel = await req('DELETE', `/api/releases/${rel}`, { sid: sessions.S1 });
+    check('MEP: en déploiement, ni ajout de changement ni suppression', r.status === 409 && rDel.status === 409, `${r.status} ${rDel.status}`);
+    await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'verification' } });
+    const [step2] = (await req('GET', `/api/releases/${rel}`, { sid: sessions.S1 })).body.steps.filter(x => x.stage === 'verification');
+    await req('PATCH', `/api/releases/${rel}/steps/${step2.id}`, { sid: sessions.S1, body: { done: true } });
+    r = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'done' } });
+    check('MEP: le bilan est requis pour terminer', r.status === 409 && /bilan/.test(r.body.error), JSON.stringify(r.body));
+    await req('PATCH', `/api/releases/${rel}`, { sid: sessions.S1, body: { review: 'Déployée sans incident, 12 min.' } });
+    r = await req('POST', `/api/releases/${rel}/status`, { sid: sessions.S1, body: { status: 'done' } });
+    const rc = await req('GET', `/api/changes/${c1}`, { sid: sessions.S1 });
+    check('MEP: terminée → changements faits ; le changement montre sa mise en production', r.status === 200 && r.body.status === 'done' && r.body.finishedAt && r.body.changes.every(c => c.status === 'done') && rc.body.release?.id === rel, JSON.stringify([r.body.changes, rc.body.release]));
+    // Rollback: changes failed
+    const c3 = (await req('POST', '/api/changes', { sid: sessions.F, body: { title: 'MEP v7 risquée' } })).body.id;
+    await db("UPDATE changes SET status = 'approved' WHERE id = ?", [c3]);
+    await req('POST', `/api/releases/${other}/changes`, { sid: sessions.S1, body: { changeId: c3 } });
+    await req('POST', `/api/releases/${other}/status`, { sid: sessions.S1, body: { status: 'test' } });
+    await req('POST', `/api/releases/${other}/status`, { sid: sessions.S1, body: { status: 'deployment' } });
+    await req('PATCH', `/api/releases/${other}`, { sid: sessions.S1, body: { review: 'Erreur de schéma, retour arrière' } });
+    r = await req('POST', `/api/releases/${other}/status`, { sid: sessions.S1, body: { status: 'rolled_back' } });
+    check('MEP: retour arrière → changements échoués', r.status === 200 && r.body.status === 'rolled_back' && r.body.changes[0].status === 'failed', JSON.stringify(r.body.changes));
+    r = await req('GET', '/api/releases', { sid: sessions.S1 });
+    const [ev] = await db("SELECT 1 FROM audit_log WHERE action = 'release_status' AND target_id = ?", [String(rel)]);
+    check('MEP: liste et journal', r.status === 200 && r.body.releases.some(x => x.id === rel && x.changes === 2) && !!ev, JSON.stringify(r.body.releases.map(x => [x.id, x.status])));
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {

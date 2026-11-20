@@ -213,6 +213,15 @@ Menu **Changements** (coupé par défaut ; un fondateur l'active) : une modifica
 
 Il suit un circuit : **brouillon** → **en attente de validation** → **validé** (toutes les validations) ou **refusé** (au premier refus, avec son motif) → **en cours** → **terminé** ou **en échec** ; **annulé** à tout moment. Les **validations** sont données par les membres du staff choisis, chacun pour soi, dans le dashboard ; il ne démarre qu'une fois validé, et ses plans et risques sont figés dès qu'il l'est (repasser en brouillon remet les validations à zéro). Tout est au journal.
 
+### Les mises en production
+
+Menu **Mises en production** (avec les changements, permission **Répondre** pour écrire) : une mise en production regroupe des **changements** et les mène ensemble en production, étape par étape : **préparation → test → déploiement → vérification → terminée**.
+
+- Chaque étape a ses **points à vérifier** (« sauvegarde vérifiée », « recette utilisateur ») : on ne passe à la suivante qu'une fois ceux de l'étape cochés (qui et quand sont notés).
+- Le **déploiement** demande que tous ses changements soient **approuvés** ; ils passent alors *en cours*. **Terminer** les passe à *fait* ; **revenir en arrière** (pendant le déploiement ou la vérification) les passe à *échoué*. Avant le déploiement, elle peut être **annulée**.
+- Un **plan de retour arrière**, un créneau, une personne, et un **bilan**, requis pour terminer ou revenir en arrière.
+- Un changement n'est que dans une mise en production en cours à la fois ; sa fiche montre laquelle. Chaque étape est au journal.
+
 ## Le parc
 
 Menu **Parc** : l'inventaire de l'espace (CMDB) — ordinateurs, serveurs, logiciels, licences, services… Coupé tant qu'un fondateur ne l'active pas.

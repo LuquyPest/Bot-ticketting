@@ -64,6 +64,7 @@ const PAGES = [
   ['equipes', '/equipe?tab=equipes', 'Reçoit les tickets des sujets'],
   ['competences', '/equipe?tab=competences', "Compétences de l'espace"],
   ['parc', '/parc/1', 'Historique'],
+  ['mises-en-production', '/mises-en-production/1', 'Points à vérifier, par étape'],
   ['file-equipe', '/queue', 'Équipe Paiements'],
   ['settings-sauvegarde', '/settings?tab=sauvegarde', 'Importer depuis un autre bot'],
   ['settings-import-outil', '/settings?tab=sauvegarde', 'Importer depuis un autre outil'],

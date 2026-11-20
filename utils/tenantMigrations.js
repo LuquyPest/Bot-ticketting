@@ -1651,6 +1651,45 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 92,
+    name: 'Mises en production (v7)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS releases (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        title         VARCHAR(200) NOT NULL,
+        description   TEXT DEFAULT NULL,
+        status        VARCHAR(14) NOT NULL DEFAULT 'preparation',
+        rollback_plan TEXT DEFAULT NULL,
+        review        TEXT DEFAULT NULL,
+        assignee_id   VARCHAR(32) DEFAULT NULL,
+        starts_at     DATETIME DEFAULT NULL,
+        ends_at       DATETIME DEFAULT NULL,
+        created_by    VARCHAR(32) DEFAULT NULL,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        finished_at   DATETIME DEFAULT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS release_changes (
+        release_id INT NOT NULL,
+        change_id  INT NOT NULL,
+        PRIMARY KEY (release_id, change_id),
+        INDEX idx_rc_change (change_id),
+        CONSTRAINT fk_rc_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE,
+        CONSTRAINT fk_rc_change FOREIGN KEY (change_id) REFERENCES changes(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS release_steps (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        release_id  INT NOT NULL,
+        stage       VARCHAR(14) NOT NULL,
+        title       VARCHAR(200) NOT NULL,
+        done        TINYINT(1) NOT NULL DEFAULT 0,
+        done_by_tag VARCHAR(100) DEFAULT NULL,
+        done_at     DATETIME DEFAULT NULL,
+        INDEX idx_rs_release (release_id),
+        CONSTRAINT fk_rs_release FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
