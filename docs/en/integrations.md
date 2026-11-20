@@ -176,6 +176,20 @@ The person gives their name (optional), their **e-mail address**, the subject if
 
 Each Slack call is checked (the app's HMAC signature, 5 minutes at most); the button refuses someone without the **Take charge** permission or who cannot see the ticket. The webhook addresses and the secret are encrypted and never shown again; **Test** sends a trial message.
 
+## CRM: HubSpot or Salesforce
+
+**Settings → Integrations → CRM** (founders) connects the space's CRM, **read only**:
+
+- **Requester's card** on each ticket: name, job title, company (industry, revenue), owner, stage, phone and a link to the record. It is looked up by the requester's e-mail address (ticket by e-mail or web, or the address of their contact card) and kept 10 minutes; only those who see the ticket see it.
+- **Synchronisation** of the companies into **organisations** (with their website's domain) and of the contacts into **contacts** (attached to their company), by hand (**Synchronise now**, three times at most in 10 minutes) or every night. A second synchronisation updates what it already created, without duplicates; each run is in the log.
+
+| CRM | What you need |
+|---|---|
+| **HubSpot** | A **private app token** (HubSpot settings → Integrations → Private apps) with read access to contacts, companies and owners; the portal ID (optional) for the links |
+| **Salesforce** | The instance address (`https://company.my.salesforce.com`) and a **connected app** with the *client credentials* flow (ID and secret), or an access token |
+
+The token and secret are **encrypted** and never sent back to the browser; Datick only calls `api.hubapi.com` or the Salesforce instance given, and never writes to the CRM.
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ and articles, templates and macros, rules, checklists, custom statuses, teams) and import on this server or another. Secrets are never exported.

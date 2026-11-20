@@ -164,6 +164,7 @@ const ACTIONS = {
   stage_create:             ['Statut créé', 'config'],
   team_create:              ['Équipe créée', 'config'],
   contract_save:            ['Contrat enregistré', 'config'],
+  crm_settings:             ['CRM réglé', 'config'],
   contract_delete:          ['Contrat supprimé', 'config'],
   contract_alert:           ['Alerte de contrat', 'config'],
   contract_renew:           ['Contrat renouvelé', 'config'],

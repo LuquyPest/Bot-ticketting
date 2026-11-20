@@ -176,6 +176,20 @@ La personne donne son nom (facultatif), son **adresse e-mail**, le sujet si l'es
 
 Chaque appel de Slack est vérifié (signature HMAC de l'app, 5 minutes au plus) ; le bouton refuse une personne sans la permission **Prendre en charge** ou qui ne voit pas le ticket. Les adresses de webhook et le secret sont chiffrés et jamais réaffichés ; **Tester** envoie un message d'essai.
 
+## CRM : HubSpot ou Salesforce
+
+**Paramètres → Intégrations → CRM** (fondateurs) branche le CRM de l'espace, **en lecture seule** :
+
+- **Fiche du demandeur** sur chaque ticket : nom, poste, société (secteur, chiffre d'affaires), propriétaire, étape, téléphone et un lien vers la fiche. Elle est cherchée par l'adresse e-mail du demandeur (ticket par e-mail ou web, ou adresse de sa fiche contact) et gardée 10 minutes ; seuls ceux qui voient le ticket la voient.
+- **Synchronisation** des sociétés vers les **organisations** (avec le domaine de leur site) et des contacts vers les **contacts** (rattachés à leur société), à la main (**Synchroniser maintenant**, trois fois au plus en 10 minutes) ou chaque nuit. Une seconde synchronisation met à jour ce qu'elle a déjà créé, sans doublon ; chaque passage est au journal.
+
+| CRM | Ce qu'il faut |
+|---|---|
+| **HubSpot** | Un **jeton d'application privée** (Paramètres HubSpot → Intégrations → Applications privées) avec les droits de lecture des contacts, des sociétés et des propriétaires ; l'ID du portail (facultatif) pour les liens |
+| **Salesforce** | L'adresse de l'instance (`https://societe.my.salesforce.com`) et une **application connectée** avec le flux *client credentials* (identifiant et secret), ou un jeton d'accès |
+
+Le jeton et le secret sont **chiffrés** et jamais renvoyés au navigateur ; Datick n'appelle que `api.hubapi.com` ou l'instance Salesforce indiquée, et n'écrit jamais dans le CRM.
+
 ## Sauvegarde de la configuration
 
 **Paramètres → Sauvegarde** : export JSON de la configuration (paramètres, grades, tags, formulaires, panels, champs, FAQ et articles, modèles et macros, règles, procédures, statuts personnalisés, équipes) et import sur ce serveur ou un autre. Les secrets ne sont jamais exportés.

@@ -24,6 +24,7 @@ export const VERSIONS = [
     titleEn: 'Customers',
     changes: [
       { type: 'new',  text: 'Contrats des organisations : forfait d\'heures, nombre de tickets ou illimité, avec dates, objectif SLA du contrat, consommation calculée, alertes au seuil et avant la fin, renouvellement automatique ; solde sur la fiche ticket et dans l\'espace membre', en: 'Contracts of the organisations: block of hours, number of tickets or unlimited, with dates, contract SLA objective, computed consumption, alerts at the threshold and before the end, automatic renewal; balance on the ticket view and in the member space' },
+      { type: 'new',  text: 'CRM HubSpot ou Salesforce, en lecture : fiche du demandeur sur le ticket (société, propriétaire, valeur, lien), synchronisation des sociétés et contacts vers les organisations et contacts, à la main ou chaque nuit', en: 'HubSpot or Salesforce CRM, read only: requester\'s card on the ticket (company, owner, value, link), synchronisation of the companies and contacts into organisations and contacts, by hand or every night' },
     ],
   },
   {

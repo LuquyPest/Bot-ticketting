@@ -8464,6 +8464,96 @@ async function main() {
     await req('DELETE', `/api/organizations/${org}`, { sid: sessions.F });
   }
 
+  // ── CRM: HubSpot and Salesforce, read only (utils/crm.js, v7) — both simulated locally ──
+  {
+    const http = require('http');
+    const seen = [];
+    const mock = http.createServer((q, s) => {
+      let body = '';
+      q.on('data', d => { body += d; });
+      q.on('end', () => {
+        seen.push(`${q.method} ${q.url.split('?')[0]} ${q.headers.authorization || ''}`);
+        const json = (o, code = 200) => { s.writeHead(code, { 'Content-Type': 'application/json' }); s.end(JSON.stringify(o)); };
+        const u = new URL(q.url, 'http://x');
+        if (q.headers.authorization === 'Bearer mauvais') return json({ message: 'Authentication credentials not found' }, 401);
+        // HubSpot
+        if (u.pathname === '/crm/v3/objects/contacts/search') {
+          const email = JSON.parse(body || '{}').filterGroups?.[0]?.filters?.[0]?.value;
+          return json({ results: email === 'paul@crm-v7.example' ? [{ id: '501', properties: { firstname: 'Paul', lastname: 'Martin', email, phone: '+33 1 00 00 00 00', jobtitle: 'DSI', lifecyclestage: 'customer', hubspot_owner_id: '77' } }] : [] });
+        }
+        if (u.pathname === '/crm/v4/objects/contacts/501/associations/companies') return json({ results: [{ toObjectId: 901 }] });
+        if (u.pathname === '/crm/v3/objects/companies/901') return json({ id: '901', properties: { name: 'Acme CRM v7', domain: 'crm-v7.example', annualrevenue: '1250000', industry: 'Logiciel' } });
+        if (u.pathname === '/crm/v3/owners/77') return json({ firstName: 'Léa', lastName: 'Commerciale', email: 'lea@example.com' });
+        if (u.pathname === '/crm/v3/objects/companies') {
+          return u.searchParams.get('after') ? json({ results: [{ id: '902', properties: { name: 'Globex CRM v7', domain: 'globex-v7.example' } }] })
+            : json({ results: [{ id: '901', properties: { name: 'Acme CRM v7', domain: 'crm-v7.example' } }], paging: { next: { after: 'p2' } } });
+        }
+        if (u.pathname === '/crm/v3/objects/contacts') return json({ results: [{ id: '501', properties: { email: 'paul@crm-v7.example', firstname: 'Paul', lastname: 'Martin' }, associations: { companies: { results: [{ id: '901' }] } } }, { id: '502', properties: { email: 'pas-une-adresse' } }] });
+        // Salesforce
+        if (u.pathname === '/services/oauth2/token') return new URLSearchParams(body).get('client_secret') === 'sf-secret-v7' ? json({ access_token: 'sf-jeton' }) : json({ error: 'invalid_client' }, 400);
+        if (u.pathname === '/services/data/v60.0/query') {
+          const soqlQ = u.searchParams.get('q');
+          if (/FROM Contact WHERE Email =/.test(soqlQ)) return json({ records: /'julie@sf-v7\.example'/.test(soqlQ) ? [{ Id: '003000000000001AAA', Name: 'Julie Durand', Email: 'julie@sf-v7.example', Title: 'Acheteuse', Owner: { Name: 'Marc Vente' }, Account: { Name: 'Initech v7', Website: 'https://www.sf-v7.example', AnnualRevenue: 300000 } }] : [] });
+          if (/FROM Account/.test(soqlQ)) return json({ records: [{ Id: '001A', Name: 'Initech v7', Website: 'https://www.sf-v7.example/accueil' }] });
+          if (/FROM Contact/.test(soqlQ)) return json({ records: [{ Id: '003B', Name: 'Julie Durand', Email: 'julie@sf-v7.example', Account: { Name: 'Initech v7' } }] });
+        }
+        json({ message: 'inconnu' }, 404);
+      });
+    });
+    await new Promise(res => mock.listen(0, '127.0.0.1', res));
+    const base = `http://127.0.0.1:${mock.address().port}`;
+    process.env.HUBSPOT_API_URL = base;
+    r = await req('PUT', '/api/crm/settings', { sid: sessions.S1, body: { provider: 'hubspot', token: 'x' } });
+    check('CRM: réglage réservé aux fondateurs', r.status === 403, r.status);
+    r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: 'salesforce', instanceUrl: 'https://evil.example.com', token: 'x' } });
+    check('CRM: instance Salesforce hors salesforce.com refusée', r.status === 400, JSON.stringify(r.body));
+    r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: 'hubspot', token: 'pat-test-v7', portalId: '4242' } });
+    const [raw] = await db('SELECT crm_config FROM guild_config WHERE id = 1');
+    check('CRM: jeton HubSpot chiffré, jamais renvoyé', r.status === 200 && r.body.hasToken === true && r.body.token === undefined && !/pat-test-v7/.test(raw.crm_config) && !JSON.stringify(r.body).includes('pat-test'), JSON.stringify(r.body));
+    const tk = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject) VALUES ('mail:crm7', 'paul@crm-v7.example', 'crm7-1', 'open', 'CRM v7')")).insertId;
+    const ct = (await db("INSERT INTO contacts (display_name, email) VALUES ('Paul', 'paul@crm-v7.example')")).insertId;
+    await db("INSERT INTO contact_identities (value, contact_id, kind, label) VALUES ('mail:crm7', ?, 'email', 'paul@crm-v7.example') ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)", [ct]);
+    r = await req('GET', `/api/crm/tickets/${tk}`, { sid: sessions.S1 });
+    const card = r.body.card;
+    check('CRM: fiche HubSpot du demandeur sur le ticket (société, propriétaire, lien)', r.status === 200 && card?.name === 'Paul Martin' && card.company?.name === 'Acme CRM v7' && card.company.revenue === 1250000 && card.owner === 'Léa Commerciale' && /app\.hubspot\.com\/contacts\/4242\/contact\/501/.test(card.url) && seen.some(x => /Bearer pat-test-v7/.test(x)), JSON.stringify(r.body));
+    const calls = seen.length;
+    await req('GET', `/api/crm/tickets/${tk}`, { sid: sessions.S1 });
+    check('CRM: fiche mise en cache', seen.length === calls, `${calls} → ${seen.length}`);
+    const tConf = (await db("INSERT INTO tickets (owner_id, owner_tag, channel_id, status, subject, visibility_grade_id) VALUES ('mail:crm7', 'x', 'crm7-c', 'open', 'conf', ?)", [app('./utils/gradePermissions').CONFIDENTIAL])).insertId;
+    r = await req('GET', `/api/crm/tickets/${tConf}`, { sid: sessions.S1 });
+    check('CRM: ticket invisible du lecteur → 404', r.status === 404, r.status);
+    r = await req('POST', '/api/crm/sync', { sid: sessions.F });
+    const [acme] = await db("SELECT id FROM organizations WHERE name = 'Acme CRM v7'");
+    const [glo] = await db("SELECT id FROM organizations WHERE name = 'Globex CRM v7'");
+    const [paul] = await db("SELECT c.organization_id FROM contact_identities ci JOIN contacts c ON c.id = ci.contact_id WHERE ci.value = ?", [app('./utils/emailTickets').ownerIdFor('paul@crm-v7.example')]);
+    check('CRM: synchronisation HubSpot (pages suivies, sociétés → organisations, contacts rattachés, adresse invalide écartée)', r.status === 200 && !!acme && !!glo && paul?.organization_id === acme.id && r.body.contacts.created === 1, JSON.stringify([r.body, paul]));
+    r = await req('POST', '/api/crm/sync', { sid: sessions.F });
+    check('CRM: une seconde synchronisation met à jour sans doublon', r.status === 200 && r.body.organizations.created === 0 && (await db("SELECT id FROM organizations WHERE name = 'Acme CRM v7'")).length === 1, JSON.stringify(r.body));
+    // Salesforce, client credentials
+    process.env.SALESFORCE_ALLOW_ANY_HOST = '1';
+    r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: 'salesforce', instanceUrl: base, clientId: 'sf-client', clientSecret: 'sf-secret-v7' } });
+    check('CRM: Salesforce par application connectée', r.status === 200 && r.body.provider === 'salesforce' && r.body.hasSecret && !r.body.hasToken, JSON.stringify(r.body));
+    await db("UPDATE contacts SET email = 'julie@sf-v7.example' WHERE id = ?", [ct]);
+    await redis.del(...(await redis.keys(`crm:${G}:*`)));
+    r = await req('GET', `/api/crm/tickets/${tk}`, { sid: sessions.S1 });
+    check('CRM: fiche Salesforce (requête SOQL, jeton obtenu par le secret)', r.body.card?.name === 'Julie Durand' && r.body.card.company?.name === 'Initech v7' && r.body.card.owner === 'Marc Vente' && r.body.card.url === `${base}/003000000000001AAA` && seen.some(x => /oauth2\/token/.test(x)), JSON.stringify(r.body));
+    r = await req('POST', '/api/crm/sync', { sid: sessions.F });
+    const dom = await db("SELECT d.domain FROM organization_domains d JOIN organizations o ON o.id = d.organization_id WHERE o.name = 'Initech v7'");
+    check('CRM: synchronisation Salesforce (site web → domaine)', r.status === 200 && dom.some(d => d.domain === 'sf-v7.example'), JSON.stringify([r.body, dom]));
+    r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: 'salesforce', instanceUrl: base, clientId: 'sf-client', clientSecret: 'faux' } });
+    const rs = await app('./utils/crm').syncNow(db);
+    const rl = await req('POST', '/api/crm/sync', { sid: sessions.F });
+    check('CRM: erreur du CRM remontée sans planter ; synchronisations limitées', /CRM/.test(rs.error || '') && rl.status === 429, JSON.stringify([rs, rl.status]));
+    r = await req('PUT', '/api/crm/settings', { sid: sessions.F, body: { provider: null } });
+    const r2 = await req('GET', `/api/crm/tickets/${tk}`, { sid: sessions.S1 });
+    check('CRM: débranché → plus de fiche', r.status === 200 && r.body.provider === null && r2.body.card === null, JSON.stringify([r.body, r2.body]));
+    delete process.env.HUBSPOT_API_URL; delete process.env.SALESFORCE_ALLOW_ANY_HOST;
+    mock.close();
+    await db("UPDATE tickets SET status = 'closed' WHERE channel_id LIKE 'crm7-%'");
+    await db("DELETE FROM organizations WHERE name IN ('Acme CRM v7', 'Globex CRM v7', 'Initech v7')");
+    await db('DELETE FROM contacts WHERE id = ?', [ct]);
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
