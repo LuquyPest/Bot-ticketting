@@ -310,6 +310,7 @@ app.use('/api/assets',        withGuild(['support', 'fondateur']), require('./ro
 app.use('/api/releases',      withGuild(['support', 'fondateur']), require('./routes/releases')); // releases (v7)
 app.use('/api/cab',           withGuild(['support', 'fondateur']), require('./routes/cab'));      // change advisory board (v7)
 app.use('/api/status-page',   withGuild(['support', 'fondateur']), require('./routes/statusPage')); // status page settings (v7)
+app.use('/api/email-template', withGuild(['support', 'fondateur']), require('./routes/emailTemplate')); // e-mail template (v7)
 app.use('/api/changes',       withGuild(['support', 'fondateur']), require('./routes/changes')); // v5.5
 app.use('/api/dashboards',    withGuild(['support', 'fondateur']), require('./routes/dashboards')); // v5.6
 app.use('/api/surveys',       withGuild(['support', 'fondateur']), require('./routes/survey').staff); // v5.6

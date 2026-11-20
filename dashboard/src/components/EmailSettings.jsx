@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Mail, CheckCircle2, XCircle, Copy, RefreshCw } from 'lucide-react';
+import EmailTemplateEditor from './EmailTemplateEditor';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { uiLocale } from '../i18n';
@@ -252,6 +253,7 @@ export default function EmailSettings() {
           <input type="checkbox" checked={s.branded !== false} onChange={e => set('branded', e.target.checked)} className="accent-primary" />
           Mettre en forme aux couleurs de l'espace (nom, logo et couleur de l'espace membre)
         </label>
+        {s.branded !== false && <EmailTemplateEditor />}
         <label className="block text-xs text-ink-3">Signature de l'espace, sous chaque réponse du staff (après celle de la personne, réglée dans son profil)
           <textarea value={s.signature || ''} onChange={e => set('signature', e.target.value)} rows={3} maxLength={1000} placeholder={"L'équipe support\nhttps://exemple.fr/aide"} className={`${INPUT} mt-1`} />
         </label>

@@ -25,6 +25,7 @@ export const VERSIONS = [
     changes: [
       { type: 'new',  text: 'Page de statut publique (à publier) : composants et leur état, disponibilité sur 90 jours, incidents publiés, abonnement par e-mail confirmé par un lien ; lisible sans JavaScript et en JSON', en: 'Public status page (to publish): components and their state, availability over 90 days, published incidents, e-mail subscription confirmed by a link; readable without JavaScript and in JSON' },
       { type: 'new',  text: 'Notifications par SMS : passerelle Twilio, OVHcloud ou HTTP réglée par le propriétaire de l\'instance, numéro de chacun confirmé par un code, limite quotidienne par espace', en: 'SMS notifications: Twilio, OVHcloud or HTTP gateway set by the instance owner, each person\'s number confirmed by a code, daily limit per space' },
+      { type: 'new',  text: 'Modèle des e-mails de l\'espace : logo et couleur propres, en-tête et pied de page en markdown, aperçu en direct ; appliqué aux réponses et messages automatiques envoyés par e-mail', en: 'E-mail template of the space: own logo and colour, header and footer in markdown, live preview; applied to the replies and automatic messages sent by e-mail' },
     ],
   },
   {

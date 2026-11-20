@@ -8845,6 +8845,32 @@ async function main() {
     await db("UPDATE tickets SET status = 'closed' WHERE channel_id = 'sms7-1'");
   }
 
+  // ── E-mail template of the space (utils/emailTemplate.js, v7) ──
+  {
+    r = await req('PUT', '/api/email-template', { sid: sessions.S1, body: { color: '#ff0000' } });
+    check('modèle e-mail: réservé aux fondateurs et à « Paramètres »', r.status === 403, r.status);
+    r = await req('PUT', '/api/email-template', { sid: sessions.F, body: { logo: 'http://non-securise.example/logo.png' } });
+    const rC = await req('PUT', '/api/email-template', { sid: sessions.F, body: { color: 'rouge' } });
+    check('modèle e-mail: logo https et couleur #rrggbb exigés', r.status === 400 && rC.status === 400, `${r.status} ${rC.status}`);
+    r = await req('PUT', '/api/email-template', { sid: sessions.F, body: { logo: 'https://exemple.fr/logo-v7.png', color: '#123456', header: 'Support ouvert **9 h – 18 h**', footer: 'Acme SAS · [Mentions](https://exemple.fr/mentions) <script>alert(1)</script>' } });
+    check('modèle e-mail: enregistré', r.status === 200 && r.body.color === '#123456', JSON.stringify(r.body));
+    r = await req('POST', '/api/email-template/preview', { sid: sessions.F, body: { color: '#abcdef', header: 'En-tête du brouillon', footer: '' } });
+    check('modèle e-mail: aperçu d un brouillon', r.status === 200 && /#abcdef/.test(r.body.html) && /En-tête du brouillon/.test(r.body.html), (r.body.html || '').slice(0, 120));
+    // Applied to the e-mails of the space (when « formatted » is on)
+    const ET = app('./utils/emailTickets');
+    const s0 = await ET.emailSettings(db, { withSecrets: true });
+    const look = await (async () => {
+      const brand = (await ET.renderPayload({ content: 'Bonjour' }, { brand: app('./utils/emailTemplate').apply({ name: 'Espace', color: '#000000', footer: 'standard' }, await app('./utils/emailTemplate').getTemplate(db)) })).html;
+      return brand;
+    })();
+    check('modèle e-mail: couleur, logo, en-tête et pied de page dans l e-mail, HTML échappé', /#123456/.test(look) && /logo-v7\.png/.test(look) && /<strong>9 h – 18 h<\/strong>/.test(look) && /href="https:\/\/exemple\.fr\/mentions"/.test(look) && !/<script>/.test(look), look.slice(0, 200));
+    const lk = await ET.emailLook(db, G, { ...s0, branded: 1 }, null);
+    check('modèle e-mail: appliqué par l envoi des e-mails de l espace', lk.brand?.color === '#123456' && lk.brand.header === 'Support ouvert **9 h – 18 h**', JSON.stringify(lk.brand));
+    r = await req('PUT', '/api/email-template', { sid: sessions.F, body: {} });
+    const [c] = await db('SELECT email_template FROM guild_config WHERE id = 1');
+    check('modèle e-mail: tout vider revient au modèle de l espace membre', r.status === 200 && c.email_template === null, JSON.stringify(c));
+  }
+
   // ── Malformed bodies (v6, conception/v6.md §3.1): arrays, objects, numbers, null, booleans and very
   // long strings in place of the expected fields; no route may answer 500 ──
   {
