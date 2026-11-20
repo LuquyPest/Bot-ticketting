@@ -128,6 +128,7 @@ const PAGES = [
   ['espace-nouveau', '/espace/nouveau', 'Signaler une panne'],
   ['aide-publique', '/aide/123456789012345678', 'Comment suivre ma livraison', true],
   ['aide-article', '/aide/123456789012345678/3', 'dès l\'envoi du colis', true],
+  ['registre-rgpd', '/members', 'Registre des traitements (RGPD)'],
   ['faq', '/faq', 'Base de connaissances publique'],
   ['faq-arborescence', '/faq', 'Suivi du colis'],
   ['boite', '/boite', 'Non pris'],

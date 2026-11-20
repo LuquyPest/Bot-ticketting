@@ -63,6 +63,7 @@ Chaque fournisseur affiche son **adresse de retour**, à déclarer telle quelle 
 - La personne est reconnue par son identifiant (NameID), sinon rattachée au compte qui a la même **adresse vérifiée** ; personne n'obtient de compte en se connectant ainsi. La double authentification du compte s'applique.
 - L'instance doit être servie en **https**. Le bouton « Continuer avec … » apparaît sur la page de connexion.
 - **Vérifier le réglage** lit le certificat (et sa date de fin) et joint l'adresse du fournisseur ; **Connexion d'essai** ouvre le fournisseur dans un nouvel onglet et affiche ce qu'il renvoie (identifiant, adresse, groupes, compte Datick trouvé), sans ouvrir de session.
+- **Déconnexion unique (SLO)**, facultative : avec l'adresse de déconnexion du fournisseur (liaison HTTP-Redirect), se déconnecter de Datick renvoie vers celle du fournisseur, et une demande de déconnexion **signée** du fournisseur ferme toutes les sessions Datick de la personne (une demande non signée est refusée). L'adresse `…/api/auth/saml/slo` est alors à déclarer chez le fournisseur et figure dans les métadonnées. Si le fournisseur exige des demandes signées, donne une clé privée et un certificat propres à Datick (la clé est chiffrée, jamais renvoyée).
 
 ### Annuaire LDAP / Active Directory
 

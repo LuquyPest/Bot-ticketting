@@ -9199,6 +9199,40 @@ async function main() {
       const rt2 = await postRelay(build({ inResponseTo: tId2 }), relay);
       check('SAML: le jeton d essai ne sert qu une fois (sinon connexion normale)', rt2.status === 302 && /select-guild/.test(rt2.location), `${rt2.status} ${rt2.location}`);
     }
+    // v8: single logout — ours goes to the provider, the provider's (signed) closes the sessions
+    {
+      const cur = (await req('GET', '/api/instance/saml', { sid: sessions.OWN })).body;
+      r = await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { ...cur, idpCert: '', logoutUrl: 'http://idp.example/slo' } });
+      const rHttps = r.status;
+      r = await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { ...cur, idpCert: '', logoutUrl: 'https://idp.example/slo' } });
+      const meta = await req('GET', '/api/auth/saml/metadata');
+      check('SAML SLO: adresse https exigée, adresse de déconnexion publiée dans les métadonnées', rHttps === 400 && r.status === 200 && r.body.sloUrl === 'https://ticket.example.com/api/auth/saml/slo' && /SingleLogoutService[^>]+saml\/slo/.test(String(meta.body)), `${rHttps} ${r.status}`);
+      const loginOnce = async () => {
+        const id = /ID="([^"]+)"/.exec(zlib.inflateRawSync(Buffer.from(new URL(await S.loginUrl()).searchParams.get('SAMLRequest'), 'base64')).toString())[1];
+        const x = await post(build({ inResponseTo: id }));
+        return { Cookie: String(x.cookie[0] || '').split(';')[0] };
+      };
+      const c1 = await loginOnce();
+      const out = await req('POST', '/api/auth/logout', { headers: c1 });
+      check('SAML SLO: se déconnecter de Datick renvoie vers la déconnexion du fournisseur', out.status === 200 && /^https:\/\/idp\.example\/slo\?SAMLRequest=/.test(out.body.redirect || ''), JSON.stringify(out.body).slice(0, 200));
+      const c2 = await loginOnce();
+      const me1 = await req('GET', '/api/auth/me', { headers: c2 });
+      const iso2 = new Date().toISOString();
+      const xml = `<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_lr${Date.now()}" Version="2.0" IssueInstant="${iso2}" Destination="https://ticket.example.com/api/auth/saml/slo"><saml:Issuer>https://idp.example</saml:Issuer><saml:NameID>alice-saml@corp.example</saml:NameID><samlp:SessionIndex>_s1</samlp:SessionIndex></samlp:LogoutRequest>`;
+      const enc = encodeURIComponent(zlib.deflateRawSync(Buffer.from(xml)).toString('base64'));
+      const alg = encodeURIComponent('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
+      const signedPart = `SAMLRequest=${enc}&SigAlg=${alg}`;
+      const sig = encodeURIComponent(crypto.sign('sha256', Buffer.from(signedPart), idp.key).toString('base64'));
+      const getRaw = p => new Promise((resolve, reject) => { const x = http.get({ host: '127.0.0.1', port: config.webServerPort, path: p, headers: { 'X-Forwarded-For': '10.99.0.3' } }, res2 => { res2.resume(); resolve({ status: res2.statusCode, location: res2.headers.location || '' }); }); x.on('error', reject); });
+      const unsigned = await getRaw(`/api/auth/saml/slo?SAMLRequest=${enc}`);
+      const me2 = await req('GET', '/api/auth/me', { headers: c2 });
+      check('SAML SLO: une demande de déconnexion non signée est refusée (aucune session fermée)', /error=saml_invalid/.test(unsigned.location) && me2.status === 200, `${unsigned.location} ${me2.status}`);
+      const otherSig = encodeURIComponent(crypto.sign('sha256', Buffer.from(signedPart), other.key).toString('base64'));
+      const forged = await getRaw(`/api/auth/saml/slo?${signedPart}&Signature=${otherSig}`);
+      const ok = await getRaw(`/api/auth/saml/slo?${signedPart}&Signature=${sig}`);
+      const me3 = await req('GET', '/api/auth/me', { headers: c2 });
+      check('SAML SLO: demande signée par le fournisseur → sessions Datick fermées, réponse renvoyée ; signée par une autre clé → refusée', me1.status === 200 && /error=saml_invalid/.test(forged.location) && /^https:\/\/idp\.example\/slo\?SAMLResponse=/.test(ok.location) && me3.status === 401, `${me1.status} ${forged.location} ${ok.location.slice(0, 60)} ${me3.status}`);
+    }
     await req('PUT', '/api/instance/saml', { sid: sessions.OWN, body: { enabled: false } });
     C.webServerBaseUrl = base0;
     await globalQuery("DELETE FROM account_identities WHERE provider = 'saml'");
@@ -9639,6 +9673,21 @@ async function main() {
     r = await req('DELETE', `/api/assets/${lic}/assignments/${assignId}`, { sid: sessions.F });
     check('parc v8: siège retiré, historique gardé', r.status === 200 && r.body.assignments.length === 2 && r.body.history.some(h => JSON.stringify(h.changes).includes('assigned')), JSON.stringify(r.body.assignments));
     await db('DELETE FROM assets WHERE type_id = ?', [typeId]); await db('DELETE FROM asset_types WHERE id = ?', [typeId]); await db('DELETE FROM contacts WHERE id = ?', [ct]);
+  }
+
+  // ── Record of processing activities (utils/processingRegister.js, v8) ──
+  {
+    r = await req('GET', '/api/gdpr-register', { sid: sessions.S1 });
+    const r2 = await req('GET', '/api/gdpr-register', { sid: sessions.F });
+    check('registre RGPD: réservé aux fondateurs, généré d après l espace', r.status === 403 && r2.status === 200 && r2.body.activities >= 3 && /Registre des activités de traitement/.test(r2.body.markdown) && /Discord Inc\./.test(r2.body.markdown), `${r.status} ${r2.status} ${String(r2.body.markdown).slice(0, 120)}`);
+    await req('PUT', '/api/gdpr-register', { sid: sessions.F, body: { controller: 'Association Exemple v8', contact: 'dpo@example.com', notes: 'Relu le 20/11.' } });
+    const md = await req('GET', '/api/gdpr-register/export.md', { sid: sessions.F });
+    const pdf = await req('GET', '/api/gdpr-register/export.pdf', { sid: sessions.F });
+    check('registre RGPD: responsable complété, export Markdown et PDF', /Association Exemple v8/.test(String(md.body)) && /dpo@example\.com/.test(String(md.body)) && /Relu le 20\/11/.test(String(md.body)) && String(pdf.body).startsWith('%PDF') && /attachment/.test(pdf.headers['content-disposition'] || ''), String(md.body).slice(0, 200));
+    await db("UPDATE guild_config SET ticket_retention_mode = 'anonymize', ticket_retention_months = 24 WHERE id = 1");
+    const r3 = await req('GET', '/api/gdpr-register', { sid: sessions.F });
+    check('registre RGPD: suit la règle de rétention de l espace', /24 mois après la fermeture, puis anonymisation/.test(r3.body.markdown), '');
+    await db("UPDATE guild_config SET ticket_retention_mode = 'off', gdpr_register = NULL WHERE id = 1");
   }
 
   {

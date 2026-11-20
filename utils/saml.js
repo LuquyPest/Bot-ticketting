@@ -11,10 +11,13 @@ const { getSetting, setSetting } = require('./instanceSettings');
 const { config } = require('./config');
 
 const KEY = 'saml_sp';
-const DEFAULTS = { enabled: false, name: '', entryPoint: '', idpIssuer: '', idpCert: '', emailAttribute: 'email', nameAttribute: 'displayName', groupAttribute: 'groups', group: '' };
+const DEFAULTS = { enabled: false, name: '', entryPoint: '', idpIssuer: '', idpCert: '', emailAttribute: 'email', nameAttribute: 'displayName', groupAttribute: 'groups', group: '',
+  // v8: single logout — the provider's SLO address, and Datick's own key and certificate to sign its logout requests (optional)
+  logoutUrl: '', spKey: '', spCert: '' };
 const base = () => String(config.webServerBaseUrl || '').replace(/\/$/, '');
 const spIssuer = () => `${base()}/api/auth/saml/metadata`;
 const acsUrl = () => `${base()}/api/auth/saml/acs`;
+const sloUrl = () => `${base()}/api/auth/saml/slo`;
 
 const PEM_RE = /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/;
 const certBody = pem => String(pem || '').replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, '');
@@ -23,15 +26,29 @@ async function load() { return { ...DEFAULTS, ...(await getSetting(KEY, DEFAULTS
 async function active() { const s = await load(); return !!(s.enabled && s.entryPoint && s.idpCert); }
 async function publicSettings() {
   const s = await load();
-  return { ...s, idpCert: s.idpCert ? `${s.idpCert.slice(0, 40)}…` : '', idpCertSet: !!s.idpCert, spEntityId: spIssuer(), acsUrl: acsUrl(), metadataUrl: spIssuer() };
+  return { ...s, idpCert: s.idpCert ? `${s.idpCert.slice(0, 40)}…` : '', idpCertSet: !!s.idpCert, spKey: '', spKeySet: !!s.spKey, spCert: s.spCert ? `${s.spCert.slice(0, 40)}…` : '', spCertSet: !!s.spCert, spEntityId: spIssuer(), acsUrl: acsUrl(), sloUrl: sloUrl(), metadataUrl: spIssuer() };
 }
 function prepare(input = {}, cur = DEFAULTS) {
   const str = (k, max = 300) => (typeof input[k] === 'string' ? input[k].trim().slice(0, max) : cur[k] || '');
   const v = {
     enabled: !!input.enabled, name: str('name', 40), entryPoint: str('entryPoint', 500), idpIssuer: str('idpIssuer', 300),
     emailAttribute: str('emailAttribute', 200) || 'email', nameAttribute: str('nameAttribute', 200) || 'displayName', groupAttribute: str('groupAttribute', 200) || 'groups', group: str('group', 300),
-    idpCert: cur.idpCert || '',
+    idpCert: cur.idpCert || '', logoutUrl: str('logoutUrl', 500), spKey: cur.spKey || '', spCert: cur.spCert || '',
   };
+  if (v.logoutUrl) { try { const u = new URL(v.logoutUrl); if (u.protocol !== 'https:') throw new Error(); } catch { return { error: 'Adresse de déconnexion du fournisseur (SLO) : https://…' }; } }
+  if (typeof input.spKey === 'string' && input.spKey.trim()) {
+    const k = /-----BEGIN (RSA )?PRIVATE KEY-----[\s\S]+?-----END (RSA )?PRIVATE KEY-----/.exec(input.spKey.trim());
+    if (!k) return { error: 'Clé de signature de Datick : une clé privée PEM' };
+    try { require('crypto').createPrivateKey(k[0]); } catch { return { error: 'Clé de signature de Datick illisible' }; }
+    v.spKey = require('./secretBox').seal(k[0]);
+  }
+  if (typeof input.spCert === 'string' && input.spCert.trim()) {
+    const c = PEM_RE.exec(input.spCert.trim());
+    if (!c) return { error: 'Certificat de Datick : le PEM (-----BEGIN CERTIFICATE-----…)' };
+    v.spCert = certBody(c[0]);
+  }
+  if (input.removeSpKey) { v.spKey = ''; v.spCert = ''; }
+  if (!!v.spKey !== !!v.spCert) return { error: 'La clé et le certificat de Datick vont ensemble' };
   if (typeof input.idpCert === 'string' && input.idpCert.trim()) {
     const m = PEM_RE.exec(input.idpCert.trim()) || (/^[A-Za-z0-9+/=\s]{200,}$/.test(input.idpCert.trim()) ? [input.idpCert.trim()] : null);
     if (!m) return { error: 'Certificat du fournisseur : le PEM (-----BEGIN CERTIFICATE-----…)' };
@@ -67,6 +84,9 @@ function spFor(s) {
     wantAssertionsSigned: true, wantAuthnResponseSigned: true, acceptedClockSkewMs: 3 * 60 * 1000, maxAssertionAgeMs: 10 * 60 * 1000,
     validateInResponseTo: ValidateInResponseTo.always, requestIdExpirationPeriodMs: 10 * 60 * 1000, rejectReplayedAssertions: true, cacheProvider: cacheProvider(),
     identifierFormat: null, disableRequestedAuthnContext: true, signatureAlgorithm: 'sha256', digestAlgorithm: 'sha256',
+    // v8: single logout (Redirect binding)
+    ...(s.logoutUrl ? { logoutUrl: s.logoutUrl, logoutCallbackUrl: sloUrl() } : {}),
+    ...(s.spKey ? { privateKey: require('./secretBox').open(s.spKey) } : {}),
   });
 }
 
@@ -77,7 +97,8 @@ async function loginUrl(relayState = '') {
 }
 async function metadata() {
   const s = await load();
-  return spFor({ ...s, idpCert: s.idpCert || 'MA==', entryPoint: s.entryPoint || `${base()}/` }).generateServiceProviderMetadata(null, null);
+  const pem = s.spCert ? `-----BEGIN CERTIFICATE-----\n${s.spCert.match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE-----` : null;
+  return spFor({ ...s, idpCert: s.idpCert || 'MA==', entryPoint: s.entryPoint || `${base()}/` }).generateServiceProviderMetadata(null, pem);
 }
 
 const attr = (profile, name) => {
@@ -97,8 +118,35 @@ async function check(body, { test = false } = {}) {
   const name = (attr(p, s.nameAttribute)[0] || p.displayName || email || p.nameID).slice(0, 100);
   const groups = attr(p, s.groupAttribute);
   if (test) return { subject: String(p.nameID).slice(0, 255), email, name, groups, groupOk: !s.group || groups.includes(s.group), group: s.group || null };
+  const slo = { nameID: String(p.nameID), nameIDFormat: p.nameIDFormat || null, sessionIndex: p.sessionIndex || null }; // v8: for the single logout
   if (s.group && !groups.includes(s.group)) throw Object.assign(new Error('SAML : hors du groupe autorisé'), { reason: 'saml_group' });
-  return { subject: String(p.nameID).slice(0, 255), email, name, groups };
+  return { subject: String(p.nameID).slice(0, 255), email, name, groups, slo };
+}
+
+// ── Single logout (v8) ──
+// Signing out of Datick → the provider's logout address (null when SLO is not set)
+async function logoutUrlFor(info) {
+  const s = await load();
+  if (!(await active()) || !s.logoutUrl || !info?.nameID) return null;
+  return spFor(s).getLogoutUrlAsync({ nameID: info.nameID, nameIDFormat: info.nameIDFormat || undefined, sessionIndex: info.sessionIndex || undefined }, '', {});
+}
+// GET /api/auth/saml/slo: a LogoutRequest of the provider (it must be signed: then every Datick
+// session of that person is closed and the answer goes back), or its LogoutResponse to ours
+async function handleSlo(query, originalQuery) {
+  const s = await load();
+  if (!(await active()) || !s.logoutUrl) throw Object.assign(new Error('SLO off'), { reason: 'saml_off' });
+  const isRequest = typeof query?.SAMLRequest === 'string';
+  if (isRequest && !/(^|&)Signature=/.test(String(originalQuery || ''))) throw Object.assign(new Error('SAML : demande de déconnexion non signée'), { reason: 'saml_invalid' });
+  const sp = spFor(s);
+  let r;
+  try { r = await sp.validateRedirectAsync(query, originalQuery); } catch (err) { throw Object.assign(new Error(`SAML : ${err.message}`), { reason: 'saml_invalid' }); }
+  if (!isRequest) return { kind: 'response' };
+  const nameID = String(r?.profile?.nameID || '');
+  let closed = 0;
+  const account = nameID ? await require('./accounts').accountByIdentity('saml', nameID.slice(0, 255)) : null;
+  if (account) closed = await require('./sessionsRevoke').revokeAllSessions(account.id);
+  const responseUrl = await sp.getLogoutResponseUrlAsync(r.profile, query.RelayState || '', {}, true);
+  return { kind: 'request', closed, accountId: account?.id || null, responseUrl };
 }
 
 // « Tester » (v8): what can be checked without signing in — the certificate, the provider's address
@@ -135,4 +183,4 @@ async function consumeTest(relayState) {
   return !!m && !!(await require('./redis').getRedis().getdel(`saml:test:${m[1]}`));
 }
 
-module.exports = { diagnose, testLoginUrl, consumeTest, KEY, DEFAULTS, load, active, publicSettings, prepare, save, loginUrl, metadata, check, spIssuer, acsUrl };
+module.exports = { logoutUrlFor, handleSlo, sloUrl, diagnose, testLoginUrl, consumeTest, KEY, DEFAULTS, load, active, publicSettings, prepare, save, loginUrl, metadata, check, spIssuer, acsUrl };

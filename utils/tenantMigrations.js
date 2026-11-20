@@ -1973,6 +1973,11 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 105,
+    name: 'Registre des traitements RGPD (v8)',
+    statements: ['ALTER TABLE guild_config ADD COLUMN IF NOT EXISTS gdpr_register TEXT DEFAULT NULL'],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

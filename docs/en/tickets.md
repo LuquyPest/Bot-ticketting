@@ -173,6 +173,10 @@ On a **change**, a **release** or a **ticket** (a delivery), **Signatures → As
 
 **Member data** (founders) takes a **Discord ID** or an **e-mail address**: the address finds the requester's identities (e-mail, web, and Discord through their contact card). The JSON **export** covers every identity of the contact card; **erasure** is done identity by identity; for a requester by e-mail or on the web, it also removes their address from the address book, the copies on other people's tickets and the quarantine.
 
+### The record of processing activities
+
+**Member data → Record of processing activities (GDPR)** (founders) generates the article 30 record for the space, from its real settings: the processing (tickets, contacts and organisations, staff accounts, inventory and status page when used), the data of each, the channels used, the **recipients** (Discord, e-mail mailbox, SMS gateway, CRM, Jira/GitHub/GitLab, Slack/Teams, webhooks, extensions, according to what is connected), the **retention periods** (the tickets' retention rule and the instance's log retention) and the security measures. The founder fills in the controller, the address, the officer and the contact, adds notes, then downloads it as **PDF** or **Markdown**. It describes what the tool does: to be reviewed with the rest of the organisation's processing.
+
 ## Tasks
 
 On the ticket view, **Tasks** splits a ticket's work into steps: a title, a description, a **person** (told in the dashboard) or a team, a **planned duration**, a **planned date**, a state (**to do**, **done**, **not needed**), and **visible to the requester** or not (**Reply** permission to change them). The progress (« 2/3 ») does not count the tasks not needed.

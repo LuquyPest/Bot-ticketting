@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { UserSearch, Download, UserX, Loader2 } from 'lucide-react';
 import api from '../api';
+import ProcessingRegisterCard from '../components/ProcessingRegisterCard';
 import toast from 'react-hot-toast';
 
 const input = 'w-full bg-surface border border-overlay/8 text-ink-1 placeholder-ink-4 rounded-xl px-3 py-2 text-sm focus:outline-hidden focus:border-primary/50';
@@ -109,6 +110,7 @@ export default function Members() {
           </div>
         </div>
       )}
+      <ProcessingRegisterCard />
     </div>
   );
 }

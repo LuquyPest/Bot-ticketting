@@ -63,6 +63,7 @@ Each provider shows its **redirect address**, to declare as is on its side (`htt
 - The person is recognised by their identifier (NameID), else attached to the account with the same **verified address**; nobody gets an account by signing in this way. The account's two-factor authentication applies.
 - The instance must be served over **https**. The « Continue with … » button shows on the sign-in page.
 - **Check the settings** reads the certificate (and its end date) and reaches the provider's address; **Test sign-in** opens the provider in a new tab and shows what it sends back (identifier, address, groups, Datick account found), without opening a session.
+- **Single logout (SLO)**, optional: with the provider's logout address (HTTP-Redirect binding), signing out of Datick goes on to the provider's, and a **signed** logout request of the provider closes all the person's Datick sessions (an unsigned request is refused). The address `…/api/auth/saml/slo` is then to be declared at the provider and is in the metadata. If the provider requires signed requests, give a private key and a certificate of Datick's own (the key is encrypted, never sent back).
 
 ### LDAP / Active Directory directory
 

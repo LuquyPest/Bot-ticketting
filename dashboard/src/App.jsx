@@ -163,7 +163,9 @@ export default function App() {
 
   const logout = async () => {
     clearAllDrafts();
-    await api.post('/auth/logout');
+    const { data } = await api.post('/auth/logout').catch(() => ({ data: {} }));
+    // SAML single logout (v8): out of the identity provider too
+    if (data?.redirect) { window.location.href = data.redirect; return; }
     setUser(null);
   };
 
