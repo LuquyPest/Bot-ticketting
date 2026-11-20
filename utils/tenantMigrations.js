@@ -1857,6 +1857,41 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 101,
+    name: 'Plannings communs et créneaux (v8)',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS shared_plannings (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(80) NOT NULL,
+        description VARCHAR(300) DEFAULT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS shared_planning_members (
+        planning_id INT NOT NULL,
+        kind        VARCHAR(4) NOT NULL,
+        ref         VARCHAR(32) NOT NULL,
+        PRIMARY KEY (planning_id, kind, ref),
+        INDEX idx_spm_ref (kind, ref),
+        CONSTRAINT fk_spm_planning FOREIGN KEY (planning_id) REFERENCES shared_plannings(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS planning_slots (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        planning_id INT NOT NULL,
+        title       VARCHAR(120) NOT NULL,
+        user_id     VARCHAR(32) DEFAULT NULL,
+        skill_id    INT DEFAULT NULL,
+        starts_at   DATETIME NOT NULL,
+        ends_at     DATETIME NOT NULL,
+        weekly      TINYINT(1) NOT NULL DEFAULT 0,
+        until       DATE DEFAULT NULL,
+        created_by  VARCHAR(32) DEFAULT NULL,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_slot_planning (planning_id, starts_at), INDEX idx_slot_user (user_id),
+        CONSTRAINT fk_slot_planning FOREIGN KEY (planning_id) REFERENCES shared_plannings(id) ON DELETE CASCADE
+      )`,
+    ],
+  },
 ];
 
 const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

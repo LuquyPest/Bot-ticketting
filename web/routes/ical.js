@@ -23,6 +23,7 @@ router.get('/:file', async (req, res) => {
     if (!userId) return res.status(404).end();
     const from = new Date(Date.now() - 30 * 864e5), to = new Date(Date.now() + 90 * 864e5);
     const data = await planning.events(db, { userIds: [userId], from, to, vis: await planning.visFor(db, userId) });
+    data.slots = await require('../../utils/sharedPlanning').slots(db, { userIds: [userId], from, to }); // shared plannings (v8)
     const base = String(require('../../utils/config').config.webServerBaseUrl || '').replace(/\/$/, '');
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.type('text/calendar; charset=utf-8').send(planning.ical(data, { name: 'Datick · planning', base }));

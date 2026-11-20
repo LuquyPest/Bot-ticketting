@@ -185,6 +185,10 @@ The **time spent** goes to a task: the stopwatch of a task, or time added by han
 
 **Planning** menu: the week of a person or a team: the **planned tasks**, the **resolution deadline** of assigned tickets (in red), the **absences**. You see your own planning and your teams' (a founder sees everyone), always through what you are allowed to see. **Dragging a task** onto another day reschedules it, at the same time.
 
+**Skills and languages**: the « Skill: … » or « Language: … » choice shows the week of all the staff who have that skill or speak that language, with a **coverage** line: how many of them are there each day (an absence removes them); a day at zero is red. Founders also see their tasks and deadlines there; the others, the coverage and the slots. The coverage also shows for a team.
+
+**Shared plannings**: a founder creates a shared planning (« On call », « L1 desk »…) and chooses its members, people and teams. Its members put **slots** in it (« + slot » on a day): title, start and end, the person (or « unfilled »), the skill asked for, **every week** until a date or not. A slot is edited with one click. Everyone finds their slots, in purple, in their own planning and their iCal feed; the shared planning also shows its members' coverage.
+
 **In my calendar (iCal)** gives a secret link to add to Google Calendar, Outlook or Calendar: your planned tasks, your tickets' deadlines and your absences (30 days back, 90 ahead). The link is kept hashed; creating a new one, or removing it, cuts the old one.
 
 ### Writing, going fast

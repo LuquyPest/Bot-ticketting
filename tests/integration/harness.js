@@ -5959,12 +5959,47 @@ async function main() {
     r = await req('GET', '/api/planning', { sid: sessions.F, query: { from: new Date(Date.now() + 3 * 864e5).toISOString(), to: new Date(Date.now() + 6 * 864e5).toISOString() } });
     check('planning: replanifier une tâche (glisser-déposer)', r.body.tasks.some(k => k.id === task.id), JSON.stringify(r.body.tasks.map(k => k.dueAt)));
 
+    // ── Shared plannings and coverage (utils/sharedPlanning.js, v8) ──
+    const span = (d0, d1) => ({ from: new Date(Date.now() + d0 * 864e5).toISOString(), to: new Date(Date.now() + d1 * 864e5).toISOString() });
+    r = await req('POST', '/api/planning/shared', { sid: sessions.S1, body: { name: 'x' } });
+    const rBadMember = await req('POST', '/api/planning/shared', { sid: sessions.F, body: { name: 'x', userIds: ['200000000000000077'] } });
+    check('planning commun: créé par les fondateurs, membres du staff seulement', r.status === 403 && rBadMember.status === 400, `${r.status} ${rBadMember.status}`);
+    r = await req('POST', '/api/planning/shared', { sid: sessions.F, body: { name: 'Astreinte v8', description: 'Soirs', userIds: [U.F], teamIds: [team.id] } });
+    const spId = r.body.id;
+    const l1 = await req('GET', '/api/planning/shared', { sid: sessions.S1 });
+    const l2 = await req('GET', '/api/planning/shared', { sid: sessions.S2 });
+    const v2 = await req('GET', '/api/planning', { sid: sessions.S2, query: { shared: spId } });
+    check('planning commun: visible de ses membres (une équipe compte), pas des autres', r.status === 200 && l1.body.plannings.some(p => p.id === spId) && !l2.body.plannings.some(p => p.id === spId) && v2.status === 403, JSON.stringify([l1.body, l2.body, v2.status]));
+    const at = (d, h) => { const x = new Date(Date.now() + d * 864e5); x.setHours(h, 0, 0, 0); return x.toISOString(); };
+    r = await req('POST', `/api/planning/shared/${spId}/slots`, { sid: sessions.S1, body: { title: 'Astreinte du soir', userId: U.S1, startsAt: at(1, 18), endsAt: at(1, 22), weekly: true, until: new Date(Date.now() + 20 * 864e5).toISOString().slice(0, 10) } });
+    const rOut = await req('POST', `/api/planning/shared/${spId}/slots`, { sid: sessions.S1, body: { title: 'x', userId: U.S2, startsAt: at(1, 8), endsAt: at(1, 9) } });
+    const rS2 = await req('POST', `/api/planning/shared/${spId}/slots`, { sid: sessions.S2, body: { title: 'x', startsAt: at(1, 8), endsAt: at(1, 9) } });
+    const rLen = await req('POST', `/api/planning/shared/${spId}/slots`, { sid: sessions.S1, body: { title: 'x', startsAt: at(1, 10), endsAt: at(1, 9) } });
+    await req('POST', `/api/planning/shared/${spId}/slots`, { sid: sessions.F, body: { title: 'Garde', userId: U.F, startsAt: at(2, 8), endsAt: at(2, 12) } });
+    check('planning commun: créneaux posés par les membres, pour un membre, fin après le début', r.status === 200 && rOut.status === 400 && rS2.status === 403 && rLen.status === 400, `${r.status} ${rOut.status} ${rS2.status} ${rLen.status}`);
+    r = await req('GET', '/api/planning', { sid: sessions.S1, query: { shared: spId, ...span(0, 14) } });
+    const soirs = r.body.slots?.filter(x => x.title === 'Astreinte du soir') || [];
+    const dayAbs = r.body.coverage?.find(c => c.absent.includes('F') || c.present < c.total);
+    check('planning commun: créneau répété chaque semaine, couverture du jour (absences comptées)', r.status === 200 && soirs.length === 2 && new Date(soirs[1].startsAt) - new Date(soirs[0].startsAt) === 7 * 864e5 && r.body.coverage.length === 14 && r.body.coverage[0].total === 2 && !!dayAbs && r.body.tasks.length === 0, JSON.stringify([soirs.map(x => x.startsAt), r.body.coverage?.slice(0, 5)]));
+    r = await req('GET', '/api/planning', { sid: sessions.S1, query: span(0, 7) });
+    check('planning commun: mes créneaux dans mon planning', r.body.slots?.some(x => x.title === 'Astreinte du soir' && x.planning === 'Astreinte v8'), JSON.stringify(r.body.slots));
+    r = await req('GET', '/api/planning', { sid: sessions.S1, query: { shared: spId, ...span(25, 40) } });
+    check('planning commun: la répétition s arrête à la date choisie', r.body.slots.filter(x => x.title === 'Astreinte du soir').length === 0, JSON.stringify(r.body.slots));
+    const skId = (await app('./utils/skills').createSkill(db, 'Astreinte réseau v8')).id;
+    await app('./utils/skills').saveStaff(db, U.S1, { skills: [skId] });
+    await app('./utils/skills').saveStaff(db, U.F, { skills: [skId] });
+    r = await req('GET', '/api/planning', { sid: sessions.S1, query: { skill: skId, ...span(0, 7) } });
+    const rF = await req('GET', '/api/planning', { sid: sessions.F, query: { skill: skId, ...span(0, 7) } });
+    const zero = await req('GET', '/api/planning', { sid: sessions.F, query: { lang: 'pt', ...span(0, 2) } });
+    check('planning: couverture d une compétence (présents par jour), tâches réservées aux fondateurs, zéro signalé', r.status === 200 && r.body.coverage[0].total === 2 && r.body.coverage.some(c => c.present === 1) && r.body.tasks.length === 0 && rF.body.tasks.some(k => k.id === task.id) && zero.body.coverage.every(c => c.total === 0 && c.present === 0), JSON.stringify([r.body.coverage, zero.body.coverage]));
+
     // iCal feed
     r = await req('POST', '/api/planning/ical', { sid: sessions.F });
     const path = new URL(r.body.url, 'http://x').pathname;
     const raw = (await db('SELECT ical_token_hash FROM dashboard_users WHERE user_id = ?', [U.F]))[0].ical_token_hash;
     check('ical: lien secret créé, stocké haché', r.status === 200 && /\/api\/ical\/\d+\.[A-Za-z0-9_-]{32}\.ics$/.test(path) && raw && !path.includes(raw), path);
     r = await req('GET', path);
+    check('ical: créneaux des plannings communs dans le flux', /SUMMARY:Astreinte v8 : Garde/.test(r.body), String(r.body).slice(0, 200));
     check('ical: flux au format iCalendar avec la tâche', r.status === 200 && /text\/calendar/.test(r.headers['content-type']) && /BEGIN:VCALENDAR/.test(r.body) && /SUMMARY:Tâche : Sauvegarder avant migration/.test(r.body) && /BEGIN:VEVENT/.test(r.body), String(r.body).slice(0, 300));
     r = await req('GET', `/api/ical/${G}.${'x'.repeat(32)}.ics`);
     check('ical: secret inconnu → 404', r.status === 404, r.status);
@@ -5972,6 +6007,9 @@ async function main() {
     check('ical: un nouveau lien coupe l ancien', (await req('GET', path)).status === 404 && (await req('GET', new URL(r2.body.url, 'http://x').pathname)).status === 200, '');
     await req('DELETE', '/api/planning/ical', { sid: sessions.F });
     check('ical: lien retiré → 404', (await req('GET', new URL(r2.body.url, 'http://x').pathname)).status === 404, '');
+    r = await req('DELETE', `/api/planning/shared/${spId}`, { sid: sessions.F });
+    check('planning commun: supprimé avec ses créneaux', r.status === 200 && (await db('SELECT 1 FROM planning_slots WHERE planning_id = ?', [spId])).length === 0, '');
+    await db('DELETE FROM skills WHERE id = ?', [skId]);
     await req('DELETE', `/api/teams/${team.id}`, { sid: sessions.F });
     await db('DELETE FROM staff_absences WHERE id = ?', [absId]);
     await db('DELETE FROM tickets WHERE id IN (?)', [[tP, tConf]]);

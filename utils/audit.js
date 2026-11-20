@@ -76,6 +76,7 @@ const ACTIONS = {
   config_update:            ['Paramètres modifiés', 'config'],
   config_export:            ['Configuration exportée', 'config'],
   config_import:            ['Configuration importée', 'config'],
+  shared_planning:          ['Planning commun créé', 'config'],
   space_export:             ['Sauvegarde de l\'espace téléchargée', 'config'],
   space_restore:            ['Espace restauré depuis une sauvegarde', 'config'],
   config_restore:           ['Configuration restaurée', 'config'],

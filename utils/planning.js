@@ -53,7 +53,7 @@ const esc = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\;').repl
 const stamp = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 // Lines folded at 75 octets (RFC 5545)
 const fold = line => { const out = []; let s = line; while (Buffer.byteLength(s) > 75) { let n = 75; while (Buffer.byteLength(s.slice(0, n)) > 75) n--; out.push(s.slice(0, n)); s = ` ${s.slice(n)}`; } out.push(s); return out.join('\r\n'); };
-function ical({ tasks, deadlines, absences }, { name, base }) {
+function ical({ tasks, deadlines, absences, slots = [] }, { name, base }) {
   const now = stamp(new Date());
   const ev = (uid, start, end, summary, url) => ['BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${now}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`, `SUMMARY:${esc(summary)}`, ...(url ? [`URL:${url}`] : []), 'END:VEVENT'];
   const link = id => (base ? `${base}/tickets/${id}` : null);
@@ -61,6 +61,7 @@ function ical({ tasks, deadlines, absences }, { name, base }) {
     ...tasks.filter(k => k.state === 'todo').flatMap(k => ev(`task-${k.id}@datick`, k.dueAt, new Date(new Date(k.dueAt).getTime() + (k.plannedMinutes || 30) * 60000), `Tâche : ${k.title} (#${k.ticketId})`, link(k.ticketId))),
     ...deadlines.flatMap(d => ev(`deadline-${d.ticketId}@datick`, d.dueAt, new Date(new Date(d.dueAt).getTime() + 15 * 60000), `Échéance : #${d.ticketId}${d.subject ? ` ${d.subject}` : ''}`, link(d.ticketId))),
     ...absences.flatMap(a => ev(`absence-${a.id}@datick`, a.startsAt, a.endsAt, `Absence${a.username ? ` : ${a.username}` : ''}`, null)),
+    ...slots.flatMap(s => ev(`slot-${s.key.replace(':', '-')}@datick`, s.startsAt, s.endsAt, `${s.planning} : ${s.title}`, null)),
     'END:VCALENDAR'];
   return `${lines.map(fold).join('\r\n')}\r\n`;
 }
