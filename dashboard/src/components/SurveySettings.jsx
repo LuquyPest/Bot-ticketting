@@ -5,6 +5,9 @@ import toast from 'react-hot-toast';
 
 // Paramètres → Tickets → Enquête de satisfaction (v5.6, utils/surveys.js)
 const INPUT = 'bg-surface border border-overlay/8 text-ink-1 rounded-lg px-2 py-1.5 text-xs focus:outline-hidden focus:border-primary';
+// Standard wording of the NPS and CES questions (v7), prefilled when the type is picked
+const STANDARD = { nps: 'Quelle est la probabilité que vous nous recommandiez à un proche ?', ces: 'Il a été facile de faire traiter ma demande.' };
+
 export default function SurveySettings() {
   const [s, setS] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -31,8 +34,8 @@ export default function SurveySettings() {
           {s.questions.map((q, i) => (
             <div key={i} className="flex gap-1.5">
               <input value={q.label} onChange={e => set('questions', s.questions.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} maxLength={150} placeholder="Le délai vous a-t-il convenu ?" aria-label={`Question ${i + 1}`} className={`${INPUT} flex-1`} />
-              <select value={q.type} onChange={e => set('questions', s.questions.map((x, j) => (j === i ? { ...x, type: e.target.value } : x)))} aria-label={`Type de la question ${i + 1}`} className={INPUT}>
-                <option value="rating">Note sur 5</option><option value="yesno">Oui / non</option><option value="text">Texte</option></select>
+              <select value={q.type} onChange={e => set('questions', s.questions.map((x, j) => (j === i ? { ...x, type: e.target.value, label: x.label.trim() ? x.label : STANDARD[e.target.value] || '' } : x)))} aria-label={`Type de la question ${i + 1}`} className={INPUT}>
+                <option value="rating">Note sur 5</option><option value="yesno">Oui / non</option><option value="text">Texte</option><option value="nps">NPS (0 à 10 : recommanderiez-vous ?)</option><option value="ces">CES (1 à 7 : facilité)</option></select>
               <button type="button" onClick={() => set('questions', s.questions.filter((_, j) => j !== i))} aria-label={`Retirer la question ${i + 1}`} className="p-1 text-ink-3 hover:text-red-400"><Trash2 size={12} /></button>
             </div>
           ))}

@@ -259,9 +259,9 @@ When a ticket is closed, the requester gets the **satisfaction survey** (**Setti
 | | |
 |---|---|
 | **When** | At the closing (as before), or 1 h, 4 h, 1 day, 3 days, 1 week after |
-| **Which one** | Datick's own: a single-use link to a page (`/enquete`) with the rating out of 5, a comment and up to **5 questions** (rating out of 5, yes / no, text), which works for a Discord, e-mail or web requester; on Discord, the rating buttons stay. Or **a link to your tool** (the ticket number is added to the link) |
+| **Which one** | Datick's own: a single-use link to a page (`/enquete`) with the rating out of 5, a comment and up to **5 questions** (rating out of 5, yes / no, text, **NPS** from 0 to 10, **CES** from 1 to 7), which works for a Discord, e-mail or web requester; on Discord, the rating buttons stay. Or **a link to your tool** (the ticket number is added to the link) |
 
-The link works once and expires after 30 days; the page only shows the ticket's subject and the questions. **Analytics → Reports** gives the **response rate** and the answers to the questions over 30 days.
+The link works once and expires after 30 days; the page only shows the ticket's subject and the questions. **Analytics → Reports** gives the **response rate** and the answers to the questions over 30 days. The **NPS** (« would you recommend…? », one question per survey) gives the share of **promoters** (9 or 10), of **detractors** (0 to 6) and the **score** (promoters minus detractors, from −100 to 100); the **CES** (« it was easy to… », from 1 to 7) gives the average effort. Their standard wording is offered when the type is picked.
 
 ## Organisations
 

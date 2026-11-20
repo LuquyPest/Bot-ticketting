@@ -57,6 +57,14 @@ export default function Survey() {
                         {[['yes', STR.kbYes], ['no', STR.kbNo]].map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={answers[q.id] === v} onClick={() => setAnswers(a => ({ ...a, [q.id]: v }))}
                           className={`px-3 py-1.5 rounded-lg text-xs border ${answers[q.id] === v ? 'border-primary/50 bg-primary/10 text-ink-1' : 'border-overlay/8 text-ink-2'}`}>{l}</button>)}
                       </div>
+                    ) : q.type === 'nps' || q.type === 'ces' ? (
+                      <div>
+                        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={q.label}>
+                          {(q.type === 'nps' ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [1, 2, 3, 4, 5, 6, 7]).map(n => <button key={n} type="button" role="radio" aria-checked={answers[q.id] === n} onClick={() => setAnswers(a => ({ ...a, [q.id]: n }))}
+                            className={`w-9 h-9 rounded-lg text-sm border tabular-nums ${answers[q.id] === n ? 'border-primary/50 bg-primary/15 text-ink-1' : 'border-overlay/8 text-ink-2 hover:text-ink-1'}`}>{n}</button>)}
+                        </div>
+                        <p className="flex justify-between text-[11px] text-ink-4 mt-1"><span>{q.type === 'nps' ? STR.npsLow : STR.cesLow}</span><span>{q.type === 'nps' ? STR.npsHigh : STR.cesHigh}</span></p>
+                      </div>
                     ) : <textarea value={answers[q.id] || ''} onChange={e => setAnswers(a => ({ ...a, [q.id]: e.target.value }))} rows={2} maxLength={500} aria-label={q.label} className={INPUT} />}
                 </div>
               ))}
