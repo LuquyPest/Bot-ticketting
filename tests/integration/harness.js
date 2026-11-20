@@ -9605,6 +9605,42 @@ async function main() {
     await db('DELETE FROM organizations WHERE id IN (?)', [[orgA, orgB]]);
   }
 
+  // ── Licences and warranties of the inventory (utils/assetLifecycle.js, v8) ──
+  {
+    const LC = app('./utils/assetLifecycle');
+    const day = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    await db('UPDATE guild_config SET assets_enabled = 1 WHERE id = 1');
+    const typeId = (await app('./utils/assets').saveType(db, null, { name: 'Logiciel v8' })).id;
+    r = await req('POST', '/api/assets', { sid: sessions.F, body: { typeId, name: 'Suite bureautique v8', seats: 2, licenceExpiresOn: day(10), cost: 99.5 } });
+    const lic = r.body.id;
+    const pc = (await req('POST', '/api/assets', { sid: sessions.F, body: { typeId, name: 'PC garantie v8', warrantyEndsOn: day(5), supportEndsOn: day(200) } })).body.id;
+    const bad = await req('POST', '/api/assets', { sid: sessions.F, body: { typeId, name: 'x', warrantyEndsOn: 'demain' } });
+    const badSeats = await req('POST', '/api/assets', { sid: sessions.F, body: { typeId, name: 'x', seats: -3 } });
+    check('parc v8: licence (sièges, échéance, coût) et garantie enregistrées, valeurs vérifiées', !!lic && !!pc && bad.status === 400 && badSeats.status === 400, JSON.stringify([r.body, bad.body, badSeats.body]));
+    const ct = (await db("INSERT INTO contacts (display_name) VALUES ('Licencié v8')")).insertId;
+    const a1 = await req('POST', `/api/assets/${lic}/assignments`, { sid: sessions.F, body: { kind: 'contact', ref: String(ct) } });
+    const a2 = await req('POST', `/api/assets/${lic}/assignments`, { sid: sessions.F, body: { kind: 'staff', ref: U.S1 } });
+    const a3 = await req('POST', `/api/assets/${lic}/assignments`, { sid: sessions.F, body: { kind: 'asset', ref: String(pc) } });
+    const dup = await req('POST', `/api/assets/${lic}/assignments`, { sid: sessions.F, body: { kind: 'staff', ref: U.S1 } });
+    const notLic = await req('POST', `/api/assets/${pc}/assignments`, { sid: sessions.F, body: { kind: 'staff', ref: U.S1 } });
+    const noRight = await req('POST', `/api/assets/${lic}/assignments`, { sid: sessions.NOWN, body: { kind: 'staff', ref: U.F } });
+    check('parc v8: sièges attribués (contact, staff, élément), dépassement signalé, pas de doublon', a1.status === 200 && a2.status === 200 && a3.status === 200 && a3.body.over === true && a3.body.assignments.length === 3 && dup.status === 400 && notLic.status === 400, JSON.stringify([a3.body.over, dup.body, notLic.body]));
+    check('parc v8: attribuer refusé hors du staff de l espace', noRight.status >= 400, noRight.status);
+    r = await req('GET', '/api/assets', { sid: sessions.F, query: { expiring: '1' } });
+    const ids = r.body.assets.map(a => a.id);
+    const licRow = r.body.assets.find(a => a.id === lic);
+    check('parc v8: filtre « expire bientôt » (garantie, licence, sièges dépassés)', ids.includes(lic) && ids.includes(pc) && licRow.seatsUsed === 3 && licRow.seats === 2 && licRow.licenceExpiresOn === day(10), JSON.stringify(r.body.assets.map(a => [a.id, a.seatsUsed, a.licenceExpiresOn])));
+    const sentBefore = await db("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'asset_expiry_alert'");
+    const n1 = await LC.checkExpiries(db, G);
+    const n2 = await LC.checkExpiries(db, G);
+    const rows = await db('SELECT asset_id, kind, threshold FROM asset_expiry_alerts WHERE asset_id IN (?) ORDER BY asset_id', [[lic, pc]]);
+    check('parc v8: alertes à 30 puis 7 jours, une seule fois par échéance', n1 === 2 && n2 === 0 && rows.some(x => x.asset_id === pc && x.kind === 'warranty' && x.threshold === 7) && rows.some(x => x.asset_id === lic && x.kind === 'licence' && x.threshold === 30) && !rows.some(x => x.kind === 'support'), JSON.stringify([n1, n2, rows, sentBefore]));
+    const assignId = a3.body.assignments.find(x => x.kind === 'asset').id;
+    r = await req('DELETE', `/api/assets/${lic}/assignments/${assignId}`, { sid: sessions.F });
+    check('parc v8: siège retiré, historique gardé', r.status === 200 && r.body.assignments.length === 2 && r.body.history.some(h => JSON.stringify(h.changes).includes('assigned')), JSON.stringify(r.body.assignments));
+    await db('DELETE FROM assets WHERE type_id = ?', [typeId]); await db('DELETE FROM asset_types WHERE id = ?', [typeId]); await db('DELETE FROM contacts WHERE id = ?', [ct]);
+  }
+
   {
     const pub = ['/api/kb/G/articles/1/feedback', '/api/kb/G/searches', '/api/auth/select-guild', '/api/auth/totp-verify-login', '/api/auth/password-login', '/api/auth/password-reset', '/api/auth/password-reset/confirm',
       '/api/auth/ldap-login', '/api/auth/invitation/accept', '/api/installation/owner', '/api/member/auth/email', '/api/member/auth/email/verify', '/api/member/guilds/G/tickets', '/api/member/tickets/G/1/resolution', '/api/member/tickets/G/1/messages',

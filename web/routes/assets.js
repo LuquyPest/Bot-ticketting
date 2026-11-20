@@ -109,7 +109,7 @@ router.post('/import', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const q = req.query;
-    res.json(await A.listAssets(req.guildDb, { typeId: q.type, status: q.status, orgId: q.organization, contactId: q.contact, q: typeof q.q === 'string' ? q.q : '', limit: q.limit, offset: q.offset }));
+    res.json(await A.listAssets(req.guildDb, { typeId: q.type, status: q.status, orgId: q.organization, contactId: q.contact, q: typeof q.q === 'string' ? q.q : '', limit: q.limit, offset: q.offset, expiring: q.expiring === '1' }));
   } catch (err) { next(err); }
 });
 router.get('/:id', async (req, res, next) => {
@@ -141,6 +141,21 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 // POST /api/assets/:id/relations { to, kind } · DELETE /api/assets/:id/relations/:to/:kind
+// Licence seats (v8, utils/assetLifecycle.js): { kind: contact | staff | asset, ref }
+router.post('/:id/assignments', async (req, res, next) => {
+  try {
+    const r = await require('../../utils/assetLifecycle').assign(req.guildDb, id(req), req.body || {}, dashboardActor(req));
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json({ ...(await A.getAsset(req.guildDb, id(req))), over: r.over });
+  } catch (err) { next(err); }
+});
+router.delete('/:id/assignments/:assignmentId', async (req, res, next) => {
+  try {
+    const r = await require('../../utils/assetLifecycle').unassign(req.guildDb, id(req), parseInt(req.params.assignmentId) || 0);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(await A.getAsset(req.guildDb, id(req)));
+  } catch (err) { next(err); }
+});
 router.post('/:id/relations', async (req, res, next) => {
   try {
     const r = await A.relate(req.guildDb, id(req), req.body?.to, req.body?.kind, dashboardActor(req));

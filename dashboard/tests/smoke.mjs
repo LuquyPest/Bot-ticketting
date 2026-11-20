@@ -66,6 +66,8 @@ const PAGES = [
   ['equipes', '/equipe?tab=equipes', 'Reçoit les tickets des sujets'],
   ['competences', '/equipe?tab=competences', "Compétences de l'espace"],
   ['parc', '/parc/1', 'Historique'],
+  ['parc-licence', '/parc/1', '2 utilisé(s) sur 5'],
+  ['parc-echeances', '/parc', '3/2 sièges'],
   ['mises-en-production', '/mises-en-production/1', 'Points à vérifier, par étape'],
   ['comite', '/comite/1', 'Décision du comité :'],
   ['file-equipe', '/queue', 'Équipe Paiements'],

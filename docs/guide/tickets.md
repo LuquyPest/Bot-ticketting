@@ -272,6 +272,12 @@ La liste se cherche par nom, numéro de série ou lieu, et se filtre par type, s
 - **Import et export CSV** : colonnes `type ; nom ; statut ; numero_de_serie ; lieu ; organisation ; contact` (adresse e-mail), les champs du type par leur nom, `notes`. Un élément de même numéro de série, sinon de même type et nom, est mis à jour ; chaque ligne fautive est signalée.
 - **Inventaire automatique** : pas d'agent installé sur les postes ; un outil d'inventaire alimente le parc par l'[API v3](./integrations#api-publique) (`PUT /assets`, par numéro de série).
 
+### Licences et garanties
+
+Chaque élément peut avoir une **fin de garantie**, une **fin du support éditeur** et un **coût**. Un élément qui a un **nombre de sièges** est une **licence** : il a aussi une **échéance**, et on lui **attribue des sièges** (un contact par son numéro de fiche, un membre du staff par son identifiant, ou un autre élément, un poste par exemple). La fiche montre les sièges utilisés et libres, en rouge quand il y en a plus que la licence n'en compte ; chaque attribution est à l'historique.
+
+Le filtre **Expire bientôt** montre ce qui finit dans les 30 jours (ou est déjà fini) et les licences dépassées. Chaque matin, une tâche prévient les fondateurs (notification dans le dashboard, et e-mail si l'e-mail de l'instance est réglé) **30 jours puis 7 jours** avant la fin d'une garantie, d'un support ou d'une licence, une seule fois par échéance.
+
 ## L'enquête de satisfaction
 
 Quand un ticket est fermé, le demandeur reçoit l'**enquête de satisfaction** (**Paramètres → Tickets → Enquête de satisfaction**) :

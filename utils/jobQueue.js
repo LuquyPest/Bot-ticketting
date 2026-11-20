@@ -33,6 +33,8 @@ const JOBS = {
   'approval-reminders':  { every: 60 * 60 * 1000, run: client => require('./approvals').runApprovalReminders(client) },
   // Contracts of the organisations: thresholds, ends and renewals (utils/contracts.js, v7)
   'contract-check':      { pattern: '10 7 * * *', run: () => require('./contracts').runContractCheck() },
+  // Warranties, vendor support and licences ending in 30 and 7 days (utils/assetLifecycle.js, v8)
+  'asset-expiry':        { pattern: '20 7 * * *', run: () => require('./assetLifecycle').runExpiryCheck() },
   'crm-sync':            { pattern: '50 3 * * *', run: () => require('./crm').runCrmSync() },
   'retention-purge':     { pattern: '30 4 * * *', run: () => require('./retention').runRetentionPurge() },
   'public-stats':        { discord: true, pattern: '5 * * * *',  run: client => require('./publicStats').refreshAllPublicStats(client) },

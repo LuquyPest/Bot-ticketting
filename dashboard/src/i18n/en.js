@@ -901,6 +901,11 @@ export const ENTRIES = [
   ['Nom de la personne qui signe', 'Name of the person signing'], ['Son adresse e-mail', 'Their e-mail address'], ['Adresse e-mail de la personne qui signe', 'E-mail address of the person signing'],
   ['Précisions ajoutées au document (facultatif)', 'Details added to the document (optional)'], ['Précisions ajoutées au document', 'Details added to the document'], ['Demande de signature envoyée', 'Signature request sent'], ['Certificat indisponible', 'Certificate unavailable'],
   ['Le document est figé à l\'envoi (texte et empreinte SHA-256) ; la personne reçoit un lien valable 14 jours.', 'The document is frozen when sent (text and SHA-256 fingerprint); the person gets a link valid for 14 days.'],
+  // ── v8.5: licences and warranties ──
+  ['Garantie et licence', 'Warranty and licence'], ['Fin de garantie', 'End of warranty'], ['Fin du support éditeur', 'End of vendor support'], ['Coût', 'Cost'], ['Sièges (licence)', 'Seats (licence)'],
+  ['vide : pas une licence', 'empty: not a licence'], ['Échéance de licence', 'Licence expiry'], ['Attribuer à', 'Assign to'], ['Contact (n°)', 'Contact (no.)'], ['Staff (identifiant)', 'Staff (ID)'], ['Élément (n°)', 'Element (no.)'],
+  ['N° ou identifiant', 'No. or ID'], ['À qui attribuer le siège', 'Who gets the seat'], ['Attribuer un siège', 'Assign a seat'], ['Siège attribué', 'Seat assigned'], ['Plus de sièges attribués que la licence n\'en compte', 'More seats assigned than the licence has'],
+  ['Sièges de la licence', 'Seats of the licence'], ['Élément', 'Element'], ['Expire bientôt (30 jours) ou sièges dépassés', 'Expiring soon (30 days) or seats exceeded'],
 ];
 
 export const TEMPLATES = [
@@ -1238,4 +1243,6 @@ export const TEMPLATES = [
   ['Monter « {} »', 'Move « {1} » up'], ['Descendre « {} »', 'Move « {1} » down'], ['Déplacer « {} » vers', 'Move « {1} » to'], ['Replier « {} »', 'Collapse « {1} »'], ['Déplier « {} »', 'Expand « {1} »'],
   ['Sous-catégorie dans « {} »', 'Sub-category in « {1} »'], ['Renommer « {} »', 'Rename « {1} »'], ['Supprimer la catégorie « {} » ? Ses articles et sous-catégories remontent d\'un niveau.', 'Delete the category « {1} »? Its articles and sub-categories go up one level.'],
   ['Certificat de signature de {}', 'Signature certificate of {1}'],
+  ['Sièges : {} utilisé(s) sur {} — dépassé', 'Seats: {1} used of {2} — exceeded'], ['Sièges : {} utilisé(s) sur {} · {} libre(s)', 'Seats: {1} used of {2} · {3} free'], ['Retirer le siège de « {} »', 'Remove the seat of « {1} »'],
+  ['garantie {}', 'warranty {1}'], ['support {}', 'support {1}'], ['licence {}', 'licence {1}'], ['{}/{} sièges', '{1}/{2} seats'],
 ];
