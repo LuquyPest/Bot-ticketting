@@ -43,6 +43,8 @@ const PAGES = [
   ['settings-recurrents', '/settings?tab=catalogue', 'Attendre que le précédent soit fermé'],
   ['settings-modeles-taches', '/settings?tab=catalogue', 'Nouveau modèle de tâches'],
   ['planning', '/planning', 'Préparer le poste de Léa'],
+  ['planning-commun', '/planning', 'Astreinte du soir'],
+  ['planning-communs-gestion', '/planning', 'Plannings communs'],
   ['couts', '/couts', 'Acme'],
   ['tableaux', '/tableaux', 'Ouverts sans attribution'],
   ['problemes', '/problemes/1', 'Commander 50 licences de plus'],

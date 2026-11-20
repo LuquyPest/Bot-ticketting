@@ -876,6 +876,16 @@ export const ENTRIES = [
   ['La restauration se fait dans Instance → Serveurs (propriétaire de l\'instance), sur cet espace ou un autre.', 'Restoring is done in Instance → Servers (owner of the instance), on this space or another one.'],
   ['Restaurer une sauvegarde', 'Restore a backup'], ['Fichier de sauvegarde', 'Backup file'], ['Restaurer', 'Restore'], ['Espace restauré', 'Space restored'],
   ['Toutes les données de cet espace sont remplacées par celles de la sauvegarde, d\'un coup (l\'espace passe en maintenance le temps de l\'opération). Venue d\'un autre espace, elle en reprend aussi les réglages Discord, à revoir ensuite.', 'All the data of this space is replaced by the backup\'s, at once (the space is in maintenance meanwhile). From another space, it also brings its Discord settings, to review afterwards.'],
+  // ── v8.2: shared plannings and coverage ──
+  ['Plannings communs', 'Shared plannings'], ['Nom (Astreinte, Permanence N1…)', 'Name (On call, L1 desk…)'], ['Nom du planning commun', 'Name of the shared planning'],
+  ['Description (facultatif)', 'Description (optional)'], ['Description du planning commun', 'Description of the shared planning'], ['Créer le planning', 'Create the planning'], ['Enregistrer le planning', 'Save the planning'],
+  ['Planning commun enregistré', 'Shared planning saved'], ['Planning commun supprimé', 'Shared planning deleted'], ['Couverture', 'Coverage'], ['Créneau', 'Slot'], ['Modifier le créneau', 'Edit the slot'], ['Nouveau créneau', 'New slot'],
+  ['Intitulé (Astreinte, Accueil…)', 'Title (On call, Front desk…)'], ['Intitulé du créneau', 'Title of the slot'], ['Personne', 'Person'], ['À pourvoir', 'Unfilled'], ['Compétence demandée', 'Skill asked for'], ['Aucune compétence demandée', 'No skill asked for'],
+  ['Début du créneau', 'Start of the slot'], ['Fin du créneau', 'End of the slot'], ['Chaque semaine', 'Every week'], ['Répéter jusqu\'au', 'Repeat until'], ['Enregistrer le créneau', 'Save the slot'], ['Supprimer le créneau', 'Delete the slot'],
+  ['Créneau enregistré', 'Slot saved'], ['Créneau supprimé', 'Slot deleted'], ['+ créneau', '+ slot'],
+  ['français', 'French'], ['anglais', 'English'], ['espagnol', 'Spanish'], ['allemand', 'German'], ['italien', 'Italian'], ['portugais', 'Portuguese'],
+  ['Un planning partagé par des personnes et des équipes — astreinte, permanence, accueil… Ses membres y posent des créneaux, répétables chaque semaine ; chacun retrouve les siens dans son planning et son agenda iCal.', 'A planning shared by people and teams — on call, desk duty, front desk… Its members put slots in it, repeatable every week; everyone finds theirs in their planning and their iCal calendar.'],
+  ['Glisse une tâche sur un autre jour pour la replanifier (même heure). En rouge : l\'échéance de résolution d\'un ticket attribué ; en violet : les créneaux des plannings communs.', 'Drag a task to another day to replan it (same time). In red: the resolution deadline of an assigned ticket; in purple: the slots of shared plannings.'],
 ];
 
 export const TEMPLATES = [
@@ -1207,4 +1217,7 @@ export const TEMPLATES = [
   ['✓ {} : {}', '✓ {1}: {2}'], ['✗ {} : {}', '✗ {1}: {2}'],
   ['Restaurer une sauvegarde — {}', 'Restore a backup — {1}'], ['{} ligne(s) dans {} table(s) et {} fichier(s) restaurés.', '{1} row(s) in {2} table(s) and {3} file(s) restored.'],
   ['Sauvegarde du {}, espace « {} », Datick {}.', 'Backup of {1}, space « {2} », Datick {3}.'], ['Sauvegarde du {}, espace « {} ».', 'Backup of {1}, space « {2} ».'], ['Sauvegarde du {}.', 'Backup of {1}.'], ['Sauvegarde du {}, Datick {}.', 'Backup of {1}, Datick {2}.'],
+  ['Planning commun : {}', 'Shared planning: {1}'], ['Compétence : {}', 'Skill: {1}'], ['Langue : {}', 'Language: {1}'], ['{} personne(s) · {} équipe(s)', '{1} person(s) · {2} team(s)'],
+  ['Supprimer le planning « {} »', 'Delete the planning « {1} »'], ['Supprimer le planning « {} » et ses créneaux ?', 'Delete the planning « {1} » and its slots?'], ['{} · {}/{} présent(s)', '{1} · {2}/{3} present'], ['Absents : {}', 'Away: {1}'],
+  ['Ajouter un créneau le {}', 'Add a slot on {1}'], ['{}–{} · {} · à pourvoir', '{1}–{2} · {3} · unfilled'], ['{}–{} · {} · à pourvoir ({})', '{1}–{2} · {3} · unfilled ({4})'],
 ];

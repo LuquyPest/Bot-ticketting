@@ -185,6 +185,10 @@ Les **modèles de tâches** (**Paramètres → Catalogue → Modèles de tâches
 
 Menu **Planning** : la semaine d'une personne ou d'une équipe : les **tâches planifiées**, l'**échéance de résolution** des tickets attribués (en rouge), les **absences**. On voit son propre planning et ceux de ses équipes (un fondateur voit tout le monde), toujours à travers ce qu'on a le droit de voir. **Glisser une tâche** sur un autre jour la replanifie, à la même heure.
 
+**Compétences et langues** : le choix « Compétence : … » ou « Langue : … » montre la semaine de tout le staff qui a cette compétence ou parle cette langue, avec une ligne de **couverture** : combien de ces personnes sont là chaque jour (une absence les retire) ; un jour à zéro est en rouge. Les fondateurs y voient aussi leurs tâches et échéances ; les autres, la couverture et les créneaux. La couverture s'affiche aussi pour une équipe.
+
+**Plannings communs** : un fondateur crée un planning partagé (« Astreinte », « Permanence N1 »…) et choisit ses membres, des personnes et des équipes. Ses membres y posent des **créneaux** (« + créneau » sur un jour) : intitulé, début et fin, la personne (ou « à pourvoir »), la compétence demandée, **chaque semaine** jusqu'à une date ou non. Un créneau se modifie d'un clic. Chacun retrouve ses créneaux, en violet, dans son propre planning et dans son flux iCal ; le planning commun montre aussi la couverture de ses membres.
+
 **Dans mon agenda (iCal)** donne un lien secret à ajouter à Google Agenda, Outlook ou Calendrier : ses tâches planifiées, les échéances de ses tickets et ses absences (30 jours en arrière, 90 en avant). Le lien est gardé chiffré ; en créer un nouveau, ou le retirer, coupe l'ancien.
 
 ### Écrire, aller vite
