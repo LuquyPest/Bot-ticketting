@@ -90,6 +90,14 @@ async function safePostJson(webhookUrl, body, extraHeaders = {}) {
 // Fire webhook if enabled for this guild
 async function fireTicketWebhook(db, event, payload) {
   try {
+    // Confidential ticket: the outside service only learns that ticket N moved, never who or what
+    let safe = payload;
+    if (payload?.ticketId) {
+      const [t] = await db('SELECT visibility_grade_id FROM tickets WHERE id = ?', [payload.ticketId]);
+      if (t?.visibility_grade_id === require('./gradePermissions').CONFIDENTIAL) safe = { ticketId: payload.ticketId, confidential: true };
+    }
+    // The extensions of the space (v7), each with its own signature
+    await require('./extensions').deliver(db, event, safe).catch(() => null);
     const [cfg] = await db('SELECT webhooks_enabled, webhook_url, webhook_secret, webhook_events FROM guild_config LIMIT 1');
     if (!cfg?.webhooks_enabled || !cfg.webhook_url) return;
 

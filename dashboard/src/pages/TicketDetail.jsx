@@ -15,6 +15,7 @@ import ObjectivesPanel from '../components/ObjectivesPanel';
 import { contractBalance } from '../components/ContractsPanel';
 import CrmCard from '../components/CrmCard';
 import DevIssuesPanel from '../components/DevIssuesPanel';
+import ExtensionPanels from '../components/ExtensionPanels';
 import AssetLinksPanel from '../components/AssetLinksPanel';
 import Recorder from '../components/Recorder';
 import TasksPanel from '../components/TasksPanel';
@@ -210,6 +211,8 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
   const [staff, setStaff] = useState([]);
   const [assigneeToAdd, setAssigneeToAdd] = useState('');
   const [composeMode, setComposeMode] = useState('reply');
+  // An extension's panel asks to insert a text in the reply (v7, components/ExtensionPanels.jsx)
+  const insertFromExtension = useCallback(text => { setComposeMode('reply'); setReplyText(v => (v ? `${v}\n${text}` : text)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [grades, setGrades] = useState([]);
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [ticketTags, setTicketTags] = useState([]);
@@ -2212,6 +2215,7 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           {(user?.role === 'fondateur' || user?.permissions?.includes('manage_costs')) && <CostPanel ticketId={ticket.id} panelCard={panelCard} />}
           <CrmCard ticketId={ticket.id} panelCard={panelCard} />
           <DevIssuesPanel ticket={ticket} panelCard={panelCard} canEdit={can('reply_ticket')} />
+          <ExtensionPanels ticket={ticket} panelCard={panelCard} onInsert={can('reply_ticket') ? insertFromExtension : null} />
           {ticket.organization && (
             <div className={panelCard}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-4 mb-1">Organisation</p>

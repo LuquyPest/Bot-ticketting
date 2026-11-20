@@ -25,6 +25,7 @@ export const VERSIONS = [
     changes: [
       { type: 'new',  text: 'Jira, GitHub et GitLab : créer ou lier une issue depuis un ticket, son état sur la fiche tenu à jour par webhook (signature vérifiée), note interne quand elle est fermée', en: 'Jira, GitHub and GitLab: create or link an issue from a ticket, its state on the ticket kept up to date by webhook (signature checked), internal note when it is closed' },
       { type: 'new',  text: 'Alertes de supervision entrantes (Alertmanager, Grafana, Uptime Kuma, Zabbix, JSON générique) : une alerte ouvre un ticket ou complète celui de la même alerte, sa fin le ferme ; une adresse secrète par source', en: 'Incoming monitoring alerts (Alertmanager, Grafana, Uptime Kuma, Zabbix, generic JSON): an alert opens a ticket or adds to the one of the same alert, its end closes it; one secret address per source' },
+      { type: 'new',  text: 'Extensions : un manifeste ajoute un panneau à la fiche ticket (cadre isolé, échanges par postMessage), une clé API limitée à ses permissions et des webhooks signés avec son propre secret ; seules leurs adresses peuvent être affichées en cadre', en: 'Extensions: a manifest adds a panel to the ticket view (sandboxed frame, postMessage exchanges), an API key limited to its permissions and webhooks signed with its own secret; only their addresses can be framed' },
     ],
   },
   {

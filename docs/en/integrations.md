@@ -227,6 +227,29 @@ Tokens are encrypted and never sent back to the browser; **New secret** changes 
 
 An alert that fires **opens a ticket** (« Supervision · *source* »), which follows the rules, the SLA and the notifications like the others; the same alert still firing adds at most one note an hour to the open ticket; its **end** adds a note and **closes** it (or leaves it open if the source says so); if it comes back later, a new ticket opens. **New address** replaces the secret address; a turned-off source receives nothing.
 
+## Extensions
+
+**Settings → Integrations → Extensions** (founders) installs an extension from its **manifest** (pasted, or its https address):
+
+```json
+{
+  "name": "Inventory",
+  "version": "1.0.0",
+  "description": "The requester's devices",
+  "panel": { "url": "https://extension.example.com/panel", "height": 240 },
+  "permissions": ["read_tickets", "reply_tickets"],
+  "webhook": { "url": "https://extension.example.com/events", "events": ["ticket_open", "ticket_close"] }
+}
+```
+
+| | |
+|---|---|
+| **Panel** | Shown in the ticket view, in a **sandboxed frame** (`sandbox` without `allow-same-origin`: it reaches neither the session nor the page). When it loads, it receives by `postMessage` `{ type: "datick:context", ticket: { id, subject, status, priority, stage, requester } }` (no requester for a confidential ticket). It may send `{ type: "datick:resize", height }` and `{ type: "datick:insertReply", text }` (text added to the reply, if the person can reply) — nothing else |
+| **Permissions** | Those of an [API v3 key](#public-api): `read_tickets`, `reply_tickets`, `update_tickets`, `create_tickets`, `read_contacts`, `read_assets`, `write_assets`. The extension gets **its own key**, limited to these permissions, shown once at installation; turning the extension off suspends it, removing it erases it |
+| **Webhook** | The chosen events (`ticket_open`, `ticket_close`, `ticket_claim`, `rule_applied`), signed with **its own secret**: header `X-Datick-Signature-256` = `sha256=` + HMAC-SHA256 of the body; public https address only |
+
+Only the addresses of the installed panels can be framed by the dashboard (content security policy). Each installation and removal is in the log.
+
 ## Backing up the configuration
 
 **Settings → Backup**: JSON export of the configuration (settings, grades, tags, forms, panels, fields, FAQ and articles, templates and macros, rules, checklists, custom statuses, teams) and import on this server or another. Secrets are never exported.
