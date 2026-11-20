@@ -18,6 +18,15 @@ export function localizedVersion(v, lang) {
 
 export const VERSIONS = [
   {
+    version: 'v7.0.0',
+    date: 'à venir',
+    title: 'Tickets liés',
+    titleEn: 'Linked tickets',
+    changes: [
+      { type: 'new',  text: 'Liens entre tickets avec une relation : lié à, doublon de, bloque, bloqué par, parent de, enfant de ; vus des deux côtés, au journal et dans l\'API v3 ; un parent montre combien de ses enfants sont fermés, et peut les fermer avec lui (réglage)', en: 'Links between tickets with a relation: related to, duplicate of, blocks, blocked by, parent of, child of; seen from both sides, in the log and in the API v3; a parent shows how many of its children are closed, and can close them with it (setting)' },
+    ],
+  },
+  {
     version: 'v6.5.0',
     date: '20 novembre 2026',
     title: 'Faire connaître',

@@ -43,12 +43,14 @@ async function ticketView(req, id) {
   const fields = Object.fromEntries((await req.guildDb('SELECT field_id, value FROM ticket_field_values WHERE ticket_id = ?', [id]).catch(() => [])).map(f => [f.field_id, f.value]));
   const { ticket_type, ...rest } = shaped;
   const [r] = await req.guildDb('SELECT resolved_at, urgency, impact, priority_level FROM tickets WHERE id = ?', [id]);
-  return { ...rest, type: ticket_type || 'request', urgency: r?.urgency ?? null, impact: r?.impact ?? null, priority_level: r?.priority_level ?? 3, resolved_at: r?.resolved_at || null, team_id: t.team_id || null, assignees, cc, fields };
+  const links = (await require('../../utils/ticketLinks').listLinks(req.guildDb, id, { sql: NOT_CONFIDENTIAL, params: [] })).map(l => ({ ticket_id: l.id, relation: l.relation, status: l.status }));
+  return { ...rest, type: ticket_type || 'request', urgency: r?.urgency ?? null, impact: r?.impact ?? null, priority_level: r?.priority_level ?? 3, resolved_at: r?.resolved_at || null, team_id: t.team_id || null, assignees, cc, fields, links };
 }
 const TICKET_OUT = {
   id: 87, status: 'open', stage: 'open', subject: 'Commande 1287 non reçue', priority: 'normal', claimed_by: null, created_at: '2026-11-18T09:12:00.000Z', closed_at: null,
   closed_by_tag: null, last_message_at: '2026-11-18T09:12:00.000Z', contact_id: 12, owner: { id: 'mail:3f0c9a1b2c3d4e5f60718293', tag: 'client@example.com', kind: 'email' },
   tags: ['Livraison'], type: 'request', team_id: 2, assignees: ['234567890123456789'], cc: ['adjoint@example.com'], fields: { 3: '1287' },
+  links: [{ ticket_id: 85, relation: 'parent', status: 'open' }],
 };
 
 // ── Open a ticket ──
@@ -308,6 +310,41 @@ endpoint({
   const ccErr = await checkCc(req, t, check.value.cc_add);
   if (ccErr) return res.status(400).json({ error: ccErr });
   try { await applyChanges(req, t, check.value); } catch (err) { if (err.status) return res.status(err.status).json({ error: err.message }); throw err; }
+  res.json(await ticketView(req, t.id));
+});
+
+// ── Links between tickets (v7) ──
+const RELATIONS_DOC = 'related (lié à), duplicate_of (doublon de), has_duplicate (a pour doublon), blocks (bloque), blocked_by (bloqué par), child (l\'autre est son enfant), parent (l\'autre est son parent)';
+endpoint({
+  method: 'post', path: '/tickets/{id}/links', perm: 'update_tickets', summary: 'Lier à un autre ticket',
+  description: `Lie le ticket à un autre ticket de l'espace, avec une relation vue depuis ce ticket : ${RELATIONS_DOC}. Une seule relation par paire (la nouvelle remplace l'ancienne) ; un ticket a un parent au plus, sans boucle.`,
+  params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }],
+  body: { ticket_id: 85, relation: 'parent' },
+  example: TICKET_OUT, errors: [400, 404],
+}, async (req, res) => {
+  const t = await openTicketOf(req, res, { open: false });
+  if (!t) return;
+  const otherId = parseInt(req.body?.ticket_id);
+  const [other] = otherId > 0 ? await req.guildDb(`SELECT id FROM tickets WHERE id = ? AND ${NOT_CONFIDENTIAL}`, [otherId]) : [];
+  if (!other) return res.status(404).json({ error: 'Ticket lié introuvable' });
+  const r = await require('../../utils/ticketLinks').setLink(req.guildDb, t.id, other.id, req.body?.relation || 'related', actorOf(req));
+  if (r.error) return res.status(400).json({ error: r.error });
+  if (r.changed) for (const id of [t.id, other.id]) broadcast('ticket', { id }, req.guildId);
+  res.json(await ticketView(req, t.id));
+});
+endpoint({
+  method: 'delete', path: '/tickets/{id}/links/{other}', perm: 'update_tickets', summary: 'Retirer un lien',
+  description: 'Retire le lien entre les deux tickets, quelle que soit sa relation.',
+  params: [{ name: 'id', type: 'integer', description: 'Numéro du ticket' }, { name: 'other', type: 'integer', description: 'Numéro de l\'autre ticket' }],
+  example: TICKET_OUT, errors: [404],
+}, async (req, res) => {
+  const t = await openTicketOf(req, res, { open: false });
+  if (!t) return;
+  const otherId = parseInt(req.params.other);
+  const [other] = otherId > 0 ? await req.guildDb(`SELECT id FROM tickets WHERE id = ? AND ${NOT_CONFIDENTIAL}`, [otherId]) : [];
+  if (!other) return res.status(404).json({ error: 'Ticket lié introuvable' });
+  const r = await require('../../utils/ticketLinks').removeLink(req.guildDb, t.id, other.id, actorOf(req));
+  if (r.changed) for (const id of [t.id, other.id]) broadcast('ticket', { id }, req.guildId);
   res.json(await ticketView(req, t.id));
 });
 

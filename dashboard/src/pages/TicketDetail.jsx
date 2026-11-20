@@ -161,6 +161,10 @@ function DiscordAvatar({ authorId, authorAvatar, authorTag, gradient }) {
 
 /* ─── Main component ─────────────────────────────────────────── */
 // embeddedId: shown next to the ticket list (split view, Tickets page); onClose leaves it
+// Links between tickets (v7, utils/ticketLinks.js): the relation seen from this ticket
+const LINK_RELATIONS = { related: 'Lié', duplicate_of: 'Doublon de', has_duplicate: 'A pour doublon', blocks: 'Bloque', blocked_by: 'Bloqué par', child: 'Enfant', parent: 'Parent' };
+const LINK_CHOICES = { related: 'Lié à', duplicate_of: 'Doublon de', blocks: 'Bloque', blocked_by: 'Bloqué par', child: 'Parent de', parent: 'Enfant de' };
+
 export default function TicketDetail({ embeddedId = null, onClose = null }) {
   const stageList = useStages();
   const STAGES = stageOptions(stageList);
@@ -633,19 +637,20 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
 
   // Linked tickets
   const [linkInput, setLinkInput] = useState('');
+  const [linkRelation, setLinkRelation] = useState('related');
   const addLink = async () => {
     const other = parseInt(linkInput.replace('#', ''));
     if (!other) return toast.error('Numéro de ticket invalide');
     try {
-      const { data } = await api.post(`/tickets/${id}/links`, { ticketId: other });
-      setTicket(t => ({ ...t, links: data.links }));
+      const { data } = await api.post(`/tickets/${id}/links`, { ticketId: other, relation: linkRelation });
+      setTicket(t => ({ ...t, links: data.links, children: data.children }));
       setLinkInput('');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
   const removeLink = async (otherId) => {
     try {
       const { data } = await api.delete(`/tickets/${id}/links/${otherId}`);
-      setTicket(t => ({ ...t, links: data.links }));
+      setTicket(t => ({ ...t, links: data.links, children: data.children }));
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
@@ -1896,11 +1901,20 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
           {(ticket.links?.length > 0 || can('reply_ticket')) && (
             <div className={panelCard}>
               <SectionTitle>Tickets liés</SectionTitle>
+              {ticket.children?.total > 0 && (
+                <div className="mb-2">
+                  <p className="text-xs text-ink-3 mb-1">{`Enfants fermés : ${ticket.children.closed} / ${ticket.children.total}${ticket.closeChildrenWithParent ? ' · fermés avec ce ticket' : ''}`}</p>
+                  <div className="h-1.5 rounded-full bg-overlay/6 overflow-hidden" role="progressbar" aria-label="Enfants fermés" aria-valuemin={0} aria-valuemax={ticket.children.total} aria-valuenow={ticket.children.closed}>
+                    <div className="h-full bg-emerald-500" style={{ width: `${Math.round((ticket.children.closed / ticket.children.total) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
               {ticket.links?.length > 0 && (
                 <ul className="space-y-1 mb-2">
                   {ticket.links.map(l => (
                     <li key={l.id} className="flex items-center gap-1.5 text-xs">
                       <Link2 size={11} className="text-ink-4 shrink-0" />
+                      <span className={`shrink-0 px-1.5 rounded-md text-[10px] ${l.relation === 'blocked_by' && l.status !== 'closed' ? 'bg-red-500/10 text-red-400' : 'bg-overlay/5 text-ink-3'}`}>{LINK_RELATIONS[l.relation] || LINK_RELATIONS.related}</span>
                       <button onClick={() => navigate(`/tickets/${l.id}`)} className="flex-1 min-w-0 text-left truncate text-ink-2 hover:text-primary-light">
                         #{l.id} — {l.subject || 'Sans sujet'} <span className="text-ink-4">· {l.owner_tag}{l.status === 'closed' ? ' · fermé' : ''}</span>
                       </button>
@@ -1910,7 +1924,11 @@ export default function TicketDetail({ embeddedId = null, onClose = null }) {
                 </ul>
               )}
               {can('reply_ticket') && (
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
+                  <select value={linkRelation} onChange={e => setLinkRelation(e.target.value)} aria-label="Relation avec l'autre ticket"
+                    className="bg-surface border border-overlay/[0.07] text-ink-1 rounded-xl px-2 py-2 text-xs">
+                    {Object.entries(LINK_CHOICES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
                   <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLink()}
                     placeholder="N° de ticket" inputMode="numeric" aria-label="Numéro du ticket à lier"
                     className="flex-1 min-w-0 bg-surface border border-overlay/[0.07] text-ink-1 placeholder-ink-4 rounded-xl px-2.5 py-2 text-xs focus:outline-hidden focus:border-primary/50" />

@@ -48,10 +48,12 @@ const cleanValue = v => (typeof v === 'number' && Number.isNaN(v) ? null : Array
 const cleanParams = params => (Array.isArray(params) ? params.map(cleanValue) : params);
 
 function getTenantDb(guildId) {
-  return async function tenantQuery(sql, params = []) {
+  const tenantQuery = async function tenantQuery(sql, params = []) {
     const [result] = await _getPool(guildId).query(sql, cleanParams(params));
     return result;
   };
+  tenantQuery.guildId = String(guildId); // for hooks that only receive the query function (utils/audit.js)
+  return tenantQuery;
 }
 
 async function closeAll() {

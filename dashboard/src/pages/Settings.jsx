@@ -328,6 +328,7 @@ export default function Settings() {
         subjectSla:               cfg.subjectSla && typeof cfg.subjectSla === 'object' ? cfg.subjectSla : {},
         ticketTypesEnabled:       cfg.ticketTypesEnabled ? 1 : 0,
         resolutionEnabled:        cfg.resolutionEnabled ? 1 : 0,
+        closeChildrenWithParent:  cfg.closeChildrenWithParent ? 1 : 0,
         priorityMatrixEnabled:    cfg.priorityMatrixEnabled ? 1 : 0,
         priorityMatrix:           Array.isArray(cfg.priorityMatrix) && cfg.priorityMatrix.length === 5 ? cfg.priorityMatrix : null,
         resolutionAutocloseDays:  Number.isInteger(cfg.resolutionAutocloseDays) ? cfg.resolutionAutocloseDays : 7,
@@ -566,6 +567,10 @@ export default function Settings() {
             <input type="number" min={0} max={90} value={cfg.resolutionAutocloseDays ?? 7} onChange={e => set('resolutionAutocloseDays', Math.max(0, Math.min(90, parseInt(e.target.value) || 0)))} className={BASE + ' w-28'} />
           </Field>
         )}
+        <label className="flex items-center gap-2 text-sm text-ink-1">
+          <input type="checkbox" checked={!!cfg.closeChildrenWithParent} onChange={e => set('closeChildrenWithParent', e.target.checked)} className="accent-primary" />
+          Fermer les tickets enfants encore ouverts quand leur ticket parent est fermé
+        </label>
       </Section>
 
       {/* Priority matrix (v5.1) */}
