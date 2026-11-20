@@ -9141,7 +9141,7 @@ async function main() {
     // v8: « Tester » — checks, then a sign-in test that only shows what came back
     {
       const d = await req('GET', '/api/instance/saml/diagnose', { sid: sessions.OWN });
-      const dNo = await req('GET', '/api/instance/saml/diagnose', { sid: sessions.F });
+      const dNo = await req('GET', '/api/instance/saml/diagnose', { sid: sessions.NOWN });
       const cert = d.body.checks?.find(c => /Certificat/.test(c.label));
       check('SAML: vérification du réglage (certificat lu, propriétaire seulement)', d.status === 200 && cert?.ok && /valable encore/.test(cert.detail) && dNo.status >= 400, JSON.stringify([d.body, dNo.status]));
       const t = await req('POST', '/api/instance/saml/test-login', { sid: sessions.OWN });
